@@ -1,0 +1,23 @@
+name: base-fullstack-template
+
+services:
+  postgres:
+    image: postgres
+    container_name: base-fullstack-template-postgres
+    environment:
+      POSTGRES_DB: base-fullstack-template
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - base-fullstack-template_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  base-fullstack-template_postgres_data:

@@ -1,0 +1,24 @@
+{
+  "name": "@base-fullstack-template/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@base-fullstack-template/db": "workspace:*",
+    "@base-fullstack-template/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@base-fullstack-template/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

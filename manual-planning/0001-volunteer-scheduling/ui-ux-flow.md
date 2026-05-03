@@ -109,6 +109,7 @@ System should visually indicate:
 - Maximize clarity
 - Avoid hidden constraints
 - Make conflicts visible early
+- **Strict Component Reusability**: Use standard `shadcn/ui` components exclusively. Do not reinvent UI patterns; if shadcn doesn't have it natively, find a community implementation instead of building from scratch.
 
 ---
 
@@ -125,3 +126,12 @@ System should visually indicate:
 - Notifications (Handled via Backend/PWA separately)
 - Analytics
 - Gamification
+
+---
+
+## 🔗 Technical Specifications (Implementation)
+
+The concrete frontend architecture and component definitions that fulfill these UX goals are specified in:
+- **[Spec F1: Schedule Builder (Desktop)](./specifications/F1-schedule-builder.md)**
+- **[Spec F2: Volunteer Dashboard (Mobile/PWA)](./specifications/F2-volunteer-dashboard.md)**
+- **[Spec F3: Onboarding & Invites](./specifications/F3-onboarding-ui.md)**

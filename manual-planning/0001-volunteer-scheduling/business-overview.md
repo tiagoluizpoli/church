@@ -18,3 +18,12 @@ A system for ministry leaders to manage the scheduling (escalas) of volunteers w
 6. **Constraint Strictness**: Soft enforcement. The system will warn the leader about conflicts (e.g., overlapping slots, unavailability) but allow them to override and assign anyway. This strictness can be configured at the Ministry level.
 
 *(Note: Technical architecture details, data models, and UI workflows are documented in their respective files in this directory).*
+
+---
+
+## 🔗 Architecture & Workflows
+
+To see how these business rules map to implementation, refer to:
+- **[Layered Implementation Roadmap](./specifications-list.md)**: The central index of all technical specifications.
+- **[Church Structure Flowchart](./flowcharts/church-structure.md)**: Visual representation of the Ministry/Team/Volunteer hierarchy.
+- **[Scheduling Process Flowchart](./flowcharts/scheduling-process.md)**: End-to-end leader workflow.

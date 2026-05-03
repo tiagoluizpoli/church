@@ -13,6 +13,10 @@ This document maps the planned technology stack and architectural principles for
 ## Frontend Stack (Web)
 - **Framework**: React
 - **Bundler/Tooling**: Vite
+- **UI Library**: `shadcn/ui` (Strict Adherence)
+  - *Rule 1*: Use existing shadcn components for EVERYTHING.
+  - *Rule 2*: Make as few modifications as possible.
+  - *Rule 3*: Do not create custom components from scratch. If missing, request the user to find a community component.
 
 ## Architectural Principles
 - **Clean Architecture**: Strict separation of concerns (Routes/Controllers → Services/Use Cases → Repositories).
@@ -31,3 +35,10 @@ For the MVP, we will rely on a **single React/Vite codebase**. The Volunteer int
 - **Speed to Market**: Avoiding a separate React Native repository cuts UI development and API integration time in half.
 - **Simplicity**: Volunteers primarily need simple calendar/time inputs and list views, which modern web technologies handle perfectly without the need for complex native device APIs.
 - **Maintenance**: A single codebase ensures that business logic, state management, and updates are synchronized across all platforms instantly.
+
+---
+
+## 🔗 Technical Specifications (Implementation)
+
+The full, layered implementation plan mapping this tech stack to concrete code constraints is available at:
+- **[Layered Implementation Roadmap](./specifications-list.md)**

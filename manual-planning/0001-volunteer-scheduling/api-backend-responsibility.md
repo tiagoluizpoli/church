@@ -89,3 +89,13 @@ The backend must validate:
 ### Backend SHOULD NOT:
 - Decide UI behavior
 - Handle presentation logic
+
+---
+
+## 🔗 Technical Specifications (Implementation)
+
+For the concrete tRPC endpoints, middleware logic, and service boundaries, see:
+- **[Spec A1: Admin & Leader API](./specifications/A1-admin-api.md)**: Management endpoints.
+- **[Spec A2: Volunteer API](./specifications/A2-volunteer-api.md)**: Service and availability endpoints.
+- **[Spec A3: RBAC Middleware](./specifications/A3-rbac-middleware.md)**: Security and role enforcement.
+- **[Spec L1-L4: Domain Services](./specifications-list.md)**: The underlying business logic consumed by the APIs.

@@ -147,3 +147,11 @@ A volunteer should not be assigned to overlapping time slots. *(To be confirmed 
 - Real-time collaboration
 
 These can be added later without breaking the core model.
+
+---
+
+## 🔗 Technical Specifications (Implementation)
+
+This domain model has been formalized into concrete Drizzle ORM schemas and repository interfaces. See:
+- **[Spec S1: Database Schema](./specifications/S1-db-schema.md)**: The Drizzle ORM table definitions.
+- **[Spec R1: Repository Interfaces](./specifications/R1-repo-interfaces.md)**: Data access layer contracts.

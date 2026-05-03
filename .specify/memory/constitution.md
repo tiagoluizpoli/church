@@ -1,59 +1,70 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+## Sync Impact Report
+- Version change: [CONSTITUTION_VERSION] → 1.0.0
+- List of modified principles:
+  - [PRINCIPLE_1_NAME] → I. Domain-First Architecture
+  - [PRINCIPLE_2_NAME] → II. Full-Stack Type Safety
+  - [PRINCIPLE_3_NAME] → III. Container-Ready Infrastructure
+  - [PRINCIPLE_4_NAME] → IV. Environment Discipline
+  - [PRINCIPLE_5_NAME] → V. Automated Code Standards
+- Added sections: Technology Stack, Core Rules, Governance
+- Removed sections: None
+- Templates requiring updates:
+  - .specify/templates/plan-template.md (✅ updated)
+  - .specify/templates/spec-template.md (✅ updated)
+  - .specify/templates/tasks-template.md (✅ updated)
+-->
+
+# Church Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Domain-First Architecture
+Every feature starts with a clear domain definition and planning. Implementation follows the 
+agreed-upon domain models and business logic specified in the `planning/` directory.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Full-Stack Type Safety
+End-to-end type safety is non-negotiable. Use tRPC for API boundaries, Zod for runtime 
+validation, and Drizzle for database interactions. Avoid `any` at all costs.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Container-Ready Infrastructure
+All infrastructure must be reproducible via Docker Compose. The `docker-compose.yml` is the 
+single source of truth for the local development environment.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Environment Discipline
+Environment variables must be strictly managed via `.env` files and validated using the 
+`@base-fullstack-template/env` package. Never commit secrets; always provide `.env.example` 
+templates.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Automated Code Standards
+Adhere to Biome for linting and formatting. Lefthook manages pre-commit hooks to ensure every 
+commit passes quality gates (linting, conventional commits).
 
 ## Technology Stack
-<!-- Mandatory: List the core technologies and their purpose in the project -->
 
 | Category | Tool | Purpose |
 |---|---|---|
-| Runtime | Bun | Performance-first JavaScript runtime |
-| Framework | Next.js (React 19) | Frontend framework with App Router support |
-| Styling | Tailwind CSS v4 | Utility-first CSS framework |
-| Database | Drizzle ORM + PG | Type-safe SQL query builder and PostgreSQL adapter |
-| Auth | Better Auth | Standardized authentication layer |
-| API | tRPC | End-to-end type safety for API calls |
+| Runtime | Bun | High-performance JS runtime and package manager |
+| Backend | Fastify | Fast and low overhead web framework for the server |
+| Frontend | React 19 + Vite | Modern UI development with fast HMR |
+| Documentation | Fumadocs (React Router) | Documentation framework |
+| Styling | Tailwind CSS v4 | Utility-first styling with high performance |
+| Database | Drizzle ORM + PG | Type-safe SQL and schema management |
+| Auth | Better Auth | Unified authentication framework |
+| API | tRPC | End-to-end type-safe API communication |
+| Orchestration | Turborepo | High-performance build system for monorepos |
 
 ## Core Rules
-<!-- Mandatory: Define non-negotiable rules for the project development -->
 
-- **Clean Code Always**: Follow the project's code-review skill for naming and structure.
-- **SOLID Compliance**: Every new feature or refactor must adhere to SOLID principles.
-- **Strict Linting**: Biome must pass for every commit.
-- **Type Safety**: No `any` without explicit justification; leverage Zod for all input validation.
-
+- **Domain Driven**: Business logic must be separated from framework-specific code.
+- **Atomic Commits**: Use conventional commits and keep changes small and focused.
+- **Strict Linting**: Biome must pass before any commit.
+- **Documentation First**: Significant changes must be planned in the `planning/` directory.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution is the supreme law of the project.
+- Amendments require a version bump and updates to all dependent templates.
+- Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-03

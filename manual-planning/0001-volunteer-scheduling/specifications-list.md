@@ -11,33 +11,30 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 - **[Spec S3: Local Development Seeding](./specifications/S3-local-seeding.md)**: Generators for realistic mock data (Ministries, Roles, Teams, Volunteers) for UI testing.
 - **[Spec S4: Timezone & Date Policy](./specifications/S4-timezone-policy.md)**: Strict policies for storing dates in UTC and displaying them in local time securely.
 
-## Phase 2: Infrastructure Layer (The Repositories)
-*Objective: Define the data access contracts and their implementations.*
-- **[Spec R1: Repository Interfaces](./specifications/R1-repo-interfaces.md)**: TypeScript interfaces (Contracts) for all entities.
-  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
-- **[Spec R2: Drizzle Implementations](./specifications/R2-drizzle-repos.md)**: Concrete classes with `churchId` isolation and transactional support.
-  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
-
-## Phase 3: Domain Layer (The Services)
-*Objective: Implement the core business logic.*
+## Phase 2: Domain Layer (The Entities & Services)
+*Objective: Define the core business entities and logic.*
+- **[Spec D1: Domain Entities](./specifications/D1-domain-entities.md)**: Pure TypeScript interfaces for core entities (Church, Volunteer, Assignment, etc.).
 - **[Spec L1: Availability Engine](./specifications/L1-availability-engine.md)**: Calculating volunteer states and workload balance.
   - *Refines:* [06-availability-engine.md](./specifications/06-availability-engine.md)
 - **[Spec L2: Conflict & Validation Service](./specifications/L2-conflict-service.md)**: Rules for double-booking and override auditing.
   - *Refines:* [07-conflict-validation.md](./specifications/07-conflict-validation.md)
 - **[Spec L3: Slot & Assignment Manager](./specifications/L3-assignment-manager.md)**: Lifecycle rules (Draft vs Published), cancellations, and substitutions.
   - *Refines:* [08-slot-generator.md](./specifications/08-slot-generator.md), [12-lifecycle-rules.md](./specifications/12-lifecycle-rules.md)
-- **[Spec L4: Notification Service](./specifications/L4-notification-service.md)**: Triggering PWA Web Push and in-app alerts.
-  - *Refines:* [11-notifications.md](./specifications/11-notifications.md)
-- **[Spec L5: Background Workers & Cron](./specifications/L5-background-workers.md)**: Managing 24h reminders, expired invite cleanup, and auto-archiving past events.
+
+## Phase 3: Infrastructure Layer (The Repositories)
+*Objective: Define the data access contracts and their implementations.*
+- **[Spec R1: Repository Interfaces](./specifications/R1-repo-interfaces.md)**: TypeScript interfaces (Contracts) for all entities, returning Domain Entities (Spec D1).
+  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
+- **[Spec R2: Drizzle Implementations](./specifications/R2-drizzle-repos.md)**: Concrete classes with `churchId` isolation and mapping between Schema (Spec S1) and Domain Entities (Spec D1).
+  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
 
 ## Phase 4: Application Layer (The API)
 *Objective: Expose the system via tRPC.*
 - **[Spec A1: Admin & Leader API](./specifications/A1-admin-api.md)**: Management endpoints for ministries and schedules.
-  - *Refines:* [10-scheduling-api.md](./specifications/10-scheduling-api.md), [05-onboarding-links.md](./specifications/05-onboarding-links.md)
 - **[Spec A2: Volunteer API](./specifications/A2-volunteer-api.md)**: Availability submission and confirmation endpoints.
-  - *Refines:* [10-scheduling-api.md](./specifications/10-scheduling-api.md)
-- **[Spec A3: RBAC Middleware](./specifications/A3-rbac-middleware.md)**: tRPC middleware for contextual role enforcement (Leader, Sub-leader, Volunteer).
-  - *Refines:* [09-permissions-rbac.md](./specifications/09-permissions-rbac.md)
+- **[Spec A3: RBAC Middleware](./specifications/A3-rbac-middleware.md)**: tRPC middleware for contextual role enforcement.
+- **[Spec L4: Notification Service](./specifications/L4-notification-service.md)**: Triggering PWA Web Push and in-app alerts.
+- **[Spec L5: Background Workers & Cron](./specifications/L5-background-workers.md)**: Managing 24h reminders and cleanup.
 
 ## Phase 5: Presentation Layer (The Frontend)
 *Objective: Build the user interfaces.*

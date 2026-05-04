@@ -7,6 +7,7 @@ Define the concrete implementation of the Repository Interfaces using Drizzle OR
 - **Implicit Isolation**: Every SQL query must include `.where(and(eq(table.churchId, churchId), ...))`.
 - **Joins**: Use Drizzle's relational query API (`db.query.table.findFirst({ with: { ... } })`) where possible for readability.
 - **Transactions**: Complex operations (like `createWithSlots`) must use `db.transaction()` to ensure atomicity.
+- **Mapping**: Must map between Drizzle Schema models (Spec S1) and Domain Entities (Spec D1) before returning data or persisting changes.
 
 ## 2. Shared Utilities
 - `withChurchIsolation(db: DbInstance, churchId: string)`: A helper to auto-inject the church filter into queries.
@@ -21,4 +22,6 @@ Define the concrete implementation of the Repository Interfaces using Drizzle OR
 - **Atomicity**: Verify that if a slot creation fails within `createWithSlots`, the parent Event is not created.
 
 ## 🔗 References
+- [Spec S1: Database Schema](./S1-db-schema.md)
+- [Spec D1: Domain Entities](./D1-domain-entities.md)
 - [Spec 04: Repository Contracts](./04-repository-contracts.md)

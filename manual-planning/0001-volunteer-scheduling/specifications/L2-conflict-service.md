@@ -19,9 +19,10 @@ Enforce the "Soft" vs "Hard" scheduling rules and audit any overrides.
     - `assignmentId`, `leaderId`, `churchId`, `reason`, `timestamp`.
 
 ## 3. Testing Requirements (Mandatory)
-- **Unit**: Verify that `Hard Rules` cannot be bypassed.
+- **Unit**: Verify that `Hard Rules` cannot be bypassed using mock Domain Entities (Spec D1).
 - **Integration**: Verify that `AssignmentAudit` is correctly saved to the database upon override.
 - **Security**: Ensure only users with `LEADER` or `ADMIN` roles can trigger an override.
 
 ## 🔗 References
+- [Spec D1: Domain Entities](./D1-domain-entities.md)
 - [Spec 07: Conflict Validation](./07-conflict-validation.md)

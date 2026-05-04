@@ -20,10 +20,11 @@ Manage the high-level lifecycle of schedules (Publishing, Cancellations, Substit
     - Have not already declined this specific slot.
 
 ## 4. Testing Requirements (Mandatory)
-- **Unit**: Verify that `publish` is atomic and correctly updates all linked assignments.
+- **Unit**: Verify that `publish` is atomic and correctly updates all linked Domain Entities (Spec D1).
 - **Integration**: Verify that `findReplacementVolunteers` filters out volunteers who are already assigned to overlapping slots.
 - **Cascade**: Verify that deleting a slot removes all linked assignments.
 
 ## 🔗 References
+- [Spec D1: Domain Entities](./D1-domain-entities.md)
 - [Spec 08: Slot Generator](./08-slot-generator.md)
 - [Spec 12: Lifecycle Rules](./12-lifecycle-rules.md)

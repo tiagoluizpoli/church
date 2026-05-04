@@ -6,7 +6,8 @@ Define the core business logic for calculating if a volunteer is available for a
 ## 1. Input Data
 - `volunteerId`: The user being checked.
 - `churchId`: Isolation context.
-- `targetRange`: { start: Timestamp, end: Timestamp }.
+- `targetRange`: { start: Date, end: Date }.
+- **Context**: This engine operates on Domain Entities (Spec D1) retrieved via repositories.
 
 ## 2. Logic Flow
 1. **Fetch Blockouts**: Get all `Availability` records for the volunteer where `type = 'unavailable'` and times overlap with `targetRange`.
@@ -27,4 +28,5 @@ Define the core business logic for calculating if a volunteer is available for a
 - **Edge Case**: Verify behavior for shifts that cross midnight.
 
 ## 🔗 References
+- [Spec D1: Domain Entities](./D1-domain-entities.md)
 - [Spec 06: Availability Engine](./06-availability-engine.md)

@@ -3,7 +3,8 @@
 ## Purpose
 Define the complete Drizzle ORM schema for the Volunteer Scheduling system. All tables include `church_id` for multi-tenancy isolation.
 
-## 1. Domain Entities
+## 1. Data Models (Persistence)
+*Note: These tables persist the Domain Entities defined in [Spec D1: Domain Entities](./D1-domain-entities.md).*
 
 ### I. Church Table
 - `id`: `text` (Primary Key)
@@ -48,6 +49,7 @@ Define the complete Drizzle ORM schema for the Volunteer Scheduling system. All 
 - **Security**: Verify that a user cannot query `Availability` of a volunteer from a different church.
 
 ## 🔗 References
+- [Spec D1: Domain Entities](./D1-domain-entities.md)
 - [Spec 01: Core Entities](./01-core-entities.md)
 - [Spec 02: Event & Time Slot](./02-event-slots.md)
 - [Spec 03: Assignments & Availability](./03-assignments-availability.md)

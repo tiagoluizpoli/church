@@ -8,6 +8,13 @@
       "when": 1775420578972,
       "tag": "0000_dashing_madripoor",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777864723645,
+      "tag": "0001_bitter_mariko_yashida",
+      "breakpoints": true
     }
   ]
 }

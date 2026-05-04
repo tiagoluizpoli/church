@@ -16,8 +16,8 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create database schema directory structure (`packages/database/src/schema/`)
-- [ ] T002 Update `drizzle.config.ts` to point to the new modular schema structure
+- [x] T001 Create database schema directory structure (`packages/database/src/schema/`)
+- [x] T002 Update `drizzle.config.ts` to point to the new modular schema structure
 
 ---
 
@@ -27,7 +27,7 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Create `Church` base tenant entity in `packages/database/src/schema/core.ts`
+- [x] T003 Create `Church` base tenant entity in `packages/database/src/schema/core.ts`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -43,20 +43,20 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T004 [P] [US1] Integration test: "Ministry requires valid church_id" (TC-BE-001) in `packages/database/tests/schema/multi-tenant.test.ts`
-- [ ] T005 [P] [US1] Integration test: "Ministry soft-delete preserves records" (TC-BE-002) in `packages/database/tests/schema/multi-tenant.test.ts`
-- [ ] T006 [P] [US1] Integration test: "MinistryInvitation unique token constraint" (TC-BE-005) in `packages/database/tests/schema/onboarding.test.ts`
-- [ ] T026 [P] [US1] Integration test: "Unauthorized cross-church queries return zero results" (TC-BE-006) in `packages/database/tests/schema/multi-tenant.test.ts`
+- [x] T004 [P] [US1] Integration test: "Ministry requires valid church_id" (TC-BE-001) in `packages/database/tests/schema/multi-tenant.test.ts`
+- [x] T005 [P] [US1] Integration test: "Ministry soft-delete preserves records" (TC-BE-002) in `packages/database/tests/schema/multi-tenant.test.ts`
+- [x] T006 [P] [US1] Integration test: "MinistryInvitation unique token constraint" (TC-BE-005) in `packages/database/tests/schema/onboarding.test.ts`
+- [x] T026 [P] [US1] Integration test: "Unauthorized cross-church queries return zero results" (TC-BE-006) in `packages/database/tests/schema/multi-tenant.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Create `Ministry` model in `packages/database/src/schema/core.ts` (include `deleted_at: timestamp`)
-- [ ] T008 [P] [US1] Create `Team` model in `packages/database/src/schema/core.ts`
-- [ ] T009 [US1] Create `Volunteer` model in `packages/database/src/schema/core.ts` (with `user_id: text` foreign key reference to Better Auth user)
-- [ ] T010 [US1] Create `MinistryVolunteer` join model in `packages/database/src/schema/core.ts`
-- [ ] T011 [US1] Create `Role` model in `packages/database/src/schema/core.ts`
-- [ ] T012 [P] [US1] Create `MinistryInvitation` model in `packages/database/src/schema/onboarding.ts`
-- [ ] T030 [P] [US1] Integration test: "Invitation expiry and usage" (TC-BE-010, TC-BE-011) in `packages/database/tests/schema/onboarding.test.ts`
+- [x] T007 [P] [US1] Create `Ministry` model in `packages/database/src/schema/core.ts` (include `deleted_at: timestamp`)
+- [x] T008 [P] [US1] Create `Team` model in `packages/database/src/schema/core.ts`
+- [x] T009 [US1] Create `Volunteer` model in `packages/database/src/schema/core.ts` (with `user_id: text` foreign key reference to Better Auth user)
+- [x] T010 [US1] Create `MinistryVolunteer` join model in `packages/database/src/schema/core.ts`
+- [x] T011 [US1] Create `Role` model in `packages/database/src/schema/core.ts`
+- [x] T012 [P] [US1] Create `MinistryInvitation` model in `packages/database/src/schema/onboarding.ts`
+- [x] T030 [P] [US1] Integration test: "Invitation expiry and usage" (TC-BE-010, TC-BE-011) in `packages/database/tests/schema/onboarding.test.ts`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -70,20 +70,20 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T013 [P] [US2] Integration test: "TimeSlot timestamp precision" (TC-BE-003) in `packages/database/tests/schema/scheduling.test.ts`
-- [ ] T014 [P] [US2] Integration test: "SlotRequirement minimum count" (TC-BE-004) in `packages/database/tests/schema/scheduling.test.ts`
-- [ ] T027 [P] [US2] Integration test: "Assignment state transitions" (TC-BE-007) in `packages/database/tests/schema/assignments.test.ts`
-- [ ] T028 [P] [US2] Integration test: "Assignment audit logging" (TC-BE-008) in `packages/database/tests/schema/assignments.test.ts`
+- [x] T013 [P] [US2] Integration test: "TimeSlot timestamp precision" (TC-BE-003) in `packages/database/tests/schema/scheduling.test.ts`
+- [x] T014 [P] [US2] Integration test: "SlotRequirement minimum count" (TC-BE-004) in `packages/database/tests/schema/scheduling.test.ts`
+- [x] T027 [P] [US2] Integration test: "Assignment state transitions" (TC-BE-007) in `packages/database/tests/schema/assignments.test.ts`
+- [x] T028 [P] [US2] Integration test: "Assignment audit logging" (TC-BE-008) in `packages/database/tests/schema/assignments.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [P] [US2] Create `Event` model in `packages/database/src/schema/scheduling.ts`
-- [ ] T016 [US2] Create `TimeSlot` model in `packages/database/src/schema/scheduling.ts`
-- [ ] T017 [US2] Create `SlotRequirement` model in `packages/database/src/schema/scheduling.ts`
-- [ ] T018 [P] [US2] Create `Availability` model in `packages/database/src/schema/assignments.ts`
-- [ ] T019 [US2] Create `Assignment` model in `packages/database/src/schema/assignments.ts`
-- [ ] T020 [US2] Create `AssignmentAudit` model in `packages/database/src/schema/assignments.ts`
-- [ ] T029 [P] [US2] Integration test: "Concurrent assignment unique constraint" (TC-BE-009) in `packages/database/tests/schema/assignments.test.ts`
+- [x] T015 [P] [US2] Create `Event` model in `packages/database/src/schema/scheduling.ts`
+- [x] T016 [US2] Create `TimeSlot` model in `packages/database/src/schema/scheduling.ts`
+- [x] T017 [US2] Create `SlotRequirement` model in `packages/database/src/schema/scheduling.ts`
+- [x] T018 [P] [US2] Create `Availability` model in `packages/database/src/assignments.ts`
+- [x] T019 [US2] Create `Assignment` model in `packages/database/src/assignments.ts`
+- [x] T020 [US2] Create `AssignmentAudit` model in `packages/database/src/assignments.ts`
+- [x] T029 [P] [US2] Integration test: "Concurrent assignment unique constraint" (TC-BE-009) in `packages/database/tests/schema/assignments.test.ts`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -93,11 +93,11 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T021 [P] Ensure all schema models are exported properly in `packages/database/src/schema/index.ts`
-- [ ] T022 Generate migration via `pnpm --filter database db:generate`
-- [ ] T023 Run `drizzle-kit check:pg` to validate schema configurations
-- [ ] T024 Develop `packages/database/scripts/seed.ts` script to insert base `Church` record
-- [ ] T025 Execute migration and seeding against local database
+- [x] T021 [P] Ensure all schema models are exported properly in `packages/database/src/schema/index.ts`
+- [x] T022 Generate migration via `pnpm --filter database db:generate`
+- [x] T023 Run `drizzle-kit check:pg` to validate schema configurations
+- [x] T024 Develop `packages/database/scripts/seed.ts` script to insert base `Church` record
+- [x] T025 Execute migration and seeding against local database
 
 ---
 

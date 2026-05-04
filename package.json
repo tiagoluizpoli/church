@@ -22,7 +22,8 @@
       "@types/react-dom": "^19.2.3",
       "tailwindcss": "^4.1.18",
       "drizzle-orm": "^0.45.1",
-      "@types/pg": "^8.16.0"
+      "@types/pg": "^8.16.0",
+      "vitest": "^3.0.0"
     }
   },
   "type": "module",

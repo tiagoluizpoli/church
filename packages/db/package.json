@@ -17,7 +17,10 @@
     "db:start": "docker compose up -d",
     "db:watch": "docker compose up",
     "db:stop": "docker compose stop",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "db:seed": "bun --env-file=../../.env scripts/seed.ts",
+    "check-types": "tsc --noEmit",
+    "test": "bun --env-file=../../.env vitest run"
   },
   "dependencies": {
     "@base-fullstack-template/env": "workspace:*",
@@ -30,6 +33,7 @@
     "@base-fullstack-template/config": "workspace:*",
     "@types/pg": "catalog:",
     "drizzle-kit": "^0.31.8",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "catalog:"
   }
 }

@@ -1,12 +1,13 @@
 <!--
 ## Sync Impact Report
-- Version change: [CONSTITUTION_VERSION] → 1.0.0
+- Version change: 1.0.0 → 1.1.0
 - List of modified principles:
   - [PRINCIPLE_1_NAME] → I. Domain-First Architecture
   - [PRINCIPLE_2_NAME] → II. Full-Stack Type Safety
   - [PRINCIPLE_3_NAME] → III. Container-Ready Infrastructure
   - [PRINCIPLE_4_NAME] → IV. Environment Discipline
   - [PRINCIPLE_5_NAME] → V. Automated Code Standards
+  - [PRINCIPLE_6_NAME] → VI. Maximum Context Specification
 - Added sections: Technology Stack, Core Rules, Governance
 - Removed sections: None
 - Templates requiring updates:
@@ -40,6 +41,9 @@ templates.
 Adhere to Biome for linting and formatting. Lefthook manages pre-commit hooks to ensure every 
 commit passes quality gates (linting, conventional commits).
 
+### VI. Maximum Context Specification
+When planning or specifying a feature (e.g., via the `speckit.specify` or `speckit.plan` commands), the process MUST begin by locating the feature's `manual-planning/[xxxx]-feature/specifications-list.md` file. The specification and plan must traverse and analyze all related documentation files linked within that list to establish maximum context before proceeding.
+
 ## Technology Stack
 
 | Category | Tool | Purpose |
@@ -60,6 +64,7 @@ commit passes quality gates (linting, conventional commits).
 - **Atomic Commits**: Use conventional commits and keep changes small and focused.
 - **Strict Linting**: Biome must pass before any commit.
 - **Documentation First**: Significant changes must be planned in the `planning/` directory.
+- **Maximum Context**: All planning and specifications must traverse the complete tree of documentation linked in `specifications-list.md`.
 
 ## Governance
 
@@ -67,4 +72,4 @@ commit passes quality gates (linting, conventional commits).
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-03
+**Version**: 1.1.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-03

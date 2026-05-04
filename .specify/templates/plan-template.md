@@ -36,6 +36,7 @@
 - [ ] **III. Container-Ready**: Does `docker-compose.yml` need updates for this feature?
 - [ ] **IV. Env Discipline**: Are new environment variables added to `.env.example`?
 - [ ] **V. Code Standards**: Does the new code adhere to Biome and SOLID?
+- [ ] **VI. Maximum Context**: Has the full `specifications-list.md` tree been traversed and analyzed?
 
 ## Project Structure
 

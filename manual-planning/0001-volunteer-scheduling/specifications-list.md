@@ -4,7 +4,7 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 
 ## Phase 1: Persistence Layer (The Schema)
 *Objective: Define the data structures in the database.*
-- **[Spec S1: Database Schema](./specifications/S1-db-schema.md)**: Drizzle ORM definitions for Church, Ministry, Team, Volunteer, Event, Slot, and Requirement.
+- **[✅ Spec S1: Database Schema](./specifications/S1-db-schema.md)**: Drizzle ORM definitions for Church, Ministry, Team, Volunteer, Event, Slot, and Requirement.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md), [02-event-slots.md](./specifications/02-event-slots.md), [03-assignments-availability.md](./specifications/03-assignments-availability.md), [05-onboarding-links.md](./specifications/05-onboarding-links.md)
 - **[Spec S2: Migration Strategy](./specifications/S2-migration-strategy.md)**: Transitioning from existing Better Auth tables.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md)

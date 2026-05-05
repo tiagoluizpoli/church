@@ -9,16 +9,23 @@
       "default": "./src/*.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun --env-file=../../.env vitest run"
+  },
   "dependencies": {
     "@base-fullstack-template/db": "workspace:*",
     "@base-fullstack-template/env": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.20.0",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@base-fullstack-template/config": "workspace:*",
-    "typescript": "^5"
+    "@types/pg": "^8.20.0",
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }

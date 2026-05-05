@@ -4,7 +4,7 @@ Guide to initializing the multi-tenant system and enabling soft registration.
 
 ## 1. Seed Configuration
 
-Create a `packages/database/seed-data.json` file:
+Create a `packages/db/seed-data.json` file:
 
 ```json
 {
@@ -21,7 +21,7 @@ Create a `packages/database/seed-data.json` file:
 After running standard database migrations (`bun db:migrate`), run the system initialization script:
 
 ```bash
-bun packages/database/src/scripts/init-system.ts
+bun packages/db/src/scripts/init-system.ts
 ```
 
 This will:
@@ -39,5 +39,5 @@ This will:
 - To reset the migration state (for testing):
     ```bash
     bun db:push --force
-    bun packages/database/src/scripts/init-system.ts
+    bun packages/db/src/scripts/init-system.ts
     ```

@@ -178,6 +178,7 @@ describe('Assignments and Audit Schema', () => {
         churchId,
         assignmentId: newAssignment.id,
         userId: userId,
+        action: 'created',
         reason: 'Manually assigned',
       })
       .returning();
@@ -220,6 +221,7 @@ describe('Assignments and Audit Schema', () => {
       churchId,
       assignmentId: newAssignment.id,
       userId: userId,
+      action: 'created',
     });
 
     await testDb.delete(assignment).where(eq(assignment.id, newAssignment.id));

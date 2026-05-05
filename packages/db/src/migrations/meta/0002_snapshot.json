@@ -1,6 +1,6 @@
 {
-  "id": "f1fe5fb7-bfc8-445d-a76c-ab4dfcc10113",
-  "prevId": "7616883c-c646-48cc-978f-df32fbc62559",
+  "id": "186b3fb8-b9f3-4cae-98f8-543376eff1e0",
+  "prevId": "f1fe5fb7-bfc8-445d-a76c-ab4dfcc10113",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -41,7 +41,8 @@
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "assignment_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'pending'"
@@ -171,6 +172,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "action": {
+          "name": "action",
+          "type": "audit_action",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
         "reason": {
           "name": "reason",
           "type": "text",
@@ -246,7 +254,8 @@
         },
         "type": {
           "name": "type",
-          "type": "varchar(50)",
+          "type": "availability_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'unavailable'"
@@ -743,7 +752,8 @@
         },
         "enforcement_type": {
           "name": "enforcement_type",
-          "type": "varchar(50)",
+          "type": "enforcement_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'soft'"
@@ -824,14 +834,16 @@
         },
         "system_role": {
           "name": "system_role",
-          "type": "varchar(50)",
+          "type": "system_role",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'VOLUNTEER'"
+          "default": "'volunteer'"
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "membership_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'active'"
@@ -1050,7 +1062,8 @@
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "volunteer_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'active'"
@@ -1261,7 +1274,8 @@
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "event_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'draft'"
@@ -1511,7 +1525,48 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.assignment_status": {
+      "name": "assignment_status",
+      "schema": "public",
+      "values": ["pending", "confirmed", "declined"]
+    },
+    "public.audit_action": {
+      "name": "audit_action",
+      "schema": "public",
+      "values": ["created", "updated", "deleted", "status_change"]
+    },
+    "public.availability_type": {
+      "name": "availability_type",
+      "schema": "public",
+      "values": ["available", "unavailable"]
+    },
+    "public.enforcement_type": {
+      "name": "enforcement_type",
+      "schema": "public",
+      "values": ["soft", "hard"]
+    },
+    "public.event_status": {
+      "name": "event_status",
+      "schema": "public",
+      "values": ["draft", "published", "cancelled"]
+    },
+    "public.membership_status": {
+      "name": "membership_status",
+      "schema": "public",
+      "values": ["active", "inactive"]
+    },
+    "public.system_role": {
+      "name": "system_role",
+      "schema": "public",
+      "values": ["leader", "sub_leader", "volunteer"]
+    },
+    "public.volunteer_status": {
+      "name": "volunteer_status",
+      "schema": "public",
+      "values": ["active", "inactive", "on_hold"]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

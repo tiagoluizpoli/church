@@ -125,7 +125,7 @@ describe('Scheduling and Assignments Integration', () => {
       slotId,
       volunteerId,
       roleId,
-      status: 'pending',
+      status: 'pending' as const,
     };
 
     const assignment2 = {
@@ -133,7 +133,7 @@ describe('Scheduling and Assignments Integration', () => {
       slotId,
       volunteerId,
       roleId, // Same volunteer, same slot
-      status: 'pending',
+      status: 'pending' as const,
     };
 
     await testDb.insert(assignment).values(assignment1);

@@ -5,6 +5,9 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./schema": {
+      "default": "./src/schema/index.ts"
+    },
     "./*": {
       "default": "./src/*.ts"
     }
@@ -19,6 +22,8 @@
     "db:stop": "docker compose stop",
     "db:down": "docker compose down",
     "db:seed": "bun --env-file=../../.env scripts/seed.ts",
+    "db:init-system": "bun --env-file=../../.env src/scripts/init-system.ts",
+    "db:clean": "bun --env-file=../../.env src/scripts/clean-db.ts",
     "check-types": "tsc --noEmit",
     "test": "bun --env-file=../../.env vitest run"
   },

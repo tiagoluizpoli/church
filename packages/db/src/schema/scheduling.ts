@@ -8,6 +8,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
 import { ministry, role, team } from './core';
+import { eventStatusEnum } from './enums';
 
 export const event = pgTable('event', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -22,7 +23,7 @@ export const event = pgTable('event', {
   location: varchar('location', { length: 255 }),
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
-  status: varchar('status', { length: 50 }).default('draft').notNull(), // draft, published, cancelled
+  status: eventStatusEnum('status').default('draft').notNull(), // draft, published, cancelled
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()

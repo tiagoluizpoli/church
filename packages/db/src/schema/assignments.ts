@@ -10,6 +10,11 @@ import {
 import { user } from './auth';
 import { church } from './church';
 import { role, volunteer } from './core';
+import {
+  assignmentStatusEnum,
+  auditActionEnum,
+  availabilityTypeEnum,
+} from './enums';
 import { timeSlot } from './scheduling';
 
 export const assignment = pgTable(
@@ -28,7 +33,7 @@ export const assignment = pgTable(
     roleId: uuid('role_id')
       .notNull()
       .references(() => role.id, { onDelete: 'cascade' }),
-    status: varchar('status', { length: 50 }).default('pending').notNull(), // pending, confirmed, declined
+    status: assignmentStatusEnum('status').default('pending').notNull(), // pending, confirmed, declined
     reason: text('reason'),
     assignedAt: timestamp('assigned_at').defaultNow().notNull(),
     assignedBy: text('assigned_by').references(() => user.id, {
@@ -51,7 +56,7 @@ export const availability = pgTable('availability', {
   volunteerId: uuid('volunteer_id')
     .notNull()
     .references(() => volunteer.id, { onDelete: 'cascade' }),
-  type: varchar('type', { length: 50 }).default('unavailable').notNull(), // available, unavailable
+  type: availabilityTypeEnum('type').default('unavailable').notNull(), // available, unavailable
   startTime: timestamp('start_time').notNull(),
   endTime: timestamp('end_time').notNull(),
   isAllDay: boolean('is_all_day').default(false).notNull(),
@@ -70,6 +75,7 @@ export const assignmentAudit = pgTable('assignment_audit', {
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
+  action: auditActionEnum('action').notNull(),
   reason: text('reason'),
   timestamp: timestamp('timestamp').defaultNow().notNull(),
 });

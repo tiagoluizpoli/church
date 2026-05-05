@@ -8,6 +8,12 @@ import {
 } from 'drizzle-orm/pg-core';
 import { user } from './auth';
 import { church } from './church';
+import {
+  enforcementTypeEnum,
+  membershipStatusEnum,
+  systemRoleEnum,
+  volunteerStatusEnum,
+} from './enums';
 
 export const ministry = pgTable('ministry', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -16,7 +22,7 @@ export const ministry = pgTable('ministry', {
     .references(() => church.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
-  enforcementType: varchar('enforcement_type', { length: 50 })
+  enforcementType: enforcementTypeEnum('enforcement_type')
     .default('soft')
     .notNull(),
   deletedAt: timestamp('deleted_at'),
@@ -36,7 +42,7 @@ export const volunteer = pgTable('volunteer', {
   churchId: uuid('church_id')
     .notNull()
     .references(() => church.id, { onDelete: 'cascade' }),
-  status: varchar('status', { length: 50 }).default('active').notNull(),
+  status: volunteerStatusEnum('status').default('active').notNull(),
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
@@ -71,10 +77,8 @@ export const ministryVolunteer = pgTable('ministry_volunteer', {
     .notNull()
     .references(() => ministry.id, { onDelete: 'cascade' }),
   teamId: uuid('team_id').references(() => team.id, { onDelete: 'set null' }),
-  systemRole: varchar('system_role', { length: 50 })
-    .default('VOLUNTEER')
-    .notNull(),
-  status: varchar('status', { length: 50 }).default('active').notNull(),
+  systemRole: systemRoleEnum('system_role').default('volunteer').notNull(),
+  status: membershipStatusEnum('status').default('active').notNull(),
   joinedAt: timestamp('joined_at').defaultNow().notNull(),
 });
 

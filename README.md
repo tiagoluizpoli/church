@@ -104,6 +104,8 @@ base-fullstack-template/
 - `bun run db:generate`: Generate database client/types
 - `bun run db:migrate`: Run database migrations
 - `bun run db:studio`: Open database studio UI
+- `bun run db:init`: Initialize system with church, admin, and administration ministry
+- `bun run db:clean`: Wipe all tables (truncate) for a fresh state
 - `bun run check`: Run Biome formatting and linting
 - `cd apps/web && bun run generate-pwa-assets`: Generate PWA assets
 - `bun run dev:desktop`: Start the Electrobun desktop app with HMR

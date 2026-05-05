@@ -44,7 +44,10 @@
     "db:watch": "turbo -F @base-fullstack-template/db db:watch",
     "db:stop": "turbo -F @base-fullstack-template/db db:stop",
     "db:down": "turbo -F @base-fullstack-template/db db:down",
+    "db:init": "turbo -F @base-fullstack-template/db db:init-system",
+    "db:clean": "turbo -F @base-fullstack-template/db db:clean",
     "check": "biome check --write .",
+    "test": "turbo test",
     "commit": "cz"
   },
   "dependencies": {
@@ -58,6 +61,7 @@
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@types/bun": "catalog:",
+    "@types/three": "^0.184.0",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
     "lefthook": "^2.1.4",

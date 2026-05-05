@@ -24,7 +24,7 @@ Define the complete Drizzle ORM schema for the Volunteer Scheduling system. All 
 - `status`: `text` ("active" | "inactive")
 
 ### IV. Ministry_Volunteer (Join Table)
-- `volunteer_id`, `ministry_id`, `team_id`, `system_role` ("LEADER" | "SUB_LEADER" | "VOLUNTEER").
+- `volunteer_id`, `ministry_id`, `team_id`, `system_role` ("leader" | "sub_leader" | "volunteer").
 
 ### V. Event & Slots
 - **Event**: `church_id`, `ministry_id`, `title`, `start_date`, `end_date`, `status` ("draft" | "published").

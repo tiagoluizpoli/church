@@ -13,6 +13,9 @@
     "check-types": {
       "dependsOn": ["^check-types"]
     },
+    "test": {
+      "dependsOn": ["^test"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
@@ -43,6 +46,12 @@
       "persistent": true
     },
     "db:down": {
+      "cache": false
+    },
+    "db:init-system": {
+      "cache": false
+    },
+    "db:clean": {
       "cache": false
     }
   }

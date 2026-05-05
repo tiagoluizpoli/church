@@ -80,7 +80,7 @@ graph TD
 - **volunteer_id**: UUID (Foreign Key to Volunteer)
 - **ministry_id**: UUID (Foreign Key to Ministry)
 - **team_id**: UUID (Optional - Foreign Key to Team)
-- **system_role**: "LEADER" | "SUB_LEADER" | "VOLUNTEER" (Default: "VOLUNTEER")
+- **system_role**: "leader" | "sub_leader" | "volunteer" (Default: "volunteer")
 - **status**: "active" | "inactive"
 - **joined_at**: Timestamp
 

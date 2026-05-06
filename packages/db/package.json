@@ -24,6 +24,8 @@
     "db:seed": "bun --env-file=../../.env scripts/seed.ts",
     "db:init-system": "bun --env-file=../../.env src/scripts/init-system.ts",
     "db:clean": "bun --env-file=../../.env src/scripts/clean-db.ts",
+    "seed": "bun run src/seed/index.ts",
+    "seed:reset": "bun run src/seed/index.ts --reset",
     "check-types": "tsc --noEmit",
     "test": "bun --env-file=../../.env vitest run"
   },
@@ -36,6 +38,7 @@
   },
   "devDependencies": {
     "@base-fullstack-template/config": "workspace:*",
+    "@faker-js/faker": "^10.4.0",
     "@types/pg": "catalog:",
     "drizzle-kit": "^0.31.8",
     "typescript": "^5",

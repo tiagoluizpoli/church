@@ -29,6 +29,11 @@ Data MUST be generated in the following strict order to respect foreign key cons
 
 ### Volunteer Factory
 - Generates 10-20 users per church using realistic names and emails.
+- Links them to 1-3 ministries/teams they serve in.
+- Assigns contextual leadership roles (`system_role`) instead of just `volunteer`:
+  - 1 `leader` per Ministry.
+  - 1 `sub_leader` per Team.
+  - The rest as `volunteer`.
 - Links them to 1-3 roles they are qualified for.
 
 ### Schedule Factory (Events & Slots)

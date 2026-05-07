@@ -7,6 +7,9 @@
 
 Implementation of the foundational database schema for the Church Volunteer Scheduling platform. This phase establishes the multi-tenant core using a `church_id` on all domain entities and defines the structural hierarchy for scheduling (Events -> TimeSlots -> Requirements). The implementation leverages Drizzle ORM for type-safe PostgreSQL schema management and migration tracking.
 
+> [!NOTE]
+> **Contextual Leadership Update (2026-05-06)**: Following an update to the DB Schema spec, leadership is no longer bound to a column (like `leader_id` on Teams), but relies entirely on the `system_role` (`leader`, `sub_leader`, `volunteer`) within the `ministry_volunteer` join table.
+
 ## Technical Context
 
 **Language/Version**: Bun (latest), TypeScript 5+
@@ -71,3 +74,7 @@ packages/database/
 |-----------|------------|-------------------------------------|
 | None | N/A | N/A |
 
+## Contextual Leadership Update Decisions
+
+1. **Schema Refactor**: Remove `leader_id` from the `Team` entity. `system_role` in the `ministry_volunteer` table becomes the sole source of truth for leadership designation.
+2. **Integration Test Verification**: Implement SC-004 to verify that Team leadership queries successfully join through `ministry_volunteer` and rely on `system_role` instead of a dedicated team column.

@@ -68,8 +68,8 @@
 - `id`: uuid, primary key
 - `church_id`: uuid, foreign key to `church.id`, cascade delete
 - `event_id`: uuid, foreign key to `event.id`, cascade delete
-- `start_time`: timestamp, not null
-- `end_time`: timestamp, not null
+- `start_time`: timestamp (precision: 3), not null
+- `end_time`: timestamp (precision: 3), not null
 - `label`: varchar
 - `created_at`: timestamp
 

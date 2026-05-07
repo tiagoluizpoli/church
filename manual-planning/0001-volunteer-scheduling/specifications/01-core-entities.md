@@ -51,7 +51,6 @@ A sub-group within a Ministry.
 - **church_id**: UUID (Foreign Key to Church)
 - **ministry_id**: UUID (Foreign Key to Ministry)
 - **name**: String
-- **leader_id**: UUID (Foreign Key to Volunteer - optional sub-leader)
 
 ---
 
@@ -81,6 +80,7 @@ graph TD
 - **ministry_id**: UUID (Foreign Key to Ministry)
 - **team_id**: UUID (Optional - Foreign Key to Team)
 - **system_role**: "leader" | "sub_leader" | "volunteer" (Default: "volunteer")
+  *Note: `system_role` is the sole mechanism for designating Ministry Leaders (`leader`) and Team Leaders (`sub_leader`).*
 - **status**: "active" | "inactive"
 - **joined_at**: Timestamp
 

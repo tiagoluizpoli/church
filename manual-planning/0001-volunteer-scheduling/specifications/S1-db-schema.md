@@ -25,6 +25,7 @@ Define the complete Drizzle ORM schema for the Volunteer Scheduling system. All 
 
 ### IV. Ministry_Volunteer (Join Table)
 - `volunteer_id`, `ministry_id`, `team_id`, `system_role` ("leader" | "sub_leader" | "volunteer").
+  > *Leadership is determined by `system_role`. A volunteer with role `leader` or `sub_leader` in a given ministry/team membership is the leader for that context. One volunteer can hold different roles across different ministries.*
 
 ### V. Event & Slots
 - **Event**: `church_id`, `ministry_id`, `title`, `start_date`, `end_date`, `status` ("draft" | "published").
@@ -46,6 +47,7 @@ Define the complete Drizzle ORM schema for the Volunteer Scheduling system. All 
 ## 3. Testing Requirements (Mandatory)
 - **Unit**: Verify that `church_id` is present on all new tables.
 - **Integration**: Verify that `Assignment` cannot be created without a valid `church_id`.
+- **Integration**: Verify that Team leadership queries rely on the join table (`Ministry_Volunteer`), not on a team column.
 - **Security**: Verify that a user cannot query `Availability` of a volunteer from a different church.
 
 ## 🔗 References

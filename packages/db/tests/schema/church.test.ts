@@ -37,6 +37,12 @@ describe('Church Schema', () => {
 
     await testDb.insert(church).values(church1);
 
-    await expect(testDb.insert(church).values(church2)).rejects.toThrow();
+    try {
+      await testDb.insert(church).values(church2);
+      expect.fail('Should have thrown unique slug constraint error');
+    } catch (error: unknown) {
+      if (error.name === 'AssertionError') throw error;
+      expect(error.message).toBeDefined();
+    }
   });
 });

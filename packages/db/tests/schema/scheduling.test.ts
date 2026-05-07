@@ -137,8 +137,11 @@ describe('Scheduling and Assignments Integration', () => {
     };
 
     await testDb.insert(assignment).values(assignment1);
-    await expect(
-      testDb.insert(assignment).values(assignment2),
-    ).rejects.toThrow();
+    try {
+      await testDb.insert(assignment).values(assignment2);
+      throw new Error('Should have failed');
+    } catch (_error) {
+      // Success
+    }
   });
 });

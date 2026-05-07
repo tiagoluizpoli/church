@@ -23,12 +23,16 @@ describe('Relational Integrity', () => {
 
       // Using Drizzle's sql fragment to bypass type safety for a specific field
       // while staying within the ORM's insert API.
-      await expect(
-        testDb.insert(schema.volunteer).values({
+      try {
+        await testDb.insert(schema.volunteer).values({
           userId: user.id,
           churchId: sql`NULL`,
-        }),
-      ).rejects.toThrow();
+        });
+        expect.fail('Should have failed: Volunteer without a Church');
+      } catch (error: unknown) {
+        if (error.name === 'AssertionError') throw error;
+        expect(error.message).toBeDefined();
+      }
     });
 
     it('should prevent creating a Volunteer with a non-existent Church', async () => {
@@ -43,12 +47,16 @@ describe('Relational Integrity', () => {
 
       if (!user) throw new Error('User not created');
 
-      await expect(
-        testDb.insert(schema.volunteer).values({
+      try {
+        await testDb.insert(schema.volunteer).values({
           userId: user.id,
           churchId: '00000000-0000-0000-0000-000000000000',
-        }),
-      ).rejects.toThrow();
+        });
+        expect.fail('Should have failed: Volunteer with non-existent Church');
+      } catch (error: unknown) {
+        if (error.name === 'AssertionError') throw error;
+        expect(error.message).toBeDefined();
+      }
     });
 
     it('should enforce unique userId constraint for Volunteer', async () => {
@@ -70,32 +78,44 @@ describe('Relational Integrity', () => {
       });
 
       // Try to insert same user again
-      await expect(
-        testDb.insert(schema.volunteer).values({
+      try {
+        await testDb.insert(schema.volunteer).values({
           userId: user.id,
           churchId: church.id,
-        }),
-      ).rejects.toThrow();
+        });
+        expect.fail('Should have failed: Duplicate userId for Volunteer');
+      } catch (error: unknown) {
+        if (error.name === 'AssertionError') throw error;
+        expect(error.message).toBeDefined();
+      }
     });
   });
 
   describe('Ministry Constraints', () => {
     it('should prevent creating a Ministry without a Church', async () => {
-      await expect(
-        testDb.insert(schema.ministry).values({
+      try {
+        await testDb.insert(schema.ministry).values({
           name: 'Test Ministry',
           churchId: sql`NULL`,
-        }),
-      ).rejects.toThrow();
+        });
+        expect.fail('Should have failed: Ministry without a Church');
+      } catch (error: unknown) {
+        if (error.name === 'AssertionError') throw error;
+        expect(error.message).toBeDefined();
+      }
     });
 
     it('should prevent creating a Ministry with a non-existent Church', async () => {
-      await expect(
-        testDb.insert(schema.ministry).values({
+      try {
+        await testDb.insert(schema.ministry).values({
           name: 'Test Ministry',
           churchId: '00000000-0000-0000-0000-000000000000',
-        }),
-      ).rejects.toThrow();
+        });
+        expect.fail('Should have failed: Ministry with non-existent Church');
+      } catch (error: unknown) {
+        if (error.name === 'AssertionError') throw error;
+        expect(error.message).toBeDefined();
+      }
     });
 
     it('should require a name for a Ministry', async () => {
@@ -105,24 +125,32 @@ describe('Relational Integrity', () => {
         .returning();
       if (!church) throw new Error('Church not created');
 
-      await expect(
-        testDb.insert(schema.ministry).values({
+      try {
+        await testDb.insert(schema.ministry).values({
           churchId: church.id,
           name: sql`NULL`,
-        }),
-      ).rejects.toThrow();
+        });
+        expect.fail('Should have failed: Ministry without a name');
+      } catch (error: unknown) {
+        if (error.name === 'AssertionError') throw error;
+        expect(error.message).toBeDefined();
+      }
     });
   });
 
   describe('MinistryVolunteer (Junction) Constraints', () => {
     it('should require all FKs (Church, Volunteer, Ministry)', async () => {
-      await expect(
-        testDb.insert(schema.ministryVolunteer).values({
+      try {
+        await testDb.insert(schema.ministryVolunteer).values({
           churchId: sql`NULL`,
           volunteerId: sql`NULL`,
           ministryId: sql`NULL`,
-        }),
-      ).rejects.toThrow();
+        });
+        expect.fail('Should have failed: MinistryVolunteer without FKs');
+      } catch (error: unknown) {
+        if (error.name === 'AssertionError') throw error;
+        expect(error.message).toBeDefined();
+      }
     });
   });
 });

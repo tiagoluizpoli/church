@@ -60,11 +60,19 @@ export const team = pgTable('team', {
     .notNull()
     .references(() => ministry.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
-  leaderId: uuid('leader_id').references(() => volunteer.id, {
-    onDelete: 'set null',
-  }),
 });
 
+/**
+ * Junction table linking Volunteers to Ministries (and optionally Teams).
+ *
+ * **Contextual Leadership Model**: Leadership is NOT stored as a column on
+ * `team` or `ministry`. Instead, `system_role` on this join table is the
+ * sole mechanism for designating leadership within a ministry/team context.
+ *
+ * - `leader`     → Ministry Leader (full ministry authority)
+ * - `sub_leader`  → Team Leader (delegated authority within a team)
+ * - `volunteer`   → Regular member
+ */
 export const ministryVolunteer = pgTable('ministry_volunteer', {
   id: uuid('id').primaryKey().defaultRandom(),
   churchId: uuid('church_id')
@@ -77,6 +85,7 @@ export const ministryVolunteer = pgTable('ministry_volunteer', {
     .notNull()
     .references(() => ministry.id, { onDelete: 'cascade' }),
   teamId: uuid('team_id').references(() => team.id, { onDelete: 'set null' }),
+  /** Contextual leadership role — sole source of truth for leadership designation. */
   systemRole: systemRoleEnum('system_role').default('volunteer').notNull(),
   status: membershipStatusEnum('status').default('active').notNull(),
   joinedAt: timestamp('joined_at').defaultNow().notNull(),

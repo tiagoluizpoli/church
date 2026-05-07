@@ -1,5 +1,7 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   pgTable,
   text,
   timestamp,
@@ -45,24 +47,37 @@ export const assignment = pgTable(
       table.slotId,
       table.volunteerId,
     ),
+    check(
+      'assignment_status_check',
+      sql`${table.status} IN ('pending', 'confirmed', 'declined')`,
+    ),
   ],
 );
 
-export const availability = pgTable('availability', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  volunteerId: uuid('volunteer_id')
-    .notNull()
-    .references(() => volunteer.id, { onDelete: 'cascade' }),
-  type: availabilityTypeEnum('type').default('unavailable').notNull(), // available, unavailable
-  startTime: timestamp('start_time').notNull(),
-  endTime: timestamp('end_time').notNull(),
-  isAllDay: boolean('is_all_day').default(false).notNull(),
-  reason: varchar('reason', { length: 255 }),
-  repeatRule: varchar('repeat_rule', { length: 255 }),
-});
+export const availability = pgTable(
+  'availability',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    volunteerId: uuid('volunteer_id')
+      .notNull()
+      .references(() => volunteer.id, { onDelete: 'cascade' }),
+    type: availabilityTypeEnum('type').default('unavailable').notNull(), // available, unavailable
+    startTime: timestamp('start_time').notNull(),
+    endTime: timestamp('end_time').notNull(),
+    isAllDay: boolean('is_all_day').default(false).notNull(),
+    reason: varchar('reason', { length: 255 }),
+    repeatRule: varchar('repeat_rule', { length: 255 }),
+  },
+  (table) => [
+    check(
+      'availability_time_check',
+      sql`${table.startTime} < ${table.endTime}`,
+    ),
+  ],
+);
 
 export const assignmentAudit = pgTable('assignment_audit', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -72,7 +87,7 @@ export const assignmentAudit = pgTable('assignment_audit', {
   assignmentId: uuid('assignment_id')
     .notNull()
     .references(() => assignment.id, { onDelete: 'cascade' }),
-  userId: text('user_id')
+  leaderId: text('leader_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
   action: auditActionEnum('action').notNull(),

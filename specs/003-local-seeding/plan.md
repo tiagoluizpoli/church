@@ -9,6 +9,9 @@ The feature provides a local development seeding utility to populate a clean dat
 
 > [!NOTE]
 > **Refactor Phase (2026-05-06)**: Following a architectural review, the initial monolithic seeder is being refactored into a modular factory-based system to ensure SRP compliance and better maintainability.
+>
+> [!NOTE]
+> **Contextual Leadership Update (2026-05-06)**: Following an update to the seeding spec, the system now implements contextual leadership roles (`leader` for Ministries, `sub_leader` for Teams) instead of defaulting all users to `volunteer`.
 
 ## Technical Context
 
@@ -64,3 +67,9 @@ packages/db/
 |-----------|------------|-------------------------------------|
 | Multiple Factories | Ensure SRP | Single file is too large and hard to test/maintain. |
 | Automated Truncate | Future-proofing | Manual list requires constant updates when schema changes. |
+
+## Contextual Leadership Update Decisions
+
+1. **Role Assignment Strategy**: Update `volunteer.factory.ts` (or the relevant team assignment logic) to ensure the first volunteer attached to a Ministry is assigned `system_role: 'leader'`, and the first volunteer attached to a Team is assigned `system_role: 'sub_leader'`. Subsequent volunteers default to `volunteer` (FR-007).
+2. **Integration Test Verification**: Update integration tests to assert that every Ministry has at least one `leader` and every Team has at least one `sub_leader` (SC-005).
+3. **Deterministic Seeding**: Maintain determinism during this assignment so that the same leaders are chosen on every run.

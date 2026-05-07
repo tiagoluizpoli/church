@@ -67,3 +67,10 @@ description: "Task list for Local Development Seeding feature implementation"
 ## Implementation Strategy
 - **Surgical Execution**: Follow the AGENTS.md rule: Plan -> Approval -> Implement -> Review for EVERY task.
 - **Verification First**: Every infrastructure change must be validated with `check-types` and `test` to ensure zero regressions.
+
+---
+
+## Phase 5: Contextual Leadership Implementation 🎯 NEXT
+- [ ] T033 Update `packages/db/src/seed/factories/volunteer.factory.ts` to assign contextual `system_role` (`leader`, `sub_leader`, `volunteer`) based on Ministry and Team attachments (FR-007).
+- [ ] T034 Update integration tests in `packages/db/src/seed/index.test.ts` to assert that every Ministry has at least one `leader` and every Team has at least one `sub_leader` (SC-005).
+- [ ] T035 Verify determinism is maintained after introducing the leadership role logic.

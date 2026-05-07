@@ -55,6 +55,7 @@ As an integration tester, I need the generated mock data to be consistent and re
 - **FR-004**: System MUST ensure multi-tenant isolation by correctly assigning `church_id` to all scoped entities during generation.
 - **FR-005**: System MUST provide a deterministic generation mode (using a fixed random seed) to produce identical datasets across multiple runs.
 - **FR-006**: System MUST ensure logical referential integrity, where volunteers are assigned to slots that match their assigned roles and team memberships.
+- **FR-007**: System MUST implement contextual leadership assignment instead of defaulting everyone to a volunteer: the first volunteer attached to a ministry gets `system_role: 'leader'`, the second volunteer (or first attached to a specific team) gets `system_role: 'sub_leader'`, and the rest get `system_role: 'volunteer'`.
 
 ### Key Entities
 
@@ -72,6 +73,7 @@ As an integration tester, I need the generated mock data to be consistent and re
 - **SC-002**: The generated dataset includes at least 3 distinct churches, each with 2+ ministries, 10+ volunteers, and 5+ scheduled events to simulate realistic load and UI states.
 - **SC-003**: Zero foreign key constraint or null-reference errors occur during the seeding process.
 - **SC-004**: UI rendering tests pass consistently across different machines because the seeded data is 100% deterministic.
+- **SC-005**: Integration tests assert that every Ministry has at least one `leader` and every Team has at least one `sub_leader`.
 
 ## Assumptions
 

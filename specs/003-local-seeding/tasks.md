@@ -36,24 +36,26 @@ description: "Task list for Local Development Seeding feature implementation"
 **Goal**: Split monolithic seeder into granular factories, isolate DB client, and complete missing domain logic (Assignments/Availability).
 
 ## Phase 4.1: Infrastructure Isolation
-- [ ] T017 Create `packages/db/src/client.ts` for Drizzle instantiation
-- [ ] T018 Update `packages/db/src/index.ts` to export from client and schema
-- [ ] T019 Delete legacy seeder at `packages/db/scripts/seed.ts`
-- [ ] T020 Update `packages/db/package.json` with consolidated `db:seed` scripts
+- [x] T017 Create `packages/db/src/client.ts` for Drizzle instantiation
+- [x] T018 Update `packages/db/src/index.ts` to export from client and schema
+- [x] T019 Delete legacy seeder at `packages/db/scripts/seed.ts`
+- [x] T020 Update `packages/db/package.json` with consolidated `db:seed` scripts
 
 ## Phase 4.2: Modular Factories
-- [ ] T021 Create `packages/db/src/seed/constants.ts` for configuration
-- [ ] T022 Implement `TRUNCATE CASCADE` logic in `packages/db/src/seed/utils.ts`
-- [ ] T023 Implement `packages/db/src/seed/factories/church.factory.ts`
-- [ ] T024 Implement `packages/db/src/seed/factories/ministry.factory.ts`
-- [ ] T025 Implement `packages/db/src/seed/factories/volunteer.factory.ts`
-- [ ] T026 Implement `packages/db/src/seed/factories/scheduling.factory.ts`
-- [ ] T027 Implement `packages/db/src/seed/factories/assignment.factory.ts` (Assignments & Availability)
+- [x] T021 Create `packages/db/src/seed/constants.ts` for configuration
+- [x] T022 Implement `TRUNCATE CASCADE` logic in `packages/db/src/seed/utils.ts`
+- [x] T023 Implement `packages/db/src/seed/factories/church.factory.ts`
+- [x] T024 Implement `packages/db/src/seed/factories/ministry.factory.ts`
+- [x] T025 Implement `packages/db/src/seed/factories/volunteer.factory.ts`
+- [x] T026 Implement `packages/db/src/seed/factories/scheduling.factory.ts`
+- [x] T027 Implement `packages/db/src/seed/factories/assignment.factory.ts` (Assignments & Availability)
 
-## Phase 4.3: Orchestration & Verification
-- [ ] T028 Refactor `packages/db/src/seed/index.ts` to use new factories
-- [ ] T029 Update `packages/db/tests/seed.test.ts` with new assertions
-- [ ] T030 Final validation run with `bun run db:seed:reset`
+### Phase 4.3: Final Validation & Integration
+- [x] T028: Refactor integration tests to use modular factories (src/seed/index.ts)
+- [x] T029: Verify determinism across multiple runs (Integration Test)
+- [x] T030: Perform final verification run and certify system
+- [x] T031: Fix non-determinism in factory outputs (Sorting & Seed Isolation)
+- [x] T032: Achieve 100% test pass rate for database seeding packageh `bun run db:seed:reset`
 
 ---
 

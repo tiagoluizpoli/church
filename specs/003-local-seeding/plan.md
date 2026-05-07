@@ -5,60 +5,62 @@
 
 ## Summary
 
-The feature provides a local development seeding utility to populate a clean database with realistic, interconnected, and deterministic mock data across all entities (Churches, Ministries, Roles, Teams, Volunteers, Events, and Slots). This allows the frontend team to build and test the UI effectively without manual data entry. The technical approach involves creating a CLI tool leveraging Drizzle ORM and Faker.js to generate deterministic mock data.
+The feature provides a local development seeding utility to populate a clean database with realistic, interconnected, and deterministic mock data across all entities (Churches, Ministries, Roles, Teams, Volunteers, Events, and Slots). 
+
+> [!NOTE]
+> **Refactor Phase (2026-05-06)**: Following a architectural review, the initial monolithic seeder is being refactored into a modular factory-based system to ensure SRP compliance and better maintainability.
 
 ## Technical Context
 
 **Language/Version**: Bun (latest), TypeScript 5+
-**Primary Dependencies**: Fastify, React 19, tRPC, Better Auth, Drizzle ORM, Faker.js
+**Primary Dependencies**: Drizzle ORM, Faker.js, @base-fullstack-template/env
 **Storage**: PostgreSQL (via Drizzle ORM)
-**Testing**: Biome (Linting/Formatting)
-**Target Platform**: Web / CLI
+**Testing**: Vitest, Biome
 **Project Type**: Monorepo (Turborepo)
-**Performance Goals**: High-performance runtime with Bun, sub-10s execution for seeding
+**Performance Goals**: Sub-10s execution for seeding
 **Constraints**: Type-safe boundaries, domain-driven, strictly multi-tenant (`church_id`)
-**Scale/Scope**: Local development environment. 3 distinct churches, each with 2+ ministries, 10+ volunteers, and 5+ scheduled events.
-
-**Unknowns**: 
-- NEEDS CLARIFICATION: Where should the seeding script reside within the monorepo structure? (e.g., inside a specific package like `packages/db`, or a dedicated `apps/cli` application?)
-- NEEDS CLARIFICATION: Which Faker.js instance approach should be used to guarantee true determinism across multiple interconnected relational inserts?
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+- [x] **I. Domain-First**: The domain model is aligned with the persistence layer schema.
+- [x] **II. Type Safety**: Drizzle ORM used with strict infer types.
+- [x] **III. Container-Ready**: Uses local PostgreSQL.
+- [x] **IV. Env Discipline**: Uses `@base-fullstack-template/env/server`.
+- [x] **V. Code Standards**: Adheres to Biome and Karpathy Guidelines.
+- [x] **VI. Maximum Context**: Architectural review performed by Backend Specialist.
 
-- [x] **I. Domain-First**: The domain model is aligned with the persistence layer schema defined in S1.
-- [x] **II. Type Safety**: Drizzle ORM ensures type safety for DB operations.
-- [x] **III. Container-Ready**: Local DB is assumed to be running via `docker-compose.yml`.
-- [x] **IV. Env Discipline**: DB URL and Seeding configs will use `.env`.
-- [x] **V. Code Standards**: Code will adhere to Biome.
-- [x] **VI. Maximum Context**: `specifications-list.md` and related files have been traversed.
+## Project Structure (Refactored)
 
-## Project Structure
-
-### Documentation (this feature)
-
-```text
-specs/003-local-seeding/
-├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command)
-├── data-model.md        # Phase 1 output (/speckit.plan command)
-├── quickstart.md        # Phase 1 output (/speckit.plan command)
-├── contracts/           # Phase 1 output (/speckit.plan command)
-└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
-```
-
-### Source Code (repository root)
+### Source Code (`packages/db/`)
 
 ```text
 packages/db/
 ├── src/
-│   ├── schema/
+│   ├── client.ts           # [NEW] Dedicated Drizzle client isolation
+│   ├── schema/             # Drizzle schemas
 │   ├── seed/
-│   │   ├── index.ts        # Main seeder CLI entry point
-│   │   ├── factories/      # Faker-based entity factories
-│   │   └── data/           # Any static seed configurations
-└── package.json
+│   │   ├── index.ts        # CLI Entry point & Orchestrator
+│   │   ├── constants.ts    # [NEW] Seeding configuration & magic numbers
+│   │   ├── utils.ts        # [NEW] Shared utilities (Reset, Logging)
+│   │   └── factories/      # [NEW] SRP-compliant entity factories
+│   │       ├── church.factory.ts
+│   │       ├── ministry.factory.ts
+│   │       ├── volunteer.factory.ts
+│   │       ├── scheduling.factory.ts
+│   │       └── assignment.factory.ts
+└── package.json            # Consolidated scripts (removed scripts/seed.ts)
 ```
 
-**Structure Decision**: The seeding utility will reside within the `packages/db` workspace, alongside the Drizzle schema and migrations, as it directly depends on the database schema definitions.
+## Refactoring Decisions
+
+1. **SRP Factories**: Move logic from `index.ts` to individual files in `factories/` to avoid the "huge file" anti-pattern.
+2. **Client Isolation**: Create `src/client.ts` to prevent redundant connections and provide a clean import for the whole package.
+3. **Automated Reset**: Replace the manual `db.delete` list with a `TRUNCATE CASCADE` loop for future-proof database clearing.
+4. **Functional Completion**: Implement `assignment` and `availability` generation to fulfill FR-006.
+
+## Complexity Tracking
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| Multiple Factories | Ensure SRP | Single file is too large and hard to test/maintain. |
+| Automated Truncate | Future-proofing | Manual list requires constant updates when schema changes. |

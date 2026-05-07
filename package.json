@@ -46,6 +46,8 @@
     "db:down": "turbo -F @base-fullstack-template/db db:down",
     "db:init": "turbo -F @base-fullstack-template/db db:init-system",
     "db:clean": "turbo -F @base-fullstack-template/db db:clean",
+    "db:seed": "turbo -F @base-fullstack-template/db db:seed",
+    "db:seed:reset": "turbo -F @base-fullstack-template/db db:seed:reset",
     "check": "biome check --write .",
     "test": "turbo test",
     "commit": "cz"

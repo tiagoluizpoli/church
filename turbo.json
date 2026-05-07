@@ -53,6 +53,12 @@
     },
     "db:clean": {
       "cache": false
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "db:seed:reset": {
+      "cache": false
     }
   }
 }

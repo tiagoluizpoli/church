@@ -57,7 +57,7 @@
 - [x] T011 [US1] Create `Role` model in `packages/database/src/schema/core.ts`
 - [x] T012 [P] [US1] Create `MinistryInvitation` model in `packages/database/src/schema/onboarding.ts`
 - [x] T030 [P] [US1] Integration test: "Invitation expiry, usage, and deleted ministry edge cases" (TC-BE-010, TC-BE-011, EC-3) in `packages/database/tests/schema/onboarding.test.ts`
-- [ ] T034 [P] [US1] Integration test: "Role constraints (global vs ministry-scoped)" in `packages/database/tests/schema/core.test.ts`
+- [x] T034 [P] [US1] Integration test: "Role constraints (global vs ministry-scoped)" in `packages/database/tests/schema/core.test.ts`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -85,7 +85,7 @@
 - [x] T019 [US2] Create `Assignment` model in `packages/database/src/assignments.ts`
 - [x] T020 [US2] Create `AssignmentAudit` model in `packages/database/src/assignments.ts`
 - [x] T029 [P] [US2] Integration test: "Concurrent assignment unique constraint" (TC-BE-009) in `packages/database/tests/schema/assignments.test.ts`
-- [ ] T035 [US2] Implement DB-level constraints (or application-level Drizzle logic) for `TimeSlot` bounds, `SlotRequirement` minimum count, and `Assignment` state transitions (per data-model validation rules).
+- [x] T035 [US2] Implement DB-level constraints (or application-level Drizzle logic) for `TimeSlot` bounds, `SlotRequirement` minimum count, and `Assignment` state transitions (per data-model validation rules).
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -107,9 +107,9 @@
 
 **Purpose**: Implement the updated contextual leadership mechanism in the core schema.
 
-- [ ] T031 Update `packages/database/src/schema/core.ts` to remove `leader_id` from the `Team` model.
-- [ ] T032 Ensure `MinistryVolunteer` model in `packages/database/src/schema/core.ts` explicitly documents `system_role` enum (`LEADER`, `SUB_LEADER`, `VOLUNTEER`) usage for team leadership.
-- [ ] T033 Create integration test: "Team leadership queries rely on Ministry_Volunteer join table" (SC-004) in `packages/database/tests/schema/core.test.ts` (or `multi-tenant.test.ts`).
+- [x] T031 Update `packages/database/src/schema/core.ts` to remove `leader_id` from the `Team` model.
+- [x] T032 Ensure `MinistryVolunteer` model in `packages/database/src/schema/core.ts` explicitly documents `system_role` enum (`LEADER`, `SUB_LEADER`, `VOLUNTEER`) usage for team leadership.
+- [x] T033 Create integration test: "Team leadership queries rely on Ministry_Volunteer join table" (SC-004) in `packages/database/tests/schema/core.test.ts` (or `multi-tenant.test.ts`).
 
 ---
 

@@ -25,7 +25,6 @@
 - `church_id`: uuid, foreign key to `church.id`, cascade delete
 - `ministry_id`: uuid, foreign key to `ministry.id`, cascade delete
 - `name`: varchar, not null
-- `leader_id`: uuid, foreign key to `volunteer.id` (nullable)
 
 ### `volunteer`
 - `id`: uuid, primary key
@@ -41,6 +40,7 @@
 - `ministry_id`: uuid, foreign key to `ministry.id`, cascade delete
 - `team_id`: uuid, foreign key to `team.id`, set null on delete
 - `system_role`: varchar (LEADER, SUB_LEADER, VOLUNTEER), default `VOLUNTEER`
+  > *Note: `system_role` is the sole mechanism for designating Ministry Leaders (`leader`) and Team Leaders (`sub_leader`).*
 - `status`: varchar (active, inactive), default `active`
 - `joined_at`: timestamp, default `now()`
 

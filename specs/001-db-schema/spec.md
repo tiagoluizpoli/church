@@ -79,6 +79,7 @@ As a ministry leader, I need the foundational data structures (Events, TimeSlots
 - **SC-001**: 100% of non-root tables include a `church_id` column with a foreign key constraint.
 - **SC-002**: Schema strictly defines relationships to support one-to-many and many-to-many joins.
 - **SC-003**: Integration tests verify that unauthorized cross-church queries return zero results.
+- **SC-004**: Integration tests verify that Team leadership queries rely on the join table (`Ministry_Volunteer`), not on a team column.
 
 ## Assumptions
 

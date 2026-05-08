@@ -6,9 +6,9 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 *Objective: Define the data structures in the database.*
 - **[✅ Spec S1: Database Schema](./specifications/S1-db-schema.md)**: Drizzle ORM definitions for Church, Ministry, Team, Volunteer, Event, Slot, and Requirement.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md), [02-event-slots.md](./specifications/02-event-slots.md), [03-assignments-availability.md](./specifications/03-assignments-availability.md), [05-onboarding-links.md](./specifications/05-onboarding-links.md)
-- **[Spec S2: Migration Strategy](./specifications/S2-migration-strategy.md)**: Transitioning from existing Better Auth tables.
+- **[✅ Spec S2: Migration Strategy](./specifications/S2-migration-strategy.md)**: Transitioning from existing Better Auth tables.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md)
-- **[Spec S3: Local Development Seeding](./specifications/S3-local-seeding.md)**: Generators for realistic mock data (Ministries, Roles, Teams, Volunteers) for UI testing.
+- **[✅ Spec S3: Local Development Seeding](./specifications/S3-local-seeding.md)**: Generators for realistic mock data (Ministries, Roles, Teams, Volunteers) for UI testing.
 - **[Spec S4: Timezone & Date Policy](./specifications/S4-timezone-policy.md)**: Strict policies for storing dates in UTC and displaying them in local time securely.
 
 ## Phase 2: Domain Layer (The Entities & Services)

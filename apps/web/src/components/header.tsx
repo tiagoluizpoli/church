@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { TimezoneToggle } from '../shared/components/timezone-toggle';
 import { ModeToggle } from './mode-toggle';
 import UserMenu from './user-menu';
 
@@ -7,6 +8,7 @@ export default function Header() {
     { to: '/', label: 'Home' },
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/todos', label: 'Todos' },
+    { to: '/availability', label: 'Availability' },
   ] as const;
 
   return (
@@ -22,6 +24,7 @@ export default function Header() {
           })}
         </nav>
         <div className="flex items-center gap-2">
+          <TimezoneToggle />
           <ModeToggle />
           <UserMenu />
         </div>

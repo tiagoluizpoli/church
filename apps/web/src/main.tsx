@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import ReactDOM from 'react-dom/client';
 import Loader from './components/loader';
 import { routeTree } from './routeTree.gen';
+import { TimezoneProvider } from './shared/components/timezone-provider';
 import { queryClient, trpc } from './utils/trpc';
 
 const router = createRouter({
@@ -12,7 +13,11 @@ const router = createRouter({
   context: { trpc, queryClient },
   Wrap: function WrapComponent({ children }: { children: React.ReactNode }) {
     return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <TimezoneProvider initialChurchTimezone="America/New_York">
+          {children}
+        </TimezoneProvider>
+      </QueryClientProvider>
     );
   },
 });

@@ -18,6 +18,8 @@
     "@trpc/server": "catalog:",
     "@types/pg": "catalog:",
     "better-auth": "catalog:",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "zod": "catalog:"

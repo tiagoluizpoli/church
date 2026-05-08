@@ -1,5 +1,20 @@
 import { initTRPC, TRPCError } from '@trpc/server';
+import { z } from 'zod';
 import type { Context } from './context';
+
+export const dateSchema = z.iso.datetime().transform((val) => new Date(val));
+
+export const timezoneSchema = z.string().refine(
+  (tz) => {
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: tz });
+      return true;
+    } catch (_e) {
+      return false;
+    }
+  },
+  { error: 'Invalid IANA timezone' },
+);
 
 export const t = initTRPC.context<Context>().create();
 

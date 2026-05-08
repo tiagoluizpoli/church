@@ -44,11 +44,11 @@ Every task in this list MUST be developed and validated strictly one at a time f
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Create date utility functions for timezone conversion in `apps/web/src/shared/utils/date.ts`
-- [ ] T012 [P] [US1] Implement `TimezoneProvider` in `apps/web/src/shared/components/TimezoneProvider.tsx`
-- [ ] T013 [P] [US1] Implement `useTimezone` hook in `apps/web/src/shared/hooks/useTimezone.ts`
-- [ ] T014 [US1] Update Event list components to use `useTimezone` for rendering timestamps in `apps/web/src/features/scheduling/components/EventList.tsx`
-- [ ] T015 [US1] Implement "User/Church Time" toggle component in `apps/web/src/shared/components/TimezoneToggle.tsx`
+- [x] T011 [P] [US1] Create date utility functions for timezone conversion in `apps/web/src/shared/utils/date.ts`
+- [x] T012 [P] [US1] Implement `TimezoneProvider` in `apps/web/src/shared/components/TimezoneProvider.tsx`
+- [x] T013 [P] [US1] Implement `useTimezone` hook in `apps/web/src/shared/hooks/useTimezone.ts`
+- [x] T014 [US1] Update Event list components to use `useTimezone` for rendering timestamps in `apps/web/src/features/scheduling/components/EventList.tsx`
+- [x] T015 [US1] Implement "User/Church Time" toggle component in `apps/web/src/shared/components/TimezoneToggle.tsx`
 
 **Checkpoint**: User Story 1 functional - display layer handles timezone contextualization.
 
@@ -60,9 +60,9 @@ Every task in this list MUST be developed and validated strictly one at a time f
 
 ### Implementation for User Story 2
 
-- [ ] T016 [P] [US2] Implement `AvailabilityService` logic for UTC-based overlap checks in `packages/api/src/services/availability.ts`
-- [ ] T017 [US2] Update availability input components to display prominent timezone indicator in `apps/web/src/features/volunteers/components/AvailabilityForm.tsx`
-- [ ] T018 [P] [US2] Integration test for DST boundary matching in `packages/api/tests/integration/availability.test.ts`
+- [x] T016 [P] [US2] Implement `AvailabilityService` logic for UTC-based overlap checks in `packages/api/src/services/availability.ts`
+- [x] T017 [US2] Update availability input components to display prominent timezone indicator in `apps/web/src/features/volunteers/components/AvailabilityForm.tsx`
+- [x] T018 [P] [US2] Integration test for DST boundary matching in `packages/api/tests/integration/availability.test.ts`
 
 **Checkpoint**: User Story 2 functional - scheduling engine is immune to DST shifts.
 

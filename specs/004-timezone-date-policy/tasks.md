@@ -20,12 +20,12 @@ Every task in this list MUST be developed and validated strictly one at a time f
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 [P] Install `date-fns` and `date-fns-tz` in `packages/db`, `packages/api`, and `apps/web`
-- [ ] T002 [P] Configure global date validation in `packages/api/src/trpc.ts` using Zod
+- [x] T001 [P] Install `date-fns` and `date-fns-tz` in `packages/db`, `packages/api`, and `apps/web`
+- [x] T002 [P] Configure global date validation in `packages/api/src/trpc.ts` using Zod
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T003 [P] Add `timezone` field to `Church` table in `packages/db/src/schema/church.ts`
+- [x] T003 [P] Add `timezone` field to `Church` table in `packages/db/src/schema/church.ts`
 - [ ] T004 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/auth.ts`
 - [ ] T005 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/scheduling.ts`
 - [ ] T006 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/core.ts`

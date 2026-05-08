@@ -37,10 +37,11 @@ describe('Core Schema Integration', () => {
     try {
       await testDb.insert(ministry).values(invalidMinistry).returning();
       expect.fail('Should have thrown foreign key constraint error');
-    } catch (error: unknown) {
-      if (error.name === 'AssertionError') throw error;
-      // console.log('DEBUG ERROR:', error);
-      expect(error.message).toBeDefined();
+    } catch (error) {
+      const err = error as Error;
+      if (err.name === 'AssertionError') throw err;
+      // console.log('DEBUG ERROR:', err);
+      expect(err.message).toBeDefined();
     }
   });
 
@@ -91,9 +92,10 @@ describe('Core Schema Integration', () => {
     try {
       await testDb.insert(ministryInvitation).values(invitation2).returning();
       expect.fail('Should have thrown unique constraint error');
-    } catch (error: unknown) {
-      if (error.name === 'AssertionError') throw error;
-      expect(error.message).toBeDefined();
+    } catch (error) {
+      const err = error as Error;
+      if (err.name === 'AssertionError') throw err;
+      expect(err.message).toBeDefined();
     }
   });
 
@@ -253,9 +255,10 @@ describe('Core Schema Integration', () => {
       try {
         await testDb.insert(role).values(invalidRole).returning();
         expect.fail('Should have thrown foreign key constraint error');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
   });

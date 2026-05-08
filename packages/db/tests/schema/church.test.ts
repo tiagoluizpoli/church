@@ -40,9 +40,10 @@ describe('Church Schema', () => {
     try {
       await testDb.insert(church).values(church2);
       expect.fail('Should have thrown unique slug constraint error');
-    } catch (error: unknown) {
-      if (error.name === 'AssertionError') throw error;
-      expect(error.message).toBeDefined();
+    } catch (error) {
+      const err = error as Error;
+      if (err.name === 'AssertionError') throw err;
+      expect(err.message).toBeDefined();
     }
   });
 });

@@ -29,9 +29,10 @@ describe('Relational Integrity', () => {
           churchId: sql`NULL`,
         });
         expect.fail('Should have failed: Volunteer without a Church');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
 
@@ -53,9 +54,10 @@ describe('Relational Integrity', () => {
           churchId: '00000000-0000-0000-0000-000000000000',
         });
         expect.fail('Should have failed: Volunteer with non-existent Church');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
 
@@ -84,9 +86,10 @@ describe('Relational Integrity', () => {
           churchId: church.id,
         });
         expect.fail('Should have failed: Duplicate userId for Volunteer');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
   });
@@ -99,9 +102,10 @@ describe('Relational Integrity', () => {
           churchId: sql`NULL`,
         });
         expect.fail('Should have failed: Ministry without a Church');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
 
@@ -112,9 +116,10 @@ describe('Relational Integrity', () => {
           churchId: '00000000-0000-0000-0000-000000000000',
         });
         expect.fail('Should have failed: Ministry with non-existent Church');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
 
@@ -131,9 +136,10 @@ describe('Relational Integrity', () => {
           name: sql`NULL`,
         });
         expect.fail('Should have failed: Ministry without a name');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
   });
@@ -147,9 +153,10 @@ describe('Relational Integrity', () => {
           ministryId: sql`NULL`,
         });
         expect.fail('Should have failed: MinistryVolunteer without FKs');
-      } catch (error: unknown) {
-        if (error.name === 'AssertionError') throw error;
-        expect(error.message).toBeDefined();
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
       }
     });
   });

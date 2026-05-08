@@ -25,11 +25,22 @@ export const event = pgTable(
     title: varchar('title', { length: 255 }).notNull(),
     description: text('description'),
     location: varchar('location', { length: 255 }),
-    startDate: timestamp('start_date').notNull(),
-    endDate: timestamp('end_date').notNull(),
+    startDate: timestamp('start_date', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    endDate: timestamp('end_date', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
     status: eventStatusEnum('status').default('draft').notNull(), // draft, published, cancelled
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -49,10 +60,21 @@ export const timeSlot = pgTable(
     eventId: uuid('event_id')
       .notNull()
       .references(() => event.id, { onDelete: 'cascade' }),
-    startTime: timestamp('start_time').notNull(),
-    endTime: timestamp('end_time').notNull(),
+    startTime: timestamp('start_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    endTime: timestamp('end_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
     label: varchar('label', { length: 255 }),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
     check(

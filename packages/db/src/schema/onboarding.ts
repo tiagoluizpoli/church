@@ -14,5 +14,8 @@ export const ministryInvitation = pgTable('ministry_invitation', {
   token: varchar('token', { length: 255 }).notNull().unique(),
   type: varchar('type', { length: 50 }).notNull(), // one-time, multi-use
   status: varchar('status', { length: 50 }).default('active').notNull(), // active, used, expired
-  expiresAt: timestamp('expires_at').notNull(),
+  expiresAt: timestamp('expires_at', {
+    withTimezone: true,
+    mode: 'date',
+  }).notNull(),
 });

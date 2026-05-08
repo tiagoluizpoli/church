@@ -13,8 +13,10 @@ export const church = pgTable('church', {
   slug: varchar('slug', { length: 255 }).notNull().unique(),
   timezone: text('timezone').default('UTC').notNull(),
   settings: jsonb('settings').default({}),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),

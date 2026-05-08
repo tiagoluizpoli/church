@@ -25,9 +25,11 @@ export const ministry = pgTable('ministry', {
   enforcementType: enforcementTypeEnum('enforcement_type')
     .default('soft')
     .notNull(),
-  deletedAt: timestamp('deleted_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
+  deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
@@ -44,8 +46,10 @@ export const volunteer = pgTable('volunteer', {
     .references(() => church.id, { onDelete: 'cascade' }),
   status: volunteerStatusEnum('status').default('active').notNull(),
   notes: text('notes'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
@@ -88,7 +92,9 @@ export const ministryVolunteer = pgTable('ministry_volunteer', {
   /** Contextual leadership role — sole source of truth for leadership designation. */
   systemRole: systemRoleEnum('system_role').default('volunteer').notNull(),
   status: membershipStatusEnum('status').default('active').notNull(),
-  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+  joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
 });
 
 export const role = pgTable('role', {

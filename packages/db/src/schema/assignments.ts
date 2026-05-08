@@ -37,7 +37,12 @@ export const assignment = pgTable(
       .references(() => role.id, { onDelete: 'cascade' }),
     status: assignmentStatusEnum('status').default('pending').notNull(), // pending, confirmed, declined
     reason: text('reason'),
-    assignedAt: timestamp('assigned_at').defaultNow().notNull(),
+    assignedAt: timestamp('assigned_at', {
+      withTimezone: true,
+      mode: 'date',
+    })
+      .defaultNow()
+      .notNull(),
     assignedBy: text('assigned_by').references(() => user.id, {
       onDelete: 'set null',
     }),
@@ -65,8 +70,14 @@ export const availability = pgTable(
       .notNull()
       .references(() => volunteer.id, { onDelete: 'cascade' }),
     type: availabilityTypeEnum('type').default('unavailable').notNull(), // available, unavailable
-    startTime: timestamp('start_time').notNull(),
-    endTime: timestamp('end_time').notNull(),
+    startTime: timestamp('start_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    endTime: timestamp('end_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
     isAllDay: boolean('is_all_day').default(false).notNull(),
     reason: varchar('reason', { length: 255 }),
     repeatRule: varchar('repeat_rule', { length: 255 }),
@@ -92,5 +103,10 @@ export const assignmentAudit = pgTable('assignment_audit', {
     .references(() => user.id, { onDelete: 'cascade' }),
   action: auditActionEnum('action').notNull(),
   reason: text('reason'),
-  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  timestamp: timestamp('timestamp', {
+    withTimezone: true,
+    mode: 'date',
+  })
+    .defaultNow()
+    .notNull(),
 });

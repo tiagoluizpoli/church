@@ -26,13 +26,13 @@ Every task in this list MUST be developed and validated strictly one at a time f
 ## Phase 2: Foundational (Blocking Prerequisites)
 
 - [x] T003 [P] Add `timezone` field to `Church` table in `packages/db/src/schema/church.ts`
-- [ ] T004 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/auth.ts`
-- [ ] T005 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/scheduling.ts`
-- [ ] T006 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/core.ts`
-- [ ] T007 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/assignments.ts`
-- [ ] T008 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/onboarding.ts`
-- [ ] T009 Generate and run database migrations for `timestamptz` conversion via `bun run db:generate` and `bun run db:migrate`
-- [ ] T010 Implement UTC-enforcing tRPC middleware in `packages/api/src/trpc.ts` to coerce date strings to UTC
+- [x] T004 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/auth.ts`
+- [x] T005 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/scheduling.ts`
+- [x] T006 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/core.ts`
+- [x] T007 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/assignments.ts`
+- [x] T008 [P] Update all `timestamp` columns to `timestamptz` in `packages/db/src/schema/onboarding.ts`
+- [x] T009 Generate and run database migrations for `timestamptz` conversion via `bun run db:generate` and `bun run db:migrate`
+- [x] T010 Implement UTC-enforcing tRPC middleware in `packages/api/src/trpc.ts` to coerce date strings to UTC
 
 **Checkpoint**: Foundation ready - database and API now strictly follow UTC-first policy.
 

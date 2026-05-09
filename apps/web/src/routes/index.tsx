@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { EventList } from '@/features/scheduling/components/event-list';
 import { trpc } from '@/utils/trpc';
 
 export const Route = createFileRoute('/')({
@@ -26,7 +27,7 @@ function HomeComponent() {
   const healthCheck = useQuery(trpc.healthCheck.queryOptions());
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-2">
+    <div className="container mx-auto max-w-3xl space-y-6 px-4 py-2">
       <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
       <div className="grid gap-6">
         <section className="rounded-lg border p-4">
@@ -43,6 +44,10 @@ function HomeComponent() {
                   : 'Disconnected'}
             </span>
           </div>
+        </section>
+
+        <section>
+          <EventList />
         </section>
       </div>
     </div>

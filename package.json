@@ -50,6 +50,7 @@
     "db:seed:reset": "turbo -F @base-fullstack-template/db db:seed:reset",
     "check": "biome check --write .",
     "test": "turbo test",
+    "test:e2e": "playwright test",
     "commit": "cz"
   },
   "dependencies": {
@@ -62,6 +63,7 @@
     "@biomejs/biome": "^2.2.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
+    "@playwright/test": "^1.59.1",
     "@types/bun": "catalog:",
     "@types/three": "^0.184.0",
     "commitizen": "^4.3.1",

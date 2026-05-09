@@ -9,7 +9,7 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 - **[✅ Spec S2: Migration Strategy](./specifications/S2-migration-strategy.md)**: Transitioning from existing Better Auth tables.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md)
 - **[✅ Spec S3: Local Development Seeding](./specifications/S3-local-seeding.md)**: Generators for realistic mock data (Ministries, Roles, Teams, Volunteers) for UI testing.
-- **[Spec S4: Timezone & Date Policy](./specifications/S4-timezone-policy.md)**: Strict policies for storing dates in UTC and displaying them in local time securely.
+- **[✅ Spec S4: Timezone & Date Policy](./specifications/S4-timezone-policy.md)**: Strict policies for storing dates in UTC and displaying them in local time securely.
 
 ## Phase 2: Domain Layer (The Entities & Services)
 *Objective: Define the core business entities and logic.*
@@ -38,6 +38,7 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 
 ## Phase 5: Presentation Layer (The Frontend)
 *Objective: Build the user interfaces.*
+- **[Spec F0: Global UI Framework](./specifications/F0-global-ui-framework.md)**: Application-wide layout shell, theme providers, and navigation system.
 - **[Spec F1: Schedule Builder (Desktop)](./specifications/F1-schedule-builder.md)**: Desktop-first complex drag-and-drop interface.
   - *Refines:* [10-scheduling-api.md](./specifications/10-scheduling-api.md)
 - **[Spec F2: Volunteer Dashboard (Mobile/PWA)](./specifications/F2-volunteer-dashboard.md)**: Simplified mobile view for availability and confirmations.

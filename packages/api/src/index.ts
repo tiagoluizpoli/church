@@ -22,8 +22,13 @@ export const t = initTRPC.context<Context>().create();
  * Global middleware to enforce UTC-first policy.
  * Ensures that the execution context respects absolute UTC time.
  */
-export const utcMiddleware = t.middleware(({ next }) => {
-  return next();
+export const utcMiddleware = t.middleware(({ next, ctx }) => {
+  return next({
+    ctx: {
+      ...ctx,
+      now: () => new Date(),
+    },
+  });
 });
 
 export const router = t.router;

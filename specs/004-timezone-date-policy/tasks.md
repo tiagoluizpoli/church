@@ -68,9 +68,15 @@ Every task in this list MUST be developed and validated strictly one at a time f
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T019 Update `README.md` and `quickstart.md` with the new Timezone & Date Policy details
-- [ ] T020 Run full Playwright E2E suite to verify cross-browser timezone consistency
-- [ ] T021 Code cleanup and removal of any legacy `timestamp` (non-tz) usages
+- [x] T019 Update `README.md` and `quickstart.md` with the new Timezone & Date Policy details
+- [x] T020 Run full Playwright E2E suite to verify cross-browser timezone consistency
+- [x] T021 Code cleanup and removal of any legacy `timestamp` (non-tz) usages
+
+## Phase 6: Review Remediation (High Priority)
+
+- [x] T022 Implement UTC-enforcing logic in `packages/api/src/index.ts` middleware
+- [x] T023 [CANCELLED] Fix hydration mismatch (Not applicable for Vite SPA)
+- [x] T024 Enhance Playwright tests in `apps/web/e2e/timezone.spec.ts` to verify date rendering accuracy
 
 ## Dependencies & Execution Order
 

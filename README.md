@@ -17,6 +17,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Biome** - Linting and formatting
 - **Electrobun** - Lightweight desktop shell for web frontends
 - **PWA** - Progressive Web App support
+- **Timezone Policy** - Strict "UTC-First" storage with `timestamptz` and contextual local-time rendering
 - **Turborepo** - Optimized monorepo build system
 
 ## Getting Started

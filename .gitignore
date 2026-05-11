@@ -49,12 +49,7 @@ coverage
 .cache
 tmp
 temp
-.agent/skills
-.agent/workflows
-AGENTS.md
-SKILLS_OVERVIEW.md
-.agent/skills
-.agent/workflows
 .agents/skills
+.agents/workflows
 AGENTS.md
 SKILLS_OVERVIEW.md

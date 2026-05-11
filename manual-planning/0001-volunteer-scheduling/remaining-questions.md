@@ -1,4 +1,4 @@
-# Remaining Planning Questions & Context
+# Finalized Planning Decisions
 
 ## Context
 - **Objective**: Complete the system-wide "UTC-First" date policy and initiate a premium UI/UX redesign for the Volunteer Scheduling system. 
@@ -6,20 +6,31 @@
 - **Mobile Priority**: PWA-first, thumb-driven navigation (Bottom Nav), frictionless onboarding. 
 - **Simplicity**: No WebSockets, standard HTTP (tRPC), simple and robust data flow. 
 
-## Remaining Questions
-1. **Spec F4: Print & Export Service**: 
-    - How do we optimize all views for clean printing directly from a mobile browser? 
-    - What are the priority export formats (PDF, Excel) and how should they be styled? 
-    - Is an in-app "Print Preview" mode necessary for mobile? 
+## Finalized Decisions
 
-2. **Spec F5: Routing & Simple State**: 
-    - How do we handle deep linking and optimistic updates most efficiently without over-complicating the state management? 
-    - What's the best way to implement a simple "Offline" read-only mode for upcoming shifts? 
+### 1. Spec F4: Print & Export Service
+- **Mobile Print Optimization**: Use CSS `@media print` to hide navigation and non-essential UI. Enforce high-contrast, black-on-white styles with system fonts (Inter).
+- **Export Formats**: 
+    - **Excel (.xlsx)**: Primary for leaders, styled for utility/data density.
+    - **PDF**: Handled via browser native "Print to PDF".
+- **Print Preview**: No in-app preview. Use a dedicated `/print` route for a clean, unstyled data view.
 
-3. **Phase 6: Orchestration & Quality (Hardening)**: 
-    - **Spec Q1: E2E Testing**: What are the most critical user journeys to test first? 
-    - **Spec Q2: Performance Audit**: What are our specific goals for bundle size and initial page load times, particularly on mobile? 
+### 2. Spec F5: Routing & Simple State
+- **Deep Linking**: Use TanStack Router search params for all UI state (filters, dates).
+- **Optimistic Updates**: Use TanStack Query `onMutate` for frequent actions (confirmations).
+- **Offline Mode**: Use `persistQueryClient` with `localStorage` to cache the next 30 days of shifts in read-only mode.
+
+### 3. Phase 6: Orchestration & Quality (Hardening)
+- **Critical E2E Journeys**:
+    1. **Assignment Loop**: Leader creates -> Assigns -> Publishes -> Volunteer confirms.
+    2. **Onboarding Flow**: Link invite -> Registration -> Availability submission.
+- **Performance Targets**:
+    - **Bundle Size**: < 250kb (gzipped).
+    - **LCP**: < 2.0s on 4G.
+    - **TBT**: < 100ms.
 
 ## Next Steps
-- Continue with Spec F4 (Print & Export) once the user is ready. 
-- Finalize the remaining specifications and move towards the implementation phase. 
+- [ ] Create **Spec F4: Print & Export Service** based on these decisions.
+- [ ] Create **Spec F5: Routing & Cache Invalidation** based on these decisions.
+- [ ] Draft **Spec Q1: End-to-End Testing** scenarios.
+- [ ] Draft **Spec Q2: Performance Audit** checklist.

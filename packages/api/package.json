@@ -16,6 +16,7 @@
     "@base-fullstack-template/auth": "workspace:*",
     "@base-fullstack-template/db": "workspace:*",
     "@base-fullstack-template/env": "workspace:*",
+    "@church/core": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@types/pg": "catalog:",

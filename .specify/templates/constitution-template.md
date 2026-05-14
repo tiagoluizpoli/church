@@ -28,26 +28,17 @@
 [PRINCIPLE_5_DESCRIPTION]
 <!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
 
-## Technology Stack
-<!-- Mandatory: List the core technologies and their purpose in the project -->
+## [SECTION_2_NAME]
+<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
 
-| Category | Tool | Purpose |
-|---|---|---|
-| Runtime | Bun | Performance-first JavaScript runtime |
-| Framework | Next.js (React 19) | Frontend framework with App Router support |
-| Styling | Tailwind CSS v4 | Utility-first CSS framework |
-| Database | Drizzle ORM + PG | Type-safe SQL query builder and PostgreSQL adapter |
-| Auth | Better Auth | Standardized authentication layer |
-| API | tRPC | End-to-end type safety for API calls |
+[SECTION_2_CONTENT]
+<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
 
-## Core Rules
-<!-- Mandatory: Define non-negotiable rules for the project development -->
+## [SECTION_3_NAME]
+<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
 
-- **Clean Code Always**: Follow the project's code-review skill for naming and structure.
-- **SOLID Compliance**: Every new feature or refactor must adhere to SOLID principles.
-- **Strict Linting**: Biome must pass for every commit.
-- **Type Safety**: No `any` without explicit justification; leverage Zod for all input validation.
-
+[SECTION_3_CONTENT]
+<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
 
 ## Governance
 <!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->

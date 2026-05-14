@@ -1,0 +1,22 @@
+{
+  "name": "@church/core",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@base-fullstack-template/config": "workspace:*",
+    "typescript": "^5",
+    "vitest": "catalog:"
+  }
+}

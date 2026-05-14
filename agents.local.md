@@ -32,5 +32,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [/home/tiago/01-dev-env/personal-repos/church/church/specs/004-timezone-date-policy/plan.md]
+- Current Plan: [/home/tiago/01-dev-env/personal-repos/church/church/specs/005-domain-entities/plan.md]
 <!-- SPECKIT END -->

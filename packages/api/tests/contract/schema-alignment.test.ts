@@ -45,7 +45,7 @@ describe('EntityMapper Contract', () => {
           name: entity.name,
           slug: entity.slug,
           timezone: entity.timezone,
-          settings: entity.settings,
+          settings: entity.settings ?? {},
         };
       }
     }

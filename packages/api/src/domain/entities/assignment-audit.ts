@@ -1,4 +1,5 @@
 import { Entity } from '@church/core';
+import type { SoftConflictType } from '../conflict/types';
 
 export const ASSIGNMENT_AUDIT_ACTION_OPTIONS = [
   'created',
@@ -16,6 +17,7 @@ export interface AssignmentAuditProps {
   action: AssignmentAuditAction;
   reason?: string;
   timestamp: Date;
+  overrideConflictTypes?: SoftConflictType[];
 }
 
 export class AssignmentAudit extends Entity<AssignmentAuditProps> {
@@ -55,6 +57,10 @@ export class AssignmentAudit extends Entity<AssignmentAuditProps> {
 
   get reason(): string | undefined {
     return this._props.reason;
+  }
+
+  get overrideConflictTypes(): SoftConflictType[] | undefined {
+    return this._props.overrideConflictTypes;
   }
 
   get timestamp(): Date {

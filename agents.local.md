@@ -32,5 +32,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [/home/tiago/01-dev-env/personal-repos/church/church/specs/005-domain-entities/plan.md]
+- Current Plan: [/home/tiago/01-dev-env/personal-repos/church/church/specs/006-availability-engine/plan.md]
 <!-- SPECKIT END -->

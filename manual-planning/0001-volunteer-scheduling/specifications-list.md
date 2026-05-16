@@ -13,8 +13,8 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 
 ## Phase 2: Domain Layer (The Entities & Services)
 *Objective: Define the core business entities and logic.*
-- **[Spec D1: Domain Entities](./specifications/D1-domain-entities.md)**: Pure TypeScript interfaces for core entities (Church, Volunteer, Assignment, etc.).
-- **[Spec L1: Availability Engine](./specifications/L1-availability-engine.md)**: Calculating volunteer states and workload balance.
+- **[✅ Spec D1: Domain Entities](./specifications/D1-domain-entities.md)**: Pure TypeScript interfaces for core entities (Church, Volunteer, Assignment, etc.).
+- **[✅ Spec L1: Availability Engine](../../specs/006-availability-engine/spec.md)**: Calculating volunteer states and workload balance.
   - *Refines:* [06-availability-engine.md](./specifications/06-availability-engine.md)
 - **[Spec L2: Conflict & Validation Service](./specifications/L2-conflict-service.md)**: Rules for double-booking and override auditing.
   - *Refines:* [07-conflict-validation.md](./specifications/07-conflict-validation.md)

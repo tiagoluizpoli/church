@@ -18,30 +18,30 @@
 ## Test Coverage Plan
 
 ### 1. Happy Paths
-- `[ ]` Hard validator passes for a fully eligible volunteer → UNIT
-- `[ ]` Soft detector returns NoConflict when volunteer is AVAILABLE and under fairness threshold → UNIT
-- `[ ]` Override authorized for LEADER with valid reason → UNIT
-- `[ ]` Override authorized for ADMIN with valid reason → UNIT
-- `[ ]` Audit record created with correct fields on successful override → UNIT
+- [x] Hard validator passes for a fully eligible volunteer → UNIT
+- [x] Soft detector returns NoConflict when volunteer is AVAILABLE and under fairness threshold → UNIT
+- [x] Override authorized for LEADER with valid reason → UNIT
+- [x] Override authorized for ADMIN with valid reason → UNIT
+- [x] Audit record created with correct fields on successful override → UNIT
 
 ### 2. Permission Matrix
-- `[ ]` VOLUNTEER role: override rejected → UNIT
-- `[ ]` LEADER role (wrong ministry): override rejected → UNIT
-- `[ ]` LEADER role (correct ministry): override accepted → UNIT
-- `[ ]` ADMIN role (any ministry): override accepted → UNIT
-- `[ ]` SUB_LEADER role: override rejected → UNIT
+- [x] VOLUNTEER role: override rejected → UNIT
+- [x] LEADER role (wrong ministry): override rejected → UNIT
+- [x] LEADER role (correct ministry): override accepted → UNIT
+- [x] ADMIN role (any ministry): override accepted → UNIT
+- [x] SUB_LEADER role: override rejected → UNIT
 
 ### 3. Edge Cases & Validation
-- `[ ]` Empty string override reason: rejected → UNIT
-- `[ ]` Whitespace-only override reason: rejected → UNIT
-- `[ ]` Fairness threshold = 0 (disabled): no FAIRNESS_EXCEEDED issue → UNIT
-- `[ ]` Multiple simultaneous soft conflicts: ALL reported in ConflictReport → UNIT
-- `[ ]` Volunteer qualifies for role via global role: accepted → UNIT
-- `[ ]` Duplicate assignment to same slot: DUPLICATE_ASSIGNMENT hard error → UNIT
-- `[ ]` Event exactly at `now` boundary: EVENT_IN_PAST or not? (strict `>` means equal = past) → UNIT
+- [x] Empty string override reason: rejected → UNIT
+- [x] Whitespace-only override reason: rejected → UNIT
+- [x] Fairness threshold = 0 (disabled): no FAIRNESS_EXCEEDED issue → UNIT
+- [x] Multiple simultaneous soft conflicts: ALL reported in ConflictReport → UNIT
+- [x] Volunteer qualifies for role via global role: accepted → UNIT
+- [x] Duplicate assignment to same slot: DUPLICATE_ASSIGNMENT hard error → UNIT
+- [x] Event exactly at `now` boundary: EVENT_IN_PAST or not? (strict `>` means equal = past) → UNIT
 
 ### 4. Catastrophic Failures
-- `[ ]` N/A — pure domain service with no I/O. All inputs are injected. No infrastructure failures possible at this layer.
+- [x] N/A — pure domain service with no I/O. All inputs are injected. No infrastructure failures possible at this layer.
 
 ---
 
@@ -49,9 +49,9 @@
 
 **Purpose**: Create the conflict module directory structure and foundational types
 
-- [ ] T001 Create conflict module directory at `packages/api/src/domain/conflict/` and `packages/api/src/domain/conflict/errors/`
-- [ ] T002 [P] Define all new types (`HardConstraintReason`, `SoftConflictType`, `ConflictIssue`, `ConflictReport`, `NoConflict`, `SoftConflictResult`, `CallerContext`, `ValidationRequest`, `OverrideRequest`) in `packages/api/src/domain/conflict/types.ts`
-- [ ] T003 [P] Create `HardConstraintError` extending `DomainError` with typed `reason` field in `packages/api/src/domain/conflict/errors/hard-constraint-error.ts`
+- [x] T001 Create conflict module directory at `packages/api/src/domain/conflict/` and `packages/api/src/domain/conflict/errors/`
+- [x] T002 [P] Define all new types (`HardConstraintReason`, `SoftConflictType`, `ConflictIssue`, `ConflictReport`, `NoConflict`, `SoftConflictResult`, `CallerContext`, `ValidationRequest`, `OverrideRequest`) in `packages/api/src/domain/conflict/types.ts`
+- [x] T003 [P] Create `HardConstraintError` extending `DomainError` with typed `reason` field in `packages/api/src/domain/conflict/errors/hard-constraint-error.ts`
 
 ---
 
@@ -61,11 +61,11 @@
 
 **⚠️ CRITICAL**: Must complete before user story implementation begins
 
-- [ ] T004 Extend `AssignmentAuditProps` with optional `overrideConflictTypes?: SoftConflictType[]` field in `packages/api/src/domain/entities/assignment-audit.ts`
-- [ ] T005 Add getter `overrideConflictTypes` to `AssignmentAudit` class in `packages/api/src/domain/entities/assignment-audit.ts`
-- [ ] T006 Re-export `HardConstraintError` from `packages/api/src/domain/errors/index.ts`
-- [ ] T007 Export conflict module from `packages/api/src/domain/index.ts`
-- [ ] T008 Create barrel export at `packages/api/src/domain/conflict/index.ts`
+- [x] T004 Extend `AssignmentAuditProps` with optional `overrideConflictTypes?: SoftConflictType[]` field in `packages/api/src/domain/entities/assignment-audit.ts`
+- [x] T005 Add getter `overrideConflictTypes` to `AssignmentAudit` class in `packages/api/src/domain/entities/assignment-audit.ts`
+- [x] T006 Re-export `HardConstraintError` from `packages/api/src/domain/errors/index.ts`
+- [x] T007 Export conflict module from `packages/api/src/domain/index.ts`
+- [x] T008 Create barrel export at `packages/api/src/domain/conflict/index.ts`
 
 **Checkpoint**: Foundation ready — all types, errors, and entity extensions are in place
 
@@ -81,7 +81,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T009 [P] [US1] Create test file `packages/api/tests/domain/conflict-validation-service.test.ts` with `describe('Hard Constraints')` block containing:
+- [x] T009 [P] [US1] Create test file `packages/api/tests/domain/conflict-validation-service.test.ts` with `describe('Hard Constraints')` block containing:
   - Test: throws `HardConstraintError` with `NOT_QUALIFIED` when `roleId` is not in `volunteerQualifiedRoleIds`
   - Test: throws `HardConstraintError` with `NOT_IN_MINISTRY` when `ministryId` is not in `volunteerMinistryIds`
   - Test: throws `HardConstraintError` with `EVENT_IN_PAST` when `eventStartTime <= now`
@@ -93,8 +93,8 @@
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement `validateHardConstraints(request: ValidationRequest): void` private function in `packages/api/src/domain/conflict/conflict-validation-service.ts` — throws `HardConstraintError` on failure
-- [ ] T011 [US1] Wire `validateHardConstraints` into the public `validate(request: ValidationRequest): SoftConflictResult` method that calls hard checks first, then delegates to soft conflict detection in `packages/api/src/domain/conflict/conflict-validation-service.ts`
+- [x] T010 [US1] Implement `validateHardConstraints(request: ValidationRequest): void` private function in `packages/api/src/domain/conflict/conflict-validation-service.ts` — throws `HardConstraintError` on failure
+- [x] T011 [US1] Wire `validateHardConstraints` into the public `validate(request: ValidationRequest): SoftConflictResult` method that calls hard checks first, then delegates to soft conflict detection in `packages/api/src/domain/conflict/conflict-validation-service.ts`
 
 **Checkpoint**: Hard constraints block invalid assignments. Tests pass. Service is partially functional.
 
@@ -110,7 +110,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T012 [P] [US2] Add `describe('Soft Conflicts')` block to `packages/api/tests/domain/conflict-validation-service.test.ts` containing:
+- [x] T012 [P] [US2] Add `describe('Soft Conflicts')` block to `packages/api/tests/domain/conflict-validation-service.test.ts` containing:
   - Test: returns `{ hasConflicts: false }` when availability is `AVAILABLE` and `serviceCount < fairnessThreshold`
   - Test: returns ConflictReport with `UNAVAILABLE` issue when `availabilityResult.status === 'UNAVAILABLE'`
   - Test: returns ConflictReport with `DOUBLE_BOOKED` issue when `availabilityResult.status === 'DOUBLE_BOOKED'`
@@ -124,8 +124,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Implement `detectSoftConflicts(request: ValidationRequest): SoftConflictResult` private function in `packages/api/src/domain/conflict/conflict-validation-service.ts`
-- [ ] T014 [US2] Integrate soft conflict detection into the `validate()` method after hard constraint check in `packages/api/src/domain/conflict/conflict-validation-service.ts`
+- [x] T013 [US2] Implement `detectSoftConflicts(request: ValidationRequest): SoftConflictResult` private function in `packages/api/src/domain/conflict/conflict-validation-service.ts`
+- [x] T014 [US2] Integrate soft conflict detection into the `validate()` method after hard constraint check in `packages/api/src/domain/conflict/conflict-validation-service.ts`
 
 **Checkpoint**: Full validation pipeline works — hard constraints block, soft conflicts are reported. Tests pass.
 
@@ -141,7 +141,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T015 [P] [US3] Add `describe('Override Audit Creation')` block to `packages/api/tests/domain/conflict-validation-service.test.ts` containing:
+- [x] T015 [P] [US3] Add `describe('Override Audit Creation')` block to `packages/api/tests/domain/conflict-validation-service.test.ts` containing:
   - Test: `authorizeOverride` returns an `AssignmentAudit` entity with correct `leaderId`, `churchId`, `reason`, and `overrideConflictTypes`
   - Test: `overrideConflictTypes` contains all conflict types from the `ConflictReport`
   - Test: `action` is `'created'` on the returned audit
@@ -150,8 +150,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Implement `createOverrideAudit(request: OverrideRequest, report: ConflictReport): AssignmentAudit` helper in `packages/api/src/domain/conflict/conflict-validation-service.ts` — uses `request.churchId` and `request.assignmentId` from the `OverrideRequest`
-- [ ] T017 [US3] Wire audit creation into `authorizeOverride()` method in `packages/api/src/domain/conflict/conflict-validation-service.ts`
+- [x] T016 [US3] Implement `createOverrideAudit(request: OverrideRequest, report: ConflictReport): AssignmentAudit` helper in `packages/api/src/domain/conflict/conflict-validation-service.ts` — uses `request.churchId` and `request.assignmentId` from the `OverrideRequest`
+- [x] T017 [US3] Wire audit creation into `authorizeOverride()` method in `packages/api/src/domain/conflict/conflict-validation-service.ts`
 
 **Checkpoint**: Override flow produces auditable records. Tests pass.
 
@@ -167,7 +167,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US4] Add `describe('Override Authorization')` block to `packages/api/tests/domain/conflict-validation-service.test.ts` containing:
+- [x] T018 [P] [US4] Add `describe('Override Authorization')` block to `packages/api/tests/domain/conflict-validation-service.test.ts` containing:
   - Test: LEADER with matching `ministryId` → override accepted, audit returned
   - Test: LEADER with non-matching `ministryId` → permission error thrown
   - Test: ADMIN with any `ministryId` → override accepted, audit returned
@@ -179,11 +179,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] Implement `validateOverrideAuthorization(request: OverrideRequest): void` private function in `packages/api/src/domain/conflict/conflict-validation-service.ts`
-- [ ] T020 [US4] Wire authorization check into `authorizeOverride()` before audit creation in `packages/api/src/domain/conflict/conflict-validation-service.ts`
-- [ ] T021 [US4] Create `UnauthorizedOverrideError` extending `DomainError` in `packages/api/src/domain/conflict/errors/unauthorized-override-error.ts`
-- [ ] T022 [US4] Create `InvalidOverrideReasonError` extending `DomainError` in `packages/api/src/domain/conflict/errors/invalid-override-reason-error.ts`
-- [ ] T023 [US4] Re-export new errors from `packages/api/src/domain/conflict/errors/index.ts` and `packages/api/src/domain/errors/index.ts`
+- [x] T019 [US4] Implement `validateOverrideAuthorization(request: OverrideRequest): void` private function in `packages/api/src/domain/conflict/conflict-validation-service.ts`
+- [x] T020 [US4] Wire authorization check into `authorizeOverride()` before audit creation in `packages/api/src/domain/conflict/conflict-validation-service.ts`
+- [x] T021 [US4] Create `UnauthorizedOverrideError` extending `DomainError` in `packages/api/src/domain/conflict/errors/unauthorized-override-error.ts`
+- [x] T022 [US4] Create `InvalidOverrideReasonError` extending `DomainError` in `packages/api/src/domain/conflict/errors/invalid-override-reason-error.ts`
+- [x] T023 [US4] Re-export new errors from `packages/api/src/domain/conflict/errors/index.ts` and `packages/api/src/domain/errors/index.ts`
 
 **Checkpoint**: Full authorization enforcement works. All role combinations tested. Tests pass.
 
@@ -193,12 +193,12 @@
 
 **Purpose**: Final quality gates across all user stories
 
-- [ ] T024 Update `packages/api/src/index.ts` barrel exports to include conflict module
-- [ ] T025 Run Biome lint check on all new files: `bunx biome check packages/api/src/domain/conflict/`
-- [ ] T026 Run full test suite: `bun run test --filter=api`
-- [ ] T027 Run quickstart.md validation — verify usage examples compile conceptually against the implemented API
-- [ ] T028 Verify existing `AvailabilityEngine` tests still pass (no regression): `bun run test packages/api/tests/domain/availability-engine.test.ts`
-- [ ] T029 Verify existing `AssignmentAudit` entity tests still pass after extension: `bun run test packages/api/tests/domain/entities/`
+- [x] T024 Update `packages/api/src/index.ts` barrel exports to include conflict module
+- [x] T025 Run Biome lint check on all new files: `bunx biome check packages/api/src/domain/conflict/`
+- [x] T026 Run full test suite: `bun run test --filter=api`
+- [x] T027 Run quickstart.md validation — verify usage examples compile conceptually against the implemented API
+- [x] T028 Verify existing `AvailabilityEngine` tests still pass (no regression): `bun run test packages/api/tests/domain/availability-engine.test.ts`
+- [x] T029 Verify existing `AssignmentAudit` entity tests still pass after extension: `bun run test packages/api/tests/domain/entities/`
 
 ---
 

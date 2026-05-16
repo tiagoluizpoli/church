@@ -20,7 +20,7 @@ description: "Task list for Availability Engine (Spec L1)"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Initialize availability engine folder structure in `src/api/domain/availability/`
+- [x] T001 Initialize availability engine folder structure in `src/api/domain/availability/`
 
 ---
 
@@ -30,7 +30,7 @@ description: "Task list for Availability Engine (Spec L1)"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Create Domain Model types and interfaces from `data-model.md` in `src/api/domain/availability/types.ts`
+- [x] T002 Create Domain Model types and interfaces from `data-model.md` in `src/api/domain/availability/types.ts`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -46,11 +46,11 @@ description: "Task list for Availability Engine (Spec L1)"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T003 [P] [US1] Create unit tests for basic availability, blockout conflicts, assignment conflicts, partial overlaps, back-to-back shifts, crossing midnight, and pre-calculated all-day boundaries in `src/api/domain/availability/AvailabilityEngine.test.ts`
+- [x] T003 [P] [US1] Create unit tests for basic availability, blockout conflicts, assignment conflicts, partial overlaps, back-to-back shifts, crossing midnight, and pre-calculated all-day boundaries in `src/api/domain/availability/AvailabilityEngine.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Implement `AvailabilityEngine` class with `checkAvailability` core interval overlap algorithm in `src/api/domain/availability/AvailabilityEngine.ts`
+- [x] T004 [US1] Implement `AvailabilityEngine` class with `checkAvailability` core interval overlap algorithm in `src/api/domain/availability/AvailabilityEngine.ts`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -64,11 +64,11 @@ description: "Task list for Availability Engine (Spec L1)"
 
 ### Tests for User Story 2
 
-- [ ] T005 [P] [US2] Update unit tests to include `excludeAssignmentId` ignore logic scenarios in `src/api/domain/availability/AvailabilityEngine.test.ts`
+- [x] T005 [P] [US2] Update unit tests to include `excludeAssignmentId` ignore logic scenarios in `src/api/domain/availability/AvailabilityEngine.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Update `checkAvailability` method to filter out the `excludeAssignmentId` from the conflict check loop in `src/api/domain/availability/AvailabilityEngine.ts`
+- [x] T006 [US2] Update `checkAvailability` method to filter out the `excludeAssignmentId` from the conflict check loop in `src/api/domain/availability/AvailabilityEngine.ts`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -78,8 +78,8 @@ description: "Task list for Availability Engine (Spec L1)"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T007 Run the example code from `quickstart.md` to ensure the engine behaves correctly
-- [ ] T008 Code cleanup, linting, and Biome formatting check
+- [x] T007 Run the example code from `quickstart.md` to ensure the engine behaves correctly
+- [x] T008 Code cleanup, linting, and Biome formatting check
 
 ---
 

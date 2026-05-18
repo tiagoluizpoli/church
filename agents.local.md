@@ -32,5 +32,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/007-conflict-validation-service/plan.md](specs/007-conflict-validation-service/plan.md)
+- Current Plan: [specs/008-assignment-manager/plan.md](specs/008-assignment-manager/plan.md)
 <!-- SPECKIT END -->

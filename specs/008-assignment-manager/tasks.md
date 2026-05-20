@@ -63,13 +63,13 @@
 
 **Purpose**: Create the assignment module directory structure, all types, and error classes
 
-- [ ] T001 Create assignment module directory at `packages/api/src/domain/assignment/` and `packages/api/src/domain/assignment/errors/`
-- [ ] T002 [P] Define all new types (`SlotGenerationStrategy`, `EqualSplitStrategy`, `TemplateBasedStrategy`, `TemplatePeriod`, `SlotGenerationRequest`, `GeneratedSlot`, `SlotGenerationResult`, `PublishRequest`, `HardConstraintFailure`, `SchedulePublishResult`, `CancelEventRequest`, `EventCancellationResult`, `DeclineAssignmentRequest`, `ConfirmAssignmentRequest`, `ReplacementCandidate`, `ReplacementSearchRequest`, `LifecycleTransitionRequest`, `LifecycleTransitionResult`) in `packages/api/src/domain/assignment/types.ts`
-- [ ] T003 [P] Create `PublishValidationError` extending `DomainError` in `packages/api/src/domain/assignment/errors/publish-validation-error.ts`
-- [ ] T004 [P] Create `InvalidStateTransitionError` extending `DomainError` in `packages/api/src/domain/assignment/errors/invalid-state-transition-error.ts`
-- [ ] T005 [P] Create `EmptyScheduleError` extending `DomainError` in `packages/api/src/domain/assignment/errors/empty-schedule-error.ts`
-- [ ] T006 [P] Create `DuplicateSlotsError` extending `DomainError` in `packages/api/src/domain/assignment/errors/duplicate-slots-error.ts`
-- [ ] T007 [P] Create barrel export at `packages/api/src/domain/assignment/errors/index.ts`
+- [x] T001 Create assignment module directory at `packages/api/src/domain/assignment/` and `packages/api/src/domain/assignment/errors/`
+- [x] T002 [P] Define all new types (`SlotGenerationStrategy`, `EqualSplitStrategy`, `TemplateBasedStrategy`, `TemplatePeriod`, `SlotGenerationRequest`, `GeneratedSlot`, `SlotGenerationResult`, `PublishRequest`, `HardConstraintFailure`, `SchedulePublishResult`, `CancelEventRequest`, `EventCancellationResult`, `DeclineAssignmentRequest`, `ConfirmAssignmentRequest`, `ReplacementCandidate`, `ReplacementSearchRequest`, `LifecycleTransitionRequest`, `LifecycleTransitionResult`) in `packages/api/src/domain/assignment/types.ts`
+- [x] T003 [P] Create `PublishValidationError` extending `DomainError` in `packages/api/src/domain/assignment/errors/publish-validation-error.ts`
+- [x] T004 [P] Create `InvalidStateTransitionError` extending `DomainError` in `packages/api/src/domain/assignment/errors/invalid-state-transition-error.ts`
+- [x] T005 [P] Create `EmptyScheduleError` extending `DomainError` in `packages/api/src/domain/assignment/errors/empty-schedule-error.ts`
+- [x] T006 [P] Create `DuplicateSlotsError` extending `DomainError` in `packages/api/src/domain/assignment/errors/duplicate-slots-error.ts`
+- [x] T007 [P] Create barrel export at `packages/api/src/domain/assignment/errors/index.ts`
 
 ---
 
@@ -79,15 +79,15 @@
 
 **⚠️ CRITICAL**: Must complete before user story implementation begins
 
-- [ ] T008 Extend `EVENT_STATUS_OPTIONS` with `'past'` and add `markAsPast()` mutation method in `packages/api/src/domain/entities/event.ts`
-- [ ] T009 Extend `ASSIGNMENT_STATUS_OPTIONS` with `'draft'` and `'cancelled'`, change default from `'pending'` to `'draft'`, add `markAsPending()` and `cancel()` mutation methods in `packages/api/src/domain/entities/assignment.ts`
-- [ ] T010 Add `status` field (`'active' | 'cancelled'`) to `TimeSlotProps` with default `'active'`, add `cancel()` mutation method and `status` getter in `packages/api/src/domain/entities/time-slot.ts`
-- [ ] T011 Extend `ASSIGNMENT_AUDIT_ACTION_OPTIONS` with `'event_published'` and `'event_cancelled'` in `packages/api/src/domain/entities/assignment-audit.ts`
-- [ ] T012 [P] Update existing entity tests for `Event` (add `markAsPast()`, `'past'` status) in `packages/api/tests/domain/entities/event.test.ts`
-- [ ] T013 [P] Update existing entity tests for `Assignment` (add `'draft'`/`'cancelled'` statuses, `markAsPending()`, `cancel()`, new default) in `packages/api/tests/domain/entities/assignment.test.ts`
-- [ ] T014 [P] Update existing entity tests for `TimeSlot` (add `status` field, `cancel()`) in `packages/api/tests/domain/entities/time-slot.test.ts`
-- [ ] T015 [P] Update existing entity tests for `AssignmentAudit` (new action types) in `packages/api/tests/domain/entities/assignment-audit.test.ts`
-- [ ] T016 Create barrel export at `packages/api/src/domain/assignment/index.ts` and re-export from `packages/api/src/domain/index.ts` and `packages/api/src/domain/errors/index.ts`
+- [x] T008 Extend `EVENT_STATUS_OPTIONS` with `'past'` and add `markAsPast()` mutation method in `packages/api/src/domain/entities/event.ts`
+- [x] T009 Extend `ASSIGNMENT_STATUS_OPTIONS` with `'draft'` and `'cancelled'`, change default from `'pending'` to `'draft'`, add `markAsPending()` and `cancel()` mutation methods in `packages/api/src/domain/entities/assignment.ts`
+- [x] T010 Add `status` field (`'active' | 'cancelled'`) to `TimeSlotProps` with default `'active'`, add `cancel()` mutation method and `status` getter in `packages/api/src/domain/entities/time-slot.ts`
+- [x] T011 Extend `ASSIGNMENT_AUDIT_ACTION_OPTIONS` with `'event_published'` and `'event_cancelled'` in `packages/api/src/domain/entities/assignment-audit.ts`
+- [x] T012 [P] Update existing entity tests for `Event` (add `markAsPast()`, `'past'` status) in `packages/api/tests/domain/entities/event.test.ts`
+- [x] T013 [P] Update existing entity tests for `Assignment` (add `'draft'`/`'cancelled'` statuses, `markAsPending()`, `cancel()`, new default) in `packages/api/tests/domain/entities/assignment.test.ts`
+- [x] T014 [P] Update existing entity tests for `TimeSlot` (add `status` field, `cancel()`) in `packages/api/tests/domain/entities/time-slot.test.ts`
+- [x] T015 [P] Update existing entity tests for `AssignmentAudit` (new action types) in `packages/api/tests/domain/entities/assignment-audit.test.ts`
+- [x] T016 Create barrel export at `packages/api/src/domain/assignment/index.ts` and re-export from `packages/api/src/domain/index.ts` and `packages/api/src/domain/errors/index.ts`
 
 **Checkpoint**: All entity extensions and error classes in place. Existing entity tests pass. Foundation ready.
 
@@ -103,7 +103,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T017 [US1] Create test file `packages/api/tests/domain/assignment-manager-service.test.ts` with `describe('Slot Generation — Equal Split')` block containing:
+- [x] T017 [US1] Create test file `packages/api/tests/domain/assignment-manager-service.test.ts` with `describe('Slot Generation — Equal Split')` block containing:
   - Test: even division (120min / 30min = 4 slots) — 4 non-overlapping slots
   - Test: remainder (65min / 30min) — 2×30min + 1×5min = 3 slots, `hasRemainder: true`
   - Test: single slot (30min / 30min = 1 slot)
@@ -114,7 +114,7 @@
   - Edge: event already has existing slots → `DuplicateSlotsError`
   - Isolation: all generated slots have correct `churchId` and `eventId`
 
-- [ ] T018 [P] [US1] Add `describe('Slot Generation — Template-Based')` block to same test file containing:
+- [x] T018 [P] [US1] Add `describe('Slot Generation — Template-Based')` block to same test file containing:
   - Test: 3 periods → 3 slots with correct labels and time ranges
   - Test: period with requirements → `SlotRequirement` entities created
   - Test: period with multiple requirements → multiple requirements per slot
@@ -125,7 +125,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Implement `generateSlots(request: SlotGenerationRequest): SlotGenerationResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts` with private helpers `generateEqualSplitSlots()` and `generateTemplateSlots()`
+- [x] T019 [US1] Implement `generateSlots(request: SlotGenerationRequest): SlotGenerationResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts` with private helpers `generateEqualSplitSlots()` and `generateTemplateSlots()`
 
 **Checkpoint**: Slot generation works for both strategies. Tests pass.
 
@@ -141,7 +141,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T020 [US2] Add `describe('Publish Schedule')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
+- [x] T020 [US2] Add `describe('Publish Schedule')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
   - Test: draft event + 5 draft assignments, all pass → event `published`, assignments `pending`, transitionedCount = 5
   - Test: draft event + 1 assignment → success (minimal case)
   - Edge: zero assignments → `EmptyScheduleError`
@@ -155,7 +155,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Implement `publish(request: PublishRequest): SchedulePublishResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
+- [x] T021 [US2] Implement `publish(request: PublishRequest): SchedulePublishResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
 
 **Checkpoint**: Publishing validates and transitions atomically. Tests pass.
 

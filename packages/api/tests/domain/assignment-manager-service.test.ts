@@ -3,7 +3,10 @@ import { AssignmentManagerService } from '../../src/domain/assignment/assignment
 import {
   DuplicateSlotsError,
   EmptyScheduleError,
+  InvalidEventDurationError,
+  InvalidSlotDurationError,
   InvalidStateTransitionError,
+  PastEventError,
   PublishValidationError,
 } from '../../src/domain/assignment/errors';
 import type {
@@ -201,7 +204,7 @@ describe('Slot Generation — Equal Split', () => {
           slotDurationMinutes: 0,
         },
       });
-    }).toThrow();
+    }).toThrow(InvalidSlotDurationError);
   });
 
   it('negative slot duration → domain error', () => {
@@ -219,7 +222,25 @@ describe('Slot Generation — Equal Split', () => {
           slotDurationMinutes: -10,
         },
       });
-    }).toThrow();
+    }).toThrow(InvalidSlotDurationError);
+  });
+
+  it('event duration <= 0 → domain error', () => {
+    const eventStartTime = new Date('2026-05-19T10:00:00Z');
+    const eventEndTime = new Date('2026-05-19T10:00:00Z');
+
+    expect(() => {
+      AssignmentManagerService.generateSlots({
+        churchId,
+        eventId,
+        eventStartTime,
+        eventEndTime,
+        strategy: {
+          kind: 'equal-split',
+          slotDurationMinutes: 30,
+        },
+      });
+    }).toThrow(InvalidEventDurationError);
   });
 
   it('event already has existing slots → DuplicateSlotsError', () => {
@@ -810,7 +831,7 @@ describe('Publish Schedule', () => {
         actorId: leaderId,
         assignmentValidationData: new Map(),
       });
-    }).toThrow(Error);
+    }).toThrow(PastEventError);
   });
 
   it('edge: 1 of 3 assignments fails hard constraint → PublishValidationError with 1 failure', () => {
@@ -1153,6 +1174,8 @@ describe('Publish Schedule', () => {
       expect(result.assignmentsDeleted).toBe(2);
       expect(result.audits).toHaveLength(0);
       expect(slot1.status).toBe('cancelled');
+      expect(a1.status).toBe('draft');
+      expect(a2.status).toBe('draft');
     });
 
     it('edge: already cancelled → InvalidStateTransitionError', () => {

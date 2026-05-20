@@ -8,7 +8,10 @@ import { IsolationBreachError } from '../errors';
 import {
   DuplicateSlotsError,
   EmptyScheduleError,
+  InvalidEventDurationError,
+  InvalidSlotDurationError,
   InvalidStateTransitionError,
+  PastEventError,
   PublishValidationError,
 } from './errors';
 import type {
@@ -45,25 +48,29 @@ export const AssignmentManagerService = {
     }
 
     if (request.strategy.kind === 'equal-split') {
-      return this.generateEqualSplitSlots(request, request.strategy);
+      return this.generateEqualSplitSlots({
+        request,
+        strategy: request.strategy,
+      });
     }
 
-    return this.generateTemplateSlots(request, request.strategy);
+    return this.generateTemplateSlots({ request, strategy: request.strategy });
   },
 
-  generateEqualSplitSlots(
-    request: SlotGenerationRequest,
-    strategy: EqualSplitStrategy,
-  ): SlotGenerationResult {
+  generateEqualSplitSlots(params: {
+    request: SlotGenerationRequest;
+    strategy: EqualSplitStrategy;
+  }): SlotGenerationResult {
+    const { request, strategy } = params;
     const { slotDurationMinutes } = strategy;
     if (slotDurationMinutes <= 0) {
-      throw new Error('Slot duration must be greater than zero');
+      throw new InvalidSlotDurationError();
     }
 
     const eventDurationMs =
       request.eventEndTime.getTime() - request.eventStartTime.getTime();
     if (eventDurationMs <= 0) {
-      throw new Error('Event duration must be greater than zero');
+      throw new InvalidEventDurationError();
     }
 
     const slotDurationMs = slotDurationMinutes * 60 * 1000;
@@ -126,10 +133,11 @@ export const AssignmentManagerService = {
     };
   },
 
-  generateTemplateSlots(
-    request: SlotGenerationRequest,
-    strategy: TemplateBasedStrategy,
-  ): SlotGenerationResult {
+  generateTemplateSlots(params: {
+    request: SlotGenerationRequest;
+    strategy: TemplateBasedStrategy;
+  }): SlotGenerationResult {
+    const { request, strategy } = params;
     const slots: GeneratedSlot[] = [];
 
     for (const period of strategy.periods) {
@@ -198,9 +206,7 @@ export const AssignmentManagerService = {
 
     // 2. Check if event is in the past
     if (event.startDate <= now) {
-      throw new Error(
-        'Cannot publish an event that has already started or is in the past',
-      );
+      throw new PastEventError();
     }
 
     // 3. Check for empty schedule
@@ -325,9 +331,6 @@ export const AssignmentManagerService = {
     // 5. Handle assignments based on original event status
     if (originalStatus === 'draft') {
       assignmentsDeleted = assignments.length;
-      for (const a of assignments) {
-        a.cancel();
-      }
     } else if (originalStatus === 'published') {
       for (const a of assignments) {
         if (a.status === 'pending' || a.status === 'confirmed') {
@@ -443,19 +446,45 @@ export const AssignmentManagerService = {
     const declinedSet = new Set(declinedVolunteerIds);
     const candidates: ReplacementCandidate[] = [];
 
+    // Pre-group blockouts and assignments by volunteer to optimize search complexity to O(B + A + N)
+    const blockoutsByVolunteer = new Map<string, typeof existingBlockouts>();
+    for (const b of existingBlockouts) {
+      if (!b.volunteerId) {
+        continue;
+      }
+      let list = blockoutsByVolunteer.get(b.volunteerId);
+      if (!list) {
+        list = [];
+        blockoutsByVolunteer.set(b.volunteerId, list);
+      }
+      list.push(b);
+    }
+
+    const assignmentsByVolunteer = new Map<
+      string,
+      typeof existingAssignments
+    >();
+    for (const a of existingAssignments) {
+      if (!a.volunteerId) {
+        continue;
+      }
+      let list = assignmentsByVolunteer.get(a.volunteerId);
+      if (!list) {
+        list = [];
+        assignmentsByVolunteer.set(a.volunteerId, list);
+      }
+      list.push(a);
+    }
+
     for (const volunteerId of qualifiedVolunteerIds) {
       // Filter out volunteers who have already declined this slot
       if (declinedSet.has(volunteerId)) {
         continue;
       }
 
-      // Filter blockouts and assignments for this specific volunteer
-      const volunteerBlockouts = existingBlockouts.filter(
-        (b) => b.volunteerId === volunteerId,
-      );
-      const volunteerAssignments = existingAssignments.filter(
-        (a) => a.volunteerId === volunteerId,
-      );
+      const volunteerBlockouts = blockoutsByVolunteer.get(volunteerId) ?? [];
+      const volunteerAssignments =
+        assignmentsByVolunteer.get(volunteerId) ?? [];
 
       // Check availability using AvailabilityEngine
       const availability = AvailabilityEngine.checkAvailability({

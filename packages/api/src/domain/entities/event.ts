@@ -5,6 +5,7 @@ export const EVENT_STATUS_OPTIONS = [
   'draft',
   'published',
   'cancelled',
+  'past',
 ] as const;
 export type EventStatus = (typeof EVENT_STATUS_OPTIONS)[number];
 
@@ -79,6 +80,11 @@ export class Event extends Entity<EventProps> {
 
   public cancel(): void {
     this._props.status = 'cancelled';
+    this._updatedAt = new Date();
+  }
+
+  public markAsPast(): void {
+    this._props.status = 'past';
     this._updatedAt = new Date();
   }
 }

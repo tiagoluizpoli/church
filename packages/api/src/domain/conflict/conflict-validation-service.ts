@@ -163,6 +163,18 @@ export const ConflictValidationService = {
   },
 
   /**
+   * Validates only the hard constraints. Throws HardConstraintError on violation.
+   */
+  validateHardConstraints(
+    request: Omit<
+      ValidationRequest,
+      'availabilityResult' | 'serviceCount' | 'fairnessThreshold'
+    >,
+  ): void {
+    validateHardConstraints(request as ValidationRequest);
+  },
+
+  /**
    * Authorizes a leader override of soft conflicts and returns an audit record.
    * Caller is responsible for persisting the returned AssignmentAudit entity.
    */

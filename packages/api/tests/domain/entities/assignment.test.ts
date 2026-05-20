@@ -14,7 +14,7 @@ describe('Assignment Entity', () => {
     expect(assignment.slotId).toBe('t1');
     expect(assignment.volunteerId).toBe('v1');
     expect(assignment.roleId).toBe('r1');
-    expect(assignment.status).toBe('pending');
+    expect(assignment.status).toBe('draft');
     expect(assignment.assignedAt).toBeInstanceOf(Date);
   });
 
@@ -26,6 +26,9 @@ describe('Assignment Entity', () => {
       roleId: 'r1',
     });
 
+    expect(assignment.status).toBe('draft');
+
+    assignment.markAsPending();
     expect(assignment.status).toBe('pending');
 
     assignment.confirm();
@@ -34,5 +37,8 @@ describe('Assignment Entity', () => {
     assignment.decline('Too busy');
     expect(assignment.status).toBe('declined');
     expect(assignment.reason).toBe('Too busy');
+
+    assignment.cancel();
+    expect(assignment.status).toBe('cancelled');
   });
 });

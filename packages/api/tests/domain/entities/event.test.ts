@@ -57,5 +57,8 @@ describe('Event Entity', () => {
 
     event.cancel();
     expect(event.status).toBe('cancelled');
+
+    event.markAsPast();
+    expect(event.status).toBe('past');
   });
 });

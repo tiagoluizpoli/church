@@ -6,6 +6,8 @@ export const ASSIGNMENT_AUDIT_ACTION_OPTIONS = [
   'updated',
   'deleted',
   'status_change',
+  'event_published',
+  'event_cancelled',
 ] as const;
 export type AssignmentAuditAction =
   (typeof ASSIGNMENT_AUDIT_ACTION_OPTIONS)[number];

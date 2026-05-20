@@ -20,6 +20,24 @@ describe('TimeSlot Entity', () => {
     expect(timeSlot.label).toBe('Morning Slot');
     expect(timeSlot.startTime).toBe(startTime);
     expect(timeSlot.endTime).toBe(endTime);
+    expect(timeSlot.status).toBe('active');
+  });
+
+  it('handles mutations correctly', () => {
+    const startTime = new Date('2026-05-15T10:00:00Z');
+    const endTime = new Date('2026-05-15T12:00:00Z');
+
+    const timeSlot = new TimeSlot({
+      churchId: 'c1',
+      eventId: 'e1',
+      startTime,
+      endTime,
+    });
+
+    expect(timeSlot.status).toBe('active');
+
+    timeSlot.cancel();
+    expect(timeSlot.status).toBe('cancelled');
   });
 
   it('throws InvalidDateRangeError if startTime >= endTime', () => {

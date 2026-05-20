@@ -1,9 +1,11 @@
 import { Entity } from '@church/core';
 
 export const ASSIGNMENT_STATUS_OPTIONS = [
+  'draft',
   'pending',
   'confirmed',
   'declined',
+  'cancelled',
 ] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];
 
@@ -29,7 +31,7 @@ export class Assignment extends Entity<AssignmentProps> {
     super(
       {
         ...props,
-        status: props.status ?? 'pending',
+        status: props.status ?? 'draft',
         assignedAt: props.assignedAt ?? new Date(),
       },
       id,
@@ -80,6 +82,16 @@ export class Assignment extends Entity<AssignmentProps> {
     if (reason !== undefined) {
       this._props.reason = reason;
     }
+    this._updatedAt = new Date();
+  }
+
+  public markAsPending(): void {
+    this._props.status = 'pending';
+    this._updatedAt = new Date();
+  }
+
+  public cancel(): void {
+    this._props.status = 'cancelled';
     this._updatedAt = new Date();
   }
 }

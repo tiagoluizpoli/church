@@ -171,7 +171,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T022 [US3] Add `describe('Cancel Event')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
+- [x] T022 [US3] Add `describe('Cancel Event')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
   - Test: published event + 3 slots + 8 assignments → all cancelled
   - Test: draft event + 2 draft assignments → assignments deleted (assignmentsDeleted = 2)
   - Edge: already cancelled → `InvalidStateTransitionError`
@@ -182,7 +182,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Implement `cancelEvent(request: CancelEventRequest): EventCancellationResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
+- [x] T023 [US3] Implement `cancelEvent(request: CancelEventRequest): EventCancellationResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
 
 **Checkpoint**: Cancellation cascades correctly with draft vs published differentiation. Tests pass.
 
@@ -198,7 +198,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T024 [US4] Add `describe('Confirm Assignment')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
+- [x] T024 [US4] Add `describe('Confirm Assignment')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
   - Test: pending → confirmed, audit returned with action `status_change`
   - Edge: already confirmed (idempotent) → success, returns `null` (no duplicate audit)
   - Edge: draft assignment → `InvalidStateTransitionError`
@@ -209,7 +209,7 @@
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Implement `confirmAssignment(request: ConfirmAssignmentRequest): AssignmentAudit | null` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
+- [x] T025 [US4] Implement `confirmAssignment(request: ConfirmAssignmentRequest): AssignmentAudit | null` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
 
 **Checkpoint**: Confirm is idempotent, produces audit records. Tests pass.
 
@@ -225,7 +225,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T026 [US5] Add `describe('Decline Assignment')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
+- [x] T026 [US5] Add `describe('Decline Assignment')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
   - Test: pending + reason → declined, audit with reason
   - Test: pending without reason → declined, audit with empty reason
   - Test: confirmed + reason → declined (withdraw after confirming)
@@ -237,7 +237,7 @@
 
 ### Implementation for User Story 5
 
-- [ ] T027 [US5] Implement `declineAssignment(request: DeclineAssignmentRequest): AssignmentAudit` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
+- [x] T027 [US5] Implement `declineAssignment(request: DeclineAssignmentRequest): AssignmentAudit` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
 
 **Checkpoint**: Decline with audit trail works. Tests pass.
 
@@ -253,7 +253,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T028 [US6] Add `describe('Find Replacement Volunteers')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
+- [x] T028 [US6] Add `describe('Find Replacement Volunteers')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
   - Test: 3 qualified, all available, none declined → 3 candidates sorted ascending by workload
   - Test: 3 qualified, 1 unavailable, 1 double-booked → 1 candidate
   - Edge: all unavailable → empty list
@@ -267,7 +267,7 @@
 
 ### Implementation for User Story 6
 
-- [ ] T029 [US6] Implement `findReplacements(request: ReplacementSearchRequest): ReplacementCandidate[]` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
+- [x] T029 [US6] Implement `findReplacements(request: ReplacementSearchRequest): ReplacementCandidate[]` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
 
 **Checkpoint**: Replacement search filters correctly and sorts by fairness. Tests pass.
 
@@ -283,7 +283,7 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T030 [US7] Add `describe('Lifecycle Transitions')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
+- [x] T030 [US7] Add `describe('Lifecycle Transitions')` block to `packages/api/tests/domain/assignment-manager-service.test.ts` containing:
   - Test: published event past end date → event `past`, pending → confirmed
   - Test: draft event past end date → event `cancelled`, assignments deleted
   - Edge: event end date in future → no transition (`transitioned: false`)
@@ -294,7 +294,7 @@
 
 ### Implementation for User Story 7
 
-- [ ] T031 [US7] Implement `transitionExpiredEvent(request: LifecycleTransitionRequest): LifecycleTransitionResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
+- [x] T031 [US7] Implement `transitionExpiredEvent(request: LifecycleTransitionRequest): LifecycleTransitionResult` in `packages/api/src/domain/assignment/assignment-manager-service.ts`
 
 **Checkpoint**: Lifecycle transitions work for all event states. Tests pass.
 
@@ -304,13 +304,13 @@
 
 **Purpose**: Final quality gates, barrel exports, and regression checks
 
-- [ ] T032 Add new error test cases (`PublishValidationError`, `InvalidStateTransitionError`, `EmptyScheduleError`, `DuplicateSlotsError`) to `packages/api/tests/domain/errors.test.ts`
-- [ ] T033 Run Biome lint check on all new files: `bunx biome check packages/api/src/domain/assignment/`
-- [ ] T034 Run full test suite: `bun run test --filter=api`
-- [ ] T035 Verify existing `AvailabilityEngine` tests still pass (no regression): `bun run test packages/api/tests/domain/availability-engine.test.ts`
-- [ ] T036 Verify existing `ConflictValidationService` tests still pass (no regression): `bun run test packages/api/tests/domain/conflict-validation-service.test.ts`
-- [ ] T037 Verify ALL existing entity tests still pass after extensions: `bun run test packages/api/tests/domain/entities/`
-- [ ] T038 Run quickstart.md validation — verify usage examples compile conceptually against the implemented API
+- [x] T032 Add new error test cases (`PublishValidationError`, `InvalidStateTransitionError`, `EmptyScheduleError`, `DuplicateSlotsError`) to `packages/api/tests/domain/errors.test.ts`
+- [x] T033 Run Biome lint check on all new files: `bunx biome check packages/api/src/domain/assignment/`
+- [x] T034 Run full test suite: `bun run test --filter=api`
+- [x] T035 Verify existing `AvailabilityEngine` tests still pass (no regression): `bun run test packages/api/tests/domain/availability-engine.test.ts`
+- [x] T036 Verify existing `ConflictValidationService` tests still pass (no regression): `bun run test packages/api/tests/domain/conflict-validation-service.test.ts`
+- [x] T037 Verify ALL existing entity tests still pass after extensions: `bun run test packages/api/tests/domain/entities/`
+- [x] T038 Run quickstart.md validation — verify usage examples compile conceptually against the implemented API
 
 ---
 

@@ -6,6 +6,7 @@ export type TimeRange = {
 export type BlockoutContext = {
   id: string;
   churchId: string;
+  volunteerId?: string;
   timeRange: TimeRange;
   isAllDay: boolean; // For reference, though start/end must be pre-calculated
 };
@@ -13,6 +14,7 @@ export type BlockoutContext = {
 export type AssignmentContext = {
   id: string;
   churchId: string;
+  volunteerId?: string;
   timeRange: TimeRange;
   status: 'pending' | 'confirmed' | 'declined';
 };

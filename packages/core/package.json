@@ -4,9 +4,11 @@
   "type": "module",
   "exports": {
     ".": {
+      "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
     "./*": {
+      "types": "./src/*.ts",
       "default": "./src/*.ts"
     }
   },
@@ -15,7 +17,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@base-fullstack-template/config": "workspace:*",
+    "@church/config": "workspace:*",
     "typescript": "^5",
     "vitest": "catalog:"
   }

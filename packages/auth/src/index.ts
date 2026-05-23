@@ -1,6 +1,6 @@
-import { createDb } from '@base-fullstack-template/db';
-import * as schema from '@base-fullstack-template/db/schema/auth';
-import { env } from '@base-fullstack-template/env/server';
+import { createDb } from '@church/db';
+import * as schema from '@church/db/schema/auth';
+import { env } from '@church/env/server';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 

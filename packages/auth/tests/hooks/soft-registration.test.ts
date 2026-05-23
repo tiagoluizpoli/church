@@ -1,4 +1,4 @@
-import * as schema from '@base-fullstack-template/db/schema';
+import * as schema from '@church/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { handleSoftRegistration } from '../../src/hooks/soft-registration';

@@ -1,5 +1,5 @@
-import { db } from '@base-fullstack-template/db';
-import * as schema from '@base-fullstack-template/db/schema';
+import { db } from '@church/db';
+import * as schema from '@church/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 export async function handleSoftRegistration(userId: string) {

@@ -1,4 +1,4 @@
-import * as schema from '@base-fullstack-template/db/schema';
+import * as schema from '@church/db/schema';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -7,6 +7,7 @@ const pool = new pg.Pool({
   connectionString:
     process.env.DATABASE_URL ||
     'postgresql://postgres:postgres@localhost:5432/church',
+  max: 2,
 });
 
 export const testDb = drizzle(pool, { schema });

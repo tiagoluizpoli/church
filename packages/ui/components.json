@@ -12,11 +12,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@base-fullstack-template/ui/components",
-    "utils": "@base-fullstack-template/ui/lib/utils",
-    "hooks": "@base-fullstack-template/ui/hooks",
-    "lib": "@base-fullstack-template/ui/lib",
-    "ui": "@base-fullstack-template/ui/components"
+    "components": "@church/ui/components",
+    "utils": "@church/ui/lib/utils",
+    "hooks": "@church/ui/hooks",
+    "lib": "@church/ui/lib",
+    "ui": "@church/ui/components"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

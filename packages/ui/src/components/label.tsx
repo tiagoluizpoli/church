@@ -1,4 +1,4 @@
-import { cn } from '@base-fullstack-template/ui/lib/utils';
+import { cn } from '@church/ui/lib/utils';
 import type * as React from 'react';
 
 function Label({ className, ...props }: React.ComponentProps<'label'>) {

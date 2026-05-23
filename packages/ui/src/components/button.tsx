@@ -1,5 +1,5 @@
-import { cn } from '@base-fullstack-template/ui/lib/utils';
 import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { cn } from '@church/ui/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 const buttonVariants = cva(

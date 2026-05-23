@@ -1,11 +1,11 @@
 {
-  "extends": "@base-fullstack-template/config/tsconfig.base.json",
+  "extends": "@church/config/tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
-      "@base-fullstack-template/ui/*": ["./src/*"]
+      "@church/ui/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

@@ -1,4 +1,4 @@
-import { cn } from '@base-fullstack-template/ui/lib/utils';
+import { cn } from '@church/ui/lib/utils';
 
 function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (

@@ -1,4 +1,4 @@
-# base-fullstack-template
+# church
 
 This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Fastify, TRPC, and more.
 
@@ -69,7 +69,7 @@ npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
 Import shared components like this:
 
 ```tsx
-import { Button } from "@base-fullstack-template/ui/components/button";
+import { Button } from "@church/ui/components/button";
 ```
 
 ### Add app-specific blocks
@@ -83,13 +83,12 @@ If you want to add app-specific blocks instead of shared primitives, run the sha
 ## Project Structure
 
 ```
-base-fullstack-template/
+church/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Router)
-│   └── server/      # Backend API (Fastify, TRPC)
+│   └── server/      # Backend API (Fastify, tRPC, domain & routers)
 ├── packages/
 │   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
 │   ├── auth/        # Authentication configuration & logic
 │   └── db/          # Database schema & queries
 ```

@@ -1,19 +1,12 @@
 <!--
 ## Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
+- Version change: 1.1.0 → 1.2.0
 - List of modified principles:
-  - [PRINCIPLE_1_NAME] → I. Domain-First Architecture
-  - [PRINCIPLE_2_NAME] → II. Full-Stack Type Safety
-  - [PRINCIPLE_3_NAME] → III. Container-Ready Infrastructure
-  - [PRINCIPLE_4_NAME] → IV. Environment Discipline
-  - [PRINCIPLE_5_NAME] → V. Automated Code Standards
-  - [PRINCIPLE_6_NAME] → VI. Maximum Context Specification
-- Added sections: Technology Stack, Core Rules, Governance
+  - IV. Environment Discipline (updated namespace reference)
+- Added sections: None
 - Removed sections: None
-- Templates requiring updates:
-  - .specify/templates/plan-template.md (✅ updated)
-  - .specify/templates/spec-template.md (✅ updated)
-  - .specify/templates/tasks-template.md (✅ updated)
+- Added rules: Monorepo Boundaries, Workspace Scope (Core Rules)
+- Templates requiring updates: None
 -->
 
 # Church Constitution
@@ -34,7 +27,7 @@ single source of truth for the local development environment.
 
 ### IV. Environment Discipline
 Environment variables must be strictly managed via `.env` files and validated using the 
-`@base-fullstack-template/env` package. Never commit secrets; always provide `.env.example` 
+`@church/env` package. Never commit secrets; always provide `.env.example` 
 templates.
 
 ### V. Automated Code Standards
@@ -61,6 +54,8 @@ When planning or specifying a feature (e.g., via the `speckit.specify` or `speck
 ## Core Rules
 
 - **Domain Driven**: Business logic must be separated from framework-specific code.
+- **Monorepo Boundaries**: Shared packages (`packages/*`) must only contain generic, non-application-specific code (e.g., `@church/db` for database connection and schema, `@church/env` for env schemas and parsing, `@church/ui` for generic UI primitives). All application-specific server implementation, domain logic, and routes must live inside the server application (`apps/server`, named `@church/server`). Client applications must import server API definitions via type-only imports (`import type { AppRouter }`).
+- **Workspace Scope**: All package and application names are scoped under the `@church` namespace.
 - **Atomic Commits**: Use conventional commits and keep changes small and focused.
 - **Strict Linting**: Biome must pass before any commit.
 - **Documentation First**: Significant changes must be planned in the `planning/` directory.
@@ -72,4 +67,4 @@ When planning or specifying a feature (e.g., via the `speckit.specify` or `speck
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-03
+**Version**: 1.2.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-22

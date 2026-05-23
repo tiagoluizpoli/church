@@ -1,7 +1,7 @@
 # Local Agent Context
 
 ## Project Architecture
-- **Backend**: Domain-Driven Design (DDD) + Clean Architecture.
+- **Backend**: Domain-Driven Design (DDD) + Clean Architecture. All domain logic, routers, and services are implemented inside the server application (`apps/server`, named `@church/server`).
 - **Frontend**: Vite + React 19 (CSR). Follow [Bulletproof React](https://github.com/alan2207/bulletproof-react) structure:
   - `src/app`: Application-level routes, providers, and router.
   - `src/features/[name]`: Feature-specific logic (api, components, hooks, types).

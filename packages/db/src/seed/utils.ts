@@ -1,4 +1,4 @@
-import { env } from '@base-fullstack-template/env/server';
+import { env } from '@church/env/server';
 import { sql } from 'drizzle-orm';
 import { db } from '../client';
 

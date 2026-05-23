@@ -1,4 +1,4 @@
-import { env } from '@base-fullstack-template/env/server';
+import { env } from '@church/env/server';
 import { faker } from '@faker-js/faker';
 import { SEED_CONFIG } from './constants';
 import { generateAssignmentsAndAvailability } from './factories/assignment.factory';

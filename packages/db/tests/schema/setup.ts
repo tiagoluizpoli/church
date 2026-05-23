@@ -7,6 +7,7 @@ const pool = new pg.Pool({
   connectionString:
     process.env.DATABASE_URL ||
     'postgresql://postgres:postgres@localhost:5432/church',
+  max: 2,
 });
 
 export const testDb = drizzle(pool, { schema });

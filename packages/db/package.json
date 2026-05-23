@@ -1,14 +1,17 @@
 {
-  "name": "@base-fullstack-template/db",
+  "name": "@church/db",
   "type": "module",
   "exports": {
     ".": {
+      "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
     "./schema": {
+      "types": "./src/schema/index.ts",
       "default": "./src/schema/index.ts"
     },
     "./*": {
+      "types": "./src/*.ts",
       "default": "./src/*.ts"
     }
   },
@@ -29,7 +32,7 @@
     "test": "bun --env-file=../../.env vitest run"
   },
   "dependencies": {
-    "@base-fullstack-template/env": "workspace:*",
+    "@church/env": "workspace:*",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "catalog:",
@@ -38,7 +41,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@base-fullstack-template/config": "workspace:*",
+    "@church/config": "workspace:*",
     "@faker-js/faker": "^10.4.0",
     "@types/pg": "catalog:",
     "drizzle-kit": "^0.31.8",

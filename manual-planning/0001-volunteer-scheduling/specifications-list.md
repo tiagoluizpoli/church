@@ -16,14 +16,14 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 - **[✅ Spec D1: Domain Entities](./specifications/D1-domain-entities.md)**: Pure TypeScript interfaces for core entities (Church, Volunteer, Assignment, etc.).
 - **[✅ Spec L1: Availability Engine](../../specs/006-availability-engine/spec.md)**: Calculating volunteer states and workload balance.
   - *Refines:* [06-availability-engine.md](./specifications/06-availability-engine.md)
-- **[Spec L2: Conflict & Validation Service](./specifications/L2-conflict-service.md)**: Rules for double-booking and override auditing.
+- **[✅ Spec L2: Conflict & Validation Service](../../specs/007-conflict-validation-service/spec.md)**: Rules for double-booking and override auditing.
   - *Refines:* [07-conflict-validation.md](./specifications/07-conflict-validation.md)
-- **[Spec L3: Slot & Assignment Manager](./specifications/L3-assignment-manager.md)**: Lifecycle rules (Draft vs Published), cancellations, and substitutions.
+- **[✅ Spec L3: Slot & Assignment Manager](../../specs/008-assignment-manager/spec.md)**: Lifecycle rules (Draft vs Published), cancellations, and substitutions.
   - *Refines:* [08-slot-generator.md](./specifications/08-slot-generator.md), [12-lifecycle-rules.md](./specifications/12-lifecycle-rules.md)
 
 ## Phase 3: Infrastructure Layer (The Repositories)
 *Objective: Define the data access contracts and their implementations.*
-- **[Spec R1: Repository Interfaces](./specifications/R1-repo-interfaces.md)**: TypeScript interfaces (Contracts) for all entities, returning Domain Entities (Spec D1).
+- **[✅ Spec R1: Repository Interfaces](../../specs/009-repo-interfaces/spec.md)**: TypeScript interfaces (Contracts) for all entities, returning Domain Entities (Spec D1).
   - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
 - **[Spec R2: Drizzle Implementations](./specifications/R2-drizzle-repos.md)**: Concrete classes with `churchId` isolation and mapping between Schema (Spec S1) and Domain Entities (Spec D1).
   - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)

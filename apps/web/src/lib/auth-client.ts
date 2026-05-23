@@ -1,4 +1,4 @@
-import { env } from '@base-fullstack-template/env/web';
+import { env } from '@church/env/web';
 import { createAuthClient } from 'better-auth/react';
 
 export const authClient = createAuthClient({

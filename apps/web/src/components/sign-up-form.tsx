@@ -1,6 +1,6 @@
-import { Button } from '@base-fullstack-template/ui/components/button';
-import { Input } from '@base-fullstack-template/ui/components/input';
-import { Label } from '@base-fullstack-template/ui/components/label';
+import { Button } from '@church/ui/components/button';
+import { Input } from '@church/ui/components/input';
+import { Label } from '@church/ui/components/label';
 import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';

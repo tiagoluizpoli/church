@@ -1,4 +1,4 @@
-import { Button } from '@base-fullstack-template/ui/components/button';
+import { Button } from '@church/ui/components/button';
 import { Clock, Globe } from 'lucide-react';
 import { useTimezone } from '../hooks/use-timezone';
 

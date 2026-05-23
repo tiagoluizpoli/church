@@ -1,4 +1,4 @@
-import { Toaster } from '@base-fullstack-template/ui/components/sonner';
+import { Toaster } from '@church/ui/components/sonner';
 import type { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import {
@@ -23,11 +23,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: 'base-fullstack-template',
+        title: 'church',
       },
       {
         name: 'description',
-        content: 'base-fullstack-template is a web application',
+        content: 'church is a web application',
       },
     ],
     links: [

@@ -1,4 +1,4 @@
-import { Button } from '@base-fullstack-template/ui/components/button';
+import { Button } from '@church/ui/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,8 +7,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@base-fullstack-template/ui/components/dropdown-menu';
-import { Skeleton } from '@base-fullstack-template/ui/components/skeleton';
+} from '@church/ui/components/dropdown-menu';
+import { Skeleton } from '@church/ui/components/skeleton';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { authClient } from '@/lib/auth-client';
 

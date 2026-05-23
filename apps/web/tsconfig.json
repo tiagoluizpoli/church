@@ -13,7 +13,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@base-fullstack-template/ui/*": ["../../packages/ui/src/*"]
+      "@church/ui/*": ["../../packages/ui/src/*"],
+      "server/*": ["../server/*"]
     }
   }
 }

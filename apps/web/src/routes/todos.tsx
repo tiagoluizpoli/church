@@ -1,13 +1,13 @@
-import { Button } from '@base-fullstack-template/ui/components/button';
+import { Button } from '@church/ui/components/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@base-fullstack-template/ui/components/card';
-import { Checkbox } from '@base-fullstack-template/ui/components/checkbox';
-import { Input } from '@base-fullstack-template/ui/components/input';
+} from '@church/ui/components/card';
+import { Checkbox } from '@church/ui/components/checkbox';
+import { Input } from '@church/ui/components/input';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Loader2, Trash2 } from 'lucide-react';

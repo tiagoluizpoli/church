@@ -12,10 +12,9 @@
     "generate-pwa-assets": "pwa-assets-generator"
   },
   "dependencies": {
-    "@base-fullstack-template/api": "workspace:*",
-    "@base-fullstack-template/auth": "workspace:*",
-    "@base-fullstack-template/env": "workspace:*",
-    "@base-fullstack-template/ui": "workspace:*",
+    "server": "workspace:*",
+    "@church/env": "workspace:*",
+    "@church/ui": "workspace:*",
     "@hookform/resolvers": "^5.1.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-form": "^1.28.0",
@@ -37,7 +36,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@base-fullstack-template/config": "workspace:*",
+    "@church/config": "workspace:*",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-router-devtools": "^1.141.1",
     "@tanstack/router-plugin": "^1.141.1",

@@ -1,8 +1,8 @@
-import type { AppRouter } from '@base-fullstack-template/api/routers/index';
-import { env } from '@base-fullstack-template/env/web';
+import { env } from '@church/env/web';
 import { QueryCache, QueryClient } from '@tanstack/react-query';
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
+import type { AppRouter } from 'server/src/routers/index';
 import { toast } from 'sonner';
 
 export const queryClient = new QueryClient({

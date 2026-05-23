@@ -4,9 +4,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@base-fullstack-template/ui/components/card';
-import { Input } from '@base-fullstack-template/ui/components/input';
-import { Label } from '@base-fullstack-template/ui/components/label';
+} from '@church/ui/components/card';
+import { Input } from '@church/ui/components/input';
+import { Label } from '@church/ui/components/label';
 import { Clock, Info } from 'lucide-react';
 import { useTimezone } from '../../../shared/hooks/use-timezone';
 

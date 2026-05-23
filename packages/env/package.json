@@ -1,11 +1,17 @@
 {
-  "name": "@base-fullstack-template/env",
+  "name": "@church/env",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
-    "./server": "./src/server.ts",
-    "./web": "./src/web.ts"
+    "./server": {
+      "types": "./src/server.ts",
+      "default": "./src/server.ts"
+    },
+    "./web": {
+      "types": "./src/web.ts",
+      "default": "./src/web.ts"
+    }
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.13.1",
@@ -13,7 +19,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@base-fullstack-template/config": "workspace:*",
+    "@church/config": "workspace:*",
     "@types/bun": "catalog:",
     "typescript": "^5"
   }

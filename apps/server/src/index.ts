@@ -1,16 +1,13 @@
-import { createContext } from '@base-fullstack-template/api/context';
-import {
-  type AppRouter,
-  appRouter,
-} from '@base-fullstack-template/api/routers/index';
-import { auth } from '@base-fullstack-template/auth';
-import { env } from '@base-fullstack-template/env/server';
+import { auth } from '@church/auth';
+import { env } from '@church/env/server';
 import fastifyCors from '@fastify/cors';
 import {
   type FastifyTRPCPluginOptions,
   fastifyTRPCPlugin,
 } from '@trpc/server/adapters/fastify';
 import Fastify from 'fastify';
+import { createContext } from './context';
+import { type AppRouter, appRouter } from './routers/index';
 
 const baseCorsConfig = {
   origin: env.CORS_ORIGIN,

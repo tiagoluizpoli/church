@@ -2,30 +2,45 @@
   "name": "server",
   "type": "module",
   "main": "src/index.ts",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
   "scripts": {
     "build": "tsdown",
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun --env-file=../../.env run --hot src/index.ts",
-    "start": "bun run dist/index.mjs"
+    "start": "bun run dist/index.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@base-fullstack-template/api": "workspace:*",
-    "@base-fullstack-template/auth": "workspace:*",
-    "@base-fullstack-template/db": "workspace:*",
-    "@base-fullstack-template/env": "workspace:*",
+    "@church/auth": "workspace:*",
+    "@church/db": "workspace:*",
+    "@church/env": "workspace:*",
+    "@church/core": "workspace:*",
     "@fastify/cors": "^11.0.1",
     "@hono/trpc-server": "^0.4.0",
+    "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
+    "@types/pg": "catalog:",
     "better-auth": "catalog:",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
     "fastify": "^5.3.3",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@base-fullstack-template/config": "workspace:*",
+    "@church/config": "workspace:*",
     "@types/bun": "catalog:",
     "tsdown": "^0.16.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "catalog:"
   }
 }

@@ -135,6 +135,36 @@ describe('Slot Generation — Equal Split', () => {
     }
   });
 
+  it('two-day event (2880min / 60min) — 48 slots with day-aware labels', () => {
+    const eventStartTime = new Date('2026-05-19T00:00:00Z');
+    const eventEndTime = new Date('2026-05-21T00:00:00Z');
+
+    const result = AssignmentManagerService.generateSlots({
+      churchId,
+      eventId,
+      eventStartTime,
+      eventEndTime,
+      strategy: {
+        kind: 'equal-split',
+        slotDurationMinutes: 60,
+      },
+    });
+
+    expect(result.totalCount).toBe(48);
+    expect(result.hasRemainder).toBe(false);
+    expect(result.slots).toHaveLength(48);
+
+    const firstSlot = result.slots[0]?.slot;
+    const dayTwoFirstSlot = result.slots[24]?.slot;
+    const lastSlot = result.slots[47]?.slot;
+
+    expect(firstSlot?.label).toBe('2026-05-19 - Slot 1');
+    expect(dayTwoFirstSlot?.label).toBe('2026-05-20 - Slot 25');
+    expect(lastSlot?.label).toBe('2026-05-20 - Slot 48');
+    expect(firstSlot?.startTime.getTime()).toBe(eventStartTime.getTime());
+    expect(lastSlot?.endTime.getTime()).toBe(eventEndTime.getTime());
+  });
+
   it('slot duration exceeds event duration — 1 slot = full event', () => {
     const eventStartTime = new Date('2026-05-19T10:00:00Z');
     const eventEndTime = new Date('2026-05-19T10:30:00Z');
@@ -1043,6 +1073,68 @@ describe('Publish Schedule', () => {
     expect(a2.status).toBe('draft');
   });
 
+  it('edge: mixed draft/non-draft assignments → only draft assignments are transitioned', () => {
+    const event = new Event({
+      churchId,
+      ministryId: 'ministry-1',
+      title: 'Sunday Service',
+      startDate: new Date('2026-05-19T10:00:00Z'),
+      endDate: new Date('2026-05-19T12:00:00Z'),
+      status: 'draft',
+    });
+
+    const draftAssignment = new Assignment({
+      churchId,
+      slotId: 'slot-draft',
+      volunteerId: 'vol-draft',
+      roleId: 'role-draft',
+      status: 'draft',
+    });
+    const confirmedAssignment = new Assignment({
+      churchId,
+      slotId: 'slot-confirmed',
+      volunteerId: 'vol-confirmed',
+      roleId: 'role-confirmed',
+      status: 'confirmed',
+    });
+    const declinedAssignment = new Assignment({
+      churchId,
+      slotId: 'slot-declined',
+      volunteerId: 'vol-declined',
+      roleId: 'role-declined',
+      status: 'declined',
+    });
+
+    const validationData = new Map();
+    validationData.set(draftAssignment.id, {
+      volunteerId: draftAssignment.volunteerId,
+      ministryId: 'ministry-1',
+      roleId: draftAssignment.roleId,
+      slotId: draftAssignment.slotId,
+      eventStartTime: event.startDate,
+      volunteerQualifiedRoleIds: [draftAssignment.roleId],
+      volunteerMinistryIds: ['ministry-1'],
+      existingSlotIds: [],
+    });
+
+    const result = AssignmentManagerService.publish({
+      churchId,
+      event,
+      assignments: [draftAssignment, confirmedAssignment, declinedAssignment],
+      now,
+      actorId: leaderId,
+      assignmentValidationData: validationData,
+    });
+
+    expect(event.status).toBe('published');
+    expect(result.transitionedCount).toBe(1);
+    expect(result.audits).toHaveLength(1);
+    expect(result.audits?.[0]?.assignmentId).toBe(draftAssignment.id);
+    expect(draftAssignment.status).toBe('pending');
+    expect(confirmedAssignment.status).toBe('confirmed');
+    expect(declinedAssignment.status).toBe('declined');
+  });
+
   describe('Cancel Event', () => {
     it('published event + 3 slots + 3 assignments → all cancelled', () => {
       const event = new Event({
@@ -1787,6 +1879,56 @@ describe('Publish Schedule', () => {
       });
 
       expect(candidates).toEqual([]);
+    });
+
+    it('edge: mixed filtering (unavailable + declined + overlapping + valid) → 1 candidate', () => {
+      const workloadMap = new Map([
+        ['vol-valid', 2],
+        ['vol-unavailable', 0],
+        ['vol-overlap', 1],
+        ['vol-declined', 4],
+      ]);
+
+      const existingBlockouts: BlockoutContext[] = [
+        {
+          id: 'blk-1',
+          churchId,
+          volunteerId: 'vol-unavailable',
+          timeRange: slotTimeRange,
+          isAllDay: false,
+        },
+      ];
+
+      const existingAssignments: AssignmentContext[] = [
+        {
+          id: 'asg-1',
+          churchId,
+          volunteerId: 'vol-overlap',
+          timeRange: slotTimeRange,
+          status: 'confirmed',
+        },
+      ];
+
+      const candidates = AssignmentManagerService.findReplacements({
+        churchId,
+        slotId: 'slot-1',
+        roleId: 'role-1',
+        slotTimeRange,
+        qualifiedVolunteerIds: [
+          'vol-valid',
+          'vol-unavailable',
+          'vol-overlap',
+          'vol-declined',
+        ],
+        declinedVolunteerIds: ['vol-declined'],
+        existingAssignments,
+        existingBlockouts,
+        workloadMap,
+      });
+
+      expect(candidates).toEqual([
+        { volunteerId: 'vol-valid', workloadCount: 2 },
+      ]);
     });
 
     it('edge: workload tie — both returned, stable order', () => {

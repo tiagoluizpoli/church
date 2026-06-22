@@ -75,6 +75,9 @@ export const AssignmentManagerService = {
 
     const slotDurationMs = slotDurationMinutes * 60 * 1000;
     const slots: GeneratedSlot[] = [];
+    const spansMultipleDays =
+      request.eventStartTime.toISOString().slice(0, 10) !==
+      request.eventEndTime.toISOString().slice(0, 10);
 
     // If the slot duration matches or exceeds the event duration
     if (slotDurationMs >= eventDurationMs) {
@@ -83,7 +86,11 @@ export const AssignmentManagerService = {
         eventId: request.eventId,
         startTime: request.eventStartTime,
         endTime: request.eventEndTime,
-        label: 'Slot 1',
+        label: this.buildEqualSplitSlotLabel({
+          slotStartTime: request.eventStartTime,
+          slotNumber: 1,
+          spansMultipleDays,
+        }),
       });
       slots.push({ slot, requirements: [] });
 
@@ -107,7 +114,11 @@ export const AssignmentManagerService = {
         eventId: request.eventId,
         startTime: slotStart,
         endTime: slotEnd,
-        label: `Slot ${i + 1}`,
+        label: this.buildEqualSplitSlotLabel({
+          slotStartTime: slotStart,
+          slotNumber: i + 1,
+          spansMultipleDays,
+        }),
       });
       slots.push({ slot, requirements: [] });
       currentStart = slotEnd.getTime();
@@ -121,7 +132,11 @@ export const AssignmentManagerService = {
         eventId: request.eventId,
         startTime: slotStart,
         endTime: slotEnd,
-        label: `Slot ${fullSlotsCount + 1}`,
+        label: this.buildEqualSplitSlotLabel({
+          slotStartTime: slotStart,
+          slotNumber: fullSlotsCount + 1,
+          spansMultipleDays,
+        }),
       });
       slots.push({ slot, requirements: [] });
     }
@@ -131,6 +146,19 @@ export const AssignmentManagerService = {
       totalCount: slots.length,
       hasRemainder,
     };
+  },
+
+  buildEqualSplitSlotLabel(params: {
+    slotStartTime: Date;
+    slotNumber: number;
+    spansMultipleDays: boolean;
+  }): string {
+    const { slotStartTime, slotNumber, spansMultipleDays } = params;
+    if (!spansMultipleDays) {
+      return `Slot ${slotNumber}`;
+    }
+
+    return `${slotStartTime.toISOString().slice(0, 10)} - Slot ${slotNumber}`;
   },
 
   generateTemplateSlots(params: {
@@ -214,10 +242,14 @@ export const AssignmentManagerService = {
       throw new EmptyScheduleError();
     }
 
+    const draftAssignments = assignments.filter(
+      (assignment) => assignment.status === 'draft',
+    );
+
     // 4. Validate hard constraints
     const failures: HardConstraintFailure[] = [];
 
-    for (const a of assignments) {
+    for (const a of draftAssignments) {
       const data = assignmentValidationData.get(a.id);
       if (!data) {
         failures.push({
@@ -267,12 +299,12 @@ export const AssignmentManagerService = {
 
     // 5. Apply transitions atomically
     event.publish();
-    for (const a of assignments) {
+    for (const a of draftAssignments) {
       a.markAsPending();
     }
 
     // 6. Create audits
-    const audits = assignments.map(
+    const audits = draftAssignments.map(
       (a) =>
         new AssignmentAudit({
           churchId,
@@ -285,7 +317,7 @@ export const AssignmentManagerService = {
 
     return {
       event,
-      transitionedCount: assignments.length,
+      transitionedCount: draftAssignments.length,
       warnings: [],
       audits,
     };

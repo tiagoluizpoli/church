@@ -180,7 +180,7 @@ describe('Assignments and Audit Schema', () => {
       .values({
         churchId,
         assignmentId: newAssignment.id,
-        leaderId: userId,
+        actorId: userId,
         action: 'created',
         reason: 'Manually assigned',
       })
@@ -188,7 +188,7 @@ describe('Assignments and Audit Schema', () => {
 
     if (!auditEntry) throw new Error('Failed to create audit entry');
     expect(auditEntry).toBeDefined();
-    expect(auditEntry.leaderId).toBe(userId);
+    expect(auditEntry.actorId).toBe(userId);
     expect(auditEntry.reason).toBe('Manually assigned');
   });
 
@@ -223,7 +223,7 @@ describe('Assignments and Audit Schema', () => {
     await testDb.insert(assignmentAudit).values({
       churchId,
       assignmentId: newAssignment.id,
-      leaderId: userId,
+      actorId: userId,
       action: 'created',
     });
 

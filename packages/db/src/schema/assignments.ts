@@ -98,7 +98,7 @@ export const assignmentAudit = pgTable('assignment_audit', {
   assignmentId: uuid('assignment_id')
     .notNull()
     .references(() => assignment.id, { onDelete: 'cascade' }),
-  leaderId: text('leader_id')
+  actorId: text('actor_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
   action: auditActionEnum('action').notNull(),

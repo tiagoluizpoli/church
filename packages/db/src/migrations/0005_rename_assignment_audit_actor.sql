@@ -1,0 +1,2 @@
+ALTER TABLE "assignment_audit" RENAME COLUMN "leader_id" TO "actor_id";--> statement-breakpoint
+ALTER TABLE "assignment_audit" RENAME CONSTRAINT "assignment_audit_leader_id_user_id_fk" TO "assignment_audit_actor_id_user_id_fk";

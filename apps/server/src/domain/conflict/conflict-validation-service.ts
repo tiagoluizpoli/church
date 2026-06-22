@@ -139,7 +139,7 @@ function createOverrideAudit(
   return new AssignmentAudit({
     churchId: request.churchId,
     assignmentId: request.assignmentId,
-    leaderId: request.caller.userId,
+    actorId: request.caller.userId,
     action: 'created',
     reason: request.overrideReason,
     overrideConflictTypes: conflictTypes,

@@ -260,13 +260,13 @@ describe('ConflictValidationService', () => {
   // ---------------------------------------------------------------------------
 
   describe('Override Audit Creation', () => {
-    it('returns an AssignmentAudit with correct leaderId, churchId, reason, and overrideConflictTypes', () => {
+    it('returns an AssignmentAudit with correct actorId, churchId, reason, and overrideConflictTypes', () => {
       const audit = ConflictValidationService.authorizeOverride(
         baseOverride,
         conflictReport,
       );
       expect(audit).toBeInstanceOf(AssignmentAudit);
-      expect(audit.leaderId).toBe('leader_001');
+      expect(audit.actorId).toBe('leader_001');
       expect(audit.churchId).toBe('chu_123');
       expect(audit.reason).toBe('Ministry need');
       expect(audit.overrideConflictTypes).toContain('UNAVAILABLE');

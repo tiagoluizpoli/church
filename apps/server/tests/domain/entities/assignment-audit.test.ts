@@ -6,13 +6,13 @@ describe('AssignmentAudit Entity', () => {
     const audit = new AssignmentAudit({
       churchId: 'c1',
       assignmentId: 'a1',
-      leaderId: 'u1',
+      actorId: 'u1',
       action: 'created',
     });
 
     expect(audit.churchId).toBe('c1');
     expect(audit.assignmentId).toBe('a1');
-    expect(audit.leaderId).toBe('u1');
+    expect(audit.actorId).toBe('u1');
     expect(audit.action).toBe('created');
     expect(audit.timestamp).toBeInstanceOf(Date);
   });
@@ -21,7 +21,7 @@ describe('AssignmentAudit Entity', () => {
     const auditPublished = new AssignmentAudit({
       churchId: 'c1',
       assignmentId: 'a1',
-      leaderId: 'u1',
+      actorId: 'u1',
       action: 'event_published',
     });
     expect(auditPublished.action).toBe('event_published');
@@ -29,7 +29,7 @@ describe('AssignmentAudit Entity', () => {
     const auditCancelled = new AssignmentAudit({
       churchId: 'c1',
       assignmentId: 'a1',
-      leaderId: 'u1',
+      actorId: 'u1',
       action: 'event_cancelled',
     });
     expect(auditCancelled.action).toBe('event_cancelled');

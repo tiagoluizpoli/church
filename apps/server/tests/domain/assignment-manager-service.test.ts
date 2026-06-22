@@ -612,7 +612,7 @@ describe('Slot Generation — Template-Based', () => {
 
 describe('Publish Schedule', () => {
   const churchId = 'church-1';
-  const leaderId = 'leader-1';
+  const actorId = 'leader-1';
   const now = new Date('2026-05-19T09:00:00Z');
 
   it('draft event + 5 draft assignments, all pass → event published, assignments pending, transitionedCount = 5', () => {
@@ -656,7 +656,7 @@ describe('Publish Schedule', () => {
       event,
       assignments,
       now,
-      actorId: leaderId,
+      actorId,
       assignmentValidationData: validationData,
     });
 
@@ -668,7 +668,7 @@ describe('Publish Schedule', () => {
 
     result.audits?.forEach((audit) => {
       expect(audit.churchId).toBe(churchId);
-      expect(audit.leaderId).toBe(leaderId);
+      expect(audit.actorId).toBe(actorId);
       expect(audit.action).toBe('event_published');
       expect(audit.timestamp.getTime()).toBe(now.getTime());
     });
@@ -713,7 +713,7 @@ describe('Publish Schedule', () => {
       event,
       assignments: [assignment],
       now,
-      actorId: leaderId,
+      actorId,
       assignmentValidationData: validationData,
     });
 
@@ -738,7 +738,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: new Map(),
       });
     }).toThrow(EmptyScheduleError);
@@ -768,7 +768,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [assignment],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: new Map(),
       });
     }).toThrow(InvalidStateTransitionError);
@@ -798,7 +798,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [assignment],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: new Map(),
       });
     }).toThrow(InvalidStateTransitionError);
@@ -828,7 +828,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [assignment],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: new Map(),
       });
     }).toThrow(InvalidStateTransitionError);
@@ -858,7 +858,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [assignment],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: new Map(),
       });
     }).toThrow(PastEventError);
@@ -932,7 +932,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [a1, a2, a3],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: validationData,
       });
     } catch (e) {
@@ -999,7 +999,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [a1, a2],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: validationData,
       });
     } catch (e) {
@@ -1063,7 +1063,7 @@ describe('Publish Schedule', () => {
         event,
         assignments: [a1, a2],
         now,
-        actorId: leaderId,
+        actorId,
         assignmentValidationData: validationData,
       });
     }).toThrow(PublishValidationError);
@@ -1122,7 +1122,7 @@ describe('Publish Schedule', () => {
       event,
       assignments: [draftAssignment, confirmedAssignment, declinedAssignment],
       now,
-      actorId: leaderId,
+      actorId,
       assignmentValidationData: validationData,
     });
 
@@ -1192,7 +1192,7 @@ describe('Publish Schedule', () => {
         event,
         slots: [slot1, slot2, slot3],
         assignments: [a1, a2, a3],
-        actorId: leaderId,
+        actorId,
         now,
       });
 
@@ -1213,7 +1213,7 @@ describe('Publish Schedule', () => {
 
       result.audits?.forEach((audit) => {
         expect(audit.churchId).toBe(churchId);
-        expect(audit.leaderId).toBe(leaderId);
+        expect(audit.actorId).toBe(actorId);
         expect(audit.action).toBe('event_cancelled');
         expect(audit.timestamp.getTime()).toBe(now.getTime());
       });
@@ -1256,7 +1256,7 @@ describe('Publish Schedule', () => {
         event,
         slots: [slot1],
         assignments: [a1, a2],
-        actorId: leaderId,
+        actorId,
         now,
       });
 
@@ -1286,7 +1286,7 @@ describe('Publish Schedule', () => {
           event,
           slots: [],
           assignments: [],
-          actorId: leaderId,
+          actorId,
           now,
         });
       }).toThrow(InvalidStateTransitionError);
@@ -1308,7 +1308,7 @@ describe('Publish Schedule', () => {
           event,
           slots: [],
           assignments: [],
-          actorId: leaderId,
+          actorId,
           now,
         });
       }).toThrow(InvalidStateTransitionError);
@@ -1358,7 +1358,7 @@ describe('Publish Schedule', () => {
         event,
         slots: [slot],
         assignments: [a1, a2, a3],
-        actorId: leaderId,
+        actorId,
         now,
       });
 
@@ -1394,7 +1394,7 @@ describe('Publish Schedule', () => {
         event,
         slots: [slot],
         assignments: [],
-        actorId: leaderId,
+        actorId,
         now,
       });
 
@@ -1435,7 +1435,7 @@ describe('Publish Schedule', () => {
           event,
           slots: [slot],
           assignments: [assignment],
-          actorId: leaderId,
+          actorId,
           now,
         });
       }).toThrow(/Church ID mismatch/);
@@ -1460,7 +1460,7 @@ describe('Publish Schedule', () => {
           event,
           slots: [slotOk],
           assignments: [assignmentBad],
-          actorId: leaderId,
+          actorId,
           now,
         });
       }).toThrow(/Church ID mismatch/);
@@ -1488,7 +1488,7 @@ describe('Publish Schedule', () => {
       expect(audit).not.toBeNull();
       expect(audit?.churchId).toBe(churchId);
       expect(audit?.assignmentId).toBe(assignment.id);
-      expect(audit?.leaderId).toBe('user-1');
+      expect(audit?.actorId).toBe('user-1');
       expect(audit?.action).toBe('status_change');
       expect(audit?.timestamp.getTime()).toBe(now.getTime());
     });
@@ -1613,7 +1613,7 @@ describe('Publish Schedule', () => {
       expect(audit).toBeDefined();
       expect(audit.churchId).toBe(churchId);
       expect(audit.assignmentId).toBe(assignment.id);
-      expect(audit.leaderId).toBe('vol-1');
+      expect(audit.actorId).toBe('vol-1');
       expect(audit.action).toBe('status_change');
       expect(audit.reason).toBe('SICK');
       expect(audit.timestamp.getTime()).toBe(now.getTime());

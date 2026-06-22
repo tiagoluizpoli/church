@@ -15,7 +15,7 @@ export type AssignmentAuditAction =
 export interface AssignmentAuditProps {
   churchId: string;
   assignmentId: string;
-  leaderId: string;
+  actorId: string;
   action: AssignmentAuditAction;
   reason?: string;
   timestamp: Date;
@@ -49,8 +49,8 @@ export class AssignmentAudit extends Entity<AssignmentAuditProps> {
     return this._props.assignmentId;
   }
 
-  get leaderId(): string {
-    return this._props.leaderId;
+  get actorId(): string {
+    return this._props.actorId;
   }
 
   get action(): AssignmentAuditAction {

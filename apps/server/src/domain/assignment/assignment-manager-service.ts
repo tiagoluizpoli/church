@@ -309,7 +309,7 @@ export const AssignmentManagerService = {
         new AssignmentAudit({
           churchId,
           assignmentId: a.id,
-          leaderId: actorId,
+          actorId,
           action: 'event_published',
           timestamp: now,
         }),
@@ -372,7 +372,7 @@ export const AssignmentManagerService = {
             new AssignmentAudit({
               churchId,
               assignmentId: a.id,
-              leaderId: actorId,
+              actorId,
               action: 'event_cancelled',
               timestamp: now,
             }),
@@ -415,7 +415,7 @@ export const AssignmentManagerService = {
     return new AssignmentAudit({
       churchId,
       assignmentId: assignment.id,
-      leaderId: actorId,
+      actorId,
       action: 'status_change',
       timestamp: now,
     });
@@ -441,7 +441,7 @@ export const AssignmentManagerService = {
     return new AssignmentAudit({
       churchId,
       assignmentId: assignment.id,
-      leaderId: actorId,
+      actorId,
       action: 'status_change',
       reason,
       timestamp: now,

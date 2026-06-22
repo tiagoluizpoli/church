@@ -7,7 +7,7 @@ Define the TypeScript interfaces for all data access. This ensures we can mock t
 
 ### I. ChurchRepository
 - `getById(churchId: string): Promise<Church>`
-- `getBySlug(slug: string): Promise<Church>`
+- `getBySlug(slug: ChurchSlug): Promise<Church>`
 
 ### II. MinistryRepository
 - `getById(churchId: string, id: string): Promise<Ministry>`

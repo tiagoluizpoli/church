@@ -204,7 +204,7 @@
   - Edge: draft assignment → `InvalidStateTransitionError`
   - Edge: cancelled assignment → `InvalidStateTransitionError`
   - Edge: declined assignment → `InvalidStateTransitionError`
-  - Audit: correct `assignmentId`, `leaderId`, `churchId`, `timestamp`
+  - Audit: correct `assignmentId`, `actorId`, `churchId`, `timestamp`
   - Audit: timestamp uses injected `now`, not system time
 
 ### Implementation for User Story 4

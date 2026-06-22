@@ -89,7 +89,7 @@ The existing `AssignmentAuditProps` will be extended with one optional field:
 export interface AssignmentAuditProps {
   churchId: string;
   assignmentId: string;
-  leaderId: string;
+  actorId: string;
   action: AssignmentAuditAction;
   reason?: string;
   timestamp: Date;

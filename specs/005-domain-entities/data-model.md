@@ -188,12 +188,12 @@ DomainError (extends Error)
 |--------------|---------------------------------------------------------|----------------------|
 | churchId     | string                                                  | FK → Church          |
 | assignmentId | string                                                  | FK → Assignment      |
-| leaderId     | string                                                  | FK → User            |
+| actorId      | string                                                  | FK → User            |
 | action       | 'created' \| 'updated' \| 'deleted' \| 'status_change' | Audit action type    |
 | reason       | string?                                                 | Optional             |
 | timestamp    | Date                                                    | UTC                  |
 
-**Getters**: `churchId`, `assignmentId`, `leaderId`, `action`, `reason`, `timestamp`
+**Getters**: `churchId`, `assignmentId`, `actorId`, `action`, `reason`, `timestamp`
 **Mutations**: None (immutable audit record)
 
 ---

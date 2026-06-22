@@ -125,7 +125,7 @@
 ### Implementation for User Story 4
 
 - [x] T030 [P] [US4] Implement `Assignment` entity in `packages/api/src/domain/entities/assignment.ts` — `AssignmentProps` interface, getters: `churchId`, `slotId`, `volunteerId`, `roleId`, `status`, `reason`, `assignedAt`, `assignedBy`; mutations: `confirm()`, `decline(reason?)`
-- [x] T031 [P] [US4] Implement `AssignmentAudit` entity in `packages/api/src/domain/entities/assignment-audit.ts` — `AssignmentAuditProps` interface, getters: `churchId`, `assignmentId`, `leaderId`, `action`, `reason`, `timestamp`; no mutations (immutable)
+- [x] T031 [P] [US4] Implement `AssignmentAudit` entity in `packages/api/src/domain/entities/assignment-audit.ts` — `AssignmentAuditProps` interface, getters: `churchId`, `assignmentId`, `actorId`, `action`, `reason`, `timestamp`; no mutations (immutable)
 - [x] T032 [P] [US4] Implement `Availability` entity in `packages/api/src/domain/entities/availability.ts` — `AvailabilityProps` interface, getters: `churchId`, `volunteerId`, `type`, `startTime`, `endTime`, `isAllDay`, `reason`, `repeatRule`; invariant: throws `InvalidDateRangeError` if `startTime >= endTime`
 
 ### Tests for User Story 4

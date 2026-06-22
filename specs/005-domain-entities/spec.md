@@ -145,7 +145,7 @@ As a developer building the repository layer, I need a clear, typed mapper inter
 - **TimeSlot**: Time window within an event — `startTime`, `endTime`, `label`.
 - **SlotRequirement**: Staffing need per slot — `roleId`, `teamId`, `requiredCount`, `notes`.
 - **Assignment**: Volunteer-to-slot binding — `roleId`, `status`, `reason`, `assignedBy`.
-- **AssignmentAudit**: Immutable audit trail — `action`, `reason`, `leaderId`, `timestamp`.
+- **AssignmentAudit**: Immutable audit trail — `action`, `reason`, `actorId`, `timestamp`. `actorId` is the canonical identity field because audit actions may be performed by volunteers, leaders, admins, or future system actors.
 - **Availability**: Volunteer time window — `type` (available/unavailable), date range, `isAllDay`, `reason`, `repeatRule`.
 
 ## Success Criteria *(mandatory)*

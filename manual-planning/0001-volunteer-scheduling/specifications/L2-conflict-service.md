@@ -16,7 +16,7 @@ Enforce the "Soft" vs "Hard" scheduling rules and audit any overrides.
 ## 2. Overriding Auditing
 - If a leader overrides a soft conflict, the service must create an `AssignmentAudit` record.
 - `AssignmentAudit` Fields:
-    - `assignmentId`, `leaderId`, `churchId`, `reason`, `timestamp`.
+    - `assignmentId`, `actorId`, `churchId`, `reason`, `timestamp`.
 
 ## 3. Testing Requirements (Mandatory)
 - **Unit**: Verify that `Hard Rules` cannot be bypassed using mock Domain Entities (Spec D1).

@@ -96,7 +96,7 @@
 - `[x]` churchId mismatch: Expect isolation error → UNIT
 
 ### 5.3 Audit Integrity
-- `[x]` Audit record has correct `assignmentId`, `leaderId` (actorId), `churchId`, `timestamp`, `action` → UNIT
+- `[x]` Audit record has correct `assignmentId`, `actorId`, `churchId`, `timestamp`, `action` → UNIT
 - `[x]` Audit timestamp uses injected clock (`now`), not system time → UNIT
 
 ---

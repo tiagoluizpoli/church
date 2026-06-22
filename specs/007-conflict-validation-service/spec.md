@@ -55,9 +55,9 @@ As a church administrator, I need every soft-conflict override to be permanently
 
 **Acceptance Scenarios**:
 
-1. **Given** a leader overrides a soft conflict with reason "Ministry need — only qualified volunteer available", **When** the assignment is saved, **Then** an `AssignmentAudit` record is created containing `assignmentId`, `leaderId`, `churchId`, `overrideReason`, `conflictTypes`, and `timestamp`.
+1. **Given** a leader overrides a soft conflict with reason "Ministry need — only qualified volunteer available", **When** the assignment is saved, **Then** an `AssignmentAudit` record is created containing `assignmentId`, `actorId`, `churchId`, `overrideReason`, `conflictTypes`, and `timestamp`.
 2. **Given** a leader saves an assignment with NO soft conflicts, **When** the assignment is saved, **Then** NO audit record is created (audits are only for overrides).
-3. **Given** multiple overrides occur on different assignments, **When** an administrator queries the audit log, **Then** each override is independently retrievable by `churchId`, `assignmentId`, or `leaderId`.
+3. **Given** multiple overrides occur on different assignments, **When** an administrator queries the audit log, **Then** each override is independently retrievable by `churchId`, `assignmentId`, or `actorId`.
 
 ---
 
@@ -95,7 +95,7 @@ As the system, I must ensure that only users with LEADER or ADMIN roles within t
 - **FR-004**: Soft constraint detection MUST include: volunteer is unavailable (blockout overlap via Availability Engine), volunteer is double-booked (existing assignment overlap via Availability Engine), and volunteer exceeds the fairness threshold for the scheduling period.
 - **FR-005**: When soft conflicts are detected, the system MUST return a structured `ConflictReport` containing all detected issues, not just the first.
 - **FR-006**: Assignments with soft conflicts MUST only be saved when accompanied by a non-empty `override_reason` string.
-- **FR-007**: Every overridden soft conflict MUST generate an `AssignmentAudit` record containing: `assignmentId`, `leaderId`, `churchId`, `reason` (override justification), `overrideConflictTypes`, and `timestamp`.
+- **FR-007**: Every overridden soft conflict MUST generate an `AssignmentAudit` record containing: `assignmentId`, `actorId`, `churchId`, `reason` (override justification), `overrideConflictTypes`, and `timestamp`.
 - **FR-008**: Only users with `LEADER` (scoped to the relevant ministry) or `ADMIN` role MUST be permitted to submit overrides.
 - **FR-009**: System MUST enforce `churchId` isolation — all validation checks, conflict detection, and audit records are scoped to the volunteer's church.
 - **FR-010**: The validation flow MUST execute in order: hard constraints first, then soft constraints. If hard constraints fail, soft constraints are never evaluated.
@@ -104,7 +104,7 @@ As the system, I must ensure that only users with LEADER or ADMIN roles within t
 ### Key Entities
 
 - **ConflictReport**: Represents the outcome of soft constraint validation. Contains a list of `ConflictIssue` items, each specifying the type (`UNAVAILABLE`, `DOUBLE_BOOKED`, `FAIRNESS_EXCEEDED`) and contextual details (e.g., overlapping blockout ID, conflicting assignment ID, service count vs threshold).
-- **AssignmentAudit**: Immutable record capturing who overrode what conflict and why. Key attributes: `assignmentId`, `leaderId`, `churchId`, `reason` (reuses existing field for override justification), `overrideConflictTypes` (new optional field), `timestamp`.
+- **AssignmentAudit**: Immutable record capturing who overrode what conflict and why. Key attributes: `assignmentId`, `actorId`, `churchId`, `reason` (reuses existing field for override justification), `overrideConflictTypes` (new optional field), `timestamp`.
 - **HardConstraintError**: Domain error raised when a non-overridable rule is violated. Carries a reason code (`NOT_QUALIFIED`, `NOT_IN_MINISTRY`, `EVENT_IN_PAST`, `DUPLICATE_ASSIGNMENT`).
 
 ## Success Criteria *(mandatory)*

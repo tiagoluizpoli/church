@@ -135,14 +135,14 @@
 
 **Goal**: Create `AssignmentAudit` entities when a leader overrides soft conflicts, with all required fields populated
 
-**Independent Test**: Execute an override flow and assert the returned `AssignmentAudit` has correct `overrideConflictTypes`, `reason`, `leaderId`, etc.
+**Independent Test**: Execute an override flow and assert the returned `AssignmentAudit` has correct `overrideConflictTypes`, `reason`, `actorId`, etc.
 
 ### Tests for User Story 3
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [x] T015 [P] [US3] Add `describe('Override Audit Creation')` block to `packages/api/tests/domain/conflict-validation-service.test.ts` containing:
-  - Test: `authorizeOverride` returns an `AssignmentAudit` entity with correct `leaderId`, `churchId`, `reason`, and `overrideConflictTypes`
+  - Test: `authorizeOverride` returns an `AssignmentAudit` entity with correct `actorId`, `churchId`, `reason`, and `overrideConflictTypes`
   - Test: `overrideConflictTypes` contains all conflict types from the `ConflictReport`
   - Test: `action` is `'created'` on the returned audit
   - Test: `timestamp` is set on the returned audit

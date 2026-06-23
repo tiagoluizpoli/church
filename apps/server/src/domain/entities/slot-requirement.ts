@@ -1,19 +1,28 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
+import type { ChurchId } from './church';
+import type { RoleId } from './role';
+import type { TeamId } from './team';
+import type { TimeSlotId } from './time-slot';
+
+export type SlotRequirementId = BrandedId<'SlotRequirementId'>;
 
 export interface SlotRequirementProps {
-  churchId: string;
-  slotId: string;
-  roleId: string;
-  teamId?: string;
+  churchId: ChurchId;
+  slotId: TimeSlotId;
+  roleId: RoleId;
+  teamId?: TeamId;
   requiredCount: number;
   notes?: string;
 }
 
-export class SlotRequirement extends Entity<SlotRequirementProps> {
+export class SlotRequirement extends Entity<
+  SlotRequirementProps,
+  SlotRequirementId
+> {
   constructor(
     props: SlotRequirementProps,
-    id?: string,
+    id?: SlotRequirementId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -23,19 +32,19 @@ export class SlotRequirement extends Entity<SlotRequirementProps> {
     super(props, id, createdAt, updatedAt);
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get slotId(): string {
+  get slotId(): TimeSlotId {
     return this._props.slotId;
   }
 
-  get roleId(): string {
+  get roleId(): RoleId {
     return this._props.roleId;
   }
 
-  get teamId(): string | undefined {
+  get teamId(): TeamId | undefined {
     return this._props.teamId;
   }
 

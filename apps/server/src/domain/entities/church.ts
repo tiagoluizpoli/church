@@ -1,17 +1,20 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
+
+export type ChurchId = BrandedId<'ChurchId'>;
+export type ChurchSlug = BrandedId<'ChurchSlug'>;
 
 export interface ChurchProps {
   name: string;
-  slug: string;
+  slug: ChurchSlug;
   timezone: string;
   settings?: Record<string, unknown>;
 }
 
-export class Church extends Entity<ChurchProps> {
+export class Church extends Entity<ChurchProps, ChurchId> {
   constructor(
     props: Omit<ChurchProps, 'timezone'> &
       Partial<Pick<ChurchProps, 'timezone'>>,
-    id?: string,
+    id?: ChurchId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -30,7 +33,7 @@ export class Church extends Entity<ChurchProps> {
     return this._props.name;
   }
 
-  get slug(): string {
+  get slug(): ChurchSlug {
     return this._props.slug;
   }
 

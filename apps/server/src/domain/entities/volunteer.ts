@@ -1,4 +1,8 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
+import type { ChurchId } from './church';
+
+export type VolunteerId = BrandedId<'VolunteerId'>;
+export type UserId = BrandedId<'UserId'>;
 
 export const VOLUNTEER_STATUS_OPTIONS = [
   'active',
@@ -8,17 +12,17 @@ export const VOLUNTEER_STATUS_OPTIONS = [
 export type VolunteerStatus = (typeof VOLUNTEER_STATUS_OPTIONS)[number];
 
 export interface VolunteerProps {
-  churchId: string;
-  userId: string;
+  churchId: ChurchId;
+  userId: UserId;
   status: VolunteerStatus;
   notes?: string;
 }
 
-export class Volunteer extends Entity<VolunteerProps> {
+export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
   constructor(
     props: Omit<VolunteerProps, 'status'> &
       Partial<Pick<VolunteerProps, 'status'>>,
-    id?: string,
+    id?: VolunteerId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -33,11 +37,11 @@ export class Volunteer extends Entity<VolunteerProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get userId(): string {
+  get userId(): UserId {
     return this._props.userId;
   }
 

@@ -1,17 +1,21 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
+import type { ChurchId } from './church';
+import type { MinistryId } from './ministry';
+
+export type TeamId = BrandedId<'TeamId'>;
 
 export interface TeamProps {
-  churchId: string;
-  ministryId: string;
+  churchId: ChurchId;
+  ministryId: MinistryId;
   name: string;
 }
 
-export class Team extends Entity<TeamProps> {
-  get churchId(): string {
+export class Team extends Entity<TeamProps, TeamId> {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get ministryId(): string {
+  get ministryId(): MinistryId {
     return this._props.ministryId;
   }
 

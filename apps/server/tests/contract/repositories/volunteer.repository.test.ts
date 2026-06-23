@@ -1,0 +1,133 @@
+import { NotFoundError } from '@church/core';
+import type { ChurchId } from '../../../src/domain/entities/church';
+import type { MinistryId } from '../../../src/domain/entities/ministry';
+import type { RoleId } from '../../../src/domain/entities/role';
+import {
+  type UserId,
+  Volunteer,
+  type VolunteerId,
+  type VolunteerStatus,
+} from '../../../src/domain/entities/volunteer';
+import { runVolunteerRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/volunteer.contract-spec';
+import type { VolunteerRepository } from '../../../src/domain/repositories/volunteer.repository';
+
+class MockVolunteerRepository implements VolunteerRepository {
+  private volunteers = new Map<string, Volunteer>();
+  private memberships = new Set<string>(); // "volunteerId:ministryId"
+  private qualifications = new Set<string>(); // "volunteerId:roleId"
+
+  constructor() {
+    const v1 = new Volunteer(
+      {
+        churchId: 'church-1' as ChurchId,
+        userId: 'user-1' as UserId,
+        status: 'active',
+      },
+      'volunteer-1' as VolunteerId,
+    );
+    const v2 = new Volunteer(
+      {
+        churchId: 'church-1' as ChurchId,
+        userId: 'user-2' as UserId,
+        status: 'active',
+      },
+      'volunteer-2' as VolunteerId,
+    );
+
+    this.volunteers.set(v1.id, v1);
+    this.volunteers.set(v2.id, v2);
+
+    this.memberships.add('volunteer-1:ministry-1');
+    this.qualifications.add('volunteer-1:role-1');
+  }
+
+  async getById(churchId: ChurchId, id: VolunteerId): Promise<Volunteer> {
+    const v = this.volunteers.get(id);
+    if (!v || v.churchId !== churchId) {
+      throw new NotFoundError('Volunteer not found');
+    }
+    return v;
+  }
+
+  async findByUserId(
+    churchId: ChurchId,
+    userId: UserId,
+  ): Promise<Volunteer | null> {
+    for (const v of this.volunteers.values()) {
+      if (v.churchId === churchId && v.userId === userId) {
+        return v;
+      }
+    }
+    return null;
+  }
+
+  async listByMinistry(
+    churchId: ChurchId,
+    ministryId: MinistryId,
+  ): Promise<Volunteer[]> {
+    const list: Volunteer[] = [];
+    for (const v of this.volunteers.values()) {
+      if (
+        v.churchId === churchId &&
+        this.memberships.has(`${v.id}:${ministryId}`)
+      ) {
+        list.push(v);
+      }
+    }
+    return list;
+  }
+
+  async hasMembershipInMinistry(
+    _churchId: ChurchId,
+    volunteerId: VolunteerId,
+    ministryId: MinistryId,
+  ): Promise<boolean> {
+    return this.memberships.has(`${volunteerId}:${ministryId}`);
+  }
+
+  async hasRoleQualification(
+    _churchId: ChurchId,
+    volunteerId: VolunteerId,
+    roleId: RoleId,
+  ): Promise<boolean> {
+    return this.qualifications.has(`${volunteerId}:${roleId}`);
+  }
+
+  async listQualifiedForRole(
+    churchId: ChurchId,
+    ministryId: MinistryId,
+    roleId: RoleId,
+  ): Promise<Volunteer[]> {
+    const list: Volunteer[] = [];
+    for (const v of this.volunteers.values()) {
+      if (
+        v.churchId === churchId &&
+        this.memberships.has(`${v.id}:${ministryId}`) &&
+        this.qualifications.has(`${v.id}:${roleId}`)
+      ) {
+        list.push(v);
+      }
+    }
+    return list;
+  }
+
+  async updateStatus(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    status: VolunteerStatus,
+  ): Promise<void> {
+    const v = await this.getById(churchId, volunteerId);
+    if (status === 'active') {
+      v.activate();
+    } else if (status === 'inactive') {
+      v.deactivate();
+    } else if (status === 'on_hold') {
+      v.putOnHold();
+    }
+  }
+}
+
+runVolunteerRepositoryContractTests(
+  async () => new MockVolunteerRepository(),
+  async () => {},
+);

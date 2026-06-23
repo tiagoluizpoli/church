@@ -1,16 +1,20 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
+import type { ChurchId } from './church';
+import type { MinistryId } from './ministry';
+
+export type RoleId = BrandedId<'RoleId'>;
 
 export interface RoleProps {
-  churchId: string;
-  ministryId?: string;
+  churchId: ChurchId;
+  ministryId?: MinistryId;
   name: string;
   isGlobal: boolean;
 }
 
-export class Role extends Entity<RoleProps> {
+export class Role extends Entity<RoleProps, RoleId> {
   constructor(
     props: Omit<RoleProps, 'isGlobal'> & Partial<Pick<RoleProps, 'isGlobal'>>,
-    id?: string,
+    id?: RoleId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -25,11 +29,11 @@ export class Role extends Entity<RoleProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get ministryId(): string | undefined {
+  get ministryId(): MinistryId | undefined {
     return this._props.ministryId;
   }
 

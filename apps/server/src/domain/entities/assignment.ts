@@ -1,4 +1,10 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
+import type { ChurchId } from './church';
+import type { RoleId } from './role';
+import type { TimeSlotId } from './time-slot';
+import type { UserId, VolunteerId } from './volunteer';
+
+export type AssignmentId = BrandedId<'AssignmentId'>;
 
 export const ASSIGNMENT_STATUS_OPTIONS = [
   'draft',
@@ -10,21 +16,21 @@ export const ASSIGNMENT_STATUS_OPTIONS = [
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];
 
 export interface AssignmentProps {
-  churchId: string;
-  slotId: string;
-  volunteerId: string;
-  roleId: string;
+  churchId: ChurchId;
+  slotId: TimeSlotId;
+  volunteerId: VolunteerId;
+  roleId: RoleId;
   status: AssignmentStatus;
   reason?: string;
   assignedAt: Date;
-  assignedBy?: string;
+  assignedBy?: UserId;
 }
 
-export class Assignment extends Entity<AssignmentProps> {
+export class Assignment extends Entity<AssignmentProps, AssignmentId> {
   constructor(
     props: Omit<AssignmentProps, 'status' | 'assignedAt'> &
       Partial<Pick<AssignmentProps, 'status' | 'assignedAt'>>,
-    id?: string,
+    id?: AssignmentId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -40,19 +46,19 @@ export class Assignment extends Entity<AssignmentProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get slotId(): string {
+  get slotId(): TimeSlotId {
     return this._props.slotId;
   }
 
-  get volunteerId(): string {
+  get volunteerId(): VolunteerId {
     return this._props.volunteerId;
   }
 
-  get roleId(): string {
+  get roleId(): RoleId {
     return this._props.roleId;
   }
 
@@ -68,7 +74,7 @@ export class Assignment extends Entity<AssignmentProps> {
     return this._props.assignedAt;
   }
 
-  get assignedBy(): string | undefined {
+  get assignedBy(): UserId | undefined {
     return this._props.assignedBy;
   }
 

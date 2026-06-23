@@ -1,5 +1,10 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
 import type { SoftConflictType } from '../conflict/types';
+import type { AssignmentId } from './assignment';
+import type { ChurchId } from './church';
+import type { UserId } from './volunteer';
+
+export type AssignmentAuditId = BrandedId<'AssignmentAuditId'>;
 
 export const ASSIGNMENT_AUDIT_ACTION_OPTIONS = [
   'created',
@@ -13,20 +18,23 @@ export type AssignmentAuditAction =
   (typeof ASSIGNMENT_AUDIT_ACTION_OPTIONS)[number];
 
 export interface AssignmentAuditProps {
-  churchId: string;
-  assignmentId: string;
-  actorId: string;
+  churchId: ChurchId;
+  assignmentId: AssignmentId;
+  actorId: UserId;
   action: AssignmentAuditAction;
   reason?: string;
   timestamp: Date;
   overrideConflictTypes?: SoftConflictType[];
 }
 
-export class AssignmentAudit extends Entity<AssignmentAuditProps> {
+export class AssignmentAudit extends Entity<
+  AssignmentAuditProps,
+  AssignmentAuditId
+> {
   constructor(
     props: Omit<AssignmentAuditProps, 'timestamp'> &
       Partial<Pick<AssignmentAuditProps, 'timestamp'>>,
-    id?: string,
+    id?: AssignmentAuditId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -41,15 +49,15 @@ export class AssignmentAudit extends Entity<AssignmentAuditProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get assignmentId(): string {
+  get assignmentId(): AssignmentId {
     return this._props.assignmentId;
   }
 
-  get actorId(): string {
+  get actorId(): UserId {
     return this._props.actorId;
   }
 

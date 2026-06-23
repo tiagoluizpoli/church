@@ -1,4 +1,10 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
+import type { ChurchId } from './church';
+import type { MinistryId } from './ministry';
+import type { TeamId } from './team';
+import type { VolunteerId } from './volunteer';
+
+export type MinistryVolunteerId = BrandedId<'MinistryVolunteerId'>;
 
 export const SYSTEM_ROLE_OPTIONS = [
   'leader',
@@ -15,22 +21,25 @@ export type MinistryVolunteerStatus =
   (typeof MINISTRY_VOLUNTEER_STATUS_OPTIONS)[number];
 
 export interface MinistryVolunteerProps {
-  churchId: string;
-  volunteerId: string;
-  ministryId: string;
-  teamId?: string;
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  ministryId: MinistryId;
+  teamId?: TeamId;
   systemRole: SystemRole;
   status: MinistryVolunteerStatus;
   joinedAt: Date;
 }
 
-export class MinistryVolunteer extends Entity<MinistryVolunteerProps> {
+export class MinistryVolunteer extends Entity<
+  MinistryVolunteerProps,
+  MinistryVolunteerId
+> {
   constructor(
     props: Omit<MinistryVolunteerProps, 'systemRole' | 'status' | 'joinedAt'> &
       Partial<
         Pick<MinistryVolunteerProps, 'systemRole' | 'status' | 'joinedAt'>
       >,
-    id?: string,
+    id?: MinistryVolunteerId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -47,19 +56,19 @@ export class MinistryVolunteer extends Entity<MinistryVolunteerProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get volunteerId(): string {
+  get volunteerId(): VolunteerId {
     return this._props.volunteerId;
   }
 
-  get ministryId(): string {
+  get ministryId(): MinistryId {
     return this._props.ministryId;
   }
 
-  get teamId(): string | undefined {
+  get teamId(): TeamId | undefined {
     return this._props.teamId;
   }
 
@@ -80,7 +89,7 @@ export class MinistryVolunteer extends Entity<MinistryVolunteerProps> {
     this._updatedAt = new Date();
   }
 
-  public assignTeam(teamId: string): void {
+  public assignTeam(teamId: TeamId): void {
     this._props.teamId = teamId;
     this._updatedAt = new Date();
   }

@@ -1,12 +1,16 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
+import type { ChurchId } from './church';
+import type { VolunteerId } from './volunteer';
+
+export type AvailabilityId = BrandedId<'AvailabilityId'>;
 
 export const AVAILABILITY_TYPE_OPTIONS = ['available', 'unavailable'] as const;
 export type AvailabilityType = (typeof AVAILABILITY_TYPE_OPTIONS)[number];
 
 export interface AvailabilityProps {
-  churchId: string;
-  volunteerId: string;
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
   type: AvailabilityType;
   startTime: Date;
   endTime: Date;
@@ -15,11 +19,11 @@ export interface AvailabilityProps {
   repeatRule?: string;
 }
 
-export class Availability extends Entity<AvailabilityProps> {
+export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
   constructor(
     props: Omit<AvailabilityProps, 'type' | 'isAllDay'> &
       Partial<Pick<AvailabilityProps, 'type' | 'isAllDay'>>,
-    id?: string,
+    id?: AvailabilityId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -38,11 +42,11 @@ export class Availability extends Entity<AvailabilityProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get volunteerId(): string {
+  get volunteerId(): VolunteerId {
     return this._props.volunteerId;
   }
 

@@ -1,21 +1,28 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
+import type { ChurchId } from './church';
+
+export type MinistryId = BrandedId<'MinistryId'>;
 
 export const ENFORCEMENT_TYPE_OPTIONS = ['soft', 'hard'] as const;
 export type EnforcementType = (typeof ENFORCEMENT_TYPE_OPTIONS)[number];
 
+export interface MinistrySettings {
+  enforcementType: EnforcementType;
+}
+
 export interface MinistryProps {
-  churchId: string;
+  churchId: ChurchId;
   name: string;
   description?: string;
   enforcementType: EnforcementType;
   deletedAt?: Date;
 }
 
-export class Ministry extends Entity<MinistryProps> {
+export class Ministry extends Entity<MinistryProps, MinistryId> {
   constructor(
     props: Omit<MinistryProps, 'enforcementType'> &
       Partial<Pick<MinistryProps, 'enforcementType'>>,
-    id?: string,
+    id?: MinistryId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -23,7 +30,6 @@ export class Ministry extends Entity<MinistryProps> {
       {
         ...props,
         enforcementType: props.enforcementType ?? 'soft',
-        deletedAt: props.deletedAt ?? undefined, // Normalize null to undefined or keep it. Data model says Date? meaning Date | undefined | null. We'll use nullable for consistency. Let's just keep whatever is passed, default undefined.
       },
       id,
       createdAt,
@@ -31,7 +37,7 @@ export class Ministry extends Entity<MinistryProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 

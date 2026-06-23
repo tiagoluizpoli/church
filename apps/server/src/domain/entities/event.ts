@@ -1,5 +1,10 @@
-import { Entity } from '@church/core';
+import { type BrandedId, Entity } from '@church/core';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
+import type { ChurchId } from './church';
+import type { MinistryId } from './ministry';
+import type { TimeSlot } from './time-slot';
+
+export type EventId = BrandedId<'EventId'>;
 
 export const EVENT_STATUS_OPTIONS = [
   'draft',
@@ -10,8 +15,8 @@ export const EVENT_STATUS_OPTIONS = [
 export type EventStatus = (typeof EVENT_STATUS_OPTIONS)[number];
 
 export interface EventProps {
-  churchId: string;
-  ministryId: string;
+  churchId: ChurchId;
+  ministryId: MinistryId;
   title: string;
   description?: string;
   location?: string;
@@ -20,10 +25,15 @@ export interface EventProps {
   status: EventStatus;
 }
 
-export class Event extends Entity<EventProps> {
+export interface EventWithSlots {
+  event: Event;
+  slots: TimeSlot[];
+}
+
+export class Event extends Entity<EventProps, EventId> {
   constructor(
     props: Omit<EventProps, 'status'> & Partial<Pick<EventProps, 'status'>>,
-    id?: string,
+    id?: EventId,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -41,11 +51,11 @@ export class Event extends Entity<EventProps> {
     );
   }
 
-  get churchId(): string {
+  get churchId(): ChurchId {
     return this._props.churchId;
   }
 
-  get ministryId(): string {
+  get ministryId(): MinistryId {
     return this._props.ministryId;
   }
 

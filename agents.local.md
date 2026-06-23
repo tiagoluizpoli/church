@@ -33,5 +33,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/008-assignment-manager/plan.md](specs/008-assignment-manager/plan.md)
+- Current Plan: [specs/009-repo-interfaces/plan.md](specs/009-repo-interfaces/plan.md)
 <!-- SPECKIT END -->

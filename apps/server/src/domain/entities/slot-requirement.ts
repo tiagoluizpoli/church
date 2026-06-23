@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
 import type { ChurchId } from './church';
 import type { RoleId } from './role';
@@ -21,15 +21,20 @@ export class SlotRequirement extends Entity<
   SlotRequirementId
 > {
   constructor(
-    props: SlotRequirementProps,
-    id?: SlotRequirementId,
+    props: LooseProps<SlotRequirementProps>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
     if (props.requiredCount < 1) {
       throw new InvalidRequiredCountError();
     }
-    super(props, id, createdAt, updatedAt);
+    super(
+      props as SlotRequirementProps,
+      id as SlotRequirementId,
+      createdAt,
+      updatedAt,
+    );
   }
 
   get churchId(): ChurchId {

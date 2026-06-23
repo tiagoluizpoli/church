@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import type { ChurchId } from './church';
 
 export type VolunteerId = BrandedId<'VolunteerId'>;
@@ -20,9 +20,9 @@ export interface VolunteerProps {
 
 export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
   constructor(
-    props: Omit<VolunteerProps, 'status'> &
-      Partial<Pick<VolunteerProps, 'status'>>,
-    id?: VolunteerId,
+    props: Omit<LooseProps<VolunteerProps>, 'status'> &
+      Partial<Pick<LooseProps<VolunteerProps>, 'status'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -30,8 +30,8 @@ export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
       {
         ...props,
         status: props.status ?? 'active',
-      },
-      id,
+      } as VolunteerProps,
+      id as VolunteerId,
       createdAt,
       updatedAt,
     );

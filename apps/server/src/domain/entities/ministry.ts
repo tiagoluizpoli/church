@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import type { ChurchId } from './church';
 
 export type MinistryId = BrandedId<'MinistryId'>;
@@ -20,9 +20,9 @@ export interface MinistryProps {
 
 export class Ministry extends Entity<MinistryProps, MinistryId> {
   constructor(
-    props: Omit<MinistryProps, 'enforcementType'> &
-      Partial<Pick<MinistryProps, 'enforcementType'>>,
-    id?: MinistryId,
+    props: Omit<LooseProps<MinistryProps>, 'enforcementType'> &
+      Partial<Pick<LooseProps<MinistryProps>, 'enforcementType'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -30,8 +30,8 @@ export class Ministry extends Entity<MinistryProps, MinistryId> {
       {
         ...props,
         enforcementType: props.enforcementType ?? 'soft',
-      },
-      id,
+      } as MinistryProps,
+      id as MinistryId,
       createdAt,
       updatedAt,
     );

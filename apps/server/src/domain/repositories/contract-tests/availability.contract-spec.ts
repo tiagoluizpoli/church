@@ -27,7 +27,7 @@ export function runAvailabilityRepositoryContractTests(
         new Date('2024-06-01T13:00:00Z'),
       );
       expect(list.length).toBe(1);
-      expect(list[0].id).toBe('availability-1');
+      expect(list[0]!.id).toBe('availability-1');
     });
 
     it('should create an availability entry', async () => {
@@ -61,8 +61,8 @@ export function runAvailabilityRepositoryContractTests(
         new Date('2024-06-01T13:00:00Z'),
       );
       expect(list.length).toBe(1);
-      expect(list[0].type).toBe('available');
-      expect(list[0].reason).toBe('Updated reason');
+      expect(list[0]!.type).toBe('available');
+      expect(list[0]!.reason).toBe('Updated reason');
     });
 
     it('should delete an availability entry', async () => {

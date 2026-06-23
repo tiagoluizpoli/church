@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import type { ChurchId } from './church';
 import type { MinistryId } from './ministry';
 
@@ -13,8 +13,9 @@ export interface RoleProps {
 
 export class Role extends Entity<RoleProps, RoleId> {
   constructor(
-    props: Omit<RoleProps, 'isGlobal'> & Partial<Pick<RoleProps, 'isGlobal'>>,
-    id?: RoleId,
+    props: Omit<LooseProps<RoleProps>, 'isGlobal'> &
+      Partial<Pick<LooseProps<RoleProps>, 'isGlobal'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -22,8 +23,8 @@ export class Role extends Entity<RoleProps, RoleId> {
       {
         ...props,
         isGlobal: props.isGlobal ?? false,
-      },
-      id,
+      } as RoleProps,
+      id as RoleId,
       createdAt,
       updatedAt,
     );

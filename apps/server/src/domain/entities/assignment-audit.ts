@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import type { SoftConflictType } from '../conflict/types';
 import type { AssignmentId } from './assignment';
 import type { ChurchId } from './church';
@@ -32,9 +32,9 @@ export class AssignmentAudit extends Entity<
   AssignmentAuditId
 > {
   constructor(
-    props: Omit<AssignmentAuditProps, 'timestamp'> &
-      Partial<Pick<AssignmentAuditProps, 'timestamp'>>,
-    id?: AssignmentAuditId,
+    props: Omit<LooseProps<AssignmentAuditProps>, 'timestamp'> &
+      Partial<Pick<LooseProps<AssignmentAuditProps>, 'timestamp'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -42,8 +42,8 @@ export class AssignmentAudit extends Entity<
       {
         ...props,
         timestamp: props.timestamp ?? new Date(),
-      },
-      id,
+      } as unknown as AssignmentAuditProps,
+      id as AssignmentAuditId,
       createdAt,
       updatedAt,
     );

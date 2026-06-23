@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 
 export type ChurchId = BrandedId<'ChurchId'>;
 export type ChurchSlug = BrandedId<'ChurchSlug'>;
@@ -12,9 +12,9 @@ export interface ChurchProps {
 
 export class Church extends Entity<ChurchProps, ChurchId> {
   constructor(
-    props: Omit<ChurchProps, 'timezone'> &
-      Partial<Pick<ChurchProps, 'timezone'>>,
-    id?: ChurchId,
+    props: Omit<LooseProps<ChurchProps>, 'timezone'> &
+      Partial<Pick<LooseProps<ChurchProps>, 'timezone'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -22,8 +22,8 @@ export class Church extends Entity<ChurchProps, ChurchId> {
       {
         ...props,
         timezone: props.timezone ?? 'UTC',
-      },
-      id,
+      } as ChurchProps,
+      id as ChurchId,
       createdAt,
       updatedAt,
     );

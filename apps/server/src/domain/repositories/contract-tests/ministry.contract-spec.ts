@@ -45,8 +45,8 @@ export function runMinistryRepositoryContractTests(
     it('should list ministries in a church alphabetically', async () => {
       const list = await repo.listByChurch('church-1' as ChurchId);
       expect(list.length).toBe(2);
-      expect(list[0].name).toBe('Adult Ministry');
-      expect(list[1].name).toBe('Youth Ministry');
+      expect(list[0]!.name).toBe('Adult Ministry');
+      expect(list[1]!.name).toBe('Youth Ministry');
     });
 
     it('should retrieve ministry settings', async () => {

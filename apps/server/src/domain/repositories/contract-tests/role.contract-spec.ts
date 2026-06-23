@@ -48,8 +48,8 @@ export function runRoleRepositoryContractTests(
         'ministry-1' as MinistryId,
       );
       expect(list.length).toBe(2);
-      expect(list[0].name).toBe('Greeter');
-      expect(list[1].name).toBe('Usher');
+      expect(list[0]!.name).toBe('Greeter');
+      expect(list[1]!.name).toBe('Usher');
     });
   });
 }

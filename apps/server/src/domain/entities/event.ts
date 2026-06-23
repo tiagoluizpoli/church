@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { ChurchId } from './church';
 import type { MinistryId } from './ministry';
@@ -32,8 +32,9 @@ export interface EventWithSlots {
 
 export class Event extends Entity<EventProps, EventId> {
   constructor(
-    props: Omit<EventProps, 'status'> & Partial<Pick<EventProps, 'status'>>,
-    id?: EventId,
+    props: Omit<LooseProps<EventProps>, 'status'> &
+      Partial<Pick<LooseProps<EventProps>, 'status'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -44,8 +45,8 @@ export class Event extends Entity<EventProps, EventId> {
       {
         ...props,
         status: props.status ?? 'draft',
-      },
-      id,
+      } as EventProps,
+      id as EventId,
       createdAt,
       updatedAt,
     );

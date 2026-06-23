@@ -91,7 +91,7 @@ export function runVolunteerRepositoryContractTests(
         'ministry-1' as MinistryId,
       );
       expect(list.length).toBe(1);
-      expect(list[0].id).toBe('volunteer-1');
+      expect(list[0]!.id).toBe('volunteer-1');
     });
 
     it('should list volunteers qualified for a role', async () => {
@@ -101,7 +101,7 @@ export function runVolunteerRepositoryContractTests(
         'role-1' as RoleId,
       );
       expect(list.length).toBe(1);
-      expect(list[0].id).toBe('volunteer-1');
+      expect(list[0]!.id).toBe('volunteer-1');
     });
 
     it('should update volunteer status', async () => {

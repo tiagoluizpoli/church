@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import type { ChurchId } from './church';
 import type { MinistryId } from './ministry';
 
@@ -11,6 +11,14 @@ export interface TeamProps {
 }
 
 export class Team extends Entity<TeamProps, TeamId> {
+  constructor(
+    props: LooseProps<TeamProps>,
+    id?: string,
+    createdAt?: Date,
+    updatedAt?: Date,
+  ) {
+    super(props as TeamProps, id as TeamId, createdAt, updatedAt);
+  }
   get churchId(): ChurchId {
     return this._props.churchId;
   }

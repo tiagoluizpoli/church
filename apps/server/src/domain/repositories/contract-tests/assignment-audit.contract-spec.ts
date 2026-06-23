@@ -38,14 +38,14 @@ export function runAssignmentAuditRepositoryContractTests(
         'assignment-1' as AssignmentId,
       );
       expect(list.length).toBeGreaterThanOrEqual(2);
-      expect(list[0].id).toBe('audit-2'); // 11:00:00 is newer than 10:00:00
-      expect(list[1].id).toBe('audit-1');
+      expect(list[0]!.id).toBe('audit-2'); // 11:00:00 is newer than 10:00:00
+      expect(list[1]!.id).toBe('audit-1');
     });
 
     it('should list audits by church newest-first', async () => {
       const list = await repo.listByChurch('church-1' as ChurchId);
       expect(list.length).toBeGreaterThanOrEqual(2);
-      expect(list[0].id).toBe('audit-2');
+      expect(list[0]!.id).toBe('audit-2');
     });
 
     it('should list audits by actor newest-first', async () => {
@@ -54,7 +54,7 @@ export function runAssignmentAuditRepositoryContractTests(
         'user-1' as UserId,
       );
       expect(list.length).toBeGreaterThanOrEqual(2);
-      expect(list[0].id).toBe('audit-2');
+      expect(list[0]!.id).toBe('audit-2');
     });
   });
 }

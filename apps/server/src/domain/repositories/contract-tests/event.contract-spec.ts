@@ -44,8 +44,8 @@ export function runEventRepositoryContractTests(
       expect(result).toBeDefined();
       expect(result.event.id).toBe('event-1');
       expect(result.slots.length).toBe(1);
-      expect(result.slots[0].id).toBe('slot-1');
-      expect(result.slots[0].requirements.length).toBe(1);
+      expect(result.slots[0]!.id).toBe('slot-1');
+      expect(result.slots[0]!.requirements.length).toBe(1);
     });
 
     it('should list events by ministry chronologically ascending', async () => {
@@ -54,8 +54,8 @@ export function runEventRepositoryContractTests(
         'ministry-1' as MinistryId,
       );
       expect(list.length).toBe(2);
-      expect(list[0].id).toBe('event-2'); // June 4
-      expect(list[1].id).toBe('event-1'); // June 5
+      expect(list[0]!.id).toBe('event-2'); // June 4
+      expect(list[1]!.id).toBe('event-1'); // June 5
     });
 
     it('should filter listed events by status', async () => {
@@ -65,7 +65,7 @@ export function runEventRepositoryContractTests(
         'published',
       );
       expect(list.length).toBe(1);
-      expect(list[0].id).toBe('event-2');
+      expect(list[0]!.id).toBe('event-2');
     });
 
     it('should create an event', async () => {

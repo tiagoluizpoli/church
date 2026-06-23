@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import type { ChurchId } from './church';
 import type { MinistryId } from './ministry';
 import type { TeamId } from './team';
@@ -35,11 +35,17 @@ export class MinistryVolunteer extends Entity<
   MinistryVolunteerId
 > {
   constructor(
-    props: Omit<MinistryVolunteerProps, 'systemRole' | 'status' | 'joinedAt'> &
+    props: Omit<
+      LooseProps<MinistryVolunteerProps>,
+      'systemRole' | 'status' | 'joinedAt'
+    > &
       Partial<
-        Pick<MinistryVolunteerProps, 'systemRole' | 'status' | 'joinedAt'>
+        Pick<
+          LooseProps<MinistryVolunteerProps>,
+          'systemRole' | 'status' | 'joinedAt'
+        >
       >,
-    id?: MinistryVolunteerId,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -49,8 +55,8 @@ export class MinistryVolunteer extends Entity<
         systemRole: props.systemRole ?? 'volunteer',
         status: props.status ?? 'active',
         joinedAt: props.joinedAt ?? new Date(),
-      },
-      id,
+      } as unknown as MinistryVolunteerProps,
+      id as MinistryVolunteerId,
       createdAt,
       updatedAt,
     );

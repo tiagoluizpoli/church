@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MinistryVolunteer } from '../../../src/domain/entities/ministry-volunteer';
+import type { TeamId } from '../../../src/domain/entities/team';
 
 describe('MinistryVolunteer Entity', () => {
   it('constructs with minimum props', () => {
@@ -28,7 +29,7 @@ describe('MinistryVolunteer Entity', () => {
     mv.promote('leader');
     expect(mv.systemRole).toBe('leader');
 
-    mv.assignTeam('t1');
+    mv.assignTeam('t1' as TeamId);
     expect(mv.teamId).toBe('t1');
 
     mv.removeTeam();

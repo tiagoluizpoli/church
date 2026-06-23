@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { ChurchId } from './church';
 import type { VolunteerId } from './volunteer';
@@ -21,9 +21,9 @@ export interface AvailabilityProps {
 
 export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
   constructor(
-    props: Omit<AvailabilityProps, 'type' | 'isAllDay'> &
-      Partial<Pick<AvailabilityProps, 'type' | 'isAllDay'>>,
-    id?: AvailabilityId,
+    props: Omit<LooseProps<AvailabilityProps>, 'type' | 'isAllDay'> &
+      Partial<Pick<LooseProps<AvailabilityProps>, 'type' | 'isAllDay'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -35,8 +35,8 @@ export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
         ...props,
         type: props.type ?? 'unavailable',
         isAllDay: props.isAllDay ?? false,
-      },
-      id,
+      } as unknown as AvailabilityProps,
+      id as AvailabilityId,
       createdAt,
       updatedAt,
     );

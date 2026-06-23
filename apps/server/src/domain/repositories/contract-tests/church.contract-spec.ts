@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Church, type ChurchId, type ChurchSlug } from '../../entities/church';
+import type { ChurchId, ChurchSlug } from '../../entities/church';
 import type { ChurchRepository } from '../church.repository';
 
 export function runChurchRepositoryContractTests(
@@ -19,14 +19,6 @@ export function runChurchRepositoryContractTests(
     });
 
     it('should retrieve a church by ID', async () => {
-      const _church = new Church(
-        {
-          name: 'First Church',
-          slug: 'first-church' as ChurchSlug,
-        },
-        'church-1' as ChurchId,
-      );
-
       // In contract tests, we assume the factory or seed script has populated this ID, or that the repository implementation is mock/in-memory which supports it.
       // Wait, since repository methods are read-only here (they don't have save/create method on the interface), how do we test them?
       // Ah! In contract tests, we can provide a seed function or we can pass pre-seeded data, or the repository implementation's factory can pre-populate it!

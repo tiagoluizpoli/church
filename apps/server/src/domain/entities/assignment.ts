@@ -1,4 +1,4 @@
-import { type BrandedId, Entity } from '@church/core';
+import { type BrandedId, Entity, type LooseProps } from '@church/core';
 import type { ChurchId } from './church';
 import type { RoleId } from './role';
 import type { TimeSlotId } from './time-slot';
@@ -28,9 +28,9 @@ export interface AssignmentProps {
 
 export class Assignment extends Entity<AssignmentProps, AssignmentId> {
   constructor(
-    props: Omit<AssignmentProps, 'status' | 'assignedAt'> &
-      Partial<Pick<AssignmentProps, 'status' | 'assignedAt'>>,
-    id?: AssignmentId,
+    props: Omit<LooseProps<AssignmentProps>, 'status' | 'assignedAt'> &
+      Partial<Pick<LooseProps<AssignmentProps>, 'status' | 'assignedAt'>>,
+    id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
@@ -39,8 +39,8 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
         ...props,
         status: props.status ?? 'draft',
         assignedAt: props.assignedAt ?? new Date(),
-      },
-      id,
+      } as unknown as AssignmentProps,
+      id as AssignmentId,
       createdAt,
       updatedAt,
     );

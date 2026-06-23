@@ -29,7 +29,7 @@ export function runTimeSlotRepositoryContractTests(
       expect(found).toBeDefined();
       expect(found.id).toBe('slot-1');
       expect(found.requirements.length).toBe(1);
-      expect(found.requirements[0].roleId).toBe('role-1');
+      expect(found.requirements[0]!.roleId).toBe('role-1');
     });
 
     it('should throw NotFoundError if time slot is not found by ID', async () => {
@@ -44,8 +44,8 @@ export function runTimeSlotRepositoryContractTests(
         'event-1' as EventId,
       );
       expect(list.length).toBe(1);
-      expect(list[0].id).toBe('slot-1');
-      expect(list[0].requirements.length).toBe(1);
+      expect(list[0]!.id).toBe('slot-1');
+      expect(list[0]!.requirements.length).toBe(1);
     });
 
     it('should bulk create time slots', async () => {
@@ -67,10 +67,10 @@ export function runTimeSlotRepositoryContractTests(
       });
 
       expect(slots.length).toBe(1);
-      expect(slots[0].id).toBeDefined();
-      expect(slots[0].label).toBe('Second Service');
-      expect(slots[0].requirements.length).toBe(1);
-      expect(slots[0].requirements[0].requiredCount).toBe(2);
+      expect(slots[0]!.id).toBeDefined();
+      expect(slots[0]!.label).toBe('Second Service');
+      expect(slots[0]!.requirements.length).toBe(1);
+      expect(slots[0]!.requirements[0]!.requiredCount).toBe(2);
     });
 
     it('should delete time slots by event', async () => {

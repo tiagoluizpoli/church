@@ -122,8 +122,8 @@ export function runAssignmentRepositoryContractTests(
         'slot-1' as TimeSlotId,
       );
       expect(list.length).toBe(1);
-      expect(list[0].id).toBe('assignment-2');
-      expect(list[0].status).toBe('declined');
+      expect(list[0]!.id).toBe('assignment-2');
+      expect(list[0]!.status).toBe('declined');
     });
 
     it('should delete assignments by event', async () => {

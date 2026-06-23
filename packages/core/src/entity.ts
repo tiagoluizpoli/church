@@ -4,20 +4,20 @@ import { randomUUID } from 'node:crypto';
  * Base abstract class for all Domain Entities.
  * Enforces the presence of an ID, creation/update timestamps, and encapsulated properties.
  */
-export abstract class Entity<T> {
-  protected readonly _id: string;
+export abstract class Entity<T, ID extends string = string> {
+  protected readonly _id: ID;
   protected _props: T;
   protected readonly _createdAt: Date;
   protected _updatedAt: Date;
 
-  constructor(props: T, id?: string, createdAt?: Date, updatedAt?: Date) {
-    this._id = id ?? randomUUID();
+  constructor(props: T, id?: ID, createdAt?: Date, updatedAt?: Date) {
+    this._id = id ?? (randomUUID() as ID);
     this._props = props;
     this._createdAt = createdAt ?? new Date();
     this._updatedAt = updatedAt ?? this._createdAt;
   }
 
-  get id(): string {
+  get id(): ID {
     return this._id;
   }
 
@@ -29,7 +29,7 @@ export abstract class Entity<T> {
     return this._updatedAt;
   }
 
-  public equals(other?: Entity<T>): boolean {
+  public equals(other?: Entity<T, ID>): boolean {
     if (other === null || other === undefined) {
       return false;
     }

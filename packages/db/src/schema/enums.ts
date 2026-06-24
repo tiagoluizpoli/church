@@ -26,9 +26,11 @@ export const eventStatusEnum = pgEnum('event_status', [
 ]);
 
 export const assignmentStatusEnum = pgEnum('assignment_status', [
+  'draft',
   'pending',
   'confirmed',
   'declined',
+  'cancelled',
 ]);
 
 export const availabilityTypeEnum = pgEnum('availability_type', [

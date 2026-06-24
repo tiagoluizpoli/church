@@ -54,7 +54,7 @@ export const assignment = pgTable(
     ),
     check(
       'assignment_status_check',
-      sql`${table.status} IN ('pending', 'confirmed', 'declined')`,
+      sql`${table.status} IN ('draft', 'pending', 'confirmed', 'declined', 'cancelled')`,
     ),
   ],
 );

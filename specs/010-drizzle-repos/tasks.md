@@ -12,8 +12,8 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create repository structure under `apps/server/src/infrastructure/repositories/`
-- [ ] T002 Configure Vitest database connection and truncation helpers in `apps/server/tests/integration/repositories/setup.ts`
+- [X] T001 Create repository structure under `apps/server/src/infrastructure/repositories/`
+- [X] T002 Configure Vitest database connection and truncation helpers in `apps/server/tests/integration/repositories/setup.ts`
 
 ---
 
@@ -23,9 +23,9 @@
 
 **⚠️ CRITICAL**: No user story implementation can begin until these foundational helpers are built.
 
-- [ ] T003 [P] Implement `DrizzleTransactionContext` class in `apps/server/src/infrastructure/repositories/drizzle-transaction-context.ts`
-- [ ] T004 [P] Implement concrete `DrizzleUnitOfWork` wrapping `db.transaction()` in `apps/server/src/infrastructure/repositories/drizzle-unit-of-work.ts`
-- [ ] T005 [P] Implement `withChurchIsolation` helper in `apps/server/src/infrastructure/repositories/helpers.ts`
+- [X] T003 [P] Implement `DrizzleTransactionContext` class in `apps/server/src/infrastructure/repositories/drizzle-transaction-context.ts`
+- [X] T004 [P] Implement concrete `DrizzleUnitOfWork` wrapping `db.transaction()` in `apps/server/src/infrastructure/repositories/drizzle-unit-of-work.ts`
+- [X] T005 [P] Implement `withChurchIsolation` helper in `apps/server/src/infrastructure/repositories/helpers.ts`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -39,19 +39,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] Create integration test runner in `apps/server/tests/integration/repositories/drizzle-repos.test.ts` executing all contract test suites against Drizzle repositories (initially failing)
+- [X] T006 [P] [US1] Create integration test runner in `apps/server/tests/integration/repositories/drizzle-repos.test.ts` executing all contract test suites against Drizzle repositories (initially failing)
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Implement `DrizzleChurchRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-church.repository.ts`
-- [ ] T008 [P] [US1] Implement `DrizzleMinistryRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-ministry.repository.ts`
-- [ ] T009 [P] [US1] Implement `DrizzleVolunteerRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-volunteer.repository.ts`
-- [ ] T010 [P] [US1] Implement `DrizzleRoleRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-role.repository.ts`
-- [ ] T011 [P] [US1] Implement `DrizzleEventRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-event.repository.ts`
-- [ ] T012 [P] [US1] Implement `DrizzleTimeSlotRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-time-slot.repository.ts`
-- [ ] T013 [P] [US1] Implement `DrizzleAssignmentRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-assignment.repository.ts`
-- [ ] T014 [P] [US1] Implement `DrizzleAvailabilityRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-availability.repository.ts`
-- [ ] T015 [P] [US1] Implement `DrizzleAssignmentAuditRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-assignment-audit.repository.ts`
+- [X] T007 [P] [US1] Implement `DrizzleChurchRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-church.repository.ts`
+- [X] T008 [P] [US1] Implement `DrizzleMinistryRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-ministry.repository.ts`
+- [X] T009 [P] [US1] Implement `DrizzleVolunteerRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-volunteer.repository.ts`
+- [X] T010 [P] [US1] Implement `DrizzleRoleRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-role.repository.ts`
+- [X] T011 [P] [US1] Implement `DrizzleEventRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-event.repository.ts`
+- [X] T012 [P] [US1] Implement `DrizzleTimeSlotRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-time-slot.repository.ts`
+- [X] T013 [P] [US1] Implement `DrizzleAssignmentRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-assignment.repository.ts`
+- [X] T014 [P] [US1] Implement `DrizzleAvailabilityRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-availability.repository.ts`
+- [X] T015 [P] [US1] Implement `DrizzleAssignmentAuditRepository` and entity mapper in `apps/server/src/infrastructure/repositories/drizzle-assignment-audit.repository.ts`
 
 **Checkpoint**: User Story 1 fully functional and passes all repository contract tests.
 
@@ -65,11 +65,11 @@
 
 ### Tests for User Story 2
 
-- [ ] T016 [P] [US2] Write tenant isolation integration tests in `apps/server/tests/integration/repositories/isolation.test.ts` (initially failing)
+- [X] T016 [P] [US2] Write tenant isolation integration tests in `apps/server/tests/integration/repositories/isolation.test.ts` (initially failing)
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Apply the `withChurchIsolation` filter helper to query logic in all 9 repositories in `apps/server/src/infrastructure/repositories/`
+- [X] T017 [US2] Apply the `withChurchIsolation` filter helper to query logic in all 9 repositories in `apps/server/src/infrastructure/repositories/`
 
 **Checkpoint**: Cross-tenant queries fail with `NotFoundError`; isolation integration tests pass.
 
@@ -83,11 +83,11 @@
 
 ### Tests for User Story 3
 
-- [ ] T018 [P] [US3] Write transactional rollback integration tests in `apps/server/tests/integration/repositories/transactions.test.ts` (initially failing)
+- [X] T018 [P] [US3] Write transactional rollback integration tests in `apps/server/tests/integration/repositories/transactions.test.ts` (initially failing)
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Modify repository database operations to extract and use the transaction client if a valid `DrizzleTransactionContext` is supplied
+- [X] T019 [US3] Modify repository database operations to extract and use the transaction client if a valid `DrizzleTransactionContext` is supplied
 
 **Checkpoint**: Unsuccessful operations inside `DrizzleUnitOfWork` trigger clean rollback; tests pass.
 
@@ -101,11 +101,11 @@
 
 ### Tests for User Story 4
 
-- [ ] T020 [P] [US4] Write mapping and error-handling tests in `apps/server/tests/integration/repositories/mapping-errors.test.ts` (initially failing)
+- [X] T020 [P] [US4] Write mapping and error-handling tests in `apps/server/tests/integration/repositories/mapping-errors.test.ts` (initially failing)
 
 ### Implementation for User Story 4
 
-- [ ] T021 [US4] Refine all repository mappers to strictly validate DB enums and cast branded nominal IDs at compile time
+- [X] T021 [US4] Refine all repository mappers to strictly validate DB enums and cast branded nominal IDs at compile time
 
 **Checkpoint**: Entity mapping validation and domain-specific errors successfully verified.
 
@@ -115,9 +115,9 @@
 
 **Purpose**: Verification and structural quality standards
 
-- [ ] T022 [P] Export all concrete repositories through named exports in `apps/server/src/infrastructure/repositories/index.ts`
-- [ ] T023 Run Biome format and lint verification commands on all new files
-- [ ] T024 Verify integration test runner runs and passes within the target duration
+- [X] T022 [P] Export all concrete repositories through named exports in `apps/server/src/infrastructure/repositories/index.ts`
+- [X] T023 Run Biome format and lint verification commands on all new files
+- [X] T024 Verify integration test runner runs and passes within the target duration
 
 ---
 

@@ -6,7 +6,7 @@ import * as schema from '../../src/schema';
 const pool = new pg.Pool({
   connectionString:
     process.env.DATABASE_URL ||
-    'postgresql://postgres:postgres@localhost:5432/church',
+    'postgresql://postgres:postgres@localhost:5444/church',
   max: 2,
 });
 

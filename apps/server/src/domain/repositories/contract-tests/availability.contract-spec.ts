@@ -21,23 +21,26 @@ export function runAvailabilityRepositoryContractTests(
 
     it('should list availability entries for a volunteer in range', async () => {
       const list = await repo.listByVolunteerInRange(
-        'church-1' as ChurchId,
-        'volunteer-1' as VolunteerId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '44444444-4444-4444-4444-444444444441' as VolunteerId,
         new Date('2024-06-01T09:00:00Z'),
         new Date('2024-06-01T13:00:00Z'),
       );
       expect(list.length).toBe(1);
-      expect(list[0]!.id).toBe('availability-1');
+      expect(list[0]?.id).toBe('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
     });
 
     it('should create an availability entry', async () => {
-      const created = await repo.create('church-1' as ChurchId, {
-        volunteerId: 'volunteer-1' as VolunteerId,
-        type: 'available',
-        startTime: new Date('2024-06-02T10:00:00Z'),
-        endTime: new Date('2024-06-02T12:00:00Z'),
-        isAllDay: false,
-      });
+      const created = await repo.create(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        {
+          volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
+          type: 'available',
+          startTime: new Date('2024-06-02T10:00:00Z'),
+          endTime: new Date('2024-06-02T12:00:00Z'),
+          isAllDay: false,
+        },
+      );
 
       expect(created).toBeDefined();
       expect(created.id).toBeDefined();
@@ -46,8 +49,8 @@ export function runAvailabilityRepositoryContractTests(
 
     it('should update an availability entry', async () => {
       await repo.update(
-        'church-1' as ChurchId,
-        'availability-1' as AvailabilityId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as AvailabilityId,
         {
           type: 'available',
           reason: 'Updated reason',
@@ -55,25 +58,25 @@ export function runAvailabilityRepositoryContractTests(
       );
 
       const list = await repo.listByVolunteerInRange(
-        'church-1' as ChurchId,
-        'volunteer-1' as VolunteerId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '44444444-4444-4444-4444-444444444441' as VolunteerId,
         new Date('2024-06-01T09:00:00Z'),
         new Date('2024-06-01T13:00:00Z'),
       );
       expect(list.length).toBe(1);
-      expect(list[0]!.type).toBe('available');
-      expect(list[0]!.reason).toBe('Updated reason');
+      expect(list[0]?.type).toBe('available');
+      expect(list[0]?.reason).toBe('Updated reason');
     });
 
     it('should delete an availability entry', async () => {
       await repo.delete(
-        'church-1' as ChurchId,
-        'availability-1' as AvailabilityId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as AvailabilityId,
       );
 
       const list = await repo.listByVolunteerInRange(
-        'church-1' as ChurchId,
-        'volunteer-1' as VolunteerId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '44444444-4444-4444-4444-444444444441' as VolunteerId,
         new Date('2024-06-01T09:00:00Z'),
         new Date('2024-06-01T13:00:00Z'),
       );

@@ -16,23 +16,23 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
   constructor() {
     const au1 = new AssignmentAudit(
       {
-        churchId: 'church-1' as ChurchId,
-        assignmentId: 'assignment-1' as AssignmentId,
-        actorId: 'user-1' as UserId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
+        actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'created',
         timestamp: new Date('2024-06-01T10:00:00Z'),
       },
-      'audit-1' as any,
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1' as any,
     );
     const au2 = new AssignmentAudit(
       {
-        churchId: 'church-1' as ChurchId,
-        assignmentId: 'assignment-1' as AssignmentId,
-        actorId: 'user-1' as UserId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
+        actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'status_change',
         timestamp: new Date('2024-06-01T11:00:00Z'),
       },
-      'audit-2' as any,
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2' as any,
     );
 
     this.audits.set(au1.id, au1);

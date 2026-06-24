@@ -31,25 +31,25 @@ class MockEventRepository implements EventRepository {
   constructor() {
     const e1 = new Event(
       {
-        churchId: 'church-1' as ChurchId,
-        ministryId: 'ministry-1' as MinistryId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         title: 'Youth Gathering',
         startDate: new Date('2024-06-05T10:00:00Z'),
         endDate: new Date('2024-06-05T12:00:00Z'),
         status: 'draft',
       },
-      'event-1' as EventId,
+      '66666666-6666-6666-6666-666666666661' as EventId,
     );
     const e2 = new Event(
       {
-        churchId: 'church-1' as ChurchId,
-        ministryId: 'ministry-1' as MinistryId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         title: 'Sunday Service',
         startDate: new Date('2024-06-04T10:00:00Z'),
         endDate: new Date('2024-06-04T12:00:00Z'),
         status: 'published',
       },
-      'event-2' as EventId,
+      '66666666-6666-6666-6666-666666666662' as EventId,
     );
 
     this.events.set(e1.id, e1);
@@ -57,24 +57,24 @@ class MockEventRepository implements EventRepository {
 
     const req = new SlotRequirement(
       {
-        churchId: 'church-1' as ChurchId,
-        slotId: 'slot-1' as TimeSlotId,
-        roleId: 'role-1' as RoleId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         requiredCount: 1,
       },
-      'req-1' as SlotRequirementId,
+      '88888888-8888-8888-8888-888888888881' as SlotRequirementId,
     );
 
     const slot = new TimeSlot(
       {
-        churchId: 'church-1' as ChurchId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: e1.id,
         startTime: e1.startDate,
         endTime: e1.endDate,
         status: 'active',
         requirements: [req],
       },
-      'slot-1' as TimeSlotId,
+      '77777777-7777-7777-7777-777777777771' as TimeSlotId,
     );
 
     this.slots.set(e1.id, [slot]);

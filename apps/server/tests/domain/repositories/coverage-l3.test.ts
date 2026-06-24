@@ -20,8 +20,8 @@ import type { VolunteerRepository } from '../../../src/domain/repositories/volun
 describe('Coverage L3: Assignment Manager Service Data Access', () => {
   it('should verify all required L3 data operations are covered by repository interfaces', async () => {
     // 1. Mock repositories using the defined interfaces
-    const mockEventRepo: Partial<EventRepository> = {
-      getById: async (churchId, id) => {
+    const mockEventRepo: EventRepository = {
+      getById: async (churchId: ChurchId, id: EventId) => {
         return new Event(
           {
             churchId,
@@ -34,10 +34,10 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
           id,
         );
       },
-    };
+    } as any;
 
-    const mockTimeSlotRepo: Partial<TimeSlotRepository> = {
-      listByEvent: async (churchId, eventId) => {
+    const mockTimeSlotRepo: TimeSlotRepository = {
+      listByEvent: async (churchId: ChurchId, eventId: EventId) => {
         return [
           new TimeSlot(
             {
@@ -51,10 +51,10 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
           ),
         ];
       },
-    };
+    } as any;
 
-    const mockAssignmentRepo: Partial<AssignmentRepository> = {
-      listByEvent: async (churchId, _eventId) => {
+    const mockAssignmentRepo: AssignmentRepository = {
+      listByEvent: async (churchId: ChurchId, _eventId: EventId) => {
         return [
           new Assignment(
             {
@@ -68,22 +68,26 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
           ),
         ];
       },
-      listDeclinedBySlot: async (_churchId, _slotId) => {
+      listDeclinedBySlot: async (_churchId: ChurchId, _slotId: TimeSlotId) => {
         return [];
       },
       countByVolunteerInRange: async (
-        _churchId,
-        _volunteerId,
-        _startTime,
-        _endTime,
+        _churchId: ChurchId,
+        _volunteerId: any,
+        _startTime: Date,
+        _endTime: Date,
       ) => {
         return 1;
       },
-      updateStatus: async (_churchId, _id, _input) => {},
-    };
+      updateStatus: async (_churchId: ChurchId, _id: any, _input: any) => {},
+    } as any;
 
-    const mockVolunteerRepo: Partial<VolunteerRepository> = {
-      listQualifiedForRole: async (churchId, _ministryId, _roleId) => {
+    const mockVolunteerRepo: VolunteerRepository = {
+      listQualifiedForRole: async (
+        churchId: ChurchId,
+        _ministryId: MinistryId,
+        _roleId: RoleId,
+      ) => {
         return [
           new Volunteer(
             {
@@ -95,10 +99,10 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
           ),
         ];
       },
-    };
+    } as any;
 
-    const mockAuditRepo: Partial<AssignmentAuditRepository> = {
-      create: async (churchId, input) => {
+    const mockAuditRepo: AssignmentAuditRepository = {
+      create: async (churchId: ChurchId, input: any) => {
         return {
           id: 'audit-1' as any,
           churchId,
@@ -106,19 +110,16 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
           timestamp: new Date(),
         } as any;
       },
-    };
+    } as any;
 
     // 2. Perform L3 orchestration simulation: Publishing an Event
     const churchId = 'church-1' as ChurchId;
     const eventId = 'event-1' as EventId;
 
     // Fetch event details
-    const event = await mockEventRepo.getById!(churchId, eventId);
-    const slots = await mockTimeSlotRepo.listByEvent!(churchId, eventId);
-    const assignments = await mockAssignmentRepo.listByEvent!(
-      churchId,
-      eventId,
-    );
+    const event = await mockEventRepo.getById(churchId, eventId);
+    const slots = await mockTimeSlotRepo.listByEvent(churchId, eventId);
+    const assignments = await mockAssignmentRepo.listByEvent(churchId, eventId);
 
     // Prepare validation data map
     const validationMap = new Map<AssignmentId, any>();
@@ -150,8 +151,8 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
     expect(publishResult.audits?.length).toBe(1);
 
     // Persist changes using repos
-    for (const audit of publishResult.audits!) {
-      await mockAuditRepo.create!(churchId, {
+    for (const audit of publishResult.audits ?? []) {
+      await mockAuditRepo.create(churchId, {
         assignmentId: audit.assignmentId,
         actorId: audit.actorId,
         action: audit.action,
@@ -162,21 +163,24 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
 
     // 3. Perform L3 orchestration simulation: Finding Replacements
     const targetSlot = slots[0];
+    if (!targetSlot) {
+      throw new Error('targetSlot must be defined');
+    }
     expect(targetSlot).toBeDefined();
 
-    const qualifiedVolunteers = await mockVolunteerRepo.listQualifiedForRole!(
+    const qualifiedVolunteers = await mockVolunteerRepo.listQualifiedForRole(
       churchId,
       event.ministryId,
       'role-1' as RoleId,
     );
-    const declinedAssignments = await mockAssignmentRepo.listDeclinedBySlot!(
+    const declinedAssignments = await mockAssignmentRepo.listDeclinedBySlot(
       churchId,
-      targetSlot!.id,
+      targetSlot.id,
     );
 
     const workloadMap = new Map<string, number>();
     for (const v of qualifiedVolunteers) {
-      const count = await mockAssignmentRepo.countByVolunteerInRange!(
+      const count = await mockAssignmentRepo.countByVolunteerInRange(
         churchId,
         v.id,
         new Date('2024-06-01T00:00:00Z'),
@@ -187,11 +191,11 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
 
     const replacements = AssignmentManagerService.findReplacements({
       churchId,
-      slotId: targetSlot!.id,
+      slotId: targetSlot.id,
       roleId: 'role-1' as RoleId,
       qualifiedVolunteerIds: qualifiedVolunteers.map((v) => v.id),
       declinedVolunteerIds: declinedAssignments.map((a) => a.volunteerId),
-      slotTimeRange: { start: targetSlot!.startTime, end: targetSlot!.endTime },
+      slotTimeRange: { start: targetSlot.startTime, end: targetSlot.endTime },
       existingBlockouts: [],
       existingAssignments: [],
       workloadMap,

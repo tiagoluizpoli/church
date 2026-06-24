@@ -16,7 +16,7 @@ class MockChurchRepository implements ChurchRepository {
         name: 'First Church',
         slug: 'first-church' as ChurchSlug,
       },
-      'church-1' as ChurchId,
+      '11111111-1111-1111-1111-111111111111' as ChurchId,
     );
     this.churches.set(church1.id, church1);
   }

@@ -22,34 +22,40 @@ export function runRoleRepositoryContractTests(
 
     it('should retrieve a role by ID', async () => {
       const found = await repo.getById(
-        'church-1' as ChurchId,
-        'role-1' as RoleId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '55555555-5555-5555-5555-555555555551' as RoleId,
       );
       expect(found).toBeDefined();
-      expect(found.id).toBe('role-1');
+      expect(found.id).toBe('55555555-5555-5555-5555-555555555551');
       expect(found.name).toBe('Usher');
     });
 
     it('should throw NotFoundError when role is not found', async () => {
       await expect(
-        repo.getById('church-1' as ChurchId, 'non-existent' as RoleId),
+        repo.getById(
+          '11111111-1111-1111-1111-111111111111' as ChurchId,
+          'non-existent' as RoleId,
+        ),
       ).rejects.toThrow(NotFoundError);
     });
 
     it('should throw NotFoundError when tenant isolation is breached', async () => {
       await expect(
-        repo.getById('church-2' as ChurchId, 'role-1' as RoleId),
+        repo.getById(
+          '11111111-1111-1111-1111-111111111112' as ChurchId,
+          '55555555-5555-5555-5555-555555555551' as RoleId,
+        ),
       ).rejects.toThrow(NotFoundError);
     });
 
     it('should list roles in a ministry alphabetically', async () => {
       const list = await repo.listByMinistry(
-        'church-1' as ChurchId,
-        'ministry-1' as MinistryId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '33333333-3333-3333-3333-333333333331' as MinistryId,
       );
       expect(list.length).toBe(2);
-      expect(list[0]!.name).toBe('Greeter');
-      expect(list[1]!.name).toBe('Usher');
+      expect(list[0]?.name).toBe('Greeter');
+      expect(list[1]?.name).toBe('Usher');
     });
   });
 }

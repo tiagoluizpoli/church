@@ -11,12 +11,12 @@ import type { AvailabilityRepository } from '../../../src/domain/repositories/av
 describe('Coverage L1: Availability Engine Data Access', () => {
   it('should fetch all required L1 data from repositories and calculate availability', async () => {
     // 1. Mock repositories using the defined interfaces
-    const mockAvailabilityRepo: Partial<AvailabilityRepository> = {
+    const mockAvailabilityRepo: AvailabilityRepository = {
       listByVolunteerInRange: async (
-        churchId,
-        volunteerId,
-        _startTime,
-        _endTime,
+        churchId: ChurchId,
+        volunteerId: VolunteerId,
+        _startTime: Date,
+        _endTime: Date,
       ) => {
         return [
           new Availability({
@@ -29,14 +29,14 @@ describe('Coverage L1: Availability Engine Data Access', () => {
           }),
         ];
       },
-    };
+    } as any;
 
-    const mockAssignmentRepo: Partial<AssignmentRepository> = {
+    const mockAssignmentRepo: AssignmentRepository = {
       listByVolunteerInRange: async (
-        churchId,
-        volunteerId,
-        _startTime,
-        _endTime,
+        churchId: ChurchId,
+        volunteerId: VolunteerId,
+        _startTime: Date,
+        _endTime: Date,
       ) => {
         return [
           new Assignment({
@@ -48,7 +48,7 @@ describe('Coverage L1: Availability Engine Data Access', () => {
           }),
         ];
       },
-    };
+    } as any;
 
     // 2. Simulate the application controller/service flow retrieving data for L1
     const churchId = 'church-1' as ChurchId;
@@ -57,7 +57,7 @@ describe('Coverage L1: Availability Engine Data Access', () => {
     const rangeEnd = new Date('2024-06-01T23:59:59Z');
 
     // Retrieve availability blockouts
-    const blockouts = await mockAvailabilityRepo.listByVolunteerInRange!(
+    const blockouts = await mockAvailabilityRepo.listByVolunteerInRange(
       churchId,
       volunteerId,
       rangeStart,
@@ -65,7 +65,7 @@ describe('Coverage L1: Availability Engine Data Access', () => {
     );
 
     // Retrieve existing assignments
-    const assignments = await mockAssignmentRepo.listByVolunteerInRange!(
+    const assignments = await mockAssignmentRepo.listByVolunteerInRange(
       churchId,
       volunteerId,
       rangeStart,

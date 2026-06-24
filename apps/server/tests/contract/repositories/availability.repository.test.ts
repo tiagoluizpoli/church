@@ -20,14 +20,14 @@ class MockAvailabilityRepository implements AvailabilityRepository {
   constructor() {
     const av1 = new Availability(
       {
-        churchId: 'church-1' as ChurchId,
-        volunteerId: 'volunteer-1' as VolunteerId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         type: 'unavailable',
         startTime: new Date('2024-06-01T10:00:00Z'),
         endTime: new Date('2024-06-01T12:00:00Z'),
         isAllDay: false,
       },
-      'availability-1' as AvailabilityId,
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as AvailabilityId,
     );
     this.availabilities.set(av1.id, av1);
   }

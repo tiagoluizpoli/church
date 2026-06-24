@@ -14,23 +14,23 @@ class MockMinistryRepository implements MinistryRepository {
   constructor() {
     const min1 = new Ministry(
       {
-        churchId: 'church-1' as ChurchId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         name: 'Youth Ministry',
         enforcementType: 'soft',
       },
-      'ministry-1' as MinistryId,
+      '33333333-3333-3333-3333-333333333331' as MinistryId,
     );
     const min2 = new Ministry(
       {
-        churchId: 'church-1' as ChurchId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         name: 'Adult Ministry',
         enforcementType: 'soft',
       },
-      'ministry-2' as MinistryId,
+      '33333333-3333-3333-3333-333333333332' as MinistryId,
     );
     const min3 = new Ministry(
       {
-        churchId: 'church-2' as ChurchId,
+        churchId: '11111111-1111-1111-1111-111111111112' as ChurchId,
         name: 'Other Ministry',
         enforcementType: 'soft',
       },

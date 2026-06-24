@@ -18,32 +18,44 @@ import type { VolunteerRepository } from '../../../src/domain/repositories/volun
 describe('Coverage L2: Conflict & Validation Service Data Access', () => {
   it('should verify all required L2 data can be retrieved and validated', async () => {
     // 1. Mock repositories using the defined interfaces
-    const mockVolunteerRepo: Partial<VolunteerRepository> = {
-      hasRoleQualification: async (_churchId, volunteerId, roleId) => {
+    const mockVolunteerRepo: VolunteerRepository = {
+      hasRoleQualification: async (
+        _churchId: ChurchId,
+        volunteerId: VolunteerId,
+        roleId: RoleId,
+      ) => {
         return volunteerId === 'volunteer-1' && roleId === 'role-1';
       },
-      hasMembershipInMinistry: async (_churchId, volunteerId, ministryId) => {
+      hasMembershipInMinistry: async (
+        _churchId: ChurchId,
+        volunteerId: VolunteerId,
+        ministryId: MinistryId,
+      ) => {
         return volunteerId === 'volunteer-1' && ministryId === 'ministry-1';
       },
-    };
+    } as any;
 
-    const mockAssignmentRepo: Partial<AssignmentRepository> = {
-      findBySlotAndVolunteer: async (_churchId, _slotId, _volunteerId) => {
+    const mockAssignmentRepo: AssignmentRepository = {
+      findBySlotAndVolunteer: async (
+        _churchId: ChurchId,
+        _slotId: TimeSlotId,
+        _volunteerId: VolunteerId,
+      ) => {
         return null; // no duplicate assignments
       },
       countByVolunteerInRange: async (
-        _churchId,
-        _volunteerId,
-        _startTime,
-        _endTime,
-        _statusFilter,
+        _churchId: ChurchId,
+        _volunteerId: VolunteerId,
+        _startTime: Date,
+        _endTime: Date,
+        _statusFilter?: any,
       ) => {
         return 2; // volunteer has served 2 times in range
       },
-    };
+    } as any;
 
-    const mockAuditRepo: Partial<AssignmentAuditRepository> = {
-      create: async (churchId, input) => {
+    const mockAuditRepo: AssignmentAuditRepository = {
+      create: async (churchId: ChurchId, input: any) => {
         return {
           id: 'audit-1' as any,
           churchId,
@@ -51,7 +63,7 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
           timestamp: new Date(),
         } as any;
       },
-    };
+    } as any;
 
     // 2. Fetch all parameters required for L2 constraints from the repositories
     const churchId = 'church-1' as ChurchId;
@@ -60,22 +72,22 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
     const ministryId = 'ministry-1' as MinistryId;
     const slotId = 'slot-1' as TimeSlotId;
 
-    const isQualified = await mockVolunteerRepo.hasRoleQualification!(
+    const isQualified = await mockVolunteerRepo.hasRoleQualification(
       churchId,
       volunteerId,
       roleId,
     );
-    const isMember = await mockVolunteerRepo.hasMembershipInMinistry!(
+    const isMember = await mockVolunteerRepo.hasMembershipInMinistry(
       churchId,
       volunteerId,
       ministryId,
     );
-    const existingAssignment = await mockAssignmentRepo.findBySlotAndVolunteer!(
+    const existingAssignment = await mockAssignmentRepo.findBySlotAndVolunteer(
       churchId,
       slotId,
       volunteerId,
     );
-    const serviceCount = await mockAssignmentRepo.countByVolunteerInRange!(
+    const serviceCount = await mockAssignmentRepo.countByVolunteerInRange(
       churchId,
       volunteerId,
       new Date('2024-06-01T00:00:00Z'),
@@ -135,11 +147,11 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
     );
 
     // Persist the audit using the repository
-    const persistedAudit = await mockAuditRepo.create!(churchId, {
+    const persistedAudit = await mockAuditRepo.create(churchId, {
       assignmentId: auditEntity.assignmentId,
       actorId: auditEntity.actorId,
       action: auditEntity.action,
-      reason: auditEntity.reason!,
+      reason: auditEntity.reason,
       overrideConflictTypes: auditEntity.overrideConflictTypes,
     });
 

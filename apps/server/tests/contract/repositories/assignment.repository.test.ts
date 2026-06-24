@@ -24,24 +24,24 @@ class MockAssignmentRepository implements AssignmentRepository {
   constructor() {
     const a1 = new Assignment(
       {
-        churchId: 'church-1' as ChurchId,
-        slotId: 'slot-1' as TimeSlotId,
-        volunteerId: 'volunteer-1' as VolunteerId,
-        roleId: 'role-1' as RoleId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
+        roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         status: 'confirmed',
       },
-      'assignment-1' as AssignmentId,
+      '99999999-9999-9999-9999-999999999991' as AssignmentId,
     );
     const a2 = new Assignment(
       {
-        churchId: 'church-1' as ChurchId,
-        slotId: 'slot-1' as TimeSlotId,
-        volunteerId: 'volunteer-1' as VolunteerId,
-        roleId: 'role-1' as RoleId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
+        roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         status: 'declined',
         reason: 'Sick',
       },
-      'assignment-2' as AssignmentId,
+      '99999999-9999-9999-9999-999999999992' as AssignmentId,
     );
 
     this.assignments.set(a1.id, a1);
@@ -107,7 +107,7 @@ class MockAssignmentRepository implements AssignmentRepository {
     churchId: ChurchId,
     eventId: EventId,
   ): Promise<Assignment[]> {
-    if (eventId === ('event-1' as EventId)) {
+    if (eventId === ('66666666-6666-6666-6666-666666666661' as EventId)) {
       return Array.from(this.assignments.values()).filter(
         (a) => a.churchId === churchId,
       );
@@ -177,7 +177,7 @@ class MockAssignmentRepository implements AssignmentRepository {
   }
 
   async deleteByEvent(_churchId: ChurchId, eventId: EventId): Promise<void> {
-    if (eventId === ('event-1' as EventId)) {
+    if (eventId === ('66666666-6666-6666-6666-666666666661' as EventId)) {
       this.assignments.clear();
     }
   }

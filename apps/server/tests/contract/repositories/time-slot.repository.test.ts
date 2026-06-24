@@ -23,24 +23,24 @@ class MockTimeSlotRepository implements TimeSlotRepository {
   constructor() {
     const req = new SlotRequirement(
       {
-        churchId: 'church-1' as ChurchId,
-        slotId: 'slot-1' as TimeSlotId,
-        roleId: 'role-1' as RoleId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         requiredCount: 1,
       },
-      'req-1' as SlotRequirementId,
+      '88888888-8888-8888-8888-888888888881' as SlotRequirementId,
     );
 
     const slot = new TimeSlot(
       {
-        churchId: 'church-1' as ChurchId,
-        eventId: 'event-1' as EventId,
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        eventId: '66666666-6666-6666-6666-666666666661' as EventId,
         startTime: new Date('2024-06-05T10:00:00Z'),
         endTime: new Date('2024-06-05T12:00:00Z'),
         status: 'active',
         requirements: [req],
       },
-      'slot-1' as TimeSlotId,
+      '77777777-7777-7777-7777-777777777771' as TimeSlotId,
     );
 
     this.slots.set(slot.id, slot);

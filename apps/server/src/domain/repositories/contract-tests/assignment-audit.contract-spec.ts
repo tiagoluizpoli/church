@@ -20,12 +20,15 @@ export function runAssignmentAuditRepositoryContractTests(
     });
 
     it('should create an assignment audit', async () => {
-      const created = await repo.create('church-1' as ChurchId, {
-        assignmentId: 'assignment-1' as AssignmentId,
-        actorId: 'user-1' as UserId,
-        action: 'status_change',
-        reason: 'Test audit creation',
-      });
+      const created = await repo.create(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        {
+          assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
+          actorId: '22222222-2222-2222-2222-222222222221' as UserId,
+          action: 'status_change',
+          reason: 'Test audit creation',
+        },
+      );
 
       expect(created).toBeDefined();
       expect(created.id).toBeDefined();
@@ -34,27 +37,29 @@ export function runAssignmentAuditRepositoryContractTests(
 
     it('should list audits by assignment newest-first', async () => {
       const list = await repo.listByAssignment(
-        'church-1' as ChurchId,
-        'assignment-1' as AssignmentId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '99999999-9999-9999-9999-999999999991' as AssignmentId,
       );
       expect(list.length).toBeGreaterThanOrEqual(2);
-      expect(list[0]!.id).toBe('audit-2'); // 11:00:00 is newer than 10:00:00
-      expect(list[1]!.id).toBe('audit-1');
+      expect(list[0]?.id).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2'); // 11:00:00 is newer than 10:00:00
+      expect(list[1]?.id).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1');
     });
 
     it('should list audits by church newest-first', async () => {
-      const list = await repo.listByChurch('church-1' as ChurchId);
+      const list = await repo.listByChurch(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+      );
       expect(list.length).toBeGreaterThanOrEqual(2);
-      expect(list[0]!.id).toBe('audit-2');
+      expect(list[0]?.id).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2');
     });
 
     it('should list audits by actor newest-first', async () => {
       const list = await repo.listByActor(
-        'church-1' as ChurchId,
-        'user-1' as UserId,
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '22222222-2222-2222-2222-222222222221' as UserId,
       );
       expect(list.length).toBeGreaterThanOrEqual(2);
-      expect(list[0]!.id).toBe('audit-2');
+      expect(list[0]?.id).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2');
     });
   });
 }

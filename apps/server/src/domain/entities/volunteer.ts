@@ -16,6 +16,8 @@ export interface VolunteerProps {
   userId: UserId;
   status: VolunteerStatus;
   notes?: string;
+  /** Denormalized display name, populated when the user table is joined. */
+  name?: string;
 }
 
 export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
@@ -51,6 +53,10 @@ export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
 
   get notes(): string | undefined {
     return this._props.notes;
+  }
+
+  get name(): string | undefined {
+    return this._props.name;
   }
 
   public activate(): void {

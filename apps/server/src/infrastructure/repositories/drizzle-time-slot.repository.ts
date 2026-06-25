@@ -1,12 +1,15 @@
 import { NotFoundError } from '@church/core';
-import { slotRequirement, timeSlot } from '@church/db';
-import { and, eq } from 'drizzle-orm';
+import { assignment, slotRequirement, timeSlot } from '@church/db';
+import { and, count, eq, inArray } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
+import type { RoleId } from '../../domain/entities/role';
+import type { SlotRequirement } from '../../domain/entities/slot-requirement';
 import type { TimeSlot, TimeSlotId } from '../../domain/entities/time-slot';
 import type {
   BulkCreateTimeSlotsInput,
   TimeSlotRepository,
+  UpsertSlotRequirementInput,
 } from '../../domain/repositories/time-slot.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
@@ -118,5 +121,69 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
           withChurchIsolation(timeSlot, churchId),
         ),
       );
+  }
+
+  async upsertRequirement(
+    churchId: ChurchId,
+    slotId: TimeSlotId,
+    input: UpsertSlotRequirementInput,
+    tx?: TransactionContext,
+  ): Promise<SlotRequirement> {
+    const db = getClient(this.db, tx);
+    const [existing] = await db
+      .select()
+      .from(slotRequirement)
+      .where(
+        and(
+          eq(slotRequirement.slotId, slotId),
+          eq(slotRequirement.roleId, input.roleId),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const [updated] = await db
+        .update(slotRequirement)
+        .set({ requiredCount: input.requiredCount })
+        .where(eq(slotRequirement.id, existing.id))
+        .returning();
+      if (!updated) throw new Error('SlotRequirement update failed');
+      return mapSlotRequirement(updated);
+    }
+
+    const [inserted] = await db
+      .insert(slotRequirement)
+      .values({
+        churchId,
+        slotId,
+        roleId: input.roleId,
+        teamId: input.teamId ?? null,
+        requiredCount: input.requiredCount,
+        notes: input.notes ?? null,
+      })
+      .returning();
+    if (!inserted) throw new Error('SlotRequirement insert failed');
+    return mapSlotRequirement(inserted);
+  }
+
+  async countActiveAssignments(
+    churchId: ChurchId,
+    slotId: TimeSlotId,
+    roleId: RoleId,
+    tx?: TransactionContext,
+  ): Promise<number> {
+    const db = getClient(this.db, tx);
+    const [result] = await db
+      .select({ cnt: count() })
+      .from(assignment)
+      .where(
+        and(
+          withChurchIsolation(assignment, churchId),
+          eq(assignment.slotId, slotId),
+          eq(assignment.roleId, roleId),
+          inArray(assignment.status, ['pending', 'confirmed']),
+        ),
+      );
+    return result?.cnt ?? 0;
   }
 }

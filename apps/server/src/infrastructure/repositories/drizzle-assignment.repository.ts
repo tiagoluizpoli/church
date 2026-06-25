@@ -270,6 +270,18 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       );
   }
 
+  async deleteById(
+    churchId: ChurchId,
+    id: AssignmentId,
+    tx?: TransactionContext,
+  ): Promise<void> {
+    await getClient(this.db, tx)
+      .delete(assignment)
+      .where(
+        and(eq(assignment.id, id), withChurchIsolation(assignment, churchId)),
+      );
+  }
+
   async listDeclinedBySlot(
     churchId: ChurchId,
     slotId: TimeSlotId,

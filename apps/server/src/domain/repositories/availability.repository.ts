@@ -35,6 +35,13 @@ export interface AvailabilityRepository {
     tx?: TransactionContext,
   ): Promise<Availability[]>;
 
+  /** Bulk-fetch all unavailable blocks for a set of volunteers. */
+  listByVolunteers(
+    churchId: ChurchId,
+    volunteerIds: VolunteerId[],
+    tx?: TransactionContext,
+  ): Promise<Availability[]>;
+
   create(
     churchId: ChurchId,
     input: CreateAvailabilityInput,

@@ -1,5 +1,5 @@
 import { availability } from '@church/db';
-import { and, between, eq } from 'drizzle-orm';
+import { and, between, eq, inArray } from 'drizzle-orm';
 import type {
   Availability,
   AvailabilityId,
@@ -34,6 +34,25 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
           withChurchIsolation(availability, churchId),
           eq(availability.volunteerId, volunteerId),
           between(availability.startTime, startTime, endTime),
+        ),
+      );
+    return rows.map(mapAvailability);
+  }
+
+  async listByVolunteers(
+    churchId: ChurchId,
+    volunteerIds: VolunteerId[],
+    tx?: TransactionContext,
+  ): Promise<Availability[]> {
+    if (volunteerIds.length === 0) return [];
+    const rows = await getClient(this.db, tx)
+      .select()
+      .from(availability)
+      .where(
+        and(
+          withChurchIsolation(availability, churchId),
+          inArray(availability.volunteerId, volunteerIds),
+          eq(availability.type, 'unavailable'),
         ),
       );
     return rows.map(mapAvailability);

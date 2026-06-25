@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { role } from '@church/db';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { Role, RoleId } from '../../domain/entities/role';
@@ -46,5 +46,22 @@ export class DrizzleRoleRepository implements RoleRepository {
       )
       .orderBy(asc(role.name));
     return rows.map(mapRole);
+  }
+
+  async listGlobalAndMinistryRoleIds(
+    churchId: ChurchId,
+    ministryIds: MinistryId[],
+    tx?: TransactionContext,
+  ): Promise<RoleId[]> {
+    const conditions =
+      ministryIds.length > 0
+        ? or(eq(role.isGlobal, true), inArray(role.ministryId, ministryIds))
+        : eq(role.isGlobal, true);
+
+    const rows = await getClient(this.db, tx)
+      .select({ id: role.id })
+      .from(role)
+      .where(and(withChurchIsolation(role, churchId), conditions));
+    return rows.map((r) => r.id as RoleId);
   }
 }

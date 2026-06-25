@@ -99,6 +99,12 @@ export interface AssignmentRepository {
     tx?: TransactionContext,
   ): Promise<void>;
 
+  deleteById(
+    churchId: ChurchId,
+    id: AssignmentId,
+    tx?: TransactionContext,
+  ): Promise<void>;
+
   listDeclinedBySlot(
     churchId: ChurchId,
     slotId: TimeSlotId,

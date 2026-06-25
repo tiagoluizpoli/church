@@ -9,6 +9,11 @@ import type {
 } from '../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
+export interface VolunteerLeadership {
+  ministryId: MinistryId;
+  ministryName: string;
+}
+
 export interface VolunteerRepository {
   getById(
     churchId: ChurchId,
@@ -55,4 +60,39 @@ export interface VolunteerRepository {
     status: VolunteerStatus,
     tx?: TransactionContext,
   ): Promise<void>;
+
+  /** Find a volunteer by their auth userId without knowing the churchId. */
+  findByUserIdGlobally(
+    userId: UserId,
+    tx?: TransactionContext,
+  ): Promise<Volunteer | null>;
+
+  /** Check if a volunteer holds a leadership role in the given ministry. */
+  hasLeadershipInMinistry(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    ministryId: MinistryId,
+    tx?: TransactionContext,
+  ): Promise<boolean>;
+
+  /** List every ministry in which the volunteer is a leader. */
+  listLedMinistries(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    tx?: TransactionContext,
+  ): Promise<VolunteerLeadership[]>;
+
+  /** Bulk-fetch volunteers by a list of ids (all within the same church). */
+  listByIds(
+    churchId: ChurchId,
+    ids: VolunteerId[],
+    tx?: TransactionContext,
+  ): Promise<Volunteer[]>;
+
+  /** List all ministry IDs where the volunteer is an active member. */
+  listMemberMinistryIds(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    tx?: TransactionContext,
+  ): Promise<MinistryId[]>;
 }

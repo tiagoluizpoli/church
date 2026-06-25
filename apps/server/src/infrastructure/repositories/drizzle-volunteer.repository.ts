@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
-import { ministryVolunteer, role, volunteer } from '@church/db';
-import { and, eq } from 'drizzle-orm';
+import { ministry, ministryVolunteer, role, user, volunteer } from '@church/db';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { RoleId } from '../../domain/entities/role';
@@ -11,7 +11,10 @@ import type {
   VolunteerStatus,
 } from '../../domain/entities/volunteer';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
-import type { VolunteerRepository } from '../../domain/repositories/volunteer.repository';
+import type {
+  VolunteerLeadership,
+  VolunteerRepository,
+} from '../../domain/repositories/volunteer.repository';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import { mapVolunteer } from './mappers';
 import type { AnyDrizzleDb } from './types';
@@ -63,7 +66,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   ): Promise<Volunteer[]> {
     const db = getClient(this.db, tx);
     const rows = await db
-      .select({ volunteer })
+      .select({ volunteer, userName: user.name })
       .from(volunteer)
       .innerJoin(
         ministryVolunteer,
@@ -73,8 +76,9 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryVolunteer.status, 'active'),
         ),
       )
+      .innerJoin(user, eq(user.id, volunteer.userId))
       .where(withChurchIsolation(volunteer, churchId));
-    return rows.map((r) => mapVolunteer(r.volunteer));
+    return rows.map((r) => mapVolunteer(r.volunteer, r.userName));
   }
 
   async hasMembershipInMinistry(
@@ -163,5 +167,108 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           withChurchIsolation(volunteer, churchId),
         ),
       );
+  }
+
+  async findByUserIdGlobally(
+    userId: UserId,
+    tx?: TransactionContext,
+  ): Promise<Volunteer | null> {
+    const db = getClient(this.db, tx);
+    const [row] = await db
+      .select({ volunteer, userName: user.name })
+      .from(volunteer)
+      .innerJoin(user, eq(user.id, volunteer.userId))
+      .where(and(eq(volunteer.userId, userId), eq(volunteer.status, 'active')))
+      .limit(1);
+    return row ? mapVolunteer(row.volunteer, row.userName) : null;
+  }
+
+  async hasLeadershipInMinistry(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    ministryId: MinistryId,
+    tx?: TransactionContext,
+  ): Promise<boolean> {
+    const db = getClient(this.db, tx);
+    const [row] = await db
+      .select({ id: ministryVolunteer.id })
+      .from(ministryVolunteer)
+      .where(
+        and(
+          eq(ministryVolunteer.volunteerId, volunteerId),
+          eq(ministryVolunteer.ministryId, ministryId),
+          eq(ministryVolunteer.churchId, churchId),
+          eq(ministryVolunteer.status, 'active'),
+          eq(ministryVolunteer.systemRole, 'leader'),
+        ),
+      )
+      .limit(1);
+    return row != null;
+  }
+
+  async listLedMinistries(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    tx?: TransactionContext,
+  ): Promise<VolunteerLeadership[]> {
+    const db = getClient(this.db, tx);
+    const rows = await db
+      .select({
+        ministryId: ministryVolunteer.ministryId,
+        ministryName: ministry.name,
+      })
+      .from(ministryVolunteer)
+      .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
+      .where(
+        and(
+          eq(ministryVolunteer.volunteerId, volunteerId),
+          eq(ministryVolunteer.churchId, churchId),
+          eq(ministryVolunteer.status, 'active'),
+          eq(ministryVolunteer.systemRole, 'leader'),
+        ),
+      );
+    return rows.map((r) => ({
+      ministryId: r.ministryId as MinistryId,
+      ministryName: r.ministryName,
+    }));
+  }
+
+  async listByIds(
+    churchId: ChurchId,
+    ids: VolunteerId[],
+    tx?: TransactionContext,
+  ): Promise<Volunteer[]> {
+    if (ids.length === 0) return [];
+    const db = getClient(this.db, tx);
+    const rows = await db
+      .select({ volunteer, userName: user.name })
+      .from(volunteer)
+      .innerJoin(user, eq(user.id, volunteer.userId))
+      .where(
+        and(
+          withChurchIsolation(volunteer, churchId),
+          inArray(volunteer.id, ids),
+        ),
+      );
+    return rows.map((r) => mapVolunteer(r.volunteer, r.userName));
+  }
+
+  async listMemberMinistryIds(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    tx?: TransactionContext,
+  ): Promise<MinistryId[]> {
+    const db = getClient(this.db, tx);
+    const rows = await db
+      .select({ ministryId: ministryVolunteer.ministryId })
+      .from(ministryVolunteer)
+      .where(
+        and(
+          eq(ministryVolunteer.volunteerId, volunteerId),
+          eq(ministryVolunteer.churchId, churchId),
+          eq(ministryVolunteer.status, 'active'),
+        ),
+      );
+    return rows.map((r) => r.ministryId as MinistryId);
   }
 }

@@ -136,20 +136,24 @@ export function mapRole(row: {
 // ──────────────────────────────────────────
 const VOLUNTEER_STATUSES = ['active', 'inactive', 'on_hold'] as const;
 
-export function mapVolunteer(row: {
-  id: string;
-  churchId: string;
-  userId: string;
-  status: string;
-  notes: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}): Volunteer {
+export function mapVolunteer(
+  row: {
+    id: string;
+    churchId: string;
+    userId: string;
+    status: string;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  },
+  name?: string | null,
+): Volunteer {
   const props: VolunteerProps = {
     churchId: row.churchId as ChurchId,
     userId: row.userId as UserId,
     status: assertEnum('status', row.status, VOLUNTEER_STATUSES),
     notes: row.notes ?? undefined,
+    name: name ?? undefined,
   };
   return new Volunteer(
     props,

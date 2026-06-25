@@ -33,5 +33,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/010-drizzle-repos/plan.md](specs/010-drizzle-repos/plan.md)
+- Current Plan: [specs/011-admin-leader-api/plan.md](specs/011-admin-leader-api/plan.md)
 <!-- SPECKIT END -->

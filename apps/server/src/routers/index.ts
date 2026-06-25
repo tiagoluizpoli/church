@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from '../trpc';
+import { adminLeaderRouter } from './admin-leader';
 import { todoRouter } from './todo';
 
 export const appRouter = router({
@@ -12,5 +13,6 @@ export const appRouter = router({
     };
   }),
   todo: todoRouter,
+  adminLeader: adminLeaderRouter,
 });
 export type AppRouter = typeof appRouter;

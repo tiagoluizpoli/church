@@ -193,6 +193,13 @@ class MockAssignmentRepository implements AssignmentRepository {
         a.status === 'declined',
     );
   }
+
+  async deleteById(churchId: ChurchId, id: AssignmentId): Promise<void> {
+    const a = this.assignments.get(id);
+    if (a && a.churchId === churchId) {
+      this.assignments.delete(id);
+    }
+  }
 }
 
 runAssignmentRepositoryContractTests(

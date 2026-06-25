@@ -129,6 +129,49 @@ class MockVolunteerRepository implements VolunteerRepository {
       v.putOnHold();
     }
   }
+
+  async findByUserIdGlobally(userId: UserId): Promise<Volunteer | null> {
+    for (const v of this.volunteers.values()) {
+      if (v.userId === userId) return v;
+    }
+    return null;
+  }
+
+  async hasLeadershipInMinistry(
+    _churchId: ChurchId,
+    volunteerId: VolunteerId,
+    ministryId: MinistryId,
+  ): Promise<boolean> {
+    return this.memberships.has(`${volunteerId}:${ministryId}:leader`);
+  }
+
+  async listLedMinistries(
+    _churchId: ChurchId,
+    _volunteerId: VolunteerId,
+  ): Promise<{ ministryId: MinistryId; ministryName: string }[]> {
+    return [];
+  }
+
+  async listByIds(
+    churchId: ChurchId,
+    ids: VolunteerId[],
+  ): Promise<Volunteer[]> {
+    return ids
+      .map((id) => this.volunteers.get(id))
+      .filter((v): v is Volunteer => v != null && v.churchId === churchId);
+  }
+
+  async listMemberMinistryIds(
+    _churchId: ChurchId,
+    volunteerId: VolunteerId,
+  ): Promise<MinistryId[]> {
+    const results: MinistryId[] = [];
+    for (const key of this.memberships) {
+      const [vid, mid] = key.split(':');
+      if (vid === volunteerId) results.push(mid as MinistryId);
+    }
+    return results;
+  }
 }
 
 runVolunteerRepositoryContractTests(

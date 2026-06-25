@@ -14,6 +14,7 @@ import { runTimeSlotRepositoryContractTests } from '../../../src/domain/reposito
 import type {
   BulkCreateTimeSlotsInput,
   TimeSlotRepository,
+  UpsertSlotRequirementInput,
 } from '../../../src/domain/repositories/time-slot.repository';
 
 class MockTimeSlotRepository implements TimeSlotRepository {
@@ -106,6 +107,32 @@ class MockTimeSlotRepository implements TimeSlotRepository {
         this.slots.delete(slot.id);
       }
     }
+  }
+
+  async upsertRequirement(
+    churchId: ChurchId,
+    slotId: TimeSlotId,
+    input: UpsertSlotRequirementInput,
+  ): Promise<SlotRequirement> {
+    return new SlotRequirement(
+      {
+        churchId,
+        slotId,
+        roleId: input.roleId,
+        requiredCount: input.requiredCount,
+        teamId: input.teamId,
+        notes: input.notes,
+      },
+      `req-upsert-${slotId}` as SlotRequirementId,
+    );
+  }
+
+  async countActiveAssignments(
+    _churchId: ChurchId,
+    _slotId: TimeSlotId,
+    _roleId: RoleId,
+  ): Promise<number> {
+    return 0;
   }
 }
 

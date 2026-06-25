@@ -95,6 +95,15 @@ class MockAvailabilityRepository implements AvailabilityRepository {
       this.availabilities.delete(id);
     }
   }
+
+  async listByVolunteers(
+    churchId: ChurchId,
+    volunteerIds: VolunteerId[],
+  ): Promise<Availability[]> {
+    return Array.from(this.availabilities.values()).filter(
+      (av) => av.churchId === churchId && volunteerIds.includes(av.volunteerId),
+    );
+  }
 }
 
 runAvailabilityRepositoryContractTests(

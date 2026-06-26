@@ -32,6 +32,18 @@
   - Adhere to Bulletproof React structure and unidirectional architecture.
 - **Linter & Code Guidelines Compliance**:
   - Never use linter, formatter, or compiler bypass/suppression directives (such as `// biome-ignore`, `// eslint-disable`, `// @ts-ignore`, etc.) without the user's explicit prior permission. All guidelines must be strictly satisfied by refactoring the code or file structure.
+- **Task-by-Task Implementation Loop (CRITICAL)**:
+  - Feature implementation, bug fixes, or plans MUST progress strictly on a task-by-task (iteration-by-iteration) basis.
+  - The agent MUST stop execution and report status after completing each single task/iteration to allow manual review of the changes by the user. Do not proceed to subsequent tasks without user approval.
+  - Within each task (after coding but before declaring the task complete):
+    - Run tests targeting the modified files.
+    - Execute the project's verification and safeguard commands:
+      1. `bun run check` (Linter and formatter)
+      2. `bun run check-types` (TypeScript compilation checks)
+      3. `bun run test` (Vitest unit/integration tests)
+      4. `bun run test:e2e` (Playwright E2E tests)
+    - Immediately after executing the safeguards, run a code review focusing on the modified files (using the `/review` workflow or `code-review` skill).
+    - If any lint issue, type-checking mismatch, test failure, or code review finding is discovered, it MUST be patched and resolved immediately within the current task iteration.
 
 ## Current Plan Reference
 <!-- SPECKIT START -->

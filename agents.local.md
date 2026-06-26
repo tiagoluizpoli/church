@@ -30,8 +30,10 @@
   - Components must be built on top of shadcn/ui.
   - Do not create custom UI components from scratch if they exist in shadcn.
   - Adhere to Bulletproof React structure and unidirectional architecture.
+- **Linter & Code Guidelines Compliance**:
+  - Never use linter, formatter, or compiler bypass/suppression directives (such as `// biome-ignore`, `// eslint-disable`, `// @ts-ignore`, etc.) without the user's explicit prior permission. All guidelines must be strictly satisfied by refactoring the code or file structure.
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/011-admin-leader-api/plan.md](specs/011-admin-leader-api/plan.md)
+- Current Plan: [specs/012-global-ui-framework/plan.md](specs/012-global-ui-framework/plan.md)
 <!-- SPECKIT END -->

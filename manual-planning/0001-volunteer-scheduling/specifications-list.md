@@ -25,16 +25,16 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 *Objective: Define the data access contracts and their implementations.*
 - **[✅ Spec R1: Repository Interfaces](../../specs/009-repo-interfaces/spec.md)**: TypeScript interfaces (Contracts) for all entities, returning Domain Entities (Spec D1).
   - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
-- **[Spec R2: Drizzle Implementations](./specifications/R2-drizzle-repos.md)**: Concrete classes with `churchId` isolation and mapping between Schema (Spec S1) and Domain Entities (Spec D1).
+- **[✅ Spec R2: Drizzle Implementations](./specifications/R2-drizzle-repos.md)**: Concrete classes with `churchId` isolation and mapping between Schema (Spec S1) and Domain Entities (Spec D1).
   - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
 
 ## Phase 4: Application Layer (The API)
 *Objective: Expose the system via tRPC.*
-- **[Spec A1: Admin & Leader API](./specifications/A1-admin-api.md)**: Management endpoints for ministries and schedules.
-- **[Spec A2: Volunteer API](./specifications/A2-volunteer-api.md)**: Availability submission and confirmation endpoints.
-- **[Spec A3: RBAC Middleware](./specifications/A3-rbac-middleware.md)**: tRPC middleware for contextual role enforcement.
-- **[Spec L4: Notification Service](./specifications/L4-notification-service.md)**: Triggering PWA Web Push and in-app alerts.
-- **[Spec L5: Background Workers & Cron](./specifications/L5-background-workers.md)**: Managing 24h reminders and cleanup.
+- **[✅ Spec A1: Admin & Leader API](./specifications/A1-admin-api.md)**: Management endpoints for ministries and schedules.
+- **[✅ Spec A2: Volunteer API](./specifications/A2-volunteer-api.md)**: Availability submission and confirmation endpoints.
+- **[✅ Spec A3: RBAC Middleware](./specifications/A3-rbac-middleware.md)**: tRPC middleware for contextual role enforcement.
+- **[✅ Spec L4: Notification Service](./specifications/L4-notification-service.md)**: Triggering PWA Web Push and in-app alerts.
+- **[✅ Spec L5: Background Workers & Cron](./specifications/L5-background-workers.md)**: Managing 24h reminders and cleanup.
 
 ## Phase 5: Presentation Layer (The Frontend)
 *Objective: Build the user interfaces.*

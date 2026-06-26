@@ -135,3 +135,48 @@ The concrete frontend architecture and component definitions that fulfill these 
 - **[Spec F1: Schedule Builder (Desktop)](./specifications/F1-schedule-builder.md)**
 - **[Spec F2: Volunteer Dashboard (Mobile/PWA)](./specifications/F2-volunteer-dashboard.md)**
 - **[Spec F3: Onboarding & Invites](./specifications/F3-onboarding-ui.md)**
+
+---
+
+## Refinements — 2026-06-26
+
+The following updates were made after the F1 grilling session. Original decisions are preserved above; these take precedence where they conflict.
+
+### Updated: Workflow (Steps 1–5 now happen inside the builder)
+
+**Original**: Steps 1–5 implied sequential pages or separate flows.
+**Changed to**: Steps 1–5 all happen inside a single builder canvas. Step 1 (event creation) uses a lightweight quick-create modal (title, date range, ministry only) that immediately redirects the leader into the builder. Steps 2–5 happen without leaving.
+
+### Updated: Slot Creation UX — "Both" now has a defined count-based mode
+
+**Original decision #1**: "Both auto-generate and manual." 
+**Refined**: Auto-generation now supports two distinct modes: (a) duration-based (specify minutes per slot) and (b) count-based (specify total number of slots). Both produce a preview before confirming. After generation, a role template step is offered.
+
+### Updated: Availability Feedback — 4th Status Added
+
+**Original**: Three statuses (Available, Partially available, Unavailable).
+**Changed to**: Four statuses: Available (green), Partial (yellow), Unavailable (red), **No response (gray)**. Gray means the volunteer hasn't submitted availability yet — a different signal from "explicitly unavailable." Gray volunteers sort to the bottom of the sidebar.
+
+### Updated: Mobile Priority — Interstitial with Escape Hatch
+
+**Original decision #5**: "Desktop-first for MVP."
+**Refined**: Mobile gets an interstitial warning page ("Use desktop for best experience") with a **"Continue anyway"** button. The full builder loads if the leader proceeds. This is not a hard block — leaders may legitimately need to make emergency changes from a mobile device in the field.
+
+### New: Substitution Flow
+
+When a volunteer declines a published assignment, the system activates a dedicated substitution mode when the leader clicks the declined cell. The picker pre-filters to available replacements and pins the declined volunteer at the top for context. This was not defined in the original UX planning.
+
+### New: Builder Header — Full Action Set
+
+The builder header is the command center. Refined to include:
+- Primary actions: Publish, Send Reminder
+- Overflow (⋯): Print/Export, View Audit Log
+- Event metadata is read-only in the builder header; editing requires navigating to the Event Detail page.
+
+### New: Post-Publish Editing Policy
+
+Post-publish editing is **allowed for assignments** (add, swap, remove volunteers). Structural changes (add/remove slots, change role counts) are **blocked** until the event is returned to Draft. This was not addressed in the original UX planning.
+
+### New: Conflict Detection Scope — Cross-Ministry
+
+Conflict detection was assumed to be within-event only. It now checks across all events in all ministries the volunteer belongs to. A volunteer double-booked in two different ministries at the same time is flagged in both builders.

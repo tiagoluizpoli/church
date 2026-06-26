@@ -12,7 +12,6 @@
     "generate-pwa-assets": "pwa-assets-generator"
   },
   "dependencies": {
-    "server": "workspace:*",
     "@church/env": "workspace:*",
     "@church/ui": "workspace:*",
     "@hookform/resolvers": "^5.1.1",
@@ -27,11 +26,14 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "catalog:",
+    "framer-motion": "^12.42.0",
     "lucide-react": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "server": "workspace:*",
     "sonner": "catalog:",
+    "vaul": "^1.1.2",
     "vite-plugin-pwa": "^1.0.1",
     "zod": "catalog:"
   },

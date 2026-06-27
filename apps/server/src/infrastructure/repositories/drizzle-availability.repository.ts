@@ -12,8 +12,8 @@ import type {
   UpdateAvailabilityInput,
 } from '../../domain/repositories/availability.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import { mapAvailability } from './availability.mapper';
 import { getClient, withChurchIsolation } from './helpers';
-import { mapAvailability } from './mappers';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleAvailabilityRepository implements AvailabilityRepository {

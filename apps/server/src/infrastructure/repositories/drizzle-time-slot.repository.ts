@@ -15,7 +15,7 @@ import type {
 } from '../../domain/repositories/time-slot.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapSlotRequirement, mapTimeSlot } from './mappers';
+import { mapSlotRequirement, mapTimeSlot } from './slot.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleTimeSlotRepository implements TimeSlotRepository {

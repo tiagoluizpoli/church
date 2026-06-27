@@ -18,8 +18,8 @@ import type {
   CreateAssignmentAuditInput,
 } from '../../domain/repositories/assignment-audit.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import { mapAssignmentAudit } from './assignment-audit.mapper';
 import { getClient, withChurchIsolation } from './helpers';
-import { mapAssignmentAudit } from './mappers';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleAssignmentAuditRepository

@@ -16,8 +16,8 @@ import type {
   UpdateAssignmentStatusInput,
 } from '../../domain/repositories/assignment.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import { mapAssignment } from './assignment.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapAssignment } from './mappers';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleAssignmentRepository implements AssignmentRepository {

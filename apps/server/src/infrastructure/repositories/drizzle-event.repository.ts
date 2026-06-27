@@ -16,8 +16,9 @@ import type {
   UpdateEventStatusInput,
 } from '../../domain/repositories/event.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import { mapEvent } from './event.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapEvent, mapSlotRequirement, mapTimeSlot } from './mappers';
+import { mapSlotRequirement, mapTimeSlot } from './slot.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleEventRepository implements EventRepository {

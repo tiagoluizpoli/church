@@ -14,7 +14,7 @@ import type {
 } from '../../domain/repositories/role-template.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapRoleTemplate, mapRoleTemplateItem } from './mappers';
+import { mapRoleTemplate, mapRoleTemplateItem } from './role-template.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleRoleTemplateRepository implements RoleTemplateRepository {

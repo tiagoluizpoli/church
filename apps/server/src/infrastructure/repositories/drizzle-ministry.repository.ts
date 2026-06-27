@@ -10,7 +10,7 @@ import type {
 import type { MinistryRepository } from '../../domain/repositories/ministry.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapMinistry } from './mappers';
+import { mapMinistry } from './ministry.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleMinistryRepository implements MinistryRepository {

@@ -18,8 +18,8 @@ import type {
   VolunteerRepository,
 } from '../../domain/repositories/volunteer.repository';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapVolunteer } from './mappers';
 import type { AnyDrizzleDb } from './types';
+import { mapVolunteer } from './volunteer.mapper';
 
 export class DrizzleVolunteerRepository implements VolunteerRepository {
   constructor(private readonly db: AnyDrizzleDb) {}

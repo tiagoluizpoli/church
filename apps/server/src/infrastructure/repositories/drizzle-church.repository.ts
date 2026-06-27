@@ -7,8 +7,8 @@ import type {
   ChurchSlug,
 } from '../../domain/entities/church';
 import type { ChurchRepository } from '../../domain/repositories/church.repository';
+import { mapChurch } from './church.mapper';
 import { getClient, isValidUuid } from './helpers';
-import { mapChurch } from './mappers';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleChurchRepository implements ChurchRepository {

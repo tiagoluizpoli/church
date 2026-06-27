@@ -91,7 +91,7 @@ describe('AdminLeader Router Integration Tests', () => {
           eventId: '66666666-6666-6666-6666-666666666661',
         }),
       ).rejects.toThrow(
-        'User is not authorized as a leader for this ministry or administration',
+        'User is not authorized to access this schedule builder',
       );
     });
 

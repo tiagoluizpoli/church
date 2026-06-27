@@ -20,6 +20,7 @@ import { runEventRepositoryContractTests } from '../../../src/domain/repositorie
 import type {
   CreateEventInput,
   EventRepository,
+  UpdateEventInput,
   UpdateEventStatusInput,
 } from '../../../src/domain/repositories/event.repository';
 
@@ -141,6 +142,30 @@ class MockEventRepository implements EventRepository {
       e.markAsPast();
     }
     this.events.set(e.id, e);
+  }
+
+  async update(
+    churchId: ChurchId,
+    id: EventId,
+    input: UpdateEventInput,
+  ): Promise<Event> {
+    const e = await this.getById(churchId, id);
+    const updated = new Event(
+      {
+        churchId: e.churchId,
+        ministryId: e.ministryId,
+        title: input.title ?? e.title,
+        description: e.description,
+        location: e.location,
+        startDate: input.startDate ?? e.startDate,
+        endDate: input.endDate ?? e.endDate,
+        status: e.status,
+        eventType: e.eventType,
+      },
+      e.id,
+    );
+    this.events.set(updated.id, updated);
+    return updated;
   }
 }
 

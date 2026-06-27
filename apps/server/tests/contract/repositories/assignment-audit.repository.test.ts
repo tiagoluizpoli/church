@@ -2,8 +2,10 @@
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import { AssignmentAudit } from '../../../src/domain/entities/assignment-audit';
 import type { ChurchId } from '../../../src/domain/entities/church';
+import type { EventId } from '../../../src/domain/entities/event';
 import type { UserId } from '../../../src/domain/entities/volunteer';
 import type {
+  AssignmentAuditLogEntry,
   AssignmentAuditRepository,
   CreateAssignmentAuditInput,
 } from '../../../src/domain/repositories/assignment-audit.repository';
@@ -83,6 +85,13 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId && au.actorId === actorId)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  async listByEvent(
+    _churchId: ChurchId,
+    _eventId: EventId,
+  ): Promise<AssignmentAuditLogEntry[]> {
+    return [];
   }
 }
 

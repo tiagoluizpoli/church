@@ -13,7 +13,9 @@ import {
 import { runTimeSlotRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/time-slot.contract-spec';
 import type {
   BulkCreateTimeSlotsInput,
+  CreateTimeSlotInput,
   TimeSlotRepository,
+  UpdateTimeSlotInput,
   UpsertSlotRequirementInput,
 } from '../../../src/domain/repositories/time-slot.repository';
 
@@ -133,6 +135,73 @@ class MockTimeSlotRepository implements TimeSlotRepository {
     _roleId: RoleId,
   ): Promise<number> {
     return 0;
+  }
+
+  async create(
+    churchId: ChurchId,
+    input: CreateTimeSlotInput,
+  ): Promise<TimeSlot> {
+    const id = `slot-gen-${this.idCounter++}` as TimeSlotId;
+    const slot = new TimeSlot(
+      {
+        churchId,
+        eventId: input.eventId,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        label: input.label,
+        status: 'active',
+        requirements: [],
+      },
+      id,
+    );
+    this.slots.set(slot.id, slot);
+    return slot;
+  }
+
+  async update(
+    churchId: ChurchId,
+    id: TimeSlotId,
+    input: UpdateTimeSlotInput,
+  ): Promise<TimeSlot> {
+    const existing = await this.getById(churchId, id);
+    const updated = new TimeSlot(
+      {
+        churchId: existing.churchId,
+        eventId: existing.eventId,
+        startTime: input.startTime ?? existing.startTime,
+        endTime: input.endTime ?? existing.endTime,
+        label: input.label ?? existing.label,
+        status: existing.status,
+        requirements: existing.requirements,
+      },
+      existing.id,
+    );
+    this.slots.set(updated.id, updated);
+    return updated;
+  }
+
+  async deleteById(churchId: ChurchId, id: TimeSlotId): Promise<void> {
+    const slot = this.slots.get(id);
+    if (slot && slot.churchId === churchId) {
+      this.slots.delete(id);
+    }
+  }
+
+  async findOverlapping(
+    churchId: ChurchId,
+    eventId: EventId,
+    startTime: Date,
+    endTime: Date,
+    excludeSlotId?: TimeSlotId,
+  ): Promise<TimeSlot[]> {
+    return Array.from(this.slots.values()).filter(
+      (slot) =>
+        slot.churchId === churchId &&
+        slot.eventId === eventId &&
+        slot.id !== excludeSlotId &&
+        slot.startTime < endTime &&
+        slot.endTime > startTime,
+    );
   }
 }
 

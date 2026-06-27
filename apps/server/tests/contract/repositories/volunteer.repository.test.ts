@@ -9,7 +9,10 @@ import {
   type VolunteerStatus,
 } from '../../../src/domain/entities/volunteer';
 import { runVolunteerRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/volunteer.contract-spec';
-import type { VolunteerRepository } from '../../../src/domain/repositories/volunteer.repository';
+import type {
+  MinistryMembership,
+  VolunteerRepository,
+} from '../../../src/domain/repositories/volunteer.repository';
 
 class MockVolunteerRepository implements VolunteerRepository {
   private volunteers = new Map<string, Volunteer>();
@@ -171,6 +174,13 @@ class MockVolunteerRepository implements VolunteerRepository {
       if (vid === volunteerId) results.push(mid as MinistryId);
     }
     return results;
+  }
+
+  async listMinistryMemberships(
+    _churchId: ChurchId,
+    _ministryId: MinistryId,
+  ): Promise<MinistryMembership[]> {
+    return [];
   }
 }
 

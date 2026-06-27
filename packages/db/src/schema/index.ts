@@ -4,5 +4,6 @@ export * from './church';
 export * from './core';
 export * from './enums';
 export * from './onboarding';
+export * from './role-templates';
 export * from './scheduling';
 export * from './todo';

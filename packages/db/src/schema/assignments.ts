@@ -48,10 +48,12 @@ export const assignment = pgTable(
     }),
   },
   (table) => [
-    uniqueIndex('assignment_slot_volunteer_idx').on(
-      table.slotId,
-      table.volunteerId,
-    ),
+    // Partial: a volunteer may hold only one ACTIVE assignment per slot.
+    // Declined/cancelled rows are excluded so a volunteer can be re-assigned
+    // (or substituted in) after declining the same slot.
+    uniqueIndex('assignment_slot_volunteer_idx')
+      .on(table.slotId, table.volunteerId)
+      .where(sql`${table.status} IN ('draft', 'pending', 'confirmed')`),
     check(
       'assignment_status_check',
       sql`${table.status} IN ('draft', 'pending', 'confirmed', 'declined', 'cancelled')`,

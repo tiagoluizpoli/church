@@ -25,6 +25,8 @@ export const eventStatusEnum = pgEnum('event_status', [
   'cancelled',
 ]);
 
+export const eventTypeEnum = pgEnum('event_type', ['hourly', 'day_based']);
+
 export const assignmentStatusEnum = pgEnum('assignment_status', [
   'draft',
   'pending',

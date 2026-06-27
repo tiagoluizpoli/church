@@ -246,7 +246,7 @@ A sub-leader opens the builder for an event and can assign volunteers to their t
 
 **Volunteer Schedule View**
 
-- **FR-063**: Published schedules MUST be viewable by all assigned ministry volunteers through a dedicated read-only schedule page (defined in Spec F2). The builder itself is never exposed to non-leaders.
+- **FR-063** *(cross-reference, not implemented here)*: Published schedules will be viewable by assigned volunteers through a dedicated read-only schedule page defined in Spec F2. The builder itself is never exposed to non-leaders. No implementation task exists in this spec.
 
 ### Key Entities
 
@@ -274,12 +274,12 @@ A sub-leader opens the builder for an event and can assign volunteers to their t
 
 - The Schedule Builder is the single canvas for the full scheduling workflow — event creation (title + dates) happens via a quick-create modal before entering the builder; all subsequent steps (slots, requirements, assignments) happen inside it.
 - Roles are pre-configured at the Ministry level. The builder only selects from existing ministry roles — it does not create new role types.
-- Role templates are managed in Ministry settings; the builder only applies them.
+- Role templates are managed in the Ministry settings feature (Spec MX — separate implementation). This spec only implements the builder-side apply-template flow (FR-040 builder read, FR-041 apply). Template creation/editing UI is out of scope here.
 - The underlying conflict detection (Spec L1, Spec L2) and assignment lifecycle (Spec L3) logic is already implemented.
 - The builder operates in single-leader mode for MVP; simultaneous multi-leader editing is out of scope.
 - "Publish" transitions Draft → Published. Returning to Draft after publish is out of scope for MVP.
 - Post-publish editing is limited to assignment changes only (swap, add, remove volunteers). Slot structure changes (add/remove slots, change role counts) require the event to be in Draft.
-- The volunteer schedule view (read-only, published schedule) is a separate feature covered by Spec F2. This spec defines the requirement (FR-063) but not the implementation.
+- The volunteer schedule view (read-only, published schedule) is a separate feature covered by Spec F2. FR-063 is a cross-reference only — no tasks exist for it in this spec.
 - Real-time builder updates when a volunteer's availability changes after assignment are deferred to post-MVP (see BACKLOG.md, BL-001).
 - Per-event volunteer exclusion by a leader is deferred to post-MVP (see BACKLOG.md, BL-003).
 - Schedule duplication from past events is deferred to post-MVP (see BACKLOG.md, BL-002).

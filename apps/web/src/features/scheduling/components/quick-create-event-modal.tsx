@@ -11,6 +11,7 @@ import { Label } from '@church/ui/components/label';
 import { RadioGroup, RadioGroupItem } from '@church/ui/components/radio-group';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { CalendarDays, Clock3 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
@@ -24,6 +25,152 @@ interface QuickCreateEventModalProps {
 
 type EventType = 'hourly' | 'day_based';
 
+interface DateTimeParts {
+  date: string;
+  hour: string;
+  minute: string;
+}
+
+interface DateTimeFieldProps {
+  label: string;
+  value: DateTimeParts;
+  onChange: (value: DateTimeParts) => void;
+}
+
+function createEmptyDateTimeParts(): DateTimeParts {
+  return {
+    date: '',
+    hour: '',
+    minute: '',
+  };
+}
+
+function sanitizeTimeSegment({ rawValue }: { rawValue: string }): string {
+  return rawValue.replaceAll(/\D/g, '').slice(0, 2);
+}
+
+function normalizeTimeSegment({
+  rawValue,
+  max,
+}: {
+  rawValue: string;
+  max: number;
+}): string {
+  const sanitizedValue = sanitizeTimeSegment({ rawValue });
+  if (sanitizedValue === '') return '';
+
+  const numericValue = Number.parseInt(sanitizedValue, 10);
+  if (Number.isNaN(numericValue)) return '';
+
+  return String(Math.min(numericValue, max)).padStart(2, '0');
+}
+
+function toLocalDateTimeString({
+  value,
+}: {
+  value: DateTimeParts;
+}): string | null {
+  if (!value.date || value.hour.length !== 2 || value.minute.length !== 2) {
+    return null;
+  }
+
+  const hour = Number.parseInt(value.hour, 10);
+  const minute = Number.parseInt(value.minute, 10);
+
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return null;
+  }
+
+  return `${value.date}T${value.hour}:${value.minute}:00`;
+}
+
+function DateTimeField({ label, value, onChange }: DateTimeFieldProps) {
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+        <div className="relative">
+          <CalendarDays className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            aria-label={`${label} date`}
+            className="pl-8"
+            type="date"
+            value={value.date}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                date: event.target.value,
+              })
+            }
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <Clock3 className="size-3.5 text-muted-foreground" />
+          <Input
+            aria-label={`${label} hour`}
+            className="w-12 px-2 text-center tabular-nums"
+            inputMode="numeric"
+            maxLength={2}
+            placeholder="00"
+            value={value.hour}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                hour: sanitizeTimeSegment({
+                  rawValue: event.target.value,
+                }),
+              })
+            }
+            onBlur={() =>
+              onChange({
+                ...value,
+                hour: normalizeTimeSegment({
+                  rawValue: value.hour,
+                  max: 23,
+                }),
+              })
+            }
+          />
+          <span className="text-muted-foreground text-xs">:</span>
+          <Input
+            aria-label={`${label} minute`}
+            className="w-12 px-2 text-center tabular-nums"
+            inputMode="numeric"
+            maxLength={2}
+            placeholder="00"
+            value={value.minute}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                minute: sanitizeTimeSegment({
+                  rawValue: event.target.value,
+                }),
+              })
+            }
+            onBlur={() =>
+              onChange({
+                ...value,
+                minute: normalizeTimeSegment({
+                  rawValue: value.minute,
+                  max: 59,
+                }),
+              })
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function QuickCreateEventModal({
   open,
   onOpenChange,
@@ -32,15 +179,28 @@ export function QuickCreateEventModal({
 }: QuickCreateEventModalProps) {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDateTime, setStartDateTime] = useState<DateTimeParts>(
+    createEmptyDateTimeParts(),
+  );
+  const [endDateTime, setEndDateTime] = useState<DateTimeParts>(
+    createEmptyDateTimeParts(),
+  );
   const [eventType, setEventType] = useState<EventType>('hourly');
 
   const create = useMutation(trpc.adminLeader.createEvent.mutationOptions());
 
-  const canSubmit = Boolean(title && startDate && endDate);
+  const startDate = toLocalDateTimeString({ value: startDateTime });
+  const endDate = toLocalDateTimeString({ value: endDateTime });
+  const canSubmit = Boolean(
+    title.trim() &&
+      startDate &&
+      endDate &&
+      new Date(startDate).getTime() < new Date(endDate).getTime(),
+  );
 
   const handleSubmit = async () => {
+    if (!startDate || !endDate) return;
+
     try {
       const event = await create.mutateAsync({
         ministryId,
@@ -77,24 +237,16 @@ export function QuickCreateEventModal({
               placeholder="e.g. Sunday Morning Service"
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="event-start">Start</Label>
-            <Input
-              id="event-start"
-              type="datetime-local"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="event-end">End</Label>
-            <Input
-              id="event-end"
-              type="datetime-local"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-          </div>
+          <DateTimeField
+            label="Start"
+            value={startDateTime}
+            onChange={setStartDateTime}
+          />
+          <DateTimeField
+            label="End"
+            value={endDateTime}
+            onChange={setEndDateTime}
+          />
           <div className="space-y-1">
             <Label>Event type</Label>
             <RadioGroup

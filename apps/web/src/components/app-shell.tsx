@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Bell,
   Calendar,
+  CalendarClock,
   CheckSquare,
   ChevronLeft,
   ChevronRight,
@@ -34,6 +35,7 @@ const desktopNavItems: NavItem[] = [
   { label: 'Home', to: '/', icon: Home },
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Shifts', to: '/shifts', icon: Calendar },
+  { label: 'Scheduling', to: '/scheduling', icon: CalendarClock },
   { label: 'Alerts', to: '/alerts', icon: Bell },
   { label: 'Availability', to: '/availability', icon: Clock },
   { label: 'Todos', to: '/todos', icon: CheckSquare },

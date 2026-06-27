@@ -1,0 +1,62 @@
+import { DndContext } from '@dnd-kit/core';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import { describe, expect, it } from 'vitest';
+import type { PoolVolunteer } from '../../hooks/use-volunteer-pool';
+import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
+
+function renderSidebar(ui: ReactElement) {
+  return render(<DndContext>{ui}</DndContext>);
+}
+
+const volunteers: PoolVolunteer[] = [
+  { volunteerId: '1', volunteerName: 'Alice Smith', status: 'available' },
+  { volunteerId: '2', volunteerName: 'Bob Jones', status: 'available' },
+];
+
+const roles = [
+  { id: 'usher', name: 'Usher' },
+  { id: 'greeter', name: 'Greeter' },
+];
+
+describe('VolunteerPoolSidebar (T102)', () => {
+  it('renders all volunteers initially', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+    expect(screen.getByText('Alice S.')).toBeVisible();
+    expect(screen.getByText('Bob J.')).toBeVisible();
+  });
+
+  it('filters by name (case-insensitive)', async () => {
+    const user = userEvent.setup();
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+    await user.type(screen.getByPlaceholderText(/search by name/i), 'alice');
+    expect(screen.getByText('Alice S.')).toBeVisible();
+    expect(screen.queryByText('Bob J.')).not.toBeInTheDocument();
+  });
+
+  it('shows the empty state when no volunteer matches', async () => {
+    const user = userEvent.setup();
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+    await user.type(screen.getByPlaceholderText(/search by name/i), 'zzz');
+    expect(screen.getByText(/no volunteers match/i)).toBeVisible();
+  });
+});

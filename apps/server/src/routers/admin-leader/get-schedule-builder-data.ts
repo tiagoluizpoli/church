@@ -80,18 +80,10 @@ export const getScheduleBuilderData = protectedProcedure
     );
 
     // 8. Bulk-fetch all assignments for these volunteers for overlap checking.
-    //    We use listByVolunteer per volunteer — a future optimization can add
-    //    a bulk method to AssignmentRepository if this becomes a bottleneck.
-    const existingAssignments = (
-      await Promise.all(
-        volunteerIds.map((vid) =>
-          repositories.assignments.listByVolunteer(
-            authCtx.churchId as ChurchId,
-            vid as VolunteerId,
-          ),
-        ),
-      )
-    ).flat();
+    const existingAssignments = await repositories.assignments.listByVolunteers(
+      authCtx.churchId as ChurchId,
+      volunteerIds as VolunteerId[],
+    );
 
     // Resolve missing slot details for cross-event assignments
     const uniqueSlotIds = [

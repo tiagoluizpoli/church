@@ -144,6 +144,25 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     return rows.map(mapAssignment);
   }
 
+  async listByVolunteers(
+    churchId: ChurchId,
+    volunteerIds: VolunteerId[],
+    tx?: TransactionContext,
+  ): Promise<Assignment[]> {
+    if (volunteerIds.length === 0) return [];
+
+    const rows = await getClient(this.db, tx)
+      .select()
+      .from(assignment)
+      .where(
+        and(
+          withChurchIsolation(assignment, churchId),
+          inArray(assignment.volunteerId, volunteerIds),
+        ),
+      );
+    return rows.map(mapAssignment);
+  }
+
   async listByVolunteerInRange(
     churchId: ChurchId,
     volunteerId: VolunteerId,

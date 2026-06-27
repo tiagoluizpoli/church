@@ -1,4 +1,5 @@
 import { TRPCError } from '@trpc/server';
+import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { UserId } from '../../domain/entities/volunteer';
 import type {
@@ -9,7 +10,7 @@ import { repositories } from '../../infrastructure/repositories/registry';
 
 export interface AuthContext {
   volunteerId: string;
-  churchId: string;
+  churchId: ChurchId;
   systemRole: 'admin' | 'leader';
   ministryId: string;
 }
@@ -19,7 +20,7 @@ export type BuilderAccessRole = (typeof BUILDER_ACCESS_ROLES)[number];
 
 export interface BuilderAccessContext {
   volunteerId: string;
-  churchId: string;
+  churchId: ChurchId;
   systemRole: BuilderAccessRole;
   ministryId: string;
   /** Set only for sub-leaders — the team whose cells they may edit. */
@@ -28,7 +29,7 @@ export interface BuilderAccessContext {
 
 interface ResolvedVolunteerContext {
   volunteerId: string;
-  churchId: string;
+  churchId: ChurchId;
   ledMinistries: VolunteerLeadership[];
   // Admin detection: treats any volunteer leading a ministry named 'Administration'
   // as a church-wide admin. This relies on the invariant that every church has

@@ -62,6 +62,12 @@ export interface AssignmentRepository {
     tx?: TransactionContext,
   ): Promise<Assignment[]>;
 
+  listByVolunteers(
+    churchId: ChurchId,
+    volunteerIds: VolunteerId[],
+    tx?: TransactionContext,
+  ): Promise<Assignment[]>;
+
   listByVolunteerInRange(
     churchId: ChurchId,
     volunteerId: VolunteerId,

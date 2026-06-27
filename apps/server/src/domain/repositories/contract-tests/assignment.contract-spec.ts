@@ -92,6 +92,31 @@ export function runAssignmentRepositoryContractTests(
       expect(list.length).toBeGreaterThanOrEqual(2);
     });
 
+    it('should list assignments by volunteers', async () => {
+      const list = await repo.listByVolunteers(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        [
+          '44444444-4444-4444-4444-444444444441' as VolunteerId,
+          '44444444-4444-4444-4444-444444444442' as VolunteerId,
+        ],
+      );
+      expect(list.length).toBeGreaterThanOrEqual(2);
+      expect(
+        list.some(
+          (assignment) =>
+            assignment.volunteerId ===
+            ('44444444-4444-4444-4444-444444444441' as VolunteerId),
+        ),
+      ).toBe(true);
+      expect(
+        list.some(
+          (assignment) =>
+            assignment.volunteerId ===
+            ('44444444-4444-4444-4444-444444444442' as VolunteerId),
+        ),
+      ).toBe(true);
+    });
+
     it('should update assignment status', async () => {
       await repo.updateStatus(
         '11111111-1111-1111-1111-111111111111' as ChurchId,

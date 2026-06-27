@@ -36,16 +36,27 @@ class MockAssignmentRepository implements AssignmentRepository {
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
-        volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
+        volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         status: 'declined',
         reason: 'Sick',
       },
       '99999999-9999-9999-9999-999999999992' as AssignmentId,
     );
+    const a3 = new Assignment(
+      {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        slotId: '77777777-7777-7777-7777-777777777772' as TimeSlotId,
+        volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
+        roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+        status: 'confirmed',
+      },
+      '99999999-9999-9999-9999-999999999993' as AssignmentId,
+    );
 
     this.assignments.set(a1.id, a1);
     this.assignments.set(a2.id, a2);
+    this.assignments.set(a3.id, a3);
   }
 
   async create(
@@ -121,6 +132,16 @@ class MockAssignmentRepository implements AssignmentRepository {
   ): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.volunteerId === volunteerId,
+    );
+  }
+
+  async listByVolunteers(
+    churchId: ChurchId,
+    volunteerIds: VolunteerId[],
+  ): Promise<Assignment[]> {
+    const volunteerIdSet = new Set(volunteerIds);
+    return Array.from(this.assignments.values()).filter(
+      (a) => a.churchId === churchId && volunteerIdSet.has(a.volunteerId),
     );
   }
 

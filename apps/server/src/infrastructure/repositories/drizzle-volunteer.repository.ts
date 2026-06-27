@@ -12,6 +12,8 @@ import type {
 } from '../../domain/entities/volunteer';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
 import type {
+  MinistryMembership,
+  MinistrySystemRole,
   VolunteerLeadership,
   VolunteerRepository,
 } from '../../domain/repositories/volunteer.repository';
@@ -270,5 +272,32 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         ),
       );
     return rows.map((r) => r.ministryId as MinistryId);
+  }
+
+  async listMinistryMemberships(
+    churchId: ChurchId,
+    ministryId: MinistryId,
+    tx?: TransactionContext,
+  ): Promise<MinistryMembership[]> {
+    const db = getClient(this.db, tx);
+    const rows = await db
+      .select({
+        volunteerId: ministryVolunteer.volunteerId,
+        teamId: ministryVolunteer.teamId,
+        systemRole: ministryVolunteer.systemRole,
+      })
+      .from(ministryVolunteer)
+      .where(
+        and(
+          eq(ministryVolunteer.ministryId, ministryId),
+          eq(ministryVolunteer.churchId, churchId),
+          eq(ministryVolunteer.status, 'active'),
+        ),
+      );
+    return rows.map((r) => ({
+      volunteerId: r.volunteerId as VolunteerId,
+      teamId: r.teamId,
+      systemRole: r.systemRole as MinistrySystemRole,
+    }));
   }
 }

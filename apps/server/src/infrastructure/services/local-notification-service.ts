@@ -1,5 +1,10 @@
 import { EventEmitter } from 'node:events';
-import type { NotificationService } from '../../domain/services/notification-service';
+import type {
+  DeclineNotification,
+  NotificationService,
+  PublishNotification,
+  ReminderNotification,
+} from '../../domain/services/notification-service';
 
 export class LocalNotificationService implements NotificationService {
   private readonly emitter = new EventEmitter();
@@ -14,14 +19,18 @@ export class LocalNotificationService implements NotificationService {
     });
   }
 
-  async publish(event: {
-    type: 'event_published' | 'event_cancelled';
-    churchId: string;
-    eventId: string;
-    actorId: string;
-    assignmentIds: string[];
-  }): Promise<void> {
+  async publish(event: PublishNotification): Promise<void> {
     this.emitter.emit(event.type, event);
+  }
+
+  async notifyReminder(event: ReminderNotification): Promise<void> {
+    console.log('[NotificationService] Reminder:', event);
+    this.emitter.emit('reminder', event);
+  }
+
+  async notifyLeaderOfDecline(event: DeclineNotification): Promise<void> {
+    console.log('[NotificationService] Volunteer declined:', event);
+    this.emitter.emit('volunteer_declined', event);
   }
 }
 

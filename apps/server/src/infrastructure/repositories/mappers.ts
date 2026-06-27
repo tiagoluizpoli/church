@@ -23,6 +23,16 @@ import { Ministry } from '../../domain/entities/ministry';
 import type { RoleId, RoleProps } from '../../domain/entities/role';
 import { Role } from '../../domain/entities/role';
 import type {
+  RoleTemplateId,
+  RoleTemplateItemId,
+  RoleTemplateItemProps,
+  RoleTemplateProps,
+} from '../../domain/entities/role-template';
+import {
+  RoleTemplate,
+  RoleTemplateItem,
+} from '../../domain/entities/role-template';
+import type {
   SlotRequirementId,
   SlotRequirementProps,
 } from '../../domain/entities/slot-requirement';
@@ -167,6 +177,7 @@ export function mapVolunteer(
 // Event
 // ──────────────────────────────────────────
 const EVENT_STATUSES = ['draft', 'published', 'cancelled', 'past'] as const;
+const EVENT_TYPES = ['hourly', 'day_based'] as const;
 
 export function mapEvent(row: {
   id: string;
@@ -178,6 +189,7 @@ export function mapEvent(row: {
   startDate: Date;
   endDate: Date;
   status: string;
+  eventType: string;
   createdAt: Date;
   updatedAt: Date;
 }): Event {
@@ -190,6 +202,7 @@ export function mapEvent(row: {
     startDate: row.startDate,
     endDate: row.endDate,
     status: assertEnum('status', row.status, EVENT_STATUSES),
+    eventType: assertEnum('eventType', row.eventType, EVENT_TYPES),
   };
   return new Event(props, row.id as EventId, row.createdAt, row.updatedAt);
 }
@@ -345,4 +358,48 @@ export function mapAssignmentAudit(row: {
     timestamp: row.timestamp,
   };
   return new AssignmentAudit(props, row.id as AssignmentAuditId);
+}
+
+// ──────────────────────────────────────────
+// RoleTemplate
+// ──────────────────────────────────────────
+export function mapRoleTemplateItem(row: {
+  id: string;
+  churchId: string;
+  templateId: string;
+  roleId: string;
+  requiredCount: number;
+}): RoleTemplateItem {
+  const props: RoleTemplateItemProps = {
+    churchId: row.churchId as ChurchId,
+    templateId: row.templateId as RoleTemplateId,
+    roleId: row.roleId as RoleId,
+    requiredCount: row.requiredCount,
+  };
+  return new RoleTemplateItem(props, row.id as RoleTemplateItemId);
+}
+
+export function mapRoleTemplate(
+  row: {
+    id: string;
+    churchId: string;
+    ministryId: string;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+  },
+  items: RoleTemplateItem[] = [],
+): RoleTemplate {
+  const props: RoleTemplateProps = {
+    churchId: row.churchId as ChurchId,
+    ministryId: row.ministryId as MinistryId,
+    name: row.name,
+    items,
+  };
+  return new RoleTemplate(
+    props,
+    row.id as RoleTemplateId,
+    row.createdAt,
+    row.updatedAt,
+  );
 }

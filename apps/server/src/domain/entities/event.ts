@@ -14,6 +14,9 @@ export const EVENT_STATUS_OPTIONS = [
 ] as const;
 export type EventStatus = (typeof EVENT_STATUS_OPTIONS)[number];
 
+export const EVENT_TYPE_OPTIONS = ['hourly', 'day_based'] as const;
+export type EventType = (typeof EVENT_TYPE_OPTIONS)[number];
+
 export interface EventProps {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -23,6 +26,7 @@ export interface EventProps {
   startDate: Date;
   endDate: Date;
   status: EventStatus;
+  eventType: EventType;
 }
 
 export interface EventWithSlots {
@@ -32,8 +36,8 @@ export interface EventWithSlots {
 
 export class Event extends Entity<EventProps, EventId> {
   constructor(
-    props: Omit<LooseProps<EventProps>, 'status'> &
-      Partial<Pick<LooseProps<EventProps>, 'status'>>,
+    props: Omit<LooseProps<EventProps>, 'status' | 'eventType'> &
+      Partial<Pick<LooseProps<EventProps>, 'status' | 'eventType'>>,
     id?: string,
     createdAt?: Date,
     updatedAt?: Date,
@@ -45,6 +49,7 @@ export class Event extends Entity<EventProps, EventId> {
       {
         ...props,
         status: props.status ?? 'draft',
+        eventType: props.eventType ?? 'hourly',
       } as EventProps,
       id as EventId,
       createdAt,
@@ -82,6 +87,10 @@ export class Event extends Entity<EventProps, EventId> {
 
   get status(): EventStatus {
     return this._props.status;
+  }
+
+  get eventType(): EventType {
+    return this._props.eventType;
   }
 
   public publish(): void {

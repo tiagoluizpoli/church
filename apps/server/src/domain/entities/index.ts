@@ -6,6 +6,7 @@ export * from './event';
 export * from './ministry';
 export * from './ministry-volunteer';
 export * from './role';
+export * from './role-template';
 export * from './slot-requirement';
 export * from './team';
 export * from './time-slot';

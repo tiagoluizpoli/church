@@ -5,6 +5,7 @@ import type {
   AssignmentAuditAction,
 } from '../entities/assignment-audit';
 import type { ChurchId } from '../entities/church';
+import type { EventId } from '../entities/event';
 import type { UserId } from '../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
@@ -14,6 +15,23 @@ export interface CreateAssignmentAuditInput {
   action: AssignmentAuditAction;
   reason?: string;
   overrideConflictTypes?: SoftConflictType[];
+}
+
+/** Enriched audit entry returned by listByEvent (with joined display fields). */
+export interface AssignmentAuditLogEntry {
+  id: string;
+  assignmentId: string;
+  volunteerId: string;
+  volunteerName: string;
+  slotId: string;
+  slotLabel: string;
+  roleId: string;
+  roleName: string;
+  action: AssignmentAuditAction;
+  reason: string | null;
+  actorId: string;
+  actorName: string;
+  timestamp: Date;
 }
 
 export interface AssignmentAuditRepository {
@@ -39,4 +57,14 @@ export interface AssignmentAuditRepository {
     actorId: UserId,
     tx?: TransactionContext,
   ): Promise<AssignmentAudit[]>;
+
+  /**
+   * List enriched audit entries for all assignments within an event,
+   * joined with volunteer / slot / role / actor display fields.
+   */
+  listByEvent(
+    churchId: ChurchId,
+    eventId: EventId,
+    tx?: TransactionContext,
+  ): Promise<AssignmentAuditLogEntry[]>;
 }

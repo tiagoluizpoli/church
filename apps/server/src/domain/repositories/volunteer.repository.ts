@@ -14,6 +14,20 @@ export interface VolunteerLeadership {
   ministryName: string;
 }
 
+export const MINISTRY_SYSTEM_ROLES = [
+  'leader',
+  'sub_leader',
+  'volunteer',
+] as const;
+export type MinistrySystemRole = (typeof MINISTRY_SYSTEM_ROLES)[number];
+
+/** A volunteer's membership within a single ministry (role + optional team). */
+export interface MinistryMembership {
+  volunteerId: VolunteerId;
+  teamId: string | null;
+  systemRole: MinistrySystemRole;
+}
+
 export interface VolunteerRepository {
   getById(
     churchId: ChurchId,
@@ -95,4 +109,14 @@ export interface VolunteerRepository {
     volunteerId: VolunteerId,
     tx?: TransactionContext,
   ): Promise<MinistryId[]>;
+
+  /**
+   * List active memberships (volunteer id, team, system role) for a ministry.
+   * Used for sub-leader team scoping in the schedule builder.
+   */
+  listMinistryMemberships(
+    churchId: ChurchId,
+    ministryId: MinistryId,
+    tx?: TransactionContext,
+  ): Promise<MinistryMembership[]>;
 }

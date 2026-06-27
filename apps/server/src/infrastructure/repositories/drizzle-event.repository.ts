@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { event, slotRequirement, timeSlot } from '@church/db';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/entities/church';
 import type {
   Event,
@@ -12,6 +12,7 @@ import type { MinistryId } from '../../domain/entities/ministry';
 import type {
   CreateEventInput,
   EventRepository,
+  UpdateEventInput,
   UpdateEventStatusInput,
 } from '../../domain/repositories/event.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
@@ -87,7 +88,7 @@ export class DrizzleEventRepository implements EventRepository {
       .select()
       .from(event)
       .where(and(...conditions))
-      .orderBy(asc(event.startDate));
+      .orderBy(desc(event.startDate));
     return rows.map(mapEvent);
   }
 
@@ -111,9 +112,33 @@ export class DrizzleEventRepository implements EventRepository {
           | 'draft'
           | 'published'
           | 'cancelled',
+        eventType: (input.eventType ?? 'hourly') as 'hourly' | 'day_based',
       })
       .returning();
     if (!row) throw new Error('Event insert failed');
+    return mapEvent(row);
+  }
+
+  async update(
+    churchId: ChurchId,
+    id: EventId,
+    input: UpdateEventInput,
+    tx?: TransactionContext,
+  ): Promise<Event> {
+    const db = getClient(this.db, tx);
+    const [row] = await db
+      .update(event)
+      .set({
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.startDate !== undefined
+          ? { startDate: input.startDate }
+          : {}),
+        ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(event.id, id), withChurchIsolation(event, churchId)))
+      .returning();
+    if (!row) throw new NotFoundError(`Event not found: ${id}`);
     return mapEvent(row);
   }
 

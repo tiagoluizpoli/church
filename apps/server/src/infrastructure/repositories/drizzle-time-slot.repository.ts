@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { assignment, slotRequirement, timeSlot } from '@church/db';
-import { and, count, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
 import type { RoleId } from '../../domain/entities/role';
@@ -8,7 +8,9 @@ import type { SlotRequirement } from '../../domain/entities/slot-requirement';
 import type { TimeSlot, TimeSlotId } from '../../domain/entities/time-slot';
 import type {
   BulkCreateTimeSlotsInput,
+  CreateTimeSlotInput,
   TimeSlotRepository,
+  UpdateTimeSlotInput,
   UpsertSlotRequirementInput,
 } from '../../domain/repositories/time-slot.repository';
 import type { TransactionContext } from '../../domain/repositories/transaction-context';
@@ -106,6 +108,82 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
       result.push(mapTimeSlot(slotRow, requirements));
     }
     return result;
+  }
+
+  async create(
+    churchId: ChurchId,
+    input: CreateTimeSlotInput,
+    tx?: TransactionContext,
+  ): Promise<TimeSlot> {
+    const db = getClient(this.db, tx);
+    const [row] = await db
+      .insert(timeSlot)
+      .values({
+        churchId,
+        eventId: input.eventId,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        label: input.label ?? null,
+      })
+      .returning();
+    if (!row) throw new Error('TimeSlot insert failed');
+    return mapTimeSlot(row, []);
+  }
+
+  async update(
+    churchId: ChurchId,
+    id: TimeSlotId,
+    input: UpdateTimeSlotInput,
+    tx?: TransactionContext,
+  ): Promise<TimeSlot> {
+    const db = getClient(this.db, tx);
+    const [row] = await db
+      .update(timeSlot)
+      .set({
+        ...(input.startTime !== undefined
+          ? { startTime: input.startTime }
+          : {}),
+        ...(input.endTime !== undefined ? { endTime: input.endTime } : {}),
+        ...(input.label !== undefined ? { label: input.label ?? null } : {}),
+      })
+      .where(and(eq(timeSlot.id, id), withChurchIsolation(timeSlot, churchId)))
+      .returning();
+    if (!row) throw new NotFoundError(`TimeSlot not found: ${id}`);
+    return this.fetchWithRequirements(db, row);
+  }
+
+  async deleteById(
+    churchId: ChurchId,
+    id: TimeSlotId,
+    tx?: TransactionContext,
+  ): Promise<void> {
+    await getClient(this.db, tx)
+      .delete(timeSlot)
+      .where(and(eq(timeSlot.id, id), withChurchIsolation(timeSlot, churchId)));
+  }
+
+  async findOverlapping(
+    churchId: ChurchId,
+    eventId: EventId,
+    startTime: Date,
+    endTime: Date,
+    excludeSlotId?: TimeSlotId,
+    tx?: TransactionContext,
+  ): Promise<TimeSlot[]> {
+    const db = getClient(this.db, tx);
+    const conditions = [
+      withChurchIsolation(timeSlot, churchId),
+      eq(timeSlot.eventId, eventId),
+      // overlap: existing.start < new.end AND existing.end > new.start
+      lt(timeSlot.startTime, endTime),
+      gt(timeSlot.endTime, startTime),
+    ];
+    if (excludeSlotId) conditions.push(ne(timeSlot.id, excludeSlotId));
+    const rows = await db
+      .select()
+      .from(timeSlot)
+      .where(and(...conditions));
+    return rows.map((r) => mapTimeSlot(r, []));
   }
 
   async deleteByEvent(

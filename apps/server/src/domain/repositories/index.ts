@@ -5,6 +5,7 @@ export * from './church.repository';
 export * from './event.repository';
 export * from './ministry.repository';
 export * from './role.repository';
+export * from './role-template.repository';
 export * from './time-slot.repository';
 export * from './transaction-context';
 export * from './unit-of-work';

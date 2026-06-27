@@ -7,7 +7,7 @@ import type { TimeSlotId } from '../../domain/entities/time-slot';
 import type { UserId, VolunteerId } from '../../domain/entities/volunteer';
 import { repositories } from '../../infrastructure/repositories/registry';
 import { protectedProcedure } from '../../trpc';
-import { authorizeLeaderOrAdmin } from './authorize';
+import { authorizeScheduleBuilderAccess } from './authorize';
 
 export const getScheduleBuilderData = protectedProcedure
   .input(z.object({ eventId: z.string() }))
@@ -33,8 +33,8 @@ export const getScheduleBuilderData = protectedProcedure
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
     }
 
-    // 3. Authorize — derives churchId from the session user's volunteer record
-    const authCtx = await authorizeLeaderOrAdmin(
+    // 3. Authorize — admits leaders, admins, and sub-leaders (team-scoped)
+    const authCtx = await authorizeScheduleBuilderAccess(
       ctx.session.user.id,
       event.ministryId,
     );
@@ -61,6 +61,12 @@ export const getScheduleBuilderData = protectedProcedure
 
     // 6. Fetch volunteers in this ministry (with names joined at the repo level)
     const volunteers = await repositories.volunteers.listByMinistry(
+      authCtx.churchId as ChurchId,
+      event.ministryId,
+    );
+
+    // 6b. Fetch roles for this ministry (used for grid column labels + picker)
+    const roles = await repositories.roles.listByMinistry(
       authCtx.churchId as ChurchId,
       event.ministryId,
     );
@@ -156,6 +162,25 @@ export const getScheduleBuilderData = protectedProcedure
       };
     });
 
+    // 9b. Sub-leader team scoping (US6): restrict the volunteer pool to the
+    //     caller's own team. Full leaders/admins see everyone (teamId null).
+    const callerTeamId = authCtx.teamId;
+    let scopedAvailability = volunteerAvailability;
+    if (authCtx.systemRole === 'sub_leader' && callerTeamId) {
+      const memberships = await repositories.volunteers.listMinistryMemberships(
+        authCtx.churchId as ChurchId,
+        event.ministryId,
+      );
+      const teamVolunteerIds = new Set(
+        memberships
+          .filter((m) => m.teamId === callerTeamId)
+          .map((m) => m.volunteerId),
+      );
+      scopedAvailability = volunteerAvailability.filter((v) =>
+        teamVolunteerIds.has(v.volunteerId),
+      );
+    }
+
     return {
       event: {
         id: event.id,
@@ -164,7 +189,9 @@ export const getScheduleBuilderData = protectedProcedure
         endDate: event.endDate,
         ministryId: event.ministryId,
         status: event.status,
+        eventType: event.eventType,
       },
+      roles: roles.map((r) => ({ id: r.id, name: r.name })),
       slots: slots.map((s) => ({
         id: s.id,
         startTime: s.startTime,
@@ -176,6 +203,7 @@ export const getScheduleBuilderData = protectedProcedure
         slotId: r.slotId,
         roleId: r.roleId,
         requiredCount: r.requiredCount,
+        teamId: r.teamId ?? null,
       })),
       assignments: assignments.map((a) => ({
         id: a.id,
@@ -186,6 +214,8 @@ export const getScheduleBuilderData = protectedProcedure
         volunteerName:
           volunteers.find((v) => v.id === a.volunteerId)?.name ?? undefined,
       })),
-      volunteerAvailability,
+      volunteerAvailability: scopedAvailability,
+      // Sub-leader team scoping (US6): null = full leader/admin access.
+      callerTeamId,
     };
   });

@@ -30,6 +30,19 @@ export interface UpsertSlotRequirementInput {
   notes?: string;
 }
 
+export interface CreateTimeSlotInput {
+  eventId: EventId;
+  startTime: Date;
+  endTime: Date;
+  label?: string;
+}
+
+export interface UpdateTimeSlotInput {
+  startTime?: Date;
+  endTime?: Date;
+  label?: string;
+}
+
 export interface TimeSlotRepository {
   getById(
     churchId: ChurchId,
@@ -46,6 +59,38 @@ export interface TimeSlotRepository {
   bulkCreate(
     churchId: ChurchId,
     input: BulkCreateTimeSlotsInput,
+    tx?: TransactionContext,
+  ): Promise<TimeSlot[]>;
+
+  /** Create a single slot (complement to bulkCreate). */
+  create(
+    churchId: ChurchId,
+    input: CreateTimeSlotInput,
+    tx?: TransactionContext,
+  ): Promise<TimeSlot>;
+
+  /** Update slot time and/or label. */
+  update(
+    churchId: ChurchId,
+    id: TimeSlotId,
+    input: UpdateTimeSlotInput,
+    tx?: TransactionContext,
+  ): Promise<TimeSlot>;
+
+  /** Delete a single slot by id. */
+  deleteById(
+    churchId: ChurchId,
+    id: TimeSlotId,
+    tx?: TransactionContext,
+  ): Promise<void>;
+
+  /** Find slots in the same event whose time range overlaps the given range. */
+  findOverlapping(
+    churchId: ChurchId,
+    eventId: EventId,
+    startTime: Date,
+    endTime: Date,
+    excludeSlotId?: TimeSlotId,
     tx?: TransactionContext,
   ): Promise<TimeSlot[]>;
 

@@ -3,6 +3,7 @@ import type {
   Event,
   EventId,
   EventStatus,
+  EventType,
   EventWithSlots,
 } from '../entities/event';
 import type { MinistryId } from '../entities/ministry';
@@ -16,10 +17,17 @@ export interface CreateEventInput {
   startDate: Date;
   endDate: Date;
   status?: EventStatus;
+  eventType?: EventType;
 }
 
 export interface UpdateEventStatusInput {
   status: EventStatus;
+}
+
+export interface UpdateEventInput {
+  title?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface EventRepository {
@@ -54,4 +62,11 @@ export interface EventRepository {
     input: UpdateEventStatusInput,
     tx?: TransactionContext,
   ): Promise<void>;
+
+  update(
+    churchId: ChurchId,
+    id: EventId,
+    input: UpdateEventInput,
+    tx?: TransactionContext,
+  ): Promise<Event>;
 }

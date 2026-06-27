@@ -1,10 +1,19 @@
-import { assignmentAudit } from '@church/db';
-import { and, desc, eq } from 'drizzle-orm';
+import {
+  assignment,
+  assignmentAudit,
+  role,
+  timeSlot,
+  user,
+  volunteer,
+} from '@church/db';
+import { aliasedTable, and, desc, eq } from 'drizzle-orm';
 import type { AssignmentId } from '../../domain/entities/assignment';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
 import type { ChurchId } from '../../domain/entities/church';
+import type { EventId } from '../../domain/entities/event';
 import type { UserId } from '../../domain/entities/volunteer';
 import type {
+  AssignmentAuditLogEntry,
   AssignmentAuditRepository,
   CreateAssignmentAuditInput,
 } from '../../domain/repositories/assignment-audit.repository';
@@ -91,5 +100,63 @@ export class DrizzleAssignmentAuditRepository
       )
       .orderBy(desc(assignmentAudit.timestamp));
     return rows.map(mapAssignmentAudit);
+  }
+
+  async listByEvent(
+    churchId: ChurchId,
+    eventId: EventId,
+    tx?: TransactionContext,
+  ): Promise<AssignmentAuditLogEntry[]> {
+    const db = getClient(this.db, tx);
+    const volunteerUser = aliasedTable(user, 'volunteer_user');
+    const actorUser = aliasedTable(user, 'actor_user');
+
+    const rows = await db
+      .select({
+        id: assignmentAudit.id,
+        assignmentId: assignmentAudit.assignmentId,
+        volunteerId: assignment.volunteerId,
+        volunteerName: volunteerUser.name,
+        slotId: timeSlot.id,
+        slotLabel: timeSlot.label,
+        slotStart: timeSlot.startTime,
+        roleId: role.id,
+        roleName: role.name,
+        action: assignmentAudit.action,
+        reason: assignmentAudit.reason,
+        actorId: assignmentAudit.actorId,
+        actorName: actorUser.name,
+        timestamp: assignmentAudit.timestamp,
+      })
+      .from(assignmentAudit)
+      .innerJoin(assignment, eq(assignmentAudit.assignmentId, assignment.id))
+      .innerJoin(timeSlot, eq(assignment.slotId, timeSlot.id))
+      .innerJoin(role, eq(assignment.roleId, role.id))
+      .innerJoin(volunteer, eq(assignment.volunteerId, volunteer.id))
+      .leftJoin(volunteerUser, eq(volunteer.userId, volunteerUser.id))
+      .leftJoin(actorUser, eq(assignmentAudit.actorId, actorUser.id))
+      .where(
+        and(
+          withChurchIsolation(assignmentAudit, churchId),
+          eq(timeSlot.eventId, eventId),
+        ),
+      )
+      .orderBy(desc(assignmentAudit.timestamp));
+
+    return rows.map((r) => ({
+      id: r.id,
+      assignmentId: r.assignmentId,
+      volunteerId: r.volunteerId,
+      volunteerName: r.volunteerName ?? r.volunteerId,
+      slotId: r.slotId,
+      slotLabel: r.slotLabel ?? r.slotStart.toISOString(),
+      roleId: r.roleId,
+      roleName: r.roleName,
+      action: r.action as AssignmentAuditLogEntry['action'],
+      reason: r.reason ?? null,
+      actorId: r.actorId,
+      actorName: r.actorName ?? r.actorId,
+      timestamp: r.timestamp,
+    }));
   }
 }

@@ -11,6 +11,7 @@ import type { AssignmentAuditRepository } from '../../domain/repositories/assign
 import type { AvailabilityRepository } from '../../domain/repositories/availability.repository';
 import type { EventRepository } from '../../domain/repositories/event.repository';
 import type { RoleRepository } from '../../domain/repositories/role.repository';
+import type { RoleTemplateRepository } from '../../domain/repositories/role-template.repository';
 import type { TimeSlotRepository } from '../../domain/repositories/time-slot.repository';
 import type { UnitOfWork } from '../../domain/repositories/unit-of-work';
 import type { VolunteerRepository } from '../../domain/repositories/volunteer.repository';
@@ -19,6 +20,7 @@ import { DrizzleAssignmentAuditRepository } from './drizzle-assignment-audit.rep
 import { DrizzleAvailabilityRepository } from './drizzle-availability.repository';
 import { DrizzleEventRepository } from './drizzle-event.repository';
 import { DrizzleRoleRepository } from './drizzle-role.repository';
+import { DrizzleRoleTemplateRepository } from './drizzle-role-template.repository';
 import { DrizzleTimeSlotRepository } from './drizzle-time-slot.repository';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from './drizzle-volunteer.repository';
@@ -32,6 +34,7 @@ export interface Repositories {
   assignmentAudits: AssignmentAuditRepository;
   availability: AvailabilityRepository;
   roles: RoleRepository;
+  roleTemplates: RoleTemplateRepository;
   unitOfWork: UnitOfWork;
 }
 
@@ -48,5 +51,6 @@ export const repositories: Repositories = {
   assignmentAudits: new DrizzleAssignmentAuditRepository(typedDb),
   availability: new DrizzleAvailabilityRepository(typedDb),
   roles: new DrizzleRoleRepository(typedDb),
+  roleTemplates: new DrizzleRoleTemplateRepository(typedDb),
   unitOfWork: new DrizzleUnitOfWork(typedDb),
 };

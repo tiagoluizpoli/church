@@ -47,5 +47,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/012-global-ui-framework/plan.md](specs/012-global-ui-framework/plan.md)
+- Current Plan: [specs/014-volunteer-dashboard/plan.md](specs/014-volunteer-dashboard/plan.md)
 <!-- SPECKIT END -->

@@ -94,8 +94,8 @@ Represents an actual scheduled commitment. A volunteer **can hold multiple roles
 Defines when a volunteer **can or cannot serve**.
 
 Must support:
-- Full-day availability/unavailability
-- Partial-day time ranges
+- Day-span availability/unavailability for day-based Events
+- Time-span availability/unavailability for hourly Events
 
 ---
 
@@ -106,7 +106,7 @@ Must support:
 3. **Multi-Day Events**: Yes. Events can span multiple days (e.g., a 3-day conference).
 4. **Multiple Roles per Slot**: Yes, a volunteer can be assigned to multiple roles within the exact same time slot.
 5. **Overlapping Time Slots**: No (for MVP). Slots must be sequential to keep capacity and availability calculations simple. We can evolve this later if needed.
-6. **Availability Granularity**: Both, depending on the Event Type. An event can be "day-based" (e.g., full-day retreats) or "hourly-based". Volunteers will specify availability matching the event's granularity.
+6. **Availability Granularity**: Both, depending on the Event Type. An event can be "day-based" (e.g., multi-day retreats) or "hourly-based". Volunteers will specify availability as day spans or time spans matching the Event's granularity.
 7. **Constraint Strictness**: Configurable per Ministry. We will add a boolean flag on the Ministry settings to determine if it uses *Soft enforcement* (warn but allow override) or *Hard enforcement* (blocks invalid assignments).
 
 ---

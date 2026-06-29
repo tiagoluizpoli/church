@@ -13,6 +13,8 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 | BL-001 | Real-time builder updates on availability change | Schedule Builder | Backlog |
 | BL-002 | Schedule duplication from past events          | Schedule Builder | Backlog |
 | BL-003 | Per-event volunteer exclusion by leader        | Schedule Builder | Backlog |
+| BL-004 | Separate "Now Serving" section for in-progress assignments | Volunteer Dashboard | Backlog |
+| BL-005 | Configurable cooldown for repeated availability reminders | Volunteer Dashboard | Backlog |
 
 ---
 
@@ -140,3 +142,98 @@ During the grilling session for Spec F1, this was deferred from MVP. The reasoni
 3. Excluded volunteers shown in a collapsed "Excluded" section at the bottom of the sidebar (not fully hidden, so the leader can reverse the exclusion).
 4. Existing assignments from an excluded volunteer must surface a warning: "This volunteer is excluded from this event but has an active assignment."
 5. RBAC: only leaders (and sub-leaders for their team) can exclude volunteers.
+
+---
+
+### BL-004 — Separate "Now Serving" section for in-progress assignments
+
+**Status**: Backlog
+
+**Feature area**: Volunteer Dashboard (Spec F2 / `manual-planning/0001-volunteer-scheduling/specifications/F2-volunteer-dashboard.md`)
+
+**Summary**: The volunteer dashboard should eventually split currently active assignments out of `My Upcoming Assignments` into a dedicated `Now Serving` section, so volunteers can distinguish what is happening right now from what is merely upcoming.
+
+**Full Context**:
+
+During the grilling session for Spec F2, the following was decided for MVP:
+
+- `My Upcoming Assignments` includes both future assignments and assignments that are currently in progress.
+- An in-progress assignment remains visible until its `TimeSlot` ends.
+- This was chosen because it keeps the dashboard useful during active service without introducing another top-level section in MVP.
+
+However, a future refinement was explicitly identified:
+
+- A separate `Now Serving` section would be a cleaner experience once the volunteer dashboard matures.
+- This section would surface assignments whose `TimeSlot` has already started but not yet ended.
+- `My Upcoming Assignments` would then become strictly future-facing, improving the semantic clarity of the dashboard.
+
+**What this feature should mean**:
+
+- `Now Serving` appears above or alongside `My Upcoming Assignments` when at least one assignment is currently active.
+- Active assignments move out of the upcoming list and into `Now Serving` automatically based on the current time and the assignment's `TimeSlot`.
+- If there are no active assignments, the `Now Serving` section is hidden.
+- Response and visibility rules remain unchanged unless explicitly redesigned in a future spec.
+
+**Why deferred**:
+
+- The MVP already has a workable rule: keep in-progress assignments visible inside `My Upcoming Assignments`.
+- Adding a dedicated `Now Serving` section increases dashboard complexity, layout decisions, and empty-state behavior.
+- This is a UX refinement, not a blocker for the core volunteer scheduling workflow.
+
+**Prerequisites for implementation**:
+1. The volunteer dashboard route and component structure from Spec F2 must be in place.
+2. The frontend must already distinguish `future`, `in_progress`, and `ended` assignment states from `TimeSlot` boundaries.
+3. The dashboard information hierarchy must be revisited so `Now Serving`, `Availability needed`, and `My Upcoming Assignments` do not compete visually.
+
+**Suggested approach when implementing**:
+- Derive `Now Serving` from the same assignment dataset already used by `My Upcoming Assignments`; do not introduce a separate backend concept unless necessary.
+- Keep the section conditional and lightweight in MVP+1: only show it when there is at least one active assignment.
+- Preserve the existing `Event` grouping model where possible, so the feature feels like a refinement of the current dashboard rather than a parallel schedule view.
+
+---
+
+### BL-005 — Configurable cooldown for repeated availability reminders
+
+**Status**: Backlog
+
+**Feature area**: Volunteer Dashboard (Spec F2 / `manual-planning/0001-volunteer-scheduling/specifications/F2-volunteer-dashboard.md`)
+
+**Summary**: Repeated availability reminders should eventually respect a configurable cooldown window, so leaders cannot spam the same volunteer too aggressively for the same Event while still preserving the intentionally noisy reminder model.
+
+**Full Context**:
+
+During the grilling session for Spec F2, the following was decided for MVP:
+
+- Availability reminders are intentionally allowed to be noisier than most other dashboard signals.
+- The same reminder need may appear in multiple prominent places in the volunteer experience.
+- For MVP, the team is willing to rely on leader discretion rather than building a full anti-spam system immediately.
+
+However, a further refinement was explicitly requested:
+
+- The system should later support a configurable minimum gap between repeated reminders for the same volunteer and Event.
+- The initial implementation can be driven by an environment variable or similar deployment-level configuration.
+- In the future, this should move to a better long-term configuration surface if needed.
+
+**What this feature should mean**:
+
+- If a leader sends an availability reminder to a volunteer for a specific Event, the system records the send time.
+- Additional reminders for the same volunteer and Event are blocked or deferred until the cooldown window has passed.
+- The cooldown duration is configurable, rather than hard-coded.
+- The cooldown does NOT prevent reminders for different Events or different volunteers.
+
+**Why deferred**:
+
+- MVP explicitly prioritizes shipping the reminder flow, even if it is somewhat noisy.
+- Cooldown rules introduce extra product and infrastructure decisions: where the config lives, how leaders are informed, and whether blocked sends are hidden or explained.
+- This is a safety refinement, not a prerequisite for the core volunteer scheduling workflow.
+
+**Prerequisites for implementation**:
+1. Reminder sends must be persisted with enough metadata to identify volunteer + Event + send timestamp.
+2. The reminder-send path must consult a configurable cooldown value before delivering another reminder.
+3. Leader-facing feedback must exist when a reminder is blocked or suppressed by cooldown.
+
+**Suggested approach when implementing**:
+- Start with a simple environment-variable-driven cooldown duration, since that was explicitly accepted as a near-term configuration source.
+- Scope the cooldown to `(volunteerId, eventId)` so it does not unintentionally suppress unrelated reminders.
+- Surface a concise leader-facing message such as `A reminder was already sent recently for this Event`.
+- If the reminder system becomes more sophisticated later, migrate the cooldown from environment configuration to a proper application/admin configuration model.

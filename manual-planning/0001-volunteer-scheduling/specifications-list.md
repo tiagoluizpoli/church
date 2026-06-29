@@ -41,7 +41,7 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 - **[Spec F0: Global UI Framework](./specifications/F0-global-ui-framework.md)**: Application-wide layout shell, theme providers, and navigation system.
 - **[Spec F1: Schedule Builder (Desktop)](./specifications/F1-schedule-builder.md)**: Desktop-first complex drag-and-drop interface.
   - *Refines:* [10-scheduling-api.md](./specifications/10-scheduling-api.md)
-- **[Spec F2: Volunteer Dashboard (Mobile/PWA)](./specifications/F2-volunteer-dashboard.md)**: Simplified mobile view for availability and confirmations.
+- **[Spec F2: Volunteer Dashboard (Mobile/PWA)](./specifications/F2-volunteer-dashboard.md)**: Canonical volunteer dashboard for availability tasks, assignments, scheduling notifications, and read-only ministry schedule visibility.
   - *Refines:* [03-assignments-availability.md](./specifications/03-assignments-availability.md), [10-scheduling-api.md](./specifications/10-scheduling-api.md)
 - **[Spec F3: Onboarding & Invites](./specifications/F3-onboarding-ui.md)**: Registration flow for new volunteers joining via link.
   - *Refines:* [05-onboarding-links.md](./specifications/05-onboarding-links.md), [onboarding-flow.md](./flowcharts/onboarding-flow.md)

@@ -29,7 +29,7 @@ Define the abstraction layer between business logic and the database implementat
 ### III. AssignmentRepository
 - `create(churchId, assignmentData)`
 - `confirm(churchId, assignmentId)`
-- `decline(churchId, assignmentId, reason)`
+- `decline(churchId, assignmentId)`
 - `listByVolunteer(churchId, volunteerId)`
 
 ---

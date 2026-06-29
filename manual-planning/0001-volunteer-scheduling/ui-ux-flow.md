@@ -180,3 +180,31 @@ Post-publish editing is **allowed for assignments** (add, swap, remove volunteer
 ### New: Conflict Detection Scope — Cross-Ministry
 
 Conflict detection was assumed to be within-event only. It now checks across all events in all ministries the volunteer belongs to. A volunteer double-booked in two different ministries at the same time is flagged in both builders.
+
+---
+
+## Refinements — 2026-06-29 (Volunteer Dashboard / F2)
+
+The following updates were made after the F2 grilling session. These apply to the volunteer-facing experience and should be treated as the current direction for Spec F2.
+
+### New: Volunteer Dashboard is the canonical volunteer surface
+
+- The volunteer experience is no longer a loose collection of isolated pages.
+- `Availability`, `My Upcoming Assignments`, `Notifications Inbox`, and `Ministry Schedule` all belong under one volunteer dashboard.
+
+### New: Availability follows event granularity
+
+- Hourly Events use time-span availability input.
+- Day-based Events use day-span availability input, matching retreat-style multi-day service realities rather than fake one-day slices.
+
+### New: Dashboard has a task-first information hierarchy
+
+- `Availability needed` is the highest-priority dashboard surface.
+- `My Upcoming Assignments` is the primary service-visibility surface.
+- `Notifications Inbox` is historical and supportive.
+- `Ministry Schedule` is secondary, read-only, and selected one Ministry at a time.
+
+### New: Offline mode is read-first, not write-first
+
+- Volunteers can read cached dashboard data offline.
+- Volunteer writes such as assignment responses and availability edits still require an online connection in MVP.

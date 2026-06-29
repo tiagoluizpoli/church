@@ -6,11 +6,11 @@ A system for ministry leaders to manage the scheduling (escalas) of volunteers w
 ## Core Flow
 1. **Team Onboarding**: The ministry leader sends a registration/invite link to potential or existing volunteers.
 2. **Volunteer Registration**: Volunteers register themselves (or update their profile) through the provided link.
-3. **Availability Specification**: Volunteers specify their availability (e.g., full day or specific time ranges) depending on the event type.
+3. **Availability Specification**: Volunteers specify their availability as day spans or time spans depending on the event type.
 4. **Schedule Creation**: The leader uses the availability data to build, manage, and finalize the ministry schedule.
 
 ## Decisions Made
-1. **Availability Granularity**: Configurable by Event Type. Events can be "day-based" (blockouts for full days) or "hourly-based" (specific shift availability).
+1. **Availability Granularity**: Configurable by Event Type. Events can be "day-based" (multi-day day spans, such as retreats) or "hourly-based" (specific time-span availability).
 2. **Roles/Positions**: Volunteers will be assigned to specific roles. Roles can be **Global** (available across the church) or **Ministry-specific** (bound to a single team).
 3. **Notifications**: Required for the MVP. We will utilize Push Notifications (via Web App/PWA) as the primary channel to avoid Meta's WhatsApp integration complexity.
 4. **Schedule Visibility**: Volunteers will be able to see the full schedule for their ministry to foster transparency and teamwork.

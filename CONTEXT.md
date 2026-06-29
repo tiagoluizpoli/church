@@ -25,7 +25,7 @@ A person associated with a Church who can be scheduled to serve in one or more R
 _Avoid_: User, member, worker
 
 **Event**:
-A scheduled gathering at a Church (e.g., "Sunday Service").
+A scheduled gathering at a Church (e.g., "Sunday Service" or a multi-day retreat). An Event may be hourly-based or day-based.
 _Avoid_: Gathering, service
 
 **TimeSlot**:
@@ -45,7 +45,7 @@ The person who performed an audited action in the scheduling system. An Actor ma
 _Avoid_: Leader (when the action may also be performed by volunteers or admins)
 
 **Availability**:
-A volunteer's declared time periods when they are either available or unavailable to serve.
+A volunteer's declared serving availability for an Event. Availability is expressed either as a time span for hourly Events or a day span for day-based Events.
 _Avoid_: Blockout, schedule
 
 ## Example Dialogue

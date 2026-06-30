@@ -9,6 +9,92 @@ import { repositories } from '../../infrastructure/repositories/registry';
 import { protectedProcedure } from '../../trpc';
 import { authorizeScheduleBuilderAccess } from './authorize';
 
+const BUILDER_AVAILABILITY_STATUS_OPTIONS = [
+  'AVAILABLE',
+  'UNAVAILABLE',
+  'DOUBLE_BOOKED',
+  'PARTIAL',
+  'NO_RESPONSE',
+] as const;
+
+type BuilderAvailabilityStatus =
+  (typeof BUILDER_AVAILABILITY_STATUS_OPTIONS)[number];
+
+interface BuilderAvailabilitySummary {
+  status: BuilderAvailabilityStatus;
+  conflictReason?: string;
+  conflictingId?: string;
+}
+
+function summarizeBuilderAvailability({
+  availabilityEntries,
+  eventId,
+  fallbackStatus,
+  fallbackConflictReason,
+  fallbackConflictingId,
+}: {
+  availabilityEntries: ReturnType<
+    typeof repositories.availability.listByVolunteers
+  > extends Promise<infer T>
+    ? T
+    : never;
+  eventId: EventId;
+  fallbackStatus: 'AVAILABLE' | 'UNAVAILABLE' | 'DOUBLE_BOOKED';
+  fallbackConflictReason?: string;
+  fallbackConflictingId?: string;
+}): BuilderAvailabilitySummary {
+  const eventEntries = availabilityEntries.filter(
+    (entry) => entry.eventId === eventId,
+  );
+
+  if (eventEntries.length === 0) {
+    return {
+      status: fallbackStatus,
+      conflictReason: fallbackConflictReason,
+      conflictingId: fallbackConflictingId,
+    };
+  }
+
+  const hasAvailable = eventEntries.some((entry) => entry.type === 'available');
+  const hasUnavailable = eventEntries.some(
+    (entry) => entry.type === 'unavailable',
+  );
+
+  if (fallbackStatus === 'DOUBLE_BOOKED') {
+    return {
+      status: 'DOUBLE_BOOKED',
+      conflictReason: fallbackConflictReason,
+      conflictingId: fallbackConflictingId,
+    };
+  }
+
+  if (fallbackStatus === 'UNAVAILABLE' && hasAvailable) {
+    return {
+      status: 'PARTIAL',
+      conflictReason: 'Available response conflicts with another blocker',
+      conflictingId: fallbackConflictingId,
+    };
+  }
+
+  if (hasAvailable && hasUnavailable) {
+    return {
+      status: 'PARTIAL',
+      conflictReason: 'Partially available for this event',
+    };
+  }
+
+  if (hasUnavailable) {
+    return {
+      status: 'UNAVAILABLE',
+      conflictReason: 'Marked unavailable for this event',
+    };
+  }
+
+  return {
+    status: 'AVAILABLE',
+  };
+}
+
 export const getScheduleBuilderData = protectedProcedure
   .input(z.object({ eventId: z.string() }))
   .query(async ({ input, ctx }) => {
@@ -73,11 +159,12 @@ export const getScheduleBuilderData = protectedProcedure
 
     const volunteerIds = volunteers.map((v) => v.id);
 
-    // 7. Bulk-fetch all unavailability blocks for these volunteers
-    const blockouts = await repositories.availability.listByVolunteers(
-      authCtx.churchId as ChurchId,
-      volunteerIds as VolunteerId[],
-    );
+    // 7. Bulk-fetch all availability entries for these volunteers
+    const availabilityEntries =
+      await repositories.availability.listByVolunteers(
+        authCtx.churchId as ChurchId,
+        volunteerIds as VolunteerId[],
+      );
 
     // 8. Bulk-fetch all assignments for these volunteers for overlap checking.
     const existingAssignments = await repositories.assignments.listByVolunteers(
@@ -106,8 +193,11 @@ export const getScheduleBuilderData = protectedProcedure
 
     // 9. Calculate per-volunteer availability for the event time range
     const volunteerAvailability = volunteers.map((vol) => {
-      const volBlockouts = blockouts
-        .filter((b) => b.volunteerId === vol.id)
+      const volAvailabilityEntries = availabilityEntries.filter(
+        (entry) => entry.volunteerId === vol.id,
+      );
+      const volBlockouts = volAvailabilityEntries
+        .filter((b) => b.type === 'unavailable')
         .map((b) => ({
           id: b.id,
           churchId: b.churchId,
@@ -139,18 +229,26 @@ export const getScheduleBuilderData = protectedProcedure
         existingAssignments: volAssignments,
       });
 
-      return {
-        volunteerId: vol.id,
-        volunteerName: vol.name ?? vol.userId,
-        status: availResult.status,
-        conflictReason:
+      const summary = summarizeBuilderAvailability({
+        availabilityEntries: volAvailabilityEntries,
+        eventId: event.id,
+        fallbackStatus: availResult.status,
+        fallbackConflictReason:
           'conflictReason' in availResult
             ? availResult.conflictReason
             : undefined,
-        conflictingId:
+        fallbackConflictingId:
           'conflictingId' in availResult
             ? availResult.conflictingId
             : undefined,
+      });
+
+      return {
+        volunteerId: vol.id,
+        volunteerName: vol.name ?? vol.userId,
+        status: summary.status,
+        conflictReason: summary.conflictReason,
+        conflictingId: summary.conflictingId,
       };
     });
 

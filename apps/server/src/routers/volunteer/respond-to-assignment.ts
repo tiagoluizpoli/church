@@ -19,6 +19,7 @@ export const respondToAssignment = protectedProcedure
     }),
   )
   .mutation(async ({ input, ctx }) => {
+    const now = new Date();
     const callerVol = await repositories.volunteers.findByUserIdGlobally(
       ctx.session.user.id as UserId,
     );
@@ -53,6 +54,19 @@ export const respondToAssignment = protectedProcedure
     );
     const event = await repositories.events.getById(churchId, slot.eventId);
 
+    if (slot.startTime <= now) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message:
+          'This assignment is already in progress and can no longer be updated.',
+      });
+    }
+
+    const previousStatus = assignment.status;
+    const role = await repositories.roles
+      .getById(churchId, assignment.roleId as RoleId)
+      .catch(() => null);
+
     await repositories.unitOfWork.run(async (tx) => {
       await repositories.assignments.updateStatus(
         churchId,
@@ -72,15 +86,46 @@ export const respondToAssignment = protectedProcedure
       );
     });
 
+    const shouldNotifyVolunteer =
+      event.status === 'published' && previousStatus !== input.response;
+    const notificationType =
+      input.response === 'declined' && previousStatus === 'confirmed'
+        ? 'assignment_removed'
+        : 'assignment_changed';
+    const notificationTitle =
+      notificationType === 'assignment_removed'
+        ? 'Assignment removed'
+        : 'Assignment updated';
+    const notificationBody =
+      notificationType === 'assignment_removed'
+        ? `You are no longer scheduled for ${role?.name ?? 'this role'} at ${event.title}${slot.label ? ` (${slot.label})` : ''}.`
+        : `Your assignment for ${role?.name ?? 'this role'} at ${event.title}${slot.label ? ` (${slot.label})` : ''} changed from ${previousStatus} to ${input.response}.`;
+
+    if (shouldNotifyVolunteer) {
+      await notificationService.notifyVolunteer({
+        churchId,
+        volunteerId: callerVol.id,
+        ministryId: event.ministryId,
+        eventId: event.id,
+        assignmentId: assignment.id,
+        type: notificationType,
+        title: notificationTitle,
+        body: notificationBody,
+        payload: {
+          assignmentId: assignment.id,
+          eventId: event.id,
+          ministryId: event.ministryId,
+          section: 'assignments',
+        },
+      });
+    }
+
     // FR-027: notify the assigning leader on decline of a published event.
     if (
       input.response === 'declined' &&
       event.status === 'published' &&
       assignment.assignedBy
     ) {
-      const role = await repositories.roles
-        .getById(churchId, assignment.roleId as RoleId)
-        .catch(() => null);
       await notificationService.notifyLeaderOfDecline({
         churchId,
         eventId: slot.eventId,

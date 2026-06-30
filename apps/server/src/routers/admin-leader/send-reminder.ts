@@ -40,17 +40,16 @@ export const sendReminder = protectedProcedure
     );
     const volunteerIds = volunteers.map((v) => v.id);
 
-    const blocks = await repositories.availability.listByVolunteers(
-      churchId,
-      volunteerIds as VolunteerId[],
-    );
+    const availabilityEntries =
+      await repositories.availability.listByVolunteers(
+        churchId,
+        volunteerIds as VolunteerId[],
+      );
 
-    // Volunteers with an availability record overlapping the event window.
+    // Volunteers with event-scoped answers already submitted for this event.
     const hasAvailability = new Set(
-      blocks
-        .filter(
-          (b) => b.startTime < event.endDate && b.endTime > event.startDate,
-        )
+      availabilityEntries
+        .filter((entry) => entry.eventId === event.id)
         .map((b) => b.volunteerId as string),
     );
 
@@ -59,6 +58,20 @@ export const sendReminder = protectedProcedure
     );
 
     for (const v of nonResponders) {
+      await notificationService.notifyVolunteer({
+        churchId,
+        volunteerId: v.id,
+        ministryId: event.ministryId,
+        eventId: event.id,
+        type: 'availability_reminder',
+        title: 'Availability reminder',
+        body: `Please share your availability for ${event.title}.`,
+        payload: {
+          eventId: event.id,
+          ministryId: event.ministryId,
+          section: 'availability',
+        },
+      });
       await notificationService.notifyReminder({
         churchId,
         eventId: input.eventId,

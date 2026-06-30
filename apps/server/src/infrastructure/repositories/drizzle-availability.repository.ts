@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import { availability } from '@church/db';
 import { and, between, eq, inArray } from 'drizzle-orm';
 import type {
@@ -19,6 +20,28 @@ import type { AnyDrizzleDb } from './types';
 export class DrizzleAvailabilityRepository implements AvailabilityRepository {
   constructor(private readonly db: AnyDrizzleDb) {}
 
+  async getById(
+    churchId: ChurchId,
+    id: AvailabilityId,
+    tx?: TransactionContext,
+  ): Promise<Availability> {
+    const [row] = await getClient(this.db, tx)
+      .select()
+      .from(availability)
+      .where(
+        and(
+          eq(availability.id, id),
+          withChurchIsolation(availability, churchId),
+        ),
+      );
+
+    if (!row) {
+      throw new NotFoundError(`Availability entry not found: ${id}`);
+    }
+
+    return mapAvailability(row);
+  }
+
   async listByVolunteerInRange(
     churchId: ChurchId,
     volunteerId: VolunteerId,
@@ -39,6 +62,26 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
     return rows.map(mapAvailability);
   }
 
+  async listByVolunteerForEvent(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    eventId: string,
+    tx?: TransactionContext,
+  ): Promise<Availability[]> {
+    const rows = await getClient(this.db, tx)
+      .select()
+      .from(availability)
+      .where(
+        and(
+          withChurchIsolation(availability, churchId),
+          eq(availability.volunteerId, volunteerId),
+          eq(availability.eventId, eventId),
+        ),
+      );
+
+    return rows.map(mapAvailability);
+  }
+
   async listByVolunteers(
     churchId: ChurchId,
     volunteerIds: VolunteerId[],
@@ -52,7 +95,6 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
         and(
           withChurchIsolation(availability, churchId),
           inArray(availability.volunteerId, volunteerIds),
-          eq(availability.type, 'unavailable'),
         ),
       );
     return rows.map(mapAvailability);
@@ -68,6 +110,7 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
       .values({
         churchId,
         volunteerId: input.volunteerId,
+        eventId: input.eventId ?? null,
         type: input.type,
         startTime: input.startTime,
         endTime: input.endTime,
@@ -88,6 +131,7 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
   ): Promise<void> {
     const update: Partial<typeof availability.$inferInsert> = {};
     if (input.type != null) update.type = input.type;
+    if (input.eventId !== undefined) update.eventId = input.eventId ?? null;
     if (input.startTime != null) update.startTime = input.startTime;
     if (input.endTime != null) update.endTime = input.endTime;
     if (input.isAllDay != null) update.isAllDay = input.isAllDay;

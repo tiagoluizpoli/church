@@ -1,5 +1,6 @@
+import { availability } from '@church/db';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { seed, truncateAll } from '../repositories/setup';
+import { seed, testDb, truncateAll } from '../repositories/setup';
 import { createCaller, promoteToLeader, SEED } from './caller';
 
 describe('sendReminder (T108)', () => {
@@ -18,6 +19,25 @@ describe('sendReminder (T108)', () => {
       eventId: SEED.eventDraft,
     });
     expect(result.notifiedCount).toBe(1);
+  });
+
+  it('does not remind volunteers who already answered this event', async () => {
+    await testDb.insert(availability).values({
+      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa12',
+      churchId: SEED.church,
+      volunteerId: SEED.volunteerAlice,
+      eventId: SEED.eventDraft,
+      type: 'available',
+      startTime: new Date('2026-06-05T09:00:00Z'),
+      endTime: new Date('2026-06-05T11:00:00Z'),
+      isAllDay: false,
+    });
+
+    const result = await caller().adminLeader.sendReminder({
+      eventId: SEED.eventDraft,
+    });
+
+    expect(result.notifiedCount).toBe(0);
   });
 
   it('rejects an unknown event', async () => {

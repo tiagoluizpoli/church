@@ -218,6 +218,33 @@ export const publishEvent = protectedProcedure
     });
 
     // 8. Dispatch notifications
+    const slotById = new Map(slots.map((slot) => [slot.id, slot]));
+
+    for (const assignment of draftAssignments) {
+      const slot = slotById.get(assignment.slotId);
+      const role = await repositories.roles.getById(
+        authCtx.churchId as ChurchId,
+        assignment.roleId,
+      );
+
+      await notificationService.notifyVolunteer({
+        churchId: authCtx.churchId,
+        volunteerId: assignment.volunteerId,
+        ministryId: event.ministryId,
+        eventId: event.id,
+        assignmentId: assignment.id,
+        type: 'schedule_published',
+        title: 'Schedule published',
+        body: `You are scheduled as ${role.name} for ${event.title}${slot?.label ? ` (${slot.label})` : ''}.`,
+        payload: {
+          assignmentId: assignment.id,
+          eventId: event.id,
+          ministryId: event.ministryId,
+          section: 'assignments',
+        },
+      });
+    }
+
     await notificationService.publish({
       type: 'event_published',
       churchId: authCtx.churchId,

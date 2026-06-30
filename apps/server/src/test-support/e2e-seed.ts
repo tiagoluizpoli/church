@@ -11,6 +11,7 @@ import {
   team,
   timeSlot,
   volunteer,
+  volunteerNotification,
 } from '@church/db';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -35,11 +36,14 @@ const DATABASE_URL =
 export const E2E_IDS = {
   church: 'e2e11111-1111-1111-1111-111111111111',
   ministry: 'e2e33333-3333-3333-3333-333333333331',
+  ministryCare: 'e2e33333-3333-3333-3333-333333333332',
   leaderVolunteer: 'e2e44444-4444-4444-4444-444444444441',
   subLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444446',
-  team1: 'e2eteam1-0000-0000-0000-000000000001',
+  team1: 'e2eaaaa1-0000-0000-0000-000000000001',
+  careTeam: 'e2eaaaa1-0000-0000-0000-000000000002',
   roleUsher: 'e2e55555-5555-5555-5555-555555555551',
   roleGreeter: 'e2e55555-5555-5555-5555-555555555552',
+  roleCareHost: 'e2e55555-5555-5555-5555-555555555553',
   // Primary event — used by US1, US5, smoke, a11y tests.
   event: 'e2e66666-6666-6666-6666-666666666661',
   slot: 'e2e77777-7777-7777-7777-777777777771',
@@ -53,6 +57,9 @@ export const E2E_IDS = {
   // Sub-leader event — reserved for US6 sub-leader journey.
   us6Event: 'e2e66666-6666-6666-6666-666666666664',
   us6Slot: 'e2e77777-7777-7777-7777-777777777774',
+  careEvent: 'e2e66666-6666-6666-6666-666666666665',
+  careSlot: 'e2e77777-7777-7777-7777-777777777775',
+  careAssignment: 'e2e99999-9999-9999-9999-999999999992',
 } as const;
 
 const POOL_VOLUNTEERS = [
@@ -127,23 +134,39 @@ export async function seedE2e(
 
     await db
       .insert(ministry)
-      .values({
-        id: E2E_IDS.ministry,
-        churchId: E2E_IDS.church,
-        name: 'E2E Worship',
-        enforcementType: 'soft',
-      })
+      .values([
+        {
+          id: E2E_IDS.ministry,
+          churchId: E2E_IDS.church,
+          name: 'E2E Worship',
+          enforcementType: 'soft',
+        },
+        {
+          id: E2E_IDS.ministryCare,
+          churchId: E2E_IDS.church,
+          name: 'E2E Care',
+          enforcementType: 'soft',
+        },
+      ])
       .onConflictDoNothing();
 
     // Team1 — used by US6 sub-leader scoping.
     await db
       .insert(team)
-      .values({
-        id: E2E_IDS.team1,
-        churchId: E2E_IDS.church,
-        ministryId: E2E_IDS.ministry,
-        name: 'E2E Team Alpha',
-      })
+      .values([
+        {
+          id: E2E_IDS.team1,
+          churchId: E2E_IDS.church,
+          ministryId: E2E_IDS.ministry,
+          name: 'E2E Team Alpha',
+        },
+        {
+          id: E2E_IDS.careTeam,
+          churchId: E2E_IDS.church,
+          ministryId: E2E_IDS.ministryCare,
+          name: 'Care Team',
+        },
+      ])
       .onConflictDoNothing();
 
     await db
@@ -163,31 +186,71 @@ export async function seedE2e(
           name: 'Greeter',
           isGlobal: false,
         },
+        {
+          id: E2E_IDS.roleCareHost,
+          churchId: E2E_IDS.church,
+          ministryId: E2E_IDS.ministryCare,
+          name: 'Care Host',
+          isGlobal: false,
+        },
       ])
       .onConflictDoNothing();
 
-    await db
+    const [leaderVolunteerRow] = await db
       .insert(volunteer)
-      .values([
-        {
-          id: E2E_IDS.leaderVolunteer,
+      .values({
+        id: E2E_IDS.leaderVolunteer,
+        churchId: E2E_IDS.church,
+        userId: leaderUserId,
+        status: 'active',
+      })
+      .onConflictDoUpdate({
+        target: [volunteer.id],
+        set: {
           churchId: E2E_IDS.church,
           userId: leaderUserId,
           status: 'active',
         },
-        {
-          id: E2E_IDS.subLeaderVolunteer,
+      })
+      .returning({ id: volunteer.id });
+
+    const [subLeaderVolunteerRow] = await db
+      .insert(volunteer)
+      .values({
+        id: E2E_IDS.subLeaderVolunteer,
+        churchId: E2E_IDS.church,
+        userId: subLeaderUserId,
+        status: 'active',
+      })
+      .onConflictDoUpdate({
+        target: [volunteer.id],
+        set: {
           churchId: E2E_IDS.church,
           userId: subLeaderUserId,
           status: 'active',
         },
-        ...POOL_VOLUNTEERS.map((v) => ({
+      })
+      .returning({ id: volunteer.id });
+
+    const leaderVolunteerId = leaderVolunteerRow?.id;
+    const subLeaderVolunteerId = subLeaderVolunteerRow?.id;
+
+    if (!leaderVolunteerId || !subLeaderVolunteerId) {
+      throw new Error(
+        'Failed to bind leader/sub-leader volunteers for E2E seed.',
+      );
+    }
+
+    await db
+      .insert(volunteer)
+      .values(
+        POOL_VOLUNTEERS.map((v) => ({
           id: v.id,
           churchId: E2E_IDS.church,
           userId: v.userId,
           status: 'active' as const,
         })),
-      ])
+      )
       .onConflictDoNothing();
 
     await db
@@ -196,16 +259,25 @@ export async function seedE2e(
         {
           id: 'e2eccccc-cccc-cccc-cccc-ccccccccccc1',
           churchId: E2E_IDS.church,
-          volunteerId: E2E_IDS.leaderVolunteer,
+          volunteerId: leaderVolunteerId,
           ministryId: E2E_IDS.ministry,
           systemRole: 'leader',
+          status: 'active',
+        },
+        {
+          id: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          churchId: E2E_IDS.church,
+          volunteerId: leaderVolunteerId,
+          ministryId: E2E_IDS.ministryCare,
+          teamId: E2E_IDS.careTeam,
+          systemRole: 'volunteer',
           status: 'active',
         },
         {
           // Sub-leader is scoped to team1.
           id: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
           churchId: E2E_IDS.church,
-          volunteerId: E2E_IDS.subLeaderVolunteer,
+          volunteerId: subLeaderVolunteerId,
           ministryId: E2E_IDS.ministry,
           systemRole: 'sub_leader',
           teamId: E2E_IDS.team1,
@@ -269,6 +341,16 @@ export async function seedE2e(
           status: 'draft',
           eventType: 'hourly',
         },
+        {
+          id: E2E_IDS.careEvent,
+          churchId: E2E_IDS.church,
+          ministryId: E2E_IDS.ministryCare,
+          title: 'E2E Care Gathering',
+          startDate: new Date('2026-12-24T09:00:00Z'),
+          endDate: new Date('2026-12-24T11:00:00Z'),
+          status: 'published',
+          eventType: 'hourly',
+        },
       ])
       .onConflictDoNothing();
 
@@ -306,6 +388,14 @@ export async function seedE2e(
           startTime: new Date('2026-12-28T09:00:00Z'),
           endTime: new Date('2026-12-28T11:00:00Z'),
           label: 'Sub-Leader Service',
+        },
+        {
+          id: E2E_IDS.careSlot,
+          churchId: E2E_IDS.church,
+          eventId: E2E_IDS.careEvent,
+          startTime: new Date('2026-12-24T09:00:00Z'),
+          endTime: new Date('2026-12-24T11:00:00Z'),
+          label: 'Care Check-In',
         },
       ])
       .onConflictDoNothing();
@@ -354,6 +444,14 @@ export async function seedE2e(
           roleId: E2E_IDS.roleUsher,
           requiredCount: 1,
         },
+        {
+          id: 'e2e88888-8888-8888-8888-888888888886',
+          churchId: E2E_IDS.church,
+          slotId: E2E_IDS.careSlot,
+          roleId: E2E_IDS.roleCareHost,
+          requiredCount: 1,
+          teamId: E2E_IDS.careTeam,
+        },
       ])
       .onConflictDoNothing();
 
@@ -361,14 +459,24 @@ export async function seedE2e(
     // × badge and opens substitution mode when clicked.
     await db
       .insert(assignment)
-      .values({
-        id: E2E_IDS.declineAssignment,
-        churchId: E2E_IDS.church,
-        slotId: E2E_IDS.declineSlot,
-        volunteerId: POOL_VOLUNTEERS[0].id, // Grace Hopper
-        roleId: E2E_IDS.roleUsher,
-        status: 'declined',
-      })
+      .values([
+        {
+          id: E2E_IDS.declineAssignment,
+          churchId: E2E_IDS.church,
+          slotId: E2E_IDS.declineSlot,
+          volunteerId: POOL_VOLUNTEERS[0].id, // Grace Hopper
+          roleId: E2E_IDS.roleUsher,
+          status: 'declined',
+        },
+        {
+          id: E2E_IDS.careAssignment,
+          churchId: E2E_IDS.church,
+          slotId: E2E_IDS.careSlot,
+          volunteerId: leaderVolunteerId,
+          roleId: E2E_IDS.roleCareHost,
+          status: 'confirmed',
+        },
+      ])
       .onConflictDoNothing();
 
     await db
@@ -387,21 +495,54 @@ export async function seedE2e(
       )
       .onConflictDoNothing();
 
+    await db
+      .insert(volunteerNotification)
+      .values({
+        id: 'e2ef1111-1111-1111-1111-111111111111',
+        churchId: E2E_IDS.church,
+        volunteerId: leaderVolunteerId,
+        ministryId: E2E_IDS.ministry,
+        eventId: E2E_IDS.declineEvent,
+        assignmentId: E2E_IDS.declineAssignment,
+        type: 'assignment_removed',
+        title: 'Assignment removed',
+        body: 'You are no longer scheduled for Usher at E2E Decline Service.',
+        payload: {
+          assignmentId: E2E_IDS.declineAssignment,
+          eventId: E2E_IDS.declineEvent,
+          ministryId: E2E_IDS.ministry,
+          section: 'assignments',
+        },
+        createdAt: new Date('2026-12-24T08:00:00Z'),
+      })
+      .onConflictDoNothing();
+
     return E2E_IDS;
   } finally {
     await pool.end();
   }
 }
 
-export async function cleanupE2e(): Promise<void> {
+export async function cleanupE2e(
+  leaderUserId?: string,
+  subLeaderUserId?: string,
+): Promise<void> {
   const { pool, db } = makeDb();
   try {
     // CASCADE from church removes ministry/role/volunteer/event/slot rows.
     await db.execute(`DELETE FROM "church" WHERE id = '${E2E_IDS.church}'`);
-    // Pool user rows and sub-leader user are not reachable by the church
+    // Pool users and disposable auth users are not reachable by church
     // cascade — remove them too.
-    const poolUserIds = POOL_VOLUNTEERS.map((v) => `'${v.userId}'`).join(', ');
-    await db.execute(`DELETE FROM "user" WHERE id IN (${poolUserIds})`);
+    const cleanupUserIds = [
+      ...POOL_VOLUNTEERS.map((v) => v.userId),
+      leaderUserId,
+      subLeaderUserId,
+    ].filter((value): value is string => Boolean(value));
+
+    if (cleanupUserIds.length > 0) {
+      const userIdsSql = cleanupUserIds.map((id) => `'${id}'`).join(', ');
+      await db.execute(`DELETE FROM "user" WHERE id IN (${userIdsSql})`);
+    }
   } finally {
     await pool.end();
   }
@@ -417,7 +558,10 @@ if (import.meta.main) {
   const argv = process.argv.slice(2);
   const run = async () => {
     if (argv.includes('cleanup')) {
-      await cleanupE2e();
+      await cleanupE2e(
+        parseArg(argv, 'leader-user-id'),
+        parseArg(argv, 'sub-leader-user-id'),
+      );
       console.log('[e2e-seed] cleaned up');
       return;
     }

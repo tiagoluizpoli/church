@@ -4,6 +4,7 @@ import type {
 } from '../../domain/entities/availability';
 import { Availability } from '../../domain/entities/availability';
 import type { ChurchId } from '../../domain/entities/church';
+import type { EventId } from '../../domain/entities/event';
 import type { VolunteerId } from '../../domain/entities/volunteer';
 import { assertEnum } from './mapper-utils';
 
@@ -13,6 +14,7 @@ export function mapAvailability(row: {
   id: string;
   churchId: string;
   volunteerId: string;
+  eventId: string | null;
   type: string;
   startTime: Date;
   endTime: Date;
@@ -23,6 +25,7 @@ export function mapAvailability(row: {
   const props: AvailabilityProps = {
     churchId: row.churchId as ChurchId,
     volunteerId: row.volunteerId as VolunteerId,
+    eventId: (row.eventId ?? undefined) as EventId | undefined,
     type: assertEnum({
       field: 'type',
       value: row.type,

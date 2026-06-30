@@ -4,11 +4,13 @@ import type {
   AvailabilityType,
 } from '../entities/availability';
 import type { ChurchId } from '../entities/church';
+import type { EventId } from '../entities/event';
 import type { VolunteerId } from '../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAvailabilityInput {
   volunteerId: VolunteerId;
+  eventId?: EventId;
   type: AvailabilityType;
   startTime: Date;
   endTime: Date;
@@ -18,6 +20,7 @@ export interface CreateAvailabilityInput {
 }
 
 export interface UpdateAvailabilityInput {
+  eventId?: EventId;
   type?: AvailabilityType;
   startTime?: Date;
   endTime?: Date;
@@ -27,6 +30,12 @@ export interface UpdateAvailabilityInput {
 }
 
 export interface AvailabilityRepository {
+  getById(
+    churchId: ChurchId,
+    id: AvailabilityId,
+    tx?: TransactionContext,
+  ): Promise<Availability>;
+
   listByVolunteerInRange(
     churchId: ChurchId,
     volunteerId: VolunteerId,
@@ -35,7 +44,14 @@ export interface AvailabilityRepository {
     tx?: TransactionContext,
   ): Promise<Availability[]>;
 
-  /** Bulk-fetch all unavailable blocks for a set of volunteers. */
+  listByVolunteerForEvent(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    eventId: EventId,
+    tx?: TransactionContext,
+  ): Promise<Availability[]>;
+
+  /** Bulk-fetch availability entries for a set of volunteers. */
   listByVolunteers(
     churchId: ChurchId,
     volunteerIds: VolunteerId[],

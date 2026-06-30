@@ -12,21 +12,39 @@ import {
   timeSlot,
   volunteer,
 } from '@church/db';
+import { getTestDatabaseUrl } from '@church/db/test-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  'postgres://postgres:postgres@localhost:5444/church_test';
+const DATABASE_URL = getTestDatabaseUrl();
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 export const testDb = drizzle(pool, { schema });
+
+export const volunteerDashboardSeed = {
+  churchId: '11111111-1111-1111-1111-111111111111',
+  volunteerId: '44444444-4444-4444-4444-444444444441',
+  ministryId: '33333333-3333-3333-3333-333333333331',
+  hourlyEventId: '66666666-6666-6666-6666-666666666661',
+  publishedEventId: '66666666-6666-6666-6666-666666666662',
+  hourlySlotId: '77777777-7777-7777-7777-777777777771',
+  publishedSlotId: '77777777-7777-7777-7777-777777777772',
+  confirmedAssignmentId: '99999999-9999-9999-9999-999999999991',
+} as const;
+
+export const volunteerDashboardTimeline = {
+  hourlyEventStart: new Date('2024-06-05T09:00:00Z'),
+  hourlyEventEnd: new Date('2024-06-05T11:00:00Z'),
+  publishedEventStart: new Date('2024-06-04T09:00:00Z'),
+  publishedEventEnd: new Date('2024-06-04T11:00:00Z'),
+} as const;
 
 export async function truncateAll(): Promise<void> {
   await testDb.execute(`
     TRUNCATE TABLE
       assignment_audit,
       assignment,
+      volunteer_notification,
       availability,
       slot_requirement,
       time_slot,
@@ -251,4 +269,13 @@ export async function seed(): Promise<void> {
       timestamp: new Date('2024-06-01T11:00:00Z'),
     },
   ]);
+}
+
+export async function seedVolunteerDashboardScenario(): Promise<
+  typeof volunteerDashboardSeed
+> {
+  await truncateAll();
+  await seed();
+
+  return volunteerDashboardSeed;
 }

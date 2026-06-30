@@ -49,6 +49,10 @@
 - **New `event_availability` table**: clearer naming, but duplicates existing range semantics and increases mapper / engine complexity
 - **Keep global-only availability with no `eventId`**: cannot reliably determine whether a volunteer intentionally completed availability for a specific Event
 
+### Refinement — 2026-06-29
+
+The storage decision above still stands, but the volunteer interaction model changed during implementation. We are still using `availability + eventId`, but the dashboard now maps answers to leader-defined slots instead of collecting volunteer-authored time/day spans. This keeps persistence simple while aligning the UX with the real scheduling workflow described by the user.
+
 ---
 
 ## 3. Decision: Dashboard Query Shape = Summary Snapshot + Progressive Detail Queries
@@ -182,9 +186,9 @@
 
 **Required coverage areas**:
 
-- backend integration tests for volunteer ownership, published-only filters, notifications read-state, event-scoped availability
+- backend integration tests for volunteer ownership, published-only filters, notifications read-state, slot-based event-scoped availability
 - frontend component/integration tests for badges, banners, inbox loading, overlap warning, empty states
-- Playwright journeys for availability submission, assignment response, notifications deep-linking, ministry schedule read-only view, and offline read behavior
+- Playwright journeys for slot-answer availability submission, assignment exception signaling, notifications deep-linking, ministry schedule read-only view, and offline read behavior
 
 **Rationale**:
 

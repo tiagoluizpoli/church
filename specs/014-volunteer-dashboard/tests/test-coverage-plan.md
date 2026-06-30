@@ -17,18 +17,18 @@
 ## 1. Happy Paths
 
 - `[ ]` Dashboard snapshot shows `Availability needed` for an upcoming Event with incomplete availability coverage → INTEGRATION
-- `[ ]` Dashboard snapshot groups volunteer-owned published Assignments by Event and auto-identifies the first pending group → INTEGRATION
-- `[ ]` Volunteer saves hourly Event availability spans and receives explicit success state → INTEGRATION
-- `[ ]` Volunteer saves day-based Event availability span and task clears only after full Event span is covered → INTEGRATION
-- `[ ]` Volunteer confirms a pending Assignment and sees updated state in the dashboard snapshot → INTEGRATION
-- `[ ]` Volunteer changes a previously confirmed Assignment to declined before Event start → INTEGRATION
+- `[ ]` Dashboard snapshot groups volunteer-owned published Assignments by Event and auto-identifies the first actionable group → INTEGRATION
+- `[ ]` Volunteer saves hourly Event slot answers and receives explicit success state → INTEGRATION
+- `[ ]` Volunteer saves day-based / special-date Event slot answers and task clears only after every Event slot has an answer → INTEGRATION
+- `[ ]` Volunteer can still confirm a genuinely pending Assignment state and sees updated state in the dashboard snapshot → INTEGRATION
+- `[ ]` Volunteer changes a previously confirmed Assignment to declined / unable-to-serve before Event start → INTEGRATION
 - `[ ]` Notifications inbox returns unread items newest-first with cursor pagination → INTEGRATION
 - `[ ]` Volunteer marks one notification as read and unread count decreases → INTEGRATION
 - `[ ]` Volunteer marks all notifications as read and unread count becomes zero → INTEGRATION
 - `[ ]` Ministry schedule returns one selected Ministry with only current/upcoming published Events → INTEGRATION
 - `[ ]` Dashboard route renders sections in priority order using snapshot data → COMPONENT
 - `[ ]` Notifications inbox renders unread styling, date buckets, and load-more affordance → COMPONENT
-- `[ ]` Full volunteer journey: open dashboard, submit availability, confirm assignment, review inbox → E2E
+- `[ ]` Full volunteer journey: open dashboard, submit slot availability, flag unable-to-serve state safely, review inbox → E2E
 
 ## 2. Permission Matrix
 
@@ -42,10 +42,11 @@
 
 - `[ ]` Dashboard shows explicit empty state when there are no upcoming Assignments but there are availability tasks → INTEGRATION
 - `[ ]` Dashboard shows explicit empty state when there are no upcoming Assignments and no published ministry schedule data → COMPONENT
-- `[ ]` Partial Event availability keeps `Availability needed` visible → INTEGRATION
-- `[ ]` Availability save rejects invalid bounds (`startTime >= endTime`) → INTEGRATION
-- `[ ]` Day-based availability persists with `isAllDay` semantics and correct event scope → INTEGRATION
+- `[ ]` Partial Event slot answers keep `Availability needed` visible → INTEGRATION
+- `[ ]` Availability save rejects incomplete slot-answer submissions → INTEGRATION
+- `[ ]` Day-based / special-date slot answers persist with correct event scope → INTEGRATION
 - `[ ]` In-progress Assignments remain visible and disable response controls → INTEGRATION
+- `[ ]` Scheduled assignments require destructive confirmation before `I cannot serve` is submitted → COMPONENT
 - `[ ]` Notification deep-link fallback points to the most relevant surviving section when original target is gone → INTEGRATION
 - `[ ]` Multi-ministry volunteer defaults the ministry schedule to the Ministry of the next upcoming Assignment → INTEGRATION
 - `[ ]` Load-more pagination appends older notifications without replacing existing ones → COMPONENT
@@ -63,7 +64,7 @@
 
 ## 5. Concurrency / State Transition Failures
 
-- `[ ]` Double-submit on availability save does not create duplicate overlapping event-scoped rows for the same payload → INTEGRATION
+- `[ ]` Double-submit on availability save does not create duplicate event-scoped slot-answer rows for the same payload → INTEGRATION
 - `[ ]` Background refetch during assignment response does not revert the confirmed/declined state incorrectly → COMPONENT
 - `[ ]` Assignment becomes in-progress between load and click, and mutation rejects with UI re-synced to disabled controls → INTEGRATION
 - `[ ]` Session expires between dashboard load and write mutation, and client surfaces authorization failure cleanly → COMPONENT
@@ -79,7 +80,7 @@
 
 Tracer bullet:
 
-- `[ ]` `getVolunteerDashboard` returns an `Availability needed` task for an upcoming Event with no complete event-scoped availability → INTEGRATION
+- `[ ]` `getVolunteerDashboard` returns an `Availability needed` task for an upcoming Event with unanswered required slots → INTEGRATION
 
 Reason:
 - Highest-priority user story

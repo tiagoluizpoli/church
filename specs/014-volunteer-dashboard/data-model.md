@@ -8,9 +8,13 @@ This file documents the domain and persistence shapes needed for the volunteer d
 
 ## 1. Event Availability Entry
 
+### Refinement Note — 2026-06-29
+
+This model started as span-oriented because the existing persistence table is range-based. The implemented dashboard direction now treats each persisted row as the volunteer's answer to one leader-defined slot, using the slot's time bounds rather than volunteer-authored free-form ranges. We are intentionally preserving the existing persistence mechanism while refining the product semantics.
+
 ### Purpose
 
-Volunteer-owned availability input for one specific Event, stored as explicit time/day spans.
+Volunteer-owned availability answer for one specific Event slot, persisted using the slot's time bounds.
 
 ### Persistence
 
@@ -24,7 +28,7 @@ Extend existing `availability` table / entity.
 | `churchId` | UUID | Existing isolation key |
 | `volunteerId` | UUID | Existing owner |
 | `eventId` | UUID \| null | **New**. Set for dashboard event-scoped entries |
-| `type` | `'available' \| 'unavailable'` | Existing; MVP dashboard mainly uses `unavailable` blocks |
+| `type` | `'available' \| 'unavailable'` | Existing; now represents the volunteer's slot answer |
 | `startTime` | timestamptz | Existing |
 | `endTime` | timestamptz | Existing |
 | `isAllDay` | boolean | Existing; useful for day-span events |
@@ -37,12 +41,13 @@ Extend existing `availability` table / entity.
 - if `eventId` present, referenced Event must belong to same `churchId`
 - volunteer may only create/update rows for their own `volunteerId`
 - dashboard completion calculation uses only rows tied to the current `eventId`
+- for dashboard MVP, persisted rows should align to leader-defined slot boundaries
 
 ### State / Behavior
 
 - editable until Event start
-- supports multiple rows for hourly Events
-- supports one or more all-day style spans for day-based Events
+- supports one row per answered slot
+- supports multiple slots within the same Event
 
 ---
 
@@ -72,7 +77,7 @@ Derived only. No dedicated table.
 
 ### Completion Rule
 
-- `complete` only when volunteer-submitted event-scoped spans cover the full relevant Event span
+- `complete` only when every relevant leader-defined Event slot has a volunteer answer
 - `partial` remains visible in dashboard
 - task disappears once `complete` or once Event has started/ended per product rule
 
@@ -97,8 +102,8 @@ Derived from existing `event`, `time_slot`, `assignment`, `role`, `ministry`, `t
 | `ministryId` | UUID | Context |
 | `ministryName` | string | Display |
 | `eventStart` | Date | Sort / grouping |
-| `aggregateResponseState` | `'pending' \| 'confirmed' \| 'mixed' \| 'declined'` | Header summary |
-| `hasPendingResponse` | boolean | Auto-expand rule |
+| `aggregateResponseState` | `'pending' \| 'confirmed' \| 'mixed' \| 'declined'` | Header summary; confirmed should read as scheduled in the volunteer UX |
+| `hasPendingResponse` | boolean | Auto-expand rule for actionable groups |
 | `assignments` | `UpcomingAssignmentItem[]` | Group contents |
 
 ### `UpcomingAssignmentItem`
@@ -116,6 +121,14 @@ Derived from existing `event`, `time_slot`, `assignment`, `role`, `ministry`, `t
 | `status` | `'pending' \| 'confirmed' \| 'declined'` | Existing published volunteer-facing states |
 | `timingState` | `'in_progress' \| 'upcoming'` | Derived |
 | `canRespond` | boolean | False once in progress |
+
+### Assignment Action Refinement — 2026-06-29
+
+The original model assumed symmetric `confirm / decline` controls on published assignments. The refined volunteer UX is narrower:
+
+- confirmed assignments should read as already scheduled
+- the main post-publication volunteer action is `I cannot serve`
+- destructive unable-to-serve actions require a strong frontend confirmation step
 
 ---
 

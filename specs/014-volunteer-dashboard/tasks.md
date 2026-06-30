@@ -19,9 +19,9 @@
 
 **Purpose**: Prepare shared config, fixtures, and UI primitives used by the volunteer dashboard implementation.
 
-- [ ] T001 Update dashboard-related environment examples in `apps/server/.env.example` and `apps/web/.env.example`
-- [ ] T002 [P] Prepare reusable volunteer-dashboard test fixtures in `apps/server/tests/integration/repositories/setup.ts` and `apps/web/tests/fixtures/index.ts`
-- [ ] T003 [P] Verify shared dashboard UI primitives are present, importable, and sufficient for the planned dashboard interactions in `packages/ui/src/components/alert.tsx`, `packages/ui/src/components/alert-dialog.tsx`, `packages/ui/src/components/badge.tsx`, `packages/ui/src/components/dialog.tsx`, `packages/ui/src/components/popover.tsx`, `packages/ui/src/components/progress.tsx`, `packages/ui/src/components/radio-group.tsx`, `packages/ui/src/components/scroll-area.tsx`, `packages/ui/src/components/select.tsx`, `packages/ui/src/components/textarea.tsx`, and `packages/ui/src/components/tooltip.tsx`
+- [X] T001 Update dashboard-related environment examples in `apps/server/.env.example` and `apps/web/.env.example`
+- [X] T002 [P] Prepare reusable volunteer-dashboard test fixtures in `apps/server/tests/integration/repositories/setup.ts` and `apps/web/tests/fixtures/index.ts`
+- [X] T003 [P] Verify shared dashboard UI primitives are present, importable, and sufficient for the planned dashboard interactions in `packages/ui/src/components/alert.tsx`, `packages/ui/src/components/alert-dialog.tsx`, `packages/ui/src/components/badge.tsx`, `packages/ui/src/components/dialog.tsx`, `packages/ui/src/components/popover.tsx`, `packages/ui/src/components/progress.tsx`, `packages/ui/src/components/radio-group.tsx`, `packages/ui/src/components/scroll-area.tsx`, `packages/ui/src/components/select.tsx`, `packages/ui/src/components/textarea.tsx`, and `packages/ui/src/components/tooltip.tsx`
 
 **Checkpoint**: Shared config and fixtures are ready for dashboard implementation work.
 
@@ -33,16 +33,16 @@
 
 **⚠️ CRITICAL**: No user story work should start before this phase is complete.
 
-- [ ] T004 Extend event-scoped availability persistence in `packages/db/src/schema/assignments.ts`
-- [ ] T005 [P] Add volunteer notification enum and table exports in `packages/db/src/schema/enums.ts`, `packages/db/src/schema/volunteer-notifications.ts`, and `packages/db/src/schema/index.ts`
-- [ ] T006 [P] Add dashboard overlap-rollout env parsing in `packages/env/src/server.ts` and document it in `apps/server/.env.example`
-- [ ] T007 Update domain entities for dashboard persistence in `apps/server/src/domain/entities/availability.ts`, `apps/server/src/domain/entities/volunteer-notification.ts`, and `apps/server/src/domain/entities/index.ts`
-- [ ] T008 [P] Create notification repository contracts in `apps/server/src/domain/repositories/volunteer-notification.repository.ts` and `apps/server/src/domain/repositories/index.ts`
-- [ ] T009 [P] Implement notification repository wiring in `apps/server/src/infrastructure/repositories/drizzle-volunteer-notification.repository.ts`, `apps/server/src/infrastructure/repositories/index.ts`, and `apps/server/src/infrastructure/repositories/registry.ts`
-- [ ] T010 Update event-scoped availability repository behavior in `apps/server/src/infrastructure/repositories/drizzle-availability.repository.ts`
-- [ ] T011 [P] Create dashboard service scaffolding in `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`, `apps/server/src/services/volunteer-dashboard/compute-availability-task.ts`, and `apps/server/src/services/volunteer-dashboard/map-notification-link.ts`
-- [ ] T012 [P] Create volunteer dashboard route and container scaffolding in `apps/web/src/routes/dashboard.tsx` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
-- [ ] T013 Expand volunteer router registration in `apps/server/src/routers/volunteer.ts`
+- [X] T004 Extend event-scoped availability persistence in `packages/db/src/schema/assignments.ts`
+- [X] T005 [P] Add volunteer notification enum and table exports in `packages/db/src/schema/enums.ts`, `packages/db/src/schema/volunteer-notifications.ts`, and `packages/db/src/schema/index.ts`
+- [X] T006 [P] Add dashboard overlap-rollout env parsing in `packages/env/src/server.ts` and document it in `apps/server/.env.example`
+- [X] T007 Update domain entities for dashboard persistence in `apps/server/src/domain/entities/availability.ts`, `apps/server/src/domain/entities/volunteer-notification.ts`, and `apps/server/src/domain/entities/index.ts`
+- [X] T008 [P] Create notification repository contracts in `apps/server/src/domain/repositories/volunteer-notification.repository.ts` and `apps/server/src/domain/repositories/index.ts`
+- [X] T009 [P] Implement notification repository wiring in `apps/server/src/infrastructure/repositories/drizzle-volunteer-notification.repository.ts`, `apps/server/src/infrastructure/repositories/index.ts`, and `apps/server/src/infrastructure/repositories/registry.ts`
+- [X] T010 Update event-scoped availability repository behavior in `apps/server/src/infrastructure/repositories/drizzle-availability.repository.ts`
+- [X] T011 [P] Create dashboard service scaffolding in `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`, `apps/server/src/services/volunteer-dashboard/compute-availability-task.ts`, and `apps/server/src/services/volunteer-dashboard/map-notification-link.ts`
+- [X] T012 [P] Create volunteer dashboard route and container scaffolding in `apps/web/src/routes/dashboard.tsx` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
+- [X] T013 Expand volunteer router registration in `apps/server/src/routers/volunteer.ts`
 
 **Checkpoint**: Schema, repositories, and route/service scaffolding are in place. User stories can now be built independently on top of the foundation.
 
@@ -50,50 +50,50 @@
 
 ## Phase 3: User Story 1 - Submit Availability For An Event (Priority: P1) 🎯 MVP
 
-**Goal**: A volunteer sees `Availability needed`, opens an event-scoped availability editor, saves hourly or day-span availability, and clears the task only after full event coverage.
+**Goal**: A volunteer sees `Availability needed`, opens an event-scoped availability editor, answers each leader-defined slot with a simple availability response, and clears the task only after every slot has an answer.
 
-**Independent Test**: A volunteer with no complete availability for an upcoming event opens `/dashboard`, sees the task, saves event-scoped availability, and the task transitions correctly from missing/partial to complete.
+**Independent Test**: A volunteer with unanswered service slots for an upcoming event opens `/dashboard`, sees the task, answers every slot, and the task transitions correctly from missing/partial to complete.
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Extend dashboard availability integration coverage in `apps/server/tests/integration/routers/get-volunteer-dashboard.test.ts`
-- [ ] T015 [P] [US1] Add event-scoped availability mutation coverage in `apps/server/tests/integration/routers/volunteer-availability.test.ts`
-- [ ] T016 [P] [US1] Add availability form component coverage in `apps/web/src/__tests__/volunteer-dashboard/availability-form.test.tsx`, including online-only save blocking while offline
-- [ ] T017 [P] [US1] Add volunteer availability E2E journey in `apps/web/tests/volunteer-dashboard/us1-availability.spec.ts`, including validation of SC-001's 10-second task-discovery target
+- [X] T014 [P] [US1] Extend dashboard availability integration coverage in `apps/server/tests/integration/routers/get-volunteer-dashboard.test.ts`
+- [X] T015 [P] [US1] Add slot-based availability mutation coverage in `apps/server/tests/integration/routers/volunteer-availability.test.ts`
+- [X] T016 [P] [US1] Add availability form component coverage in `apps/web/src/__tests__/volunteer-dashboard/availability-form.test.tsx`, including online-only save blocking while offline
+- [X] T017 [P] [US1] Add volunteer availability E2E journey in `apps/web/tests/volunteer-dashboard/us1-availability.spec.ts`, including validation of SC-001's 10-second task-discovery target
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement availability-task derivation in `apps/server/src/services/volunteer-dashboard/compute-availability-task.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
-- [ ] T019 [US1] Implement `getVolunteerDashboard` query in `apps/server/src/routers/volunteer/get-volunteer-dashboard.ts`
-- [ ] T020 [US1] Implement event-scoped availability procedures in `apps/server/src/routers/volunteer/get-my-availability.ts`, `apps/server/src/routers/volunteer/upsert-availability.ts`, and `apps/server/src/routers/volunteer/delete-availability.ts`
-- [ ] T021 [US1] Build event-scoped availability editor behavior in `apps/web/src/features/volunteers/components/availability-form.tsx`, including explicit save confirmation and online-only write blocking while offline
-- [ ] T022 [US1] Create `Availability needed` presentation in `apps/web/src/features/volunteers/components/availability-needed-section.tsx` and wire it in `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
-- [ ] T023 [US1] Make the dashboard the canonical availability entry point in `apps/web/src/routes/dashboard.tsx` and `apps/web/src/routes/availability.tsx`
+- [X] T018 [US1] Implement slot-answer task derivation in `apps/server/src/services/volunteer-dashboard/compute-availability-task.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
+- [X] T019 [US1] Implement `getVolunteerDashboard` query in `apps/server/src/routers/volunteer/get-volunteer-dashboard.ts`
+- [X] T020 [US1] Implement slot-based availability procedures in `apps/server/src/routers/volunteer/get-my-availability.ts`, `apps/server/src/routers/volunteer/upsert-availability.ts`, and `apps/server/src/routers/volunteer/delete-availability.ts`
+- [X] T021 [US1] Build slot-based availability editor behavior in `apps/web/src/features/volunteers/components/availability-form.tsx`, including explicit save confirmation and online-only write blocking while offline
+- [X] T022 [US1] Create `Availability needed` presentation in `apps/web/src/features/volunteers/components/availability-needed-section.tsx` and wire it in `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
+- [X] T023 [US1] Make the dashboard the canonical availability entry point in `apps/web/src/routes/dashboard.tsx` and `apps/web/src/routes/availability.tsx`
 
 **Checkpoint**: User Story 1 is functional and independently testable as the MVP slice.
 
 ---
 
-## Phase 4: User Story 2 - Review And Respond To Published Assignments (Priority: P1)
+## Phase 4: User Story 2 - Review And Manage Published Assignments (Priority: P1)
 
-**Goal**: A volunteer sees grouped published assignments, notices which responses are pending, confirms or declines per assignment, and cannot respond once a timeslot is already in progress.
+**Goal**: A volunteer sees grouped published assignments, understands when they are already scheduled, can flag that they can no longer serve, and cannot change assignment state once a timeslot is already in progress.
 
-**Independent Test**: A volunteer opens the dashboard, sees the first pending event group expanded, responds to a pending assignment, and sees in-progress assignments remain visible with disabled controls.
+**Independent Test**: A volunteer opens the dashboard, sees the first actionable event group expanded, flags that they can no longer serve a scheduled assignment, and sees in-progress assignments remain visible with disabled controls.
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Extend assignment response integration coverage in `apps/server/tests/integration/routers/respond-to-assignment.test.ts`
-- [ ] T025 [P] [US2] Add grouped assignment snapshot integration coverage in `apps/server/tests/integration/routers/volunteer-upcoming-assignments.test.ts`
-- [ ] T026 [P] [US2] Add upcoming assignments component coverage in `apps/web/src/__tests__/volunteer-dashboard/upcoming-assignments-section.test.tsx`, including in-progress disablement and offline response blocking states
-- [ ] T027 [P] [US2] Add volunteer assignment response E2E journey in `apps/web/tests/volunteer-dashboard/us2-assignments.spec.ts`, including validation of SC-002's 30-second response target
+- [X] T024 [P] [US2] Extend assignment response integration coverage in `apps/server/tests/integration/routers/respond-to-assignment.test.ts`
+- [X] T025 [P] [US2] Add grouped assignment snapshot integration coverage in `apps/server/tests/integration/routers/volunteer-upcoming-assignments.test.ts`
+- [X] T026 [P] [US2] Add upcoming assignments component coverage in `apps/web/src/__tests__/volunteer-dashboard/upcoming-assignments-section.component.test.tsx`, including in-progress disablement and offline response blocking states
+- [X] T027 [P] [US2] Add volunteer assignment response E2E journey in `apps/web/tests/volunteer-dashboard/us2-assignments.spec.ts`, including validation of SC-002's 30-second response target
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Implement current/upcoming assignment grouping in `apps/server/src/routers/volunteer/get-my-upcoming-assignments.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
-- [ ] T029 [US2] Enforce in-progress response restrictions and clean error responses for stale/offline-sensitive assignment writes in `apps/server/src/routers/volunteer/respond-to-assignment.ts`
-- [ ] T030 [US2] Add assignment grouping helpers in `apps/web/src/features/volunteers/lib/assignment-grouping.ts` and `apps/web/src/features/volunteers/lib/dashboard-mappers.ts`
-- [ ] T031 [US2] Create the assignments UI in `apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx`, including explicit empty-state messaging when no upcoming assignments exist
-- [ ] T032 [US2] Wire assignment response, first-pending expansion behavior, and client-side online guards for assignment writes in `apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
+- [X] T028 [US2] Implement current/upcoming assignment grouping in `apps/server/src/routers/volunteer/get-my-upcoming-assignments.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
+- [X] T029 [US2] Enforce in-progress response restrictions and clean error responses for stale/offline-sensitive assignment writes in `apps/server/src/routers/volunteer/respond-to-assignment.ts`
+- [X] T030 [US2] Add assignment grouping helpers in `apps/web/src/features/volunteers/lib/assignment-grouping.ts` and `apps/web/src/features/volunteers/lib/dashboard-mappers.ts`
+- [X] T031 [US2] Create the assignments UI in `apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx`, including explicit empty-state messaging when no upcoming assignments exist
+- [X] T032 [US2] Wire assignment response, first-pending expansion behavior, and client-side online guards for assignment writes in `apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
 
 **Checkpoint**: User Story 2 works independently and does not depend on later inbox/schedule/offline work.
 
@@ -107,19 +107,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Add notification repository contract coverage in `apps/server/tests/contract/repositories/volunteer-notification.repository.test.ts`
-- [ ] T034 [P] [US3] Add inbox procedure integration coverage in `apps/server/tests/integration/routers/volunteer-notifications.test.ts`, including explicit changed-assignment and removed-assignment notification copy expectations
-- [ ] T035 [P] [US3] Add notifications inbox component coverage in `apps/web/src/__tests__/volunteer-dashboard/notifications-inbox-section.test.tsx`
-- [ ] T036 [P] [US3] Add volunteer notifications E2E journey in `apps/web/tests/volunteer-dashboard/us3-notifications.spec.ts`
+- [X] T033 [P] [US3] Add notification repository contract coverage in `apps/server/tests/contract/repositories/volunteer-notification.repository.test.ts`
+- [X] T034 [P] [US3] Add inbox procedure integration coverage in `apps/server/tests/integration/routers/volunteer-notifications.test.ts`, including explicit changed-assignment and removed-assignment notification copy expectations
+- [X] T035 [P] [US3] Add notifications inbox component coverage in `apps/web/src/__tests__/volunteer-dashboard/notifications-inbox-section.test.tsx`
+- [X] T036 [P] [US3] Add volunteer notifications E2E journey in `apps/web/tests/volunteer-dashboard/us3-notifications.spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Persist volunteer notification records with typed title/body/deep-link metadata in `apps/server/src/infrastructure/services/local-notification-service.ts` and `apps/server/src/domain/services/notification-service.ts`
-- [ ] T038 [US3] Wire scheduling notification creation, including explicit assignment-changed and assignment-removed wording, into `apps/server/src/routers/admin-leader/publish-event.ts`, `apps/server/src/routers/admin-leader/send-reminder.ts`, and `apps/server/src/routers/volunteer/respond-to-assignment.ts`
-- [ ] T039 [US3] Implement inbox procedures in `apps/server/src/routers/volunteer/get-my-notifications.ts`, `apps/server/src/routers/volunteer/mark-notification-read.ts`, and `apps/server/src/routers/volunteer/mark-all-notifications-read.ts`
-- [ ] T040 [US3] Implement notification deep-link mapping in `apps/server/src/services/volunteer-dashboard/map-notification-link.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
-- [ ] T041 [US3] Create inbox UI in `apps/web/src/features/volunteers/components/notifications-inbox-section.tsx` and `apps/web/src/features/volunteers/components/notification-detail-sheet.tsx`
-- [ ] T042 [US3] Wire inbox paging and read-state behavior in `apps/web/src/features/volunteers/hooks/use-notification-inbox.ts` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
+- [X] T037 [US3] Persist volunteer notification records with typed title/body/deep-link metadata in `apps/server/src/infrastructure/services/local-notification-service.ts` and `apps/server/src/domain/services/notification-service.ts`
+- [X] T038 [US3] Wire scheduling notification creation, including explicit assignment-changed and assignment-removed wording, into `apps/server/src/routers/admin-leader/publish-event.ts`, `apps/server/src/routers/admin-leader/send-reminder.ts`, and `apps/server/src/routers/volunteer/respond-to-assignment.ts`
+- [X] T039 [US3] Implement inbox procedures in `apps/server/src/routers/volunteer/get-my-notifications.ts`, `apps/server/src/routers/volunteer/mark-notification-read.ts`, and `apps/server/src/routers/volunteer/mark-all-notifications-read.ts`
+- [X] T040 [US3] Implement notification deep-link mapping in `apps/server/src/services/volunteer-dashboard/map-notification-link.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
+- [X] T041 [US3] Create inbox UI in `apps/web/src/features/volunteers/components/notifications-inbox-section.tsx` and `apps/web/src/features/volunteers/components/notification-detail-sheet.tsx`
+- [X] T042 [US3] Wire inbox paging and read-state behavior in `apps/web/src/features/volunteers/hooks/use-notification-inbox.ts` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
 
 **Checkpoint**: User Story 3 is independently testable with real historical inbox behavior.
 
@@ -133,15 +133,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T043 [P] [US4] Add ministry schedule integration coverage in `apps/server/tests/integration/routers/get-ministry-schedule.test.ts`, including default-ministry selection and published-only filtering
-- [ ] T044 [P] [US4] Add ministry schedule component coverage in `apps/web/src/__tests__/volunteer-dashboard/ministry-schedule-section.test.tsx`, including hidden-selector behavior for single-ministry volunteers and `First L.` volunteer name formatting
-- [ ] T045 [P] [US4] Add ministry schedule E2E journey in `apps/web/tests/volunteer-dashboard/us4-ministry-schedule.spec.ts`
+- [X] T043 [P] [US4] Add ministry schedule integration coverage in `apps/server/tests/integration/routers/get-ministry-schedule.test.ts`, including default-ministry selection and published-only filtering
+- [X] T044 [P] [US4] Add ministry schedule component coverage in `apps/web/src/__tests__/volunteer-dashboard/ministry-schedule-section.component.test.tsx`, including hidden-selector behavior for single-ministry volunteers and `First L.` volunteer name formatting
+- [X] T045 [P] [US4] Add ministry schedule E2E journey in `apps/web/tests/volunteer-dashboard/us4-ministry-schedule.spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T046 [US4] Implement default ministry selection and published schedule reads in `apps/server/src/routers/volunteer/get-ministry-schedule.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
-- [ ] T047 [US4] Create read-only ministry schedule UI in `apps/web/src/features/volunteers/components/ministry-schedule-section.tsx`, including explicit empty-state messaging and `First L.` volunteer name presentation
-- [ ] T048 [US4] Wire multi-ministry selection behavior in `apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`, hiding the selector entirely when only one ministry exists
+- [X] T046 [US4] Implement default ministry selection and published schedule reads in `apps/server/src/routers/volunteer/get-ministry-schedule.ts` and `apps/server/src/services/volunteer-dashboard/build-dashboard-snapshot.ts`
+- [X] T047 [US4] Create read-only ministry schedule UI in `apps/web/src/features/volunteers/components/ministry-schedule-section.tsx`, including explicit empty-state messaging and `First L.` volunteer name presentation
+- [X] T048 [US4] Wire multi-ministry selection behavior in `apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts` and `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`, hiding the selector entirely when only one ministry exists
 
 **Checkpoint**: User Story 4 works independently from offline/refresh concerns.
 
@@ -155,16 +155,16 @@
 
 ### Tests for User Story 5
 
-- [ ] T049 [P] [US5] Add dashboard refresh/offline hook coverage in `apps/web/src/__tests__/volunteer-dashboard/use-dashboard-refresh.test.ts`, including unchanged-data silence and changed-data indicator behavior
-- [ ] T050 [P] [US5] Add offline banner and background-indicator component coverage in `apps/web/src/__tests__/volunteer-dashboard/offline-and-refresh-ui.test.tsx`, including disabled write affordances while offline
-- [ ] T051 [P] [US5] Add offline dashboard E2E journey in `apps/web/tests/volunteer-dashboard/us5-offline.spec.ts`
+- [X] T049 [P] [US5] Add dashboard refresh/offline hook coverage in `apps/web/src/__tests__/volunteer-dashboard/use-dashboard-refresh.component.test.ts`, including unchanged-data silence and changed-data indicator behavior
+- [X] T050 [P] [US5] Add offline banner and background-indicator component coverage in `apps/web/src/__tests__/volunteer-dashboard/offline-and-refresh-ui.component.test.tsx`, including disabled write affordances while offline
+- [X] T051 [P] [US5] Add offline dashboard E2E journey in `apps/web/tests/volunteer-dashboard/us5-offline.spec.ts`
 
 ### Implementation for User Story 5
 
-- [ ] T052 [US5] Create dashboard query orchestration in `apps/web/src/features/volunteers/lib/dashboard-query-options.ts`
-- [ ] T053 [US5] Implement whole-dashboard refresh and reconnect behavior in `apps/web/src/features/volunteers/hooks/use-dashboard-refresh.ts`
-- [ ] T054 [US5] Create stale/offline and background-update UI in `apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx` and `apps/web/src/features/volunteers/components/background-refresh-indicator.tsx`
-- [ ] T055 [US5] Wire offline/read-only states, disabled write affordances, and manual refresh into `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
+- [X] T052 [US5] Create dashboard query orchestration in `apps/web/src/features/volunteers/lib/dashboard-query-options.ts`
+- [X] T053 [US5] Implement whole-dashboard refresh and reconnect behavior in `apps/web/src/features/volunteers/hooks/use-dashboard-refresh.ts`
+- [X] T054 [US5] Create stale/offline and background-update UI in `apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx` and `apps/web/src/features/volunteers/components/background-refresh-indicator.tsx`
+- [X] T055 [US5] Wire offline/read-only states, disabled write affordances, and manual refresh into `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`
 
 **Checkpoint**: User Story 5 is independently testable and completes the planned dashboard experience.
 
@@ -174,9 +174,9 @@
 
 **Purpose**: Cross-story cleanup, consistency, and final validation.
 
-- [ ] T056 [P] Add changed-target deep-link fallback coverage in `apps/server/tests/integration/routers/volunteer-notification-deeplink.test.ts` and cross-section empty-state regression coverage in `apps/web/src/__tests__/volunteer-dashboard/volunteer-dashboard-empty-states.test.tsx`
-- [ ] T057 Harmonize dashboard copy, success/error toasts, and section ordering in `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`, `apps/web/src/features/volunteers/components/availability-needed-section.tsx`, `apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx`, `apps/web/src/features/volunteers/components/notifications-inbox-section.tsx`, and `apps/web/src/features/volunteers/components/ministry-schedule-section.tsx`
-- [ ] T058 Validate the implemented feature against `specs/014-volunteer-dashboard/quickstart.md` and update any mismatched feature notes in `specs/014-volunteer-dashboard/quickstart.md`
+- [X] T056 [P] Add changed-target deep-link fallback coverage in `apps/server/tests/integration/routers/volunteer-notification-deeplink.test.ts` and cross-section empty-state regression coverage in `apps/web/src/__tests__/volunteer-dashboard/volunteer-dashboard-empty-states.component.test.tsx`
+- [X] T057 Harmonize dashboard copy, success/error toasts, and section ordering in `apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`, `apps/web/src/features/volunteers/components/availability-needed-section.tsx`, `apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx`, `apps/web/src/features/volunteers/components/notifications-inbox-section.tsx`, and `apps/web/src/features/volunteers/components/ministry-schedule-section.tsx`
+- [X] T058 Validate the implemented feature against `specs/014-volunteer-dashboard/quickstart.md` and update any mismatched feature notes in `specs/014-volunteer-dashboard/quickstart.md`
 
 ---
 

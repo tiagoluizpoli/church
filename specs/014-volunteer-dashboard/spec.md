@@ -21,26 +21,26 @@ A volunteer opens the dashboard, sees that an upcoming Event still needs availab
 **Acceptance Scenarios**:
 
 1. **Given** a volunteer has an upcoming hourly Event with missing availability, **When** they open the dashboard, **Then** the dashboard shows an `Availability needed` task for that Event above their assignments.
-2. **Given** a volunteer opens an hourly Event availability task, **When** they enter one or more time spans and save, **Then** the system stores the submission and confirms success.
-3. **Given** a volunteer opens a day-based Event availability task, **When** they enter a day span such as Friday to Sunday and save, **Then** the system stores the submission using the Event's day-based granularity.
-4. **Given** a volunteer has only partially covered the relevant Event span, **When** they return to the dashboard, **Then** the `Availability needed` task remains visible until the full relevant Event span is covered.
+2. **Given** a volunteer opens an hourly Event availability task, **When** they answer the visible leader-defined service slots and save, **Then** the system stores the submission and confirms success.
+3. **Given** a volunteer opens a day-based or special-date Event availability task, **When** they answer each visible leader-defined service block and save, **Then** the system stores the submission using the Event's slot-based availability flow.
+4. **Given** a volunteer has answered only some of the required Event slots, **When** they return to the dashboard, **Then** the `Availability needed` task remains visible until every required slot has an answer.
 
 ---
 
-### User Story 2 - Review And Respond To Published Assignments (Priority: P1)
+### User Story 2 - Review And Manage Published Assignments (Priority: P1)
 
-A volunteer opens the dashboard, reviews their current and upcoming published Assignments across Ministries, and confirms or declines the ones that still need a response.
+A volunteer opens the dashboard, reviews their current and upcoming published Assignments across Ministries, sees where they are already scheduled, and can signal when they can no longer serve a scheduled slot.
 
-**Why this priority**: Volunteers need one clear place to understand what they are scheduled for and to respond before the Event happens.
+**Why this priority**: Volunteers need one clear place to understand what they are scheduled for and to quickly flag schedule problems before the Event happens.
 
-**Independent Test**: A volunteer with pending published Assignments can open the dashboard, see the first pending Event expanded automatically, respond to an Assignment, and see the updated status reflected immediately.
+**Independent Test**: A volunteer with upcoming published Assignments can open the dashboard, see the first actionable Event expanded automatically, flag that they can no longer serve a scheduled Assignment, and see the updated status reflected immediately.
 
 **Acceptance Scenarios**:
 
 1. **Given** a volunteer has published Assignments across one or more Ministries, **When** they open the dashboard, **Then** `My Upcoming Assignments` shows only their own current and future published Assignments grouped by Event.
-2. **Given** an Event group contains a pending Assignment, **When** the volunteer opens the dashboard, **Then** the first Event group with pending responses is expanded automatically.
-3. **Given** a volunteer responds to a pending Assignment, **When** they confirm or decline it, **Then** the response is saved per Assignment and the dashboard reflects the new state.
-4. **Given** a volunteer changes their mind before the Event starts, **When** they change a previously confirmed Assignment to declined, **Then** the system treats that change as a new decline event and updates the schedule state accordingly.
+2. **Given** an Event group contains an actionable Assignment, **When** the volunteer opens the dashboard, **Then** the first actionable Event group is expanded automatically.
+3. **Given** a volunteer is already scheduled for an Assignment, **When** they can no longer serve and flag that Assignment, **Then** the updated state is saved per Assignment and the dashboard reflects the change immediately.
+4. **Given** a volunteer was previously scheduled for an Assignment, **When** they change that Assignment to unable-to-serve before the Event starts, **Then** the system treats that change as a new decline event and updates the schedule state accordingly.
 5. **Given** an Assignment is already in progress, **When** the volunteer views it in the dashboard, **Then** it remains visible with a clear in-progress indicator and disabled response controls until the TimeSlot ends.
 
 ---
@@ -112,21 +112,21 @@ A volunteer opens the dashboard in unstable or offline conditions, can still rea
 
 - **FR-001**: The system MUST provide a canonical volunteer dashboard that combines availability tasks, upcoming assignments, scheduling notifications, and a read-only ministry schedule.
 - **FR-002**: The dashboard MUST show `Availability needed` as a dedicated high-priority task section above upcoming assignments whenever at least one upcoming Event is still missing complete availability coverage.
-- **FR-003**: The system MUST allow volunteers to enter availability per Event rather than through one global reusable schedule.
-- **FR-004**: The system MUST support time-span availability input for hourly Events.
-- **FR-005**: The system MUST support day-span availability input for day-based Events.
-- **FR-006**: The system MUST treat availability as complete only when the volunteer has covered the full relevant Event span.
+- **FR-003**: The system MUST allow volunteers to answer availability per Event using leader-defined service slots rather than through one global reusable schedule.
+- **FR-004**: The system MUST present each service slot as a simple volunteer response choice, with the volunteer marking whether they can serve that slot.
+- **FR-005**: The system MUST allow day-based or special-date Events to expose the same slot-answer flow when leaders define those slots.
+- **FR-006**: The system MUST treat availability as complete only when every relevant Event slot has an explicit volunteer answer.
 - **FR-007**: The system MUST allow volunteers to edit previously submitted availability until the Event starts.
 - **FR-008**: The system MUST use an explicit availability save action and give clear success confirmation after saving.
-- **FR-009**: If a volunteer saves availability that overlaps a published Assignment, the system MUST warn clearly, require explicit confirmation, and still allow the save.
+- **FR-009**: If a volunteer saves slot responses that conflict with a published Assignment, the system MUST warn clearly, require explicit confirmation, and still allow the save when the product policy permits it.
 - **FR-010**: `My Upcoming Assignments` MUST show only the volunteer's own published Assignments that are current or future, grouped by Event across all Ministries.
 - **FR-011**: `My Upcoming Assignments` MUST remove cancelled or removed Assignments immediately from that section.
-- **FR-012**: The system MUST auto-expand the first Event group that still contains pending Assignment responses.
+- **FR-012**: The system MUST auto-expand the first Event group that still contains an actionable Assignment state.
 - **FR-013**: Each collapsed Event group in `My Upcoming Assignments` MUST show Event title, Ministry, next Assignment time, and aggregate response state.
-- **FR-014**: The system MUST allow responses per Assignment and MUST NOT require one bulk Event-level response in MVP.
-- **FR-015**: The system MUST allow a volunteer to change a previously confirmed Assignment to declined before the Event starts.
+- **FR-014**: The system MUST allow volunteer actions per Assignment and MUST NOT require one bulk Event-level response in MVP.
+- **FR-015**: The system MUST allow a volunteer to change a previously scheduled Assignment to unable-to-serve before the Event starts.
 - **FR-016**: The system MUST keep current in-progress Assignments visible until their TimeSlot ends and visually distinguish them from future Assignments.
-- **FR-017**: The system MUST disable confirm and decline controls once an Assignment is already in progress.
+- **FR-017**: The system MUST disable volunteer assignment-action controls once an Assignment is already in progress.
 - **FR-018**: The dashboard MUST include a historical Notifications Inbox for scheduling-related events only.
 - **FR-019**: The Notifications Inbox MUST support read/unread state, `mark all as read`, and indefinite retention in MVP.
 - **FR-020**: The Notifications Inbox MUST load older notifications progressively from newest to oldest instead of rendering the entire history at once.
@@ -149,8 +149,8 @@ A volunteer opens the dashboard in unstable or offline conditions, can still rea
 ### Key Entities *(include if feature involves data)*
 
 - **Volunteer Dashboard**: The volunteer-facing summary surface that combines tasks, personal schedule visibility, notifications, and one selected Ministry schedule context.
-- **Availability Task**: A pending requirement for a volunteer to submit complete Event-specific availability before leaders can confidently schedule that Event.
-- **Event Availability Entry**: A volunteer-owned record describing time-span or day-span availability for one specific Event.
+- **Availability Task**: A pending requirement for a volunteer to answer every leader-defined slot for one specific Event before leaders can confidently schedule that Event.
+- **Event Availability Entry**: A volunteer-owned record describing the volunteer's response to one leader-defined slot for one specific Event.
 - **Upcoming Assignment Group**: A volunteer-facing Event grouping that contains the volunteer's current and future published Assignments plus an aggregate response state.
 - **Scheduling Notification**: A historical volunteer-facing record describing a published schedule event such as publication, reminder, assignment change, or removal.
 - **Ministry Schedule View**: A read-only published schedule snapshot for one selected Ministry, including full Team visibility but excluding leader-only operational details.
@@ -160,7 +160,7 @@ A volunteer opens the dashboard in unstable or offline conditions, can still rea
 ### Measurable Outcomes
 
 - **SC-001**: A volunteer can open the dashboard and identify whether they still owe availability for an upcoming Event in under 10 seconds.
-- **SC-002**: A volunteer can confirm or decline a pending published Assignment in under 30 seconds from dashboard open.
+- **SC-002**: A volunteer can flag that they can no longer serve a scheduled published Assignment in under 30 seconds from dashboard open.
 - **SC-003**: At least 90% of volunteer assignment-change notifications clearly communicate what changed without requiring a support explanation or leader follow-up.
 - **SC-004**: Volunteers can still view their last-known current/upcoming schedule information during temporary connectivity loss after at least one successful online dashboard load.
 - **SC-005**: Volunteers can distinguish current in-progress service from future upcoming service without needing a separate explanation from a leader.

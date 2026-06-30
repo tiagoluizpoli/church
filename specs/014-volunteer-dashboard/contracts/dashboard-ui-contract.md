@@ -64,35 +64,32 @@ interface AvailabilityFormProps {
     startDate: string;
     endDate: string;
   };
-  entries: AvailabilityEntryViewModel[];
+  slots: AvailabilitySlotViewModel[];
   isEditable: boolean;
   onSave: (input: AvailabilitySaveInput) => void;
-  onDeleteEntry: (entryId: string) => void;
   saveState: 'idle' | 'saving' | 'saved' | 'error';
 }
 
-interface AvailabilityEntryViewModel {
-  id: string;
+interface AvailabilitySlotViewModel {
+  slotId: string;
+  label: string;
   startTime: string;
   endTime: string;
-  isAllDay: boolean;
-  reason?: string;
+  response?: 'available' | 'unavailable';
 }
 
 interface AvailabilitySaveInput {
-  entries: Array<{
-    startTime: string;
-    endTime: string;
-    isAllDay: boolean;
-    reason?: string;
+  answers: Array<{
+    slotId: string;
+    response: 'available' | 'unavailable';
   }>;
   confirmOverlap?: boolean;
 }
 ```
 
 Notes:
-- hourly Events render time-span controls
-- day-based Events render day-span controls
+- volunteers answer leader-defined slots instead of free-form times
+- save remains disabled until every visible slot has an answer
 - overlap confirmation must be explicit secondary step, not implicit retry
 
 ---
@@ -107,7 +104,8 @@ interface UpcomingAssignmentsSectionProps {
 ```
 
 Behavior:
-- first group with pending responses auto-expands on visit
+- first group with actionable assignments auto-expands on visit
+- confirmed assignments show a single "cannot serve" path
 - in-progress rows remain visible and show disabled actions
 
 ---

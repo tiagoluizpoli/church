@@ -32,7 +32,7 @@ This dashboard is the canonical volunteer entry point. Legacy single-purpose rou
 - Shown as a dedicated task section when at least one upcoming Event is missing complete availability coverage.
 - Appears above `My Upcoming Assignments`.
 - Each task opens directly into the availability form for that specific Event.
-- The task remains visible until the volunteer has covered the full relevant Event span.
+- The task remains visible until the volunteer has answered every relevant Event slot.
 - The task is intentionally not dismissible or snoozable in MVP.
 - Reminder-related UI may be intentionally noisy and may be emphasized in more than one place.
 
@@ -44,7 +44,7 @@ This dashboard is the canonical volunteer entry point. Legacy single-purpose rou
 - Removes cancelled or removed Assignments immediately from this section.
 - Groups items by Event rather than showing one flat global list.
 - Sorts Event groups by the earliest Assignment time they contain.
-- Auto-expands the first Event group that still contains pending responses.
+- Auto-expands the first Event group that still contains an actionable assignment state.
 - Event groups reset their expanded/collapsed state on each new visit.
 - Each collapsed Event header shows:
   - Event title
@@ -103,6 +103,16 @@ This dashboard is the canonical volunteer entry point. Legacy single-purpose rou
 
 ## 3. Availability Model
 
+### Refinement Note — 2026-06-29
+
+The original F2 draft assumed volunteer-authored time/day spans. That model was useful for early exploration, but dashboard implementation and product review clarified a better MVP direction:
+
+- leaders define the concrete service slots
+- volunteers answer those slots with simple availability choices
+- completion means every relevant slot has an answer, not that the volunteer manually covered an Event span
+
+This is an additive refinement, not a scope expansion. Event-scoped ownership still matters, but the volunteer interaction is now slot-answer-driven because it better matches the real church scheduling workflow and reduces accidental complexity in the volunteer UX.
+
 ### 3.1 Scope
 
 - Availability is entered per Event, not as one global reusable calendar.
@@ -110,15 +120,14 @@ This dashboard is the canonical volunteer entry point. Legacy single-purpose rou
 
 ### 3.2 Granularity
 
-- **Hourly Events**: Availability is entered as one or more time spans.
-  - Example: `Unavailable from 09:00 to 11:30`
-- **Day-Based Events**: Availability is entered as one day span with a start day and end day.
-  - Example: `Unavailable from Friday to Sunday`
+- **Hourly Events**: Leaders define one or more service slots and volunteers answer each slot with a simple availability choice.
+  - Example: `8:00 AM = available`, `10:30 AM = unavailable`, `6:30 PM = available`
+- **Day-Based Events**: Leaders still define the relevant service blocks for the retreat / special event, and volunteers answer those blocks rather than typing free-form spans.
 
 ### 3.3 Completion Rule
 
-- Availability counts as complete only when the volunteer has covered the full relevant Event span.
-- Partial input should not be treated as complete.
+- Availability counts as complete only when the volunteer has answered every relevant Event slot.
+- Partial input means one or more leader-defined slots are still unanswered.
 - MVP keeps the task language simple rather than showing complicated remaining-span counts.
 
 ### 3.4 Save Behavior
@@ -138,12 +147,22 @@ This dashboard is the canonical volunteer entry point. Legacy single-purpose rou
 
 ## 4. Assignment Responses
 
+### Refinement Note — 2026-06-29
+
+The original response model emphasized `confirm / decline`. After implementation review, we refined the intended volunteer flow:
+
+- availability submission is the primary pre-schedule commitment
+- once a leader publishes the schedule, a confirmed assignment is already understood as scheduled
+- the most important volunteer-side follow-up action is `I cannot serve`, not redundant re-confirmation
+
+Pending assignments may still temporarily preserve a confirm path where older data or transitional states exist, but the intended steady-state UX is "scheduled unless the volunteer flags a problem."
+
 - Responses happen per Assignment, never as one bulk Event-level action in MVP.
 - Response controls live inside expanded Assignment rows, not collapsed Event headers.
-- The volunteer may confirm or decline only their own Assignments.
-- The volunteer may change a previously confirmed Assignment to declined before the Event starts; this is treated as a fresh decline event.
-- Decline reason is removed from MVP. Confirmation and decline are the core response actions.
-- A brief undo window should be offered immediately after response submission.
+- The volunteer may only act on their own Assignments.
+- A scheduled volunteer may change a previously confirmed Assignment to unable-to-serve before the Event starts; this is treated as a fresh decline event.
+- The destructive `I cannot serve` path must include a strong confirmation safeguard to avoid accidental taps.
+- Decline reason is removed from MVP. A lightweight unable-to-serve signal is the core post-publication volunteer action.
 
 ---
 

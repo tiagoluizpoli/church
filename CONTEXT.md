@@ -45,7 +45,13 @@ The person who performed an audited action in the scheduling system. An Actor ma
 _Avoid_: Leader (when the action may also be performed by volunteers or admins)
 
 **Availability**:
-A volunteer's declared serving availability for an Event. Availability is expressed either as a time span for hourly Events or a day span for day-based Events.
+A volunteer's declared serving availability for an Event.
+
+Refinement note for Volunteer Dashboard / F2:
+
+- earlier planning described availability as volunteer-authored time spans for hourly Events or day spans for day-based Events
+- current dashboard direction keeps Event scope, but for volunteer-facing submission the leader defines the service blocks and the volunteer answers those concrete slots
+
 _Avoid_: Blockout, schedule
 
 ## Example Dialogue

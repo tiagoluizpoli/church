@@ -14,9 +14,9 @@ Use this after implementation to verify the feature end-to-end.
 4. Seed test data with at least:
    - one volunteer user
    - two ministries for that volunteer
-   - one hourly upcoming Event needing availability
-   - one day-based retreat Event needing availability
-   - one published assignment pending response
+   - one hourly upcoming Event with leader-defined service slots needing availability answers
+   - one day-based or special-date Event with leader-defined service blocks needing availability answers
+   - one published assignment already scheduled for the volunteer
    - one in-progress assignment
    - several stored scheduling notifications
 
@@ -25,8 +25,8 @@ Use this after implementation to verify the feature end-to-end.
 ## 2. Start Apps
 
 ```bash
-bun run --filter server dev
-bun run --filter web dev
+bun run dev:server
+bun run dev:web
 ```
 
 Open the web app and authenticate as seeded volunteer.
@@ -40,12 +40,12 @@ Open the web app and authenticate as seeded volunteer.
 1. Open `/dashboard`.
 2. Confirm `Availability needed` appears above assignments.
 3. Open hourly Event task.
-4. Enter one or more time spans and save.
+4. Answer each visible service slot and save.
 5. Confirm success message appears.
-6. Re-open same Event and verify saved spans render.
+6. Re-open same Event and verify saved slot answers render.
 7. Open day-based Event task.
-8. Enter a day span covering multi-day retreat dates.
-9. Save and verify task only clears when full Event span is covered.
+8. Answer each leader-defined block for the special-date / retreat scenario.
+9. Save and verify task only clears when every required slot has an answer.
 
 ### Overlap warning
 
@@ -59,10 +59,11 @@ Open the web app and authenticate as seeded volunteer.
 ### Upcoming assignments
 
 1. Confirm only volunteer-owned published assignments render.
-2. Confirm first Event group with pending response auto-expands.
+2. Confirm first actionable Event group auto-expands.
 3. Confirm in-progress assignment shows visible badge.
 4. Confirm in-progress assignment response controls are disabled.
-5. Confirm pending future assignment can be confirmed / declined.
+5. Confirm scheduled future assignment shows the protected `I cannot serve` flow.
+6. Confirm the destructive action requires typed confirmation before saving.
 
 ### Notifications inbox
 
@@ -72,7 +73,7 @@ Open the web app and authenticate as seeded volunteer.
 4. Use `mark all as read`.
 5. Use `Load more` and confirm older notifications append.
 6. Open notification whose exact target no longer exists.
-7. Confirm user lands in best current section and sees explanation toast.
+7. Confirm user lands in best current section and sees the `Original target changed` explanation toast.
 
 ### Ministry schedule
 

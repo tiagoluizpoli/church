@@ -33,8 +33,8 @@ The following planning artifacts were updated to reflect the grilling decisions:
   - `Ministry Schedule`
 - `Availability needed` is highest priority and opens directly into event-specific availability input.
 - Availability is entered **per Event**.
-- Hourly Events use **time spans**.
-- Day-based Events use **day spans** for multi-day retreats.
+- Original grilled assumption: Hourly Events use **time spans** and day-based Events use **day spans**.
+- Refined implementation direction as of 2026-06-29: leaders define the relevant service blocks, and volunteers answer those concrete slots. The Event scope remains, but the volunteer no longer authors free-form spans in the dashboard MVP.
 - Availability overlap with a published assignment:
   - warn clearly
   - explain staffing/reassignment consequence

@@ -194,8 +194,16 @@ The following updates were made after the F2 grilling session. These apply to th
 
 ### New: Availability follows event granularity
 
-- Hourly Events use time-span availability input.
-- Day-based Events use day-span availability input, matching retreat-style multi-day service realities rather than fake one-day slices.
+- Original direction: Hourly Events use time-span input and day-based Events use day-span input.
+- Refined direction as of 2026-06-29: leaders define the actual service blocks, and volunteers answer those concrete slots with simple availability choices.
+- This keeps Event scoping, but removes free-form volunteer time authoring from the dashboard MVP because real ministry workflows already revolve around predefined blocks.
+
+### New: Published assignments are treated as already scheduled
+
+- Original direction: volunteers confirm or decline published assignments from the dashboard.
+- Refined direction as of 2026-06-29: availability submission is the main pre-schedule commitment, so published assignments should usually read as already scheduled.
+- The important post-publication volunteer action is `I cannot serve`, protected by a destructive confirmation step to avoid accidental taps.
+- Transitional pending states may still exist in data or APIs, but the intended UX should bias toward schedule visibility plus exception signaling.
 
 ### New: Dashboard has a task-first information hierarchy
 

@@ -72,7 +72,10 @@ export function OverrideDialog({
           <Button
             type="button"
             disabled={tooShort || isPending}
-            onClick={() => onConfirm(reason.trim())}
+            onClick={() => {
+              onOpenChange(false);
+              onConfirm(reason.trim());
+            }}
           >
             {isPending ? 'Saving…' : 'Confirm Override'}
           </Button>

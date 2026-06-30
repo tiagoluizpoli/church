@@ -20,6 +20,8 @@ interface SlotRowProps {
   onRemove: (assignmentId: string) => void;
   onOverride: (slotId: string, roleId: string, volunteerId: string) => void;
   onSubstitute: (assignmentId: string, roleId: string) => void;
+  selectedVolunteerId?: string;
+  selectedVolunteerName?: string;
   onIncrement: (slotId: string, roleId: string) => void;
   onDecrement: (slotId: string, roleId: string) => void;
   onEditSlot: (slotId: string) => void;
@@ -34,6 +36,8 @@ export function SlotRow({
   onRemove,
   onOverride,
   onSubstitute,
+  selectedVolunteerId,
+  selectedVolunteerName,
   onIncrement,
   onDecrement,
   onEditSlot,
@@ -133,8 +137,20 @@ export function SlotRow({
                     pickerVolunteers={cell.pickerVolunteers}
                     isReadOnly={readOnly}
                     isPublished={isPublished}
+                    selectedVolunteerId={selectedVolunteerId}
+                    selectedVolunteerName={selectedVolunteerName}
                     onAssign={(volunteerId) =>
                       onAssign(cell.slotId, cell.roleId, volunteerId)
+                    }
+                    onAssignSelectedVolunteer={
+                      selectedVolunteerId
+                        ? () =>
+                            onAssign(
+                              cell.slotId,
+                              cell.roleId,
+                              selectedVolunteerId,
+                            )
+                        : undefined
                     }
                     onRemove={() => assignment && onRemove(assignment.id)}
                     onOverride={

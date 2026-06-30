@@ -22,7 +22,9 @@ test('US3: declined cell shows × badge', async ({ page }) => {
   // The declined assignment chip shows a confirmation badge with ×.
   const chip = page.getByTestId('assignment-chip').first();
   await expect(chip).toBeVisible();
-  await expect(chip.getByTestId('confirmation-badge')).toContainText('×');
+  await expect(
+    chip.getByTestId('confirmation-badge').getByLabel('declined'),
+  ).toBeVisible();
 });
 
 test('US3: clicking declined cell opens substitution picker with declined volunteer pinned', async ({
@@ -56,13 +58,21 @@ test('US3: selecting replacement volunteer fills the cell', async ({
   });
 
   // Pick Ada Lovelace as the replacement (available, appears in picker list).
-  const picker = page.getByTestId('assignment-picker');
-  await picker.getByPlaceholder(/search volunteers/i).fill('Ada');
-  await expect(page.getByTestId('picker-option').first()).toBeVisible();
-  await page.getByTestId('picker-option').first().click();
+  const dialog = page.getByRole('dialog', {
+    name: /find replacement for grace h\./i,
+  });
+  await dialog.getByPlaceholder(/search available volunteers/i).fill('Ada');
+  await expect(
+    dialog.getByRole('button', { name: /ada l\. available/i }),
+  ).toBeVisible();
+  await dialog.getByRole('button', { name: /ada l\. available/i }).click();
 
-  // Cell now shows Ada's chip (not the declined Grace chip).
-  await expect(page.getByTestId('assignment-chip').first()).toContainText(
-    /ada/i,
-  );
+  // The substituted grid now includes Ada and no longer shows Grace in a cell.
+  const grid = page.getByTestId('builder-grid');
+  await expect(
+    grid.getByTestId('assignment-chip').filter({ hasText: /ada/i }),
+  ).toHaveCount(1);
+  await expect(
+    grid.getByTestId('assignment-chip').filter({ hasText: /grace/i }),
+  ).toHaveCount(0);
 });

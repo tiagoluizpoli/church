@@ -4,7 +4,9 @@ import type { AvailabilityStatus } from '../hooks/use-volunteer-pool';
 export type ServerAvailabilityStatus =
   | 'AVAILABLE'
   | 'UNAVAILABLE'
-  | 'DOUBLE_BOOKED';
+  | 'DOUBLE_BOOKED'
+  | 'PARTIAL'
+  | 'NO_RESPONSE';
 
 /**
  * Maps the backend availability status to the UI pool status.
@@ -20,6 +22,10 @@ export function mapAvailabilityStatus(
       return 'unavailable';
     case 'DOUBLE_BOOKED':
       return 'partial';
+    case 'PARTIAL':
+      return 'partial';
+    case 'NO_RESPONSE':
+      return 'no_response';
     default:
       return 'no_response';
   }

@@ -1,5 +1,6 @@
 import { DndContext } from '@dnd-kit/core';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { CellAssignment } from './requirement-cell';
@@ -117,6 +118,46 @@ describe('RequirementCell', () => {
       // Read-only empty cells expose no interactive controls.
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
       expect(screen.getByText('—')).toBeVisible();
+    });
+  });
+
+  describe('sidebar selection flow', () => {
+    it('assigns the selected sidebar volunteer when the empty cell body is clicked', async () => {
+      const user = userEvent.setup();
+      const onAssignSelectedVolunteer = vi.fn();
+
+      renderCell(
+        <RequirementCell
+          {...baseProps}
+          isReadOnly={false}
+          selectedVolunteerId="v2"
+          selectedVolunteerName="Grace Hopper"
+          onAssignSelectedVolunteer={onAssignSelectedVolunteer}
+        />,
+      );
+
+      await user.click(screen.getByText(/or click empty space in cell/i));
+      expect(onAssignSelectedVolunteer).toHaveBeenCalledTimes(1);
+    });
+
+    it('assigns the selected sidebar volunteer from explicit button', async () => {
+      const user = userEvent.setup();
+      const onAssignSelectedVolunteer = vi.fn();
+
+      renderCell(
+        <RequirementCell
+          {...baseProps}
+          isReadOnly={false}
+          selectedVolunteerId="v2"
+          selectedVolunteerName="Grace Hopper"
+          onAssignSelectedVolunteer={onAssignSelectedVolunteer}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: /assign grace hopper to slot/i }),
+      );
+      expect(onAssignSelectedVolunteer).toHaveBeenCalledTimes(1);
     });
   });
 });

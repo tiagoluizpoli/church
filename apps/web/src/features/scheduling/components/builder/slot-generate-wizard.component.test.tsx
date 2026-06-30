@@ -40,8 +40,10 @@ describe('SlotGenerateWizard (T114)', () => {
   it('opens on step 1 with strategy options', () => {
     render();
     expect(screen.getByText(/step 1 of 3/i)).toBeVisible();
-    expect(screen.getByText(/by duration/i)).toBeVisible();
-    expect(screen.getByText(/by count/i)).toBeVisible();
+    expect(screen.getByText(/split event into turns/i)).toBeVisible();
+    expect(screen.getByText(/split by slot length/i)).toBeVisible();
+    expect(screen.getByText(/split by number of turns/i)).toBeVisible();
+    expect(screen.getByText(/stays inside the event window/i)).toBeVisible();
   });
 
   it('disables Next when the value is below 1', async () => {

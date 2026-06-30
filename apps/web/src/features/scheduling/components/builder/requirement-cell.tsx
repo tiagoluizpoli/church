@@ -1,6 +1,7 @@
 import { Button } from '@church/ui/components/button';
 import { cn } from '@church/ui/lib/utils';
 import { useDroppable } from '@dnd-kit/core';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { useState } from 'react';
 import {
   AssignmentChip,
@@ -27,7 +28,10 @@ interface RequirementCellProps {
   pickerVolunteers: PickerVolunteer[];
   isReadOnly: boolean;
   isPublished: boolean;
+  selectedVolunteerId?: string;
+  selectedVolunteerName?: string;
   onAssign: (volunteerId: string) => void;
+  onAssignSelectedVolunteer?: () => void;
   onRemove: () => void;
   onOverride?: () => void;
   onSubstitute?: () => void;
@@ -42,7 +46,10 @@ export function RequirementCell({
   pickerVolunteers,
   isReadOnly,
   isPublished,
+  selectedVolunteerId,
+  selectedVolunteerName,
   onAssign,
+  onAssignSelectedVolunteer,
   onRemove,
   onOverride,
   onSubstitute,
@@ -61,8 +68,38 @@ export function RequirementCell({
   const containerClass = cn(
     'min-h-12 rounded border border-dashed p-1',
     droppable.isOver && 'border-primary bg-primary/5',
+    selectedVolunteerId && !assignment && 'border-primary/60 bg-primary/5',
     isReadOnly && 'cursor-not-allowed bg-muted/40',
   );
+
+  const handleEmptyCellClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (!selectedVolunteerId || assignment || !onAssignSelectedVolunteer) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    if (
+      target !== event.currentTarget &&
+      target.closest('button, input, textarea')
+    ) {
+      return;
+    }
+
+    onAssignSelectedVolunteer();
+  };
+
+  const handleEmptyCellKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    onAssignSelectedVolunteer?.();
+  };
 
   // Read-only cells (sub-leader viewing another team) are never interactive.
   if (isReadOnly) {
@@ -93,6 +130,10 @@ export function RequirementCell({
       className={containerClass}
       data-testid="requirement-cell"
       data-readonly="false"
+      onClick={handleEmptyCellClick}
+      onKeyDown={handleEmptyCellKeyDown}
+      role={selectedVolunteerId && !assignment ? 'button' : undefined}
+      tabIndex={selectedVolunteerId && !assignment ? 0 : undefined}
     >
       {assignment ? (
         isDeclined ? (
@@ -126,6 +167,25 @@ export function RequirementCell({
         // Empty cell: suggestions (each with its own Accept button) plus a
         // separate picker trigger — avoids nesting interactive elements.
         <div className="space-y-1">
+          {selectedVolunteerId && selectedVolunteerName ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                className="h-6 w-full justify-start px-2 text-xs"
+                aria-label={`Assign ${selectedVolunteerName} to slot`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onAssignSelectedVolunteer?.();
+                }}
+              >
+                Assign {selectedVolunteerName}
+              </Button>
+              <div className="px-1 text-primary text-xs">
+                Or click empty space in cell
+              </div>
+            </>
+          ) : null}
           <SuggestionList suggestions={suggestions} onAssign={onAssign} />
           <AssignmentPicker
             open={pickerOpen}

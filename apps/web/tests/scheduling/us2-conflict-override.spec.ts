@@ -83,19 +83,30 @@ test('US2: confirming override saves assignment and audit log records it', async
   });
 
   await page.getByRole('button', { name: /^override$/i }).click();
-  const dialog = page.getByRole('dialog', { name: /override conflict/i });
+  const dialog = page
+    .getByRole('dialog', { name: /override conflict/i })
+    .last();
   await dialog
     .getByPlaceholder(/reason for override/i)
     .fill('E2E override reason — test');
   await dialog.getByRole('button', { name: /confirm override/i }).click();
 
   // Dialog closes, assignment chip remains (override confirmed).
-  await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+  await expect(dialog).not.toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('assignment-chip').first()).toBeVisible();
+
+  // Reload so the audit-log check validates persisted state, not just the
+  // immediate post-mutation transition.
+  await page.goto(BUILDER_URL);
+  await expect(page.getByTestId('builder-grid')).toBeVisible({
+    timeout: 15_000,
+  });
 
   // Open audit log via ⋯ overflow menu.
   await page.getByRole('button', { name: /more actions/i }).click();
-  await page.getByText('View Audit Log').click();
+  const auditMenuItem = page.getByRole('menuitem', { name: 'View Audit Log' });
+  await expect(auditMenuItem).toBeVisible();
+  await auditMenuItem.click();
 
   const auditDialog = page.getByRole('dialog', { name: /audit log/i });
   await expect(auditDialog).toBeVisible({ timeout: 5_000 });

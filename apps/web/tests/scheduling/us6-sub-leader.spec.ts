@@ -40,9 +40,9 @@ test('US6: own-team Greeter cell is interactive', async ({ page }) => {
   });
 
   // Find the Greeter requirement cell (teamId=team1 → data-readonly="false").
-  const interactiveCells = page.getByTestId('requirement-cell').filter({
-    has: page.locator('[data-readonly="false"]'),
-  });
+  const interactiveCells = page.locator(
+    '[data-testid="requirement-cell"][data-readonly="false"]',
+  );
   // Clicking "Choose volunteer…" in the interactive cell opens the picker.
   await interactiveCells
     .getByRole('button', { name: /choose volunteer/i })
@@ -65,8 +65,7 @@ test('US6: non-team Usher cell is read-only — no picker opens on click', async
 
   // The Usher cell has data-readonly="true".
   const readOnlyCell = page
-    .getByTestId('requirement-cell')
-    .locator('[data-readonly="true"]')
+    .locator('[data-testid="requirement-cell"][data-readonly="true"]')
     .first();
   await expect(readOnlyCell).toBeVisible();
 

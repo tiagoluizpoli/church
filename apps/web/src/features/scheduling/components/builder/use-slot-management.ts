@@ -15,12 +15,24 @@ interface UseSlotManagementParams {
   builderData: ScheduleBuilderData;
   eventId: string;
   invalidate: ReturnType<typeof useScheduleBuilder>['invalidate'];
+  refetch: ReturnType<typeof useScheduleBuilder>['refetch'];
+}
+
+export function buildCreateSlotInitialValues(
+  builderData: ScheduleBuilderData,
+): SlotEditValues {
+  return {
+    startTime: new Date(builderData.event.startDate).toISOString(),
+    endTime: new Date(builderData.event.endDate).toISOString(),
+    label: undefined,
+  };
 }
 
 export function useSlotManagement({
   builderData,
   eventId,
   invalidate,
+  refetch,
 }: UseSlotManagementParams) {
   const [slotModal, setSlotModal] = useState<SlotModalState | null>(null);
   const [slotError, setSlotError] = useState<string | undefined>();
@@ -44,9 +56,17 @@ export function useSlotManagement({
     }),
   );
 
+  const refreshBuilder = async () => {
+    await invalidate();
+    await refetch();
+  };
+
   const handleAddManualSlot = () => {
     setSlotError(undefined);
-    setSlotModal({ mode: 'create' });
+    setSlotModal({
+      mode: 'create',
+      initial: buildCreateSlotInitialValues(builderData),
+    });
   };
 
   const handleEditSlot = (slotId: string) => {
@@ -85,6 +105,7 @@ export function useSlotManagement({
         });
       }
 
+      await refreshBuilder();
       setSlotModal(null);
     } catch (error) {
       setSlotError((error as Error).message);
@@ -93,6 +114,7 @@ export function useSlotManagement({
 
   const handleDeleteSlot = async (slotId: string) => {
     const result = await deleteSlot.mutateAsync({ slotId });
+    await refreshBuilder();
     if (!result.success && result.assignmentCount > 0) {
       setDeleteSlotState({
         slotId,
@@ -108,6 +130,7 @@ export function useSlotManagement({
       slotId: deleteSlotState.slotId,
       force: true,
     });
+    await refreshBuilder();
     setDeleteSlotState(null);
   };
 

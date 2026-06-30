@@ -19,6 +19,8 @@ interface BuilderGridProps {
   onRemove: (assignmentId: string) => void;
   onOverride: (slotId: string, roleId: string, volunteerId: string) => void;
   onSubstitute: (assignmentId: string, roleId: string) => void;
+  selectedVolunteerId?: string;
+  selectedVolunteerName?: string;
   onIncrement: (slotId: string, roleId: string) => void;
   onDecrement: (slotId: string, roleId: string) => void;
   onEditSlot: (slotId: string) => void;
@@ -44,6 +46,8 @@ export function BuilderGrid({
   onRemove,
   onOverride,
   onSubstitute,
+  selectedVolunteerId,
+  selectedVolunteerName,
   onIncrement,
   onDecrement,
   onEditSlot,
@@ -110,9 +114,7 @@ export function BuilderGrid({
 
     return data.slots.map((slot, idx) => {
       const slotReqs = data.requirements.filter((r) => r.slotId === slot.id);
-      const slotAssignments = (activeBySlot.get(slot.id) ?? []).filter(
-        (a) => a.status !== 'declined',
-      );
+      const slotAssignments = activeBySlot.get(slot.id) ?? [];
 
       const columns: GridRoleColumn[] = data.roles.map((role) => {
         const req = slotReqs.find((r) => r.roleId === role.id);
@@ -200,8 +202,11 @@ export function BuilderGrid({
 
       // Per-slot fill ratio (FR-050: conflicted assignments still count).
       const totalRequired = slotReqs.reduce((s, r) => s + r.requiredCount, 0);
+      const activeAssignmentCount = slotAssignments.filter(
+        (assignment) => assignment.status !== 'declined',
+      ).length;
       const fillRatio =
-        totalRequired === 0 ? 0 : slotAssignments.length / totalRequired;
+        totalRequired === 0 ? 0 : activeAssignmentCount / totalRequired;
 
       return {
         slotId: slot.id,
@@ -227,6 +232,8 @@ export function BuilderGrid({
           onRemove={onRemove}
           onOverride={onOverride}
           onSubstitute={onSubstitute}
+          selectedVolunteerId={selectedVolunteerId}
+          selectedVolunteerName={selectedVolunteerName}
           onIncrement={onIncrement}
           onDecrement={onDecrement}
           onEditSlot={onEditSlot}

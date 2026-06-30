@@ -28,12 +28,16 @@ interface VolunteerPoolSidebarProps {
   volunteers: PoolVolunteer[];
   assignments: PoolAssignmentInput[];
   roles: RoleOption[];
+  selectedVolunteerId?: string;
+  onSelectVolunteer?: (volunteerId: string) => void;
 }
 
 export function VolunteerPoolSidebar({
   volunteers,
   assignments,
   roles,
+  selectedVolunteerId,
+  onSelectVolunteer,
 }: VolunteerPoolSidebarProps) {
   const {
     nameFilter,
@@ -82,7 +86,12 @@ export function VolunteerPoolSidebar({
             </p>
           ) : (
             sortedFilteredVolunteers.map((v) => (
-              <VolunteerCard key={v.volunteerId} volunteer={v} />
+              <VolunteerCard
+                key={v.volunteerId}
+                volunteer={v}
+                isSelected={selectedVolunteerId === v.volunteerId}
+                onSelect={onSelectVolunteer}
+              />
             ))
           )}
         </div>

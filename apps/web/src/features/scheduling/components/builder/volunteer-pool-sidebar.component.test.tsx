@@ -2,7 +2,7 @@ import { DndContext } from '@dnd-kit/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PoolVolunteer } from '../../hooks/use-volunteer-pool';
 import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
 
@@ -58,5 +58,30 @@ describe('VolunteerPoolSidebar (T102)', () => {
     );
     await user.type(screen.getByPlaceholderText(/search by name/i), 'zzz');
     expect(screen.getByText(/no volunteers match/i)).toBeVisible();
+  });
+
+  it('calls onSelectVolunteer when a volunteer card is clicked', async () => {
+    const user = userEvent.setup();
+    const onSelectVolunteer = vi.fn();
+
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+        onSelectVolunteer={onSelectVolunteer}
+      />,
+    );
+
+    const [firstSelectButton] = screen.getAllByRole('button', {
+      name: 'Select slot',
+    });
+    expect(firstSelectButton).toBeDefined();
+    if (!firstSelectButton) {
+      throw new Error('Expected a Select slot button in volunteer pool');
+    }
+
+    await user.click(firstSelectButton);
+    expect(onSelectVolunteer).toHaveBeenCalledWith('1');
   });
 });

@@ -7,3 +7,4 @@ export * from './onboarding';
 export * from './role-templates';
 export * from './scheduling';
 export * from './todo';
+export * from './volunteer-notifications';

@@ -49,6 +49,8 @@
     "db:clean": "turbo -F @church/db db:clean",
     "db:seed": "turbo -F @church/db db:seed",
     "db:seed:reset": "turbo -F @church/db db:seed:reset",
+    "db:seed:dev-users": "bun run --cwd apps/server seed:dev-users",
+    "db:seed:reset:dev-users": "bun run db:seed:reset && bun run db:seed:dev-users",
     "check": "biome check --write .",
     "test": "turbo test --concurrency=1",
     "test:e2e": "turbo test:e2e",

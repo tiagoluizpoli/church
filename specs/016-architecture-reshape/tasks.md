@@ -221,7 +221,7 @@
 **Depends on T077 (`auto-generated-api.yaml` must be committed).**
 
 - [x] T084 [US4] Create `orval.config.ts` at monorepo root — `client: 'axios'`, `mode: 'tags'`, `input: './apps/server/auto-generated-api.yaml'`, `output` target `'./apps/web/src/infrastructure/api/'`, `clean: true`; no `override.query` block (typed async functions only, not hooks)
-- [ ] T085 [US4] Run `bun run orval` at monorepo root — generates `apps/web/src/infrastructure/api/admin.ts`, `volunteer.ts`, `feature-flags.ts`; commit generated files (depends on T084, T077)
+- [x] T085 [US4] Run `bun run orval` at monorepo root — generates `apps/web/src/infrastructure/api/admin.ts`, `volunteer.ts`, `feature-flags.ts`; commit generated files (depends on T084, T077)
 - [x] T086 [US4] Run `bun remove @trpc/client` in `apps/web/` — remove tRPC client packages from `apps/web/package.json` and `bun.lock`; verify `grep '@trpc' apps/web/package.json` returns nothing
 - [x] T087 [US4] Port all tRPC query/mutation calls in `apps/web/src/` to orval-generated axios functions — hand-written hooks replace `trpc.*.queryOptions()` / `trpc.*.useMutation()` with calls to generated typed functions from `@/infrastructure/api/admin`, `@/infrastructure/api/volunteer`, `@/infrastructure/api/feature-flags` (depends on T085, T086)
 - [x] T088 [US4] Run `turbo check-types --filter=@church/web` — verify zero TypeScript errors in migrated frontend (depends on T087)

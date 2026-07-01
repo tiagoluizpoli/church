@@ -1,20 +1,23 @@
 import { NotFoundError } from '@church/core';
 import { roleTemplate, roleTemplateItem } from '@church/db';
 import { and, eq, inArray } from 'drizzle-orm';
+import type {
+  CreateRoleTemplateInput,
+  RoleTemplateRepository,
+  UpdateRoleTemplateInput,
+} from '../../application/contracts/role-template.repository';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type {
   RoleTemplate,
   RoleTemplateId,
 } from '../../domain/entities/role-template';
-import type {
-  CreateRoleTemplateInput,
-  RoleTemplateRepository,
-  UpdateRoleTemplateInput,
-} from '../../domain/repositories/role-template.repository';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import {
+  mapRoleTemplate,
+  mapRoleTemplateItem,
+} from '../mappers/role-template.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapRoleTemplate, mapRoleTemplateItem } from './role-template.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleRoleTemplateRepository implements RoleTemplateRepository {

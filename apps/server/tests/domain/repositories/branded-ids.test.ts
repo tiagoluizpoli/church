@@ -1,8 +1,8 @@
 import { describe, it } from 'vitest';
+import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { VolunteerId } from '../../../src/domain/entities/volunteer';
-import type { AssignmentRepository } from '../../../src/domain/repositories/assignment.repository';
 
 describe('User Story 3: Branded IDs Isolation Type Safety', () => {
   it('should prevent cross-entity ID swapping between different branded types', () => {

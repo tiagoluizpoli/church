@@ -18,5 +18,44 @@ services:
       retries: 5
 
 
+  unleash-db:
+    image: postgres:16-alpine
+    container_name: church-unleash-db
+    restart: always
+    environment:
+      POSTGRES_USER: unleash
+      POSTGRES_PASSWORD: unleash
+      POSTGRES_DB: unleash
+    volumes:
+      - unleash-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unleash -d unleash"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  unleash:
+    image: unleashorg/unleash-server:latest
+    container_name: church-unleash
+    restart: always
+    depends_on:
+      unleash-db:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: unleash-db
+      DATABASE_NAME: unleash
+      DATABASE_USERNAME: unleash
+      DATABASE_PASSWORD: unleash
+      DATABASE_SSL: "false"
+      LOG_LEVEL: warn
+    ports:
+      - "4242:4242"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4242/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres-data:
+  unleash-db-data:

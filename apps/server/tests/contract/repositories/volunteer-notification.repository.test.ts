@@ -1,3 +1,10 @@
+import { runVolunteerNotificationRepositoryContractTests } from '../../../src/application/contracts/contract-tests/volunteer-notification.contract-spec';
+import type {
+  CreateVolunteerNotificationInput,
+  VolunteerNotificationListInput,
+  VolunteerNotificationListResult,
+  VolunteerNotificationRepository,
+} from '../../../src/application/contracts/volunteer-notification.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { EventId } from '../../../src/domain/entities/event';
@@ -9,13 +16,6 @@ import type {
   VolunteerNotificationType,
 } from '../../../src/domain/entities/volunteer-notification';
 import { VolunteerNotification } from '../../../src/domain/entities/volunteer-notification';
-import { runVolunteerNotificationRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/volunteer-notification.contract-spec';
-import type {
-  CreateVolunteerNotificationInput,
-  VolunteerNotificationListInput,
-  VolunteerNotificationListResult,
-  VolunteerNotificationRepository,
-} from '../../../src/domain/repositories/volunteer-notification.repository';
 
 const TEST_CHURCH_ID = '11111111-1111-1111-1111-111111111111' as ChurchId;
 const TEST_VOLUNTEER_ID = '44444444-4444-4444-4444-444444444441' as VolunteerId;

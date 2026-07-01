@@ -2,6 +2,12 @@ import { NotFoundError } from '@church/core';
 import { assignment, timeSlot } from '@church/db';
 import { and, between, count, eq, inArray } from 'drizzle-orm';
 import type {
+  AssignmentRepository,
+  CreateAssignmentInput,
+  UpdateAssignmentStatusInput,
+} from '../../application/contracts/assignment.repository';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type {
   Assignment,
   AssignmentId,
   AssignmentStatus,
@@ -10,13 +16,7 @@ import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
 import type { TimeSlotId } from '../../domain/entities/time-slot';
 import type { VolunteerId } from '../../domain/entities/volunteer';
-import type {
-  AssignmentRepository,
-  CreateAssignmentInput,
-  UpdateAssignmentStatusInput,
-} from '../../domain/repositories/assignment.repository';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
-import { mapAssignment } from './assignment.mapper';
+import { mapAssignment } from '../mappers/assignment.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

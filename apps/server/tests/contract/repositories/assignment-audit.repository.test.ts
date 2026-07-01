@@ -1,15 +1,16 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
+
+import type {
+  AssignmentAuditLogEntry,
+  AssignmentAuditRepository,
+  CreateAssignmentAuditInput,
+} from '../../../src/application/contracts/assignment-audit.repository';
+import { runAssignmentAuditRepositoryContractTests } from '../../../src/application/contracts/contract-tests/assignment-audit.contract-spec';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import { AssignmentAudit } from '../../../src/domain/entities/assignment-audit';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { EventId } from '../../../src/domain/entities/event';
 import type { UserId } from '../../../src/domain/entities/volunteer';
-import type {
-  AssignmentAuditLogEntry,
-  AssignmentAuditRepository,
-  CreateAssignmentAuditInput,
-} from '../../../src/domain/repositories/assignment-audit.repository';
-import { runAssignmentAuditRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/assignment-audit.contract-spec';
 
 class MockAssignmentAuditRepository implements AssignmentAuditRepository {
   private audits = new Map<string, AssignmentAudit>();

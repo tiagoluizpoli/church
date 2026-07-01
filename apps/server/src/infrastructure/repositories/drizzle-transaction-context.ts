@@ -1,4 +1,4 @@
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
 
 export class DrizzleTransactionContext {
   // biome-ignore lint/suspicious/noExplicitAny: Drizzle PgTransaction is a complex generic — any is intentional here

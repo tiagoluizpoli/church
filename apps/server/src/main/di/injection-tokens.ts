@@ -1,0 +1,30 @@
+export const injection = {
+  infra: {
+    eventRepository: 'IEventRepository',
+    volunteerRepository: 'IVolunteerRepository',
+    assignmentRepository: 'IAssignmentRepository',
+    assignmentAuditRepository: 'IAssignmentAuditRepository',
+    availabilityRepository: 'IAvailabilityRepository',
+    churchRepository: 'IChurchRepository',
+    ministryRepository: 'IMinistryRepository',
+    roleRepository: 'IRoleRepository',
+    roleTemplateRepository: 'IRoleTemplateRepository',
+    teamRepository: 'ITeamRepository',
+    timeSlotRepository: 'ITimeSlotRepository',
+    volunteerNotificationRepository: 'IVolunteerNotificationRepository',
+    unitOfWork: 'IUnitOfWork',
+    notificationService: 'INotificationService',
+    featureFlagService: 'IFeatureFlagService',
+  },
+  managers: {
+    eventManager: 'IEventManager',
+    volunteerManager: 'IVolunteerManager',
+    assignmentManager: 'IAssignmentManager',
+    churchManager: 'IChurchManager',
+    ministryManager: 'IMinistryManager',
+    roleManager: 'IRoleManager',
+  },
+  controllers: {
+    fastify: 'FastifyController',
+  },
+} as const;

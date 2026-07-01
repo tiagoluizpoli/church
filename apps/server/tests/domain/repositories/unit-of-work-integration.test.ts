@@ -1,11 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { describe, expect, it } from 'vitest';
+import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
+import type { AssignmentAuditRepository } from '../../../src/application/contracts/assignment-audit.repository';
+import type { TransactionContext } from '../../../src/application/contracts/transaction-context';
+import type { UnitOfWork } from '../../../src/application/contracts/unit-of-work';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';
-import type { AssignmentRepository } from '../../../src/domain/repositories/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/domain/repositories/assignment-audit.repository';
-import type { TransactionContext } from '../../../src/domain/repositories/transaction-context';
-import type { UnitOfWork } from '../../../src/domain/repositories/unit-of-work';
 
 describe('User Story 4: UnitOfWork Integration', () => {
   it('should run a callback within a transaction context and allow repositories to share the transaction context', async () => {

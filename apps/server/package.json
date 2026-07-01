@@ -1,7 +1,7 @@
 {
   "name": "server",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/main/server.ts",
   "exports": {
     ".": {
       "default": "./src/index.ts"
@@ -14,7 +14,7 @@
     "build": "tsdown",
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-    "dev": "bun --env-file=../../.env run --hot src/index.ts",
+    "dev": "bun --env-file=../../.env run --hot src/main/server.ts",
     "start": "bun run dist/index.mjs",
     "seed:dev-users": "bun --env-file=../../.env run src/scripts/seed-dev-users.ts",
     "seed:e2e": "bun --env-file=../../.env run src/test-support/e2e-seed.ts",
@@ -22,13 +22,12 @@
   },
   "dependencies": {
     "@church/auth": "workspace:*",
+    "@church/core": "workspace:*",
     "@church/db": "workspace:*",
     "@church/env": "workspace:*",
-    "@church/core": "workspace:*",
     "@fastify/cors": "^11.0.1",
-    "@hono/trpc-server": "^0.4.0",
-    "@trpc/client": "catalog:",
-    "@trpc/server": "catalog:",
+    "@fastify/swagger": "^9.7.0",
+    "@scalar/fastify-api-reference": "^1.62.1",
     "@types/pg": "catalog:",
     "better-auth": "catalog:",
     "date-fns": "^4.1.0",
@@ -36,7 +35,11 @@
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "fastify": "^5.3.3",
+    "fastify-type-provider-zod": "^7.0.0",
     "pg": "^8.17.1",
+    "reflect-metadata": "^0.2.2",
+    "tsyringe": "^4.10.0",
+    "unleash-client": "^6.11.1",
     "zod": "catalog:"
   },
   "devDependencies": {

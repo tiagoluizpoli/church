@@ -1,13 +1,13 @@
 import { NotFoundError } from '@church/core';
 import { role } from '@church/db';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
+import type { RoleRepository } from '../../application/contracts/role.repository';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { Role, RoleId } from '../../domain/entities/role';
-import type { RoleRepository } from '../../domain/repositories/role.repository';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import { mapRole } from '../mappers/role.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapRole } from './role.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleRoleRepository implements RoleRepository {

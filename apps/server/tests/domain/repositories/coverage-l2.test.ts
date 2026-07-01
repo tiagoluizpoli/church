@@ -1,5 +1,8 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { describe, expect, it } from 'vitest';
+import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
+import type { AssignmentAuditRepository } from '../../../src/application/contracts/assignment-audit.repository';
+import type { VolunteerRepository } from '../../../src/application/contracts/volunteer.repository';
 import { ConflictValidationService } from '../../../src/domain/conflict/conflict-validation-service';
 import type { ConflictReport } from '../../../src/domain/conflict/types';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
@@ -11,9 +14,6 @@ import type {
   UserId,
   VolunteerId,
 } from '../../../src/domain/entities/volunteer';
-import type { AssignmentRepository } from '../../../src/domain/repositories/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/domain/repositories/assignment-audit.repository';
-import type { VolunteerRepository } from '../../../src/domain/repositories/volunteer.repository';
 
 describe('Coverage L2: Conflict & Validation Service Data Access', () => {
   it('should verify all required L2 data can be retrieved and validated', async () => {

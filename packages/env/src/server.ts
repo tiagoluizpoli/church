@@ -13,6 +13,8 @@ export const env = createEnv({
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
+    UNLEASH_API_URL: z.url(),
+    UNLEASH_API_TOKEN: z.string(),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),

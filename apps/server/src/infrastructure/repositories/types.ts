@@ -1,4 +1,4 @@
-import type * as schema from '@church/db';
+import type * as schema from '@church/db/schema';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 export type AnyDrizzleDb = NodePgDatabase<typeof schema>;

@@ -1,5 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { NotFoundError } from '@church/core';
+import type {
+  AssignmentRepository,
+  CreateAssignmentInput,
+  UpdateAssignmentStatusInput,
+} from '../../../src/application/contracts/assignment.repository';
+import { runAssignmentRepositoryContractTests } from '../../../src/application/contracts/contract-tests/assignment.contract-spec';
 import {
   Assignment,
   type AssignmentId,
@@ -10,12 +16,6 @@ import type { EventId } from '../../../src/domain/entities/event';
 import type { RoleId } from '../../../src/domain/entities/role';
 import type { TimeSlotId } from '../../../src/domain/entities/time-slot';
 import type { VolunteerId } from '../../../src/domain/entities/volunteer';
-import type {
-  AssignmentRepository,
-  CreateAssignmentInput,
-  UpdateAssignmentStatusInput,
-} from '../../../src/domain/repositories/assignment.repository';
-import { runAssignmentRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/assignment.contract-spec';
 
 class MockAssignmentRepository implements AssignmentRepository {
   private assignments = new Map<string, Assignment>();

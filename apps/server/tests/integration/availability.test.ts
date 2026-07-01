@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AvailabilityService } from '../../src/services/availability';
+import { AvailabilityService } from '../../src/domain/services/availability-service';
 
 describe('AvailabilityService - DST Boundaries', () => {
   // Scenario: London Spring Forward (March 31, 2024)

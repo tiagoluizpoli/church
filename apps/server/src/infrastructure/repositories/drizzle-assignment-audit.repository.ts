@@ -7,18 +7,18 @@ import {
   volunteer,
 } from '@church/db';
 import { aliasedTable, and, desc, eq } from 'drizzle-orm';
+import type {
+  AssignmentAuditLogEntry,
+  AssignmentAuditRepository,
+  CreateAssignmentAuditInput,
+} from '../../application/contracts/assignment-audit.repository';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
 import type { AssignmentId } from '../../domain/entities/assignment';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
 import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
 import type { UserId } from '../../domain/entities/volunteer';
-import type {
-  AssignmentAuditLogEntry,
-  AssignmentAuditRepository,
-  CreateAssignmentAuditInput,
-} from '../../domain/repositories/assignment-audit.repository';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
-import { mapAssignmentAudit } from './assignment-audit.mapper';
+import { mapAssignmentAudit } from '../mappers/assignment-audit.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

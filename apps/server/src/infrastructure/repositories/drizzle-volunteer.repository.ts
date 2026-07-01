@@ -1,6 +1,13 @@
 import { NotFoundError } from '@church/core';
 import { ministry, ministryVolunteer, role, user, volunteer } from '@church/db';
 import { and, eq, inArray } from 'drizzle-orm';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type {
+  MinistryMembership,
+  MinistrySystemRole,
+  VolunteerLeadership,
+  VolunteerRepository,
+} from '../../application/contracts/volunteer.repository';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { RoleId } from '../../domain/entities/role';
@@ -10,16 +17,9 @@ import type {
   VolunteerId,
   VolunteerStatus,
 } from '../../domain/entities/volunteer';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
-import type {
-  MinistryMembership,
-  MinistrySystemRole,
-  VolunteerLeadership,
-  VolunteerRepository,
-} from '../../domain/repositories/volunteer.repository';
+import { mapVolunteer } from '../mappers/volunteer.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
-import { mapVolunteer } from './volunteer.mapper';
 
 export class DrizzleVolunteerRepository implements VolunteerRepository {
   constructor(private readonly db: AnyDrizzleDb) {}

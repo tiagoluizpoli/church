@@ -1,12 +1,12 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { describe, expect, it } from 'vitest';
+import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
+import type { AvailabilityRepository } from '../../../src/application/contracts/availability.repository';
 import { AvailabilityEngine } from '../../../src/domain/availability/availability-engine';
 import { Assignment } from '../../../src/domain/entities/assignment';
 import { Availability } from '../../../src/domain/entities/availability';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { VolunteerId } from '../../../src/domain/entities/volunteer';
-import type { AssignmentRepository } from '../../../src/domain/repositories/assignment.repository';
-import type { AvailabilityRepository } from '../../../src/domain/repositories/availability.repository';
 
 describe('Coverage L1: Availability Engine Data Access', () => {
   it('should fetch all required L1 data from repositories and calculate availability', async () => {

@@ -1,4 +1,9 @@
 import { NotFoundError } from '@church/core';
+import { runVolunteerRepositoryContractTests } from '../../../src/application/contracts/contract-tests/volunteer.contract-spec';
+import type {
+  MinistryMembership,
+  VolunteerRepository,
+} from '../../../src/application/contracts/volunteer.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { MinistryId } from '../../../src/domain/entities/ministry';
 import type { RoleId } from '../../../src/domain/entities/role';
@@ -8,11 +13,6 @@ import {
   type VolunteerId,
   type VolunteerStatus,
 } from '../../../src/domain/entities/volunteer';
-import { runVolunteerRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/volunteer.contract-spec';
-import type {
-  MinistryMembership,
-  VolunteerRepository,
-} from '../../../src/domain/repositories/volunteer.repository';
 
 class MockVolunteerRepository implements VolunteerRepository {
   private volunteers = new Map<string, Volunteer>();

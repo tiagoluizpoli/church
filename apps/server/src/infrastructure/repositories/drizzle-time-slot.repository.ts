@@ -1,21 +1,21 @@
 import { NotFoundError } from '@church/core';
 import { assignment, slotRequirement, timeSlot } from '@church/db';
 import { and, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { RoleId } from '../../domain/entities/role';
-import type { SlotRequirement } from '../../domain/entities/slot-requirement';
-import type { TimeSlot, TimeSlotId } from '../../domain/entities/time-slot';
 import type {
   BulkCreateTimeSlotsInput,
   CreateTimeSlotInput,
   TimeSlotRepository,
   UpdateTimeSlotInput,
   UpsertSlotRequirementInput,
-} from '../../domain/repositories/time-slot.repository';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
+} from '../../application/contracts/time-slot.repository';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type { ChurchId } from '../../domain/entities/church';
+import type { EventId } from '../../domain/entities/event';
+import type { RoleId } from '../../domain/entities/role';
+import type { SlotRequirement } from '../../domain/entities/slot-requirement';
+import type { TimeSlot, TimeSlotId } from '../../domain/entities/time-slot';
+import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapSlotRequirement, mapTimeSlot } from './slot.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleTimeSlotRepository implements TimeSlotRepository {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { TransactionContext } from '../../../src/domain/repositories/transaction-context';
-import type { UnitOfWork } from '../../../src/domain/repositories/unit-of-work';
+import type { TransactionContext } from '../../../src/application/contracts/transaction-context';
+import type { UnitOfWork } from '../../../src/application/contracts/unit-of-work';
 
 class MockUnitOfWork implements UnitOfWork {
   async run<T>(fn: (tx: TransactionContext) => Promise<T>): Promise<T> {

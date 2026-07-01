@@ -1,18 +1,18 @@
 import { volunteerNotification } from '@church/db';
 import { and, count, desc, eq, isNull, lt } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/entities/church';
-import type { VolunteerId } from '../../domain/entities/volunteer';
-import type { VolunteerNotificationId } from '../../domain/entities/volunteer-notification';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
 import type {
   CreateVolunteerNotificationInput,
   VolunteerNotificationListInput,
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
-} from '../../domain/repositories/volunteer-notification.repository';
+} from '../../application/contracts/volunteer-notification.repository';
+import type { ChurchId } from '../../domain/entities/church';
+import type { VolunteerId } from '../../domain/entities/volunteer';
+import type { VolunteerNotificationId } from '../../domain/entities/volunteer-notification';
+import { mapVolunteerNotification } from '../mappers/volunteer-notification.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
-import { mapVolunteerNotification } from './volunteer-notification.mapper';
 
 export class DrizzleVolunteerNotificationRepository
   implements VolunteerNotificationRepository

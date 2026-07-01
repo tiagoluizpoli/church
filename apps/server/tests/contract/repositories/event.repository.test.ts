@@ -1,4 +1,11 @@
 import { NotFoundError } from '@church/core';
+import { runEventRepositoryContractTests } from '../../../src/application/contracts/contract-tests/event.contract-spec';
+import type {
+  CreateEventInput,
+  EventRepository,
+  UpdateEventInput,
+  UpdateEventStatusInput,
+} from '../../../src/application/contracts/event.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import {
   Event,
@@ -16,13 +23,6 @@ import {
   TimeSlot,
   type TimeSlotId,
 } from '../../../src/domain/entities/time-slot';
-import { runEventRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/event.contract-spec';
-import type {
-  CreateEventInput,
-  EventRepository,
-  UpdateEventInput,
-  UpdateEventStatusInput,
-} from '../../../src/domain/repositories/event.repository';
 
 class MockEventRepository implements EventRepository {
   private events = new Map<string, Event>();

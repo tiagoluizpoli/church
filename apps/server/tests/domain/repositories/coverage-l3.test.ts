@@ -1,5 +1,10 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { describe, expect, it } from 'vitest';
+import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
+import type { AssignmentAuditRepository } from '../../../src/application/contracts/assignment-audit.repository';
+import type { EventRepository } from '../../../src/application/contracts/event.repository';
+import type { TimeSlotRepository } from '../../../src/application/contracts/time-slot.repository';
+import type { VolunteerRepository } from '../../../src/application/contracts/volunteer.repository';
 import { AssignmentManagerService } from '../../../src/domain/assignment/assignment-manager-service';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import { Assignment } from '../../../src/domain/entities/assignment';
@@ -11,11 +16,6 @@ import type { RoleId } from '../../../src/domain/entities/role';
 import type { TimeSlotId } from '../../../src/domain/entities/time-slot';
 import { TimeSlot } from '../../../src/domain/entities/time-slot';
 import { Volunteer } from '../../../src/domain/entities/volunteer';
-import type { AssignmentRepository } from '../../../src/domain/repositories/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/domain/repositories/assignment-audit.repository';
-import type { EventRepository } from '../../../src/domain/repositories/event.repository';
-import type { TimeSlotRepository } from '../../../src/domain/repositories/time-slot.repository';
-import type { VolunteerRepository } from '../../../src/domain/repositories/volunteer.repository';
 
 describe('Coverage L3: Assignment Manager Service Data Access', () => {
   it('should verify all required L3 data operations are covered by repository interfaces', async () => {

@@ -2,18 +2,18 @@ import { NotFoundError } from '@church/core';
 import { availability } from '@church/db';
 import { and, between, eq, inArray } from 'drizzle-orm';
 import type {
+  AvailabilityRepository,
+  CreateAvailabilityInput,
+  UpdateAvailabilityInput,
+} from '../../application/contracts/availability.repository';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type {
   Availability,
   AvailabilityId,
 } from '../../domain/entities/availability';
 import type { ChurchId } from '../../domain/entities/church';
 import type { VolunteerId } from '../../domain/entities/volunteer';
-import type {
-  AvailabilityRepository,
-  CreateAvailabilityInput,
-  UpdateAvailabilityInput,
-} from '../../domain/repositories/availability.repository';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
-import { mapAvailability } from './availability.mapper';
+import { mapAvailability } from '../mappers/availability.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

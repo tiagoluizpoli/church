@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
 import { DrizzleTransactionContext } from './drizzle-transaction-context';
 import type { AnyDrizzleDb } from './types';
 

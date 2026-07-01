@@ -1,6 +1,13 @@
 import { NotFoundError } from '@church/core';
 import { event, slotRequirement, timeSlot } from '@church/db';
 import { and, asc, eq } from 'drizzle-orm';
+import type {
+  CreateEventInput,
+  EventRepository,
+  UpdateEventInput,
+  UpdateEventStatusInput,
+} from '../../application/contracts/event.repository';
+import type { TransactionContext } from '../../application/contracts/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type {
   Event,
@@ -9,16 +16,9 @@ import type {
   EventWithSlots,
 } from '../../domain/entities/event';
 import type { MinistryId } from '../../domain/entities/ministry';
-import type {
-  CreateEventInput,
-  EventRepository,
-  UpdateEventInput,
-  UpdateEventStatusInput,
-} from '../../domain/repositories/event.repository';
-import type { TransactionContext } from '../../domain/repositories/transaction-context';
-import { mapEvent } from './event.mapper';
+import { mapEvent } from '../mappers/event.mapper';
+import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { mapSlotRequirement, mapTimeSlot } from './slot.mapper';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleEventRepository implements EventRepository {

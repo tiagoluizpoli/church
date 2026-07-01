@@ -1,4 +1,12 @@
 import { NotFoundError } from '@church/core';
+import { runTimeSlotRepositoryContractTests } from '../../../src/application/contracts/contract-tests/time-slot.contract-spec';
+import type {
+  BulkCreateTimeSlotsInput,
+  CreateTimeSlotInput,
+  TimeSlotRepository,
+  UpdateTimeSlotInput,
+  UpsertSlotRequirementInput,
+} from '../../../src/application/contracts/time-slot.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { EventId } from '../../../src/domain/entities/event';
 import type { RoleId } from '../../../src/domain/entities/role';
@@ -10,14 +18,6 @@ import {
   TimeSlot,
   type TimeSlotId,
 } from '../../../src/domain/entities/time-slot';
-import { runTimeSlotRepositoryContractTests } from '../../../src/domain/repositories/contract-tests/time-slot.contract-spec';
-import type {
-  BulkCreateTimeSlotsInput,
-  CreateTimeSlotInput,
-  TimeSlotRepository,
-  UpdateTimeSlotInput,
-  UpsertSlotRequirementInput,
-} from '../../../src/domain/repositories/time-slot.repository';
 
 class MockTimeSlotRepository implements TimeSlotRepository {
   private slots = new Map<string, TimeSlot>();

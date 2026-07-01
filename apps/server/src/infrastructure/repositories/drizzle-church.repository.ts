@@ -1,13 +1,13 @@
 import { NotFoundError } from '@church/core';
 import { church } from '@church/db';
 import { eq } from 'drizzle-orm';
+import type { ChurchRepository } from '../../application/contracts/church.repository';
 import type {
   Church,
   ChurchId,
   ChurchSlug,
 } from '../../domain/entities/church';
-import type { ChurchRepository } from '../../domain/repositories/church.repository';
-import { mapChurch } from './church.mapper';
+import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

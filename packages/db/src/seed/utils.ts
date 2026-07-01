@@ -20,6 +20,7 @@ export async function truncateAllTables() {
   `;
 
   const tables = (await db.execute(query)) as unknown as {
+    // biome-ignore lint/style/useNamingConvention: table_name is a raw DB column name
     rows: { table_name: string }[];
   };
 

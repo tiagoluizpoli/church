@@ -23,6 +23,7 @@ const STATUS_RANK: Record<AvailabilityStatus, number> = {
   available: 0,
   partial: 1,
   unavailable: 2,
+  // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
   no_response: 3,
 };
 

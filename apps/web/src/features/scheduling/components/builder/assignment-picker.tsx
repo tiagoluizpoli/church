@@ -22,6 +22,7 @@ const STATUS_RANK: Record<AvailabilityStatus, number> = {
   available: 0,
   partial: 1,
   unavailable: 2,
+  // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
   no_response: 3,
 };
 
@@ -29,6 +30,7 @@ const STATUS_STYLE: Record<AvailabilityStatus, string> = {
   available: 'bg-green-700 text-white',
   partial: 'bg-yellow-500 text-black',
   unavailable: 'bg-red-600 text-white',
+  // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
   no_response: 'bg-gray-600 text-white',
 };
 

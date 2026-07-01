@@ -1,3 +1,4 @@
+// biome-ignore lint/style/useNamingConvention: __brand is a TypeScript nominal typing pattern
 declare const __brand: unique symbol;
 export type BrandedId<Brand extends string> = string & {
   readonly [__brand]: Brand;

@@ -79,6 +79,7 @@ describe('Entity Base Class', () => {
 
     it('returns false when comparing with a non-entity object', () => {
       const e1 = new MockEntity({ name: 'Test', count: 1 }, id);
+      // biome-ignore lint/style/useNamingConvention: _id mirrors Entity private field for test
       const notAnEntity = { _id: id } as unknown as Entity<MockProps>;
       expect(e1.equals(notAnEntity)).toBe(false);
     });

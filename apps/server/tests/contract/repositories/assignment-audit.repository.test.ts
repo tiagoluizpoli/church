@@ -1,11 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 
+import { runAssignmentAuditRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment-audit.contract-spec';
 import type {
   AssignmentAuditLogEntry,
   AssignmentAuditRepository,
   CreateAssignmentAuditInput,
-} from '../../../src/domain/contracts/assignment-audit.repository';
-import { runAssignmentAuditRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment-audit.contract-spec';
+} from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import { AssignmentAudit } from '../../../src/domain/entities/assignment-audit';
 import type { ChurchId } from '../../../src/domain/entities/church';

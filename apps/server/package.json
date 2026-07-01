@@ -45,6 +45,7 @@
   "devDependencies": {
     "@church/config": "workspace:*",
     "@types/bun": "catalog:",
+    "@vitest/coverage-v8": "3.2.4",
     "tsdown": "^0.16.5",
     "typescript": "^5",
     "vitest": "catalog:"

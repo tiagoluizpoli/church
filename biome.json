@@ -45,6 +45,7 @@
       "!!**/.output",
       "!!**/.vercel",
       "!!**/playwright-report",
+      "!!**/coverage",
       "!!**/test-results",
       "!!**/tmp",
       "!!**/packages/db/src/migrations",

@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { runMinistryRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/ministry.contract-spec';
-import type { MinistryRepository } from '../../../src/domain/contracts/ministry.repository';
+import type { MinistryRepository } from '../../../src/domain/contracts/infrastructure/ministry.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import {
   Ministry,

@@ -18,6 +18,7 @@ import { DrizzleAvailabilityRepository } from '../../src/infrastructure/reposito
 import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
+import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import { LocalNotificationService } from '../../src/infrastructure/services/local-notification-service';
 
 const CHURCH = '11111111-1111-1111-1111-111111111111' as ChurchId;
@@ -81,7 +82,8 @@ function makeManager() {
   const assignmentRepo = new DrizzleAssignmentRepository(db);
   const availabilityRepo = new DrizzleAvailabilityRepository(db);
   const volunteerRepo = new DrizzleVolunteerRepository(db);
-  const notificationService = new LocalNotificationService(db);
+  const notificationRepo = new DrizzleVolunteerNotificationRepository(db);
+  const notificationService = new LocalNotificationService(notificationRepo);
   return new DbEventManager(
     eventRepo,
     slotRepo,

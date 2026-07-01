@@ -9,10 +9,6 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     CORS_ORIGIN: z.url(),
-    VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((value) => value === 'true'),
     UNLEASH_API_URL: z.url(),
     UNLEASH_API_TOKEN: z.string(),
     NODE_ENV: z

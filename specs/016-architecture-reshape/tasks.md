@@ -236,9 +236,9 @@
 
 **Independent Test**: Remove the `end <= start` branch test from `DateRange` → `bun run test --coverage` fails with threshold violation before commit.
 
-- [ ] T089 [US5] Update `apps/server/vitest.config.ts` — add `coverage: { provider: 'v8', thresholds: { 'src/domain': { branches: 100 }, 'src/application': { lines: 80 } } }`
-- [ ] T090 [US5] Run `bun run test --coverage` in `apps/server/` — inspect report; write missing domain branch tests (VOs, error code paths) until `domain/` hits 100% branch; write missing application tests until `application/` hits 80% line
-- [ ] T091 [US5] Add coverage gate to `.github/workflows/ci.yml` fast gate — `turbo test --coverage` step; fails PR if thresholds not met (depends on T089, T082)
+- [x] T089 [US5] Update `apps/server/vitest.config.ts` — add `coverage: { provider: 'v8', thresholds: { 'src/domain': { branches: 100 }, 'src/application': { lines: 80 } } }`
+- [x] T090 [US5] Run `bun run test --coverage` in `apps/server/` — inspect report; write missing domain branch tests (VOs, error code paths) until `domain/` hits 100% branch; write missing application tests until `application/` hits 80% line
+- [x] T091 [US5] Add coverage gate to `.github/workflows/ci.yml` fast gate — `turbo test --coverage` step; fails PR if thresholds not met (depends on T089, T082)
 
 **US5 Checkpoint**: Coverage gate passes. Removing a domain test causes CI to fail.
 
@@ -246,9 +246,9 @@
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T092 [P] Migrate `VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE` env var to Unleash toggle: remove from `packages/env/src/server.ts`, replace all usages with `IFeatureFlagService.isEnabled('volunteer-dashboard-allow-overlap-save')` in DbVolunteerManager (FR-025)
-- [ ] T093 [P] Document `volunteer-dashboard-allow-overlap-save` Unleash feature flag in docker-compose setup — add init script or README note so toggle exists with `false` default on first Unleash start
-- [ ] T094 Final full verification: `turbo check-types && turbo lint && turbo test --coverage` all pass; `grep -r '@trpc/server' .` and `grep -r '@trpc/client' .` return nothing; all 31 HTTP endpoints respond with correct status codes; CI green on a push
+- [x] T092 [P] Migrate `VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE` env var to Unleash toggle: remove from `packages/env/src/server.ts`, replace all usages with `IFeatureFlagService.isEnabled('volunteer-dashboard-allow-overlap-save')` in DbVolunteerManager (FR-025)
+- [x] T093 [P] Document `volunteer-dashboard-allow-overlap-save` Unleash feature flag in docker-compose setup — add init script or README note so toggle exists with `false` default on first Unleash start
+- [x] T094 Final full verification: `turbo check-types && turbo lint && turbo test --coverage` all pass; `grep -r '@trpc/server' .` and `grep -r '@trpc/client' .` return nothing; all 31 HTTP endpoints respond with correct status codes; CI green on a push
 
 ---
 

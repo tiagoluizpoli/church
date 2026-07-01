@@ -4,7 +4,7 @@ import type {
   VolunteerNotificationListInput,
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
-} from '../../../src/domain/contracts/volunteer-notification.repository';
+} from '../../../src/domain/contracts/infrastructure/volunteer-notification.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { EventId } from '../../../src/domain/entities/event';

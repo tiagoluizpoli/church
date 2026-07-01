@@ -1,11 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for type tests
 import { describe, it } from 'vitest';
-import type { AssignmentRepository } from '../../../src/domain/contracts/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/domain/contracts/assignment-audit.repository';
-import type { AvailabilityRepository } from '../../../src/domain/contracts/availability.repository';
-import type { EventRepository } from '../../../src/domain/contracts/event.repository';
-import type { TimeSlotRepository } from '../../../src/domain/contracts/time-slot.repository';
-import type { TransactionContext } from '../../../src/domain/contracts/transaction-context';
+import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
+import type { AvailabilityRepository } from '../../../src/domain/contracts/infrastructure/availability.repository';
+import type { EventRepository } from '../../../src/domain/contracts/infrastructure/event.repository';
+import type { TimeSlotRepository } from '../../../src/domain/contracts/infrastructure/time-slot.repository';
+import type { TransactionContext } from '../../../src/domain/contracts/infrastructure/transaction-context';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { AvailabilityId } from '../../../src/domain/entities/availability';
 import type { ChurchId } from '../../../src/domain/entities/church';

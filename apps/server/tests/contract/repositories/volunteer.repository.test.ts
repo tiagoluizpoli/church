@@ -3,7 +3,7 @@ import { runVolunteerRepositoryContractTests } from '../../../src/domain/contrac
 import type {
   MinistryMembership,
   VolunteerRepository,
-} from '../../../src/domain/contracts/volunteer.repository';
+} from '../../../src/domain/contracts/infrastructure/volunteer.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { MinistryId } from '../../../src/domain/entities/ministry';
 import type { RoleId } from '../../../src/domain/entities/role';

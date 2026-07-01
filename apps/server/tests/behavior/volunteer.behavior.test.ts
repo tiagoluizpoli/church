@@ -20,6 +20,7 @@ import type { VolunteerId } from '../../src/domain/entities/volunteer';
 import type { VolunteerNotificationId } from '../../src/domain/entities/volunteer-notification';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
+import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
 
 const CHURCH = '11111111-1111-1111-1111-111111111111' as ChurchId;
@@ -126,10 +127,12 @@ afterAll(async () => {
 });
 
 function makeManager() {
+  const volunteerRepo = new DrizzleVolunteerRepository(db);
   const assignmentRepo = new DrizzleAssignmentRepository(db);
   const availabilityRepo = new DrizzleAvailabilityRepository(db);
   const notificationRepo = new DrizzleVolunteerNotificationRepository(db);
   return new DbVolunteerManager(
+    volunteerRepo,
     assignmentRepo,
     availabilityRepo,
     notificationRepo,

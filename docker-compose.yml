@@ -34,6 +34,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # Feature flags managed in Unleash UI at http://localhost:4242
+  # Required toggles (create via UI on first start, default: disabled):
+  #   - volunteer-dashboard-allow-overlap-save  (allows volunteers to save overlapping availability)
   unleash:
     image: unleashorg/unleash-server:latest
     container_name: church-unleash

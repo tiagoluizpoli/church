@@ -5,7 +5,7 @@ import type {
   EventRepository,
   UpdateEventInput,
   UpdateEventStatusInput,
-} from '../../../src/domain/contracts/event.repository';
+} from '../../../src/domain/contracts/infrastructure/event.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import {
   Event,

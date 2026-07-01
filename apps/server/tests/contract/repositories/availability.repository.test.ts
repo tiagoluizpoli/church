@@ -1,11 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { NotFoundError } from '@church/core';
+import { runAvailabilityRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/availability.contract-spec';
 import type {
   AvailabilityRepository,
   CreateAvailabilityInput,
   UpdateAvailabilityInput,
-} from '../../../src/domain/contracts/availability.repository';
-import { runAvailabilityRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/availability.contract-spec';
+} from '../../../src/domain/contracts/infrastructure/availability.repository';
 import {
   Availability,
   type AvailabilityId,

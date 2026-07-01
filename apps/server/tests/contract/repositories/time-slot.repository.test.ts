@@ -6,7 +6,7 @@ import type {
   TimeSlotRepository,
   UpdateTimeSlotInput,
   UpsertSlotRequirementInput,
-} from '../../../src/domain/contracts/time-slot.repository';
+} from '../../../src/domain/contracts/infrastructure/time-slot.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { EventId } from '../../../src/domain/entities/event';
 import type { RoleId } from '../../../src/domain/entities/role';

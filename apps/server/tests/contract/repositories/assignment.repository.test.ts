@@ -1,11 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { NotFoundError } from '@church/core';
+import { runAssignmentRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment.contract-spec';
 import type {
   AssignmentRepository,
   CreateAssignmentInput,
   UpdateAssignmentStatusInput,
-} from '../../../src/domain/contracts/assignment.repository';
-import { runAssignmentRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment.contract-spec';
+} from '../../../src/domain/contracts/infrastructure/assignment.repository';
 import {
   Assignment,
   type AssignmentId,

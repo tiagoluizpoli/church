@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
-import type { ChurchRepository } from '../../../src/domain/contracts/church.repository';
 import { runChurchRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/church.contract-spec';
+import type { ChurchRepository } from '../../../src/domain/contracts/infrastructure/church.repository';
 import {
   Church,
   type ChurchId,

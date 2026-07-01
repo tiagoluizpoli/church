@@ -1,14 +1,14 @@
 // biome-ignore-all format: preserve single-line calls for ts-expect-error targeting
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for type tests
 import { describe, it } from 'vitest';
-import type { AssignmentRepository } from '../../../src/domain/contracts/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/domain/contracts/assignment-audit.repository';
-import type { AvailabilityRepository } from '../../../src/domain/contracts/availability.repository';
-import type { EventRepository } from '../../../src/domain/contracts/event.repository';
-import type { MinistryRepository } from '../../../src/domain/contracts/ministry.repository';
-import type { RoleRepository } from '../../../src/domain/contracts/role.repository';
-import type { TimeSlotRepository } from '../../../src/domain/contracts/time-slot.repository';
-import type { VolunteerRepository } from '../../../src/domain/contracts/volunteer.repository';
+import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
+import type { AvailabilityRepository } from '../../../src/domain/contracts/infrastructure/availability.repository';
+import type { EventRepository } from '../../../src/domain/contracts/infrastructure/event.repository';
+import type { MinistryRepository } from '../../../src/domain/contracts/infrastructure/ministry.repository';
+import type { RoleRepository } from '../../../src/domain/contracts/infrastructure/role.repository';
+import type { TimeSlotRepository } from '../../../src/domain/contracts/infrastructure/time-slot.repository';
+import type { VolunteerRepository } from '../../../src/domain/contracts/infrastructure/volunteer.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { AvailabilityId } from '../../../src/domain/entities/availability';
 import type { EventId } from '../../../src/domain/entities/event';

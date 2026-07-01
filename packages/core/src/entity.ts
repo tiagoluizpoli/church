@@ -17,7 +17,7 @@ export abstract class Entity<T, Id extends string = string> {
     this._updatedAt = updatedAt ?? this._createdAt;
   }
 
-  get id(): ID {
+  get id(): Id {
     return this._id;
   }
 

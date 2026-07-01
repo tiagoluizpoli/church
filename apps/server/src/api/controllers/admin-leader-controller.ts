@@ -5,11 +5,13 @@ import type { VolunteerRepository } from '../../application/contracts/volunteer.
 import type { IAssignmentManager } from '../../domain/contracts/assignment-manager';
 import type { IEventManager } from '../../domain/contracts/event-manager';
 import type { IMinistryManager } from '../../domain/contracts/ministry-manager';
+import type { IRoleManager } from '../../domain/contracts/role-manager';
 import type { AssignmentId } from '../../domain/entities/assignment';
 import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { RoleId } from '../../domain/entities/role';
+import type { RoleTemplateId } from '../../domain/entities/role-template';
 import type { TeamId } from '../../domain/entities/team';
 import type { TimeSlotId } from '../../domain/entities/time-slot';
 import type { UserId, VolunteerId } from '../../domain/entities/volunteer';
@@ -34,6 +36,12 @@ import {
   ministryMapper,
 } from '../dtos/ministry.dto';
 import {
+  roleTemplateListResponseSchema,
+  roleTemplateMapper,
+  roleTemplateResponseSchema,
+  upsertRoleTemplateBodySchema,
+} from '../dtos/role.dto';
+import {
   createSlotBodySchema,
   generateSlotsBodySchema,
   slotRequirementBodySchema,
@@ -55,6 +63,8 @@ export class AdminLeaderController implements FastifyController {
     private readonly eventManager: IEventManager,
     @inject('IAssignmentManager')
     private readonly assignmentManager: IAssignmentManager,
+    @inject('IRoleManager')
+    private readonly roleManager: IRoleManager,
     @inject('IVolunteerRepository')
     private readonly volunteerRepo: VolunteerRepository,
   ) {}
@@ -419,5 +429,57 @@ export class AdminLeaderController implements FastifyController {
         return reply.send(assignmentMapper.auditListToResponse(items));
       },
     );
+
+    // Role template routes
+    app.get(
+      '/role-templates',
+      { schema: { response: { 200: roleTemplateListResponseSchema } } },
+      async (request, reply) => {
+        const { ministryId } = request.query as { ministryId: string };
+        const templates = await this.roleManager.listTemplates({
+          churchId: request.churchId as ChurchId,
+          ministryId: ministryId as MinistryId,
+        });
+        return reply.send(roleTemplateMapper.listToResponse(templates));
+      },
+    );
+
+    app.put(
+      '/role-templates/:templateId',
+      {
+        schema: {
+          body: upsertRoleTemplateBodySchema,
+          response: { 200: roleTemplateResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { templateId } = request.params as { templateId: string };
+        const body = request.body as {
+          ministryId: string;
+          name: string;
+          items: Array<{ roleId: string; requiredCount: number }>;
+        };
+        const template = await this.roleManager.upsertTemplate({
+          churchId: request.churchId as ChurchId,
+          ministryId: body.ministryId as MinistryId,
+          templateId: templateId as RoleTemplateId,
+          name: body.name,
+          items: body.items.map((i) => ({
+            roleId: i.roleId as RoleId,
+            requiredCount: i.requiredCount,
+          })),
+        });
+        return reply.send(roleTemplateMapper.toResponse(template));
+      },
+    );
+
+    app.delete('/role-templates/:templateId', {}, async (request, reply) => {
+      const { templateId } = request.params as { templateId: string };
+      await this.roleManager.deleteTemplate({
+        templateId,
+        churchId: request.churchId as ChurchId,
+      });
+      return reply.status(204).send();
+    });
   }
 }

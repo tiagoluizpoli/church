@@ -6,6 +6,7 @@ import { VolunteerController } from '../../api/controllers/volunteer-controller'
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbEventManager } from '../../application/db-event-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
+import { DbRoleManager } from '../../application/db-role-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
 import {
   DrizzleAssignmentAuditRepository,
@@ -82,6 +83,9 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.ministryManager, {
     useClass: DbMinistryManager,
+  });
+  container.register(injection.managers.roleManager, {
+    useClass: DbRoleManager,
   });
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,

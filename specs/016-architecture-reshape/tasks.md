@@ -140,14 +140,14 @@
 
 ### Batch 5 — Assignment
 
-- [ ] T058 [P] [US1] Write behavior tests in `apps/server/tests/behavior/assignment.behavior.test.ts` — seed DB, verify: `createAssignment`, `deleteAssignment`, `listAuditLog`; verify `HARD_CONSTRAINT_VIOLATION` thrown when assigning conflicting volunteer
-- [ ] T059 [US1] Create `apps/server/src/domain/contracts/assignment-manager.ts` — `IAssignmentManager` interface: `createAssignment`, `deleteAssignment`, `listAuditLog` per data-model.md (depends on T008)
-- [ ] T060 [US1] Create `apps/server/src/application/db-assignment-manager.ts` — `DbAssignmentManager implements IAssignmentManager`, `@injectable()`, inject `IAssignmentRepository`, `IAssignmentAuditRepository`, `IUnitOfWork`; use domain assignment + conflict validation services (depends on T059)
-- [ ] T061 [P] [US1] Create `apps/server/src/api/dtos/assignment.dto.ts` — Zod schemas for `createAssignmentBody`, `assignmentResponse`, `assignmentAuditResponse` + mappers (depends on T008)
-- [ ] T062 [US1] Extend `apps/server/src/api/controllers/admin-leader-controller.ts` — add: `POST /admin/assignments` (201), `DELETE /admin/assignments/:assignmentId` (204), `GET /admin/assignments/:assignmentId/audit` (200); delegate to `IAssignmentManager` (depends on T059, T061)
-- [ ] T063 [US1] Update `apps/server/src/main/di/injections.ts` — register `IAssignmentRepository`, `IAssignmentAuditRepository`, `IAssignmentManager` → `DbAssignmentManager` (depends on T060)
-- [ ] T064 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-assignments.http.test.ts` — verify `201` POST, `204` DELETE, `200` GET audit; verify `409` with `{ error: 'HARD_CONSTRAINT_VIOLATION' }` on conflict
-- [ ] T065 [US1] Verify Batch 5: `bun test` passes all assignment behavior + HTTP tests
+- [x] T058 [P] [US1] Write behavior tests in `apps/server/tests/behavior/assignment.behavior.test.ts` — seed DB, verify: `createAssignment`, `deleteAssignment`, `listAuditLog`; verify `HARD_CONSTRAINT_VIOLATION` thrown when assigning conflicting volunteer
+- [x] T059 [US1] Create `apps/server/src/domain/contracts/assignment-manager.ts` — `IAssignmentManager` interface: `createAssignment`, `deleteAssignment`, `listAuditLog` per data-model.md (depends on T008)
+- [x] T060 [US1] Create `apps/server/src/application/db-assignment-manager.ts` — `DbAssignmentManager implements IAssignmentManager`, `@injectable()`, inject `IAssignmentRepository`, `IAssignmentAuditRepository`, `IUnitOfWork`; use domain assignment + conflict validation services (depends on T059)
+- [x] T061 [P] [US1] Create `apps/server/src/api/dtos/assignment.dto.ts` — Zod schemas for `createAssignmentBody`, `assignmentResponse`, `assignmentAuditResponse` + mappers (depends on T008)
+- [x] T062 [US1] Extend `apps/server/src/api/controllers/admin-leader-controller.ts` — add: `POST /admin/assignments` (201), `DELETE /admin/assignments/:assignmentId` (204), `GET /admin/assignments/:assignmentId/audit` (200); delegate to `IAssignmentManager` (depends on T059, T061)
+- [x] T063 [US1] Update `apps/server/src/main/di/injections.ts` — register `IAssignmentRepository`, `IAssignmentAuditRepository`, `IAssignmentManager` → `DbAssignmentManager` (depends on T060)
+- [x] T064 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-assignments.http.test.ts` — verify `201` POST, `204` DELETE, `200` GET audit; verify `409` with `{ error: 'HARD_CONSTRAINT_VIOLATION' }` on conflict
+- [x] T065 [US1] Verify Batch 5: `bun test` passes all assignment behavior + HTTP tests
 
 **Batch 5 Checkpoint**: All 3 admin assignment endpoints functional.
 

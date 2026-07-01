@@ -1,0 +1,55 @@
+import 'reflect-metadata';
+import { inject, injectable } from 'tsyringe';
+import type {
+  CreateAssignmentInput,
+  IAssignmentManager,
+} from '../domain/contracts/assignment-manager';
+import type { Assignment, AssignmentId } from '../domain/entities/assignment';
+import type { AssignmentAudit } from '../domain/entities/assignment-audit';
+import type { ChurchId } from '../domain/entities/church';
+import type { UserId } from '../domain/entities/volunteer';
+import type { AssignmentRepository } from './contracts/assignment.repository';
+import type { AssignmentAuditRepository } from './contracts/assignment-audit.repository';
+
+@injectable()
+export class DbAssignmentManager implements IAssignmentManager {
+  constructor(
+    @inject('IAssignmentRepository')
+    private readonly assignmentRepo: AssignmentRepository,
+    @inject('IAssignmentAuditRepository')
+    private readonly auditRepo: AssignmentAuditRepository,
+  ) {}
+
+  async createAssignment(input: CreateAssignmentInput): Promise<Assignment> {
+    const { churchId, slotId, volunteerId, roleId, actorId, reason } = input;
+    const assignment = await this.assignmentRepo.create(churchId, {
+      slotId,
+      volunteerId,
+      roleId,
+      status: 'pending',
+      reason,
+      assignedBy: actorId,
+    });
+    await this.auditRepo.create(churchId, {
+      assignmentId: assignment.id,
+      actorId: actorId as UserId,
+      action: 'created',
+      reason,
+    });
+    return assignment;
+  }
+
+  async deleteAssignment(input: {
+    assignmentId: AssignmentId;
+    churchId: ChurchId;
+  }): Promise<void> {
+    await this.assignmentRepo.deleteById(input.churchId, input.assignmentId);
+  }
+
+  async listAuditLog(input: {
+    assignmentId: AssignmentId;
+    churchId: ChurchId;
+  }): Promise<AssignmentAudit[]> {
+    return this.auditRepo.listByAssignment(input.churchId, input.assignmentId);
+  }
+}

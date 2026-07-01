@@ -2,8 +2,10 @@ import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
 import type { VolunteerRepository } from '../../application/contracts/volunteer.repository';
+import type { IAssignmentManager } from '../../domain/contracts/assignment-manager';
 import type { IEventManager } from '../../domain/contracts/event-manager';
 import type { IMinistryManager } from '../../domain/contracts/ministry-manager';
+import type { AssignmentId } from '../../domain/entities/assignment';
 import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
 import type { MinistryId } from '../../domain/entities/ministry';
@@ -13,6 +15,12 @@ import type { TimeSlotId } from '../../domain/entities/time-slot';
 import type { UserId, VolunteerId } from '../../domain/entities/volunteer';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  assignmentMapper,
+  assignmentResponseSchema,
+  auditListResponseSchema,
+  createAssignmentBodySchema,
+} from '../dtos/assignment.dto';
 import {
   createEventBodySchema,
   eventListResponseSchema,
@@ -45,6 +53,8 @@ export class AdminLeaderController implements FastifyController {
     private readonly ministryManager: IMinistryManager,
     @inject('IEventManager')
     private readonly eventManager: IEventManager,
+    @inject('IAssignmentManager')
+    private readonly assignmentManager: IAssignmentManager,
     @inject('IVolunteerRepository')
     private readonly volunteerRepo: VolunteerRepository,
   ) {}
@@ -355,6 +365,58 @@ export class AdminLeaderController implements FastifyController {
           notes: body.notes,
         });
         return reply.send(timeSlotMapper.requirementToResponse(req));
+      },
+    );
+
+    // Assignment routes
+    app.post(
+      '/assignments',
+      {
+        schema: {
+          body: createAssignmentBodySchema,
+          response: { 201: assignmentResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const body = request.body as {
+          slotId: string;
+          volunteerId: string;
+          roleId: string;
+          reason?: string;
+        };
+        const result = await this.assignmentManager.createAssignment({
+          churchId: request.churchId as ChurchId,
+          slotId:
+            body.slotId as import('../../domain/entities/time-slot').TimeSlotId,
+          volunteerId:
+            body.volunteerId as import('../../domain/entities/volunteer').VolunteerId,
+          roleId: body.roleId as RoleId,
+          actorId: request.volunteerId as UserId,
+          reason: body.reason,
+        });
+        return reply.status(201).send(assignmentMapper.toResponse(result));
+      },
+    );
+
+    app.delete('/assignments/:assignmentId', {}, async (request, reply) => {
+      const { assignmentId } = request.params as { assignmentId: string };
+      await this.assignmentManager.deleteAssignment({
+        assignmentId: assignmentId as AssignmentId,
+        churchId: request.churchId as ChurchId,
+      });
+      return reply.status(204).send();
+    });
+
+    app.get(
+      '/assignments/:assignmentId/audit',
+      { schema: { response: { 200: auditListResponseSchema } } },
+      async (request, reply) => {
+        const { assignmentId } = request.params as { assignmentId: string };
+        const items = await this.assignmentManager.listAuditLog({
+          assignmentId: assignmentId as AssignmentId,
+          churchId: request.churchId as ChurchId,
+        });
+        return reply.send(assignmentMapper.auditListToResponse(items));
       },
     );
   }

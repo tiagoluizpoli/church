@@ -124,15 +124,15 @@
 
 ### Batch 4 — Event + TimeSlot
 
-- [ ] T049 [P] [US1] Write behavior tests in `apps/server/tests/behavior/event.behavior.test.ts` — seed DB, verify: `createEvent`, `listEvents`, `publishEvent`, `cancelEvent`, `createSlot`, `updateSlot`, `deleteSlot`, `generateSlots`, `upsertSlotRequirement`, `sendReminder`, `getScheduleBuilderData`; verify `INVALID_DATE_RANGE` thrown on bad date range
-- [ ] T050 [US1] Create `apps/server/src/domain/contracts/event-manager.ts` — `IEventManager` interface with all 11 methods per data-model.md (depends on T008, T009)
-- [ ] T051 [US1] Create `apps/server/src/application/db-event-manager.ts` — `DbEventManager implements IEventManager`, `@injectable()`, inject `IEventRepository`, `ITimeSlotRepository`, `IUnitOfWork`, `INotificationService`; use `DateRange.create()` for date validation; port logic from existing router procedures (depends on T050, T009)
-- [ ] T052 [P] [US1] Create `apps/server/src/api/dtos/event.dto.ts` — Zod schemas (`createEventBody`, `listEventsQuery`, `eventResponse`, `scheduleBuilderDataResponse`) + domain→DTO mappers (depends on T008)
-- [ ] T053 [P] [US1] Create `apps/server/src/api/dtos/time-slot.dto.ts` — Zod schemas for slot create/update/generate bodies + `slotRequirementBody` + `timeSlotResponse` + mappers (depends on T008)
-- [ ] T054 [US1] Extend `apps/server/src/api/controllers/admin-leader-controller.ts` — add all event + slot routes: `GET /admin/schedule-builder`, `GET/POST /admin/events`, `POST /admin/events/:id/publish|cancel|reminders|apply-template`, `POST /admin/events/:id/slots`, `PATCH /admin/events/:id/slots/:slotId`, `DELETE /admin/events/:id/slots/:slotId`, `POST /admin/events/:id/slots/generate`, `PUT /admin/events/:id/slots/:slotId/requirements`; delegate to `IEventManager` (depends on T050, T052, T053)
-- [ ] T055 [US1] Update `apps/server/src/main/di/injections.ts` — register `IEventRepository` → `DrizzleEventRepository`, `ITimeSlotRepository` → `DrizzleTimeSlotRepository`, `IEventManager` → `DbEventManager` (depends on T051)
-- [ ] T056 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-events.http.test.ts` — verify `201` POST events/slots/publish/cancel/reminders/generate/apply-template, `204` DELETE slot, `200` GET, `200` PATCH slot, `200` PUT requirement; verify `400` with body `{ error: 'INVALID_DATE_RANGE' }` on bad dates
-- [ ] T057 [US1] Verify Batch 4: `bun test` passes all event behavior + HTTP tests
+- [x] T049 [P] [US1] Write behavior tests in `apps/server/tests/behavior/event.behavior.test.ts` — seed DB, verify: `createEvent`, `listEvents`, `publishEvent`, `cancelEvent`, `createSlot`, `updateSlot`, `deleteSlot`, `generateSlots`, `upsertSlotRequirement`, `sendReminder`, `getScheduleBuilderData`; verify `INVALID_DATE_RANGE` thrown on bad date range
+- [x] T050 [US1] Create `apps/server/src/domain/contracts/event-manager.ts` — `IEventManager` interface with all 11 methods per data-model.md (depends on T008, T009)
+- [x] T051 [US1] Create `apps/server/src/application/db-event-manager.ts` — `DbEventManager implements IEventManager`, `@injectable()`, inject `IEventRepository`, `ITimeSlotRepository`, `IUnitOfWork`, `INotificationService`; use `DateRange.create()` for date validation; port logic from existing router procedures (depends on T050, T009)
+- [x] T052 [P] [US1] Create `apps/server/src/api/dtos/event.dto.ts` — Zod schemas (`createEventBody`, `listEventsQuery`, `eventResponse`, `scheduleBuilderDataResponse`) + domain→DTO mappers (depends on T008)
+- [x] T053 [P] [US1] Create `apps/server/src/api/dtos/time-slot.dto.ts` — Zod schemas for slot create/update/generate bodies + `slotRequirementBody` + `timeSlotResponse` + mappers (depends on T008)
+- [x] T054 [US1] Extend `apps/server/src/api/controllers/admin-leader-controller.ts` — add all event + slot routes: `GET /admin/schedule-builder`, `GET/POST /admin/events`, `POST /admin/events/:id/publish|cancel|reminders|apply-template`, `POST /admin/events/:id/slots`, `PATCH /admin/events/:id/slots/:slotId`, `DELETE /admin/events/:id/slots/:slotId`, `POST /admin/events/:id/slots/generate`, `PUT /admin/events/:id/slots/:slotId/requirements`; delegate to `IEventManager` (depends on T050, T052, T053)
+- [x] T055 [US1] Update `apps/server/src/main/di/injections.ts` — register `IEventRepository` → `DrizzleEventRepository`, `ITimeSlotRepository` → `DrizzleTimeSlotRepository`, `IEventManager` → `DbEventManager` (depends on T051)
+- [x] T056 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-events.http.test.ts` — verify `201` POST events/slots/publish/cancel/reminders/generate/apply-template, `204` DELETE slot, `200` GET, `200` PATCH slot, `200` PUT requirement; verify `400` with body `{ error: 'INVALID_DATE_RANGE' }` on bad dates
+- [x] T057 [US1] Verify Batch 4: `bun test` passes all event behavior + HTTP tests
 
 **Batch 4 Checkpoint**: All 12 admin event/slot endpoints functional.
 

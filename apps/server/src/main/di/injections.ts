@@ -3,6 +3,7 @@ import { db } from '@church/db';
 import { container } from 'tsyringe';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
+import { DbEventManager } from '../../application/db-event-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
 import {
@@ -72,6 +73,9 @@ export function registerInjections(): void {
   });
 
   // Managers
+  container.register(injection.managers.eventManager, {
+    useClass: DbEventManager,
+  });
   container.register(injection.managers.ministryManager, {
     useClass: DbMinistryManager,
   });

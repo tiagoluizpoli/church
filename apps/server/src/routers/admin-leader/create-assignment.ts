@@ -197,11 +197,15 @@ export const createAssignment = protectedProcedure
     }
 
     // 8. Fetch blockouts and existing assignments for availability check
-    const blockouts = await repositories.availability.listByVolunteerInRange(
-      authCtx.churchId as ChurchId,
-      input.volunteerId as VolunteerId,
-      event.startDate,
-      event.endDate,
+    const availabilityEntries =
+      await repositories.availability.listByVolunteerInRange(
+        authCtx.churchId as ChurchId,
+        input.volunteerId as VolunteerId,
+        event.startDate,
+        event.endDate,
+      );
+    const blockouts = availabilityEntries.filter(
+      (entry) => entry.type === 'unavailable',
     );
 
     // Resolve slot times for existing assignments (in-memory join)

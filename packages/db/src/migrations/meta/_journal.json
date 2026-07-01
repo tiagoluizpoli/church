@@ -43,6 +43,13 @@
       "when": 1782099609955,
       "tag": "0005_rename_assignment_audit_actor",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782748119191,
+      "tag": "0006_sharp_spectrum",
+      "breakpoints": true
     }
   ]
 }

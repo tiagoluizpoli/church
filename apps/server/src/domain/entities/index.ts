@@ -11,3 +11,4 @@ export * from './slot-requirement';
 export * from './team';
 export * from './time-slot';
 export * from './volunteer';
+export * from './volunteer-notification';

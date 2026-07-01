@@ -9,6 +9,7 @@ import {
 import { Input } from '@church/ui/components/input';
 import { Label } from '@church/ui/components/label';
 import { useEffect, useState } from 'react';
+import { isValidTimeValue, TimeSegmentInput } from './time-segment-input';
 
 export interface SlotEditValues {
   startTime: string; // ISO UTC
@@ -34,8 +35,14 @@ function toLocalInput(iso?: string): string {
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 16);
 }
 
-function fromLocalInput(local: string): string {
-  return new Date(local).toISOString();
+function toLocalTimeInput(iso?: string): string {
+  return toLocalInput(iso).slice(11, 16);
+}
+
+function fromLocalTimeInput(baseIso: string | undefined, time: string): string {
+  if (!baseIso || !isValidTimeValue(time)) return '';
+  const localDate = toLocalInput(baseIso).slice(0, 10);
+  return new Date(`${localDate}T${time}`).toISOString();
 }
 
 export function SlotEditModal({
@@ -54,14 +61,16 @@ export function SlotEditModal({
 
   useEffect(() => {
     if (open) {
-      setStart(toLocalInput(initial?.startTime));
-      setEnd(toLocalInput(initial?.endTime));
+      setStart(toLocalTimeInput(initial?.startTime));
+      setEnd(toLocalTimeInput(initial?.endTime));
       setLabel(initial?.label ?? '');
     }
   }, [open, initial]);
 
   const isDayBased = eventType === 'day_based';
-  const canSave = isDayBased ? true : Boolean(start && end);
+  const canSave = isDayBased
+    ? true
+    : isValidTimeValue(start) && isValidTimeValue(end);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -75,24 +84,16 @@ export function SlotEditModal({
         <div className="space-y-3">
           {!isDayBased && (
             <>
-              <div className="space-y-1">
-                <Label htmlFor="slot-start">Start time</Label>
-                <Input
-                  id="slot-start"
-                  type="datetime-local"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="slot-end">End time</Label>
-                <Input
-                  id="slot-end"
-                  type="datetime-local"
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                />
-              </div>
+              <TimeSegmentInput
+                label="Start time"
+                value={start}
+                onChange={setStart}
+              />
+              <TimeSegmentInput
+                label="End time"
+                value={end}
+                onChange={setEnd}
+              />
             </>
           )}
           <div className="space-y-1">
@@ -125,10 +126,8 @@ export function SlotEditModal({
             disabled={!canSave || isPending}
             onClick={() =>
               onSave({
-                startTime: start
-                  ? fromLocalInput(start)
-                  : (initial?.startTime ?? ''),
-                endTime: end ? fromLocalInput(end) : (initial?.endTime ?? ''),
+                startTime: fromLocalTimeInput(initial?.startTime, start),
+                endTime: fromLocalTimeInput(initial?.endTime, end),
                 label: label || undefined,
               })
             }

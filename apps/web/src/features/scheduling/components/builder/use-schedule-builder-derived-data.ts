@@ -36,8 +36,14 @@ export function useScheduleBuilderDerivedData({
         volunteerName: item.volunteerName,
         status: mapAvailabilityStatus(item.status),
         conflictReason: item.conflictReason ?? undefined,
+        workloadCount: builderData.assignments.filter(
+          (assignment) =>
+            assignment.volunteerId === item.volunteerId &&
+            assignment.status !== 'cancelled' &&
+            assignment.status !== 'declined',
+        ).length,
       })),
-    [builderData.volunteerAvailability],
+    [builderData.assignments, builderData.volunteerAvailability],
   );
 
   return {

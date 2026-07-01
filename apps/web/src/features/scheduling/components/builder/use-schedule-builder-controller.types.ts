@@ -3,6 +3,7 @@ import type {
   ScheduleBuilderData,
   useScheduleBuilder,
 } from '../../hooks/use-schedule-builder';
+import type { VolunteerPoolItem } from '../../hooks/use-volunteer-pool';
 import type { ConflictStatus } from './assignment-chip';
 import type { PickerVolunteer } from './assignment-picker';
 import type { SlotEditValues } from './slot-edit-modal';
@@ -50,7 +51,9 @@ export interface SidebarVolunteer {
   volunteerName: string;
   status: 'available' | 'partial' | 'unavailable' | 'no_response';
   conflictReason?: string;
+  workloadCount: number;
 }
 
 export type AssignHandler = (params: AssignParams) => Promise<void>;
 export type PickerVolunteerList = PickerVolunteer[];
+export type ActiveDraggedVolunteer = VolunteerPoolItem;

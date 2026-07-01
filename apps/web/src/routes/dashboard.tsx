@@ -1,9 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
+import { z } from 'zod';
+import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
 import { authClient } from '@/lib/auth-client';
-import { trpc } from '@/utils/trpc';
+
+const dashboardSearchSchema = z.object({
+  section: z
+    .enum(['availability', 'assignments', 'notifications', 'ministry_schedule'])
+    .optional(),
+  eventId: z.string().optional(),
+  assignmentId: z.string().optional(),
+  ministryId: z.string().optional(),
+});
 
 export const Route = createFileRoute('/dashboard')({
+  validateSearch: (search) => dashboardSearchSchema.parse(search),
   component: RouteComponent,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -19,14 +29,17 @@ export const Route = createFileRoute('/dashboard')({
 
 function RouteComponent() {
   const { session } = Route.useRouteContext();
-
-  const privateData = useQuery(trpc.privateData.queryOptions());
+  const search = Route.useSearch();
 
   return (
-    <div>
-      <h1>Dashboard</h1>
-      <p>Welcome {session.data?.user.name}</p>
-      <p>API: {privateData.data?.message}</p>
+    <div className="container mx-auto px-4 py-10">
+      <VolunteerDashboard
+        volunteerName={session.data?.user.name}
+        initialSection={search.section}
+        initialEventId={search.eventId}
+        initialAssignmentId={search.assignmentId}
+        initialMinistryId={search.ministryId}
+      />
     </div>
   );
 }

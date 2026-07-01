@@ -1,5 +1,6 @@
 import {
   type DragEndEvent,
+  type DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -12,6 +13,7 @@ import type { AssignParams } from '../../hooks/use-schedule-builder';
 import { mapAvailabilityStatus } from '../../utils/availability-status';
 import type { ConflictStatus } from './assignment-chip';
 import type {
+  ActiveDraggedVolunteer,
   OverrideState,
   SubstitutionState,
   UseScheduleBuilderControllerParams,
@@ -34,6 +36,11 @@ export function useScheduleBuilderController({
   const [substitution, setSubstitution] = useState<SubstitutionState | null>(
     null,
   );
+  const [selectedSidebarVolunteerId, setSelectedSidebarVolunteerId] = useState<
+    string | undefined
+  >(undefined);
+  const [activeDraggedVolunteer, setActiveDraggedVolunteer] =
+    useState<ActiveDraggedVolunteer | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
 
   const upsertRequirement = useMutation(
@@ -60,6 +67,7 @@ export function useScheduleBuilderController({
     builderData,
     eventId,
     invalidate,
+    refetch,
   });
 
   const slotLabelOf = (slotId: string): string => {
@@ -97,6 +105,7 @@ export function useScheduleBuilderController({
     roleId,
     volunteerId,
   }: AssignParams) => {
+    setSelectedSidebarVolunteerId(undefined);
     const result = await createAssignment.mutateAsync({
       timeSlotId: slotId,
       volunteerId,
@@ -118,14 +127,21 @@ export function useScheduleBuilderController({
   const handleConfirmOverride = async (reason: string) => {
     if (!override) return;
 
-    await createAssignment.mutateAsync({
-      timeSlotId: override.slotId,
-      volunteerId: override.volunteerId,
-      roleId: override.roleId,
-      allowOverride: true,
-      overrideReason: reason,
-    });
+    const pendingOverride = override;
     setOverride(null);
+
+    try {
+      await createAssignment.mutateAsync({
+        timeSlotId: pendingOverride.slotId,
+        volunteerId: pendingOverride.volunteerId,
+        roleId: pendingOverride.roleId,
+        allowOverride: true,
+        overrideReason: reason,
+      });
+    } catch (error) {
+      setOverride(pendingOverride);
+      throw error;
+    }
   };
 
   const handleSubstituteSelect = async (newVolunteerId: string) => {
@@ -159,7 +175,24 @@ export function useScheduleBuilderController({
     upsertRequirement.mutate({ timeSlotId: slotId, roleId, count: nextCount });
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current;
+    if (!data?.volunteerId || !data?.volunteerName || !data?.status) {
+      setActiveDraggedVolunteer(null);
+      return;
+    }
+
+    setActiveDraggedVolunteer({
+      volunteerId: data.volunteerId as string,
+      volunteerName: data.volunteerName as string,
+      status: data.status as ActiveDraggedVolunteer['status'],
+      workloadCount: (data.workloadCount as number | undefined) ?? 0,
+      conflictReason: data.conflictReason as string | undefined,
+    });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDraggedVolunteer(null);
     const volunteerId = event.active.data.current?.volunteerId as
       | string
       | undefined;
@@ -201,6 +234,7 @@ export function useScheduleBuilderController({
     handleAssign,
     handleConfirmOverride,
     handleDecrement,
+    handleDragStart,
     handleDragEnd,
     handleIncrement,
     handleOpenAuditLog: () => setAuditOpen(true),
@@ -234,13 +268,17 @@ export function useScheduleBuilderController({
     },
     handleSubstituteSelect,
     invalidate,
+    activeDraggedVolunteer,
     override,
     pickerVolunteers,
     saveStatus,
+    selectedSidebarVolunteerId,
     sensors,
     sendReminder,
+    setActiveDraggedVolunteer,
     setAuditOpen,
     setOverride,
+    setSelectedSidebarVolunteerId,
     setSubstitution,
     sidebarVolunteers,
     substitution,

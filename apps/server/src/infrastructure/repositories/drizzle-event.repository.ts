@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { event, slotRequirement, timeSlot } from '@church/db';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/entities/church';
 import type {
   Event,
@@ -89,7 +89,7 @@ export class DrizzleEventRepository implements EventRepository {
       .select()
       .from(event)
       .where(and(...conditions))
-      .orderBy(desc(event.startDate));
+      .orderBy(asc(event.startDate));
     return rows.map(mapEvent);
   }
 

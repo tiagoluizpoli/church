@@ -46,3 +46,15 @@ export const auditActionEnum = pgEnum('audit_action', [
   'deleted',
   'status_change',
 ]);
+
+export const volunteerNotificationTypeEnum = pgEnum(
+  'volunteer_notification_type',
+  [
+    'schedule_published',
+    'assignment_added',
+    'assignment_changed',
+    'assignment_removed',
+    'availability_reminder',
+    'assignment_reminder',
+  ],
+);

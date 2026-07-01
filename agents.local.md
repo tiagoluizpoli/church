@@ -32,10 +32,10 @@
   - Adhere to Bulletproof React structure and unidirectional architecture.
 - **Linter & Code Guidelines Compliance**:
   - Never use linter, formatter, or compiler bypass/suppression directives (such as `// biome-ignore`, `// eslint-disable`, `// @ts-ignore`, etc.) without the user's explicit prior permission. All guidelines must be strictly satisfied by refactoring the code or file structure.
-- **Task-by-Task Implementation Loop (CRITICAL)**:
-  - Feature implementation, bug fixes, or plans MUST progress strictly on a task-by-task (iteration-by-iteration) basis.
-  - The agent MUST stop execution and report status after completing each single task/iteration to allow manual review of the changes by the user. Do not proceed to subsequent tasks without user approval.
-  - Within each task (after coding but before declaring the task complete):
+- **Phase-by-Phase Implementation Loop (CRITICAL)**:
+  - Feature implementation, bug fixes, or plans for the current volunteer-dashboard lane MUST progress phase by phase.
+  - The agent should complete the whole current phase before stopping for manual review, unless blocked by an approval, failing safeguard, or a material product decision.
+  - Within each phase (after coding but before declaring the phase complete):
     - Run tests targeting the modified files.
     - Execute the project's verification and safeguard commands:
       1. `bun run check` (Linter and formatter)
@@ -47,5 +47,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/012-global-ui-framework/plan.md](specs/012-global-ui-framework/plan.md)
+- Current Plan: [specs/014-volunteer-dashboard/plan.md](specs/014-volunteer-dashboard/plan.md)
 <!-- SPECKIT END -->

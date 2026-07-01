@@ -24,6 +24,7 @@ interface SlotGenerateWizardProps {
 }
 
 type Strategy = 'duration' | 'count';
+
 interface PreviewItem {
   startTime: string;
   endTime: string;
@@ -95,28 +96,31 @@ export function SlotGenerateWizard({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Auto-generate slots — Step {step} of 3</DialogTitle>
+          <DialogTitle>Split event into turns — Step {step} of 3</DialogTitle>
         </DialogHeader>
 
         {step === 1 && (
           <div className="space-y-3">
+            <p className="text-muted-foreground text-sm">
+              Use this only for long events. Every generated slot stays inside
+              the event window.
+            </p>
             <RadioGroup
               value={strategy}
               onValueChange={(v) => setStrategy(v as Strategy)}
             >
               <Label className="flex items-center gap-2">
-                <RadioGroupItem value="duration" /> By duration (minutes per
-                slot)
+                <RadioGroupItem value="duration" /> Split by slot length
               </Label>
               <Label className="flex items-center gap-2">
-                <RadioGroupItem value="count" /> By count (total slots)
+                <RadioGroupItem value="count" /> Split by number of turns
               </Label>
             </RadioGroup>
             <div className="space-y-1">
               <Label htmlFor="gen-value">
                 {strategy === 'duration'
                   ? 'Minutes per slot'
-                  : 'Number of slots'}
+                  : 'Number of turns'}
               </Label>
               <Input
                 id="gen-value"
@@ -185,7 +189,7 @@ export function SlotGenerateWizard({
               disabled={generate.isPending || applyTemplate.isPending}
               onClick={handleGenerate}
             >
-              {generate.isPending ? 'Generating…' : 'Generate'}
+              {generate.isPending ? 'Creating turns…' : 'Create turns'}
             </Button>
           )}
         </DialogFooter>

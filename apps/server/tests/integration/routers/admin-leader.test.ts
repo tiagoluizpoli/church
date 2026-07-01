@@ -1,5 +1,6 @@
 import {
   assignment,
+  availability,
   event,
   ministry,
   ministryVolunteer,
@@ -141,6 +142,34 @@ describe('AdminLeader Router Integration Tests', () => {
       expect(data.volunteerAvailability).toBeDefined();
       // Should have checked availability for the volunteers in the ministry
       expect(data.volunteerAvailability.length).toBeGreaterThan(0);
+    });
+
+    it('shows event-scoped available answers in leader scheduling view', async () => {
+      await promoteToLeader(
+        '44444444-4444-4444-4444-444444444441',
+        '33333333-3333-3333-3333-333333333331',
+      );
+
+      await testDb.insert(availability).values({
+        id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11',
+        churchId: '11111111-1111-1111-1111-111111111111',
+        volunteerId: '44444444-4444-4444-4444-444444444441',
+        eventId: '66666666-6666-6666-6666-666666666662',
+        type: 'available',
+        startTime: new Date('2026-06-05T09:00:00Z'),
+        endTime: new Date('2026-06-05T11:00:00Z'),
+        isAllDay: false,
+      });
+
+      const caller = createCaller('22222222-2222-2222-2222-222222222221');
+      const data = await caller.adminLeader.getScheduleBuilderData({
+        eventId: '66666666-6666-6666-6666-666666666662',
+      });
+
+      const alice = data.volunteerAvailability.find(
+        (entry) => entry.volunteerId === '44444444-4444-4444-4444-444444444441',
+      );
+      expect(alice?.status).toBe('AVAILABLE');
     });
   });
 

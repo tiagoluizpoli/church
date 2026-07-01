@@ -15,6 +15,8 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 | BL-003 | Per-event volunteer exclusion by leader        | Schedule Builder | Backlog |
 | BL-004 | Separate "Now Serving" section for in-progress assignments | Volunteer Dashboard | Backlog |
 | BL-005 | Configurable cooldown for repeated availability reminders | Volunteer Dashboard | Backlog |
+| BL-006 | Team-aware assignment attribution in Ministry Schedule view | Volunteer Dashboard | Backlog |
+| BL-007 | Volunteer-authenticated E2E specs for the volunteer dashboard | Volunteer Dashboard | Backlog |
 
 ---
 
@@ -237,3 +239,87 @@ However, a further refinement was explicitly requested:
 - Scope the cooldown to `(volunteerId, eventId)` so it does not unintentionally suppress unrelated reminders.
 - Surface a concise leader-facing message such as `A reminder was already sent recently for this Event`.
 - If the reminder system becomes more sophisticated later, migrate the cooldown from environment configuration to a proper application/admin configuration model.
+
+---
+
+### BL-006 — Team-aware assignment attribution in Ministry Schedule view
+
+**Status**: Backlog
+
+**Feature area**: Volunteer Dashboard (Spec F2 / `specs/014-volunteer-dashboard`)
+
+**Summary**: The Ministry Schedule view currently matches assignments to slot-requirement rows using only `slotId + roleId`. When the same role appears in the same slot under multiple team-scoped requirements, assignments can be attributed to the wrong team row. A defensive partial fix (claim-tracking) was applied in 014, but full correctness requires `teamId` on the assignment record.
+
+**Full Context**:
+
+Slot requirements in the Schedule Builder can be scoped to a specific `teamId`. This produces row seeds like:
+
+- Slot S, Role=Usher, Team=TeamA
+- Slot S, Role=Usher, Team=TeamB
+
+The `Assignment` entity and DB table have no `teamId` column. When listing assignments for a slot, the system cannot determine which team's requirement an assignment satisfies. The matching filter `slotId + roleId` matches the same assignment against all team-scoped rows for that role, causing:
+
+1. The same volunteer to appear in multiple team rows (duplicate display).
+2. The "open" slot indicator to be incorrectly suppressed for teams that have no assignment.
+
+**Partial fix applied in 014**: A `claimedAssignmentIds` set now prevents the same assignment from being rendered in more than one row. This eliminates duplicates and restores the "open" indicator for unmatched rows, but does not guarantee the assignment appears under the correct team's row.
+
+**What full correctness requires**:
+
+1. A `team_id` column on the `assignment` DB table (nullable, references `team`).
+2. The `Assignment` domain entity must expose `teamId?: TeamId`.
+3. Assignment creation (Schedule Builder) must record which team's requirement the assignment fulfills at write time.
+4. The Ministry Schedule matching filter must include `assignment.teamId === seed.teamId` (or both null).
+
+**Why deferred**:
+
+- Requires a DB migration and changes to the assignment creation flow.
+- The partial fix eliminates the worst UX failures (duplicates, suppressed "open" rows).
+- Team-scoped requirements are an advanced scheduling pattern; most ministries use a single team or no team scoping.
+
+**Prerequisites for implementation**:
+
+1. DB migration: add nullable `team_id` FK on `assignment`.
+2. Update `AssignmentProps`, `Assignment` entity, and Drizzle mapper.
+3. Update `createAssignment` router to pass `teamId` when assigning to a team-scoped requirement.
+4. Update `listMinistrySchedule` matching filter to include `teamId`.
+5. Remove the `claimedAssignmentIds` workaround once true team-aware matching is in place.
+
+---
+
+### BL-007 — Volunteer-authenticated E2E specs for the volunteer dashboard
+
+**Status**: Backlog
+
+**Feature area**: Volunteer Dashboard (Spec F2 / `specs/014-volunteer-dashboard`)
+
+**Summary**: All volunteer dashboard Playwright specs in `apps/web/tests/volunteer-dashboard/` currently authenticate as a leader (`LEADER_STORAGE_STATE`). They cover the correct UI flows but do not validate that a true volunteer session (without leader permissions) can access and interact with the dashboard. This is a test coverage gap, not a product bug.
+
+**Full Context**:
+
+The volunteer dashboard is a volunteer-facing feature. A volunteer user has a different session context than a leader. Using `LEADER_STORAGE_STATE` in all E2E specs means:
+
+- The specs confirm the UI renders correctly for an authenticated user.
+- They do NOT confirm that the backend correctly scopes data to the volunteer's own assignments, availability, and notifications when the caller lacks leader permissions.
+- Edge cases around RBAC enforcement at the volunteer level are not exercised by the E2E layer.
+
+**Affected files**:
+
+- `apps/web/tests/volunteer-dashboard/us1-availability.spec.ts`
+- `apps/web/tests/volunteer-dashboard/us2-assignments.spec.ts`
+- `apps/web/tests/volunteer-dashboard/us3-notifications.spec.ts`
+- `apps/web/tests/volunteer-dashboard/us4-ministry-schedule.spec.ts`
+- `apps/web/tests/volunteer-dashboard/us5-offline.spec.ts`
+
+**What needs to change**:
+
+1. Add a `VOLUNTEER_STORAGE_STATE` auth fixture to `apps/server/src/test-support/e2e-seed.ts` (seed a user who is a ministry member but not a leader).
+2. Create the storage state via Playwright's `storageState` utility for that volunteer user.
+3. Replace `LEADER_STORAGE_STATE` with `VOLUNTEER_STORAGE_STATE` in the volunteer dashboard specs.
+4. Verify that each spec still passes — confirming the backend correctly serves the volunteer's own data.
+
+**Why deferred**:
+
+- Requires E2E seed changes and a second Playwright auth setup, which adds test infrastructure complexity.
+- The integration tests (server-side) already validate data scoping with `createCaller(SEED.userAlice)` at the unit level.
+- The leader-authenticated E2E specs still exercise the correct UI flows and catch regressions in rendering and interaction.

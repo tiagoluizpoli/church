@@ -6,10 +6,10 @@ Expose service and availability management for Volunteers.
 ## 1. Endpoints
 - `getVolunteerDashboard`: Returns the volunteer dashboard snapshot: availability-needed tasks, current/upcoming published assignments, notification summary, and the default ministry schedule context.
 - `getMyUpcomingAssignments`: Returns the volunteer's current and future published assignments across all ministries, grouped client-side by Event. Excludes drafts and removed assignments. Supports in-progress assignments until the TimeSlot ends.
-- `respondToAssignment`: Sets status to `confirmed` or `declined`. Ownership required. Decline reason is not required for MVP.
-- `upsertAvailability`: Add or update event-scoped availability for the current volunteer. Accepts optional `id`. Enforces `startTime < endTime` or valid day-span bounds. May return an overlap warning if the submission conflicts with a published Assignment.
+- `respondToAssignment`: Transitional assignment-action endpoint. Today it still accepts `confirmed` or `declined`, but the intended volunteer-facing product direction is: confirmed assignments appear as already scheduled, and the primary post-publication action is an explicit unable-to-serve signal. Ownership required. Decline reason is not required for MVP.
+- `upsertAvailability`: Add or update event-scoped slot answers for the current volunteer. The API now maps volunteer answers onto leader-defined Event slots instead of free-form volunteer-authored spans. May return an overlap warning if the submission conflicts with a published Assignment.
 - `deleteAvailability`: Delete an availability entry by `id`.
-- `getMyAvailability`: List event-scoped availability entries for the current volunteer. Supports filtering by `eventId`.
+- `getMyAvailability`: Return the Event slots plus any current volunteer answers for the current volunteer. Supports filtering by `eventId`.
 - `getMyNotifications`: Returns scheduling notifications for the current volunteer, newest first, with cursor-based progressive loading and read/unread state.
 - `markNotificationRead`: Marks a single scheduling notification as read.
 - `markAllNotificationsRead`: Marks all visible scheduling notifications as read for the current volunteer.
@@ -29,8 +29,8 @@ Expose service and availability management for Volunteers.
 - Ministry schedule reads must expose only published volunteer-facing data and never leak leader-only conflict, override, or audit detail.
 
 ## 4. Testing Requirements (Mandatory)
-- **Integration**: Verify that a user cannot confirm or decline an assignment belonging to someone else.
-- **Integration**: Verify that a volunteer can change a previously confirmed assignment to declined before Event start.
+- **Integration**: Verify that a user cannot mutate an assignment belonging to someone else.
+- **Integration**: Verify that a volunteer can change a previously confirmed assignment to declined / unable-to-serve before Event start.
 - **Integration**: Verify that `upsertAvailability` and `deleteAvailability` correctly enforce ownership and block isolation breaches.
 - **Integration**: Verify that volunteer-facing assignment queries exclude draft assignments.
 - **Integration**: Verify that availability saves can return published-assignment overlap warnings.

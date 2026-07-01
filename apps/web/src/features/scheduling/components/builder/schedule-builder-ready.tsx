@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from '@church/ui/components/alert-dialog';
 import { TooltipProvider } from '@church/ui/components/tooltip';
-import { DndContext } from '@dnd-kit/core';
+import { DndContext, DragOverlay } from '@dnd-kit/core';
 import type {
   ScheduleBuilderData,
   useScheduleBuilder,
@@ -23,6 +23,7 @@ import { SlotEditModal } from './slot-edit-modal';
 import { SlotGenerateWizard } from './slot-generate-wizard';
 import { SubstitutionPicker } from './substitution-picker';
 import { useScheduleBuilderController } from './use-schedule-builder-controller';
+import { VolunteerCard } from './volunteer-card';
 import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
@@ -82,13 +83,24 @@ export function ScheduleBuilderReady({
 
         <DndContext
           sensors={controller.sensors}
+          onDragStart={controller.handleDragStart}
           onDragEnd={controller.handleDragEnd}
+          onDragCancel={() => controller.setActiveDraggedVolunteer(null)}
         >
           <div className="flex gap-4">
             <VolunteerPoolSidebar
               volunteers={controller.sidebarVolunteers}
               assignments={builderData.assignments}
               roles={builderData.roles}
+              selectedVolunteerId={controller.selectedSidebarVolunteerId}
+              onSelectVolunteer={(volunteerId) =>
+                controller.setSelectedSidebarVolunteerId(
+                  (currentVolunteerId) =>
+                    currentVolunteerId === volunteerId
+                      ? undefined
+                      : volunteerId,
+                )
+              }
             />
 
             <div className="flex-1">
@@ -113,6 +125,14 @@ export function ScheduleBuilderReady({
                   }
                   onOverride={controller.handleOverrideRequest}
                   onSubstitute={controller.handleSubstituteRequest}
+                  selectedVolunteerId={controller.selectedSidebarVolunteerId}
+                  selectedVolunteerName={
+                    controller.sidebarVolunteers.find(
+                      (volunteer) =>
+                        volunteer.volunteerId ===
+                        controller.selectedSidebarVolunteerId,
+                    )?.volunteerName
+                  }
                   onIncrement={controller.handleIncrement}
                   onDecrement={controller.handleDecrement}
                   onEditSlot={controller.handleEditSlot}
@@ -124,6 +144,15 @@ export function ScheduleBuilderReady({
               )}
             </div>
           </div>
+
+          <DragOverlay>
+            {controller.activeDraggedVolunteer ? (
+              <VolunteerCard
+                volunteer={controller.activeDraggedVolunteer}
+                isOverlay={true}
+              />
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 

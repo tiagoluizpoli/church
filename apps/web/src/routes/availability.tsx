@@ -1,14 +1,19 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { AvailabilityForm } from '@/features/volunteers/components/availability-form';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { z } from 'zod';
 
-export const Route = createFileRoute('/availability')({
-  component: AvailabilityPage,
+const availabilitySearchSchema = z.object({
+  eventId: z.string().optional(),
 });
 
-function AvailabilityPage() {
-  return (
-    <div className="container mx-auto py-10">
-      <AvailabilityForm />
-    </div>
-  );
-}
+export const Route = createFileRoute('/availability')({
+  validateSearch: (search) => availabilitySearchSchema.parse(search),
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: '/dashboard',
+      search: {
+        section: 'availability',
+        eventId: search.eventId,
+      },
+    });
+  },
+});

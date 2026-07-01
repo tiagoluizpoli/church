@@ -28,8 +28,10 @@ test('US4: leader adds a slot', async ({ page }) => {
   const before = await page.getByTestId('slot-row').count();
 
   await page.getByRole('button', { name: /add slot/i }).click();
-  await page.getByLabel(/start time/i).fill('2026-12-25T13:00');
-  await page.getByLabel(/end time/i).fill('2026-12-25T15:00');
+  await page.getByLabel(/start time hour/i).fill('13');
+  await page.getByLabel(/start time minute/i).fill('00');
+  await page.getByLabel(/end time hour/i).fill('15');
+  await page.getByLabel(/end time minute/i).fill('00');
   await page.getByRole('button', { name: /^save$/i }).click();
 
   await expect(page.getByTestId('slot-row')).toHaveCount(before + 1, {

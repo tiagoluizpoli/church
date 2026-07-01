@@ -1,4 +1,10 @@
-import { assignment, event, ministryVolunteer, timeSlot } from '@church/db';
+import {
+  assignment,
+  availability,
+  event,
+  ministryVolunteer,
+  timeSlot,
+} from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seed, testDb, truncateAll } from '../repositories/setup';
@@ -47,6 +53,35 @@ describe('createAssignment happy path (live-builder repro)', () => {
       },
     );
     expect(res.conflictReport).toBeUndefined();
+    expect(res.assignment?.status).toBe('draft');
+  });
+
+  it('does not treat an "available" answer as a conflict when a leader assigns themself', async () => {
+    await testDb
+      .delete(assignment)
+      .where(eq(assignment.slotId, SEED.slotDraft));
+
+    await testDb.insert(availability).values({
+      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa10',
+      churchId: SEED.church,
+      volunteerId: SEED.volunteerAlice,
+      eventId: SEED.eventDraft,
+      type: 'available',
+      startTime: new Date('2099-01-01T09:00:00Z'),
+      endTime: new Date('2099-01-01T11:00:00Z'),
+      isAllDay: false,
+    });
+
+    const res = await createCaller(SEED.userAlice).adminLeader.createAssignment(
+      {
+        timeSlotId: SEED.slotDraft,
+        volunteerId: SEED.volunteerAlice,
+        roleId: SEED.roleUsher,
+      },
+    );
+
+    expect(res.conflictReport).toBeUndefined();
+    expect(res.assignment?.volunteerId).toBe(SEED.volunteerAlice);
     expect(res.assignment?.status).toBe('draft');
   });
 

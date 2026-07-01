@@ -5,6 +5,7 @@ import {
   type AvailabilityId,
 } from '../../../src/domain/entities/availability';
 import type { ChurchId } from '../../../src/domain/entities/church';
+import type { EventId } from '../../../src/domain/entities/event';
 import type { VolunteerId } from '../../../src/domain/entities/volunteer';
 import type {
   AvailabilityRepository,
@@ -32,6 +33,15 @@ class MockAvailabilityRepository implements AvailabilityRepository {
     this.availabilities.set(av1.id, av1);
   }
 
+  async getById(churchId: ChurchId, id: AvailabilityId): Promise<Availability> {
+    const availability = this.availabilities.get(id);
+    if (!availability || availability.churchId !== churchId) {
+      throw new NotFoundError('Availability entry not found');
+    }
+
+    return availability;
+  }
+
   async listByVolunteerInRange(
     churchId: ChurchId,
     volunteerId: VolunteerId,
@@ -44,6 +54,19 @@ class MockAvailabilityRepository implements AvailabilityRepository {
         av.volunteerId === volunteerId &&
         av.startTime >= startTime &&
         av.endTime <= endTime,
+    );
+  }
+
+  async listByVolunteerForEvent(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    eventId: EventId,
+  ): Promise<Availability[]> {
+    return Array.from(this.availabilities.values()).filter(
+      (availability) =>
+        availability.churchId === churchId &&
+        availability.volunteerId === volunteerId &&
+        availability.eventId === eventId,
     );
   }
 

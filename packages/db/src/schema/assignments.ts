@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  index,
   pgTable,
   text,
   timestamp,
@@ -17,7 +18,7 @@ import {
   auditActionEnum,
   availabilityTypeEnum,
 } from './enums';
-import { timeSlot } from './scheduling';
+import { event, timeSlot } from './scheduling';
 
 export const assignment = pgTable(
   'assignment',
@@ -71,6 +72,9 @@ export const availability = pgTable(
     volunteerId: uuid('volunteer_id')
       .notNull()
       .references(() => volunteer.id, { onDelete: 'cascade' }),
+    eventId: uuid('event_id').references(() => event.id, {
+      onDelete: 'cascade',
+    }),
     type: availabilityTypeEnum('type').default('unavailable').notNull(), // available, unavailable
     startTime: timestamp('start_time', {
       withTimezone: true,
@@ -85,6 +89,11 @@ export const availability = pgTable(
     repeatRule: varchar('repeat_rule', { length: 255 }),
   },
   (table) => [
+    index('availability_church_volunteer_event_idx').on(
+      table.churchId,
+      table.volunteerId,
+      table.eventId,
+    ),
     check(
       'availability_time_check',
       sql`${table.startTime} < ${table.endTime}`,

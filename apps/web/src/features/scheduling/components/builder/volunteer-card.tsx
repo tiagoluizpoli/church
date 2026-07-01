@@ -1,4 +1,5 @@
 import { Badge } from '@church/ui/components/badge';
+import { Button } from '@church/ui/components/button';
 import {
   Tooltip,
   TooltipContent,
@@ -28,13 +29,28 @@ const STATUS_LABEL: Record<AvailabilityStatus, string> = {
 
 interface VolunteerCardProps {
   volunteer: VolunteerPoolItem;
+  isSelected?: boolean;
+  isOverlay?: boolean;
+  onSelect?: (volunteerId: string) => void;
 }
 
-export function VolunteerCard({ volunteer }: VolunteerCardProps) {
+export function VolunteerCard({
+  volunteer,
+  isSelected = false,
+  isOverlay = false,
+  onSelect,
+}: VolunteerCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `volunteer-${volunteer.volunteerId}`,
-      data: { volunteerId: volunteer.volunteerId },
+      data: {
+        volunteerId: volunteer.volunteerId,
+        volunteerName: volunteer.volunteerName,
+        status: volunteer.status,
+        workloadCount: volunteer.workloadCount,
+        conflictReason: volunteer.conflictReason,
+      },
+      disabled: isOverlay,
     });
 
   const style = transform
@@ -43,20 +59,39 @@ export function VolunteerCard({ volunteer }: VolunteerCardProps) {
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
       className={cn(
-        'flex cursor-grab items-center justify-between gap-2 rounded border bg-card px-2 py-1.5 text-xs active:cursor-grabbing',
+        'flex items-center justify-between gap-2 rounded border bg-card px-2 py-1.5 text-xs',
+        isSelected && 'border-primary bg-primary/5 ring-1 ring-primary',
         isDragging && 'opacity-50',
+        isOverlay && 'shadow-lg',
       )}
-      data-testid="volunteer-card"
     >
-      <span className="truncate">
+      <div
+        ref={isOverlay ? undefined : setNodeRef}
+        style={isOverlay ? undefined : style}
+        {...(isOverlay ? {} : listeners)}
+        {...(isOverlay ? {} : attributes)}
+        className={cn(
+          'min-w-0 flex-1 cursor-grab rounded-sm active:cursor-grabbing',
+          !isOverlay &&
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        )}
+        data-testid="volunteer-card"
+      >
         {formatVolunteerName(volunteer.volunteerName)}
-      </span>
+      </div>
       <span className="flex items-center gap-1">
+        {onSelect ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-5 px-1 text-xs"
+            onClick={() => onSelect(volunteer.volunteerId)}
+          >
+            Select slot
+          </Button>
+        ) : null}
         <Tooltip>
           <TooltipTrigger
             render={

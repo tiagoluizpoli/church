@@ -29,6 +29,30 @@ export function useScheduleBuilder(eventId: string) {
 
   const createAssignment = useMutation(
     trpc.adminLeader.createAssignment.mutationOptions({
+      onSuccess: (result) => {
+        const newA = 'assignment' in result ? result.assignment : undefined;
+        if (!newA) return;
+        queryClient.setQueryData(queryOptions.queryKey, (old) => {
+          if (!old) return old;
+          const volunteerName = old.volunteerAvailability.find(
+            (v) => v.volunteerId === newA.volunteerId,
+          )?.volunteerName;
+          return {
+            ...old,
+            assignments: [
+              ...old.assignments,
+              {
+                id: newA.id,
+                slotId: newA.slotId,
+                volunteerId: newA.volunteerId,
+                roleId: newA.roleId,
+                status: newA.status,
+                volunteerName,
+              },
+            ],
+          };
+        });
+      },
       onSettled: () => invalidate(),
     }),
   );

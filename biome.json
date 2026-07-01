@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "plugins": ["./tooling/biome/require-named-object-parameters.grit"],
   "vcs": {
     "enabled": false,
     "clientKind": "git",
@@ -47,6 +48,7 @@
       "!!**/test-results",
       "!!**/tmp",
       "!!**/packages/db/src/migrations",
+      "!!**/apps/web/src/infrastructure/api",
       "!!**/skills-lock.json",
       "!!**/seed-data.json"
     ]

@@ -1,0 +1,10 @@
+TsObjectType() as $violation where {
+  $violation <: within or {
+    `mutationFn: ($parameter) => $body`,
+    `queryFn: ($parameter) => $body`,
+  },
+  register_diagnostic(
+    span = $violation,
+    message = "Declare the parameter object as a named interface or type."
+  )
+}

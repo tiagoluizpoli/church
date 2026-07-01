@@ -21,7 +21,7 @@
 
 ## Specific Guidelines
 - **General**: 100% Type Safety. Strictly follow Karpathy Guidelines (Simple, Pragmatic, No Speculation).
-- **Typing Rule**: No inline object typing in function signatures, method parameters, or similar call-facing contracts. Every non-trivial parameter shape must be named as a separately declared `type` or `interface`. When touching existing code that violates this rule, fix it as part of the change instead of deferring it.
+- **Parameter Contract Rule**: Application functions, methods, constructors, and call-facing handlers that receive data must use one object parameter, even for a single value. Declare its shape separately with a descriptive `interface` or `type`; never use inline object parameter types. Zero-argument functions and callbacks whose signatures are controlled by an external API are exempt. Fix existing violations in any code you modify.
 - **Backend Development**:
   - Always engage `backend-specialist` and `test-backend` skills for architectural decisions and validation.
   - Prioritize known, solid Design Patterns (refer to Refactoring Guru) for complex logic rather than custom abstractions.

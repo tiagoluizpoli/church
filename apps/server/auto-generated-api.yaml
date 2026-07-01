@@ -19,6 +19,8 @@ paths:
     post: *a1
   /api/v1/admin/ministries:
     get:
+      tags: [admin]
+      operationId: listMinistries
       responses:
         "200":
           description: Default Response
@@ -62,6 +64,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/schedule-builder:
     get:
+      tags: [admin]
+      operationId: getScheduleBuilderData
       responses:
         "200":
           description: Default Response
@@ -267,6 +271,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/events:
     get:
+      tags: [admin]
+      operationId: listEvents
       parameters:
         - schema:
             type: string
@@ -344,6 +350,8 @@ paths:
                   - events
                 additionalProperties: false
     post:
+      tags: [admin]
+      operationId: createEvent
       requestBody:
         required: true
         content:
@@ -432,6 +440,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/events/{eventId}/publish:
     post:
+      tags: [admin]
+      operationId: publishEvent
       parameters:
         - schema:
             type: string
@@ -443,6 +453,8 @@ paths:
           description: Default Response
   /api/v1/admin/events/{eventId}/cancel:
     post:
+      tags: [admin]
+      operationId: cancelEvent
       parameters:
         - schema:
             type: string
@@ -454,6 +466,8 @@ paths:
           description: Default Response
   /api/v1/admin/events/{eventId}/reminders:
     post:
+      tags: [admin]
+      operationId: sendReminders
       parameters:
         - schema:
             type: string
@@ -465,6 +479,8 @@ paths:
           description: Default Response
   /api/v1/admin/events/{eventId}/slots:
     post:
+      tags: [admin]
+      operationId: createSlot
       requestBody:
         required: true
         content:
@@ -550,6 +566,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/events/{eventId}/slots/{slotId}:
     patch:
+      tags: [admin]
+      operationId: updateSlot
       requestBody:
         required: true
         content:
@@ -636,6 +654,8 @@ paths:
                   - requirements
                 additionalProperties: false
     delete:
+      tags: [admin]
+      operationId: deleteSlot
       parameters:
         - schema:
             type: string
@@ -652,6 +672,8 @@ paths:
           description: Default Response
   /api/v1/admin/events/{eventId}/slots/generate:
     post:
+      tags: [admin]
+      operationId: generateSlots
       requestBody:
         required: true
         content:
@@ -795,6 +817,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/events/{eventId}/slots/{slotId}/requirements:
     put:
+      tags: [admin]
+      operationId: upsertSlotRequirement
       requestBody:
         required: true
         content:
@@ -854,6 +878,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/assignments:
     post:
+      tags: [admin]
+      operationId: createAssignment
       requestBody:
         required: true
         content:
@@ -916,6 +942,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/assignments/{assignmentId}:
     delete:
+      tags: [admin]
+      operationId: deleteAssignment
       parameters:
         - schema:
             type: string
@@ -927,6 +955,8 @@ paths:
           description: Default Response
   /api/v1/admin/assignments/{assignmentId}/audit:
     get:
+      tags: [admin]
+      operationId: getAssignmentAudit
       parameters:
         - schema:
             type: string
@@ -977,6 +1007,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/role-templates:
     get:
+      tags: [admin]
+      operationId: listRoleTemplates
       responses:
         "200":
           description: Default Response
@@ -1026,6 +1058,8 @@ paths:
                 additionalProperties: false
   /api/v1/admin/role-templates/{templateId}:
     put:
+      tags: [admin]
+      operationId: upsertRoleTemplate
       requestBody:
         required: true
         content:
@@ -1102,6 +1136,8 @@ paths:
                   - items
                 additionalProperties: false
     delete:
+      tags: [admin]
+      operationId: deleteRoleTemplate
       parameters:
         - schema:
             type: string
@@ -1113,6 +1149,8 @@ paths:
           description: Default Response
   /api/v1/feature-flags/:
     get:
+      tags: [featureFlags]
+      operationId: getFeatureFlags
       responses:
         "200":
           description: Default Response
@@ -1130,6 +1168,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
+      tags: [volunteer]
+      operationId: getVolunteerDashboard
       responses:
         "200":
           description: Default Response
@@ -1184,6 +1224,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/assignments:
     get:
+      tags: [volunteer]
+      operationId: getMyAssignments
       responses:
         "200":
           description: Default Response
@@ -1235,6 +1277,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/ministries/{ministryId}/schedule:
     get:
+      tags: [volunteer]
+      operationId: getMinistrySchedule
       parameters:
         - schema:
             type: string
@@ -1292,6 +1336,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/availability:
     get:
+      tags: [volunteer]
+      operationId: getMyAvailability
       responses:
         "200":
           description: Default Response
@@ -1341,6 +1387,8 @@ paths:
                   - availability
                 additionalProperties: false
     put:
+      tags: [volunteer]
+      operationId: upsertAvailability
       requestBody:
         required: true
         content:
@@ -1418,6 +1466,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/availability/{availabilityId}:
     delete:
+      tags: [volunteer]
+      operationId: deleteAvailability
       parameters:
         - schema:
             type: string
@@ -1429,6 +1479,8 @@ paths:
           description: Default Response
   /api/v1/volunteer/assignments/{assignmentId}:
     patch:
+      tags: [volunteer]
+      operationId: respondToAssignment
       requestBody:
         required: true
         content:
@@ -1494,6 +1546,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/notifications:
     get:
+      tags: [volunteer]
+      operationId: getNotifications
       responses:
         "200":
           description: Default Response
@@ -1555,6 +1609,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/notifications/{notificationId}:
     patch:
+      tags: [volunteer]
+      operationId: markNotificationRead
       parameters:
         - schema:
             type: string
@@ -1612,6 +1668,8 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/notifications/read-all:
     post:
+      tags: [volunteer]
+      operationId: markAllNotificationsRead
       responses:
         "200":
           description: Default Response

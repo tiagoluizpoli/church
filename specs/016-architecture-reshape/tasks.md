@@ -85,7 +85,7 @@
 - [x] T028 [US1] Delete `apps/server/src/routers/` directory (all 21 tRPC procedure files) and `apps/server/src/services/` directory (availability.ts + volunteer-dashboard/) — tRPC router + legacy service layer removed (depends on T024 server.ts wiring)
 - [x] T029 [US1] Delete `apps/server/src/index.ts` — replaced by `main/server.ts` (depends on T024)
 - [x] T030 [US1] Run `bun remove @trpc/server @trpc/client` in `apps/server/` — remove tRPC server packages from `apps/server/package.json` and `bun.lock`; verify `grep '@trpc' apps/server/package.json` returns nothing
-- [ ] T031 [US1] Write HTTP contract tests for auth passthrough in `apps/server/tests/http/auth.http.test.ts` — verify `GET/POST /api/auth/*` delegates to Better-Auth and responds (not 404); auth gate tests (`401`/`403`) deferred to T038 once first protected route exists
+- [x] T031 [US1] Write HTTP contract tests for auth passthrough in `apps/server/tests/http/auth.http.test.ts` — verify `GET/POST /api/auth/*` delegates to Better-Auth and responds (not 404); auth gate tests (`401`/`403`) deferred to T038 once first protected route exists
 
 **Batch 1 Checkpoint**: Server starts. Auth passthrough works. No tRPC packages in server.
 
@@ -93,14 +93,14 @@
 
 ### Batch 2 — Ministry
 
-- [ ] T032 [P] [US1] Write behavior tests for Ministry operations in `apps/server/tests/behavior/ministry.behavior.test.ts` — seed DB, verify `listByLeader` returns only ministries where given volunteer is a leader (transport-agnostic, no tRPC wire format)
-- [ ] T033 [P] [US1] Create `apps/server/src/domain/contracts/ministry-manager.ts` — `IMinistryManager` interface: `listByLeader(input: { leaderId: VolunteerId; churchId: ChurchId }): Promise<Ministry[]>`
-- [ ] T034 [P] [US1] Create `apps/server/src/application/db-ministry-manager.ts` — `DbMinistryManager implements IMinistryManager`, `@injectable()`, inject `IMinistryRepository` (depends on T033)
-- [ ] T035 [P] [US1] Create `apps/server/src/api/dtos/ministry.dto.ts` — Zod response schemas + `ministryMapper.toResponse(ministry: Ministry)` and `toResponseList` (depends on T008 branded IDs)
-- [ ] T036 [US1] Create `apps/server/src/api/controllers/admin-leader-controller.ts` — `AdminLeaderController extends FastifyController`, `prefix = '/admin'`; `registerRoutes` adds a `preHandler` that: (1) reads Better-Auth session, (2) decorates `request.userId` and `request.churchId` from session, (3) checks role is `admin` or `leader`, returns `401`/`403` otherwise; implement `GET /admin/ministries` delegating to `IMinistryManager.listByLeader` (depends on T012, T033, T035)
-- [ ] T037 [US1] Update `apps/server/src/main/di/injections.ts` — register `IMinistryRepository` → `DrizzleMinistryRepository`, `IMinistryManager` → `DbMinistryManager`, `AdminLeaderController` (depends on T034, T036)
-- [ ] T038 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-ministry.http.test.ts` — verify `GET /api/v1/admin/ministries` returns `200` + correct DTO shape; verify `401` when no auth; verify `403` when authenticated but wrong role
-- [ ] T039 [US1] Verify Batch 2: `bun test` passes ministry behavior + HTTP tests
+- [x] T032 [P] [US1] Write behavior tests for Ministry operations in `apps/server/tests/behavior/ministry.behavior.test.ts` — seed DB, verify `listByLeader` returns only ministries where given volunteer is a leader (transport-agnostic, no tRPC wire format)
+- [x] T033 [P] [US1] Create `apps/server/src/domain/contracts/ministry-manager.ts` — `IMinistryManager` interface: `listByLeader(input: { leaderId: VolunteerId; churchId: ChurchId }): Promise<Ministry[]>`
+- [x] T034 [P] [US1] Create `apps/server/src/application/db-ministry-manager.ts` — `DbMinistryManager implements IMinistryManager`, `@injectable()`, inject `IMinistryRepository` (depends on T033)
+- [x] T035 [P] [US1] Create `apps/server/src/api/dtos/ministry.dto.ts` — Zod response schemas + `ministryMapper.toResponse(ministry: Ministry)` and `toResponseList` (depends on T008 branded IDs)
+- [x] T036 [US1] Create `apps/server/src/api/controllers/admin-leader-controller.ts` — `AdminLeaderController extends FastifyController`, `prefix = '/admin'`; `registerRoutes` adds a `preHandler` that: (1) reads Better-Auth session, (2) decorates `request.userId` and `request.churchId` from session, (3) checks role is `admin` or `leader`, returns `401`/`403` otherwise; implement `GET /admin/ministries` delegating to `IMinistryManager.listByLeader` (depends on T012, T033, T035)
+- [x] T037 [US1] Update `apps/server/src/main/di/injections.ts` — register `IMinistryRepository` → `DrizzleMinistryRepository`, `IMinistryManager` → `DbMinistryManager`, `AdminLeaderController` (depends on T034, T036)
+- [x] T038 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-ministry.http.test.ts` — verify `GET /api/v1/admin/ministries` returns `200` + correct DTO shape; verify `401` when no auth; verify `403` when authenticated but wrong role
+- [x] T039 [US1] Verify Batch 2: `bun test` passes ministry behavior + HTTP tests
 
 **Batch 2 Checkpoint**: `GET /admin/ministries` returns 200. Auth gate (401/403) works.
 
@@ -108,15 +108,15 @@
 
 ### Batch 3 — Volunteer
 
-- [ ] T040 [P] [US1] Write behavior tests in `apps/server/tests/behavior/volunteer.behavior.test.ts` — seed DB, verify: `getDashboard`, `getUpcomingAssignments`, `getAvailability`, `upsertAvailability`, `deleteAvailability`, `respondToAssignment`, `getNotifications`, `markNotificationRead`, `markAllNotificationsRead`
-- [ ] T041 [US1] Create `apps/server/src/domain/contracts/volunteer-manager.ts` — `IVolunteerManager` interface with all 10 methods per data-model.md (depends on T008)
-- [ ] T042 [US1] Create `apps/server/src/application/db-volunteer-manager.ts` — `DbVolunteerManager implements IVolunteerManager`, `@injectable()`, inject `IVolunteerRepository`, `IAvailabilityRepository`, `IVolunteerNotificationRepository`, `IUnitOfWork`, `INotificationService`; port logic from `apps/server/src/services/volunteer-dashboard/` (depends on T041)
-- [ ] T043 [P] [US1] Create `apps/server/src/api/dtos/volunteer.dto.ts` — Zod schemas + mappers for dashboard snapshot, upcoming assignments, availability, respond-to-assignment body (depends on T008)
-- [ ] T044 [P] [US1] Create `apps/server/src/api/dtos/notification.dto.ts` — Zod schemas + mappers for volunteer notifications (depends on T008)
-- [ ] T045 [US1] Create `apps/server/src/api/controllers/volunteer-controller.ts` — `VolunteerController extends FastifyController`, `prefix = '/volunteer'`; `preHandler` reads Better-Auth session, decorates `request.userId` and `request.churchId`, returns `401` if unauthenticated (no role check); all 10 `/volunteer/*` routes per contracts/http-api.md delegating to `IVolunteerManager` (depends on T012, T041, T043, T044)
-- [ ] T046 [US1] Update `apps/server/src/main/di/injections.ts` — register `IVolunteerRepository`, `IAvailabilityRepository`, `IVolunteerNotificationRepository`, `IVolunteerManager` → `DbVolunteerManager`, `VolunteerController` (depends on T042, T045)
-- [ ] T047 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/volunteer.http.test.ts` — verify `200` GET, `200` PUT availability, `204` DELETE availability, `200` PATCH respond-to-assignment, `201` POST notifications/read-all; `401` for all without auth
-- [ ] T048 [US1] Verify Batch 3: `bun test` passes all volunteer behavior + HTTP tests
+- [x] T040 [P] [US1] Write behavior tests in `apps/server/tests/behavior/volunteer.behavior.test.ts` — seed DB, verify: `getDashboard`, `getUpcomingAssignments`, `getAvailability`, `upsertAvailability`, `deleteAvailability`, `respondToAssignment`, `getNotifications`, `markNotificationRead`, `markAllNotificationsRead`
+- [x] T041 [US1] Create `apps/server/src/domain/contracts/volunteer-manager.ts` — `IVolunteerManager` interface with all 10 methods per data-model.md (depends on T008)
+- [x] T042 [US1] Create `apps/server/src/application/db-volunteer-manager.ts` — `DbVolunteerManager implements IVolunteerManager`, `@injectable()`, inject `IVolunteerRepository`, `IAvailabilityRepository`, `IVolunteerNotificationRepository`, `IUnitOfWork`, `INotificationService`; port logic from `apps/server/src/services/volunteer-dashboard/` (depends on T041)
+- [x] T043 [P] [US1] Create `apps/server/src/api/dtos/volunteer.dto.ts` — Zod schemas + mappers for dashboard snapshot, upcoming assignments, availability, respond-to-assignment body (depends on T008)
+- [x] T044 [P] [US1] Create `apps/server/src/api/dtos/notification.dto.ts` — Zod schemas + mappers for volunteer notifications (depends on T008)
+- [x] T045 [US1] Create `apps/server/src/api/controllers/volunteer-controller.ts` — `VolunteerController extends FastifyController`, `prefix = '/volunteer'`; `preHandler` reads Better-Auth session, decorates `request.userId` and `request.churchId`, returns `401` if unauthenticated (no role check); all 10 `/volunteer/*` routes per contracts/http-api.md delegating to `IVolunteerManager` (depends on T012, T041, T043, T044)
+- [x] T046 [US1] Update `apps/server/src/main/di/injections.ts` — register `IVolunteerRepository`, `IAvailabilityRepository`, `IVolunteerNotificationRepository`, `IVolunteerManager` → `DbVolunteerManager`, `VolunteerController` (depends on T042, T045)
+- [x] T047 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/volunteer.http.test.ts` — verify `200` GET, `200` PUT availability, `204` DELETE availability, `200` PATCH respond-to-assignment, `201` POST notifications/read-all; `401` for all without auth
+- [x] T048 [US1] Verify Batch 3: `bun test` passes all volunteer behavior + HTTP tests
 
 **Batch 3 Checkpoint**: All 10 `/volunteer/*` endpoints functional.
 

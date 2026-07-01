@@ -2,7 +2,9 @@ import 'reflect-metadata';
 import { db } from '@church/db';
 import { container } from 'tsyringe';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
+import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
+import { DbVolunteerManager } from '../../application/db-volunteer-manager';
 import {
   DrizzleAssignmentAuditRepository,
   DrizzleAssignmentRepository,
@@ -69,14 +71,21 @@ export function registerInjections(): void {
     useClass: UnleashFeatureFlagService,
   });
 
-  // Managers — T037
+  // Managers
   container.register(injection.managers.ministryManager, {
     useClass: DbMinistryManager,
   });
+  container.register(injection.managers.volunteerManager, {
+    useClass: DbVolunteerManager,
+  });
 
-  // Controllers — T037
+  // Controllers
   container.registerSingleton(
     injection.controllers.fastify,
     AdminLeaderController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
+    VolunteerController,
   );
 }

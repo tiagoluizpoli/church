@@ -155,14 +155,14 @@
 
 ### Batch 6 — Role + Team
 
-- [ ] T066 [P] [US1] Write behavior tests in `apps/server/tests/behavior/role.behavior.test.ts` — seed DB, verify: `listTemplates`, `upsertTemplate`, `applyTemplate`, `deleteTemplate`
-- [ ] T067 [US1] Create `apps/server/src/domain/contracts/role-manager.ts` — `IRoleManager` interface with 4 methods per data-model.md (depends on T008)
-- [ ] T068 [US1] Create `apps/server/src/application/db-role-manager.ts` — `DbRoleManager implements IRoleManager`, `@injectable()`, inject `IRoleRepository`, `IRoleTemplateRepository`, `ITeamRepository` (depends on T067)
-- [ ] T069 [P] [US1] Create `apps/server/src/api/dtos/role.dto.ts` — Zod schemas for `upsertRoleTemplateBody`, `roleTemplateResponse` + mappers (depends on T008)
-- [ ] T070 [US1] Extend `apps/server/src/api/controllers/admin-leader-controller.ts` — add: `GET /admin/role-templates` (200), `PUT /admin/role-templates/:templateId` (200), `DELETE /admin/role-templates/:templateId` (204); delegate to `IRoleManager` (depends on T067, T069)
-- [ ] T071 [US1] Update `apps/server/src/main/di/injections.ts` — register `IRoleRepository`, `IRoleTemplateRepository`, `ITeamRepository`, `IRoleManager` → `DbRoleManager` (depends on T068)
-- [ ] T072 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-roles.http.test.ts` — verify `200` GET list, `200` PUT upsert, `204` DELETE
-- [ ] T073 [US1] Verify Batch 6: `bun test` passes all role behavior + HTTP tests
+- [x] T066 [P] [US1] Write behavior tests in `apps/server/tests/behavior/role.behavior.test.ts` — seed DB, verify: `listTemplates`, `upsertTemplate`, `applyTemplate`, `deleteTemplate`
+- [x] T067 [US1] Create `apps/server/src/domain/contracts/role-manager.ts` — `IRoleManager` interface with 4 methods per data-model.md (depends on T008)
+- [x] T068 [US1] Create `apps/server/src/application/db-role-manager.ts` — `DbRoleManager implements IRoleManager`, `@injectable()`, inject `IRoleRepository`, `IRoleTemplateRepository`, `ITeamRepository` (depends on T067)
+- [x] T069 [P] [US1] Create `apps/server/src/api/dtos/role.dto.ts` — Zod schemas for `upsertRoleTemplateBody`, `roleTemplateResponse` + mappers (depends on T008)
+- [x] T070 [US1] Extend `apps/server/src/api/controllers/admin-leader-controller.ts` — add: `GET /admin/role-templates` (200), `PUT /admin/role-templates/:templateId` (200), `DELETE /admin/role-templates/:templateId` (204); delegate to `IRoleManager` (depends on T067, T069)
+- [x] T071 [US1] Update `apps/server/src/main/di/injections.ts` — register `IRoleRepository`, `IRoleTemplateRepository`, `ITeamRepository`, `IRoleManager` → `DbRoleManager` (depends on T068)
+- [x] T072 [P] [US1] Write HTTP contract tests in `apps/server/tests/http/admin-roles.http.test.ts` — verify `200` GET list, `200` PUT upsert, `204` DELETE
+- [x] T073 [US1] Verify Batch 6: `bun test` passes all role behavior + HTTP tests
 
 **Batch 6 Checkpoint**: All 3 role-template endpoints functional.
 

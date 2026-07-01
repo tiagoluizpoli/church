@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { db } from '@church/db';
 import { container } from 'tsyringe';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
+import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbEventManager } from '../../application/db-event-manager';
@@ -95,6 +96,10 @@ export function registerInjections(): void {
   container.registerSingleton(
     injection.controllers.fastify,
     AdminLeaderController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
+    FeatureFlagController,
   );
   container.registerSingleton(
     injection.controllers.fastify,

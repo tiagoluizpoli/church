@@ -8,6 +8,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError,
+  jsonSchemaTransform,
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
@@ -60,6 +61,7 @@ export async function createFastify() {
     openapi: {
       info: { title: 'Church API', version: '1.0.0' },
     },
+    transform: jsonSchemaTransform,
   });
 
   if (!isProd && !isTest) {

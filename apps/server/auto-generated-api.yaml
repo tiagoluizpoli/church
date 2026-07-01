@@ -1,0 +1,1617 @@
+openapi: 3.0.3
+info:
+  title: Church API
+  version: 1.0.0
+components:
+  schemas: {}
+paths:
+  /api/auth/{*}:
+    get: &a1
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: "*"
+          required: true
+      responses:
+        "200":
+          description: Default Response
+    post: *a1
+  /api/v1/admin/ministries:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ministries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        enforcementType:
+                          type: string
+                          enum:
+                            - soft
+                            - hard
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - name
+                        - enforcementType
+                        - createdAt
+                        - updatedAt
+                      additionalProperties: false
+                required:
+                  - ministries
+                additionalProperties: false
+  /api/v1/admin/schedule-builder:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        event:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            churchId:
+                              type: string
+                            ministryId:
+                              type: string
+                            title:
+                              type: string
+                            description:
+                              type: string
+                            location:
+                              type: string
+                            startDate:
+                              type: string
+                            endDate:
+                              type: string
+                            status:
+                              type: string
+                              enum:
+                                - draft
+                                - published
+                                - cancelled
+                                - past
+                            eventType:
+                              type: string
+                              enum:
+                                - hourly
+                                - day_based
+                            createdAt:
+                              type: string
+                            updatedAt:
+                              type: string
+                          required:
+                            - id
+                            - churchId
+                            - ministryId
+                            - title
+                            - startDate
+                            - endDate
+                            - status
+                            - eventType
+                            - createdAt
+                            - updatedAt
+                          additionalProperties: false
+                        slots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              churchId:
+                                type: string
+                              eventId:
+                                type: string
+                              startTime:
+                                type: string
+                              endTime:
+                                type: string
+                              label:
+                                type: string
+                              status:
+                                type: string
+                                enum:
+                                  - active
+                                  - cancelled
+                              requirements:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                    slotId:
+                                      type: string
+                                    roleId:
+                                      type: string
+                                    teamId:
+                                      type: string
+                                    requiredCount:
+                                      type: number
+                                    notes:
+                                      type: string
+                                  required:
+                                    - id
+                                    - slotId
+                                    - roleId
+                                    - requiredCount
+                                  additionalProperties: false
+                            required:
+                              - id
+                              - churchId
+                              - eventId
+                              - startTime
+                              - endTime
+                              - status
+                              - requirements
+                            additionalProperties: false
+                      required:
+                        - event
+                        - slots
+                      additionalProperties: false
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        slotId:
+                          type: string
+                        volunteerId:
+                          type: string
+                        roleId:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - pending
+                            - confirmed
+                            - declined
+                            - cancelled
+                        reason:
+                          type: string
+                        assignedAt:
+                          type: string
+                        assignedBy:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - slotId
+                        - volunteerId
+                        - roleId
+                        - status
+                        - assignedAt
+                      additionalProperties: false
+                  availability:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        volunteerId:
+                          type: string
+                        type:
+                          type: string
+                          enum:
+                            - available
+                            - unavailable
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        isAllDay:
+                          type: boolean
+                      required:
+                        - id
+                        - volunteerId
+                        - type
+                        - startTime
+                        - endTime
+                        - isAllDay
+                      additionalProperties: false
+                  volunteers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - events
+                  - assignments
+                  - availability
+                  - volunteers
+                additionalProperties: false
+  /api/v1/admin/events:
+    get:
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+            enum:
+              - draft
+              - published
+              - cancelled
+              - past
+          in: query
+          name: status
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        ministryId:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        location:
+                          type: string
+                        startDate:
+                          type: string
+                        endDate:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - published
+                            - cancelled
+                            - past
+                        eventType:
+                          type: string
+                          enum:
+                            - hourly
+                            - day_based
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - ministryId
+                        - title
+                        - startDate
+                        - endDate
+                        - status
+                        - eventType
+                        - createdAt
+                        - updatedAt
+                      additionalProperties: false
+                required:
+                  - events
+                additionalProperties: false
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ministryId:
+                  type: string
+                title:
+                  type: string
+                  minLength: 1
+                description:
+                  type: string
+                location:
+                  type: string
+                startDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                eventType:
+                  type: string
+                  enum:
+                    - hourly
+                    - day_based
+              required:
+                - ministryId
+                - title
+                - startDate
+                - endDate
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  ministryId:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  location:
+                    type: string
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - published
+                      - cancelled
+                      - past
+                  eventType:
+                    type: string
+                    enum:
+                      - hourly
+                      - day_based
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - ministryId
+                  - title
+                  - startDate
+                  - endDate
+                  - status
+                  - eventType
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+  /api/v1/admin/events/{eventId}/publish:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/events/{eventId}/cancel:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/events/{eventId}/reminders:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/events/{eventId}/slots:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                label:
+                  type: string
+              required:
+                - startTime
+                - endTime
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  eventId:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  label:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - cancelled
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        slotId:
+                          type: string
+                        roleId:
+                          type: string
+                        teamId:
+                          type: string
+                        requiredCount:
+                          type: number
+                        notes:
+                          type: string
+                      required:
+                        - id
+                        - slotId
+                        - roleId
+                        - requiredCount
+                      additionalProperties: false
+                required:
+                  - id
+                  - churchId
+                  - eventId
+                  - startTime
+                  - endTime
+                  - status
+                  - requirements
+                additionalProperties: false
+  /api/v1/admin/events/{eventId}/slots/{slotId}:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                label:
+                  type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: slotId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  eventId:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  label:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - cancelled
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        slotId:
+                          type: string
+                        roleId:
+                          type: string
+                        teamId:
+                          type: string
+                        requiredCount:
+                          type: number
+                        notes:
+                          type: string
+                      required:
+                        - id
+                        - slotId
+                        - roleId
+                        - requiredCount
+                      additionalProperties: false
+                required:
+                  - id
+                  - churchId
+                  - eventId
+                  - startTime
+                  - endTime
+                  - status
+                  - requirements
+                additionalProperties: false
+    delete:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: slotId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/events/{eventId}/slots/generate:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                strategy:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - equal-split
+                        slotDurationMinutes:
+                          type: integer
+                          exclusiveMinimum: true
+                          maximum: 9007199254740991
+                      required:
+                        - kind
+                        - slotDurationMinutes
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - template-based
+                        periods:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              label:
+                                type: string
+                              startTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                              endTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                              requirements:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    roleId:
+                                      type: string
+                                    teamId:
+                                      type: string
+                                    requiredCount:
+                                      type: integer
+                                      exclusiveMinimum: true
+                                      maximum: 9007199254740991
+                                    notes:
+                                      type: string
+                                  required:
+                                    - roleId
+                                    - requiredCount
+                            required:
+                              - label
+                              - startTime
+                              - endTime
+                      required:
+                        - kind
+                        - periods
+              required:
+                - strategy
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        eventId:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        label:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - active
+                            - cancelled
+                        requirements:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              slotId:
+                                type: string
+                              roleId:
+                                type: string
+                              teamId:
+                                type: string
+                              requiredCount:
+                                type: number
+                              notes:
+                                type: string
+                            required:
+                              - id
+                              - slotId
+                              - roleId
+                              - requiredCount
+                            additionalProperties: false
+                      required:
+                        - id
+                        - churchId
+                        - eventId
+                        - startTime
+                        - endTime
+                        - status
+                        - requirements
+                      additionalProperties: false
+                required:
+                  - slots
+                additionalProperties: false
+  /api/v1/admin/events/{eventId}/slots/{slotId}/requirements:
+    put:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleId:
+                  type: string
+                teamId:
+                  type: string
+                requiredCount:
+                  type: integer
+                  minimum: 1
+                  maximum: 9007199254740991
+                notes:
+                  type: string
+              required:
+                - roleId
+                - requiredCount
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: slotId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  slotId:
+                    type: string
+                  roleId:
+                    type: string
+                  teamId:
+                    type: string
+                  requiredCount:
+                    type: number
+                  notes:
+                    type: string
+                required:
+                  - id
+                  - slotId
+                  - roleId
+                  - requiredCount
+                additionalProperties: false
+  /api/v1/admin/assignments:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slotId:
+                  type: string
+                volunteerId:
+                  type: string
+                roleId:
+                  type: string
+                reason:
+                  type: string
+              required:
+                - slotId
+                - volunteerId
+                - roleId
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  slotId:
+                    type: string
+                  volunteerId:
+                    type: string
+                  roleId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - pending
+                      - confirmed
+                      - declined
+                      - cancelled
+                  reason:
+                    type: string
+                  assignedAt:
+                    type: string
+                  assignedBy:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - slotId
+                  - volunteerId
+                  - roleId
+                  - status
+                  - assignedAt
+                additionalProperties: false
+  /api/v1/admin/assignments/{assignmentId}:
+    delete:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/assignments/{assignmentId}/audit:
+    get:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        assignmentId:
+                          type: string
+                        actorId:
+                          type: string
+                        action:
+                          type: string
+                          enum:
+                            - created
+                            - updated
+                            - deleted
+                            - status_change
+                            - event_published
+                            - event_cancelled
+                        reason:
+                          type: string
+                        timestamp:
+                          type: string
+                      required:
+                        - id
+                        - assignmentId
+                        - actorId
+                        - action
+                        - timestamp
+                      additionalProperties: false
+                required:
+                  - items
+                additionalProperties: false
+  /api/v1/admin/role-templates:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        ministryId:
+                          type: string
+                        name:
+                          type: string
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              roleId:
+                                type: string
+                              requiredCount:
+                                type: number
+                            required:
+                              - id
+                              - roleId
+                              - requiredCount
+                            additionalProperties: false
+                      required:
+                        - id
+                        - churchId
+                        - ministryId
+                        - name
+                        - items
+                      additionalProperties: false
+                required:
+                  - items
+                additionalProperties: false
+  /api/v1/admin/role-templates/{templateId}:
+    put:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ministryId:
+                  type: string
+                name:
+                  type: string
+                  minLength: 1
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      roleId:
+                        type: string
+                      requiredCount:
+                        type: integer
+                        minimum: 1
+                        maximum: 9007199254740991
+                    required:
+                      - roleId
+                      - requiredCount
+              required:
+                - ministryId
+                - name
+                - items
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: templateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  ministryId:
+                    type: string
+                  name:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        roleId:
+                          type: string
+                        requiredCount:
+                          type: number
+                      required:
+                        - id
+                        - roleId
+                        - requiredCount
+                      additionalProperties: false
+                required:
+                  - id
+                  - churchId
+                  - ministryId
+                  - name
+                  - items
+                additionalProperties: false
+    delete:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: templateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/feature-flags/:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  flags:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                required:
+                  - flags
+                additionalProperties: false
+  /api/v1/volunteer/dashboard:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upcomingAssignments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        slotId:
+                          type: string
+                        volunteerId:
+                          type: string
+                        roleId:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - pending
+                            - confirmed
+                            - declined
+                            - cancelled
+                        reason:
+                          type: string
+                        assignedAt:
+                          type: string
+                        assignedBy:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - slotId
+                        - volunteerId
+                        - roleId
+                        - status
+                        - assignedAt
+                      additionalProperties: false
+                  unreadNotificationCount:
+                    type: number
+                required:
+                  - upcomingAssignments
+                  - unreadNotificationCount
+                additionalProperties: false
+  /api/v1/volunteer/assignments:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        slotId:
+                          type: string
+                        volunteerId:
+                          type: string
+                        roleId:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - pending
+                            - confirmed
+                            - declined
+                            - cancelled
+                        reason:
+                          type: string
+                        assignedAt:
+                          type: string
+                        assignedBy:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - slotId
+                        - volunteerId
+                        - roleId
+                        - status
+                        - assignedAt
+                      additionalProperties: false
+                required:
+                  - assignments
+                additionalProperties: false
+  /api/v1/volunteer/ministries/{ministryId}/schedule:
+    get:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        slotId:
+                          type: string
+                        volunteerId:
+                          type: string
+                        roleId:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - pending
+                            - confirmed
+                            - declined
+                            - cancelled
+                        reason:
+                          type: string
+                        assignedAt:
+                          type: string
+                        assignedBy:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - slotId
+                        - volunteerId
+                        - roleId
+                        - status
+                        - assignedAt
+                      additionalProperties: false
+                required:
+                  - assignments
+                additionalProperties: false
+  /api/v1/volunteer/availability:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  availability:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        volunteerId:
+                          type: string
+                        eventId:
+                          type: string
+                        type:
+                          type: string
+                          enum:
+                            - available
+                            - unavailable
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        isAllDay:
+                          type: boolean
+                        reason:
+                          type: string
+                        repeatRule:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - volunteerId
+                        - type
+                        - startTime
+                        - endTime
+                        - isAllDay
+                      additionalProperties: false
+                required:
+                  - availability
+                additionalProperties: false
+    put:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                availabilityId:
+                  type: string
+                eventId:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - available
+                    - unavailable
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                isAllDay:
+                  default: false
+                  type: boolean
+                reason:
+                  type: string
+                repeatRule:
+                  type: string
+              required:
+                - type
+                - startTime
+                - endTime
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  volunteerId:
+                    type: string
+                  eventId:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - available
+                      - unavailable
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  isAllDay:
+                    type: boolean
+                  reason:
+                    type: string
+                  repeatRule:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - volunteerId
+                  - type
+                  - startTime
+                  - endTime
+                  - isAllDay
+                additionalProperties: false
+  /api/v1/volunteer/availability/{availabilityId}:
+    delete:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: availabilityId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/volunteer/assignments/{assignmentId}:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                response:
+                  type: string
+                  enum:
+                    - accepted
+                    - declined
+                reason:
+                  type: string
+              required:
+                - response
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  slotId:
+                    type: string
+                  volunteerId:
+                    type: string
+                  roleId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - pending
+                      - confirmed
+                      - declined
+                      - cancelled
+                  reason:
+                    type: string
+                  assignedAt:
+                    type: string
+                  assignedBy:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - slotId
+                  - volunteerId
+                  - roleId
+                  - status
+                  - assignedAt
+                additionalProperties: false
+  /api/v1/volunteer/notifications:
+    get:
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        volunteerId:
+                          type: string
+                        ministryId:
+                          type: string
+                        eventId:
+                          type: string
+                        assignmentId:
+                          type: string
+                        type:
+                          type: string
+                          enum:
+                            - schedule_published
+                            - assignment_added
+                            - assignment_changed
+                            - assignment_removed
+                            - availability_reminder
+                            - assignment_reminder
+                        title:
+                          type: string
+                        body:
+                          type: string
+                        payload:
+                          type: object
+                          additionalProperties:
+                            nullable: true
+                            type: string
+                        readAt:
+                          type: string
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - volunteerId
+                        - type
+                        - title
+                        - body
+                        - payload
+                        - createdAt
+                      additionalProperties: false
+                  nextCursor:
+                    type: string
+                required:
+                  - items
+                additionalProperties: false
+  /api/v1/volunteer/notifications/{notificationId}:
+    patch:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: notificationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  volunteerId:
+                    type: string
+                  ministryId:
+                    type: string
+                  eventId:
+                    type: string
+                  assignmentId:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - schedule_published
+                      - assignment_added
+                      - assignment_changed
+                      - assignment_removed
+                      - availability_reminder
+                      - assignment_reminder
+                  title:
+                    type: string
+                  body:
+                    type: string
+                  payload:
+                    type: object
+                    additionalProperties:
+                      nullable: true
+                      type: string
+                  readAt:
+                    type: string
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - volunteerId
+                  - type
+                  - title
+                  - body
+                  - payload
+                  - createdAt
+                additionalProperties: false
+  /api/v1/volunteer/notifications/read-all:
+    post:
+      responses:
+        "200":
+          description: Default Response

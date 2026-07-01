@@ -4,15 +4,18 @@ import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
 import swagger from '@fastify/swagger';
 import apiReference from '@scalar/fastify-api-reference';
-import Fastify from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError,
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
-import type { FastifyTypedInstance } from './types';
 
+// moduleResolution:bundler cannot expose call signatures for CJS export= packages.
+// Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
+type FastifyFactory = (opts?: Record<string, unknown>) => FastifyInstance;
+const createFastifyInstance = Fastify as unknown as FastifyFactory;
 const ERROR_MAP: Record<string, { status: number }> = {
   INVALID_DATE_RANGE: { status: 400 },
   INVALID_REQUIRED_COUNT: { status: 400 },
@@ -30,22 +33,28 @@ const ERROR_MAP: Record<string, { status: number }> = {
   PUBLISH_VALIDATION: { status: 422 },
 };
 
-export async function createFastify(): Promise<FastifyTypedInstance> {
-  const isDev = env.NODE_ENV !== 'production';
+export async function createFastify() {
+  const isTest = env.NODE_ENV === 'test';
+  const isProd = env.NODE_ENV === 'production';
 
-  const app = Fastify({
-    logger: isDev
-      ? {
-          transport: {
-            target: 'pino-pretty',
-            options: { colorize: true, translateTime: 'HH:MM:ss' },
+  const app = createFastifyInstance({
+    logger: isTest
+      ? false
+      : isProd
+        ? true
+        : {
+            transport: {
+              target: 'pino-pretty',
+              options: { colorize: true, translateTime: 'HH:MM:ss' },
+            },
           },
-        }
-      : true,
-  }).withTypeProvider();
+  });
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+
+  app.decorateRequest('volunteerId', '');
+  app.decorateRequest('churchId', '');
 
   await app.register(swagger, {
     openapi: {
@@ -53,7 +62,7 @@ export async function createFastify(): Promise<FastifyTypedInstance> {
     },
   });
 
-  if (isDev) {
+  if (!isProd && !isTest) {
     await app.register(apiReference, { routePrefix: '/documentation' });
   }
 
@@ -122,5 +131,5 @@ export async function createFastify(): Promise<FastifyTypedInstance> {
     },
   });
 
-  return app as unknown as FastifyTypedInstance;
+  return app;
 }

@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { db } from '@church/db';
 import { container } from 'tsyringe';
+import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
+import { DbMinistryManager } from '../../application/db-ministry-manager';
 import {
   DrizzleAssignmentAuditRepository,
   DrizzleAssignmentRepository,
@@ -66,4 +68,15 @@ export function registerInjections(): void {
   container.register(injection.infra.featureFlagService, {
     useClass: UnleashFeatureFlagService,
   });
+
+  // Managers — T037
+  container.register(injection.managers.ministryManager, {
+    useClass: DbMinistryManager,
+  });
+
+  // Controllers — T037
+  container.registerSingleton(
+    injection.controllers.fastify,
+    AdminLeaderController,
+  );
 }

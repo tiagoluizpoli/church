@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId, ChurchSlug } from '../../../domain/entities/church';
-import type { ChurchRepository } from '../church.repository';
+import type { ChurchId, ChurchSlug } from '../../entities/church';
+import type { ChurchRepository } from '../infrastructure/church.repository';
 
 export function runChurchRepositoryContractTests(
   factory: () => Promise<ChurchRepository>,

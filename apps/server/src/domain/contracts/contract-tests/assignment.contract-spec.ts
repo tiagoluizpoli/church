@@ -1,12 +1,12 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { AssignmentId } from '../../../domain/entities/assignment';
-import type { ChurchId } from '../../../domain/entities/church';
-import type { EventId } from '../../../domain/entities/event';
-import type { RoleId } from '../../../domain/entities/role';
-import type { TimeSlotId } from '../../../domain/entities/time-slot';
-import type { VolunteerId } from '../../../domain/entities/volunteer';
-import type { AssignmentRepository } from '../assignment.repository';
+import type { AssignmentId } from '../../entities/assignment';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { RoleId } from '../../entities/role';
+import type { TimeSlotId } from '../../entities/time-slot';
+import type { VolunteerId } from '../../entities/volunteer';
+import type { AssignmentRepository } from '../infrastructure/assignment.repository';
 
 export function runAssignmentRepositoryContractTests(
   factory: () => Promise<AssignmentRepository>,

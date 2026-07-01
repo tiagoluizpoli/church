@@ -1,9 +1,9 @@
 import { NotFoundError } from '@church/core';
-import { runVolunteerRepositoryContractTests } from '../../../src/application/contracts/contract-tests/volunteer.contract-spec';
+import { runVolunteerRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/volunteer.contract-spec';
 import type {
   MinistryMembership,
   VolunteerRepository,
-} from '../../../src/application/contracts/volunteer.repository';
+} from '../../../src/domain/contracts/volunteer.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { MinistryId } from '../../../src/domain/entities/ministry';
 import type { RoleId } from '../../../src/domain/entities/role';

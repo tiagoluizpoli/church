@@ -5,8 +5,8 @@ import type {
   CreateRoleTemplateInput,
   RoleTemplateRepository,
   UpdateRoleTemplateInput,
-} from '../../application/contracts/role-template.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+} from '../../domain/contracts/infrastructure/role-template.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type {

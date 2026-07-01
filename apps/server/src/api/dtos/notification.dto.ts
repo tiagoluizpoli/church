@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { NotificationListResult } from '../../domain/contracts/volunteer-manager';
+import type { NotificationListResult } from '../../domain/contracts/application/volunteer-manager';
 import type { VolunteerNotification } from '../../domain/entities/volunteer-notification';
 
 export const notificationResponseSchema = z.object({

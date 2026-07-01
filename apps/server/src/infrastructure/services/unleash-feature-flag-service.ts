@@ -5,7 +5,7 @@ import { startUnleash, type Unleash } from 'unleash-client';
 import type {
   FeatureFlagContext,
   IFeatureFlagService,
-} from '@/application/contracts/feature-flag-service';
+} from '@/domain/contracts/infrastructure/feature-flag-service';
 
 @injectable()
 export class UnleashFeatureFlagService implements IFeatureFlagService {

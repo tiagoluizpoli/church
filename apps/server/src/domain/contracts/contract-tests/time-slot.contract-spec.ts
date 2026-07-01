@@ -1,10 +1,10 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId } from '../../../domain/entities/church';
-import type { EventId } from '../../../domain/entities/event';
-import type { RoleId } from '../../../domain/entities/role';
-import type { TimeSlotId } from '../../../domain/entities/time-slot';
-import type { TimeSlotRepository } from '../time-slot.repository';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { RoleId } from '../../entities/role';
+import type { TimeSlotId } from '../../entities/time-slot';
+import type { TimeSlotRepository } from '../infrastructure/time-slot.repository';
 
 export function runTimeSlotRepositoryContractTests(
   factory: () => Promise<TimeSlotRepository>,

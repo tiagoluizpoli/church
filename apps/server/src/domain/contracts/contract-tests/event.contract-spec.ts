@@ -1,9 +1,9 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId } from '../../../domain/entities/church';
-import type { EventId } from '../../../domain/entities/event';
-import type { MinistryId } from '../../../domain/entities/ministry';
-import type { EventRepository } from '../event.repository';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { MinistryId } from '../../entities/ministry';
+import type { EventRepository } from '../infrastructure/event.repository';
 
 export function runEventRepositoryContractTests(
   factory: () => Promise<EventRepository>,

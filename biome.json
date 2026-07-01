@@ -181,6 +181,124 @@
   },
   "overrides": [
     {
+      "includes": ["apps/server/src/api/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/infrastructure/**", "!**/domain/**"],
+                    "message": "api/ → domain/ only. Direct infrastructure layer import forbidden."
+                  },
+                  {
+                    "group": ["**/application/**", "!**/domain/**"],
+                    "message": "api/ → domain/ only. Direct application layer import forbidden; import interfaces from domain/contracts/application/ instead."
+                  },
+                  {
+                    "group": ["**/domain/contracts/infrastructure/**"],
+                    "message": "api/ → domain/contracts/application/ only for contracts. Infrastructure contracts (repositories/services) are for application and infrastructure layers only."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/domain/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/infrastructure/**", "!**/domain/**"],
+                    "message": "domain/ → packages/* only. Infrastructure layer import forbidden from domain."
+                  },
+                  {
+                    "group": ["**/application/**", "!**/domain/**"],
+                    "message": "domain/ → packages/* only. Application layer import forbidden from domain."
+                  },
+                  {
+                    "group": ["**/api/**"],
+                    "message": "domain/ → packages/* only. API layer import forbidden from domain."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/application/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/infrastructure/**", "!**/domain/**"],
+                    "message": "application/ → domain/ only. Infrastructure layer import forbidden; consume infra interfaces via domain/contracts/infrastructure/."
+                  },
+                  {
+                    "group": ["**/api/**"],
+                    "message": "application/ → domain/ only. API layer import forbidden from application."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/domain/contracts/contract-tests/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/infrastructure/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/application/**", "!**/domain/**"],
+                    "message": "infrastructure/ → domain/ only. Application layer import forbidden from infrastructure."
+                  },
+                  {
+                    "group": ["**/api/**"],
+                    "message": "infrastructure/ → domain/ only. API layer import forbidden from infrastructure."
+                  },
+                  {
+                    "group": ["**/domain/contracts/application/**"],
+                    "message": "infrastructure/ → domain/contracts/infrastructure/ only for contracts. Manager interfaces (application contracts) are not for infrastructure layer."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["**/src/routes/**/*", "**/routeTree.gen.ts"],
       "linter": {
         "rules": {

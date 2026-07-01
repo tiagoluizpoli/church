@@ -1,11 +1,11 @@
 import { NotFoundError } from '@church/core';
-import { runEventRepositoryContractTests } from '../../../src/application/contracts/contract-tests/event.contract-spec';
+import { runEventRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/event.contract-spec';
 import type {
   CreateEventInput,
   EventRepository,
   UpdateEventInput,
   UpdateEventStatusInput,
-} from '../../../src/application/contracts/event.repository';
+} from '../../../src/domain/contracts/event.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import {
   Event,

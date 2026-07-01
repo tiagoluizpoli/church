@@ -1,13 +1,18 @@
-import type { Assignment } from '../entities/assignment';
-import type { Availability } from '../entities/availability';
-import type { ChurchId } from '../entities/church';
-import type { Event, EventId, EventStatus, EventType } from '../entities/event';
-import type { MinistryId } from '../entities/ministry';
-import type { RoleId } from '../entities/role';
-import type { SlotRequirement } from '../entities/slot-requirement';
-import type { TeamId } from '../entities/team';
-import type { TimeSlot, TimeSlotId } from '../entities/time-slot';
-import type { VolunteerId } from '../entities/volunteer';
+import type { Assignment } from '../../entities/assignment';
+import type { Availability } from '../../entities/availability';
+import type { ChurchId } from '../../entities/church';
+import type {
+  Event,
+  EventId,
+  EventStatus,
+  EventType,
+} from '../../entities/event';
+import type { MinistryId } from '../../entities/ministry';
+import type { RoleId } from '../../entities/role';
+import type { SlotRequirement } from '../../entities/slot-requirement';
+import type { TeamId } from '../../entities/team';
+import type { TimeSlot, TimeSlotId } from '../../entities/time-slot';
+import type { VolunteerId } from '../../entities/volunteer';
 
 export interface CreateEventInput {
   churchId: ChurchId;

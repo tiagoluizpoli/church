@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
-import type { VolunteerRepository } from '../../application/contracts/volunteer.repository';
-import type { IAssignmentManager } from '../../domain/contracts/assignment-manager';
-import type { IEventManager } from '../../domain/contracts/event-manager';
-import type { IMinistryManager } from '../../domain/contracts/ministry-manager';
-import type { IRoleManager } from '../../domain/contracts/role-manager';
+import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
+import type { IEventManager } from '../../domain/contracts/application/event-manager';
+import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
+import type { IRoleManager } from '../../domain/contracts/application/role-manager';
+import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { AssignmentId } from '../../domain/entities/assignment';
 import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
@@ -65,8 +65,8 @@ export class AdminLeaderController implements FastifyController {
     private readonly assignmentManager: IAssignmentManager,
     @inject('IRoleManager')
     private readonly roleManager: IRoleManager,
-    @inject('IVolunteerRepository')
-    private readonly volunteerRepo: VolunteerRepository,
+    @inject('IVolunteerManager')
+    private readonly volunteerManager: IVolunteerManager,
   ) {}
 
   registerRoutes(
@@ -87,34 +87,25 @@ export class AdminLeaderController implements FastifyController {
           .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
       }
 
-      const volunteer = await this.volunteerRepo.findByUserIdGlobally(
+      const ctx = await this.volunteerManager.resolveVolunteerContext(
         session.user.id as UserId,
       );
-      if (!volunteer) {
+      if (!ctx) {
         return reply.status(401).send({
           error: 'UNAUTHORIZED',
           message: 'Volunteer profile not found',
         });
       }
 
-      const ledMinistries = await this.volunteerRepo.listLedMinistries(
-        volunteer.churchId,
-        volunteer.id,
-      );
-      const isAdmin = ledMinistries.some(
-        (lm) => lm.ministryName === 'Administration',
-      );
-      const isLeader = ledMinistries.length > 0;
-
-      if (!isAdmin && !isLeader) {
+      if (!ctx.isAdmin && !ctx.isLeader) {
         return reply.status(403).send({
           error: 'FORBIDDEN',
           message: 'Admin or leader role required',
         });
       }
 
-      request.volunteerId = volunteer.id as string;
-      request.churchId = volunteer.churchId as string;
+      request.volunteerId = ctx.volunteerId as string;
+      request.churchId = ctx.churchId as string;
     });
 
     // Ministry routes

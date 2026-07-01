@@ -1,5 +1,5 @@
 import { describe, it } from 'vitest';
-import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
+import type { AssignmentRepository } from '../../../src/domain/contracts/assignment.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { VolunteerId } from '../../../src/domain/entities/volunteer';

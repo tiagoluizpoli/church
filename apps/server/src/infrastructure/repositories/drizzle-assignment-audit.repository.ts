@@ -11,8 +11,8 @@ import type {
   AssignmentAuditLogEntry,
   AssignmentAuditRepository,
   CreateAssignmentAuditInput,
-} from '../../application/contracts/assignment-audit.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+} from '../../domain/contracts/infrastructure/assignment-audit.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AssignmentId } from '../../domain/entities/assignment';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
 import type { ChurchId } from '../../domain/entities/church';

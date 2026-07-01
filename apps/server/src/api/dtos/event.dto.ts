@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ScheduleBuilderData } from '../../domain/contracts/event-manager';
+import type { ScheduleBuilderData } from '../../domain/contracts/application/event-manager';
 import type { Event } from '../../domain/entities/event';
 
 export const createEventBodySchema = z.object({

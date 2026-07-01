@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { VolunteerDashboard } from '../../domain/contracts/volunteer-manager';
+import type { VolunteerDashboard } from '../../domain/contracts/application/volunteer-manager';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { Availability } from '../../domain/entities/availability';
 

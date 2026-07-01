@@ -1,17 +1,17 @@
-import type { Assignment, AssignmentId } from '../entities/assignment';
+import type { Assignment, AssignmentId } from '../../entities/assignment';
 import type {
   Availability,
   AvailabilityId,
   AvailabilityType,
-} from '../entities/availability';
-import type { ChurchId } from '../entities/church';
-import type { EventId } from '../entities/event';
-import type { MinistryId } from '../entities/ministry';
-import type { VolunteerId } from '../entities/volunteer';
+} from '../../entities/availability';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { MinistryId } from '../../entities/ministry';
+import type { UserId, VolunteerId } from '../../entities/volunteer';
 import type {
   VolunteerNotification,
   VolunteerNotificationId,
-} from '../entities/volunteer-notification';
+} from '../../entities/volunteer-notification';
 
 export interface VolunteerDashboard {
   upcomingAssignments: Assignment[];
@@ -44,7 +44,15 @@ export interface NotificationListResult {
   nextCursor?: Date;
 }
 
+export interface VolunteerContext {
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+  isAdmin: boolean;
+  isLeader: boolean;
+}
+
 export interface IVolunteerManager {
+  resolveVolunteerContext(userId: UserId): Promise<VolunteerContext | null>;
   getDashboard(input: {
     volunteerId: VolunteerId;
     churchId: ChurchId;

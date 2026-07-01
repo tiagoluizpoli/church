@@ -10,7 +10,13 @@ import type {
   ScheduleBuilderData,
   UpdateSlotInput,
   UpsertSlotRequirementInput,
-} from '../domain/contracts/event-manager';
+} from '../domain/contracts/application/event-manager';
+import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
+import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
+import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
+import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
+import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { ChurchId } from '../domain/entities/church';
 import {
   Event as DomainEvent,
@@ -20,12 +26,6 @@ import {
 import type { MinistryId } from '../domain/entities/ministry';
 import type { SlotRequirement } from '../domain/entities/slot-requirement';
 import type { TimeSlot, TimeSlotId } from '../domain/entities/time-slot';
-import type { AssignmentRepository } from './contracts/assignment.repository';
-import type { AvailabilityRepository } from './contracts/availability.repository';
-import type { EventRepository } from './contracts/event.repository';
-import type { NotificationService } from './contracts/notification-service';
-import type { TimeSlotRepository } from './contracts/time-slot.repository';
-import type { VolunteerRepository } from './contracts/volunteer.repository';
 
 @injectable()
 export class DbEventManager implements IEventManager {

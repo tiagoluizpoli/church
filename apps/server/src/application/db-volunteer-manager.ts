@@ -5,8 +5,13 @@ import type {
   NotificationListResult,
   RespondToAssignmentInput,
   UpsertAvailabilityInput,
+  VolunteerContext,
   VolunteerDashboard,
-} from '../domain/contracts/volunteer-manager';
+} from '../domain/contracts/application/volunteer-manager';
+import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
+import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
+import type { VolunteerNotificationRepository } from '../domain/contracts/infrastructure/volunteer-notification.repository';
 import type { Assignment } from '../domain/entities/assignment';
 import type {
   Availability,
@@ -14,18 +19,19 @@ import type {
 } from '../domain/entities/availability';
 import type { ChurchId } from '../domain/entities/church';
 import type { MinistryId } from '../domain/entities/ministry';
-import type { VolunteerId } from '../domain/entities/volunteer';
+import type { UserId, VolunteerId } from '../domain/entities/volunteer';
 import type { VolunteerNotificationId } from '../domain/entities/volunteer-notification';
-import type { AssignmentRepository } from './contracts/assignment.repository';
-import type { AvailabilityRepository } from './contracts/availability.repository';
-import type { VolunteerNotificationRepository } from './contracts/volunteer-notification.repository';
 
 const UPCOMING_DAYS = 30;
 const DEFAULT_NOTIFICATION_LIMIT = 20;
 
+const ADMINISTRATION_MINISTRY_NAME = 'Administration';
+
 @injectable()
 export class DbVolunteerManager implements IVolunteerManager {
   constructor(
+    @inject('IVolunteerRepository')
+    private readonly volunteerRepo: VolunteerRepository,
     @inject('IAssignmentRepository')
     private readonly assignmentRepo: AssignmentRepository,
     @inject('IAvailabilityRepository')
@@ -33,6 +39,25 @@ export class DbVolunteerManager implements IVolunteerManager {
     @inject('IVolunteerNotificationRepository')
     private readonly notificationRepo: VolunteerNotificationRepository,
   ) {}
+
+  async resolveVolunteerContext(
+    userId: UserId,
+  ): Promise<VolunteerContext | null> {
+    const volunteer = await this.volunteerRepo.findByUserIdGlobally(userId);
+    if (!volunteer) return null;
+    const ledMinistries = await this.volunteerRepo.listLedMinistries(
+      volunteer.churchId,
+      volunteer.id,
+    );
+    return {
+      volunteerId: volunteer.id,
+      churchId: volunteer.churchId,
+      isAdmin: ledMinistries.some(
+        (m) => m.ministryName === ADMINISTRATION_MINISTRY_NAME,
+      ),
+      isLeader: ledMinistries.length > 0,
+    };
+  }
 
   async getDashboard(input: {
     volunteerId: VolunteerId;

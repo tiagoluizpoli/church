@@ -7,8 +7,8 @@ import type {
   PublishNotification,
   ReminderNotification,
   VolunteerScheduleNotification,
-} from '../../application/contracts/notification-service';
-import type { VolunteerNotificationRepository } from '../../application/contracts/volunteer-notification.repository';
+} from '../../domain/contracts/infrastructure/notification-service';
+import type { VolunteerNotificationRepository } from '../../domain/contracts/infrastructure/volunteer-notification.repository';
 import type { ChurchId } from '../../domain/entities/church';
 import type { VolunteerId } from '../../domain/entities/volunteer';
 

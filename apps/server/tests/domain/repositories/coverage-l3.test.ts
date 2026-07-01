@@ -1,11 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { describe, expect, it } from 'vitest';
-import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/application/contracts/assignment-audit.repository';
-import type { EventRepository } from '../../../src/application/contracts/event.repository';
-import type { TimeSlotRepository } from '../../../src/application/contracts/time-slot.repository';
-import type { VolunteerRepository } from '../../../src/application/contracts/volunteer.repository';
 import { AssignmentManagerService } from '../../../src/domain/assignment/assignment-manager-service';
+import type { AssignmentRepository } from '../../../src/domain/contracts/assignment.repository';
+import type { AssignmentAuditRepository } from '../../../src/domain/contracts/assignment-audit.repository';
+import type { EventRepository } from '../../../src/domain/contracts/event.repository';
+import type { TimeSlotRepository } from '../../../src/domain/contracts/time-slot.repository';
+import type { VolunteerRepository } from '../../../src/domain/contracts/volunteer.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import { Assignment } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';

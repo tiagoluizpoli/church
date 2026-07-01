@@ -1,5 +1,5 @@
-import type { TransactionContext } from '../../application/contracts/transaction-context';
-import type { UnitOfWork } from '../../application/contracts/unit-of-work';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '../../domain/contracts/infrastructure/unit-of-work';
 import {
   asTxContext,
   DrizzleTransactionContext,

@@ -4,8 +4,8 @@ import type {
   AssignmentAuditLogEntry,
   AssignmentAuditRepository,
   CreateAssignmentAuditInput,
-} from '../../../src/application/contracts/assignment-audit.repository';
-import { runAssignmentAuditRepositoryContractTests } from '../../../src/application/contracts/contract-tests/assignment-audit.contract-spec';
+} from '../../../src/domain/contracts/assignment-audit.repository';
+import { runAssignmentAuditRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment-audit.contract-spec';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import { AssignmentAudit } from '../../../src/domain/entities/assignment-audit';
 import type { ChurchId } from '../../../src/domain/entities/church';

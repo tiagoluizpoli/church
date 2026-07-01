@@ -1,10 +1,10 @@
-import type { AssignmentId } from '../../domain/entities/assignment';
-import type { EventId } from '../../domain/entities/event';
-import type { MinistryId } from '../../domain/entities/ministry';
+import type { AssignmentId } from '../../entities/assignment';
+import type { EventId } from '../../entities/event';
+import type { MinistryId } from '../../entities/ministry';
 import type {
   VolunteerNotificationPayload,
   VolunteerNotificationType,
-} from '../../domain/entities/volunteer-notification';
+} from '../../entities/volunteer-notification';
 
 export interface PublishNotification {
   type: 'event_published' | 'event_cancelled';

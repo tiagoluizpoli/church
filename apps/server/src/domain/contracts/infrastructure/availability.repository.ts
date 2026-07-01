@@ -2,10 +2,10 @@ import type {
   Availability,
   AvailabilityId,
   AvailabilityType,
-} from '../../domain/entities/availability';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { VolunteerId } from '../../domain/entities/volunteer';
+} from '../../entities/availability';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { VolunteerId } from '../../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAvailabilityInput {

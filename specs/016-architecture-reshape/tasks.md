@@ -170,10 +170,10 @@
 
 ### Feature Flags (cross-cutting)
 
-- [ ] T074 [P] [US1] Create `apps/server/src/api/controllers/feature-flag-controller.ts` — `FeatureFlagController extends FastifyController`, `prefix = '/feature-flags'`, no auth `preHandler`; `GET /feature-flags` → `IFeatureFlagService.getAll(ctx)` enriched with `userId`/`churchId` from session if authenticated (depends on T012, T017)
-- [ ] T075 [P] [US1] Create `apps/server/src/api/dtos/feature-flags.dto.ts` — response schema `z.object({ flags: z.record(z.string(), z.boolean()) })`
-- [ ] T076 [US1] Update `apps/server/src/main/di/injections.ts` — register `FeatureFlagController` (depends on T074)
-- [ ] T077 [US1] Generate and commit `apps/server/auto-generated-api.yaml` — start server, export OpenAPI spec via Scalar/Swagger endpoint (`GET /documentation/yaml` or equivalent), commit file to repository (this file is the orval input)
+- [x] T074 [P] [US1] Create `apps/server/src/api/controllers/feature-flag-controller.ts` — `FeatureFlagController extends FastifyController`, `prefix = '/feature-flags'`, no auth `preHandler`; `GET /feature-flags` → `IFeatureFlagService.getAll(ctx)` enriched with `userId`/`churchId` from session if authenticated (depends on T012, T017)
+- [x] T075 [P] [US1] Create `apps/server/src/api/dtos/feature-flags.dto.ts` — response schema `z.object({ flags: z.record(z.string(), z.boolean()) })`
+- [x] T076 [US1] Update `apps/server/src/main/di/injections.ts` — register `FeatureFlagController` (depends on T074)
+- [x] T077 [US1] Generate and commit `apps/server/auto-generated-api.yaml` — start server, export OpenAPI spec via Scalar/Swagger endpoint (`GET /documentation/yaml` or equivalent), commit file to repository (this file is the orval input)
 
 **US1 Checkpoint**: All 31 endpoints respond correctly. `grep -r '@trpc/server' .` returns nothing.
 
@@ -185,14 +185,14 @@
 
 **Independent Test**: Add `import ... from '../../infrastructure/repositories/drizzle-event.repository'` inside `apps/server/src/api/controllers/admin-leader-controller.ts` → run `biome check apps/server/src` → exits non-zero with `lint/style/noRestrictedImports` error message naming the violated rule → revert → exits 0.
 
-- [ ] T078 [US2] Add `overrides` blocks to `biome.json` — four blocks enforcing the directed layer graph via `noRestrictedImports` with verbose `message` fields:
+- [x] T078 [US2] Add `overrides` blocks to `biome.json` — four blocks enforcing the directed layer graph via `noRestrictedImports` with verbose `message` fields:
   - `include: ["apps/server/src/api/**"]` → restrict `**/infrastructure/**` ("api/ → domain/ only. Direct infrastructure import forbidden.") and `**/application/**` ("api/ → domain/ only. Import manager interface from domain/contracts/ instead.")
   - `include: ["apps/server/src/domain/**"]` → restrict `**/infrastructure/**`, `**/application/**`, `**/api/**` (all forbidden from domain/)
   - `include: ["apps/server/src/application/**"]` → restrict `**/infrastructure/**` and `**/api/**`
   - `include: ["apps/server/src/infrastructure/**"]` → restrict `**/api/**`
   - `main/` has no override — unrestricted as wiring layer
-- [ ] T079 [US2] Run `biome check apps/server/src` — inspect output; fix any existing boundary violations surfaced by the new rules
-- [ ] T080 [US2] Verify boundary enforcement: temporarily add forbidden import in `apps/server/src/api/controllers/admin-leader-controller.ts` → confirm `biome check` exits non-zero with specific `noRestrictedImports` error → revert → confirm clean exit
+- [x] T079 [US2] Run `biome check apps/server/src` — inspect output; fix any existing boundary violations surfaced by the new rules
+- [x] T080 [US2] Verify boundary enforcement: temporarily add forbidden import in `apps/server/src/api/controllers/admin-leader-controller.ts` → confirm `biome check` exits non-zero with specific `noRestrictedImports` error → revert → confirm clean exit
 
 **US2 Checkpoint**: `biome check` is the single command covering formatting + naming conventions + boundary enforcement.
 

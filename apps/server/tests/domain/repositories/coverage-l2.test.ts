@@ -1,10 +1,10 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { describe, expect, it } from 'vitest';
-import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/application/contracts/assignment-audit.repository';
-import type { VolunteerRepository } from '../../../src/application/contracts/volunteer.repository';
 import { ConflictValidationService } from '../../../src/domain/conflict/conflict-validation-service';
 import type { ConflictReport } from '../../../src/domain/conflict/types';
+import type { AssignmentRepository } from '../../../src/domain/contracts/assignment.repository';
+import type { AssignmentAuditRepository } from '../../../src/domain/contracts/assignment-audit.repository';
+import type { VolunteerRepository } from '../../../src/domain/contracts/volunteer.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { MinistryId } from '../../../src/domain/entities/ministry';

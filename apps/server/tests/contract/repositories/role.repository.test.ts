@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
-import { runRoleRepositoryContractTests } from '../../../src/application/contracts/contract-tests/role.contract-spec';
-import type { RoleRepository } from '../../../src/application/contracts/role.repository';
+import { runRoleRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/role.contract-spec';
+import type { RoleRepository } from '../../../src/domain/contracts/role.repository';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { MinistryId } from '../../../src/domain/entities/ministry';
 import { Role, type RoleId } from '../../../src/domain/entities/role';

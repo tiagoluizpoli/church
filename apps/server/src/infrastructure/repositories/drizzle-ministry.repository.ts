@@ -1,8 +1,8 @@
 import { NotFoundError } from '@church/core';
 import { ministry } from '@church/db';
 import { asc, eq } from 'drizzle-orm';
-import type { MinistryRepository } from '../../application/contracts/ministry.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type { MinistryRepository } from '../../domain/contracts/infrastructure/ministry.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type {
   Ministry,

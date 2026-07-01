@@ -1,9 +1,9 @@
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { RoleId } from '../../domain/entities/role';
-import type { SlotRequirement } from '../../domain/entities/slot-requirement';
-import type { TeamId } from '../../domain/entities/team';
-import type { TimeSlot, TimeSlotId } from '../../domain/entities/time-slot';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { RoleId } from '../../entities/role';
+import type { SlotRequirement } from '../../entities/slot-requirement';
+import type { TeamId } from '../../entities/team';
+import type { TimeSlot, TimeSlotId } from '../../entities/time-slot';
 import type { TransactionContext } from './transaction-context';
 
 export interface BulkCreateTimeSlotItem {

@@ -1,14 +1,14 @@
-import type { AssignmentId } from '../../domain/entities/assignment';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { MinistryId } from '../../domain/entities/ministry';
-import type { VolunteerId } from '../../domain/entities/volunteer';
+import type { AssignmentId } from '../../entities/assignment';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { MinistryId } from '../../entities/ministry';
+import type { VolunteerId } from '../../entities/volunteer';
 import type {
   VolunteerNotification,
   VolunteerNotificationId,
   VolunteerNotificationPayload,
   VolunteerNotificationType,
-} from '../../domain/entities/volunteer-notification';
+} from '../../entities/volunteer-notification';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateVolunteerNotificationInput {

@@ -24,7 +24,7 @@ import {
   runRoleRepositoryContractTests,
   runTimeSlotRepositoryContractTests,
   runVolunteerRepositoryContractTests,
-} from '../../../src/application/contracts/contract-tests';
+} from '../../../src/domain/contracts/contract-tests';
 import { DrizzleAssignmentRepository } from '../../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '../../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityRepository } from '../../../src/infrastructure/repositories/drizzle-availability.repository';

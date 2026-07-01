@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { AvailabilityId } from '../../../domain/entities/availability';
-import type { ChurchId } from '../../../domain/entities/church';
-import type { VolunteerId } from '../../../domain/entities/volunteer';
-import type { AvailabilityRepository } from '../availability.repository';
+import type { AvailabilityId } from '../../entities/availability';
+import type { ChurchId } from '../../entities/church';
+import type { VolunteerId } from '../../entities/volunteer';
+import type { AvailabilityRepository } from '../infrastructure/availability.repository';
 
 export function runAvailabilityRepositoryContractTests(
   factory: () => Promise<AvailabilityRepository>,

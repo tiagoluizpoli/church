@@ -1,10 +1,10 @@
-import { runVolunteerNotificationRepositoryContractTests } from '../../../src/application/contracts/contract-tests/volunteer-notification.contract-spec';
+import { runVolunteerNotificationRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/volunteer-notification.contract-spec';
 import type {
   CreateVolunteerNotificationInput,
   VolunteerNotificationListInput,
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
-} from '../../../src/application/contracts/volunteer-notification.repository';
+} from '../../../src/domain/contracts/volunteer-notification.repository';
 import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import type { ChurchId } from '../../../src/domain/entities/church';
 import type { EventId } from '../../../src/domain/entities/event';

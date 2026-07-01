@@ -4,8 +4,8 @@ import type {
   AssignmentRepository,
   CreateAssignmentInput,
   UpdateAssignmentStatusInput,
-} from '../../../src/application/contracts/assignment.repository';
-import { runAssignmentRepositoryContractTests } from '../../../src/application/contracts/contract-tests/assignment.contract-spec';
+} from '../../../src/domain/contracts/assignment.repository';
+import { runAssignmentRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment.contract-spec';
 import {
   Assignment,
   type AssignmentId,

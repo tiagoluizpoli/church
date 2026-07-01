@@ -4,8 +4,8 @@ import type {
   AvailabilityRepository,
   CreateAvailabilityInput,
   UpdateAvailabilityInput,
-} from '../../../src/application/contracts/availability.repository';
-import { runAvailabilityRepositoryContractTests } from '../../../src/application/contracts/contract-tests/availability.contract-spec';
+} from '../../../src/domain/contracts/availability.repository';
+import { runAvailabilityRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/availability.contract-spec';
 import {
   Availability,
   type AvailabilityId,

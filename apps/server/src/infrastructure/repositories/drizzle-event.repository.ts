@@ -6,8 +6,8 @@ import type {
   EventRepository,
   UpdateEventInput,
   UpdateEventStatusInput,
-} from '../../application/contracts/event.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+} from '../../domain/contracts/infrastructure/event.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type {
   Event,

@@ -1,13 +1,13 @@
 import { NotFoundError } from '@church/core';
 import { ministry, ministryVolunteer, role, user, volunteer } from '@church/db';
 import { and, eq, inArray } from 'drizzle-orm';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   MinistryMembership,
   MinistrySystemRole,
   VolunteerLeadership,
   VolunteerRepository,
-} from '../../application/contracts/volunteer.repository';
+} from '../../domain/contracts/infrastructure/volunteer.repository';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { RoleId } from '../../domain/entities/role';

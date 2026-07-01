@@ -1,12 +1,12 @@
 import { volunteerNotification } from '@church/db';
 import { and, count, desc, eq, isNull, lt } from 'drizzle-orm';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   CreateVolunteerNotificationInput,
   VolunteerNotificationListInput,
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
-} from '../../application/contracts/volunteer-notification.repository';
+} from '../../domain/contracts/infrastructure/volunteer-notification.repository';
 import type { ChurchId } from '../../domain/entities/church';
 import type { VolunteerId } from '../../domain/entities/volunteer';
 import type { VolunteerNotificationId } from '../../domain/entities/volunteer-notification';

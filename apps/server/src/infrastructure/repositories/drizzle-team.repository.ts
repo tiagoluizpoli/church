@@ -1,7 +1,7 @@
 import { team } from '@church/db';
 import { and, inArray } from 'drizzle-orm';
-import type { TeamRepository } from '../../application/contracts/team.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type { TeamRepository } from '../../domain/contracts/infrastructure/team.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type { Team, TeamId } from '../../domain/entities/team';
 import { mapTeam } from '../mappers/team.mapper';

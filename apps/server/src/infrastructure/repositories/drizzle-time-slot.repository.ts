@@ -7,8 +7,8 @@ import type {
   TimeSlotRepository,
   UpdateTimeSlotInput,
   UpsertSlotRequirementInput,
-} from '../../application/contracts/time-slot.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+} from '../../domain/contracts/infrastructure/time-slot.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type { EventId } from '../../domain/entities/event';
 import type { RoleId } from '../../domain/entities/role';

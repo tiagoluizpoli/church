@@ -5,8 +5,8 @@ import type {
   AssignmentRepository,
   CreateAssignmentInput,
   UpdateAssignmentStatusInput,
-} from '../../application/contracts/assignment.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+} from '../../domain/contracts/infrastructure/assignment.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   Assignment,
   AssignmentId,

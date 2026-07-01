@@ -5,8 +5,8 @@ import type {
   AvailabilityRepository,
   CreateAvailabilityInput,
   UpdateAvailabilityInput,
-} from '../../application/contracts/availability.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+} from '../../domain/contracts/infrastructure/availability.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   Availability,
   AvailabilityId,

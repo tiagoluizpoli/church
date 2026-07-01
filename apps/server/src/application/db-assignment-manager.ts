@@ -3,13 +3,13 @@ import { inject, injectable } from 'tsyringe';
 import type {
   CreateAssignmentInput,
   IAssignmentManager,
-} from '../domain/contracts/assignment-manager';
+} from '../domain/contracts/application/assignment-manager';
+import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { Assignment, AssignmentId } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { ChurchId } from '../domain/entities/church';
 import type { UserId } from '../domain/entities/volunteer';
-import type { AssignmentRepository } from './contracts/assignment.repository';
-import type { AssignmentAuditRepository } from './contracts/assignment-audit.repository';
 
 @injectable()
 export class DbAssignmentManager implements IAssignmentManager {

@@ -23,6 +23,7 @@ export const injection = {
     churchManager: 'IChurchManager',
     ministryManager: 'IMinistryManager',
     roleManager: 'IRoleManager',
+    featureFlagManager: 'IFeatureFlagManager',
   },
   controllers: {
     fastify: 'FastifyController',

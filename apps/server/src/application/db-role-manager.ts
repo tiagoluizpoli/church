@@ -4,7 +4,9 @@ import { inject, injectable } from 'tsyringe';
 import type {
   IRoleManager,
   UpsertRoleTemplateInput,
-} from '../domain/contracts/role-manager';
+} from '../domain/contracts/application/role-manager';
+import type { RoleTemplateRepository } from '../domain/contracts/infrastructure/role-template.repository';
+import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { ChurchId } from '../domain/entities/church';
 import type { EventId } from '../domain/entities/event';
 import type { MinistryId } from '../domain/entities/ministry';
@@ -12,8 +14,6 @@ import type {
   RoleTemplate,
   RoleTemplateId,
 } from '../domain/entities/role-template';
-import type { RoleTemplateRepository } from './contracts/role-template.repository';
-import type { TimeSlotRepository } from './contracts/time-slot.repository';
 
 @injectable()
 export class DbRoleManager implements IRoleManager {

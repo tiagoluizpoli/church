@@ -1,8 +1,8 @@
 import { NotFoundError } from '@church/core';
 import { role } from '@church/db';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
-import type { RoleRepository } from '../../application/contracts/role.repository';
-import type { TransactionContext } from '../../application/contracts/transaction-context';
+import type { RoleRepository } from '../../domain/contracts/infrastructure/role.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { ChurchId } from '../../domain/entities/church';
 import type { MinistryId } from '../../domain/entities/ministry';
 import type { Role, RoleId } from '../../domain/entities/role';

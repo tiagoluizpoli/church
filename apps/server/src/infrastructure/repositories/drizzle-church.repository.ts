@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { church } from '@church/db';
 import { eq } from 'drizzle-orm';
-import type { ChurchRepository } from '../../application/contracts/church.repository';
+import type { ChurchRepository } from '../../domain/contracts/infrastructure/church.repository';
 import type {
   Church,
   ChurchId,

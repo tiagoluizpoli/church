@@ -1,12 +1,12 @@
-import type { ChurchId } from '../../domain/entities/church';
+import type { ChurchId } from '../../entities/church';
 import type {
   Event,
   EventId,
   EventStatus,
   EventType,
   EventWithSlots,
-} from '../../domain/entities/event';
-import type { MinistryId } from '../../domain/entities/ministry';
+} from '../../entities/event';
+import type { MinistryId } from '../../entities/ministry';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateEventInput {

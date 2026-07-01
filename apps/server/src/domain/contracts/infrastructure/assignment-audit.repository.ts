@@ -1,12 +1,12 @@
-import type { SoftConflictType } from '../../domain/conflict/types';
-import type { AssignmentId } from '../../domain/entities/assignment';
+import type { SoftConflictType } from '../../conflict/types';
+import type { AssignmentId } from '../../entities/assignment';
 import type {
   AssignmentAudit,
   AssignmentAuditAction,
-} from '../../domain/entities/assignment-audit';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { UserId } from '../../domain/entities/volunteer';
+} from '../../entities/assignment-audit';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { UserId } from '../../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAssignmentAuditInput {

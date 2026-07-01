@@ -1,8 +1,7 @@
 import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
-import type { VolunteerRepository } from '../../application/contracts/volunteer.repository';
-import type { IVolunteerManager } from '../../domain/contracts/volunteer-manager';
+import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { AssignmentId } from '../../domain/entities/assignment';
 import type { AvailabilityId } from '../../domain/entities/availability';
 import type { ChurchId } from '../../domain/entities/church';
@@ -34,8 +33,6 @@ export class VolunteerController implements FastifyController {
   constructor(
     @inject('IVolunteerManager')
     private readonly volunteerManager: IVolunteerManager,
-    @inject('IVolunteerRepository')
-    private readonly volunteerRepo: VolunteerRepository,
   ) {}
 
   registerRoutes(
@@ -56,18 +53,18 @@ export class VolunteerController implements FastifyController {
           .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
       }
 
-      const volunteer = await this.volunteerRepo.findByUserIdGlobally(
+      const ctx = await this.volunteerManager.resolveVolunteerContext(
         session.user.id as UserId,
       );
-      if (!volunteer) {
+      if (!ctx) {
         return reply.status(401).send({
           error: 'UNAUTHORIZED',
           message: 'Volunteer profile not found',
         });
       }
 
-      request.volunteerId = volunteer.id as string;
-      request.churchId = volunteer.churchId as string;
+      request.volunteerId = ctx.volunteerId as string;
+      request.churchId = ctx.churchId as string;
     });
 
     app.get(

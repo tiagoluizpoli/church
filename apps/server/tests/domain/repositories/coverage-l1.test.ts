@@ -1,8 +1,8 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 import { describe, expect, it } from 'vitest';
-import type { AssignmentRepository } from '../../../src/application/contracts/assignment.repository';
-import type { AvailabilityRepository } from '../../../src/application/contracts/availability.repository';
 import { AvailabilityEngine } from '../../../src/domain/availability/availability-engine';
+import type { AssignmentRepository } from '../../../src/domain/contracts/assignment.repository';
+import type { AvailabilityRepository } from '../../../src/domain/contracts/availability.repository';
 import { Assignment } from '../../../src/domain/entities/assignment';
 import { Availability } from '../../../src/domain/entities/availability';
 import type { ChurchId } from '../../../src/domain/entities/church';

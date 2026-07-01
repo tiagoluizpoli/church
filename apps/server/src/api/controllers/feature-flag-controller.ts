@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
-import type { IFeatureFlagService } from '../../application/contracts/feature-flag-service';
+import type { IFeatureFlagManager } from '../../domain/contracts/application/feature-flag-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { featureFlagsResponseSchema } from '../dtos/feature-flags.dto';
@@ -11,8 +11,8 @@ export class FeatureFlagController implements FastifyController {
   readonly prefix = '/feature-flags';
 
   constructor(
-    @inject('IFeatureFlagService')
-    private readonly featureFlagService: IFeatureFlagService,
+    @inject('IFeatureFlagManager')
+    private readonly featureFlagManager: IFeatureFlagManager,
   ) {}
 
   registerRoutes(
@@ -38,7 +38,7 @@ export class FeatureFlagController implements FastifyController {
           ctx.userId = session.user.id;
         }
 
-        const flags = await this.featureFlagService.getAll(ctx);
+        const flags = await this.featureFlagManager.getAll(ctx);
         return reply.send({ flags });
       },
     );

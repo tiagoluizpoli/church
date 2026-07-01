@@ -2,12 +2,12 @@ import type {
   Assignment,
   AssignmentId,
   AssignmentStatus,
-} from '../../domain/entities/assignment';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { RoleId } from '../../domain/entities/role';
-import type { TimeSlotId } from '../../domain/entities/time-slot';
-import type { UserId, VolunteerId } from '../../domain/entities/volunteer';
+} from '../../entities/assignment';
+import type { ChurchId } from '../../entities/church';
+import type { EventId } from '../../entities/event';
+import type { RoleId } from '../../entities/role';
+import type { TimeSlotId } from '../../entities/time-slot';
+import type { UserId, VolunteerId } from '../../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAssignmentInput {

@@ -6,6 +6,7 @@ import { FeatureFlagController } from '../../api/controllers/feature-flag-contro
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbEventManager } from '../../application/db-event-manager';
+import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
 import { DbRoleManager } from '../../application/db-role-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
@@ -90,6 +91,9 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,
+  });
+  container.register(injection.managers.featureFlagManager, {
+    useClass: DbFeatureFlagManager,
   });
 
   // Controllers

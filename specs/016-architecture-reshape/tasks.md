@@ -204,9 +204,9 @@
 
 **Independent Test**: Open PR with deliberate TypeScript type error → `check-types` job fails and blocks merge. Fix error → all jobs green in under 2 minutes.
 
-- [ ] T081 [US3] Update `turbo.json` — add `check-types` and `test` pipeline tasks if not present; add `lint` task that runs `biome check` (includes boundary enforcement from T078); ensure tasks have correct dependencies so `turbo lint` works from root
-- [ ] T082 [US3] Create `.github/workflows/ci.yml` — **fast gate** (every PR): `turbo check-types`, `turbo lint` (biome check including boundary rules), `turbo test` (unit only); target ≤ 2 minutes; **E2E gate** (master merges only): separate job running E2E suite; web typecheck (`turbo check-types --filter=@church/web`) runs on committed orval-generated files — no orval regeneration in CI
-- [ ] T083 [US3] Verify lefthook pre-push: create a test commit on a clean branch, observe pre-push output — confirm both `turbo check-types test` and the orval freshness check (`bun run orval && git diff --exit-code`) execute and pass
+- [x] T081 [US3] Update `turbo.json` — add `check-types` and `test` pipeline tasks if not present; add `lint` task that runs `biome check` (includes boundary enforcement from T078); ensure tasks have correct dependencies so `turbo lint` works from root
+- [x] T082 [US3] Create `.github/workflows/ci.yml` — **fast gate** (every PR): `turbo check-types`, `turbo lint` (biome check including boundary rules), `turbo test` (unit only); target ≤ 2 minutes; **E2E gate** (master merges only): separate job running E2E suite; web typecheck (`turbo check-types --filter=@church/web`) runs on committed orval-generated files — no orval regeneration in CI
+- [x] T083 [US3] Verify lefthook pre-push: create a test commit on a clean branch, observe pre-push output — confirm both `turbo check-types test` and the orval freshness check (`bun run orval && git diff --exit-code`) execute and pass
 
 **US3 Checkpoint**: CI green on clean branch; type error blocks PR; biome boundary check runs in CI.
 

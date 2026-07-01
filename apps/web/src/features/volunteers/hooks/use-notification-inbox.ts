@@ -1,6 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import type { NotificationDeepLink } from 'server/src/services/volunteer-dashboard/map-notification-link';
 import { toast } from 'sonner';
 import type {
   NotificationItemViewModel,
@@ -12,23 +11,15 @@ import {
   writeCachedNotificationInbox,
 } from '../lib/dashboard-query-options';
 import { useOnlineState } from './use-online-state';
-import { queryClient, trpc } from '@/utils/trpc';
+import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
+import { queryClient } from '@/utils/api';
+import { volunteerApi } from '@/utils/api-instances';
 
-const PAGE_SIZE = 20;
-
-interface NotificationApiItem {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  readAt?: string;
-  createdAt: string;
-  deepLink: NotificationDeepLink;
-}
-
-interface NotificationApiPage {
-  items: NotificationApiItem[];
-  nextCursor?: string;
+interface NotificationDeepLink {
+  section: 'availability' | 'assignments' | 'ministry_schedule' | 'none';
+  eventId?: string;
+  ministryId?: string;
+  assignmentId?: string;
 }
 
 export interface NotificationInboxItem extends NotificationItemViewModel {
@@ -44,7 +35,24 @@ function formatDateBucket(createdAt: string): string {
   });
 }
 
-function mapNotificationItem(item: NotificationApiItem): NotificationInboxItem {
+function typeToSection(type: string): NotificationDeepLink['section'] {
+  if (type === 'availability_reminder') return 'availability';
+  if (
+    [
+      'assignment_added',
+      'assignment_changed',
+      'assignment_removed',
+      'assignment_reminder',
+    ].includes(type)
+  )
+    return 'assignments';
+  if (type === 'schedule_published') return 'ministry_schedule';
+  return 'none';
+}
+
+function mapNotificationItem(
+  item: GetNotifications200ItemsItem,
+): NotificationInboxItem {
   return {
     id: item.id,
     title: item.title,
@@ -53,13 +61,18 @@ function mapNotificationItem(item: NotificationApiItem): NotificationInboxItem {
     createdAt: item.createdAt,
     createdAtLabel: new Date(item.createdAt).toLocaleString(),
     isUnread: item.readAt == null,
-    deepLink: item.deepLink,
+    deepLink: {
+      section: typeToSection(item.type),
+      eventId: item.eventId,
+      ministryId: item.ministryId,
+      assignmentId: item.assignmentId,
+    },
   };
 }
 
-function mapNotificationPage(
-  page: NotificationApiPage,
-): NotificationInboxItem[] {
+function mapNotificationPage(page: {
+  items: GetNotifications200ItemsItem[];
+}): NotificationInboxItem[] {
   return page.items.map(mapNotificationItem);
 }
 
@@ -85,29 +98,15 @@ function buildViewPages(
 
 async function invalidateNotificationQueries(): Promise<void> {
   await Promise.all([
-    queryClient.invalidateQueries({
-      queryKey: trpc.volunteer.getVolunteerDashboard.queryOptions().queryKey,
-    }),
-    queryClient.invalidateQueries({
-      queryKey: trpc.volunteer.getMyNotifications.queryOptions({
-        limit: PAGE_SIZE,
-      }).queryKey,
-    }),
+    queryClient.invalidateQueries({ queryKey: ['volunteer-dashboard'] }),
+    queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   ]);
 }
 
 async function refetchNotificationQueries(): Promise<void> {
   await Promise.all([
-    queryClient.invalidateQueries({
-      queryKey: trpc.volunteer.getMyNotifications.queryOptions({
-        limit: PAGE_SIZE,
-      }).queryKey,
-    }),
-    queryClient.refetchQueries({
-      queryKey: trpc.volunteer.getMyNotifications.queryOptions({
-        limit: PAGE_SIZE,
-      }).queryKey,
-    }),
+    queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    queryClient.refetchQueries({ queryKey: ['notifications'] }),
   ]);
 }
 
@@ -115,9 +114,8 @@ export function useNotificationInbox(initialUnreadCount: number) {
   const isOnline = useOnlineState();
   const cachedInboxState = readCachedNotificationInbox();
   const firstPageQuery = useQuery({
-    ...trpc.volunteer.getMyNotifications.queryOptions({
-      limit: PAGE_SIZE,
-    }),
+    queryKey: ['notifications'],
+    queryFn: () => volunteerApi.getNotifications(),
     ...getNotificationsQueryConfig(isOnline),
   });
   const [loadedPages, setLoadedPages] = useState<NotificationInboxItem[][]>(
@@ -126,7 +124,7 @@ export function useNotificationInbox(initialUnreadCount: number) {
   const [nextCursor, setNextCursor] = useState<string | undefined>(
     cachedInboxState?.nextCursor,
   );
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const isLoadingMore = false;
   const [selectedNotificationId, setSelectedNotificationId] = useState<
     string | undefined
   >(undefined);
@@ -136,15 +134,13 @@ export function useNotificationInbox(initialUnreadCount: number) {
       return;
     }
 
-    const firstPageItems = mapNotificationPage(
-      firstPageQuery.data as NotificationApiPage,
-    );
+    const firstPageItems = mapNotificationPage(firstPageQuery.data);
     setLoadedPages((currentPages) =>
       currentPages.length === 0
         ? [firstPageItems]
         : [firstPageItems, ...currentPages.slice(1)],
     );
-    setNextCursor((firstPageQuery.data as NotificationApiPage).nextCursor);
+    setNextCursor(undefined);
   }, [firstPageQuery.data]);
 
   useEffect(() => {
@@ -158,71 +154,41 @@ export function useNotificationInbox(initialUnreadCount: number) {
     });
   }, [loadedPages, nextCursor]);
 
-  const markRead = useMutation(
-    trpc.volunteer.markNotificationRead.mutationOptions({
-      onSuccess: async (_result, variables) => {
-        setLoadedPages((currentPages) =>
-          currentPages.map((page) =>
-            page.map((item) =>
-              item.id === variables.notificationId
-                ? { ...item, isUnread: false }
-                : item,
-            ),
+  const markRead = useMutation({
+    mutationFn: (notificationId: string) =>
+      volunteerApi.markNotificationRead(notificationId),
+    onSuccess: async (_result, variables) => {
+      setLoadedPages((currentPages) =>
+        currentPages.map((page) =>
+          page.map((item) =>
+            item.id === variables ? { ...item, isUnread: false } : item,
           ),
-        );
-        await invalidateNotificationQueries();
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
+        ),
+      );
+      await invalidateNotificationQueries();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
-  const markAllRead = useMutation(
-    trpc.volunteer.markAllNotificationsRead.mutationOptions({
-      onSuccess: async () => {
-        setLoadedPages((currentPages) =>
-          currentPages.map((page) =>
-            page.map((item) => ({ ...item, isUnread: false })),
-          ),
-        );
-        await invalidateNotificationQueries();
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
+  const markAllRead = useMutation({
+    mutationFn: () => volunteerApi.markAllNotificationsRead(),
+    onSuccess: async () => {
+      setLoadedPages((currentPages) =>
+        currentPages.map((page) =>
+          page.map((item) => ({ ...item, isUnread: false })),
+        ),
+      );
+      await invalidateNotificationQueries();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const loadMore = async () => {
-    if (!nextCursor || isLoadingMore) {
-      return;
-    }
-
-    setIsLoadingMore(true);
-
-    try {
-      const nextPage = (await queryClient.fetchQuery(
-        trpc.volunteer.getMyNotifications.queryOptions({
-          cursor: nextCursor,
-          limit: PAGE_SIZE,
-        }),
-      )) as NotificationApiPage;
-
-      setLoadedPages((currentPages) => [
-        ...currentPages,
-        mapNotificationPage(nextPage),
-      ]);
-      setNextCursor(nextPage.nextCursor);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Unable to load notifications.';
-      toast.error(message);
-    } finally {
-      setIsLoadingMore(false);
-    }
+    return;
   };
 
   const items = loadedPages.flat();
@@ -240,11 +206,11 @@ export function useNotificationInbox(initialUnreadCount: number) {
     isLoadingMore,
     items,
     markAllRead: () => markAllRead.mutate(),
-    markRead: (notificationId: string) => markRead.mutate({ notificationId }),
+    markRead: (notificationId: string) => markRead.mutate(notificationId),
     openNotification: (notificationId: string) => {
       const notification = items.find((item) => item.id === notificationId);
       if (notification?.isUnread) {
-        markRead.mutate({ notificationId });
+        markRead.mutate(notificationId);
       }
       setSelectedNotificationId(notificationId);
     },

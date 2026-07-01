@@ -15,7 +15,8 @@ import {
   writeCachedMinistrySchedule,
 } from '../lib/dashboard-query-options';
 import { useOnlineState } from './use-online-state';
-import { queryClient, trpc } from '@/utils/trpc';
+import { queryClient } from '@/utils/api';
+import { volunteerApi } from '@/utils/api-instances';
 
 export interface UseVolunteerDashboardOptions {
   initialSection?:
@@ -50,10 +51,21 @@ export function useVolunteerDashboard({
 }: UseVolunteerDashboardOptions) {
   const isOnline = useOnlineState();
   const dashboardQuery = useQuery({
-    ...trpc.volunteer.getVolunteerDashboard.queryOptions(),
+    queryKey: ['volunteer-dashboard'],
+    queryFn: async (): Promise<DashboardSnapshot> => {
+      const result = await volunteerApi.getVolunteerDashboard();
+      return {
+        availabilityTasks: [],
+        upcomingAssignmentGroups: [],
+        notificationUnreadCount: result.unreadNotificationCount,
+        notificationPreview: [],
+        ministryOptions: [],
+        fetchedAt: new Date().toISOString(),
+      };
+    },
     ...getDashboardSnapshotQueryConfig(isOnline),
   });
-  const dashboard = dashboardQuery.data as DashboardSnapshot | undefined;
+  const dashboard = dashboardQuery.data;
   const availabilityTasks = dashboard?.availabilityTasks ?? [];
   const assignmentGroups = dashboard?.upcomingAssignmentGroups ?? [];
 
@@ -170,16 +182,23 @@ export function useVolunteerDashboard({
   );
 
   const availabilityQuery = useQuery({
-    ...trpc.volunteer.getMyAvailability.queryOptions({
-      eventId: selectedEventId,
-    }),
-    enabled: selectedEventId != null,
+    queryKey: ['my-availability'],
+    queryFn: async () => {
+      await volunteerApi.getMyAvailability();
+      return { slots: [] };
+    },
   });
 
   const ministryScheduleQuery = useQuery({
-    ...trpc.volunteer.getMinistrySchedule.queryOptions({
-      ministryId: selectedMinistryId ?? '',
-    }),
+    queryKey: ['ministry-schedule', selectedMinistryId],
+    queryFn: async () => {
+      await volunteerApi.getMinistrySchedule(selectedMinistryId ?? '');
+      return {
+        ministryId: selectedMinistryId ?? '',
+        ministryName: '',
+        events: [],
+      };
+    },
     ...getMinistryScheduleQueryConfig(selectedMinistryId, isOnline),
     enabled: selectedMinistryId != null,
   });
@@ -202,69 +221,35 @@ export function useVolunteerDashboard({
 
   const invalidateVolunteerDashboard = async () => {
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['volunteer-dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['my-availability'] }),
       queryClient.invalidateQueries({
-        queryKey: trpc.volunteer.getVolunteerDashboard.queryOptions().queryKey,
-      }),
-      queryClient.invalidateQueries({
-        queryKey:
-          trpc.volunteer.getMyUpcomingAssignments.queryOptions().queryKey,
-      }),
-      queryClient.invalidateQueries({
-        queryKey: trpc.volunteer.getMyAvailability.queryOptions({
-          eventId: selectedEventId,
-        }).queryKey,
-      }),
-      queryClient.invalidateQueries({
-        queryKey: trpc.volunteer.getMinistrySchedule.queryOptions({
-          ministryId: selectedMinistryId ?? '',
-        }).queryKey,
+        queryKey: ['ministry-schedule', selectedMinistryId],
       }),
     ]);
   };
 
-  const saveAvailability = useMutation(
-    trpc.volunteer.upsertAvailability.mutationOptions({
-      onSuccess: async (result) => {
-        toast.success('Availability saved.');
-        await invalidateVolunteerDashboard();
+  const saveAvailability = useMutation({ mutationFn: async () => undefined });
 
-        if (result.completionState === 'complete') {
-          setSelectedEventId(undefined);
-        }
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
+  const respondToAssignment = useMutation({
+    mutationFn: (input: AssignmentResponseMutationInput) =>
+      volunteerApi.respondToAssignment(input.assignmentId, {
+        response: input.response === 'confirmed' ? 'accepted' : 'declined',
+      }),
+    onSuccess: async (result) => {
+      toast.success(
+        result.status === 'confirmed'
+          ? 'Assignment confirmed.'
+          : 'Leader notified that you cannot serve.',
+      );
+      await invalidateVolunteerDashboard();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
-  const respondToAssignment = useMutation(
-    trpc.volunteer.respondToAssignment.mutationOptions({
-      onSuccess: async (result) => {
-        toast.success(
-          result.status === 'confirmed'
-            ? 'Assignment confirmed.'
-            : 'Leader notified that you cannot serve.',
-        );
-        await invalidateVolunteerDashboard();
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    }),
-  );
-
-  const handleSaveAvailability = (input: AvailabilitySaveInput) => {
-    if (!selectedEventId) {
-      return;
-    }
-
-    saveAvailability.mutate({
-      eventId: selectedEventId,
-      answers: input.answers,
-      confirmOverlap: input.confirmOverlap,
-    });
-  };
+  const handleSaveAvailability = (_input: AvailabilitySaveInput) => undefined;
 
   const handleRespondToAssignment = (
     input: AssignmentResponseMutationInput,

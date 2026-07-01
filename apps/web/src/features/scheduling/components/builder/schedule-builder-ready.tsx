@@ -1,13 +1,3 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@church/ui/components/alert-dialog';
 import { TooltipProvider } from '@church/ui/components/tooltip';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import type {
@@ -18,7 +8,6 @@ import { AuditLogPanel } from './audit-log-panel';
 import { BuilderGrid } from './builder-grid';
 import { BuilderHeader } from './builder-header';
 import { EmptyBuilderState } from './empty-builder-state';
-import { OverrideDialog } from './override-dialog';
 import { SlotEditModal } from './slot-edit-modal';
 import { SlotGenerateWizard } from './slot-generate-wizard';
 import { SubstitutionPicker } from './substitution-picker';
@@ -123,7 +112,13 @@ export function ScheduleBuilderReady({
                   onRemove={(assignmentId) =>
                     deleteAssignment.mutate({ assignmentId })
                   }
-                  onOverride={controller.handleOverrideRequest}
+                  onOverride={(slotId, roleId, volunteerId) =>
+                    void controller.handleAssign({
+                      slotId,
+                      roleId,
+                      volunteerId,
+                    })
+                  }
                   onSubstitute={controller.handleSubstituteRequest}
                   selectedVolunteerId={controller.selectedSidebarVolunteerId}
                   selectedVolunteerName={
@@ -156,18 +151,6 @@ export function ScheduleBuilderReady({
         </DndContext>
       </div>
 
-      {controller.override && (
-        <OverrideDialog
-          open={true}
-          onOpenChange={(open) => !open && controller.setOverride(null)}
-          conflictType={controller.override.conflictType}
-          volunteerName={controller.override.volunteerName}
-          slotLabel={controller.override.slotLabel}
-          isPending={createAssignment.isPending}
-          onConfirm={controller.handleConfirmOverride}
-        />
-      )}
-
       {controller.substitution && (
         <SubstitutionPicker
           open={true}
@@ -184,7 +167,6 @@ export function ScheduleBuilderReady({
       <AuditLogPanel
         open={controller.auditOpen}
         onOpenChange={controller.setAuditOpen}
-        eventId={eventId}
       />
 
       {controller.slotModal && (
@@ -211,30 +193,8 @@ export function ScheduleBuilderReady({
         open={controller.wizardOpen}
         onOpenChange={controller.setWizardOpen}
         eventId={eventId}
-        ministryId={builderData.event.ministryId}
         onComplete={() => controller.invalidate()}
       />
-
-      <AlertDialog
-        open={!!controller.deleteSlotState}
-        onOpenChange={(open) => !open && controller.setDeleteSlotState(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete slot with assignments?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This slot has {controller.deleteSlotState?.assignmentCount} active
-              assignment(s). Deleting it will remove them.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={controller.handleConfirmDeleteSlot}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </TooltipProvider>
   );
 }

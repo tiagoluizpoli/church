@@ -12,55 +12,43 @@ import { RadioGroup, RadioGroupItem } from '@church/ui/components/radio-group';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useTimezone } from '../../../../shared/hooks/use-timezone';
-import { trpc } from '@/utils/trpc';
+import { adminApi } from '@/utils/api-instances';
 
 interface SlotGenerateWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   eventId: string;
-  ministryId: string;
   onComplete: () => void;
-}
-
-type Strategy = 'duration' | 'count';
-
-interface PreviewItem {
-  startTime: string;
-  endTime: string;
-  label: string;
 }
 
 export function SlotGenerateWizard({
   open,
   onOpenChange,
   eventId,
-  ministryId,
   onComplete,
 }: SlotGenerateWizardProps) {
-  const { format } = useTimezone();
   const [step, setStep] = useState(1);
-  const [strategy, setStrategy] = useState<Strategy>('duration');
   const [value, setValue] = useState(60);
-  const [preview, setPreview] = useState<PreviewItem[]>([]);
   const [templateId, setTemplateId] = useState<string>('none');
 
-  const generate = useMutation(
-    trpc.adminLeader.generateSlots.mutationOptions(),
-  );
-  const applyTemplate = useMutation(
-    trpc.adminLeader.applyRoleTemplate.mutationOptions(),
-  );
+  const generate = useMutation({
+    mutationFn: () =>
+      adminApi.generateSlots(eventId, {
+        strategy: {
+          kind: 'equal-split',
+          slotDurationMinutes: value,
+        },
+      }),
+  });
   const templates = useQuery({
-    ...trpc.adminLeader.listRoleTemplates.queryOptions({ ministryId }),
+    queryKey: ['role-templates'],
+    queryFn: () => adminApi.listRoleTemplates(),
     enabled: open,
   });
 
   const reset = () => {
     setStep(1);
-    setStrategy('duration');
     setValue(60);
-    setPreview([]);
     setTemplateId('none');
   };
 
@@ -69,24 +57,8 @@ export function SlotGenerateWizard({
     onOpenChange(next);
   };
 
-  const loadPreview = async () => {
-    const res = await generate.mutateAsync({
-      eventId,
-      strategy,
-      value,
-      confirm: false,
-    });
-    if ('preview' in res) {
-      setPreview(res.preview);
-      setStep(2);
-    }
-  };
-
   const handleGenerate = async () => {
-    await generate.mutateAsync({ eventId, strategy, value, confirm: true });
-    if (templateId !== 'none') {
-      await applyTemplate.mutateAsync({ eventId, templateId });
-    }
+    await generate.mutateAsync();
     toast.success('Slots generated');
     onComplete();
     handleClose(false);
@@ -96,7 +68,7 @@ export function SlotGenerateWizard({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Split event into turns — Step {step} of 3</DialogTitle>
+          <DialogTitle>Split event into turns — Step {step} of 2</DialogTitle>
         </DialogHeader>
 
         {step === 1 && (
@@ -105,23 +77,8 @@ export function SlotGenerateWizard({
               Use this only for long events. Every generated slot stays inside
               the event window.
             </p>
-            <RadioGroup
-              value={strategy}
-              onValueChange={(v) => setStrategy(v as Strategy)}
-            >
-              <Label className="flex items-center gap-2">
-                <RadioGroupItem value="duration" /> Split by slot length
-              </Label>
-              <Label className="flex items-center gap-2">
-                <RadioGroupItem value="count" /> Split by number of turns
-              </Label>
-            </RadioGroup>
             <div className="space-y-1">
-              <Label htmlFor="gen-value">
-                {strategy === 'duration'
-                  ? 'Minutes per slot'
-                  : 'Number of turns'}
-              </Label>
+              <Label htmlFor="gen-value">Minutes per slot</Label>
               <Input
                 id="gen-value"
                 type="number"
@@ -134,23 +91,13 @@ export function SlotGenerateWizard({
         )}
 
         {step === 2 && (
-          <ul className="max-h-64 space-y-1 overflow-y-auto text-xs">
-            {preview.map((p) => (
-              <li key={p.startTime} className="rounded border px-2 py-1">
-                {p.label}: {format(p.startTime, 'p')} – {format(p.endTime, 'p')}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {step === 3 && (
           <div className="space-y-2">
-            <Label>Apply a role template (optional)</Label>
+            <Label>Role template</Label>
             <RadioGroup value={templateId} onValueChange={setTemplateId}>
               <Label className="flex items-center gap-2">
                 <RadioGroupItem value="none" /> No template
               </Label>
-              {(templates.data ?? []).map((t) => (
+              {(templates.data?.items ?? []).map((t) => (
                 <Label key={t.id} className="flex items-center gap-2">
                   <RadioGroupItem value={t.id} /> {t.name}
                 </Label>
@@ -173,20 +120,15 @@ export function SlotGenerateWizard({
             <Button
               type="button"
               disabled={value < 1 || generate.isPending}
-              onClick={loadPreview}
+              onClick={() => setStep(2)}
             >
               Next
             </Button>
           )}
           {step === 2 && (
-            <Button type="button" onClick={() => setStep(3)}>
-              Next
-            </Button>
-          )}
-          {step === 3 && (
             <Button
               type="button"
-              disabled={generate.isPending || applyTemplate.isPending}
+              disabled={generate.isPending}
               onClick={handleGenerate}
             >
               {generate.isPending ? 'Creating turns…' : 'Create turns'}

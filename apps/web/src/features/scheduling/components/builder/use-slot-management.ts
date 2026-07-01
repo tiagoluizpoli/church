@@ -5,17 +5,18 @@ import type {
   useScheduleBuilder,
 } from '../../hooks/use-schedule-builder';
 import type { SlotEditValues } from './slot-edit-modal';
-import type {
-  DeleteSlotState,
-  SlotModalState,
-} from './use-schedule-builder-controller.types';
-import { trpc } from '@/utils/trpc';
+import type { SlotModalState } from './use-schedule-builder-controller.types';
+import { adminApi } from '@/utils/api-instances';
 
 interface UseSlotManagementParams {
   builderData: ScheduleBuilderData;
   eventId: string;
   invalidate: ReturnType<typeof useScheduleBuilder>['invalidate'];
   refetch: ReturnType<typeof useScheduleBuilder>['refetch'];
+}
+
+interface UpdateSlotParams extends SlotEditValues {
+  slotId: string;
 }
 
 export function buildCreateSlotInitialValues(
@@ -37,24 +38,19 @@ export function useSlotManagement({
   const [slotModal, setSlotModal] = useState<SlotModalState | null>(null);
   const [slotError, setSlotError] = useState<string | undefined>();
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [deleteSlotState, setDeleteSlotState] =
-    useState<DeleteSlotState | null>(null);
-
-  const createSlot = useMutation(
-    trpc.adminLeader.createSlot.mutationOptions({
-      onSettled: () => invalidate(),
-    }),
-  );
-  const updateSlot = useMutation(
-    trpc.adminLeader.updateSlot.mutationOptions({
-      onSettled: () => invalidate(),
-    }),
-  );
-  const deleteSlot = useMutation(
-    trpc.adminLeader.deleteSlot.mutationOptions({
-      onSettled: () => invalidate(),
-    }),
-  );
+  const createSlot = useMutation({
+    mutationFn: (body: SlotEditValues) => adminApi.createSlot(eventId, body),
+    onSettled: () => invalidate(),
+  });
+  const updateSlot = useMutation({
+    mutationFn: ({ slotId, ...body }: UpdateSlotParams) =>
+      adminApi.updateSlot(eventId, slotId, body),
+    onSettled: () => invalidate(),
+  });
+  const deleteSlot = useMutation({
+    mutationFn: (slotId: string) => adminApi.deleteSlot(eventId, slotId),
+    onSettled: () => invalidate(),
+  });
 
   const refreshBuilder = async () => {
     await invalidate();
@@ -98,7 +94,6 @@ export function useSlotManagement({
         });
       } else {
         await createSlot.mutateAsync({
-          eventId,
           startTime: values.startTime,
           endTime: values.endTime,
           label: values.label,
@@ -113,37 +108,17 @@ export function useSlotManagement({
   };
 
   const handleDeleteSlot = async (slotId: string) => {
-    const result = await deleteSlot.mutateAsync({ slotId });
+    await deleteSlot.mutateAsync(slotId);
     await refreshBuilder();
-    if (!result.success && result.assignmentCount > 0) {
-      setDeleteSlotState({
-        slotId,
-        assignmentCount: result.assignmentCount,
-      });
-    }
-  };
-
-  const handleConfirmDeleteSlot = async () => {
-    if (!deleteSlotState) return;
-
-    await deleteSlot.mutateAsync({
-      slotId: deleteSlotState.slotId,
-      force: true,
-    });
-    await refreshBuilder();
-    setDeleteSlotState(null);
   };
 
   return {
     createSlot,
     deleteSlot,
-    deleteSlotState,
     handleAddManualSlot,
-    handleConfirmDeleteSlot,
     handleDeleteSlot,
     handleEditSlot,
     handleSaveSlot,
-    setDeleteSlotState,
     setSlotError,
     setSlotModal,
     setWizardOpen,

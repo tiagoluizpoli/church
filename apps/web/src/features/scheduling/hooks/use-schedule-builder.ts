@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { mapAvailabilityStatus } from '../utils/availability-status';
-import { trpc } from '@/utils/trpc';
+import type { CreateAssignmentBody } from '@/infrastructure/api/churchAPI.schemas';
+import { adminApi } from '@/utils/api-instances';
 
 export interface AssignParams {
   slotId: string;
@@ -11,67 +12,112 @@ export interface AssignParams {
   overrideReason?: string;
 }
 
-/**
- * Central data + mutation hook for the schedule builder. Wraps the
- * getScheduleBuilderData query and exposes assignment / publish mutations.
- * Mutations invalidate the builder query so the grid, sidebar, and staffing
- * meters stay consistent.
- */
+interface DeleteAssignmentParams {
+  assignmentId: string;
+}
+
+interface PublishEventParams {
+  eventId: string;
+}
+
+const BUILDER_QUERY_KEY = ['schedule-builder'] as const;
+
+function computeAvailabilityStatus(
+  volunteerId: string,
+  availability: {
+    volunteerId: string;
+    type: 'available' | 'unavailable';
+    startTime: string;
+    endTime: string;
+    isAllDay: boolean;
+  }[],
+  eventStartMs: number,
+  eventEndMs: number,
+): string {
+  const records = availability.filter((av) => av.volunteerId === volunteerId);
+  for (const av of records) {
+    const avStart = new Date(av.startTime).getTime();
+    const avEnd = new Date(av.endTime).getTime();
+    if (avStart <= eventEndMs && avEnd >= eventStartMs) {
+      return av.type === 'unavailable' ? 'UNAVAILABLE' : 'AVAILABLE';
+    }
+  }
+  return 'NO_RESPONSE';
+}
+
 export function useScheduleBuilder(eventId: string) {
   const queryClient = useQueryClient();
-  const queryOptions = trpc.adminLeader.getScheduleBuilderData.queryOptions({
-    eventId,
+
+  const query = useQuery({
+    queryKey: BUILDER_QUERY_KEY,
+    queryFn: () => adminApi.getScheduleBuilderData(),
   });
-  const query = useQuery(queryOptions);
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: queryOptions.queryKey });
+    queryClient.invalidateQueries({ queryKey: BUILDER_QUERY_KEY });
 
-  const createAssignment = useMutation(
-    trpc.adminLeader.createAssignment.mutationOptions({
-      onSuccess: (result) => {
-        const newA = 'assignment' in result ? result.assignment : undefined;
-        if (!newA) return;
-        queryClient.setQueryData(queryOptions.queryKey, (old) => {
-          if (!old) return old;
-          const volunteerName = old.volunteerAvailability.find(
-            (v) => v.volunteerId === newA.volunteerId,
-          )?.volunteerName;
-          return {
-            ...old,
-            assignments: [
-              ...old.assignments,
-              {
-                id: newA.id,
-                slotId: newA.slotId,
-                volunteerId: newA.volunteerId,
-                roleId: newA.roleId,
-                status: newA.status,
-                volunteerName,
-              },
-            ],
-          };
-        });
-      },
-      onSettled: () => invalidate(),
-    }),
-  );
+  const data = useMemo(() => {
+    if (!query.data) return undefined;
+    const { events, assignments, availability, volunteers } = query.data;
+    const eventEntry = events.find((e) => e.event.id === eventId);
+    if (!eventEntry) return undefined;
 
-  const deleteAssignment = useMutation(
-    trpc.adminLeader.deleteAssignment.mutationOptions({
-      onSettled: () => invalidate(),
-    }),
-  );
+    const { event, slots } = eventEntry;
+    const slotIds = new Set(slots.map((s) => s.id));
+    const eventAssignments = assignments.filter((a) => slotIds.has(a.slotId));
+    const volunteerMap = new Map(volunteers.map((v) => [v.id, v.name]));
 
-  const publishEvent = useMutation(
-    trpc.adminLeader.publishEvent.mutationOptions({
-      onSettled: () => invalidate(),
-    }),
-  );
+    const assignmentsWithName = eventAssignments.map((a) => ({
+      ...a,
+      volunteerName: volunteerMap.get(a.volunteerId),
+    }));
 
-  const data = query.data;
+    const eventStartMs = new Date(event.startDate).getTime();
+    const eventEndMs = new Date(event.endDate).getTime();
 
-  // Event-level fill ratio = total assignments / total required count.
+    const volunteerAvailability = volunteers.map((v) => ({
+      volunteerId: v.id,
+      volunteerName: v.name,
+      status: computeAvailabilityStatus(
+        v.id,
+        availability,
+        eventStartMs,
+        eventEndMs,
+      ),
+      conflictReason: undefined,
+    }));
+
+    const requirements = slots.flatMap((s) => s.requirements);
+    const slotsWithoutReqs = slots.map(({ requirements: _req, ...s }) => s);
+
+    return {
+      event,
+      slots: slotsWithoutReqs,
+      requirements,
+      assignments: assignmentsWithName,
+      volunteerAvailability,
+      roles: [] as { id: string; name: string }[],
+      callerTeamId: null as string | null,
+    };
+  }, [query.data, eventId]);
+
+  const createAssignment = useMutation({
+    mutationFn: (body: CreateAssignmentBody) => adminApi.createAssignment(body),
+    onSettled: () => invalidate(),
+  });
+
+  const deleteAssignment = useMutation({
+    mutationFn: ({ assignmentId }: DeleteAssignmentParams) =>
+      adminApi.deleteAssignment(assignmentId),
+    onSettled: () => invalidate(),
+  });
+
+  const publishEvent = useMutation({
+    mutationFn: ({ eventId: eid }: PublishEventParams) =>
+      adminApi.publishEvent(eid),
+    onSettled: () => invalidate(),
+  });
+
   const { eventFillRatio, hasHardViolations } = useMemo(() => {
     if (!data) return { eventFillRatio: 0, hasHardViolations: false };
     const totalRequired = data.requirements.reduce(
@@ -84,14 +130,13 @@ export function useScheduleBuilder(eventId: string) {
     const fill =
       totalRequired === 0 ? 0 : activeAssignments.length / totalRequired;
 
-    // A hard violation = an assignment to a volunteer who is unavailable.
-    const unavailableVolunteerIds = new Set(
+    const unavailableIds = new Set(
       data.volunteerAvailability
         .filter((v) => mapAvailabilityStatus(v.status) === 'unavailable')
         .map((v) => v.volunteerId),
     );
     const hasHard = activeAssignments.some((a) =>
-      unavailableVolunteerIds.has(a.volunteerId),
+      unavailableIds.has(a.volunteerId),
     );
 
     return { eventFillRatio: fill, hasHardViolations: hasHard };

@@ -14,7 +14,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { CalendarDays, Clock3 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { trpc } from '@/utils/trpc';
+import { adminApi } from '@/utils/api-instances';
 
 interface QuickCreateEventModalProps {
   open: boolean;
@@ -38,11 +38,7 @@ interface DateTimeFieldProps {
 }
 
 function createEmptyDateTimeParts(): DateTimeParts {
-  return {
-    date: '',
-    hour: '',
-    minute: '',
-  };
+  return { date: '', hour: '', minute: '' };
 }
 
 function sanitizeTimeSegment({ rawValue }: { rawValue: string }): string {
@@ -56,13 +52,11 @@ function normalizeTimeSegment({
   rawValue: string;
   max: number;
 }): string {
-  const sanitizedValue = sanitizeTimeSegment({ rawValue });
-  if (sanitizedValue === '') return '';
-
-  const numericValue = Number.parseInt(sanitizedValue, 10);
-  if (Number.isNaN(numericValue)) return '';
-
-  return String(Math.min(numericValue, max)).padStart(2, '0');
+  const sanitized = sanitizeTimeSegment({ rawValue });
+  if (sanitized === '') return '';
+  const num = Number.parseInt(sanitized, 10);
+  if (Number.isNaN(num)) return '';
+  return String(Math.min(num, max)).padStart(2, '0');
 }
 
 function toLocalDateTimeString({
@@ -70,13 +64,10 @@ function toLocalDateTimeString({
 }: {
   value: DateTimeParts;
 }): string | null {
-  if (!value.date || value.hour.length !== 2 || value.minute.length !== 2) {
+  if (!value.date || value.hour.length !== 2 || value.minute.length !== 2)
     return null;
-  }
-
   const hour = Number.parseInt(value.hour, 10);
   const minute = Number.parseInt(value.minute, 10);
-
   if (
     Number.isNaN(hour) ||
     Number.isNaN(minute) ||
@@ -84,10 +75,8 @@ function toLocalDateTimeString({
     hour > 23 ||
     minute < 0 ||
     minute > 59
-  ) {
+  )
     return null;
-  }
-
   return `${value.date}T${value.hour}:${value.minute}:00`;
 }
 
@@ -103,15 +92,9 @@ function DateTimeField({ label, value, onChange }: DateTimeFieldProps) {
             className="pl-8"
             type="date"
             value={value.date}
-            onChange={(event) =>
-              onChange({
-                ...value,
-                date: event.target.value,
-              })
-            }
+            onChange={(e) => onChange({ ...value, date: e.target.value })}
           />
         </div>
-
         <div className="flex items-center gap-1.5">
           <Clock3 className="size-3.5 text-muted-foreground" />
           <Input
@@ -121,21 +104,16 @@ function DateTimeField({ label, value, onChange }: DateTimeFieldProps) {
             maxLength={2}
             placeholder="00"
             value={value.hour}
-            onChange={(event) =>
+            onChange={(e) =>
               onChange({
                 ...value,
-                hour: sanitizeTimeSegment({
-                  rawValue: event.target.value,
-                }),
+                hour: sanitizeTimeSegment({ rawValue: e.target.value }),
               })
             }
             onBlur={() =>
               onChange({
                 ...value,
-                hour: normalizeTimeSegment({
-                  rawValue: value.hour,
-                  max: 23,
-                }),
+                hour: normalizeTimeSegment({ rawValue: value.hour, max: 23 }),
               })
             }
           />
@@ -147,12 +125,10 @@ function DateTimeField({ label, value, onChange }: DateTimeFieldProps) {
             maxLength={2}
             placeholder="00"
             value={value.minute}
-            onChange={(event) =>
+            onChange={(e) =>
               onChange({
                 ...value,
-                minute: sanitizeTimeSegment({
-                  rawValue: event.target.value,
-                }),
+                minute: sanitizeTimeSegment({ rawValue: e.target.value }),
               })
             }
             onBlur={() =>
@@ -187,7 +163,10 @@ export function QuickCreateEventModal({
   );
   const [eventType, setEventType] = useState<EventType>('hourly');
 
-  const create = useMutation(trpc.adminLeader.createEvent.mutationOptions());
+  const create = useMutation({
+    mutationFn: (body: Parameters<typeof adminApi.createEvent>[0]) =>
+      adminApi.createEvent(body),
+  });
 
   const startDate = toLocalDateTimeString({ value: startDateTime });
   const endDate = toLocalDateTimeString({ value: endDateTime });
@@ -200,7 +179,6 @@ export function QuickCreateEventModal({
 
   const handleSubmit = async () => {
     if (!startDate || !endDate) return;
-
     try {
       const event = await create.mutateAsync({
         ministryId,
@@ -226,7 +204,6 @@ export function QuickCreateEventModal({
         <DialogHeader>
           <DialogTitle>New Event</DialogTitle>
         </DialogHeader>
-
         <div className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="event-title">Title</Label>
@@ -262,7 +239,6 @@ export function QuickCreateEventModal({
             </RadioGroup>
           </div>
         </div>
-
         <DialogFooter>
           <Button
             type="button"

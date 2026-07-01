@@ -4,7 +4,6 @@ import type {
   useScheduleBuilder,
 } from '../../hooks/use-schedule-builder';
 import type { VolunteerPoolItem } from '../../hooks/use-volunteer-pool';
-import type { ConflictStatus } from './assignment-chip';
 import type { PickerVolunteer } from './assignment-picker';
 import type { SlotEditValues } from './slot-edit-modal';
 
@@ -19,15 +18,6 @@ export interface UseScheduleBuilderControllerParams {
   publishEvent: ReturnType<typeof useScheduleBuilder>['publishEvent'];
 }
 
-export interface OverrideState {
-  slotId: string;
-  roleId: string;
-  volunteerId: string;
-  volunteerName: string;
-  conflictType: ConflictStatus;
-  slotLabel: string;
-}
-
 export interface SubstitutionState {
   declinedAssignmentId: string;
   declinedVolunteerId: string;
@@ -39,11 +29,6 @@ export interface SlotModalState {
   mode: 'create' | 'edit';
   slotId?: string;
   initial?: SlotEditValues;
-}
-
-export interface DeleteSlotState {
-  slotId: string;
-  assignmentCount: number;
 }
 
 export interface SidebarVolunteer {

@@ -7,25 +7,31 @@ import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTimezone } from '../../../shared/hooks/use-timezone';
 import { QuickCreateEventModal } from './quick-create-event-modal';
-import { trpc } from '@/utils/trpc';
+import { adminApi } from '@/utils/api-instances';
 
 export function EventList() {
   const { format, effectiveTimezone, mode } = useTimezone();
   const [ministryId, setMinistryId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const ministries = useQuery(trpc.adminLeader.listMyMinistries.queryOptions());
+  const ministries = useQuery({
+    queryKey: ['listMinistries'],
+    queryFn: () => adminApi.listMinistries(),
+  });
 
   useEffect(() => {
-    if (!ministryId && ministries.data && ministries.data.length > 0) {
-      setMinistryId(ministries.data[0].ministryId);
+    if (
+      !ministryId &&
+      ministries.data &&
+      ministries.data.ministries.length > 0
+    ) {
+      setMinistryId(ministries.data.ministries[0].id);
     }
   }, [ministries.data, ministryId]);
 
   const events = useQuery({
-    ...trpc.adminLeader.listEvents.queryOptions({
-      ministryId: ministryId ?? '',
-    }),
+    queryKey: ['listEvents', ministryId],
+    queryFn: () => adminApi.listEvents({ ministryId: ministryId ?? '' }),
     enabled: !!ministryId,
   });
 
@@ -49,17 +55,17 @@ export function EventList() {
         </div>
       </div>
 
-      {ministries.data && ministries.data.length > 1 && (
+      {ministries.data && ministries.data.ministries.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          {ministries.data.map((m) => (
+          {ministries.data.ministries.map((m) => (
             <Button
-              key={m.ministryId}
+              key={m.id}
               type="button"
               size="sm"
-              variant={m.ministryId === ministryId ? 'default' : 'outline'}
-              onClick={() => setMinistryId(m.ministryId)}
+              variant={m.id === ministryId ? 'default' : 'outline'}
+              onClick={() => setMinistryId(m.id)}
             >
-              {m.ministryName}
+              {m.name}
             </Button>
           ))}
         </div>
@@ -70,13 +76,13 @@ export function EventList() {
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>
-      ) : (events.data ?? []).length === 0 ? (
+      ) : (events.data?.events ?? []).length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No events yet. Create one to get started.
         </p>
       ) : (
         <div className="grid gap-4">
-          {(events.data ?? []).map((event) => (
+          {(events.data?.events ?? []).map((event) => (
             <Link
               key={event.id}
               to="/scheduling/events/$eventId/builder"

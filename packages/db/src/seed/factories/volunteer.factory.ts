@@ -1,8 +1,11 @@
 import { faker } from '@faker-js/faker';
+import { hashPassword } from 'better-auth/crypto';
 import { db } from '../../client';
 import * as schema from '../../schema';
 import { SEED_CONFIG } from '../constants';
 import { logStep, logSuccess } from '../utils';
+
+const SEED_PASSWORD = 'dev-password-123';
 
 export async function generateVolunteers(
   churches: (typeof schema.church.$inferSelect)[],
@@ -42,6 +45,18 @@ export async function generateVolunteers(
     .insert(schema.user)
     .values(usersData)
     .returning();
+
+  const passwordHash = await hashPassword(SEED_PASSWORD);
+  const accountsData: (typeof schema.account.$inferInsert)[] =
+    insertedUsers.map((u) => ({
+      id: faker.string.uuid(),
+      accountId: u.id,
+      providerId: 'credential',
+      userId: u.id,
+      password: passwordHash,
+    }));
+  await db.insert(schema.account).values(accountsData);
+
   const insertedVolunteers = await db
     .insert(schema.volunteer)
     .values(volunteersData)
@@ -89,7 +104,7 @@ export async function generateVolunteers(
   );
 
   logSuccess(
-    `Generated ${insertedUsers.length} users and linked ${sortedVolunteers.length} volunteers.`,
+    `Generated ${insertedUsers.length} users (password: ${SEED_PASSWORD}) and linked ${sortedVolunteers.length} volunteers.`,
   );
   return {
     users: insertedUsers,

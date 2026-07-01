@@ -46,6 +46,7 @@
     "@church/config": "workspace:*",
     "@faker-js/faker": "^10.4.0",
     "@types/pg": "catalog:",
+    "better-auth": "1.5.5",
     "drizzle-kit": "^0.31.8",
     "typescript": "^5",
     "vitest": "catalog:"

@@ -101,12 +101,20 @@ export function VolunteerCard({
             }
           />
           <TooltipContent>
-            {volunteer.conflictReason ?? STATUS_LABEL[volunteer.status]}
+            {volunteer.conflictReason ??
+              (volunteer.workloadCount > 0 && volunteer.status === 'available'
+                ? `Available · already serving ${volunteer.workloadCount} slot(s) in this event`
+                : STATUS_LABEL[volunteer.status])}
           </TooltipContent>
         </Tooltip>
-        <Badge className="bg-muted text-muted-foreground" title="Workload">
-          {volunteer.workloadCount}
-        </Badge>
+        {volunteer.workloadCount > 0 && (
+          <Badge
+            className="bg-blue-100 text-blue-800"
+            title="Already serving in this event"
+          >
+            Serving ({volunteer.workloadCount})
+          </Badge>
+        )}
       </span>
     </div>
   );

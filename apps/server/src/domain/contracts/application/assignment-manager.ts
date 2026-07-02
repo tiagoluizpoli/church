@@ -16,9 +16,16 @@ export interface CreateAssignmentInput {
 
 export interface IAssignmentManager {
   createAssignment(input: CreateAssignmentInput): Promise<Assignment>;
+  overrideAssignment(input: {
+    assignmentId: AssignmentId;
+    churchId: ChurchId;
+    actorId: UserId;
+    reason: string;
+  }): Promise<void>;
   deleteAssignment(input: {
     assignmentId: AssignmentId;
     churchId: ChurchId;
+    actorId?: UserId;
   }): Promise<void>;
   listAuditLog(input: {
     assignmentId: AssignmentId;

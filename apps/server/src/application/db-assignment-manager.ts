@@ -42,8 +42,32 @@ export class DbAssignmentManager implements IAssignmentManager {
   async deleteAssignment(input: {
     assignmentId: AssignmentId;
     churchId: ChurchId;
+    actorId?: UserId;
   }): Promise<void> {
-    await this.assignmentRepo.deleteById(input.churchId, input.assignmentId);
+    const { assignmentId, churchId, actorId } = input;
+    await this.assignmentRepo.deleteById(churchId, assignmentId);
+    if (actorId) {
+      await this.auditRepo.create(churchId, {
+        assignmentId,
+        actorId,
+        action: 'deleted',
+      });
+    }
+  }
+
+  async overrideAssignment(input: {
+    assignmentId: AssignmentId;
+    churchId: ChurchId;
+    actorId: UserId;
+    reason: string;
+  }): Promise<void> {
+    await this.assignmentRepo.getById(input.churchId, input.assignmentId);
+    await this.auditRepo.create(input.churchId, {
+      assignmentId: input.assignmentId,
+      actorId: input.actorId,
+      action: 'updated',
+      reason: input.reason,
+    });
   }
 
   async listAuditLog(input: {

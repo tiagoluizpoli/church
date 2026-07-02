@@ -1,8 +1,5 @@
-import { type BrandedId, Entity, type LooseProps } from '@church/core';
-import type { ChurchId } from './church';
-
-export type VolunteerId = BrandedId<'VolunteerId'>;
-export type UserId = BrandedId<'UserId'>;
+import { Entity, type LooseProps } from '@church/core';
+import type { ChurchId, UserId, VolunteerId } from '../branded-ids';
 
 export const VOLUNTEER_STATUS_OPTIONS = [
   'active',

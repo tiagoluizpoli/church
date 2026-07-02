@@ -1,10 +1,11 @@
-import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { Entity, type LooseProps } from '@church/core';
+import { TimeSlotId } from '../branded-ids/time-slot-id';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { ChurchId } from './church';
 import type { EventId } from './event';
 import type { SlotRequirement } from './slot-requirement';
 
-export type TimeSlotId = BrandedId<'TimeSlotId'>;
+export { TimeSlotId };
 
 export const TIME_SLOT_STATUS_OPTIONS = ['active', 'cancelled'] as const;
 export type TimeSlotStatus = (typeof TIME_SLOT_STATUS_OPTIONS)[number];

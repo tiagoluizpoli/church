@@ -13,30 +13,108 @@ import type {
   VolunteerNotificationId,
 } from '../../entities/volunteer-notification';
 
+export interface DashboardAvailabilityTask {
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+  eventType: 'hourly' | 'day_based';
+  eventStart: string;
+  eventEnd: string;
+  completionState: 'missing' | 'partial' | 'complete';
+}
+
+export interface DashboardAssignmentItem {
+  assignmentId: string;
+  slotId: string;
+  roleId: string;
+  roleName: string;
+  teamId?: string;
+  teamName?: string;
+  startTime: string;
+  endTime: string;
+  status: 'pending' | 'confirmed' | 'declined';
+  timingState: 'in_progress' | 'upcoming';
+  canRespond: boolean;
+}
+
+export interface DashboardAssignmentGroup {
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+  eventStart: string;
+  aggregateResponseState: 'pending' | 'confirmed' | 'mixed' | 'declined';
+  hasPendingResponse: boolean;
+  assignments: DashboardAssignmentItem[];
+}
+
+export interface DashboardNotificationPreview {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  readAt?: string;
+  createdAt: string;
+}
+
+export interface DashboardMinistryOption {
+  id: string;
+  name: string;
+}
+
 export interface VolunteerDashboard {
-  upcomingAssignments: Assignment[];
+  availabilityTasks: DashboardAvailabilityTask[];
+  upcomingAssignmentGroups: DashboardAssignmentGroup[];
   unreadNotificationCount: number;
+  notificationPreview: DashboardNotificationPreview[];
+  defaultMinistryId?: string;
+  ministryOptions: DashboardMinistryOption[];
+}
+
+export interface MinistryScheduleRow {
+  slotId: string;
+  slotLabel: string;
+  roleName: string;
+  teamName?: string;
+  volunteerDisplayName?: string;
+  confirmationState: 'pending' | 'confirmed' | 'declined' | 'open';
+}
+
+export interface MinistryScheduleEvent {
+  eventId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  assignmentCount: number;
+  rows: MinistryScheduleRow[];
+}
+
+export interface MinistrySchedule {
+  ministryId: string;
+  ministryName: string;
+  events: MinistryScheduleEvent[];
 }
 
 export interface UpsertAvailabilityInput {
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
   availabilityId?: AvailabilityId;
-  eventId?: EventId;
-  type: AvailabilityType;
-  startTime: Date;
+  churchId: ChurchId;
   endTime: Date;
+  eventId?: EventId;
   isAllDay: boolean;
   reason?: string;
   repeatRule?: string;
+  startTime: Date;
+  type: AvailabilityType;
+  volunteerId: VolunteerId;
 }
 
 export interface RespondToAssignmentInput {
   assignmentId: AssignmentId;
-  volunteerId: VolunteerId;
   churchId: ChurchId;
-  response: 'accepted' | 'declined';
   reason?: string;
+  response: 'accepted' | 'declined';
+  volunteerId: VolunteerId;
 }
 
 export interface NotificationListResult {
@@ -45,10 +123,10 @@ export interface NotificationListResult {
 }
 
 export interface VolunteerContext {
-  volunteerId: VolunteerId;
   churchId: ChurchId;
   isAdmin: boolean;
   isLeader: boolean;
+  volunteerId: VolunteerId;
 }
 
 export interface IVolunteerManager {
@@ -65,7 +143,7 @@ export interface IVolunteerManager {
     ministryId: MinistryId;
     volunteerId: VolunteerId;
     churchId: ChurchId;
-  }): Promise<Assignment[]>;
+  }): Promise<MinistrySchedule>;
   upsertAvailability(input: UpsertAvailabilityInput): Promise<Availability>;
   deleteAvailability(input: {
     availabilityId: AvailabilityId;

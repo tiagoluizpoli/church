@@ -15,6 +15,7 @@ import type { AssignmentRepository } from '../domain/contracts/infrastructure/as
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
+import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { ChurchId } from '../domain/entities/church';
@@ -23,9 +24,10 @@ import {
   type Event,
   type EventId,
 } from '../domain/entities/event';
-import type { MinistryId } from '../domain/entities/ministry';
 import type { SlotRequirement } from '../domain/entities/slot-requirement';
 import type { TimeSlot, TimeSlotId } from '../domain/entities/time-slot';
+import type { VolunteerId } from '../domain/entities/volunteer';
+import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 
 @injectable()
 export class DbEventManager implements IEventManager {
@@ -40,24 +42,61 @@ export class DbEventManager implements IEventManager {
     private readonly availabilityRepo: AvailabilityRepository,
     @inject('IVolunteerRepository')
     private readonly volunteerRepo: VolunteerRepository,
+    @inject('IRoleRepository')
+    private readonly roleRepo: RoleRepository,
     @inject('INotificationService')
     private readonly notificationService: NotificationService,
   ) {}
 
   async getScheduleBuilderData(input: {
     churchId: ChurchId;
-    ministryId: MinistryId;
+    eventId: EventId;
+    volunteerId: VolunteerId;
   }): Promise<ScheduleBuilderData> {
-    const { churchId, ministryId } = input;
-    const rawEvents = await this.eventRepo.listByMinistry(churchId, ministryId);
-    const [rawAssignments, rawVolunteers] = await Promise.all([
-      this.assignmentRepo.listByRange(
-        churchId,
-        new Date(0),
-        new Date('2100-01-01'),
-      ),
-      this.volunteerRepo.listByMinistry(churchId, ministryId),
-    ]);
+    const { churchId, eventId, volunteerId } = input;
+    const event = await this.eventRepo.getById(churchId, eventId);
+    const ministryId = event.ministryId;
+
+    const memberships = await this.volunteerRepo.listMinistryMemberships(
+      churchId,
+      ministryId,
+    );
+    const callerMembership = memberships.find(
+      (membership) => membership.volunteerId === volunteerId,
+    );
+    if (!callerMembership) {
+      throw new IsolationBreachError(
+        'Volunteer does not belong to the event ministry',
+      );
+    }
+    if (callerMembership.systemRole === 'volunteer') {
+      throw new IsolationBreachError(
+        'Volunteer does not have leader or sub-leader privileges',
+      );
+    }
+    const callerTeamId =
+      callerMembership.systemRole === 'sub_leader'
+        ? callerMembership.teamId
+        : null;
+
+    const [slots, rawAssignments, ministryVolunteers, roles] =
+      await Promise.all([
+        this.slotRepo.listByEvent(churchId, eventId),
+        this.assignmentRepo.listByEvent(churchId, eventId),
+        this.volunteerRepo.listByMinistry(churchId, ministryId),
+        this.roleRepo.listByMinistry(churchId, ministryId),
+      ]);
+    const allowedVolunteerIds = new Set(
+      memberships
+        .filter(
+          (membership) =>
+            callerTeamId == null || membership.teamId === callerTeamId,
+        )
+        .map((membership) => membership.volunteerId),
+    );
+    const rawVolunteers = ministryVolunteers.filter((volunteer) =>
+      allowedVolunteerIds.has(volunteer.id),
+    );
 
     const allVolunteerIds = rawVolunteers.map((v) => v.id);
     const rawAvailability =
@@ -68,21 +107,16 @@ export class DbEventManager implements IEventManager {
           )
         : [];
 
-    const eventsWithSlots = await Promise.all(
-      rawEvents.map(async (ev) => ({
-        event: ev,
-        slots: await this.slotRepo.listByEvent(churchId, ev.id),
-      })),
-    );
-
     return {
-      events: eventsWithSlots,
+      events: [{ event, slots }],
       assignments: rawAssignments,
       availability: rawAvailability,
       volunteers: rawVolunteers.map((v) => ({
         id: v.id,
-        name: v.id as string,
+        name: (v.name ?? v.id) as string,
       })),
+      roles: roles.map((role) => ({ id: role.id, name: role.name })),
+      callerTeamId,
     };
   }
 

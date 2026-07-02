@@ -1,6 +1,5 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
-
-export type ChurchId = BrandedId<'ChurchId'>;
+import type { ChurchId } from '../branded-ids';
 export type ChurchSlug = BrandedId<'ChurchSlug'>;
 
 export interface ChurchProps {

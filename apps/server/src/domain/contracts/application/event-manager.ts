@@ -90,12 +90,15 @@ export interface ScheduleBuilderData {
   assignments: Assignment[];
   availability: Availability[];
   volunteers: Array<{ id: VolunteerId; name: string }>;
+  roles: Array<{ id: RoleId; name: string }>;
+  callerTeamId: string | null;
 }
 
 export interface IEventManager {
   getScheduleBuilderData(input: {
     churchId: ChurchId;
-    ministryId: MinistryId;
+    eventId: EventId;
+    volunteerId: VolunteerId;
   }): Promise<ScheduleBuilderData>;
   createEvent(input: CreateEventInput): Promise<Event>;
   listEvents(input: ListEventsInput): Promise<Event[]>;

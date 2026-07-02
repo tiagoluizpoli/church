@@ -1,11 +1,12 @@
-import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { Entity, type LooseProps } from '@church/core';
+import { VolunteerNotificationId } from '../branded-ids/volunteer-notification-id';
 import type { AssignmentId } from './assignment';
 import type { ChurchId } from './church';
 import type { EventId } from './event';
 import type { MinistryId } from './ministry';
 import type { VolunteerId } from './volunteer';
 
-export type VolunteerNotificationId = BrandedId<'VolunteerNotificationId'>;
+export { VolunteerNotificationId };
 
 export const VOLUNTEER_NOTIFICATION_TYPE_OPTIONS = [
   'schedule_published',

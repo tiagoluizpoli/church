@@ -1,7 +1,5 @@
-import { type BrandedId, Entity, type LooseProps } from '@church/core';
-import type { ChurchId } from './church';
-
-export type MinistryId = BrandedId<'MinistryId'>;
+import { Entity, type LooseProps } from '@church/core';
+import type { ChurchId, MinistryId } from '../branded-ids';
 
 export const ENFORCEMENT_TYPE_OPTIONS = ['soft', 'hard'] as const;
 export type EnforcementType = (typeof ENFORCEMENT_TYPE_OPTIONS)[number];

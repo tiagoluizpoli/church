@@ -1,8 +1,9 @@
-import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { Entity, type LooseProps } from '@church/core';
+import { TeamId } from '../branded-ids/team-id';
 import type { ChurchId } from './church';
 import type { MinistryId } from './ministry';
 
-export type TeamId = BrandedId<'TeamId'>;
+export { TeamId };
 
 export interface TeamProps {
   churchId: ChurchId;

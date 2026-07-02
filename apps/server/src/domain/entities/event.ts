@@ -1,10 +1,7 @@
-import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { Entity, type LooseProps } from '@church/core';
+import type { ChurchId, EventId, MinistryId } from '../branded-ids';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
-import type { ChurchId } from './church';
-import type { MinistryId } from './ministry';
 import type { TimeSlot } from './time-slot';
-
-export type EventId = BrandedId<'EventId'>;
 
 export const EVENT_STATUS_OPTIONS = [
   'draft',

@@ -1,11 +1,12 @@
 import { Entity, type LooseProps } from '@church/core';
-import { AssignmentId } from '../branded-ids/assignment-id';
-import type { ChurchId } from './church';
-import type { RoleId } from './role';
-import type { TimeSlotId } from './time-slot';
-import type { UserId, VolunteerId } from './volunteer';
-
-export { AssignmentId };
+import type {
+  AssignmentId,
+  ChurchId,
+  RoleId,
+  TimeSlotId,
+  UserId,
+  VolunteerId,
+} from '../branded-ids';
 
 export const ASSIGNMENT_STATUS_OPTIONS = [
   'draft',

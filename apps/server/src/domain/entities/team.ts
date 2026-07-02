@@ -1,9 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
-import { TeamId } from '../branded-ids/team-id';
-import type { ChurchId } from './church';
-import type { MinistryId } from './ministry';
-
-export { TeamId };
+import type { ChurchId, MinistryId, TeamId } from '../branded-ids';
 
 export interface TeamProps {
   churchId: ChurchId;

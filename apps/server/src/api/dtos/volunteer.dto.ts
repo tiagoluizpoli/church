@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import type { VolunteerDashboard } from '../../domain/contracts/application/volunteer-manager';
+import type {
+  MinistrySchedule,
+  VolunteerDashboard,
+} from '../../domain/contracts/application/volunteer-manager';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { Availability } from '../../domain/entities/availability';
 
@@ -30,13 +33,96 @@ export const availabilityResponseSchema = z.object({
 });
 export type AvailabilityResponse = z.infer<typeof availabilityResponseSchema>;
 
+const dashboardAssignmentItemSchema = z.object({
+  assignmentId: z.string(),
+  slotId: z.string(),
+  roleId: z.string(),
+  roleName: z.string(),
+  teamId: z.string().optional(),
+  teamName: z.string().optional(),
+  startTime: z.string(),
+  endTime: z.string(),
+  status: z.enum(['pending', 'confirmed', 'declined']),
+  timingState: z.enum(['in_progress', 'upcoming']),
+  canRespond: z.boolean(),
+});
+
+const dashboardAssignmentGroupSchema = z.object({
+  eventId: z.string(),
+  eventTitle: z.string(),
+  ministryId: z.string(),
+  ministryName: z.string(),
+  eventStart: z.string(),
+  aggregateResponseState: z.enum(['pending', 'confirmed', 'mixed', 'declined']),
+  hasPendingResponse: z.boolean(),
+  assignments: z.array(dashboardAssignmentItemSchema),
+});
+
+const dashboardAvailabilityTaskSchema = z.object({
+  eventId: z.string(),
+  eventTitle: z.string(),
+  ministryId: z.string(),
+  ministryName: z.string(),
+  eventType: z.enum(['hourly', 'day_based']),
+  eventStart: z.string(),
+  eventEnd: z.string(),
+  completionState: z.enum(['missing', 'partial', 'complete']),
+});
+
+const dashboardNotificationPreviewSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  body: z.string(),
+  readAt: z.string().optional(),
+  createdAt: z.string(),
+});
+
+const dashboardMinistryOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
 export const dashboardResponseSchema = z.object({
-  upcomingAssignments: z.array(assignmentResponseSchema),
+  availabilityTasks: z.array(dashboardAvailabilityTaskSchema),
+  upcomingAssignmentGroups: z.array(dashboardAssignmentGroupSchema),
   unreadNotificationCount: z.number(),
+  notificationPreview: z.array(dashboardNotificationPreviewSchema),
+  defaultMinistryId: z.string().optional(),
+  ministryOptions: z.array(dashboardMinistryOptionSchema),
 });
 
 export const assignmentListResponseSchema = z.object({
   assignments: z.array(assignmentResponseSchema),
+});
+
+export const ministryScheduleResponseSchema = z.object({
+  ministryId: z.string(),
+  ministryName: z.string(),
+  events: z.array(
+    z.object({
+      eventId: z.string(),
+      title: z.string(),
+      startDate: z.string(),
+      endDate: z.string(),
+      assignmentCount: z.number(),
+      rows: z.array(
+        z.object({
+          slotId: z.string(),
+          slotLabel: z.string(),
+          roleName: z.string(),
+          teamName: z.string().optional(),
+          volunteerDisplayName: z.string().optional(),
+          confirmationState: z.enum([
+            'pending',
+            'confirmed',
+            'declined',
+            'open',
+          ]),
+        }),
+      ),
+    }),
+  ),
 });
 
 export const availabilityListResponseSchema = z.object({
@@ -91,13 +177,19 @@ function availabilityToResponse(av: Availability): AvailabilityResponse {
 export const volunteerMapper = {
   dashboardToResponse(dashboard: VolunteerDashboard) {
     return {
-      upcomingAssignments:
-        dashboard.upcomingAssignments.map(assignmentToResponse),
+      availabilityTasks: dashboard.availabilityTasks,
+      upcomingAssignmentGroups: dashboard.upcomingAssignmentGroups,
       unreadNotificationCount: dashboard.unreadNotificationCount,
+      notificationPreview: dashboard.notificationPreview,
+      defaultMinistryId: dashboard.defaultMinistryId,
+      ministryOptions: dashboard.ministryOptions,
     };
   },
   assignmentsToResponse(assignments: Assignment[]) {
     return { assignments: assignments.map(assignmentToResponse) };
+  },
+  ministryScheduleToResponse(schedule: MinistrySchedule) {
+    return schedule;
   },
   availabilityListToResponse(items: Availability[]) {
     return { availability: items.map(availabilityToResponse) };

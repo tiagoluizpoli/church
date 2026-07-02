@@ -9,6 +9,10 @@ export const createAssignmentBodySchema = z.object({
   reason: z.string().optional(),
 });
 
+export const overrideAssignmentBodySchema = z.object({
+  reason: z.string().trim().min(10),
+});
+
 export const assignmentResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),

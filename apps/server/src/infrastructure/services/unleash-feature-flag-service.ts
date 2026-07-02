@@ -25,6 +25,7 @@ export class UnleashFeatureFlagService implements IFeatureFlagService {
       .catch((err) => {
         console.warn('[unleash] Failed to connect to Unleash server:', err);
         this.client = null;
+        this.initPromise = null; // allow retry on next call
       });
     return this.initPromise;
   }

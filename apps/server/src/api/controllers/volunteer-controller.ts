@@ -1,19 +1,20 @@
 import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
+import { z } from 'zod';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
-import type { AssignmentId } from '../../domain/entities/assignment';
-import type { AvailabilityId } from '../../domain/entities/availability';
-import type { ChurchId } from '../../domain/entities/church';
-import type { MinistryId } from '../../domain/entities/ministry';
-import type { UserId, VolunteerId } from '../../domain/entities/volunteer';
-import type { VolunteerNotificationId } from '../../domain/entities/volunteer-notification';
+import { AssignmentId } from '../../domain/entities/assignment';
+import { AvailabilityId } from '../../domain/entities/availability';
+import { ChurchId } from '../../domain/entities/church';
+import { EventId } from '../../domain/entities/event';
+import { MinistryId } from '../../domain/entities/ministry';
+import { UserId, VolunteerId } from '../../domain/entities/volunteer';
+import { VolunteerNotificationId } from '../../domain/entities/volunteer-notification';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   notificationListResponseSchema,
   notificationMapper,
-  notificationResponseSchema,
 } from '../dtos/notification.dto';
 import {
   assignmentListResponseSchema,
@@ -21,10 +22,12 @@ import {
   availabilityListResponseSchema,
   availabilityResponseSchema,
   dashboardResponseSchema,
+  ministryScheduleResponseSchema,
   respondToAssignmentBodySchema,
   upsertAvailabilityBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
+import { headersFromRequest } from '../utils/headers';
 
 @injectable()
 export class VolunteerController implements FastifyController {
@@ -40,12 +43,7 @@ export class VolunteerController implements FastifyController {
     _opts: Record<string, unknown>,
   ): void {
     app.addHook('preValidation', async (request, reply) => {
-      const headers = new Headers();
-      for (const [key, value] of Object.entries(request.headers)) {
-        if (value)
-          headers.set(key, Array.isArray(value) ? (value[0] ?? '') : value);
-      }
-
+      const headers = headersFromRequest(request);
       const session = await auth.api.getSession({ headers }).catch(() => null);
       if (!session?.user) {
         return reply
@@ -54,7 +52,7 @@ export class VolunteerController implements FastifyController {
       }
 
       const ctx = await this.volunteerManager.resolveVolunteerContext(
-        session.user.id as UserId,
+        UserId.from(session.user.id),
       );
       if (!ctx) {
         return reply.status(401).send({
@@ -63,17 +61,23 @@ export class VolunteerController implements FastifyController {
         });
       }
 
-      request.volunteerId = ctx.volunteerId as string;
-      request.churchId = ctx.churchId as string;
+      request.volunteerId = ctx.volunteerId;
+      request.churchId = ctx.churchId;
     });
 
     app.get(
       '/dashboard',
-      { schema: { response: { 200: dashboardResponseSchema } } },
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'getVolunteerDashboard',
+          response: { 200: dashboardResponseSchema },
+        },
+      },
       async (request, reply) => {
         const dashboard = await this.volunteerManager.getDashboard({
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.dashboardToResponse(dashboard));
       },
@@ -81,11 +85,17 @@ export class VolunteerController implements FastifyController {
 
     app.get(
       '/assignments',
-      { schema: { response: { 200: assignmentListResponseSchema } } },
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'getMyAssignments',
+          response: { 200: assignmentListResponseSchema },
+        },
+      },
       async (request, reply) => {
         const assignments = await this.volunteerManager.getUpcomingAssignments({
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.assignmentsToResponse(assignments));
       },
@@ -93,25 +103,37 @@ export class VolunteerController implements FastifyController {
 
     app.get(
       '/ministries/:ministryId/schedule',
-      { schema: { response: { 200: assignmentListResponseSchema } } },
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'getMinistrySchedule',
+          response: { 200: ministryScheduleResponseSchema },
+        },
+      },
       async (request, reply) => {
         const { ministryId } = request.params as { ministryId: string };
-        const assignments = await this.volunteerManager.getMinistrySchedule({
-          ministryId: ministryId as MinistryId,
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
+        const schedule = await this.volunteerManager.getMinistrySchedule({
+          ministryId: MinistryId.from(ministryId),
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
         });
-        return reply.send(volunteerMapper.assignmentsToResponse(assignments));
+        return reply.send(volunteerMapper.ministryScheduleToResponse(schedule));
       },
     );
 
     app.get(
       '/availability',
-      { schema: { response: { 200: availabilityListResponseSchema } } },
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'getMyAvailability',
+          response: { 200: availabilityListResponseSchema },
+        },
+      },
       async (request, reply) => {
         const items = await this.volunteerManager.getAvailability({
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.availabilityListToResponse(items));
       },
@@ -121,28 +143,23 @@ export class VolunteerController implements FastifyController {
       '/availability',
       {
         schema: {
+          tags: ['volunteer'],
+          operationId: 'upsertAvailability',
           body: upsertAvailabilityBodySchema,
           response: { 200: availabilityResponseSchema },
         },
       },
       async (request, reply) => {
-        const body = request.body as {
-          availabilityId?: string;
-          eventId?: string;
-          type: 'available' | 'unavailable';
-          startTime: string;
-          endTime: string;
-          isAllDay: boolean;
-          reason?: string;
-          repeatRule?: string;
-        };
+        const body = request.body as z.infer<
+          typeof upsertAvailabilityBodySchema
+        >;
         const result = await this.volunteerManager.upsertAvailability({
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
-          availabilityId: body.availabilityId as AvailabilityId | undefined,
-          eventId: body.eventId as
-            | import('../../domain/entities/event').EventId
-            | undefined,
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
+          availabilityId: body.availabilityId
+            ? AvailabilityId.from(body.availabilityId)
+            : undefined,
+          eventId: body.eventId ? EventId.from(body.eventId) : undefined,
           type: body.type,
           startTime: new Date(body.startTime),
           endTime: new Date(body.endTime),
@@ -154,34 +171,39 @@ export class VolunteerController implements FastifyController {
       },
     );
 
-    app.delete('/availability/:availabilityId', {}, async (request, reply) => {
-      const { availabilityId } = request.params as { availabilityId: string };
-      await this.volunteerManager.deleteAvailability({
-        availabilityId: availabilityId as AvailabilityId,
-        volunteerId: request.volunteerId as VolunteerId,
-        churchId: request.churchId as ChurchId,
-      });
-      return reply.status(204).send();
-    });
+    app.delete(
+      '/availability/:availabilityId',
+      { schema: { tags: ['volunteer'], operationId: 'deleteAvailability' } },
+      async (request, reply) => {
+        const { availabilityId } = request.params as { availabilityId: string };
+        await this.volunteerManager.deleteAvailability({
+          availabilityId: AvailabilityId.from(availabilityId),
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
+        });
+        return reply.status(204).send();
+      },
+    );
 
     app.patch(
       '/assignments/:assignmentId',
       {
         schema: {
+          tags: ['volunteer'],
+          operationId: 'respondToAssignment',
           body: respondToAssignmentBodySchema,
           response: { 200: assignmentResponseSchema },
         },
       },
       async (request, reply) => {
         const { assignmentId } = request.params as { assignmentId: string };
-        const body = request.body as {
-          response: 'accepted' | 'declined';
-          reason?: string;
-        };
+        const body = request.body as z.infer<
+          typeof respondToAssignmentBodySchema
+        >;
         const result = await this.volunteerManager.respondToAssignment({
-          assignmentId: assignmentId as AssignmentId,
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
+          assignmentId: AssignmentId.from(assignmentId),
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
           response: body.response,
           reason: body.reason,
         });
@@ -191,11 +213,17 @@ export class VolunteerController implements FastifyController {
 
     app.get(
       '/notifications',
-      { schema: { response: { 200: notificationListResponseSchema } } },
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'getNotifications',
+          response: { 200: notificationListResponseSchema },
+        },
+      },
       async (request, reply) => {
         const result = await this.volunteerManager.getNotifications({
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
         });
         return reply.send(notificationMapper.listToResponse(result));
       },
@@ -203,24 +231,39 @@ export class VolunteerController implements FastifyController {
 
     app.patch(
       '/notifications/:notificationId',
-      { schema: { response: { 200: notificationResponseSchema } } },
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'markNotificationRead',
+          response: { 200: z.object({ marked: z.boolean() }) },
+        },
+      },
       async (request, reply) => {
         const { notificationId } = request.params as { notificationId: string };
         await this.volunteerManager.markNotificationRead({
-          notificationId: notificationId as VolunteerNotificationId,
-          volunteerId: request.volunteerId as VolunteerId,
-          churchId: request.churchId as ChurchId,
+          notificationId: VolunteerNotificationId.from(notificationId),
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
         });
         return reply.status(200).send({ marked: true });
       },
     );
 
-    app.post('/notifications/read-all', {}, async (request, reply) => {
-      await this.volunteerManager.markAllNotificationsRead({
-        volunteerId: request.volunteerId as VolunteerId,
-        churchId: request.churchId as ChurchId,
-      });
-      return reply.status(201).send({ marked: true });
-    });
+    app.post(
+      '/notifications/read-all',
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'markAllNotificationsRead',
+        },
+      },
+      async (request, reply) => {
+        await this.volunteerManager.markAllNotificationsRead({
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
+        });
+        return reply.status(201).send({ marked: true });
+      },
+    );
   }
 }

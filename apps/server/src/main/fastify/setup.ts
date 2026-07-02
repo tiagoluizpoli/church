@@ -2,7 +2,9 @@ import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
+import fastifyCors from '@fastify/cors';
 import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import apiReference from '@scalar/fastify-api-reference';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
@@ -12,6 +14,8 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
+import pino from 'pino';
+import PinoPretty from 'pino-pretty';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
@@ -38,34 +42,60 @@ export async function createFastify() {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';
 
-  const app = createFastifyInstance({
-    logger: isTest
-      ? false
-      : isProd
-        ? true
-        : {
-            transport: {
-              target: 'pino-pretty',
-              options: { colorize: true, translateTime: 'HH:MM:ss' },
-            },
-          },
+  // Bun doesn't support pino worker-thread transports — use a synchronous
+  // pino-pretty stream in dev instead of the transport API.
+  const devLogger = pino(
+    { level: 'info' },
+    PinoPretty({ colorize: true, translateTime: 'HH:MM:ss' }),
+  );
+
+  const app = isTest
+    ? createFastifyInstance({ logger: false })
+    : isProd
+      ? createFastifyInstance({ logger: true })
+      : createFastifyInstance({ loggerInstance: devLogger });
+
+  await app.register(fastifyCors, {
+    origin: env.CORS_ORIGIN,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+    maxAge: 86400,
   });
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
+  app.decorateRequest('userId', '');
   app.decorateRequest('volunteerId', '');
   app.decorateRequest('churchId', '');
 
   await app.register(swagger, {
     openapi: {
       info: { title: 'Church API', version: '1.0.0' },
+      tags: [
+        { name: 'admin', description: 'Admin and leader endpoints' },
+        { name: 'volunteer', description: 'Volunteer-facing endpoints' },
+        { name: 'feature-flags', description: 'Feature flag endpoints' },
+      ],
     },
     transform: jsonSchemaTransform,
   });
 
   if (!isProd && !isTest) {
-    await app.register(apiReference, { routePrefix: '/documentation' });
+    await app.register(swaggerUi, {
+      routePrefix: '/docs/swagger',
+    });
+
+    await app.register(apiReference, {
+      routePrefix: '/docs/scalar',
+      configuration: {
+        theme: 'kepler',
+        darkMode: true,
+        hideDarkModeToggle: true,
+        defaultOpenAllTags: true,
+      },
+    });
   }
 
   app.setErrorHandler((error, request, reply) => {

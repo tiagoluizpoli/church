@@ -19,8 +19,9 @@ paths:
     post: *a1
   /api/v1/admin/ministries:
     get:
-      tags: [admin]
       operationId: listMinistries
+      tags:
+        - admin
       responses:
         "200":
           description: Default Response
@@ -64,8 +65,15 @@ paths:
                 additionalProperties: false
   /api/v1/admin/schedule-builder:
     get:
-      tags: [admin]
       operationId: getScheduleBuilderData
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: eventId
+          required: true
       responses:
         "200":
           description: Default Response
@@ -263,16 +271,35 @@ paths:
                         - id
                         - name
                       additionalProperties: false
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                  callerTeamId:
+                    nullable: true
+                    type: string
                 required:
                   - events
                   - assignments
                   - availability
                   - volunteers
+                  - roles
+                  - callerTeamId
                 additionalProperties: false
   /api/v1/admin/events:
     get:
-      tags: [admin]
       operationId: listEvents
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -350,8 +377,9 @@ paths:
                   - events
                 additionalProperties: false
     post:
-      tags: [admin]
       operationId: createEvent
+      tags:
+        - admin
       requestBody:
         required: true
         content:
@@ -440,8 +468,9 @@ paths:
                 additionalProperties: false
   /api/v1/admin/events/{eventId}/publish:
     post:
-      tags: [admin]
       operationId: publishEvent
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -453,8 +482,9 @@ paths:
           description: Default Response
   /api/v1/admin/events/{eventId}/cancel:
     post:
-      tags: [admin]
       operationId: cancelEvent
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -466,8 +496,9 @@ paths:
           description: Default Response
   /api/v1/admin/events/{eventId}/reminders:
     post:
-      tags: [admin]
       operationId: sendReminders
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -477,10 +508,48 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/v1/admin/events/{eventId}/apply-template:
+    post:
+      operationId: applyRoleTemplate
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                templateId:
+                  type: string
+              required:
+                - templateId
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applied:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - applied
+                additionalProperties: false
   /api/v1/admin/events/{eventId}/slots:
     post:
-      tags: [admin]
       operationId: createSlot
+      tags:
+        - admin
       requestBody:
         required: true
         content:
@@ -566,8 +635,9 @@ paths:
                 additionalProperties: false
   /api/v1/admin/events/{eventId}/slots/{slotId}:
     patch:
-      tags: [admin]
       operationId: updateSlot
+      tags:
+        - admin
       requestBody:
         required: true
         content:
@@ -654,8 +724,9 @@ paths:
                   - requirements
                 additionalProperties: false
     delete:
-      tags: [admin]
       operationId: deleteSlot
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -670,10 +741,49 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/v1/admin/assignments/{assignmentId}/override:
+    post:
+      operationId: overrideAssignment
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 10
+              required:
+                - reason
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overridden:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - overridden
+                additionalProperties: false
   /api/v1/admin/events/{eventId}/slots/generate:
     post:
-      tags: [admin]
       operationId: generateSlots
+      tags:
+        - admin
       requestBody:
         required: true
         content:
@@ -817,8 +927,9 @@ paths:
                 additionalProperties: false
   /api/v1/admin/events/{eventId}/slots/{slotId}/requirements:
     put:
-      tags: [admin]
       operationId: upsertSlotRequirement
+      tags:
+        - admin
       requestBody:
         required: true
         content:
@@ -878,8 +989,9 @@ paths:
                 additionalProperties: false
   /api/v1/admin/assignments:
     post:
-      tags: [admin]
       operationId: createAssignment
+      tags:
+        - admin
       requestBody:
         required: true
         content:
@@ -942,8 +1054,9 @@ paths:
                 additionalProperties: false
   /api/v1/admin/assignments/{assignmentId}:
     delete:
-      tags: [admin]
       operationId: deleteAssignment
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -955,8 +1068,9 @@ paths:
           description: Default Response
   /api/v1/admin/assignments/{assignmentId}/audit:
     get:
-      tags: [admin]
       operationId: getAssignmentAudit
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -1007,8 +1121,9 @@ paths:
                 additionalProperties: false
   /api/v1/admin/role-templates:
     get:
-      tags: [admin]
       operationId: listRoleTemplates
+      tags:
+        - admin
       responses:
         "200":
           description: Default Response
@@ -1058,8 +1173,9 @@ paths:
                 additionalProperties: false
   /api/v1/admin/role-templates/{templateId}:
     put:
-      tags: [admin]
       operationId: upsertRoleTemplate
+      tags:
+        - admin
       requestBody:
         required: true
         content:
@@ -1136,8 +1252,9 @@ paths:
                   - items
                 additionalProperties: false
     delete:
-      tags: [admin]
       operationId: deleteRoleTemplate
+      tags:
+        - admin
       parameters:
         - schema:
             type: string
@@ -1149,8 +1266,9 @@ paths:
           description: Default Response
   /api/v1/feature-flags/:
     get:
-      tags: [featureFlags]
-      operationId: getFeatureFlags
+      operationId: listFeatureFlags
+      tags:
+        - feature-flags
       responses:
         "200":
           description: Default Response
@@ -1168,8 +1286,9 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
-      tags: [volunteer]
       operationId: getVolunteerDashboard
+      tags:
+        - volunteer
       responses:
         "200":
           description: Default Response
@@ -1178,54 +1297,176 @@ paths:
               schema:
                 type: object
                 properties:
-                  upcomingAssignments:
+                  availabilityTasks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eventId:
+                          type: string
+                        eventTitle:
+                          type: string
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        eventType:
+                          type: string
+                          enum:
+                            - hourly
+                            - day_based
+                        eventStart:
+                          type: string
+                        eventEnd:
+                          type: string
+                        completionState:
+                          type: string
+                          enum:
+                            - missing
+                            - partial
+                            - complete
+                      required:
+                        - eventId
+                        - eventTitle
+                        - ministryId
+                        - ministryName
+                        - eventType
+                        - eventStart
+                        - eventEnd
+                        - completionState
+                      additionalProperties: false
+                  upcomingAssignmentGroups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eventId:
+                          type: string
+                        eventTitle:
+                          type: string
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        eventStart:
+                          type: string
+                        aggregateResponseState:
+                          type: string
+                          enum:
+                            - pending
+                            - confirmed
+                            - mixed
+                            - declined
+                        hasPendingResponse:
+                          type: boolean
+                        assignments:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              assignmentId:
+                                type: string
+                              slotId:
+                                type: string
+                              roleId:
+                                type: string
+                              roleName:
+                                type: string
+                              teamId:
+                                type: string
+                              teamName:
+                                type: string
+                              startTime:
+                                type: string
+                              endTime:
+                                type: string
+                              status:
+                                type: string
+                                enum:
+                                  - pending
+                                  - confirmed
+                                  - declined
+                              timingState:
+                                type: string
+                                enum:
+                                  - in_progress
+                                  - upcoming
+                              canRespond:
+                                type: boolean
+                            required:
+                              - assignmentId
+                              - slotId
+                              - roleId
+                              - roleName
+                              - startTime
+                              - endTime
+                              - status
+                              - timingState
+                              - canRespond
+                            additionalProperties: false
+                      required:
+                        - eventId
+                        - eventTitle
+                        - ministryId
+                        - ministryName
+                        - eventStart
+                        - aggregateResponseState
+                        - hasPendingResponse
+                        - assignments
+                      additionalProperties: false
+                  unreadNotificationCount:
+                    type: number
+                  notificationPreview:
                     type: array
                     items:
                       type: object
                       properties:
                         id:
                           type: string
-                        churchId:
+                        type:
                           type: string
-                        slotId:
+                        title:
                           type: string
-                        volunteerId:
+                        body:
                           type: string
-                        roleId:
+                        readAt:
                           type: string
-                        status:
-                          type: string
-                          enum:
-                            - draft
-                            - pending
-                            - confirmed
-                            - declined
-                            - cancelled
-                        reason:
-                          type: string
-                        assignedAt:
-                          type: string
-                        assignedBy:
+                        createdAt:
                           type: string
                       required:
                         - id
-                        - churchId
-                        - slotId
-                        - volunteerId
-                        - roleId
-                        - status
-                        - assignedAt
+                        - type
+                        - title
+                        - body
+                        - createdAt
                       additionalProperties: false
-                  unreadNotificationCount:
-                    type: number
+                  defaultMinistryId:
+                    type: string
+                  ministryOptions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
                 required:
-                  - upcomingAssignments
+                  - availabilityTasks
+                  - upcomingAssignmentGroups
                   - unreadNotificationCount
+                  - notificationPreview
+                  - ministryOptions
                 additionalProperties: false
   /api/v1/volunteer/assignments:
     get:
-      tags: [volunteer]
       operationId: getMyAssignments
+      tags:
+        - volunteer
       responses:
         "200":
           description: Default Response
@@ -1277,8 +1518,9 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/ministries/{ministryId}/schedule:
     get:
-      tags: [volunteer]
       operationId: getMinistrySchedule
+      tags:
+        - volunteer
       parameters:
         - schema:
             type: string
@@ -1293,51 +1535,71 @@ paths:
               schema:
                 type: object
                 properties:
-                  assignments:
+                  ministryId:
+                    type: string
+                  ministryName:
+                    type: string
+                  events:
                     type: array
                     items:
                       type: object
                       properties:
-                        id:
+                        eventId:
                           type: string
-                        churchId:
+                        title:
                           type: string
-                        slotId:
+                        startDate:
                           type: string
-                        volunteerId:
+                        endDate:
                           type: string
-                        roleId:
-                          type: string
-                        status:
-                          type: string
-                          enum:
-                            - draft
-                            - pending
-                            - confirmed
-                            - declined
-                            - cancelled
-                        reason:
-                          type: string
-                        assignedAt:
-                          type: string
-                        assignedBy:
-                          type: string
+                        assignmentCount:
+                          type: number
+                        rows:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              slotId:
+                                type: string
+                              slotLabel:
+                                type: string
+                              roleName:
+                                type: string
+                              teamName:
+                                type: string
+                              volunteerDisplayName:
+                                type: string
+                              confirmationState:
+                                type: string
+                                enum:
+                                  - pending
+                                  - confirmed
+                                  - declined
+                                  - open
+                            required:
+                              - slotId
+                              - slotLabel
+                              - roleName
+                              - confirmationState
+                            additionalProperties: false
                       required:
-                        - id
-                        - churchId
-                        - slotId
-                        - volunteerId
-                        - roleId
-                        - status
-                        - assignedAt
+                        - eventId
+                        - title
+                        - startDate
+                        - endDate
+                        - assignmentCount
+                        - rows
                       additionalProperties: false
                 required:
-                  - assignments
+                  - ministryId
+                  - ministryName
+                  - events
                 additionalProperties: false
   /api/v1/volunteer/availability:
     get:
-      tags: [volunteer]
       operationId: getMyAvailability
+      tags:
+        - volunteer
       responses:
         "200":
           description: Default Response
@@ -1387,8 +1649,9 @@ paths:
                   - availability
                 additionalProperties: false
     put:
-      tags: [volunteer]
       operationId: upsertAvailability
+      tags:
+        - volunteer
       requestBody:
         required: true
         content:
@@ -1466,8 +1729,9 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/availability/{availabilityId}:
     delete:
-      tags: [volunteer]
       operationId: deleteAvailability
+      tags:
+        - volunteer
       parameters:
         - schema:
             type: string
@@ -1479,8 +1743,9 @@ paths:
           description: Default Response
   /api/v1/volunteer/assignments/{assignmentId}:
     patch:
-      tags: [volunteer]
       operationId: respondToAssignment
+      tags:
+        - volunteer
       requestBody:
         required: true
         content:
@@ -1546,8 +1811,9 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/notifications:
     get:
-      tags: [volunteer]
       operationId: getNotifications
+      tags:
+        - volunteer
       responses:
         "200":
           description: Default Response
@@ -1609,8 +1875,9 @@ paths:
                 additionalProperties: false
   /api/v1/volunteer/notifications/{notificationId}:
     patch:
-      tags: [volunteer]
       operationId: markNotificationRead
+      tags:
+        - volunteer
       parameters:
         - schema:
             type: string
@@ -1625,51 +1892,23 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: string
-                  volunteerId:
-                    type: string
-                  ministryId:
-                    type: string
-                  eventId:
-                    type: string
-                  assignmentId:
-                    type: string
-                  type:
-                    type: string
-                    enum:
-                      - schedule_published
-                      - assignment_added
-                      - assignment_changed
-                      - assignment_removed
-                      - availability_reminder
-                      - assignment_reminder
-                  title:
-                    type: string
-                  body:
-                    type: string
-                  payload:
-                    type: object
-                    additionalProperties:
-                      nullable: true
-                      type: string
-                  readAt:
-                    type: string
-                  createdAt:
-                    type: string
+                  marked:
+                    type: boolean
                 required:
-                  - id
-                  - volunteerId
-                  - type
-                  - title
-                  - body
-                  - payload
-                  - createdAt
+                  - marked
                 additionalProperties: false
   /api/v1/volunteer/notifications/read-all:
     post:
-      tags: [volunteer]
       operationId: markAllNotificationsRead
+      tags:
+        - volunteer
       responses:
         "200":
           description: Default Response
+tags:
+  - name: admin
+    description: Admin and leader endpoints
+  - name: volunteer
+    description: Volunteer-facing endpoints
+  - name: feature-flags
+    description: Feature flag endpoints

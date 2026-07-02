@@ -20,7 +20,6 @@ export const injection = {
     eventManager: 'IEventManager',
     volunteerManager: 'IVolunteerManager',
     assignmentManager: 'IAssignmentManager',
-    churchManager: 'IChurchManager',
     ministryManager: 'IMinistryManager',
     roleManager: 'IRoleManager',
     featureFlagManager: 'IFeatureFlagManager',

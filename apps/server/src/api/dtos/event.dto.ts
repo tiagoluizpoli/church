@@ -99,6 +99,8 @@ export const scheduleBuilderDataResponseSchema = z.object({
       name: z.string(),
     }),
   ),
+  roles: z.array(z.object({ id: z.string(), name: z.string() })),
+  callerTeamId: z.string().nullable(),
 });
 
 function eventToResponse(ev: Event): EventResponse {
@@ -165,6 +167,11 @@ export const eventMapper = {
         isAllDay: av.isAllDay,
       })),
       volunteers: data.volunteers,
+      roles: data.roles.map((role) => ({
+        id: role.id as string,
+        name: role.name,
+      })),
+      callerTeamId: data.callerTeamId,
     };
   },
 };

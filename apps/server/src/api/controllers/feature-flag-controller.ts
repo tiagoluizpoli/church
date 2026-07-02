@@ -5,6 +5,7 @@ import type { IFeatureFlagManager } from '../../domain/contracts/application/fea
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { featureFlagsResponseSchema } from '../dtos/feature-flags.dto';
+import { headersFromRequest } from '../utils/headers';
 
 @injectable()
 export class FeatureFlagController implements FastifyController {
@@ -21,14 +22,15 @@ export class FeatureFlagController implements FastifyController {
   ): void {
     app.get(
       '/',
-      { schema: { response: { 200: featureFlagsResponseSchema } } },
+      {
+        schema: {
+          tags: ['feature-flags'],
+          operationId: 'listFeatureFlags',
+          response: { 200: featureFlagsResponseSchema },
+        },
+      },
       async (request, reply) => {
-        const headers = new Headers();
-        for (const [key, value] of Object.entries(request.headers)) {
-          if (value)
-            headers.set(key, Array.isArray(value) ? (value[0] ?? '') : value);
-        }
-
+        const headers = headersFromRequest(request);
         const session = await auth.api
           .getSession({ headers })
           .catch(() => null);

@@ -1,11 +1,11 @@
 import { Entity, type LooseProps } from '@church/core';
-import { AvailabilityId } from '../branded-ids/availability-id';
+import type {
+  AvailabilityId,
+  ChurchId,
+  EventId,
+  VolunteerId,
+} from '../branded-ids';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
-import type { ChurchId } from './church';
-import type { EventId } from './event';
-import type { VolunteerId } from './volunteer';
-
-export { AvailabilityId };
 
 export const AVAILABILITY_TYPE_OPTIONS = ['available', 'unavailable'] as const;
 export type AvailabilityType = (typeof AVAILABILITY_TYPE_OPTIONS)[number];

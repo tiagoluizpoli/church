@@ -4,6 +4,7 @@ import {
   db,
   event,
   ministry,
+  ministryVolunteer,
   role,
   timeSlot,
   user,
@@ -20,6 +21,11 @@ import type { VolunteerId } from '../../src/domain/entities/volunteer';
 import type { VolunteerNotificationId } from '../../src/domain/entities/volunteer-notification';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
+import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleTeamRepository } from '../../src/infrastructure/repositories/drizzle-team.repository';
+import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
 
@@ -40,6 +46,7 @@ async function truncate() {
   await db.delete(timeSlot).where(sql`church_id = ${CHURCH}`);
   await db.delete(event).where(sql`church_id = ${CHURCH}`);
   await db.delete(role).where(sql`church_id = ${CHURCH}`);
+  await db.delete(ministryVolunteer).where(sql`church_id = ${CHURCH}`);
   await db.delete(volunteer).where(sql`church_id = ${CHURCH}`);
   await db.delete(ministry).where(sql`church_id = ${CHURCH}`);
   await db.delete(user).where(sql`id = 'vol-user-01'`);
@@ -102,6 +109,13 @@ beforeAll(async () => {
     status: 'active',
   });
 
+  await db.insert(ministryVolunteer).values({
+    churchId: CHURCH,
+    ministryId: MINISTRY_ID,
+    volunteerId: VOL_ID,
+    systemRole: 'volunteer',
+  });
+
   await db.insert(assignment).values({
     id: ASSIGNMENT_ID,
     churchId: CHURCH,
@@ -131,11 +145,21 @@ function makeManager() {
   const assignmentRepo = new DrizzleAssignmentRepository(db);
   const availabilityRepo = new DrizzleAvailabilityRepository(db);
   const notificationRepo = new DrizzleVolunteerNotificationRepository(db);
+  const eventRepo = new DrizzleEventRepository(db);
+  const timeSlotRepo = new DrizzleTimeSlotRepository(db);
+  const ministryRepo = new DrizzleMinistryRepository(db);
+  const roleRepo = new DrizzleRoleRepository(db);
+  const teamRepo = new DrizzleTeamRepository(db);
   return new DbVolunteerManager(
     volunteerRepo,
     assignmentRepo,
     availabilityRepo,
     notificationRepo,
+    eventRepo,
+    timeSlotRepo,
+    ministryRepo,
+    roleRepo,
+    teamRepo,
   );
 }
 
@@ -147,7 +171,7 @@ describe('DbVolunteerManager (T040)', () => {
         volunteerId: VOL_ID,
         churchId: CHURCH,
       });
-      expect(result.upcomingAssignments.length).toBeGreaterThanOrEqual(1);
+      expect(result.upcomingAssignmentGroups.length).toBeGreaterThanOrEqual(1);
       expect(typeof result.unreadNotificationCount).toBe('number');
       expect(result.unreadNotificationCount).toBeGreaterThanOrEqual(1);
     });
@@ -183,7 +207,8 @@ describe('DbVolunteerManager (T040)', () => {
         volunteerId: VOL_ID,
         churchId: CHURCH,
       });
-      expect(result.length).toBeGreaterThanOrEqual(1);
+      expect(result.events).toHaveLength(1);
+      expect(result.events[0]?.rows).toHaveLength(1);
     });
   });
 

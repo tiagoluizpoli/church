@@ -2,6 +2,7 @@ import {
   db,
   event,
   ministry,
+  ministryVolunteer,
   role,
   timeSlot,
   user,
@@ -13,9 +14,11 @@ import { DbEventManager } from '../../src/application/db-event-manager';
 import type { ChurchId } from '../../src/domain/entities/church';
 import type { EventId } from '../../src/domain/entities/event';
 import { InvalidDateRangeError } from '../../src/domain/errors/invalid-date-range';
+import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
@@ -35,11 +38,14 @@ async function truncate() {
     .delete(event)
     .where(sql`church_id = ${CHURCH} AND ministry_id = ${MINISTRY_ID}`);
   await db.delete(role).where(sql`id = ${ROLE_ID}`);
+  await db.delete(ministryVolunteer).where(sql`ministry_id = ${MINISTRY_ID}`);
   await db.delete(ministry).where(sql`id = ${MINISTRY_ID}`);
   await db
     .delete(volunteer)
-    .where(sql`church_id = ${CHURCH} AND user_id = 'ev-user-01'`);
-  await db.delete(user).where(sql`id = 'ev-user-01'`);
+    .where(
+      sql`church_id = ${CHURCH} AND user_id IN ('ev-user-01', 'ev-user-02')`,
+    );
+  await db.delete(user).where(sql`id IN ('ev-user-01', 'ev-user-02')`);
 }
 
 beforeAll(async () => {
@@ -49,6 +55,12 @@ beforeAll(async () => {
     id: 'ev-user-01',
     name: 'Event User',
     email: 'evuser01@test.test',
+    emailVerified: false,
+  });
+  await db.insert(user).values({
+    id: 'ev-user-02',
+    name: 'Event Volunteer User',
+    email: 'evuser02@test.test',
     emailVerified: false,
   });
   await db.insert(ministry).values({
@@ -70,6 +82,24 @@ beforeAll(async () => {
     userId: 'ev-user-01',
     status: 'active',
   });
+  await db.insert(ministryVolunteer).values({
+    churchId: CHURCH,
+    ministryId: MINISTRY_ID,
+    volunteerId: 'e3333333-0001-0001-0001-e33333333333',
+    systemRole: 'leader',
+  });
+  await db.insert(volunteer).values({
+    id: 'e3333333-0002-0002-0002-e33333333332',
+    churchId: CHURCH,
+    userId: 'ev-user-02',
+    status: 'active',
+  });
+  await db.insert(ministryVolunteer).values({
+    churchId: CHURCH,
+    ministryId: MINISTRY_ID,
+    volunteerId: 'e3333333-0002-0002-0002-e33333333332',
+    systemRole: 'volunteer',
+  });
 });
 
 afterAll(async () => {
@@ -82,6 +112,7 @@ function makeManager() {
   const assignmentRepo = new DrizzleAssignmentRepository(db);
   const availabilityRepo = new DrizzleAvailabilityRepository(db);
   const volunteerRepo = new DrizzleVolunteerRepository(db);
+  const roleRepo = new DrizzleRoleRepository(db);
   const notificationRepo = new DrizzleVolunteerNotificationRepository(db);
   const notificationService = new LocalNotificationService(notificationRepo);
   return new DbEventManager(
@@ -90,6 +121,7 @@ function makeManager() {
     assignmentRepo,
     availabilityRepo,
     volunteerRepo,
+    roleRepo,
     notificationService,
   );
 }
@@ -262,15 +294,44 @@ describe('DbEventManager (T049)', () => {
   describe('getScheduleBuilderData', () => {
     it('returns data with events field', async () => {
       const manager = makeManager();
-      const data = await manager.getScheduleBuilderData({
+      const event = await manager.createEvent({
         churchId: CHURCH,
         ministryId:
           MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+        title: 'Builder Test',
+        startDate: new Date('2026-11-01T09:00:00Z'),
+        endDate: new Date('2026-11-01T17:00:00Z'),
+      });
+      const data = await manager.getScheduleBuilderData({
+        churchId: CHURCH,
+        eventId: event.id as EventId,
+        volunteerId:
+          'e3333333-0001-0001-0001-e33333333333' as import('../../src/domain/entities/volunteer').VolunteerId,
       });
       expect(data).toHaveProperty('events');
       expect(data).toHaveProperty('assignments');
       expect(data).toHaveProperty('availability');
       expect(data).toHaveProperty('volunteers');
+    });
+
+    it('throws IsolationBreachError for non-leader/sub-leader volunteers', async () => {
+      const manager = makeManager();
+      const event = await manager.createEvent({
+        churchId: CHURCH,
+        ministryId:
+          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+        title: 'Builder Test',
+        startDate: new Date('2026-11-01T09:00:00Z'),
+        endDate: new Date('2026-11-01T17:00:00Z'),
+      });
+      await expect(
+        manager.getScheduleBuilderData({
+          churchId: CHURCH,
+          eventId: event.id as EventId,
+          volunteerId:
+            'e3333333-0002-0002-0002-e33333333332' as import('../../src/domain/entities/volunteer').VolunteerId,
+        }),
+      ).rejects.toThrow(IsolationBreachError);
     });
   });
 

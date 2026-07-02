@@ -1,6 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { event, slotRequirement, timeSlot } from '@church/db';
 import { and, asc, eq } from 'drizzle-orm';
+import type { ChurchId, EventId, MinistryId } from '../../domain/branded-ids';
 import type {
   CreateEventInput,
   EventRepository,
@@ -8,14 +9,11 @@ import type {
   UpdateEventStatusInput,
 } from '../../domain/contracts/infrastructure/event.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type { ChurchId } from '../../domain/entities/church';
 import type {
   Event,
-  EventId,
   EventStatus,
   EventWithSlots,
 } from '../../domain/entities/event';
-import type { MinistryId } from '../../domain/entities/ministry';
 import { mapEvent } from '../mappers/event.mapper';
 import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';

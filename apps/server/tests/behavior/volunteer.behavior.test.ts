@@ -14,11 +14,13 @@ import {
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
-import type { AssignmentId } from '../../src/domain/entities/assignment';
-import type { AvailabilityId } from '../../src/domain/entities/availability';
-import type { ChurchId } from '../../src/domain/entities/church';
-import type { VolunteerId } from '../../src/domain/entities/volunteer';
-import type { VolunteerNotificationId } from '../../src/domain/entities/volunteer-notification';
+import type {
+  AssignmentId,
+  AvailabilityId,
+  ChurchId,
+  VolunteerId,
+  VolunteerNotificationId,
+} from '../../src/domain/branded-ids';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
@@ -203,7 +205,7 @@ describe('DbVolunteerManager (T040)', () => {
       const manager = makeManager();
       const result = await manager.getMinistrySchedule({
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         volunteerId: VOL_ID,
         churchId: CHURCH,
       });

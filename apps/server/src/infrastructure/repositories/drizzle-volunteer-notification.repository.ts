@@ -1,5 +1,10 @@
 import { volunteerNotification } from '@church/db';
 import { and, count, desc, eq, isNull, lt } from 'drizzle-orm';
+import type {
+  ChurchId,
+  VolunteerId,
+  VolunteerNotificationId,
+} from '../../domain/branded-ids';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   CreateVolunteerNotificationInput,
@@ -7,9 +12,6 @@ import type {
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
 } from '../../domain/contracts/infrastructure/volunteer-notification.repository';
-import type { ChurchId } from '../../domain/entities/church';
-import type { VolunteerId } from '../../domain/entities/volunteer';
-import type { VolunteerNotificationId } from '../../domain/entities/volunteer-notification';
 import { mapVolunteerNotification } from '../mappers/volunteer-notification.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';

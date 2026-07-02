@@ -1,5 +1,5 @@
-import type { ChurchId } from '../../domain/entities/church';
-import type { MinistryId, MinistryProps } from '../../domain/entities/ministry';
+import type { ChurchId, MinistryId } from '../../domain/branded-ids';
+import type { MinistryProps } from '../../domain/entities/ministry';
 import { Ministry } from '../../domain/entities/ministry';
 import { assertEnum } from './mapper-utils';
 

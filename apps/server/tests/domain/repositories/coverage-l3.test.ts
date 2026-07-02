@@ -1,19 +1,22 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
+
 import { describe, expect, it } from 'vitest';
 import { AssignmentManagerService } from '../../../src/domain/assignment/assignment-manager-service';
+import type {
+  AssignmentId,
+  ChurchId,
+  EventId,
+  MinistryId,
+  RoleId,
+  TimeSlotId,
+} from '../../../src/domain/branded-ids';
 import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
 import type { EventRepository } from '../../../src/domain/contracts/infrastructure/event.repository';
 import type { TimeSlotRepository } from '../../../src/domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../../../src/domain/contracts/infrastructure/volunteer.repository';
-import type { AssignmentId } from '../../../src/domain/entities/assignment';
 import { Assignment } from '../../../src/domain/entities/assignment';
-import type { ChurchId } from '../../../src/domain/entities/church';
-import type { EventId } from '../../../src/domain/entities/event';
 import { Event } from '../../../src/domain/entities/event';
-import type { MinistryId } from '../../../src/domain/entities/ministry';
-import type { RoleId } from '../../../src/domain/entities/role';
-import type { TimeSlotId } from '../../../src/domain/entities/time-slot';
 import { TimeSlot } from '../../../src/domain/entities/time-slot';
 import { Volunteer } from '../../../src/domain/entities/volunteer';
 

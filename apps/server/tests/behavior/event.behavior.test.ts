@@ -11,8 +11,7 @@ import {
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbEventManager } from '../../src/application/db-event-manager';
-import type { ChurchId } from '../../src/domain/entities/church';
-import type { EventId } from '../../src/domain/entities/event';
+import type { ChurchId, EventId } from '../../src/domain/branded-ids';
 import { InvalidDateRangeError } from '../../src/domain/errors/invalid-date-range';
 import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
@@ -138,7 +137,7 @@ describe('DbEventManager (T049)', () => {
       const ev = await manager.createEvent({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         title: 'Test Event',
         startDate: futureStart,
         endDate: futureEnd,
@@ -155,7 +154,7 @@ describe('DbEventManager (T049)', () => {
         manager.createEvent({
           churchId: CHURCH,
           ministryId:
-            MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+            MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
           title: 'Bad Dates',
           startDate: futureEnd,
           endDate: futureStart,
@@ -170,7 +169,7 @@ describe('DbEventManager (T049)', () => {
       const events = await manager.listEvents({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
       });
       expect(events.some((e) => e.id === createdEventId)).toBe(true);
     });
@@ -180,7 +179,7 @@ describe('DbEventManager (T049)', () => {
       const events = await manager.listEvents({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         status: 'published',
       });
       expect(events.every((e) => e.status === 'published')).toBe(true);
@@ -194,7 +193,7 @@ describe('DbEventManager (T049)', () => {
       const events = await manager.listEvents({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         status: 'published',
       });
       expect(events.some((e) => e.id === createdEventId)).toBe(true);
@@ -206,7 +205,7 @@ describe('DbEventManager (T049)', () => {
       const events = await manager.listEvents({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         status: 'cancelled',
       });
       expect(events.some((e) => e.id === createdEventId)).toBe(true);
@@ -236,8 +235,7 @@ describe('DbEventManager (T049)', () => {
       const manager = makeManager();
       const updated = await manager.updateSlot({
         churchId: CHURCH,
-        slotId:
-          slotId as import('../../src/domain/entities/time-slot').TimeSlotId,
+        slotId: slotId as import('../../src/domain/branded-ids').TimeSlotId,
         label: 'Updated Morning',
       });
       expect(updated.label).toBe('Updated Morning');
@@ -247,9 +245,8 @@ describe('DbEventManager (T049)', () => {
       const manager = makeManager();
       const req = await manager.upsertSlotRequirement({
         churchId: CHURCH,
-        slotId:
-          slotId as import('../../src/domain/entities/time-slot').TimeSlotId,
-        roleId: ROLE_ID as import('../../src/domain/entities/role').RoleId,
+        slotId: slotId as import('../../src/domain/branded-ids').TimeSlotId,
+        roleId: ROLE_ID as import('../../src/domain/branded-ids').RoleId,
         requiredCount: 2,
       });
       expect(req.requiredCount).toBe(2);
@@ -259,8 +256,7 @@ describe('DbEventManager (T049)', () => {
     it('deleteSlot removes slot', async () => {
       const manager = makeManager();
       await manager.deleteSlot({
-        slotId:
-          slotId as import('../../src/domain/entities/time-slot').TimeSlotId,
+        slotId: slotId as import('../../src/domain/branded-ids').TimeSlotId,
         churchId: CHURCH,
       });
       const slotRepo = new DrizzleTimeSlotRepository(db);
@@ -276,7 +272,7 @@ describe('DbEventManager (T049)', () => {
       const newEvent = await manager.createEvent({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         title: 'Generate Test',
         startDate: new Date('2026-10-01T09:00:00Z'),
         endDate: new Date('2026-10-01T11:00:00Z'),
@@ -297,7 +293,7 @@ describe('DbEventManager (T049)', () => {
       const event = await manager.createEvent({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         title: 'Builder Test',
         startDate: new Date('2026-11-01T09:00:00Z'),
         endDate: new Date('2026-11-01T17:00:00Z'),
@@ -306,7 +302,7 @@ describe('DbEventManager (T049)', () => {
         churchId: CHURCH,
         eventId: event.id as EventId,
         volunteerId:
-          'e3333333-0001-0001-0001-e33333333333' as import('../../src/domain/entities/volunteer').VolunteerId,
+          'e3333333-0001-0001-0001-e33333333333' as import('../../src/domain/branded-ids').VolunteerId,
       });
       expect(data).toHaveProperty('events');
       expect(data).toHaveProperty('assignments');
@@ -319,7 +315,7 @@ describe('DbEventManager (T049)', () => {
       const event = await manager.createEvent({
         churchId: CHURCH,
         ministryId:
-          MINISTRY_ID as import('../../src/domain/entities/ministry').MinistryId,
+          MINISTRY_ID as import('../../src/domain/branded-ids').MinistryId,
         title: 'Builder Test',
         startDate: new Date('2026-11-01T09:00:00Z'),
         endDate: new Date('2026-11-01T17:00:00Z'),
@@ -329,7 +325,7 @@ describe('DbEventManager (T049)', () => {
           churchId: CHURCH,
           eventId: event.id as EventId,
           volunteerId:
-            'e3333333-0002-0002-0002-e33333333332' as import('../../src/domain/entities/volunteer').VolunteerId,
+            'e3333333-0002-0002-0002-e33333333332' as import('../../src/domain/branded-ids').VolunteerId,
         }),
       ).rejects.toThrow(IsolationBreachError);
     });

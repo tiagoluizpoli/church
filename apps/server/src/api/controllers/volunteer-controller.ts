@@ -2,14 +2,17 @@ import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
+import {
+  AssignmentId,
+  AvailabilityId,
+  ChurchId,
+  EventId,
+  MinistryId,
+  UserId,
+  VolunteerId,
+  VolunteerNotificationId,
+} from '../../domain/branded-ids';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
-import { AssignmentId } from '../../domain/entities/assignment';
-import { AvailabilityId } from '../../domain/entities/availability';
-import { ChurchId } from '../../domain/entities/church';
-import { EventId } from '../../domain/entities/event';
-import { MinistryId } from '../../domain/entities/ministry';
-import { UserId, VolunteerId } from '../../domain/entities/volunteer';
-import { VolunteerNotificationId } from '../../domain/entities/volunteer-notification';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {

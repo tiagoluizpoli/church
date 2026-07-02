@@ -1,11 +1,11 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
+
 import { describe, expect, it } from 'vitest';
+import type { AssignmentId, ChurchId } from '../../../src/domain/branded-ids';
 import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
 import type { TransactionContext } from '../../../src/domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../../../src/domain/contracts/infrastructure/unit-of-work';
-import type { AssignmentId } from '../../../src/domain/entities/assignment';
-import type { ChurchId } from '../../../src/domain/entities/church';
 
 describe('User Story 4: UnitOfWork Integration', () => {
   it('should run a callback within a transaction context and allow repositories to share the transaction context', async () => {

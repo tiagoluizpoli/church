@@ -1,11 +1,11 @@
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { MinistryId } from '../../entities/ministry';
-import type { RoleId } from '../../entities/role';
 import type {
-  RoleTemplate,
+  ChurchId,
+  EventId,
+  MinistryId,
+  RoleId,
   RoleTemplateId,
-} from '../../entities/role-template';
+} from '../../branded-ids';
+import type { RoleTemplate } from '../../entities/role-template';
 
 export interface UpsertRoleTemplateInput {
   churchId: ChurchId;

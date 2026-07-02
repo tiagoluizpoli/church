@@ -1,6 +1,5 @@
-import type { ChurchId } from '../../entities/church';
-import type { MinistryId } from '../../entities/ministry';
-import type { Role, RoleId } from '../../entities/role';
+import type { ChurchId, MinistryId, RoleId } from '../../branded-ids';
+import type { Role } from '../../entities/role';
 import type { TransactionContext } from './transaction-context';
 
 export interface RoleRepository {

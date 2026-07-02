@@ -1,18 +1,19 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
+
 import { NotFoundError } from '@church/core';
+import type {
+  AvailabilityId,
+  ChurchId,
+  EventId,
+  VolunteerId,
+} from '../../../src/domain/branded-ids';
 import { runAvailabilityRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/availability.contract-spec';
 import type {
   AvailabilityRepository,
   CreateAvailabilityInput,
   UpdateAvailabilityInput,
 } from '../../../src/domain/contracts/infrastructure/availability.repository';
-import {
-  Availability,
-  type AvailabilityId,
-} from '../../../src/domain/entities/availability';
-import type { ChurchId } from '../../../src/domain/entities/church';
-import type { EventId } from '../../../src/domain/entities/event';
-import type { VolunteerId } from '../../../src/domain/entities/volunteer';
+import { Availability } from '../../../src/domain/entities/availability';
 
 class MockAvailabilityRepository implements AvailabilityRepository {
   private availabilities = new Map<string, Availability>();

@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { AvailabilityId } from '../../entities/availability';
-import type { ChurchId } from '../../entities/church';
-import type { VolunteerId } from '../../entities/volunteer';
+import type { AvailabilityId, ChurchId, VolunteerId } from '../../branded-ids';
 import type { AvailabilityRepository } from '../infrastructure/availability.repository';
 
 export function runAvailabilityRepositoryContractTests(

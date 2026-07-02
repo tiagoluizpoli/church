@@ -2,20 +2,23 @@ import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
+import {
+  AssignmentId,
+  ChurchId,
+  EventId,
+  MinistryId,
+  RoleId,
+  RoleTemplateId,
+  TeamId,
+  TimeSlotId,
+  UserId,
+  VolunteerId,
+} from '../../domain/branded-ids';
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { IRoleManager } from '../../domain/contracts/application/role-manager';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
-import { AssignmentId } from '../../domain/entities/assignment';
-import { ChurchId } from '../../domain/entities/church';
-import { EventId } from '../../domain/entities/event';
-import { MinistryId } from '../../domain/entities/ministry';
-import { RoleId } from '../../domain/entities/role';
-import { RoleTemplateId } from '../../domain/entities/role-template';
-import { TeamId } from '../../domain/entities/team';
-import { TimeSlotId } from '../../domain/entities/time-slot';
-import { UserId, VolunteerId } from '../../domain/entities/volunteer';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {

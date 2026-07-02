@@ -1,8 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { MinistryId } from '../../entities/ministry';
+import type { ChurchId, EventId, MinistryId } from '../../branded-ids';
 import type { EventRepository } from '../infrastructure/event.repository';
 
 export function runEventRepositoryContractTests(

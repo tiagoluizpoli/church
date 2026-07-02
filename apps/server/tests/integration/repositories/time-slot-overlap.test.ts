@@ -1,8 +1,10 @@
 import { db } from '@church/db';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId } from '../../../src/domain/entities/church';
-import type { EventId } from '../../../src/domain/entities/event';
-import type { TimeSlotId } from '../../../src/domain/entities/time-slot';
+import type {
+  ChurchId,
+  EventId,
+  TimeSlotId,
+} from '../../../src/domain/branded-ids';
 import { DrizzleTimeSlotRepository } from '../../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { seed, truncateAll } from './setup';
 

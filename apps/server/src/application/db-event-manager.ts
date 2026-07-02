@@ -2,6 +2,12 @@ import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
 import { AssignmentManagerService } from '../domain/assignment/assignment-manager-service';
 import type {
+  ChurchId,
+  EventId,
+  TimeSlotId,
+  VolunteerId,
+} from '../domain/branded-ids';
+import type {
   CreateEventInput,
   CreateSlotInput,
   GenerateSlotsInput,
@@ -18,15 +24,9 @@ import type { NotificationService } from '../domain/contracts/infrastructure/not
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { ChurchId } from '../domain/entities/church';
-import {
-  Event as DomainEvent,
-  type Event,
-  type EventId,
-} from '../domain/entities/event';
+import { Event as DomainEvent, type Event } from '../domain/entities/event';
 import type { SlotRequirement } from '../domain/entities/slot-requirement';
-import type { TimeSlot, TimeSlotId } from '../domain/entities/time-slot';
-import type { VolunteerId } from '../domain/entities/volunteer';
+import type { TimeSlot } from '../domain/entities/time-slot';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 
 @injectable()

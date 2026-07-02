@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { AssignmentId } from '../../entities/assignment';
-import type { ChurchId } from '../../entities/church';
-import type { UserId } from '../../entities/volunteer';
+import type { AssignmentId, ChurchId, UserId } from '../../branded-ids';
 import type { AssignmentAuditRepository } from '../infrastructure/assignment-audit.repository';
 
 export function runAssignmentAuditRepositoryContractTests(

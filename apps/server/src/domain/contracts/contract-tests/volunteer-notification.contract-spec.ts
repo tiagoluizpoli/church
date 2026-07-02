@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId } from '../../entities/church';
-import type { VolunteerId } from '../../entities/volunteer';
 import type {
+  ChurchId,
+  VolunteerId,
   VolunteerNotificationId,
-  VolunteerNotificationType,
-} from '../../entities/volunteer-notification';
+} from '../../branded-ids';
+import type { VolunteerNotificationType } from '../../entities/volunteer-notification';
 import type { VolunteerNotificationRepository } from '../infrastructure/volunteer-notification.repository';
 
 const TEST_CHURCH_ID = '11111111-1111-1111-1111-111111111111' as ChurchId;

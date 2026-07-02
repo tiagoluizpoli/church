@@ -1,6 +1,5 @@
-import type { ChurchId } from '../../entities/church';
+import type { ChurchId, VolunteerId } from '../../branded-ids';
 import type { Ministry } from '../../entities/ministry';
-import type { VolunteerId } from '../../entities/volunteer';
 
 export interface IMinistryManager {
   listByLeader(input: {

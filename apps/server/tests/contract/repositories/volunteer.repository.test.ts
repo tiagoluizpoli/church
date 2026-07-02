@@ -1,16 +1,18 @@
 import { NotFoundError } from '@church/core';
+import type {
+  ChurchId,
+  MinistryId,
+  RoleId,
+  UserId,
+  VolunteerId,
+} from '../../../src/domain/branded-ids';
 import { runVolunteerRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/volunteer.contract-spec';
 import type {
   MinistryMembership,
   VolunteerRepository,
 } from '../../../src/domain/contracts/infrastructure/volunteer.repository';
-import type { ChurchId } from '../../../src/domain/entities/church';
-import type { MinistryId } from '../../../src/domain/entities/ministry';
-import type { RoleId } from '../../../src/domain/entities/role';
 import {
-  type UserId,
   Volunteer,
-  type VolunteerId,
   type VolunteerStatus,
 } from '../../../src/domain/entities/volunteer';
 

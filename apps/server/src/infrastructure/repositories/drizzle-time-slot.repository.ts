@@ -2,6 +2,12 @@ import { NotFoundError } from '@church/core';
 import { assignment, slotRequirement, timeSlot } from '@church/db';
 import { and, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
 import type {
+  ChurchId,
+  EventId,
+  RoleId,
+  TimeSlotId,
+} from '../../domain/branded-ids';
+import type {
   BulkCreateTimeSlotsInput,
   CreateTimeSlotInput,
   TimeSlotRepository,
@@ -9,11 +15,8 @@ import type {
   UpsertSlotRequirementInput,
 } from '../../domain/contracts/infrastructure/time-slot.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { RoleId } from '../../domain/entities/role';
 import type { SlotRequirement } from '../../domain/entities/slot-requirement';
-import type { TimeSlot, TimeSlotId } from '../../domain/entities/time-slot';
+import type { TimeSlot } from '../../domain/entities/time-slot';
 import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';

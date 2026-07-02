@@ -1,5 +1,5 @@
-import type { ChurchId } from '../../entities/church';
-import type { Team, TeamId } from '../../entities/team';
+import type { ChurchId, TeamId } from '../../branded-ids';
+import type { Team } from '../../entities/team';
 import type { TransactionContext } from './transaction-context';
 
 export interface TeamRepository {

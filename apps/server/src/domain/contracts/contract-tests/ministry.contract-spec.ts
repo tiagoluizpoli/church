@@ -1,7 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId } from '../../entities/church';
-import type { MinistryId } from '../../entities/ministry';
+import type { ChurchId, MinistryId } from '../../branded-ids';
 import type { MinistryRepository } from '../infrastructure/ministry.repository';
 
 export function runMinistryRepositoryContractTests(

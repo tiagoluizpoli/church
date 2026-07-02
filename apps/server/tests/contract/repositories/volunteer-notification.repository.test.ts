@@ -1,3 +1,11 @@
+import type {
+  AssignmentId,
+  ChurchId,
+  EventId,
+  MinistryId,
+  VolunteerId,
+  VolunteerNotificationId,
+} from '../../../src/domain/branded-ids';
 import { runVolunteerNotificationRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/volunteer-notification.contract-spec';
 import type {
   CreateVolunteerNotificationInput,
@@ -5,13 +13,7 @@ import type {
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
 } from '../../../src/domain/contracts/infrastructure/volunteer-notification.repository';
-import type { AssignmentId } from '../../../src/domain/entities/assignment';
-import type { ChurchId } from '../../../src/domain/entities/church';
-import type { EventId } from '../../../src/domain/entities/event';
-import type { MinistryId } from '../../../src/domain/entities/ministry';
-import type { VolunteerId } from '../../../src/domain/entities/volunteer';
 import type {
-  VolunteerNotificationId,
   VolunteerNotificationPayload,
   VolunteerNotificationType,
 } from '../../../src/domain/entities/volunteer-notification';

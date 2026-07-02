@@ -1,5 +1,5 @@
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId, EventProps } from '../../domain/entities/event';
+import type { ChurchId, EventId } from '../../domain/branded-ids';
+import type { EventProps } from '../../domain/entities/event';
 import { Event } from '../../domain/entities/event';
 import { assertEnum } from './mapper-utils';
 

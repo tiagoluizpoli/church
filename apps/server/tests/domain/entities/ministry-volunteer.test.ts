@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import type { TeamId } from '../../../src/domain/branded-ids';
 import { MinistryVolunteer } from '../../../src/domain/entities/ministry-volunteer';
-import type { TeamId } from '../../../src/domain/entities/team';
 
 describe('MinistryVolunteer Entity', () => {
   it('constructs with minimum props', () => {

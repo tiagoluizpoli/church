@@ -1,12 +1,11 @@
-import type { ChurchId } from '../../entities/church';
-import type { MinistryId } from '../../entities/ministry';
-import type { RoleId } from '../../entities/role';
 import type {
+  ChurchId,
+  MinistryId,
+  RoleId,
   UserId,
-  Volunteer,
   VolunteerId,
-  VolunteerStatus,
-} from '../../entities/volunteer';
+} from '../../branded-ids';
+import type { Volunteer, VolunteerStatus } from '../../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
 export interface VolunteerLeadership {

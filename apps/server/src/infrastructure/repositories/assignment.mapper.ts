@@ -1,12 +1,13 @@
 import type {
   AssignmentId,
-  AssignmentProps,
-} from '../../domain/entities/assignment';
+  ChurchId,
+  RoleId,
+  TimeSlotId,
+  UserId,
+  VolunteerId,
+} from '../../domain/branded-ids';
+import type { AssignmentProps } from '../../domain/entities/assignment';
 import { Assignment } from '../../domain/entities/assignment';
-import type { ChurchId } from '../../domain/entities/church';
-import type { RoleId } from '../../domain/entities/role';
-import type { TimeSlotId } from '../../domain/entities/time-slot';
-import type { UserId, VolunteerId } from '../../domain/entities/volunteer';
 import { assertEnum } from './mapper-utils';
 
 const ASSIGNMENT_STATUSES = [

@@ -2,17 +2,17 @@ import { NotFoundError } from '@church/core';
 import { roleTemplate, roleTemplateItem } from '@church/db';
 import { and, eq, inArray } from 'drizzle-orm';
 import type {
+  ChurchId,
+  MinistryId,
+  RoleTemplateId,
+} from '../../domain/branded-ids';
+import type {
   CreateRoleTemplateInput,
   RoleTemplateRepository,
   UpdateRoleTemplateInput,
 } from '../../domain/contracts/infrastructure/role-template.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type { ChurchId } from '../../domain/entities/church';
-import type { MinistryId } from '../../domain/entities/ministry';
-import type {
-  RoleTemplate,
-  RoleTemplateId,
-} from '../../domain/entities/role-template';
+import type { RoleTemplate } from '../../domain/entities/role-template';
 import {
   mapRoleTemplate,
   mapRoleTemplateItem,

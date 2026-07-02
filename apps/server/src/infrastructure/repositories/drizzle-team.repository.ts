@@ -1,9 +1,9 @@
 import { team } from '@church/db';
 import { and, inArray } from 'drizzle-orm';
+import type { ChurchId, TeamId } from '../../domain/branded-ids';
 import type { TeamRepository } from '../../domain/contracts/infrastructure/team.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type { ChurchId } from '../../domain/entities/church';
-import type { Team, TeamId } from '../../domain/entities/team';
+import type { Team } from '../../domain/entities/team';
 import { mapTeam } from '../mappers/team.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';

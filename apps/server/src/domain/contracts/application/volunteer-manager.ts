@@ -1,17 +1,19 @@
-import type { Assignment, AssignmentId } from '../../entities/assignment';
+import type {
+  AssignmentId,
+  AvailabilityId,
+  ChurchId,
+  EventId,
+  MinistryId,
+  UserId,
+  VolunteerId,
+  VolunteerNotificationId,
+} from '../../branded-ids';
+import type { Assignment } from '../../entities/assignment';
 import type {
   Availability,
-  AvailabilityId,
   AvailabilityType,
 } from '../../entities/availability';
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { MinistryId } from '../../entities/ministry';
-import type { UserId, VolunteerId } from '../../entities/volunteer';
-import type {
-  VolunteerNotification,
-  VolunteerNotificationId,
-} from '../../entities/volunteer-notification';
+import type { VolunteerNotification } from '../../entities/volunteer-notification';
 
 export interface DashboardAvailabilityTask {
   eventId: string;

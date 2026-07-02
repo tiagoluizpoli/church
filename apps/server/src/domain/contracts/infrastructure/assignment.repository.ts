@@ -1,13 +1,13 @@
 import type {
-  Assignment,
   AssignmentId,
-  AssignmentStatus,
-} from '../../entities/assignment';
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { RoleId } from '../../entities/role';
-import type { TimeSlotId } from '../../entities/time-slot';
-import type { UserId, VolunteerId } from '../../entities/volunteer';
+  ChurchId,
+  EventId,
+  RoleId,
+  TimeSlotId,
+  UserId,
+  VolunteerId,
+} from '../../branded-ids';
+import type { Assignment, AssignmentStatus } from '../../entities/assignment';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAssignmentInput {

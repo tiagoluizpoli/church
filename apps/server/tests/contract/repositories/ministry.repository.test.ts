@@ -1,10 +1,9 @@
 import { NotFoundError } from '@church/core';
+import type { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
 import { runMinistryRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/ministry.contract-spec';
 import type { MinistryRepository } from '../../../src/domain/contracts/infrastructure/ministry.repository';
-import type { ChurchId } from '../../../src/domain/entities/church';
 import {
   Ministry,
-  type MinistryId,
   type MinistrySettings,
 } from '../../../src/domain/entities/ministry';
 

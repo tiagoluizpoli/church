@@ -1,6 +1,8 @@
 // biome-ignore-all format: preserve single-line calls for ts-expect-error targeting
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for type tests
+
 import { describe, it } from 'vitest';
+import type { AssignmentId, AvailabilityId, EventId, MinistryId, RoleId, TimeSlotId, VolunteerId } from '../../../src/domain/branded-ids';
 import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
 import type { AvailabilityRepository } from '../../../src/domain/contracts/infrastructure/availability.repository';
@@ -9,13 +11,13 @@ import type { MinistryRepository } from '../../../src/domain/contracts/infrastru
 import type { RoleRepository } from '../../../src/domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../../../src/domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../../../src/domain/contracts/infrastructure/volunteer.repository';
-import type { AssignmentId } from '../../../src/domain/entities/assignment';
-import type { AvailabilityId } from '../../../src/domain/entities/availability';
-import type { EventId } from '../../../src/domain/entities/event';
-import type { MinistryId } from '../../../src/domain/entities/ministry';
-import type { RoleId } from '../../../src/domain/entities/role';
-import type { TimeSlotId } from '../../../src/domain/entities/time-slot';
-import type { VolunteerId } from '../../../src/domain/entities/volunteer';
+
+
+
+
+
+
+
 
 describe('User Story 3: Church Isolation Type Safety', () => {
   it('should enforce ChurchId as the first parameter on all repository methods', () => {

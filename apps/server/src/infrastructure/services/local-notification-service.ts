@@ -1,3 +1,4 @@
+import type { ChurchId, VolunteerId } from '../../domain/branded-ids';
 import 'reflect-metadata';
 import { EventEmitter } from 'node:events';
 import { inject, injectable } from 'tsyringe';
@@ -9,8 +10,6 @@ import type {
   VolunteerScheduleNotification,
 } from '../../domain/contracts/infrastructure/notification-service';
 import type { VolunteerNotificationRepository } from '../../domain/contracts/infrastructure/volunteer-notification.repository';
-import type { ChurchId } from '../../domain/entities/church';
-import type { VolunteerId } from '../../domain/entities/volunteer';
 
 @injectable()
 export class LocalNotificationService implements NotificationService {

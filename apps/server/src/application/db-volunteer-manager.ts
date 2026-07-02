@@ -1,6 +1,14 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
 import type {
+  AvailabilityId,
+  ChurchId,
+  MinistryId,
+  UserId,
+  VolunteerId,
+  VolunteerNotificationId,
+} from '../domain/branded-ids';
+import type {
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
   DashboardAvailabilityTask,
@@ -25,15 +33,8 @@ import type {
   Assignment,
   AssignmentStatus,
 } from '../domain/entities/assignment';
-import type {
-  Availability,
-  AvailabilityId,
-} from '../domain/entities/availability';
-import type { ChurchId } from '../domain/entities/church';
-import type { MinistryId } from '../domain/entities/ministry';
+import type { Availability } from '../domain/entities/availability';
 import type { TimeSlot } from '../domain/entities/time-slot';
-import type { UserId, VolunteerId } from '../domain/entities/volunteer';
-import type { VolunteerNotificationId } from '../domain/entities/volunteer-notification';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 
 const UPCOMING_DAYS = 30;

@@ -1,5 +1,5 @@
-import type { ChurchId } from '../../domain/entities/church';
-import type { RoleId, RoleProps } from '../../domain/entities/role';
+import type { ChurchId, RoleId } from '../../domain/branded-ids';
+import type { RoleProps } from '../../domain/entities/role';
 import { Role } from '../../domain/entities/role';
 
 export function mapRole(row: {

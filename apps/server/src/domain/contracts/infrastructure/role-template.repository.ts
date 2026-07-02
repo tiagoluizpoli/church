@@ -1,10 +1,10 @@
-import type { ChurchId } from '../../entities/church';
-import type { MinistryId } from '../../entities/ministry';
-import type { RoleId } from '../../entities/role';
 import type {
-  RoleTemplate,
+  ChurchId,
+  MinistryId,
+  RoleId,
   RoleTemplateId,
-} from '../../entities/role-template';
+} from '../../branded-ids';
+import type { RoleTemplate } from '../../entities/role-template';
 import type { TransactionContext } from './transaction-context';
 
 export interface RoleTemplateItemInput {

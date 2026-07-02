@@ -1,6 +1,5 @@
-import type { ChurchId } from '../../domain/entities/church';
-import type { MinistryId } from '../../domain/entities/ministry';
-import type { TeamId, TeamProps } from '../../domain/entities/team';
+import type { ChurchId, MinistryId, TeamId } from '../../domain/branded-ids';
+import type { TeamProps } from '../../domain/entities/team';
 import { Team } from '../../domain/entities/team';
 
 export function mapTeam(row: {

@@ -1,10 +1,12 @@
-import type { AssignmentId } from '../../domain/entities/assignment';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { MinistryId } from '../../domain/entities/ministry';
-import type { VolunteerId } from '../../domain/entities/volunteer';
 import type {
+  AssignmentId,
+  ChurchId,
+  EventId,
+  MinistryId,
+  VolunteerId,
   VolunteerNotificationId,
+} from '../../domain/branded-ids';
+import type {
   VolunteerNotificationPayload,
   VolunteerNotificationProps,
   VolunteerNotificationType,

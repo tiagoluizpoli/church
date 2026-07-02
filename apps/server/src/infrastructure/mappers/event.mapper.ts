@@ -1,7 +1,7 @@
 import type { event } from '@church/db';
 import type { InferSelectModel } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId, EventProps } from '../../domain/entities/event';
+import type { ChurchId, EventId } from '../../domain/branded-ids';
+import type { EventProps } from '../../domain/entities/event';
 import { Event } from '../../domain/entities/event';
 
 type EventRow = InferSelectModel<typeof event>;

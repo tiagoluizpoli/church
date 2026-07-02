@@ -1,11 +1,9 @@
-import type { AssignmentId } from '../../domain/entities/assignment';
+import type { AssignmentId, ChurchId, UserId } from '../../domain/branded-ids';
 import type {
   AssignmentAuditId,
   AssignmentAuditProps,
 } from '../../domain/entities/assignment-audit';
 import { AssignmentAudit } from '../../domain/entities/assignment-audit';
-import type { ChurchId } from '../../domain/entities/church';
-import type { UserId } from '../../domain/entities/volunteer';
 import { assertEnum } from './mapper-utils';
 
 const AUDIT_ACTIONS = [

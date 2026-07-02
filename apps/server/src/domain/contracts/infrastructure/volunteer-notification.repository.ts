@@ -1,11 +1,13 @@
-import type { AssignmentId } from '../../entities/assignment';
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { MinistryId } from '../../entities/ministry';
-import type { VolunteerId } from '../../entities/volunteer';
+import type {
+  AssignmentId,
+  ChurchId,
+  EventId,
+  MinistryId,
+  VolunteerId,
+  VolunteerNotificationId,
+} from '../../branded-ids';
 import type {
   VolunteerNotification,
-  VolunteerNotificationId,
   VolunteerNotificationPayload,
   VolunteerNotificationType,
 } from '../../entities/volunteer-notification';

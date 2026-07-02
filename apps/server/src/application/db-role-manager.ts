@@ -2,18 +2,18 @@ import 'reflect-metadata';
 import { NotFoundError } from '@church/core';
 import { inject, injectable } from 'tsyringe';
 import type {
+  ChurchId,
+  EventId,
+  MinistryId,
+  RoleTemplateId,
+} from '../domain/branded-ids';
+import type {
   IRoleManager,
   UpsertRoleTemplateInput,
 } from '../domain/contracts/application/role-manager';
 import type { RoleTemplateRepository } from '../domain/contracts/infrastructure/role-template.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
-import type { ChurchId } from '../domain/entities/church';
-import type { EventId } from '../domain/entities/event';
-import type { MinistryId } from '../domain/entities/ministry';
-import type {
-  RoleTemplate,
-  RoleTemplateId,
-} from '../domain/entities/role-template';
+import type { RoleTemplate } from '../domain/entities/role-template';
 
 @injectable()
 export class DbRoleManager implements IRoleManager {

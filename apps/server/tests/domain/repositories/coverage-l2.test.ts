@@ -1,19 +1,20 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
+
 import { describe, expect, it } from 'vitest';
+import type {
+  AssignmentId,
+  ChurchId,
+  MinistryId,
+  RoleId,
+  TimeSlotId,
+  UserId,
+  VolunteerId,
+} from '../../../src/domain/branded-ids';
 import { ConflictValidationService } from '../../../src/domain/conflict/conflict-validation-service';
 import type { ConflictReport } from '../../../src/domain/conflict/types';
 import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
 import type { VolunteerRepository } from '../../../src/domain/contracts/infrastructure/volunteer.repository';
-import type { AssignmentId } from '../../../src/domain/entities/assignment';
-import type { ChurchId } from '../../../src/domain/entities/church';
-import type { MinistryId } from '../../../src/domain/entities/ministry';
-import type { RoleId } from '../../../src/domain/entities/role';
-import type { TimeSlotId } from '../../../src/domain/entities/time-slot';
-import type {
-  UserId,
-  VolunteerId,
-} from '../../../src/domain/entities/volunteer';
 
 describe('Coverage L2: Conflict & Validation Service Data Access', () => {
   it('should verify all required L2 data can be retrieved and validated', async () => {

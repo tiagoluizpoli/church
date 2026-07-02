@@ -1,4 +1,5 @@
-import type { ChurchId, ChurchSlug } from '../../domain/entities/church';
+import type { ChurchId } from '../../domain/branded-ids';
+import type { ChurchSlug } from '../../domain/entities/church';
 import { Church } from '../../domain/entities/church';
 
 export function mapChurch(row: {

@@ -1,8 +1,6 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import type { AssignmentId, ChurchId, UserId } from '../branded-ids';
 import type { SoftConflictType } from '../conflict/types';
-import type { AssignmentId } from './assignment';
-import type { ChurchId } from './church';
-import type { UserId } from './volunteer';
 
 export type AssignmentAuditId = BrandedId<'AssignmentAuditId'>;
 

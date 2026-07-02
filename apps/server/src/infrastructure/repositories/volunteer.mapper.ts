@@ -1,9 +1,5 @@
-import type { ChurchId } from '../../domain/entities/church';
-import type {
-  UserId,
-  VolunteerId,
-  VolunteerProps,
-} from '../../domain/entities/volunteer';
+import type { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
+import type { VolunteerProps } from '../../domain/entities/volunteer';
 import { Volunteer } from '../../domain/entities/volunteer';
 import { assertEnum } from './mapper-utils';
 

@@ -1,9 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { RoleId } from '../../entities/role';
-import type { TimeSlotId } from '../../entities/time-slot';
+import type { ChurchId, EventId, RoleId, TimeSlotId } from '../../branded-ids';
 import type { TimeSlotRepository } from '../infrastructure/time-slot.repository';
 
 export function runTimeSlotRepositoryContractTests(

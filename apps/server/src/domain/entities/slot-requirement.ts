@@ -1,9 +1,6 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import type { ChurchId, RoleId, TeamId, TimeSlotId } from '../branded-ids';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
-import type { ChurchId } from './church';
-import type { RoleId } from './role';
-import type { TeamId } from './team';
-import type { TimeSlotId } from './time-slot';
 
 export type SlotRequirementId = BrandedId<'SlotRequirementId'>;
 

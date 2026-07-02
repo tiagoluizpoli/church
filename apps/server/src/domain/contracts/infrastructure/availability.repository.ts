@@ -1,11 +1,13 @@
 import type {
-  Availability,
   AvailabilityId,
+  ChurchId,
+  EventId,
+  VolunteerId,
+} from '../../branded-ids';
+import type {
+  Availability,
   AvailabilityType,
 } from '../../entities/availability';
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { VolunteerId } from '../../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAvailabilityInput {

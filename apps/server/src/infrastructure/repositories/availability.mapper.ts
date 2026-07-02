@@ -1,11 +1,11 @@
 import type {
   AvailabilityId,
-  AvailabilityProps,
-} from '../../domain/entities/availability';
+  ChurchId,
+  EventId,
+  VolunteerId,
+} from '../../domain/branded-ids';
+import type { AvailabilityProps } from '../../domain/entities/availability';
 import { Availability } from '../../domain/entities/availability';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { VolunteerId } from '../../domain/entities/volunteer';
 import { assertEnum } from './mapper-utils';
 
 const AVAILABILITY_TYPES = ['available', 'unavailable'] as const;

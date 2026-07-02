@@ -10,11 +10,13 @@ import {
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbRoleManager } from '../../src/application/db-role-manager';
-import type { ChurchId } from '../../src/domain/entities/church';
-import type { EventId } from '../../src/domain/entities/event';
-import type { MinistryId } from '../../src/domain/entities/ministry';
-import type { RoleId } from '../../src/domain/entities/role';
-import type { RoleTemplateId } from '../../src/domain/entities/role-template';
+import type {
+  ChurchId,
+  EventId,
+  MinistryId,
+  RoleId,
+  RoleTemplateId,
+} from '../../src/domain/branded-ids';
 import { DrizzleRoleTemplateRepository } from '../../src/infrastructure/repositories/drizzle-role-template.repository';
 import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 

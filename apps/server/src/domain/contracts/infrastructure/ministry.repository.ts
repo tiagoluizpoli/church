@@ -1,9 +1,5 @@
-import type { ChurchId } from '../../entities/church';
-import type {
-  Ministry,
-  MinistryId,
-  MinistrySettings,
-} from '../../entities/ministry';
+import type { ChurchId, MinistryId } from '../../branded-ids';
+import type { Ministry, MinistrySettings } from '../../entities/ministry';
 import type { TransactionContext } from './transaction-context';
 
 export interface MinistryRepository {

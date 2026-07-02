@@ -1,11 +1,13 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { AssignmentId } from '../../entities/assignment';
-import type { ChurchId } from '../../entities/church';
-import type { EventId } from '../../entities/event';
-import type { RoleId } from '../../entities/role';
-import type { TimeSlotId } from '../../entities/time-slot';
-import type { VolunteerId } from '../../entities/volunteer';
+import type {
+  AssignmentId,
+  ChurchId,
+  EventId,
+  RoleId,
+  TimeSlotId,
+  VolunteerId,
+} from '../../branded-ids';
 import type { AssignmentRepository } from '../infrastructure/assignment.repository';
 
 export function runAssignmentRepositoryContractTests(

@@ -1,12 +1,11 @@
 import { NotFoundError } from '@church/core';
 import { ministry } from '@church/db';
 import { asc, eq } from 'drizzle-orm';
+import type { ChurchId, MinistryId } from '../../domain/branded-ids';
 import type { MinistryRepository } from '../../domain/contracts/infrastructure/ministry.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type { ChurchId } from '../../domain/entities/church';
 import type {
   Ministry,
-  MinistryId,
   MinistrySettings,
 } from '../../domain/entities/ministry';
 import { mapMinistry } from '../mappers/ministry.mapper';

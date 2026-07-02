@@ -1,11 +1,10 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
+import type { ChurchId, VolunteerId } from '../domain/branded-ids';
 import type { IMinistryManager } from '../domain/contracts/application/ministry-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { ChurchId } from '../domain/entities/church';
 import type { Ministry } from '../domain/entities/ministry';
-import type { VolunteerId } from '../domain/entities/volunteer';
 
 @injectable()
 export class DbMinistryManager implements IMinistryManager {

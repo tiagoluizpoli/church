@@ -1,10 +1,12 @@
 import type { roleTemplate, roleTemplateItem } from '@church/db';
 import type { InferSelectModel } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/entities/church';
-import type { MinistryId } from '../../domain/entities/ministry';
-import type { RoleId } from '../../domain/entities/role';
 import type {
+  ChurchId,
+  MinistryId,
+  RoleId,
   RoleTemplateId,
+} from '../../domain/branded-ids';
+import type {
   RoleTemplateItemId,
   RoleTemplateItemProps,
   RoleTemplateProps,

@@ -1,11 +1,11 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
-import { RoleTemplateId } from '../branded-ids/role-template-id';
+import type {
+  ChurchId,
+  MinistryId,
+  RoleId,
+  RoleTemplateId,
+} from '../branded-ids';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
-import type { ChurchId } from './church';
-import type { MinistryId } from './ministry';
-import type { RoleId } from './role';
-
-export { RoleTemplateId };
 export type RoleTemplateItemId = BrandedId<'RoleTemplateItemId'>;
 
 export interface RoleTemplateItemProps {

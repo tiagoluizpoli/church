@@ -1,17 +1,17 @@
 import type { slotRequirement, timeSlot } from '@church/db';
 import type { InferSelectModel } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/entities/church';
-import type { EventId } from '../../domain/entities/event';
-import type { RoleId } from '../../domain/entities/role';
+import type {
+  ChurchId,
+  EventId,
+  RoleId,
+  TimeSlotId,
+} from '../../domain/branded-ids';
 import type {
   SlotRequirementId,
   SlotRequirementProps,
 } from '../../domain/entities/slot-requirement';
 import { SlotRequirement } from '../../domain/entities/slot-requirement';
-import type {
-  TimeSlotId,
-  TimeSlotProps,
-} from '../../domain/entities/time-slot';
+import type { TimeSlotProps } from '../../domain/entities/time-slot';
 import { TimeSlot } from '../../domain/entities/time-slot';
 
 type TimeSlotRow = InferSelectModel<typeof timeSlot>;

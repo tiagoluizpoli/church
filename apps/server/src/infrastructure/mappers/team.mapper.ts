@@ -1,8 +1,7 @@
 import type { team } from '@church/db';
 import type { InferSelectModel } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/entities/church';
-import type { MinistryId } from '../../domain/entities/ministry';
-import type { TeamId, TeamProps } from '../../domain/entities/team';
+import type { ChurchId, MinistryId, TeamId } from '../../domain/branded-ids';
+import type { TeamProps } from '../../domain/entities/team';
 import { Team } from '../../domain/entities/team';
 
 type TeamRow = InferSelectModel<typeof team>;

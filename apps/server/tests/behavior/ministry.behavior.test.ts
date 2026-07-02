@@ -2,8 +2,7 @@ import { db, ministry, ministryVolunteer, user, volunteer } from '@church/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbMinistryManager } from '../../src/application/db-ministry-manager';
-import type { ChurchId } from '../../src/domain/entities/church';
-import type { VolunteerId } from '../../src/domain/entities/volunteer';
+import type { ChurchId, VolunteerId } from '../../src/domain/branded-ids';
 import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 

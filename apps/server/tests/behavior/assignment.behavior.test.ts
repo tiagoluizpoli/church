@@ -11,9 +11,12 @@ import {
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
-import type { AssignmentId } from '../../src/domain/entities/assignment';
-import type { ChurchId } from '../../src/domain/entities/church';
-import type { UserId, VolunteerId } from '../../src/domain/entities/volunteer';
+import type {
+  AssignmentId,
+  ChurchId,
+  UserId,
+  VolunteerId,
+} from '../../src/domain/branded-ids';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
 
@@ -105,10 +108,9 @@ describe('DbAssignmentManager (T058)', () => {
       const manager = makeManager();
       const result = await manager.createAssignment({
         churchId: CHURCH,
-        slotId:
-          SLOT_ID as import('../../src/domain/entities/time-slot').TimeSlotId,
+        slotId: SLOT_ID as import('../../src/domain/branded-ids').TimeSlotId,
         volunteerId: VOL_ID,
-        roleId: ROLE_ID as import('../../src/domain/entities/role').RoleId,
+        roleId: ROLE_ID as import('../../src/domain/branded-ids').RoleId,
         actorId: ACTOR_ID,
       });
       expect(result.id).toBeTruthy();

@@ -8,6 +8,7 @@ import { AuditLogPanel } from './audit-log-panel';
 import { BuilderGrid } from './builder-grid';
 import { BuilderHeader } from './builder-header';
 import { EmptyBuilderState } from './empty-builder-state';
+import { OverrideDialog } from './override-dialog';
 import { SlotEditModal } from './slot-edit-modal';
 import { SlotGenerateWizard } from './slot-generate-wizard';
 import { SubstitutionPicker } from './substitution-picker';
@@ -112,13 +113,7 @@ export function ScheduleBuilderReady({
                   onRemove={(assignmentId) =>
                     deleteAssignment.mutate({ assignmentId })
                   }
-                  onOverride={(slotId, roleId, volunteerId) =>
-                    void controller.handleAssign({
-                      slotId,
-                      roleId,
-                      volunteerId,
-                    })
-                  }
+                  onOverride={controller.handleOverrideRequest}
                   onSubstitute={controller.handleSubstituteRequest}
                   selectedVolunteerId={controller.selectedSidebarVolunteerId}
                   selectedVolunteerName={
@@ -167,7 +162,25 @@ export function ScheduleBuilderReady({
       <AuditLogPanel
         open={controller.auditOpen}
         onOpenChange={controller.setAuditOpen}
+        assignments={builderData.assignments}
       />
+
+      {controller.override && (
+        <OverrideDialog
+          open={true}
+          onOpenChange={(open) => !open && controller.setOverride(null)}
+          conflictType={controller.override.conflictType}
+          volunteerName={controller.override.volunteerName}
+          slotLabel={controller.override.slotLabel}
+          isPending={controller.overrideAssignment.isPending}
+          onConfirm={(reason) =>
+            controller.overrideAssignment.mutate({
+              assignmentId: controller.override?.assignmentId ?? '',
+              reason,
+            })
+          }
+        />
+      )}
 
       {controller.slotModal && (
         <SlotEditModal

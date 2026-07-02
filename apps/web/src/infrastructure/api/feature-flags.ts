@@ -5,7 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  GetFeatureFlags200
+  ListFeatureFlags200
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -14,13 +14,13 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getFeatureFlags = () => {
-const getFeatureFlags = (
+const listFeatureFlags = (
 
  ) => {
-      return apiClient<GetFeatureFlags200>(
+      return apiClient<ListFeatureFlags200>(
       {url: `/api/v1/feature-flags/`, method: 'GET'
     },
       );
     }
-  return {getFeatureFlags}};
-export type GetFeatureFlagsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getFeatureFlags>['getFeatureFlags']>>>
+  return {listFeatureFlags}};
+export type ListFeatureFlagsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getFeatureFlags>['listFeatureFlags']>>>

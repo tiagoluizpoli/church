@@ -17,7 +17,7 @@ interface BuilderGridProps {
   callerTeamId: string | null;
   onAssign: (slotId: string, roleId: string, volunteerId: string) => void;
   onRemove: (assignmentId: string) => void;
-  onOverride: (slotId: string, roleId: string, volunteerId: string) => void;
+  onOverride: (assignmentId: string) => void;
   onSubstitute: (assignmentId: string, roleId: string) => void;
   selectedVolunteerId?: string;
   selectedVolunteerName?: string;

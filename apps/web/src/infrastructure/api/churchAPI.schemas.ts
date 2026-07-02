@@ -26,6 +26,10 @@ export type ListMinistries200 = {
   ministries: ListMinistries200MinistriesItem[];
 };
 
+export type GetScheduleBuilderDataParams = {
+eventId: string;
+};
+
 export type GetScheduleBuilderData200EventsItemEventStatus = typeof GetScheduleBuilderData200EventsItemEventStatus[keyof typeof GetScheduleBuilderData200EventsItemEventStatus];
 
 
@@ -137,11 +141,19 @@ export type GetScheduleBuilderData200VolunteersItem = {
   name: string;
 };
 
+export type GetScheduleBuilderData200RolesItem = {
+  id: string;
+  name: string;
+};
+
 export type GetScheduleBuilderData200 = {
   events: GetScheduleBuilderData200EventsItem[];
   assignments: GetScheduleBuilderData200AssignmentsItem[];
   availability: GetScheduleBuilderData200AvailabilityItem[];
   volunteers: GetScheduleBuilderData200VolunteersItem[];
+  roles: GetScheduleBuilderData200RolesItem[];
+  /** @nullable */
+  callerTeamId: string | null;
 };
 
 export type ListEventsParams = {
@@ -250,6 +262,14 @@ export type CreateEvent201 = {
   updatedAt: string;
 };
 
+export type ApplyRoleTemplateBody = {
+  templateId: string;
+};
+
+export type ApplyRoleTemplate201 = {
+  applied: true;
+};
+
 export type CreateSlotBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   startTime: string;
@@ -320,6 +340,15 @@ export type UpdateSlot200 = {
   label?: string;
   status: UpdateSlot200Status;
   requirements: UpdateSlot200RequirementsItem[];
+};
+
+export type OverrideAssignmentBody = {
+  /** @minLength 10 */
+  reason: string;
+};
+
+export type OverrideAssignment201 = {
+  overridden: true;
 };
 
 export type GenerateSlotsBodyStrategy = {
@@ -503,38 +532,113 @@ export type UpsertRoleTemplate200 = {
   items: UpsertRoleTemplate200ItemsItem[];
 };
 
-export type GetFeatureFlags200Flags = {[key: string]: boolean};
+export type ListFeatureFlags200Flags = {[key: string]: boolean};
 
-export type GetFeatureFlags200 = {
-  flags: GetFeatureFlags200Flags;
+export type ListFeatureFlags200 = {
+  flags: ListFeatureFlags200Flags;
 };
 
-export type GetVolunteerDashboard200UpcomingAssignmentsItemStatus = typeof GetVolunteerDashboard200UpcomingAssignmentsItemStatus[keyof typeof GetVolunteerDashboard200UpcomingAssignmentsItemStatus];
+export type GetVolunteerDashboard200AvailabilityTasksItemEventType = typeof GetVolunteerDashboard200AvailabilityTasksItemEventType[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemEventType];
 
 
-export const GetVolunteerDashboard200UpcomingAssignmentsItemStatus = {
-  draft: 'draft',
+export const GetVolunteerDashboard200AvailabilityTasksItemEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type GetVolunteerDashboard200AvailabilityTasksItemCompletionState = typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState];
+
+
+export const GetVolunteerDashboard200AvailabilityTasksItemCompletionState = {
+  missing: 'missing',
+  partial: 'partial',
+  complete: 'complete',
+} as const;
+
+export type GetVolunteerDashboard200AvailabilityTasksItem = {
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+  eventType: GetVolunteerDashboard200AvailabilityTasksItemEventType;
+  eventStart: string;
+  eventEnd: string;
+  completionState: GetVolunteerDashboard200AvailabilityTasksItemCompletionState;
+};
+
+export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
+
+
+export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  mixed: 'mixed',
+  declined: 'declined',
+} as const;
+
+export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus];
+
+
+export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
   declined: 'declined',
-  cancelled: 'cancelled',
 } as const;
 
-export type GetVolunteerDashboard200UpcomingAssignmentsItem = {
-  id: string;
-  churchId: string;
+export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState];
+
+
+export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState = {
+  in_progress: 'in_progress',
+  upcoming: 'upcoming',
+} as const;
+
+export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem = {
+  assignmentId: string;
   slotId: string;
-  volunteerId: string;
   roleId: string;
-  status: GetVolunteerDashboard200UpcomingAssignmentsItemStatus;
-  reason?: string;
-  assignedAt: string;
-  assignedBy?: string;
+  roleName: string;
+  teamId?: string;
+  teamName?: string;
+  startTime: string;
+  endTime: string;
+  status: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus;
+  timingState: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState;
+  canRespond: boolean;
+};
+
+export type GetVolunteerDashboard200UpcomingAssignmentGroupsItem = {
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+  eventStart: string;
+  aggregateResponseState: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState;
+  hasPendingResponse: boolean;
+  assignments: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem[];
+};
+
+export type GetVolunteerDashboard200NotificationPreviewItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  readAt?: string;
+  createdAt: string;
+};
+
+export type GetVolunteerDashboard200MinistryOptionsItem = {
+  id: string;
+  name: string;
 };
 
 export type GetVolunteerDashboard200 = {
-  upcomingAssignments: GetVolunteerDashboard200UpcomingAssignmentsItem[];
+  availabilityTasks: GetVolunteerDashboard200AvailabilityTasksItem[];
+  upcomingAssignmentGroups: GetVolunteerDashboard200UpcomingAssignmentGroupsItem[];
   unreadNotificationCount: number;
+  notificationPreview: GetVolunteerDashboard200NotificationPreviewItem[];
+  defaultMinistryId?: string;
+  ministryOptions: GetVolunteerDashboard200MinistryOptionsItem[];
 };
 
 export type GetMyAssignments200AssignmentsItemStatus = typeof GetMyAssignments200AssignmentsItemStatus[keyof typeof GetMyAssignments200AssignmentsItemStatus];
@@ -564,31 +668,38 @@ export type GetMyAssignments200 = {
   assignments: GetMyAssignments200AssignmentsItem[];
 };
 
-export type GetMinistrySchedule200AssignmentsItemStatus = typeof GetMinistrySchedule200AssignmentsItemStatus[keyof typeof GetMinistrySchedule200AssignmentsItemStatus];
+export type GetMinistrySchedule200EventsItemRowsItemConfirmationState = typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState[keyof typeof GetMinistrySchedule200EventsItemRowsItemConfirmationState];
 
 
-export const GetMinistrySchedule200AssignmentsItemStatus = {
-  draft: 'draft',
+export const GetMinistrySchedule200EventsItemRowsItemConfirmationState = {
   pending: 'pending',
   confirmed: 'confirmed',
   declined: 'declined',
-  cancelled: 'cancelled',
+  open: 'open',
 } as const;
 
-export type GetMinistrySchedule200AssignmentsItem = {
-  id: string;
-  churchId: string;
+export type GetMinistrySchedule200EventsItemRowsItem = {
   slotId: string;
-  volunteerId: string;
-  roleId: string;
-  status: GetMinistrySchedule200AssignmentsItemStatus;
-  reason?: string;
-  assignedAt: string;
-  assignedBy?: string;
+  slotLabel: string;
+  roleName: string;
+  teamName?: string;
+  volunteerDisplayName?: string;
+  confirmationState: GetMinistrySchedule200EventsItemRowsItemConfirmationState;
+};
+
+export type GetMinistrySchedule200EventsItem = {
+  eventId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  assignmentCount: number;
+  rows: GetMinistrySchedule200EventsItemRowsItem[];
 };
 
 export type GetMinistrySchedule200 = {
-  assignments: GetMinistrySchedule200AssignmentsItem[];
+  ministryId: string;
+  ministryName: string;
+  events: GetMinistrySchedule200EventsItem[];
 };
 
 export type GetMyAvailability200AvailabilityItemType = typeof GetMyAvailability200AvailabilityItemType[keyof typeof GetMyAvailability200AvailabilityItemType];
@@ -727,31 +838,7 @@ export type GetNotifications200 = {
   nextCursor?: string;
 };
 
-export type MarkNotificationRead200Type = typeof MarkNotificationRead200Type[keyof typeof MarkNotificationRead200Type];
-
-
-export const MarkNotificationRead200Type = {
-  schedule_published: 'schedule_published',
-  assignment_added: 'assignment_added',
-  assignment_changed: 'assignment_changed',
-  assignment_removed: 'assignment_removed',
-  availability_reminder: 'availability_reminder',
-  assignment_reminder: 'assignment_reminder',
-} as const;
-
-export type MarkNotificationRead200Payload = {[key: string]: string | null};
-
 export type MarkNotificationRead200 = {
-  id: string;
-  volunteerId: string;
-  ministryId?: string;
-  eventId?: string;
-  assignmentId?: string;
-  type: MarkNotificationRead200Type;
-  title: string;
-  body: string;
-  payload: MarkNotificationRead200Payload;
-  readAt?: string;
-  createdAt: string;
+  marked: boolean;
 };
 

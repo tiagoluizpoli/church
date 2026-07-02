@@ -25,6 +25,13 @@ export interface SubstitutionState {
   roleId: string;
 }
 
+export interface OverrideState {
+  assignmentId: string;
+  conflictType: 'unavailable' | 'double_booked';
+  volunteerName: string;
+  slotLabel: string;
+}
+
 export interface SlotModalState {
   mode: 'create' | 'edit';
   slotId?: string;

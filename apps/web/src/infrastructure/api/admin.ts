@@ -5,6 +5,8 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  ApplyRoleTemplate201,
+  ApplyRoleTemplateBody,
   CreateAssignment201,
   CreateAssignmentBody,
   CreateEvent201,
@@ -15,10 +17,13 @@ import type {
   GenerateSlotsBody,
   GetAssignmentAudit200,
   GetScheduleBuilderData200,
+  GetScheduleBuilderDataParams,
   ListEvents200,
   ListEventsParams,
   ListMinistries200,
   ListRoleTemplates200,
+  OverrideAssignment201,
+  OverrideAssignmentBody,
   UpdateSlot200,
   UpdateSlotBody,
   UpsertRoleTemplate200,
@@ -42,10 +47,11 @@ const listMinistries = (
       );
     }
   const getScheduleBuilderData = (
-
+    params: GetScheduleBuilderDataParams,
  ) => {
       return apiClient<GetScheduleBuilderData200>(
-      {url: `/api/v1/admin/schedule-builder`, method: 'GET'
+      {url: `/api/v1/admin/schedule-builder`, method: 'GET',
+        params
     },
       );
     }
@@ -92,6 +98,17 @@ const listMinistries = (
     },
       );
     }
+  const applyRoleTemplate = (
+    eventId: string,
+    applyRoleTemplateBody: ApplyRoleTemplateBody,
+ ) => {
+      return apiClient<ApplyRoleTemplate201>(
+      {url: `/api/v1/admin/events/${eventId}/apply-template`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: applyRoleTemplateBody
+    },
+      );
+    }
   const createSlot = (
     eventId: string,
     createSlotBody: CreateSlotBody,
@@ -121,6 +138,17 @@ const listMinistries = (
  ) => {
       return apiClient<void>(
       {url: `/api/v1/admin/events/${eventId}/slots/${slotId}`, method: 'DELETE'
+    },
+      );
+    }
+  const overrideAssignment = (
+    assignmentId: string,
+    overrideAssignmentBody: OverrideAssignmentBody,
+ ) => {
+      return apiClient<OverrideAssignment201>(
+      {url: `/api/v1/admin/assignments/${assignmentId}/override`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: overrideAssignmentBody
     },
       );
     }
@@ -200,7 +228,7 @@ const listMinistries = (
     },
       );
     }
-  return {listMinistries,getScheduleBuilderData,listEvents,createEvent,publishEvent,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,listRoleTemplates,upsertRoleTemplate,deleteRoleTemplate}};
+  return {listMinistries,getScheduleBuilderData,listEvents,createEvent,publishEvent,cancelEvent,sendReminders,applyRoleTemplate,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,listRoleTemplates,upsertRoleTemplate,deleteRoleTemplate}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistries']>>>
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEvents']>>>
@@ -208,9 +236,11 @@ export type CreateEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof
 export type PublishEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['publishEvent']>>>
 export type CancelEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['cancelEvent']>>>
 export type SendRemindersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['sendReminders']>>>
+export type ApplyRoleTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['applyRoleTemplate']>>>
 export type CreateSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createSlot']>>>
 export type UpdateSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['updateSlot']>>>
 export type DeleteSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteSlot']>>>
+export type OverrideAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['overrideAssignment']>>>
 export type GenerateSlotsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['generateSlots']>>>
 export type UpsertSlotRequirementResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['upsertSlotRequirement']>>>
 export type CreateAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createAssignment']>>>

@@ -10,8 +10,10 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAutoSave } from '../../hooks/use-auto-save';
 import type { AssignParams } from '../../hooks/use-schedule-builder';
+import { mapAvailabilityStatus } from '../../utils/availability-status';
 import type {
   ActiveDraggedVolunteer,
+  OverrideState,
   SubstitutionState,
   UseScheduleBuilderControllerParams,
 } from './use-schedule-builder-controller.types';
@@ -25,9 +27,15 @@ interface UpsertRequirementParams {
   count: number;
 }
 
+interface OverrideAssignmentParams {
+  assignmentId: string;
+  reason: string;
+}
+
 export function useScheduleBuilderController({
   builderData,
   eventId,
+  format,
   invalidate,
   refetch,
   createAssignment,
@@ -43,6 +51,7 @@ export function useScheduleBuilderController({
   const [activeDraggedVolunteer, setActiveDraggedVolunteer] =
     useState<ActiveDraggedVolunteer | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [override, setOverride] = useState<OverrideState | null>(null);
 
   const upsertRequirement = useMutation({
     mutationFn: ({ slotId, roleId, count }: UpsertRequirementParams) =>
@@ -54,6 +63,11 @@ export function useScheduleBuilderController({
   });
   const sendReminder = useMutation({
     mutationFn: () => adminApi.sendReminders(eventId),
+  });
+  const overrideAssignment = useMutation({
+    mutationFn: ({ assignmentId, reason }: OverrideAssignmentParams) =>
+      adminApi.overrideAssignment(assignmentId, { reason }),
+    onSettled: () => invalidate(),
   });
 
   const saveStatus = useAutoSave([
@@ -182,6 +196,30 @@ export function useScheduleBuilderController({
     handleIncrement,
     handleOpenAuditLog: () => setAuditOpen(true),
     handleOpenPrintExport: () => toast.info('Print / Export coming soon'),
+    handleOverrideRequest: (assignmentId: string) => {
+      const assignment = builderData.assignments.find(
+        (item) => item.id === assignmentId,
+      );
+      const slot = builderData.slots.find(
+        (item) => item.id === assignment?.slotId,
+      );
+      const availability = builderData.volunteerAvailability.find(
+        (item) => item.volunteerId === assignment?.volunteerId,
+      );
+      if (!assignment || !slot) return;
+      setOverride({
+        assignmentId,
+        conflictType:
+          mapAvailabilityStatus(availability?.status ?? 'NO_RESPONSE') ===
+          'unavailable'
+            ? 'unavailable'
+            : 'double_booked',
+        volunteerName: assignment.volunteerName ?? assignment.volunteerId,
+        slotLabel:
+          slot.label ??
+          `${format(slot.startTime, 'p')} – ${format(slot.endTime, 'p')}`,
+      });
+    },
     handlePublish,
     handleRefresh: () => refetch(),
     handleSendReminder,
@@ -200,12 +238,15 @@ export function useScheduleBuilderController({
     invalidate,
     activeDraggedVolunteer,
     pickerVolunteers,
+    override,
+    overrideAssignment,
     saveStatus,
     selectedSidebarVolunteerId,
     sensors,
     sendReminder,
     setActiveDraggedVolunteer,
     setAuditOpen,
+    setOverride,
     setSelectedSidebarVolunteerId,
     setSubstitution,
     sidebarVolunteers,

@@ -38,19 +38,19 @@ export function ScheduleBuilder({ eventId }: ScheduleBuilderProps) {
     return <MobileInterstitial onContinue={() => setShowMobile(false)} />;
   }
 
+  if (query.isError) {
+    return (
+      <div className="rounded border border-destructive p-4 text-destructive text-sm">
+        {query.error?.message ?? 'Failed to load builder'}
+      </div>
+    );
+  }
+
   if (query.isLoading || !data) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (query.isError) {
-    return (
-      <div className="rounded border border-destructive p-4 text-destructive text-sm">
-        {query.error?.message ?? 'Failed to load builder'}
       </div>
     );
   }

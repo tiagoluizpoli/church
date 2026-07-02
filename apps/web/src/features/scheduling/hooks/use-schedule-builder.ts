@@ -49,8 +49,8 @@ export function useScheduleBuilder(eventId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: BUILDER_QUERY_KEY,
-    queryFn: () => adminApi.getScheduleBuilderData(),
+    queryKey: [...BUILDER_QUERY_KEY, eventId],
+    queryFn: () => adminApi.getScheduleBuilderData({ eventId }),
   });
 
   const invalidate = () =>
@@ -58,7 +58,14 @@ export function useScheduleBuilder(eventId: string) {
 
   const data = useMemo(() => {
     if (!query.data) return undefined;
-    const { events, assignments, availability, volunteers } = query.data;
+    const {
+      events,
+      assignments,
+      availability,
+      volunteers,
+      roles,
+      callerTeamId,
+    } = query.data;
     const eventEntry = events.find((e) => e.event.id === eventId);
     if (!eventEntry) return undefined;
 
@@ -96,8 +103,8 @@ export function useScheduleBuilder(eventId: string) {
       requirements,
       assignments: assignmentsWithName,
       volunteerAvailability,
-      roles: [] as { id: string; name: string }[],
-      callerTeamId: null as string | null,
+      roles,
+      callerTeamId,
     };
   }, [query.data, eventId]);
 

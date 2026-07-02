@@ -55,11 +55,12 @@ export function useVolunteerDashboard({
     queryFn: async (): Promise<DashboardSnapshot> => {
       const result = await volunteerApi.getVolunteerDashboard();
       return {
-        availabilityTasks: [],
-        upcomingAssignmentGroups: [],
+        availabilityTasks: result.availabilityTasks,
+        upcomingAssignmentGroups: result.upcomingAssignmentGroups,
         notificationUnreadCount: result.unreadNotificationCount,
-        notificationPreview: [],
-        ministryOptions: [],
+        notificationPreview: result.notificationPreview,
+        defaultMinistryId: result.defaultMinistryId,
+        ministryOptions: result.ministryOptions,
         fetchedAt: new Date().toISOString(),
       };
     },
@@ -191,14 +192,7 @@ export function useVolunteerDashboard({
 
   const ministryScheduleQuery = useQuery({
     queryKey: ['ministry-schedule', selectedMinistryId],
-    queryFn: async () => {
-      await volunteerApi.getMinistrySchedule(selectedMinistryId ?? '');
-      return {
-        ministryId: selectedMinistryId ?? '',
-        ministryName: '',
-        events: [],
-      };
-    },
+    queryFn: () => volunteerApi.getMinistrySchedule(selectedMinistryId ?? ''),
     ...getMinistryScheduleQueryConfig(selectedMinistryId, isOnline),
     enabled: selectedMinistryId != null,
   });

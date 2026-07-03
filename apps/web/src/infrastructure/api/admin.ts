@@ -17,9 +17,13 @@ import type {
   CreatePlanningEventBody,
   CreateSlot201,
   CreateSlotBody,
+  FireAvailability202,
   GenerateSlots201,
   GenerateSlotsBody,
   GetAssignmentAudit200,
+  GetCycleParticipation200,
+  GetCycleParticipationParams,
+  GetMinistryServingProfile200,
   GetPlanningCycle200,
   GetScheduleBuilderData200,
   GetScheduleBuilderDataParams,
@@ -31,12 +35,23 @@ import type {
   ListPlanningCyclesParams,
   OverrideAssignment201,
   OverrideAssignmentBody,
+  SetMinistryDefaultDirection200,
+  SetMinistryDefaultDirectionBody,
+  SetParticipationInclusionsBody,
+  SplitParticipationShifts201,
+  SplitParticipationShiftsBody,
   UpdateEventTemplate200,
   UpdateEventTemplateBody,
   UpdatePlanningEvent200,
   UpdatePlanningEventBody,
+  UpdateShift200,
+  UpdateShiftBody,
   UpdateSlot200,
   UpdateSlotBody,
+  UpsertMinistryServingProfile200,
+  UpsertMinistryServingProfileBody,
+  UpsertShiftRequirement200,
+  UpsertShiftRequirementBody,
   UpsertSlotRequirement200,
   UpsertSlotRequirementBody
 } from './churchAPI.schemas';
@@ -305,7 +320,116 @@ const listMinistries = (
     },
       );
     }
-  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent}};
+  const getMinistryServingProfile = (
+    ministryId: string,
+ ) => {
+      return apiClient<GetMinistryServingProfile200>(
+      {url: `/api/v1/admin/ministries/${ministryId}/serving-profile`, method: 'GET'
+    },
+      );
+    }
+  const upsertMinistryServingProfile = (
+    ministryId: string,
+    upsertMinistryServingProfileBody: UpsertMinistryServingProfileBody,
+ ) => {
+      return apiClient<UpsertMinistryServingProfile200>(
+      {url: `/api/v1/admin/ministries/${ministryId}/serving-profile`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: upsertMinistryServingProfileBody
+    },
+      );
+    }
+  const setMinistryDefaultDirection = (
+    ministryId: string,
+    setMinistryDefaultDirectionBody: SetMinistryDefaultDirectionBody,
+ ) => {
+      return apiClient<SetMinistryDefaultDirection200>(
+      {url: `/api/v1/admin/ministries/${ministryId}/default-direction`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: setMinistryDefaultDirectionBody
+    },
+      );
+    }
+  const getCycleParticipation = (
+    cycleId: string,
+    params: GetCycleParticipationParams,
+ ) => {
+      return apiClient<GetCycleParticipation200>(
+      {url: `/api/v1/leader/cycles/${cycleId}/participation`, method: 'GET',
+        params
+    },
+      );
+    }
+  const setParticipationInclusions = (
+    participationId: string,
+    setParticipationInclusionsBody: SetParticipationInclusionsBody,
+ ) => {
+      return apiClient<void>(
+      {url: `/api/v1/leader/participations/${participationId}/inclusions`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: setParticipationInclusionsBody
+    },
+      );
+    }
+  const splitParticipationShifts = (
+    participationId: string,
+    timeSlotId: string,
+    splitParticipationShiftsBody: SplitParticipationShiftsBody,
+ ) => {
+      return apiClient<SplitParticipationShifts201>(
+      {url: `/api/v1/leader/participations/${participationId}/slots/${timeSlotId}/shifts`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: splitParticipationShiftsBody
+    },
+      );
+    }
+  const updateShift = (
+    shiftId: string,
+    updateShiftBody: UpdateShiftBody,
+ ) => {
+      return apiClient<UpdateShift200>(
+      {url: `/api/v1/leader/shifts/${shiftId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updateShiftBody
+    },
+      );
+    }
+  const deleteShift = (
+    shiftId: string,
+ ) => {
+      return apiClient<void>(
+      {url: `/api/v1/leader/shifts/${shiftId}`, method: 'DELETE'
+    },
+      );
+    }
+  const upsertShiftRequirement = (
+    shiftId: string,
+    upsertShiftRequirementBody: UpsertShiftRequirementBody,
+ ) => {
+      return apiClient<UpsertShiftRequirement200>(
+      {url: `/api/v1/leader/shifts/${shiftId}/requirements`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: upsertShiftRequirementBody
+    },
+      );
+    }
+  const fireAvailability = (
+    participationId: string,
+ ) => {
+      return apiClient<FireAvailability202>(
+      {url: `/api/v1/leader/participations/${participationId}/fire-availability`, method: 'POST'
+    },
+      );
+    }
+  const resendAvailabilityReminder = (
+    participationId: string,
+ ) => {
+      return apiClient<void>(
+      {url: `/api/v1/leader/participations/${participationId}/resend-availability`, method: 'POST'
+    },
+      );
+    }
+  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,resendAvailabilityReminder}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistries']>>>
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEvents']>>>
@@ -333,3 +457,14 @@ export type ApplyPlanningTemplatesResult = NonNullable<Awaited<ReturnType<Return
 export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createPlanningEvent']>>>
 export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['updatePlanningEvent']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['cancelPlanningEvent']>>>
+export type GetMinistryServingProfileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getMinistryServingProfile']>>>
+export type UpsertMinistryServingProfileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['upsertMinistryServingProfile']>>>
+export type SetMinistryDefaultDirectionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['setMinistryDefaultDirection']>>>
+export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getCycleParticipation']>>>
+export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['setParticipationInclusions']>>>
+export type SplitParticipationShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['splitParticipationShifts']>>>
+export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['updateShift']>>>
+export type DeleteShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteShift']>>>
+export type UpsertShiftRequirementResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['upsertShiftRequirement']>>>
+export type FireAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['fireAvailability']>>>
+export type ResendAvailabilityReminderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['resendAvailabilityReminder']>>>

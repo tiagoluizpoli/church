@@ -12,12 +12,21 @@ export const ListMinistries200MinistriesItemEnforcementType = {
   hard: 'hard',
 } as const;
 
+export type ListMinistries200MinistriesItemDefaultDirection = typeof ListMinistries200MinistriesItemDefaultDirection[keyof typeof ListMinistries200MinistriesItemDefaultDirection];
+
+
+export const ListMinistries200MinistriesItemDefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
 export type ListMinistries200MinistriesItem = {
   id: string;
   churchId: string;
   name: string;
   description?: string;
   enforcementType: ListMinistries200MinistriesItemEnforcementType;
+  defaultDirection: ListMinistries200MinistriesItemDefaultDirection;
   createdAt: string;
   updatedAt: string;
 };
@@ -814,10 +823,378 @@ export type UpdatePlanningEvent200 = {
   updatedAt: string;
 };
 
+export type GetMinistryServingProfile200EntriesItemShiftSplit = {
+  kind: 'equal';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+} | {
+  kind: 'manual';
+  spans: {
+  label?: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+}[];
+};
+
+export type GetMinistryServingProfile200EntriesItemHeadcountsItem = {
+  roleId: string;
+  teamId?: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+};
+
+export type GetMinistryServingProfile200EntriesItem = {
+  id: string;
+  ministryId: string;
+  sourceTemplateBlockId: string;
+  serves: boolean;
+  shiftSplit: GetMinistryServingProfile200EntriesItemShiftSplit;
+  headcounts: GetMinistryServingProfile200EntriesItemHeadcountsItem[];
+};
+
+export type GetMinistryServingProfile200 = {
+  entries: GetMinistryServingProfile200EntriesItem[];
+};
+
+export type UpsertMinistryServingProfileBodyEntriesItemShiftSplit = {
+  kind: 'equal';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+} | {
+  kind: 'manual';
+  spans: {
+  label?: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+}[];
+};
+
+export type UpsertMinistryServingProfileBodyEntriesItemHeadcountsItem = {
+  roleId: string;
+  teamId?: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+};
+
+export type UpsertMinistryServingProfileBodyEntriesItem = {
+  sourceTemplateBlockId: string;
+  serves: boolean;
+  shiftSplit: UpsertMinistryServingProfileBodyEntriesItemShiftSplit;
+  headcounts: UpsertMinistryServingProfileBodyEntriesItemHeadcountsItem[];
+};
+
+export type UpsertMinistryServingProfileBody = {
+  entries: UpsertMinistryServingProfileBodyEntriesItem[];
+};
+
+export type UpsertMinistryServingProfile200EntriesItemShiftSplit = {
+  kind: 'equal';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+} | {
+  kind: 'manual';
+  spans: {
+  label?: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+}[];
+};
+
+export type UpsertMinistryServingProfile200EntriesItemHeadcountsItem = {
+  roleId: string;
+  teamId?: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  count: number;
+};
+
+export type UpsertMinistryServingProfile200EntriesItem = {
+  id: string;
+  ministryId: string;
+  sourceTemplateBlockId: string;
+  serves: boolean;
+  shiftSplit: UpsertMinistryServingProfile200EntriesItemShiftSplit;
+  headcounts: UpsertMinistryServingProfile200EntriesItemHeadcountsItem[];
+};
+
+export type UpsertMinistryServingProfile200 = {
+  entries: UpsertMinistryServingProfile200EntriesItem[];
+};
+
+export type SetMinistryDefaultDirectionBodyDefaultDirection = typeof SetMinistryDefaultDirectionBodyDefaultDirection[keyof typeof SetMinistryDefaultDirectionBodyDefaultDirection];
+
+
+export const SetMinistryDefaultDirectionBodyDefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type SetMinistryDefaultDirectionBody = {
+  defaultDirection: SetMinistryDefaultDirectionBodyDefaultDirection;
+};
+
+export type SetMinistryDefaultDirection200EnforcementType = typeof SetMinistryDefaultDirection200EnforcementType[keyof typeof SetMinistryDefaultDirection200EnforcementType];
+
+
+export const SetMinistryDefaultDirection200EnforcementType = {
+  soft: 'soft',
+  hard: 'hard',
+} as const;
+
+export type SetMinistryDefaultDirection200DefaultDirection = typeof SetMinistryDefaultDirection200DefaultDirection[keyof typeof SetMinistryDefaultDirection200DefaultDirection];
+
+
+export const SetMinistryDefaultDirection200DefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type SetMinistryDefaultDirection200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  enforcementType: SetMinistryDefaultDirection200EnforcementType;
+  defaultDirection: SetMinistryDefaultDirection200DefaultDirection;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ListFeatureFlags200Flags = {[key: string]: boolean};
 
 export type ListFeatureFlags200 = {
   flags: ListFeatureFlags200Flags;
+};
+
+export type GetCycleParticipationParams = {
+ministryId: string;
+};
+
+export type GetCycleParticipation200EventsItemParticipationState = typeof GetCycleParticipation200EventsItemParticipationState[keyof typeof GetCycleParticipation200EventsItemParticipationState];
+
+
+export const GetCycleParticipation200EventsItemParticipationState = {
+  tailoring: 'tailoring',
+  availability_fired: 'availability_fired',
+  rostering: 'rostering',
+  published: 'published',
+} as const;
+
+export type GetCycleParticipation200EventsItemParticipation = {
+  id: string;
+  churchId: string;
+  ministryId: string;
+  eventId: string;
+  state: GetCycleParticipation200EventsItemParticipationState;
+};
+
+export type GetCycleParticipation200EventsItemEventStatus = typeof GetCycleParticipation200EventsItemEventStatus[keyof typeof GetCycleParticipation200EventsItemEventStatus];
+
+
+export const GetCycleParticipation200EventsItemEventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type GetCycleParticipation200EventsItemEventEventType = typeof GetCycleParticipation200EventsItemEventEventType[keyof typeof GetCycleParticipation200EventsItemEventEventType];
+
+
+export const GetCycleParticipation200EventsItemEventEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type GetCycleParticipation200EventsItemEvent = {
+  id: string;
+  churchId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  status: GetCycleParticipation200EventsItemEventStatus;
+  eventType: GetCycleParticipation200EventsItemEventEventType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GetCycleParticipation200EventsItemSlotsItemSlotStatus = typeof GetCycleParticipation200EventsItemSlotsItemSlotStatus[keyof typeof GetCycleParticipation200EventsItemSlotsItemSlotStatus];
+
+
+export const GetCycleParticipation200EventsItemSlotsItemSlotStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetCycleParticipation200EventsItemSlotsItemSlotRequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type GetCycleParticipation200EventsItemSlotsItemSlot = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: GetCycleParticipation200EventsItemSlotsItemSlotStatus;
+  requirements: GetCycleParticipation200EventsItemSlotsItemSlotRequirementsItem[];
+};
+
+export type GetCycleParticipation200EventsItemSlotsItemShiftsItem = {
+  id: string;
+  participationId: string;
+  timeSlotId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+};
+
+export type GetCycleParticipation200EventsItemSlotsItemRequirementsItem = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type GetCycleParticipation200EventsItemSlotsItem = {
+  slot: GetCycleParticipation200EventsItemSlotsItemSlot;
+  included: boolean;
+  shifts: GetCycleParticipation200EventsItemSlotsItemShiftsItem[];
+  requirements: GetCycleParticipation200EventsItemSlotsItemRequirementsItem[];
+};
+
+export type GetCycleParticipation200EventsItem = {
+  participation: GetCycleParticipation200EventsItemParticipation;
+  event: GetCycleParticipation200EventsItemEvent;
+  slots: GetCycleParticipation200EventsItemSlotsItem[];
+};
+
+export type GetCycleParticipation200 = {
+  events: GetCycleParticipation200EventsItem[];
+};
+
+export type GetCycleParticipation403 = {
+  error: string;
+  message: string;
+};
+
+export type SetParticipationInclusionsBody = {
+  timeSlotIds: string[];
+};
+
+export type SplitParticipationShiftsBodyStrategy = {
+  kind: 'equal-n';
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  n: number;
+} | {
+  kind: 'manual';
+  /** @minItems 1 */
+  spans: ({
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+})[];
+};
+
+export type SplitParticipationShiftsBody = {
+  strategy: SplitParticipationShiftsBodyStrategy;
+};
+
+export type SplitParticipationShifts201ShiftsItem = {
+  id: string;
+  participationId: string;
+  timeSlotId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+};
+
+export type SplitParticipationShifts201 = {
+  shifts: SplitParticipationShifts201ShiftsItem[];
+};
+
+export type UpdateShiftBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startTime?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endTime?: string;
+  label?: string;
+};
+
+export type UpdateShift200 = {
+  id: string;
+  participationId: string;
+  timeSlotId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+};
+
+export type UpsertShiftRequirementBody = {
+  roleId: string;
+  teamId?: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  requiredCount: number;
+  notes?: string;
+};
+
+export type UpsertShiftRequirement200 = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type FireAvailability202 = {
+  createdCheckCount: number;
+  notifiedVolunteerCount: number;
 };
 
 export type GetVolunteerDashboard200AvailabilityTasksItemEventType = typeof GetVolunteerDashboard200AvailabilityTasksItemEventType[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemEventType];

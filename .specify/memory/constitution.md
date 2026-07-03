@@ -1,8 +1,8 @@
 <!--
 ## Sync Impact Report
-- Version change: 1.3.0 → 1.4.0
-- Added principle: VII. Explicit Parameter Contracts
-- Updated: Core Rules with the named object parameter requirement
+- Version change: 1.4.0 → 1.4.1
+- Modified principle: VII. Explicit Parameter Contracts
+- Updated: Core Rules with the expanded named object parameter and no-inline-object-typing requirement
 - Templates requiring updates: None; existing Constitution Check is generic
 - Follow-up TODOs: None
 -->
@@ -38,10 +38,12 @@ When planning or specifying a feature (e.g., via the `speckit.specify` or `speck
 ### VII. Explicit Parameter Contracts
 Application functions, methods, constructors, and call-facing handlers MUST receive inputs through a
 single object parameter when they require data. The object shape MUST use a separately declared,
-descriptively named `interface` or `type`; inline object types in parameter declarations are forbidden.
-Zero-argument functions and framework or collection callbacks whose signatures are controlled by an
-external API are exempt. Existing violations encountered in modified code MUST be corrected as part of
-the change.
+descriptively named `interface` or `type`. Inline object typing is forbidden in modified application
+code, including parameter declarations, variable annotations, return annotations, joined record shapes,
+and type assertions or casts such as `value as { ... }`. Zero-argument functions and framework or
+collection callbacks whose signatures are controlled by an external API are exempt from the single
+object parameter requirement, but any additional object typing in modified code MUST still use a named
+type. Existing violations encountered in modified code MUST be corrected as part of the change.
 
 ## Technology Stack
 
@@ -64,7 +66,7 @@ the change.
 - **Workspace Scope**: All package and application names are scoped under the `@church` namespace.
 - **Atomic Commits**: Use conventional commits and keep changes small and focused.
 - **Strict Linting**: Biome must pass before any commit.
-- **Named Object Parameters**: Use one object parameter with a separately declared, descriptively named `interface` or `type` for application-facing inputs. Do not use positional data parameters or inline object parameter types. External callback signatures are exempt.
+- **Named Object Parameters**: Use one object parameter with a separately declared, descriptively named `interface` or `type` for application-facing inputs. Do not use positional data parameters, inline object parameter types, or inline object annotations/assertions in modified application code. External callback signatures are exempt only where the framework controls the signature.
 - **Documentation First**: Significant changes must be planned in the `planning/` directory.
 - **Maximum Context**: All planning and specifications must traverse the complete tree of documentation linked in `specifications-list.md`.
 
@@ -74,4 +76,4 @@ the change.
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.4.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-07-01
+**Version**: 1.4.1 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-07-03

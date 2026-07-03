@@ -21,7 +21,7 @@
 
 ## Specific Guidelines
 - **General**: 100% Type Safety. Strictly follow Karpathy Guidelines (Simple, Pragmatic, No Speculation).
-- **Parameter Contract Rule**: Application functions, methods, constructors, and call-facing handlers that receive data must use one object parameter, even for a single value. Declare its shape separately with a descriptive `interface` or `type`; never use inline object parameter types. Zero-argument functions and callbacks whose signatures are controlled by an external API are exempt. Fix existing violations in any code you modify.
+- **Parameter Contract Rule**: Application functions, methods, constructors, and call-facing handlers that receive data must use one object parameter, even for a single value. Every object shape used for parameters, variables, return values, joined records, or type assertions/casts MUST be declared separately with a descriptive `interface` or `type`; inline object typing is forbidden in touched files. This includes patterns such as `input: { ... }`, `const value: { ... }`, and `request.params as { ... }`. Zero-argument functions and callbacks whose signatures are controlled by an external API are exempt from the single-object-parameter rule, but any additional object typing in touched files still must use a named type. Fix existing violations in any code you modify.
 - **Backend Development**:
   - Always engage `backend-specialist` and `test-backend` skills for architectural decisions and validation.
   - Prioritize known, solid Design Patterns (refer to Refactoring Guru) for complex logic rather than custom abstractions.

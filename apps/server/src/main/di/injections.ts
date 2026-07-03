@@ -5,12 +5,15 @@ import { SchedulingRbacGuard } from '../../api/auth/scheduling-rbac-guard';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
+import { LeaderController } from '../../api/controllers/leader-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
+import { DbAvailabilityCheckManager } from '../../application/db-availability-check-manager';
 import { DbEventManager } from '../../application/db-event-manager';
 import { DbEventTemplateManager } from '../../application/db-event-template-manager';
 import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
+import { DbParticipationManager } from '../../application/db-participation-manager';
 import { DbPlanningCycleManager } from '../../application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
 import { DbSchedulingRbacManager } from '../../application/db-scheduling-rbac-manager';
@@ -19,14 +22,18 @@ import { DrizzleSchedulingRbacResolver } from '../../infrastructure/auth/drizzle
 import {
   DrizzleAssignmentAuditRepository,
   DrizzleAssignmentRepository,
+  DrizzleAvailabilityCheckRepository,
   DrizzleAvailabilityRepository,
   DrizzleChurchRepository,
   DrizzleEventRepository,
   DrizzleEventTemplateRepository,
+  DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
+  DrizzleMinistryServingProfileRepository,
   DrizzlePlanningCycleRepository,
   DrizzlePlanningEventRepository,
   DrizzleRoleRepository,
+  DrizzleShiftRepository,
   DrizzleTeamRepository,
   DrizzleTimeSlotRepository,
   DrizzleUnitOfWork,
@@ -70,6 +77,18 @@ export function registerInjections(): void {
   });
   container.register(injection.infra.availabilityRepository, {
     useFactory: () => new DrizzleAvailabilityRepository(db),
+  });
+  container.register(injection.infra.availabilityCheckRepository, {
+    useFactory: () => new DrizzleAvailabilityCheckRepository(db),
+  });
+  container.register(injection.infra.ministryParticipationRepository, {
+    useFactory: () => new DrizzleMinistryParticipationRepository(db),
+  });
+  container.register(injection.infra.ministryServingProfileRepository, {
+    useFactory: () => new DrizzleMinistryServingProfileRepository(db),
+  });
+  container.register(injection.infra.shiftRepository, {
+    useFactory: () => new DrizzleShiftRepository(db),
   });
   container.register(injection.infra.churchRepository, {
     useFactory: () => new DrizzleChurchRepository(db),
@@ -121,6 +140,12 @@ export function registerInjections(): void {
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,
   });
+  container.register(injection.managers.participationManager, {
+    useClass: DbParticipationManager,
+  });
+  container.register(injection.managers.availabilityCheckManager, {
+    useClass: DbAvailabilityCheckManager,
+  });
   container.register(injection.managers.featureFlagManager, {
     useClass: DbFeatureFlagManager,
   });
@@ -138,6 +163,7 @@ export function registerInjections(): void {
     injection.controllers.fastify,
     FeatureFlagController,
   );
+  container.registerSingleton(injection.controllers.fastify, LeaderController);
   container.registerSingleton(
     injection.controllers.fastify,
     VolunteerController,

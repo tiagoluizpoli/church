@@ -1,4 +1,9 @@
-import type { AssignmentId, EventId, MinistryId } from '../../branded-ids';
+import type {
+  AssignmentId,
+  EventId,
+  MinistryId,
+  PlanningCycleId,
+} from '../../branded-ids';
 import type {
   VolunteerNotificationPayload,
   VolunteerNotificationType,
@@ -31,6 +36,7 @@ export interface DeclineNotification {
 export interface VolunteerScheduleNotification {
   churchId: string;
   volunteerId: string;
+  planningCycleId?: PlanningCycleId;
   ministryId?: MinistryId;
   eventId?: EventId;
   assignmentId?: AssignmentId;

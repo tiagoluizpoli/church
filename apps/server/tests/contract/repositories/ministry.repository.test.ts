@@ -1,7 +1,10 @@
 import { NotFoundError } from '@church/core';
 import type { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
 import { runMinistryRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/ministry.contract-spec';
-import type { MinistryRepository } from '../../../src/domain/contracts/infrastructure/ministry.repository';
+import type {
+  MinistryRepository,
+  UpdateMinistryDefaultDirectionInput,
+} from '../../../src/domain/contracts/infrastructure/ministry.repository';
 import {
   Ministry,
   type MinistrySettings,
@@ -64,6 +67,24 @@ class MockMinistryRepository implements MinistryRepository {
       enforcementType: min.enforcementType,
       defaultDirection: min.defaultDirection,
     };
+  }
+
+  async updateDefaultDirection(
+    input: UpdateMinistryDefaultDirectionInput,
+  ): Promise<Ministry> {
+    const current = await this.getById(input.churchId, input.ministryId);
+    const updated = new Ministry(
+      {
+        churchId: current.churchId,
+        name: current.name,
+        description: current.description,
+        enforcementType: current.enforcementType,
+        defaultDirection: input.defaultDirection,
+      },
+      current.id,
+    );
+    this.ministries.set(updated.id, updated);
+    return updated;
   }
 }
 

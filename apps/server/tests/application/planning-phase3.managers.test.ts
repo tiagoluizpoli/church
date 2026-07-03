@@ -9,9 +9,14 @@ import {
 } from '../../src/domain/errors';
 import { DrizzleChurchRepository } from '../../src/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleEventTemplateRepository } from '../../src/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import { DrizzlePlanningCycleRepository } from '../../src/infrastructure/repositories/drizzle-planning-cycle.repository';
 import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
+import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
 import {
   createSchedulingPhase3Cycle,
   resetSchedulingPhase3Db,
@@ -27,6 +32,18 @@ function createManagers() {
   );
   const churchRepository = new DrizzleChurchRepository(schedulingTestDb);
   const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
+  const participationRepository = new DrizzleMinistryParticipationRepository(
+    schedulingTestDb,
+  );
+  const shiftRepository = new DrizzleShiftRepository(schedulingTestDb);
+  const servingProfileRepository = new DrizzleMinistryServingProfileRepository(
+    schedulingTestDb,
+  );
+  const ministryRepository = new DrizzleMinistryRepository(schedulingTestDb);
+  const featureFlagService = new SchedulingFeatureFlagServiceStub({
+    participationDefaultAllIn: false,
+    volunteerDashboardAllowOverlapSave: false,
+  });
 
   return {
     cycleManager: new DbPlanningCycleManager(
@@ -41,6 +58,11 @@ function createManagers() {
       templateRepository,
       churchRepository,
       unitOfWork,
+      participationRepository,
+      shiftRepository,
+      servingProfileRepository,
+      ministryRepository,
+      featureFlagService,
     ),
     templateManager: new DbEventTemplateManager(templateRepository),
   };

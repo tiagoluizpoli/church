@@ -1,5 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import type {
+  CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
   SchedulingRbacManager,
@@ -20,5 +21,9 @@ export class SchedulingRbacGuard {
 
   async canManageShift(input: CanManageShiftInput): Promise<boolean> {
     return this.manager.canManageShift(input);
+  }
+
+  async canManageMinistry(input: CanManageMinistryInput): Promise<boolean> {
+    return this.manager.canManageMinistry(input);
   }
 }

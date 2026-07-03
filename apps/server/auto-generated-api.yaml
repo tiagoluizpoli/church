@@ -48,6 +48,11 @@ paths:
                           enum:
                             - soft
                             - hard
+                        defaultDirection:
+                          type: string
+                          enum:
+                            - all_in
+                            - all_out
                         createdAt:
                           type: string
                         updatedAt:
@@ -57,6 +62,7 @@ paths:
                         - churchId
                         - name
                         - enforcementType
+                        - defaultDirection
                         - createdAt
                         - updatedAt
                       additionalProperties: false
@@ -1855,6 +1861,354 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/v1/admin/ministries/{ministryId}/serving-profile:
+    get:
+      operationId: getMinistryServingProfile
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ministryId:
+                          type: string
+                        sourceTemplateBlockId:
+                          type: string
+                        serves:
+                          type: boolean
+                        shiftSplit:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - equal
+                                count:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 9007199254740991
+                              required:
+                                - kind
+                                - count
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - manual
+                                spans:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      label:
+                                        type: string
+                                      startTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                      endTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                    required:
+                                      - startTime
+                                      - endTime
+                                    additionalProperties: false
+                              required:
+                                - kind
+                                - spans
+                              additionalProperties: false
+                        headcounts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              roleId:
+                                type: string
+                              teamId:
+                                type: string
+                              count:
+                                type: integer
+                                minimum: 1
+                                maximum: 9007199254740991
+                            required:
+                              - roleId
+                              - count
+                            additionalProperties: false
+                      required:
+                        - id
+                        - ministryId
+                        - sourceTemplateBlockId
+                        - serves
+                        - shiftSplit
+                        - headcounts
+                      additionalProperties: false
+                required:
+                  - entries
+                additionalProperties: false
+    put:
+      operationId: upsertMinistryServingProfile
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entries:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      sourceTemplateBlockId:
+                        type: string
+                      serves:
+                        type: boolean
+                      shiftSplit:
+                        oneOf:
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - equal
+                              count:
+                                type: integer
+                                minimum: 1
+                                maximum: 9007199254740991
+                            required:
+                              - kind
+                              - count
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - manual
+                              spans:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    label:
+                                      type: string
+                                    startTime:
+                                      type: string
+                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                    endTime:
+                                      type: string
+                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                  required:
+                                    - startTime
+                                    - endTime
+                            required:
+                              - kind
+                              - spans
+                      headcounts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            roleId:
+                              type: string
+                            teamId:
+                              type: string
+                            count:
+                              type: integer
+                              minimum: 1
+                              maximum: 9007199254740991
+                          required:
+                            - roleId
+                            - count
+                    required:
+                      - sourceTemplateBlockId
+                      - serves
+                      - shiftSplit
+                      - headcounts
+              required:
+                - entries
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ministryId:
+                          type: string
+                        sourceTemplateBlockId:
+                          type: string
+                        serves:
+                          type: boolean
+                        shiftSplit:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - equal
+                                count:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 9007199254740991
+                              required:
+                                - kind
+                                - count
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - manual
+                                spans:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      label:
+                                        type: string
+                                      startTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                      endTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                    required:
+                                      - startTime
+                                      - endTime
+                                    additionalProperties: false
+                              required:
+                                - kind
+                                - spans
+                              additionalProperties: false
+                        headcounts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              roleId:
+                                type: string
+                              teamId:
+                                type: string
+                              count:
+                                type: integer
+                                minimum: 1
+                                maximum: 9007199254740991
+                            required:
+                              - roleId
+                              - count
+                            additionalProperties: false
+                      required:
+                        - id
+                        - ministryId
+                        - sourceTemplateBlockId
+                        - serves
+                        - shiftSplit
+                        - headcounts
+                      additionalProperties: false
+                required:
+                  - entries
+                additionalProperties: false
+  /api/v1/admin/ministries/{ministryId}/default-direction:
+    patch:
+      operationId: setMinistryDefaultDirection
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                defaultDirection:
+                  type: string
+                  enum:
+                    - all_in
+                    - all_out
+              required:
+                - defaultDirection
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  enforcementType:
+                    type: string
+                    enum:
+                      - soft
+                      - hard
+                  defaultDirection:
+                    type: string
+                    enum:
+                      - all_in
+                      - all_out
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - name
+                  - enforcementType
+                  - defaultDirection
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
   /api/v1/feature-flags/:
     get:
       operationId: listFeatureFlags
@@ -1875,6 +2229,546 @@ paths:
                 required:
                   - flags
                 additionalProperties: false
+  /api/v1/leader/cycles/{cycleId}/participation:
+    get:
+      operationId: getCycleParticipation
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        participation:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            churchId:
+                              type: string
+                            ministryId:
+                              type: string
+                            eventId:
+                              type: string
+                            state:
+                              type: string
+                              enum:
+                                - tailoring
+                                - availability_fired
+                                - rostering
+                                - published
+                          required:
+                            - id
+                            - churchId
+                            - ministryId
+                            - eventId
+                            - state
+                          additionalProperties: false
+                        event:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            churchId:
+                              type: string
+                            planningCycleId:
+                              type: string
+                            sourceTemplateId:
+                              type: string
+                            title:
+                              type: string
+                            description:
+                              type: string
+                            location:
+                              type: string
+                            startDate:
+                              type: string
+                            endDate:
+                              type: string
+                            status:
+                              type: string
+                              enum:
+                                - draft
+                                - scheduled
+                                - cancelled
+                                - past
+                            eventType:
+                              type: string
+                              enum:
+                                - hourly
+                                - day_based
+                            createdAt:
+                              type: string
+                            updatedAt:
+                              type: string
+                          required:
+                            - id
+                            - churchId
+                            - planningCycleId
+                            - title
+                            - startDate
+                            - endDate
+                            - status
+                            - eventType
+                            - createdAt
+                            - updatedAt
+                          additionalProperties: false
+                        slots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              slot:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  churchId:
+                                    type: string
+                                  eventId:
+                                    type: string
+                                  startTime:
+                                    type: string
+                                  endTime:
+                                    type: string
+                                  label:
+                                    type: string
+                                  status:
+                                    type: string
+                                    enum:
+                                      - active
+                                      - cancelled
+                                  requirements:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        id:
+                                          type: string
+                                        slotId:
+                                          type: string
+                                        roleId:
+                                          type: string
+                                        teamId:
+                                          type: string
+                                        requiredCount:
+                                          type: number
+                                        notes:
+                                          type: string
+                                      required:
+                                        - id
+                                        - slotId
+                                        - roleId
+                                        - requiredCount
+                                      additionalProperties: false
+                                required:
+                                  - id
+                                  - churchId
+                                  - eventId
+                                  - startTime
+                                  - endTime
+                                  - status
+                                  - requirements
+                                additionalProperties: false
+                              included:
+                                type: boolean
+                              shifts:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                    participationId:
+                                      type: string
+                                    timeSlotId:
+                                      type: string
+                                    startTime:
+                                      type: string
+                                    endTime:
+                                      type: string
+                                    label:
+                                      type: string
+                                  required:
+                                    - id
+                                    - participationId
+                                    - timeSlotId
+                                    - startTime
+                                    - endTime
+                                  additionalProperties: false
+                              requirements:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                    shiftId:
+                                      type: string
+                                    participationId:
+                                      type: string
+                                    roleId:
+                                      type: string
+                                    teamId:
+                                      type: string
+                                    requiredCount:
+                                      type: number
+                                    notes:
+                                      type: string
+                                  required:
+                                    - id
+                                    - shiftId
+                                    - participationId
+                                    - roleId
+                                    - requiredCount
+                                  additionalProperties: false
+                            required:
+                              - slot
+                              - included
+                              - shifts
+                              - requirements
+                            additionalProperties: false
+                      required:
+                        - participation
+                        - event
+                        - slots
+                      additionalProperties: false
+                required:
+                  - events
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/participations/{participationId}/inclusions:
+    put:
+      operationId: setParticipationInclusions
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeSlotIds:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - timeSlotIds
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/leader/participations/{participationId}/slots/{timeSlotId}/shifts:
+    post:
+      operationId: splitParticipationShifts
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                strategy:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - equal-n
+                        n:
+                          type: integer
+                          minimum: 1
+                          maximum: 9007199254740991
+                      required:
+                        - kind
+                        - n
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - manual
+                        spans:
+                          minItems: 1
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              startTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                              endTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                              label:
+                                type: string
+                            required:
+                              - startTime
+                              - endTime
+                      required:
+                        - kind
+                        - spans
+              required:
+                - strategy
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: timeSlotId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shifts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        participationId:
+                          type: string
+                        timeSlotId:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        label:
+                          type: string
+                      required:
+                        - id
+                        - participationId
+                        - timeSlotId
+                        - startTime
+                        - endTime
+                      additionalProperties: false
+                required:
+                  - shifts
+                additionalProperties: false
+  /api/v1/leader/shifts/{shiftId}:
+    patch:
+      operationId: updateShift
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                label:
+                  type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: shiftId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  participationId:
+                    type: string
+                  timeSlotId:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  label:
+                    type: string
+                required:
+                  - id
+                  - participationId
+                  - timeSlotId
+                  - startTime
+                  - endTime
+                additionalProperties: false
+    delete:
+      operationId: deleteShift
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: shiftId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/leader/shifts/{shiftId}/requirements:
+    put:
+      operationId: upsertShiftRequirement
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleId:
+                  type: string
+                teamId:
+                  type: string
+                requiredCount:
+                  type: integer
+                  minimum: 1
+                  maximum: 9007199254740991
+                notes:
+                  type: string
+              required:
+                - roleId
+                - requiredCount
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: shiftId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  shiftId:
+                    type: string
+                  participationId:
+                    type: string
+                  roleId:
+                    type: string
+                  teamId:
+                    type: string
+                  requiredCount:
+                    type: number
+                  notes:
+                    type: string
+                required:
+                  - id
+                  - shiftId
+                  - participationId
+                  - roleId
+                  - requiredCount
+                additionalProperties: false
+  /api/v1/leader/participations/{participationId}/fire-availability:
+    post:
+      operationId: fireAvailability
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+      responses:
+        "202":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  createdCheckCount:
+                    type: number
+                  notifiedVolunteerCount:
+                    type: number
+                required:
+                  - createdCheckCount
+                  - notifiedVolunteerCount
+                additionalProperties: false
+  /api/v1/leader/participations/{participationId}/resend-availability:
+    post:
+      operationId: resendAvailabilityReminder
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard

@@ -3,6 +3,7 @@ import type {
   ChurchId,
   EventId,
   MinistryId,
+  PlanningCycleId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../../branded-ids';
@@ -15,6 +16,7 @@ import type { TransactionContext } from './transaction-context';
 
 export interface CreateVolunteerNotificationInput {
   volunteerId: VolunteerId;
+  planningCycleId?: PlanningCycleId;
   ministryId?: MinistryId;
   eventId?: EventId;
   assignmentId?: AssignmentId;

@@ -6,6 +6,7 @@ export * from './event-outside-planning-cycle';
 export * from './illegal-state-transition';
 export * from './invalid-date-range';
 export * from './invalid-required-count';
+export * from './invalid-shift-split';
 export * from './invalid-time-range';
 export * from './invalid-weekday';
 export * from './isolation-breach-error';

@@ -182,29 +182,6 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       throw new Error('Planning slot insert failed');
     }
 
-    const participations = await db
-      .select()
-      .from(ministryParticipation)
-      .where(
-        and(
-          eq(ministryParticipation.eventId, input.eventId),
-          withChurchIsolation(ministryParticipation, input.churchId),
-        ),
-      );
-
-    if (participations.length > 0) {
-      await db.insert(shift).values(
-        participations.map((participation) => ({
-          churchId: input.churchId,
-          participationId: participation.id,
-          timeSlotId: slotRow.id,
-          startTime: slotRow.startTime,
-          endTime: slotRow.endTime,
-          label: slotRow.label,
-        })),
-      );
-    }
-
     return slotRow.id as TimeSlotId;
   }
 

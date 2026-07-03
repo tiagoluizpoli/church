@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, UserId } from '../domain/branded-ids';
 import type {
+  CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
   SchedulingRbacManager,
@@ -39,5 +40,9 @@ export class DbSchedulingRbacManager implements SchedulingRbacManager {
   async canManageShift(input: CanManageShiftInput): Promise<boolean> {
     const ministryId = await this.scopes.resolveShiftMinistry(input);
     return this.canManage({ ...input, ministryId });
+  }
+
+  async canManageMinistry(input: CanManageMinistryInput): Promise<boolean> {
+    return this.canManage(input);
   }
 }

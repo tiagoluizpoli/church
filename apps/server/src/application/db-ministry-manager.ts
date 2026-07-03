@@ -1,7 +1,10 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
-import type { ChurchId, VolunteerId } from '../domain/branded-ids';
-import type { IMinistryManager } from '../domain/contracts/application/ministry-manager';
+import type {
+  IMinistryManager,
+  ListMinistriesByLeaderInput,
+  SetDefaultDirectionInput,
+} from '../domain/contracts/application/ministry-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Ministry } from '../domain/entities/ministry';
@@ -15,10 +18,7 @@ export class DbMinistryManager implements IMinistryManager {
     private readonly volunteerRepo: VolunteerRepository,
   ) {}
 
-  async listByLeader(input: {
-    leaderId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<Ministry[]> {
+  async listByLeader(input: ListMinistriesByLeaderInput): Promise<Ministry[]> {
     const { leaderId, churchId } = input;
     const ledMinistries = await this.volunteerRepo.listLedMinistries(
       churchId,
@@ -30,5 +30,11 @@ export class DbMinistryManager implements IMinistryManager {
       ),
     );
     return ministries;
+  }
+
+  async setDefaultDirection(
+    input: SetDefaultDirectionInput,
+  ): Promise<Ministry> {
+    return this.ministryRepo.updateDefaultDirection(input);
   }
 }

@@ -4,6 +4,7 @@ import type {
   ChurchId,
   EventId,
   MinistryId,
+  PlanningCycleId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../branded-ids';
@@ -29,6 +30,7 @@ export type VolunteerNotificationPayload = Record<string, string | null> & {
 export interface VolunteerNotificationProps {
   churchId: ChurchId;
   volunteerId: VolunteerId;
+  planningCycleId?: PlanningCycleId;
   ministryId?: MinistryId;
   eventId?: EventId;
   assignmentId?: AssignmentId;
@@ -73,6 +75,10 @@ export class VolunteerNotification extends Entity<
 
   get volunteerId(): VolunteerId {
     return this._props.volunteerId;
+  }
+
+  get planningCycleId(): PlanningCycleId | undefined {
+    return this._props.planningCycleId;
   }
 
   get ministryId(): MinistryId | undefined {

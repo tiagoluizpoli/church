@@ -1,0 +1,119 @@
+import { describe, expect, it } from 'vitest';
+import type {
+  ChurchId,
+  EventId,
+  MinistryId,
+} from '../../../src/domain/branded-ids';
+import {
+  calculateCompletionPercent,
+  MinistryParticipation,
+} from '../../../src/domain/entities/ministry-participation';
+import {
+  BelowFullPublishError,
+  IllegalStateTransitionError,
+} from '../../../src/domain/errors';
+
+const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
+const ministryId = '33333333-3333-4333-8333-333333333331' as MinistryId;
+const eventId = '99999999-9999-4999-8999-999999999999' as EventId;
+
+interface BuildParticipationInput {
+  state?: 'tailoring' | 'availability_fired' | 'rostering' | 'published';
+}
+
+function buildParticipation({
+  state,
+}: BuildParticipationInput = {}): MinistryParticipation {
+  return new MinistryParticipation({
+    props: {
+      churchId,
+      ministryId,
+      eventId,
+      state,
+    },
+  });
+}
+
+describe('MinistryParticipation lifecycle (DL1-MP)', () => {
+  it('DL1-MP-01 defaults to tailoring state', () => {
+    const participation = buildParticipation();
+
+    expect(participation.state).toBe('tailoring');
+    expect(participation.churchId).toBe(churchId);
+    expect(participation.ministryId).toBe(ministryId);
+    expect(participation.eventId).toBe(eventId);
+  });
+
+  it('DL1-MP-02 transitions in order tailoring→availability_fired→rostering→published', () => {
+    const participation = buildParticipation();
+
+    participation.fireAvailability();
+    expect(participation.state).toBe('availability_fired');
+
+    participation.startRostering();
+    expect(participation.state).toBe('rostering');
+
+    participation.publish({ completionPercent: 100 });
+    expect(participation.state).toBe('published');
+  });
+
+  it('DL1-MP-03 rejects skipped transitions', () => {
+    const participation = buildParticipation();
+
+    expect(() => participation.publish({ completionPercent: 100 })).toThrow(
+      IllegalStateTransitionError,
+    );
+    expect(() => participation.startRostering()).toThrow(
+      IllegalStateTransitionError,
+    );
+  });
+
+  it('DL1-MP-04 rejects re-firing from published', () => {
+    const participation = buildParticipation({ state: 'published' });
+
+    expect(() => participation.fireAvailability()).toThrow(
+      IllegalStateTransitionError,
+    );
+  });
+
+  it('DL1-MP-05 computes completion percent; zero required means 100% (CL-022)', () => {
+    expect(
+      calculateCompletionPercent({ assignedCount: 3, requiredCount: 4 }),
+    ).toBe(75);
+    expect(
+      calculateCompletionPercent({ assignedCount: 0, requiredCount: 5 }),
+    ).toBe(0);
+    expect(
+      calculateCompletionPercent({ assignedCount: 5, requiredCount: 5 }),
+    ).toBe(100);
+    expect(
+      calculateCompletionPercent({ assignedCount: 0, requiredCount: 0 }),
+    ).toBe(100);
+    expect(
+      calculateCompletionPercent({ assignedCount: 7, requiredCount: 5 }),
+    ).toBe(100);
+  });
+
+  it('DL1-MP-06 publish below 100% requires the explicit confirm flag', () => {
+    const blocked = buildParticipation({ state: 'rostering' });
+
+    expect(() => blocked.publish({ completionPercent: 80 })).toThrow(
+      BelowFullPublishError,
+    );
+    expect(blocked.state).toBe('rostering');
+
+    const confirmed = buildParticipation({ state: 'rostering' });
+    confirmed.publish({ completionPercent: 80, confirmBelowFull: true });
+    expect(confirmed.state).toBe('published');
+  });
+
+  it('DL1-MP-07 publish mutates only its own state', () => {
+    const publishing = buildParticipation({ state: 'rostering' });
+    const sibling = buildParticipation({ state: 'tailoring' });
+
+    publishing.publish({ completionPercent: 100 });
+
+    expect(publishing.state).toBe('published');
+    expect(sibling.state).toBe('tailoring');
+  });
+});

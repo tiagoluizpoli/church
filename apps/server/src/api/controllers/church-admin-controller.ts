@@ -6,10 +6,16 @@ import {
   ChurchId,
   EventId,
   EventTemplateId,
+  MinistryId,
   PlanningCycleId,
+  RoleId,
+  TeamId,
+  TimeBlockId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
+import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
+import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
 import type { IPlanningCycleManager } from '../../domain/contracts/application/planning-cycle-manager';
 import type { IPlanningEventManager } from '../../domain/contracts/application/planning-event-manager';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
@@ -28,6 +34,7 @@ import {
   eventTemplateResponseSchema,
   generatedPlanningCountsResponseSchema,
 } from '../dtos/event-template.dto';
+import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
   createPlanningCycleBodySchema,
   listPlanningCyclesQuerySchema,
@@ -36,6 +43,14 @@ import {
   planningCycleMapper,
   planningCycleResponseSchema,
 } from '../dtos/planning-cycle.dto';
+import {
+  type SetDefaultDirectionBody,
+  servingProfileMapper,
+  servingProfileResponseSchema,
+  setDefaultDirectionBodySchema,
+  type UpsertServingProfileBody,
+  upsertServingProfileBodySchema,
+} from '../dtos/serving-profile.dto';
 import { headersFromRequest } from '../utils/headers';
 
 interface PlanningCycleRouteParams {
@@ -49,6 +64,10 @@ interface EventTemplateRouteParams {
 interface PlanningEventRouteParams {
   cycleId: string;
   eventId: string;
+}
+
+interface MinistryRouteParams {
+  ministryId: string;
 }
 
 const manualPlanningEventBodySchema = createEventBodySchema.omit({
@@ -73,6 +92,10 @@ export class ChurchAdminController implements FastifyController {
     private readonly planningEventManager: IPlanningEventManager,
     @inject('IVolunteerManager')
     private readonly volunteerManager: IVolunteerManager,
+    @inject('IParticipationManager')
+    private readonly participationManager: IParticipationManager,
+    @inject('IMinistryManager')
+    private readonly ministryManager: IMinistryManager,
   ) {}
 
   registerRoutes(
@@ -369,6 +392,85 @@ export class ChurchAdminController implements FastifyController {
           eventId: EventId.from(eventId),
         });
         return reply.status(204).send();
+      },
+    );
+
+    app.get(
+      '/ministries/:ministryId/serving-profile',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'getMinistryServingProfile',
+          summary: 'getMinistryServingProfile',
+          description:
+            'Get the serving profile for a specific ministry, including roles and teams.',
+          response: { 200: servingProfileResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { ministryId } = request.params as MinistryRouteParams;
+        const profiles = await this.participationManager.getServingProfile({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+        });
+        return reply.send(servingProfileMapper.toResponse(profiles));
+      },
+    );
+
+    app.put(
+      '/ministries/:ministryId/serving-profile',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'upsertMinistryServingProfile',
+          body: upsertServingProfileBodySchema,
+          response: { 200: servingProfileResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { ministryId } = request.params as MinistryRouteParams;
+        const body = request.body as UpsertServingProfileBody;
+        const profiles = await this.participationManager.upsertServingProfile({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          entries: body.entries.map((entry) => ({
+            sourceTemplateBlockId: TimeBlockId.from(
+              entry.sourceTemplateBlockId,
+            ),
+            serves: entry.serves,
+            shiftSplit: entry.shiftSplit,
+            headcounts: entry.headcounts.map((headcount) => ({
+              roleId: RoleId.from(headcount.roleId),
+              teamId: headcount.teamId
+                ? TeamId.from(headcount.teamId)
+                : undefined,
+              count: headcount.count,
+            })),
+          })),
+        });
+        return reply.send(servingProfileMapper.toResponse(profiles));
+      },
+    );
+
+    app.patch(
+      '/ministries/:ministryId/default-direction',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'setMinistryDefaultDirection',
+          body: setDefaultDirectionBodySchema,
+          response: { 200: ministryResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { ministryId } = request.params as MinistryRouteParams;
+        const body = request.body as SetDefaultDirectionBody;
+        const ministry = await this.ministryManager.setDefaultDirection({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          defaultDirection: body.defaultDirection,
+        });
+        return reply.send(ministryMapper.toResponse(ministry));
       },
     );
   }

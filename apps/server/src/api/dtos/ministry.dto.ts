@@ -7,6 +7,7 @@ export const ministryResponseSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   enforcementType: z.enum(['soft', 'hard']),
+  defaultDirection: z.enum(['all_in', 'all_out']),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -25,6 +26,7 @@ export const ministryMapper = {
       name: ministry.name,
       description: ministry.description,
       enforcementType: ministry.enforcementType,
+      defaultDirection: ministry.defaultDirection,
       createdAt: ministry.createdAt.toISOString(),
       updatedAt: ministry.updatedAt.toISOString(),
     };

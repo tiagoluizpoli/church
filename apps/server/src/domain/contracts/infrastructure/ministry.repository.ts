@@ -1,6 +1,17 @@
 import type { ChurchId, MinistryId } from '../../branded-ids';
-import type { Ministry, MinistrySettings } from '../../entities/ministry';
+import type {
+  DefaultDirection,
+  Ministry,
+  MinistrySettings,
+} from '../../entities/ministry';
 import type { TransactionContext } from './transaction-context';
+
+export interface UpdateMinistryDefaultDirectionInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  defaultDirection: DefaultDirection;
+  tx?: TransactionContext;
+}
 
 export interface MinistryRepository {
   getById(
@@ -19,4 +30,8 @@ export interface MinistryRepository {
     ministryId: MinistryId,
     tx?: TransactionContext,
   ): Promise<MinistrySettings>;
+
+  updateDefaultDirection(
+    input: UpdateMinistryDefaultDirectionInput,
+  ): Promise<Ministry>;
 }

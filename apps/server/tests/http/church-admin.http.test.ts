@@ -8,6 +8,9 @@ import {
   vi,
 } from 'vitest';
 import { ChurchAdminController } from '../../src/api/controllers/church-admin-controller';
+import { RoleId } from '../../src/domain/branded-ids';
+import { Ministry } from '../../src/domain/entities/ministry';
+import { MinistryServingProfile } from '../../src/domain/entities/ministry-serving-profile';
 import { IllegalStateTransitionError } from '../../src/domain/errors/illegal-state-transition';
 import { OverlappingCycleError } from '../../src/domain/errors/overlapping-cycle';
 import { createFastify } from '../../src/main/fastify/setup';
@@ -54,6 +57,15 @@ const planningEventManager = {
   cancelEvent: vi.fn(),
 };
 
+const participationManager = {
+  getServingProfile: vi.fn(),
+  upsertServingProfile: vi.fn(),
+};
+
+const ministryManager = {
+  setDefaultDirection: vi.fn(),
+};
+
 const volunteerManager = {
   resolveVolunteerContext: vi.fn(),
 };
@@ -70,6 +82,39 @@ function createVolunteerContext(input?: Partial<MockVolunteerContext>) {
   };
 }
 
+function createServingProfile(): MinistryServingProfile {
+  return new MinistryServingProfile({
+    id: '55555555-5555-5555-8555-555555555555',
+    props: {
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryId: '33333333-3333-3333-3333-333333333333',
+      sourceTemplateBlockId: '77777777-7777-7777-8777-777777777777',
+      serves: true,
+      shiftSplit: { kind: 'equal', count: 2 },
+      headcounts: [
+        {
+          roleId: RoleId.from('88888888-8888-8888-8888-888888888888'),
+          count: 3,
+        },
+      ],
+    },
+  });
+}
+
+function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
+  return new Ministry(
+    {
+      churchId: '11111111-1111-1111-1111-111111111111',
+      name: 'Projection',
+      enforcementType: 'soft',
+      defaultDirection,
+    },
+    '33333333-3333-3333-3333-333333333333',
+    new Date('2026-07-01T00:00:00.000Z'),
+    new Date('2026-07-01T00:00:00.000Z'),
+  );
+}
+
 beforeAll(async () => {
   app = await createFastify();
   const controller = new ChurchAdminController(
@@ -77,6 +122,8 @@ beforeAll(async () => {
     templateManager as never,
     planningEventManager as never,
     volunteerManager as never,
+    participationManager as never,
+    ministryManager as never,
   );
   await app.register(
     async (instance) => {
@@ -204,5 +251,75 @@ describe('Church admin planning routes', () => {
     });
 
     expect(invalid.statusCode).toBe(422);
+  });
+
+  it('serves ministry profile routes and returns updated default direction', async () => {
+    const servingProfile = createServingProfile();
+    participationManager.getServingProfile.mockResolvedValue([servingProfile]);
+    participationManager.upsertServingProfile.mockResolvedValue([
+      servingProfile,
+    ]);
+    ministryManager.setDefaultDirection.mockResolvedValue(
+      createMinistry('all_in'),
+    );
+
+    const getResponse = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/serving-profile',
+    });
+
+    expect(getResponse.statusCode).toBe(200);
+    expect(getResponse.json()).toEqual({
+      entries: [
+        {
+          id: '55555555-5555-5555-8555-555555555555',
+          ministryId: '33333333-3333-3333-3333-333333333333',
+          sourceTemplateBlockId: '77777777-7777-7777-8777-777777777777',
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 2 },
+          headcounts: [
+            {
+              roleId: '88888888-8888-8888-8888-888888888888',
+              count: 3,
+            },
+          ],
+        },
+      ],
+    });
+
+    const putResponse = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/serving-profile',
+      payload: {
+        entries: [
+          {
+            sourceTemplateBlockId: '77777777-7777-7777-8777-777777777777',
+            serves: true,
+            shiftSplit: { kind: 'equal', count: 2 },
+            headcounts: [
+              {
+                roleId: '88888888-8888-8888-8888-888888888888',
+                count: 3,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(putResponse.statusCode).toBe(200);
+
+    const patchResponse = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/default-direction',
+      payload: { defaultDirection: 'all_in' },
+    });
+
+    expect(patchResponse.statusCode).toBe(200);
+    expect(patchResponse.json()).toMatchObject({
+      id: '33333333-3333-3333-3333-333333333333',
+      defaultDirection: 'all_in',
+      enforcementType: 'soft',
+    });
   });
 });

@@ -1,5 +1,6 @@
 import type {
   ChurchId,
+  MinistryId,
   MinistryParticipationId,
   ShiftId,
   UserId,
@@ -17,7 +18,14 @@ export interface CanManageShiftInput {
   userId: UserId;
 }
 
+export interface CanManageMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  userId: UserId;
+}
+
 export interface SchedulingRbacManager {
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
+  canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
 }

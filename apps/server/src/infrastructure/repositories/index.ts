@@ -1,13 +1,17 @@
 export { DrizzleAssignmentRepository } from './drizzle-assignment.repository';
 export { DrizzleAssignmentAuditRepository } from './drizzle-assignment-audit.repository';
 export { DrizzleAvailabilityRepository } from './drizzle-availability.repository';
+export { DrizzleAvailabilityCheckRepository } from './drizzle-availability-check.repository';
 export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
 export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
+export { DrizzleMinistryParticipationRepository } from './drizzle-ministry-participation.repository';
+export { DrizzleMinistryServingProfileRepository } from './drizzle-ministry-serving-profile.repository';
 export { DrizzlePlanningCycleRepository } from './drizzle-planning-cycle.repository';
 export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
 export { DrizzleRoleRepository } from './drizzle-role.repository';
+export { DrizzleShiftRepository } from './drizzle-shift.repository';
 export { DrizzleTeamRepository } from './drizzle-team.repository';
 export { DrizzleTimeSlotRepository } from './drizzle-time-slot.repository';
 export { DrizzleTransactionContext } from './drizzle-transaction-context';

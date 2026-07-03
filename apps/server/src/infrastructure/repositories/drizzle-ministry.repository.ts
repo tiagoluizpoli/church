@@ -1,8 +1,11 @@
 import { NotFoundError } from '@church/core';
 import { ministry } from '@church/db';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { ChurchId, MinistryId } from '../../domain/branded-ids';
-import type { MinistryRepository } from '../../domain/contracts/infrastructure/ministry.repository';
+import type {
+  MinistryRepository,
+  UpdateMinistryDefaultDirectionInput,
+} from '../../domain/contracts/infrastructure/ministry.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   Ministry,
@@ -56,5 +59,30 @@ export class DrizzleMinistryRepository implements MinistryRepository {
       enforcementType: m.enforcementType,
       defaultDirection: m.defaultDirection,
     };
+  }
+
+  async updateDefaultDirection(
+    input: UpdateMinistryDefaultDirectionInput,
+  ): Promise<Ministry> {
+    const db = getClient(this.db, input.tx);
+    const [row] = await db
+      .update(ministry)
+      .set({
+        defaultDirection: input.defaultDirection,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(ministry.id, input.ministryId),
+          withChurchIsolation(ministry, input.churchId),
+        ),
+      )
+      .returning();
+
+    if (!row) {
+      throw new NotFoundError(`Ministry not found: ${input.ministryId}`);
+    }
+
+    return mapMinistry(row);
   }
 }

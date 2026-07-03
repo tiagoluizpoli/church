@@ -10,13 +10,30 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 
 | ID     | Title                                          | Category        | Status    |
 |--------|------------------------------------------------|-----------------|-----------|
-| BL-001 | Real-time builder updates on availability change | Schedule Builder | Backlog |
-| BL-002 | Schedule duplication from past events          | Schedule Builder | Backlog |
-| BL-003 | Per-event volunteer exclusion by leader        | Schedule Builder | Backlog |
+| BL-001 | Real-time builder updates on availability change | Schedule Builder | Backlog (transport note stale — see reconciliation) |
+| BL-002 | Schedule duplication from past events          | Schedule Builder | **Review — largely superseded by 017 templates/cycles** |
+| BL-003 | Per-event volunteer exclusion by leader        | Schedule Builder | Backlog (re-map to 017 entities) |
 | BL-004 | Separate "Now Serving" section for in-progress assignments | Volunteer Dashboard | Backlog |
-| BL-005 | Configurable cooldown for repeated availability reminders | Volunteer Dashboard | Backlog |
-| BL-006 | Team-aware assignment attribution in Ministry Schedule view | Volunteer Dashboard | Backlog |
-| BL-007 | Volunteer-authenticated E2E specs for the volunteer dashboard | Volunteer Dashboard | Backlog |
+| BL-005 | Configurable cooldown for repeated availability reminders | Volunteer Dashboard | Backlog (re-scope event → cycle) |
+| BL-006 | Team-aware assignment attribution in Ministry Schedule view | Volunteer Dashboard | **Likely obsolete — resolved natively by 017** |
+| BL-007 | Volunteer-authenticated E2E specs for the volunteer dashboard | Volunteer Dashboard | Backlog (re-point to 017) |
+| BL-008 | `MinistryServingProfile` authoring UX polish   | Scheduling Reshape (017) | Backlog |
+| BL-009 | Free-standing role-count presets (ex-`RoleTemplate`) | Scheduling Reshape (017) | Backlog |
+| BL-010 | Per-ministry `Shift` model refinements         | Scheduling Reshape (017) | Backlog |
+
+---
+
+## Reconciliation against the 017 Architecture Reshape (2026-07-02)
+
+The 017 reshape (grilled 2026-07-02; see `CONTEXT.md` + `docs/adr/0001`, `docs/adr/0002`) changes the domain enough that several existing items need re-evaluation. Summary of impact — **do not action blindly; each carries a note below:**
+
+- **BL-001** — Still valid. The tRPC transport premise is stale: 016 replaced tRPC with Fastify, so the SSE/WebSocket upgrade path now sits on Fastify. Concept (live conflict-badge refresh) survives; the "current event's volunteers" scope becomes "current participation's shifts".
+- **BL-002** — **Largely superseded.** The recurring-event problem it solved is now handled by `EventTemplate` + `PlanningCycle` + `MinistryServingProfile`. Residual value only for copying *dynamic* multi-day events (e.g. "Annual Retreat 2025 → 2026"), which are not template-generated. Re-scope to "duplicate a dynamic Event" or close.
+- **BL-003** — Still valid; "event" maps to a `MinistryParticipation`, exclusion hides a volunteer from that participation's pool/suggestions. Re-map entity names.
+- **BL-004** — Unaffected. Pure volunteer-dashboard UX; carries forward.
+- **BL-005** — Still valid but **re-scope**: reminders are now per `PlanningCycle`, and "resend" is a first-class leader action (Q11). Cooldown key becomes `(volunteer, cycle)`, gating the resend.
+- **BL-006** — **Likely obsolete.** The `slotId + roleId` ambiguity came from assignments not carrying team. In 017, `Assignment` scopes to a `MinistryParticipation` and attaches to a `Shift`, and requirements carry `Role + Team` under that participation — so team attribution is native. Expect the `claimedAssignmentIds` workaround and this item to disappear when 017 lands. Verify during 017, then close.
+- **BL-007** — Still valid as a testing requirement, but the volunteer dashboard is rebuilt in 017; re-point the specs at the 017 dashboard and its `VOLUNTEER_STORAGE_STATE`.
 
 ---
 
@@ -323,3 +340,89 @@ The volunteer dashboard is a volunteer-facing feature. A volunteer user has a di
 - Requires E2E seed changes and a second Playwright auth setup, which adds test infrastructure complexity.
 - The integration tests (server-side) already validate data scoping with `createCaller(SEED.userAlice)` at the unit level.
 - The leader-authenticated E2E specs still exercise the correct UI flows and catch regressions in rendering and interaction.
+
+---
+
+### BL-008 — `MinistryServingProfile` authoring UX polish
+
+**Status**: Backlog
+
+**Feature area**: Scheduling Reshape (Spec 017 / architecture reshape grilled 2026-07-02)
+
+**Summary**: The first cut of `MinistryServingProfile` (the ministry's standing "template extension" over the admin's `EventTemplate`s) ships with a functional but minimal authoring surface. Richer authoring — bulk edit, per-Team defaults, previewing what a profile will seed before a cycle is generated — is deferred.
+
+**Full Context**:
+
+Grilled 2026-07-02 (question "A"). Decided:
+
+- `MinistryServingProfile` records, per admin `TimeBlock`: whether the ministry serves it, how it splits it into `Shift`s, and per-`Shift` headcount (per Role/Team).
+- On cycle generation it seeds inclusions + shifts + `SlotRequirement`s into each `MinistryParticipation`; the leader confirms/tweaks.
+- The MVP authoring UI is "a matrix of template blocks with a serve toggle + counts". That is enough to prove the flow.
+
+**Deferred polish**:
+
+- Preview: "if I apply this profile to next month, here's exactly what gets seeded."
+- Bulk operations across multiple templates/blocks at once.
+- Per-Team split presets within a block.
+- Copying one ministry's profile as a starting point for another.
+
+**Why deferred**: The user explicitly flagged (question "A") that the `Shift`/profile model is "close enough for now, improvements later." Core seeding is the MVP; authoring ergonomics are refinement.
+
+**Prerequisites**: `EventTemplate`, `TimeBlock`, `MinistryServingProfile`, `MinistryParticipation`, and `Shift` shipped in 017.
+
+---
+
+### BL-009 — Free-standing role-count presets (the dropped `RoleTemplate`)
+
+**Status**: Backlog
+
+**Feature area**: Scheduling Reshape (Spec 017 / architecture reshape grilled 2026-07-02)
+
+**Summary**: The legacy `RoleTemplate`/`RoleTemplateItem` concept (a reusable named `(role → count)` bundle) is **removed for the 017 MVP**. If the need for count presets *independent of any recurring template block* proves real, re-introduce it.
+
+**Full Context**:
+
+Grilled 2026-07-02 (question "B"). Decided to delete `RoleTemplate` because:
+
+- Recurring events get their counts from `MinistryServingProfile`.
+- Dynamic events get counts by copying from an existing serving-profile block or manual entry.
+- A separate free-standing preset library is extra complexity the MVP does not need.
+
+**When to revisit**: If leaders repeatedly want a named count bundle that is *not* tied to a Sunday/Wednesday block — e.g. a "Standard Nursery = Teacher×1, Helper×4" they stamp onto arbitrary dynamic events — bring it back as a small `SlotRequirement` preset that can be applied to any `Shift`.
+
+**Why deferred**: User: "for the MVP it's too much... remove it, if we do need it we add it in the future."
+
+**Prerequisites**: Evidence from real leader usage that copy-from-profile is insufficient for dynamic events.
+
+---
+
+### BL-010 — Per-ministry `Shift` model refinements
+
+**Status**: Backlog
+
+**Feature area**: Scheduling Reshape (Spec 017 / architecture reshape grilled 2026-07-02)
+
+**Summary**: The **core** `Shift` model ships in the 017 MVP (see below). Only two *convenience* refinements are deferred here.
+
+**In the 017 MVP (NOT deferred — clarified 2026-07-02):**
+
+- `TimeSlot` is church-level (shared, opt-in/out); `Shift` is the per-`MinistryParticipation` subdivision that carries `SlotRequirement`s, `Assignment`s, and `Availability` marks.
+- Default is one `Shift` = the whole `TimeSlot`.
+- **Bounds invariant**: a `Shift` must lie entirely within its parent `TimeSlot`; the creation form blocks start/end outside the slot.
+- **Creation by count**: divide the slot's span into N equal parts.
+- **Creation manually**: set shift times by hand, unequal parts allowed.
+
+**Deferred refinements (this item):**
+
+- Shared/reusable shift layouts across events (save a split, restamp it) — no templating of shifts in MVP.
+- Cross-ministry visibility of how others split the same `TimeSlot` (coordination).
+
+**Open 017 design question (resolve while speccing 017, not deferred past MVP):**
+
+- The **manual-shift creation UX** — timeline drag-and-drop, a fine-granularity (e.g. 5-min) picker, etc. The UI will shape the underlying representation, so grill it during the 017 spec. Left unlocked deliberately.
+
+**Rejected (not deferred — do not build):**
+
+- Volunteer availability spanning *partial* `Shift`s. By design the availability atom **is** the whole `Shift` (Q7). A finer grain contradicts a locked decision.
+
+**Prerequisites**: `TimeSlot` + `Shift` shipped in 017; real usage revealing which convenience refinement matters first.

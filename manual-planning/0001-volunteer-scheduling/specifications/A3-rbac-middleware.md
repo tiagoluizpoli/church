@@ -6,6 +6,8 @@ Implement reusable tRPC middleware for enforcing ministry-level and church-level
 ## 1. Middleware Types
 - `churchAdminProcedure`: Only users with global admin role (defined as a `leader` in the `Administration` ministry).
 - `ministryLeaderProcedure`: Only users with `leader` role in the target ministry. Inspects `rawInput` for `ministryId`, `eventId`, or `slotId` (resolving parent ministry if needed).
+
+  **Refined (017, 2026-07-02):** Since Events are church-owned, the leader-context resolver no longer reaches the ministry via `Event`. It resolves the ministry via **`MinistryParticipation`** (`participationId`, or `ministryId` + `eventId`) and resolves staffing via **`Shift`** (`shiftId`) rather than a bare `slotId`. (see ADR 0001 / ADR 0002 / CONTEXT.md)
 - `teamLeaderProcedure`: Only users with `sub_leader` role in the target team.
 
 ## 2. Logic & Rules

@@ -24,6 +24,8 @@ Define the TypeScript interfaces for all data access. This ensures we can mock t
 - `createWithSlots(churchId: string, data: CreateEventInput): Promise<Event>`
 - `listPublished(churchId: string, ministryId: string): Promise<Event[]>`
 
+**Refined (017, 2026-07-02):** `listPublished(churchId, ministryId)` is invalid — Events are neither ministry-scoped nor "published". Replace with cycle/participation-oriented queries, e.g. `listEventsByCycle(churchId, planningCycleId): Event[]`, `getParticipation(churchId, ministryId, eventId): MinistryParticipation`, and `listPublishedParticipations(churchId, ministryId): MinistryParticipation[]` (participations whose roster is published). (see ADR 0001 / CONTEXT.md)
+
 ## 2. Common Patterns
 - All methods **MUST** accept `churchId` as the first argument to enforce isolation.
 - Methods should return Domain Entities (Spec D1), not Drizzle-specific objects.

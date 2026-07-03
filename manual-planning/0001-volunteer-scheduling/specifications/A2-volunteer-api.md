@@ -15,6 +15,8 @@ Expose service and availability management for Volunteers.
 - `markAllNotificationsRead`: Marks all visible scheduling notifications as read for the current volunteer.
 - `getMinistrySchedule`: Returns current and upcoming published schedule data for one selected Ministry, read-only, with pagination or progressive expansion support as needed.
 
+**Refined (017, 2026-07-02):** "Future **published** assignments" now means assignments whose owning **`MinistryParticipation` is published** (Events are never "published"). Availability endpoints re-scope to the new model: add **cycle-scoped `AvailabilityCheck`** endpoints keyed to `(PlanningCycle, membership)` and a **confirm** endpoint (`pending -> confirmed`, sets `confirmedAt`, valid even with zero marks); `upsertAvailability`/`getMyAvailability` map onto per-**`Shift`** unavailability marks under a check rather than free-form spans or bare Event slots. (see ADR 0001 / ADR 0002 / CONTEXT.md)
+
 ## 2. Input Validation & Policies
 - Use **Zod** for all input schemas.
 - **Timezone**: Dates must be received as absolute UTC.

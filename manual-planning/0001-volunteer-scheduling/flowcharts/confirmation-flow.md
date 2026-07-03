@@ -16,11 +16,11 @@ sequenceDiagram
     
     alt Confirm
         V->>API: POST /confirm-assignment
-        API->>API: Status -> CONFIRMED
+        API->>API: Status → CONFIRMED
         API-->>L: In-app Alert: "Volunteer Confirmed"
     else Decline
         V->>API: POST /decline-assignment
-        API->>API: Status -> DECLINED
+        API->>API: Status → DECLINED
         API-->>L: Push Notification: "Volunteer Declined"
         L->>L: Finds replacement
     end

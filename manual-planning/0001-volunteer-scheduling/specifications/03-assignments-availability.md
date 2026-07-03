@@ -19,6 +19,8 @@ The record of a volunteer being assigned to a specific requirement.
 - **assigned_at**: Timestamp
 - **assigned_by**: UUID (Foreign Key to User)
 
+**Refined (017, 2026-07-02):** An `Assignment` now attaches to a **`shift_id`** (a `Shift`) instead of `slot_id`, and carries `participationId` (its `MinistryParticipation`; equivalently `ministryId` + `teamId` scope). This makes BL-006 team attribution native — the participation link resolves which ministry the assignment belongs to. One Assignment per volunteer per Shift (no double-booking). (see ADR 0001 / ADR 0002 / CONTEXT.md)
+
 ---
 
 ## 2. Availability Entity
@@ -34,6 +36,8 @@ Reporting when a volunteer is *not* able to serve.
 - **is_all_day**: Boolean
 - **reason**: String (Optional)
 - **repeat_rule**: String (Optional RRULE string for recurring blockouts)
+
+**Refined (017, 2026-07-02):** Availability is reshaped. A volunteer is **available by default**; an `Availability` record is now an **unavailability mark** whose atomic unit is a single **`Shift`** (a "whole day" action marks every Shift on that date). Each mark hangs off an `AvailabilityCheck` — one per `(PlanningCycle, MinistryVolunteer membership)` — which carries a **confirm gate** (`pending → confirmed`, with `confirmedAt`) that flips even when zero marks are set (distinguishes "acknowledged, available" from "hasn't looked"). This removes the old volunteer-global free-span default-"unavailable" (blockout) framing; the `type`/`is_all_day`/`repeat_rule` free-span fields no longer model availability. (see ADR 0001 / ADR 0002 / CONTEXT.md)
 
 ---
 

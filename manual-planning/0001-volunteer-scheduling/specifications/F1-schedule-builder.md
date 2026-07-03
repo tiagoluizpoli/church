@@ -12,6 +12,8 @@ Define the complex, desktop-first UI for Ministry Leaders to build and manage vo
 
 ## 1. Core Layout *(original)*
 - **Event Header**: Title, Date Range, Status (Draft/Published), and "Publish" button.
+
+**Refined (017, 2026-07-02):** The builder now operates **within a locked `PlanningCycle`, on the ministry's `MinistryParticipation`** for a church-owned Event (leaders no longer create/own the Event). The header "Publish" is a **per-participation roster-publish** (`MinistryParticipation rostering -> published`), separate from the ChurchAdmin cycle-lock. Event status shown reflects the new `draft | scheduled | cancelled | past` enum ("Published" is no longer an Event state). Rows/cells staff **`Shift`s**, not bare TimeSlots. Applies to the header definition below (`Right primary actions: Publish`) too. (see ADR 0001 / ADR 0002 / CONTEXT.md)
 - **Sidebar (Volunteer Pool)**:
     - Search/Filter by name or role.
     - Status indicators (Available, Conflict, Double-booked).
@@ -130,6 +132,8 @@ The following decisions were made during a detailed grilling session on the Sche
 **Original**: Not mentioned.
 **Added**: After slot generation, leaders can apply a saved role template to populate all slots with role requirements in one step. Templates are ministry-scoped and managed in Ministry settings.
 - **Why not in builder**: Role type creation in the builder risks typos and duplicates. Configuration belongs in settings; the builder only consumes configuration.
+
+**Refined (017, 2026-07-02):** The **Role Templates** concept is **removed** — `RoleTemplate` is deleted for MVP (BL-009). Recurring per-Shift counts now seed from the ministry's `MinistryServingProfile`; dynamic-event counts come from copying a profile block or manual entry. Drop the "role template selection step" from the auto-generation wizard. (see ADR 0002 / CONTEXT.md)
 
 ---
 

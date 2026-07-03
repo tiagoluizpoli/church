@@ -8,6 +8,8 @@ Manage the high-level lifecycle of schedules (Publishing, Cancellations, Substit
 2. Change all `Assignment.status` from `draft` to `pending` (awaiting confirmation).
 3. Notify all assigned volunteers.
 
+**Refined (017, 2026-07-02):** Publishing is now **per `MinistryParticipation`**, not per Event. The flow becomes: (1) flip only **that ministry's** draft assignments (under its participation) `draft -> pending`; (2) transition its `MinistryParticipation` `rostering -> published`; (3) notify only **that ministry's** volunteers. `Event.status` is not touched here ("published" left the Event — see 12-lifecycle-rules). This is distinct from the **ChurchAdmin cycle-lock** (`PlanningCycle draft -> locked`) that happens earlier. Publish may proceed **below 100 %** staffed with a confirmation prompt (no hard block); completion % is computed per participation. (see ADR 0001 / CONTEXT.md)
+
 ## 2. Cancellation Logic
 - **Event Cancellation**: Mark event as `cancelled`, delete future assignments, and notify volunteers.
 - **Assignment Decline**: When a volunteer declines, mark as `declined` and notify the Ministry Leader.

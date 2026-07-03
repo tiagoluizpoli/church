@@ -10,6 +10,8 @@ Define the **core domain concepts and relationships** required to support:
 
 This document is **technology-agnostic** and should guide future schema design.
 
+> **Refined (017, 2026-07-02):** This model has been reshaped. Events are now **church-owned** and planned in **`PlanningCycle`s** generated from **`EventTemplate`s**, then tailored per ministry via **`MinistryParticipation`** and staffed at the **`Shift`** level. The concepts below are annotated inline; new concepts are listed in the "017 Reshape — New Concepts" block at the end. Authoritative: [`CONTEXT.md`](../../CONTEXT.md), [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md), [refinement-02](./refinement-02-scheduling-reshape.md).
+
 ---
 
 ## Core Domain Concepts
@@ -20,6 +22,8 @@ A logical group within the church (e.g., Projection, Kids, Worship).
 - Owns roles (Ministry-specific roles)
 - Owns events
 - Has volunteers
+
+> **Refined (017):** A Ministry **no longer owns Events** — Events are church-owned. A Ministry *participates* in an Event via a `MinistryParticipation`. A Ministry also carries a `defaultDirection` (all-in / all-out) governing whether it starts opted into a cycle's slots.
 
 ---
 
@@ -54,6 +58,8 @@ Key attributes:
 - End time
 - Ministry ownership
 
+> **Refined (017):** Event is **church-owned**, not ministry-owned. Drop `ministryId`; add `planningCycleId` (belongs to the cycle of its start date). Lifecycle is `draft → scheduled → cancelled → past` — an Event is **never "published"** (publishing is per `MinistryParticipation`). Events are generated from `EventTemplate`s (recurring) or created manually (dynamic / multi-day).
+
 ---
 
 ### 5. Time Slot (Critical Concept)
@@ -67,6 +73,8 @@ Example:
   - 18:00–22:00
 
 Slots are the **atomic unit of scheduling**.
+
+> **Refined (017):** `TimeSlot` is now **church-level** (the shared service block). The **atomic staffing unit is the `Shift`** — a ministry's subdivision of a `TimeSlot` inside its `MinistryParticipation`. Default is **one `Shift` = the whole `TimeSlot`**, so everything always attaches to a `Shift`, never a bare `TimeSlot`. Two ministries may split the same slot differently; a `Shift` must lie entirely within its `TimeSlot`.
 
 ---
 
@@ -96,6 +104,8 @@ Defines when a volunteer **can or cannot serve**.
 Must support:
 - Day-span availability/unavailability for day-based Events
 - Time-span availability/unavailability for hourly Events
+
+> **Refined (017):** A volunteer is **available by default**. `Availability` is now an **unavailability mark** per `Shift`, hung off an **`AvailabilityCheck`** keyed to `(PlanningCycle, MinistryVolunteer membership)`. The check has a **confirm gate** (`pending → confirmed`, `confirmedAt`) the volunteer must trigger even with zero marks.
 
 ---
 

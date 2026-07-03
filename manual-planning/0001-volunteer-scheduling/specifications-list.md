@@ -2,6 +2,8 @@
 
 This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece" must be fully specified and tested before moving to the next layer.
 
+> **⚠️ Reshape in progress (2026-07-02) — Spec 017: Scheduling Reshape.** The domain has been re-centred on **church-owned Events planned in `PlanningCycle`s, generated from `EventTemplate`s, and tailored per ministry via `MinistryParticipation`/`Shift`**. Many entries below still describe the pre-reshape (ministry-owned, single-event) model and carry superseding notes. Authoritative sources: [`CONTEXT.md`](../../CONTEXT.md), [`docs/adr/0001`](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [`docs/adr/0002`](../../docs/adr/0002-church-timeslots-ministry-shifts.md), and [`refinement-02-scheduling-reshape.md`](./refinement-02-scheduling-reshape.md). See the **Spec 017** section below.
+
 ## Phase 1: Persistence Layer (The Schema)
 *Objective: Define the data structures in the database.*
 - **[✅ Spec S1: Database Schema](./specifications/S1-db-schema.md)**: Drizzle ORM definitions for Church, Ministry, Team, Volunteer, Event, Slot, and Requirement.
@@ -59,6 +61,18 @@ Everything must be built on top of an existing component from **shadcn/ui**. We 
 - **[Spec Q1: End-to-End Testing](./specifications/Q1-e2e-testing.md)**: Playwright scenarios for the full scheduling lifecycle.
   - *Flowcharts:* [scheduling-process.md](./flowcharts/scheduling-process.md), [confirmation-flow.md](./flowcharts/confirmation-flow.md), [conflict-override-flow.md](./flowcharts/conflict-override-flow.md)
 - **[Spec Q2: Performance Audit](./specifications/Q2-performance.md)**: Optimizing DB queries and frontend bundle size.
+
+---
+
+## 🔄 Spec 017: Scheduling Reshape (Cross-Cutting)
+
+*Objective: Re-centre scheduling on a church-owned calendar planned in cycles, generated from templates, and tailored per ministry. Ships on the completed 016 clean-architecture foundation. Greenfield schema (no migration).*
+
+- **[Spec 017: Scheduling Reshape](../../specs/017-scheduling-reshape/spec.md)** *(not yet generated)* — introduces `PlanningCycle`, `ChurchAdmin`, `EventTemplate` + `TimeBlock`, `MinistryServingProfile`, `MinistryParticipation`, `Shift`, `AvailabilityCheck`; makes `Event` church-owned; splits publish into cycle-lock vs per-participation roster-publish; moves notifications to per-cycle; removes `RoleTemplate`.
+  - *Amendment source:* [refinement-02-scheduling-reshape.md](./refinement-02-scheduling-reshape.md)
+  - *Decisions:* [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md); glossary in [CONTEXT.md](../../CONTEXT.md)
+  - *Refines / supersedes:* [02-event-slots.md](./specifications/02-event-slots.md), [03-assignments-availability.md](./specifications/03-assignments-availability.md), [01-core-entities.md](./specifications/01-core-entities.md), [08-slot-generator.md](./specifications/08-slot-generator.md), [09-permissions-rbac.md](./specifications/09-permissions-rbac.md), [11-notifications.md](./specifications/11-notifications.md), [12-lifecycle-rules.md](./specifications/12-lifecycle-rules.md), [D1-domain-entities.md](./specifications/D1-domain-entities.md), [S1-db-schema.md](./specifications/S1-db-schema.md), [L3-assignment-manager.md](./specifications/L3-assignment-manager.md), [R1-repo-interfaces.md](./specifications/R1-repo-interfaces.md), [A2-volunteer-api.md](./specifications/A2-volunteer-api.md), [A3-rbac-middleware.md](./specifications/A3-rbac-middleware.md), [F1-schedule-builder.md](./specifications/F1-schedule-builder.md), [domain-data-model.md](./domain-data-model.md), [business-overview.md](./business-overview.md), [ui-ux-flow.md](./ui-ux-flow.md)
+  - *Flowcharts:* [planning-cycle-lifecycle.md](./flowcharts/planning-cycle-lifecycle.md), [template-generation-flow.md](./flowcharts/template-generation-flow.md), [ministry-tailoring-flow.md](./flowcharts/ministry-tailoring-flow.md), [availability-check-flow.md](./flowcharts/availability-check-flow.md), [scheduling-process.md](./flowcharts/scheduling-process.md), [slot-generation-flow.md](./flowcharts/slot-generation-flow.md)
 
 ---
 

@@ -152,6 +152,8 @@ The following updates were made after the F1 grilling session. Original decision
 **Original decision #1**: "Both auto-generate and manual." 
 **Refined**: Auto-generation now supports two distinct modes: (a) duration-based (specify minutes per slot) and (b) count-based (specify total number of slots). Both produce a preview before confirming. After generation, a role template step is offered.
 
+**Refined (017, 2026-07-02):** Remove the **role template step** — `RoleTemplate` is deleted for MVP (BL-009). Recurring counts now seed from the ministry's `MinistryServingProfile`; dynamic events copy a profile block or enter counts manually. Also, slot generation is now two-level: church-level `TimeSlot`s come from applying an `EventTemplate` to the locked cycle, and the leader then creates per-ministry **`Shift`s** (equal-by-N or manual times, bounded within the slot). (see ADR 0002 / CONTEXT.md)
+
 ### Updated: Availability Feedback — 4th Status Added
 
 **Original**: Three statuses (Available, Partially available, Unavailable).
@@ -180,6 +182,19 @@ Post-publish editing is **allowed for assignments** (add, swap, remove volunteer
 ### New: Conflict Detection Scope — Cross-Ministry
 
 Conflict detection was assumed to be within-event only. It now checks across all events in all ministries the volunteer belongs to. A volunteer double-booked in two different ministries at the same time is flagged in both builders.
+
+---
+
+## Refinements — 2026-07-02 (017 Scheduling Reshape)
+
+These supersede the workflow above where they conflict. (see ADR 0001 / ADR 0002 / CONTEXT.md)
+
+**Refined (017, 2026-07-02):** The leader's builder and availability flows now operate **inside a locked `PlanningCycle`, on the ministry's `MinistryParticipation`** for a church-owned Event — leaders no longer create/own the Event (a ChurchAdmin drafts and locks the cycle first, generating Events from `EventTemplate`s). Consequences for these flows:
+
+- **Step 1 (Create Event)** is replaced upstream by ChurchAdmin cycle planning + template application; the leader enters an already-generated Event to tailor its participation.
+- **Steps 2–3 (time structure / requirements)** now mean: opt the ministry into the shared church-level `TimeSlot`s, split each into per-ministry **`Shift`s** (equal-by-N or manual, bounded within the slot), and set per-Shift counts (seeded from `MinistryServingProfile`).
+- **Availability** is fired per cycle: firing spawns an `AvailabilityCheck` per `(PlanningCycle, membership)`; volunteers are available by default and mark **per-`Shift` unavailability**, with a confirm gate (`pending → confirmed`) even at zero marks.
+- **Publish** is a **per-participation roster-publish** (reveals only that ministry's slice), distinct from the ChurchAdmin cycle-lock. Event status is `draft | scheduled | cancelled | past` (no "Published" Event state).
 
 ---
 

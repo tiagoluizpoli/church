@@ -3,6 +3,8 @@
 ## Overview
 A system for ministry leaders to manage the scheduling (escalas) of volunteers who serve in their specific ministry. This document outlines the core functional requirements and high-level decisions.
 
+> **Refined (017, 2026-07-02):** Scheduling is now planned at the **church** level in **`PlanningCycle`s**. A **`ChurchAdmin`** drafts a cycle (arbitrary date range), applies **`EventTemplate`s** to generate the recurring Events, and **locks** it. Each **ministry leader** then tailors their **`MinistryParticipation`** (opts into slots via their `MinistryServingProfile`, sets `Shift` headcounts) and **fires availability checks**. Volunteers are **available by default**, mark exceptions per `Shift`, and **confirm**. Each ministry **publishes its own roster** independently; notifications are **per cycle**. See [`CONTEXT.md`](../../CONTEXT.md), [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md), [refinement-02](./refinement-02-scheduling-reshape.md).
+
 ## Core Flow
 1. **Team Onboarding**: The ministry leader sends a registration/invite link to potential or existing volunteers.
 2. **Volunteer Registration**: Volunteers register themselves (or update their profile) through the provided link.
@@ -16,6 +18,8 @@ A system for ministry leaders to manage the scheduling (escalas) of volunteers w
 4. **Schedule Visibility**: Volunteers will be able to see the full schedule for their ministry to foster transparency and teamwork.
 5. **Ministry Hierarchy & Sub-leaders**: A ministry is an isolated group with a main leader. Large ministries (e.g., Kids, Band) can have internal sub-groups/teams. These inner groups can be managed by Sub-leaders with permissions restricted to their specific team, while the main Ministry Leader oversees the whole ministry.
 6. **Constraint Strictness**: Soft enforcement. The system will warn the leader about conflicts (e.g., overlapping slots, unavailability) but allow them to override and assign anyway. This strictness can be configured at the Ministry level.
+7. **Church-level planning (017)**: Events are **church-owned** and planned in **`PlanningCycle`s** by a **`ChurchAdmin`**, generated from **`EventTemplate`s**, then tailored per ministry via **`MinistryParticipation`**/`Shift`. Two publishes: cycle-lock (admin, reveals calendar to leaders) and per-participation roster-publish (leader, reveals a ministry's slice to its volunteers).
+8. **Notifications per cycle (017)**: To reduce noise, availability reminders and schedule-published alerts fire once per `PlanningCycle`, not per slot; leaders can resend the availability reminder.
 
 *(Note: Technical architecture details, data models, and UI workflows are documented in their respective files in this directory).*
 

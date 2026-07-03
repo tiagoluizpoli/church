@@ -1,45 +1,60 @@
 # Scheduling Process Flow
 
+> **Reshaped for Spec 017 (2026-07-02).** The end-to-end flow now runs church → cycle → ministry → volunteer. See [`CONTEXT.md`](../../../CONTEXT.md), [ADR 0001](../../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../../docs/adr/0002-church-timeslots-ministry-shifts.md), [refinement-02](../refinement-02-scheduling-reshape.md). The pre-017 single-event, ministry-owned flow is retired.
+
 ```mermaid
 sequenceDiagram
     autonumber
-    actor L as Leader / Sub-leader
+    actor A as Church Admin
+    actor L as Ministry Leader
     participant UI as Frontend App
     participant API as Fastify Backend
     actor V as Volunteer
 
-    %% Event Creation Phase
-    L->>UI: Creates Event (Multi/Single Day)
-    UI->>API: POST /events
-    API-->>UI: Event Created
-    
-    L->>UI: Configures Time Slots
-    alt Auto-Generate Slots
-        UI->>API: Request Slot Suggestions
-        API-->>UI: Returns Generated Slots
-        L->>UI: Approves Suggestions
-    else Manual Setup
-        L->>UI: Manually adds sequential slots
+    %% Phase 1 — Church Admin builds the cycle
+    A->>UI: Create PlanningCycle (date range)
+    UI->>API: POST /admin/planning-cycles
+    A->>UI: Apply EventTemplate(s) (Sunday, Wednesday, …)
+    UI->>API: Generate Events + TimeSlots for matching dates
+    A->>UI: Add dynamic / multi-day Events manually
+    A->>UI: Lock cycle (draft → locked)
+    UI->>API: POST /admin/planning-cycles/:id/lock
+    Note over API,L: Locked calendar becomes visible to Ministry Leaders
+
+    %% Phase 2 — Ministry Leader tailors participation
+    L->>UI: Open locked cycle for my ministry
+    API-->>UI: Seed MinistryParticipation from MinistryServingProfile
+    L->>UI: Confirm/adjust slot inclusions, then split TimeSlots into Shifts
+    L->>UI: Set headcount per Shift (SlotRequirements)
+    L->>UI: Fire availability checks (tailoring → availability_fired)
+    UI->>API: Spawn AvailabilityChecks for memberships (pending)
+    API->>V: Notification (per cycle): availability needed
+
+    %% Phase 3 — Volunteer availability
+    V->>UI: Open availability check (available by default)
+    V->>UI: Mark unavailable per Shift (exceptions only)
+    alt Overlap across ministries + FLAG off
+        UI-->>V: Block confirm, force choose one
+    else FLAG on
+        UI-->>V: Warn, attach conflict for leaders
     end
-    UI->>API: Saves Slots & Requirements
-    
-    %% Volunteer Phase
-    API->>V: Push Notification: New Event
-    V->>UI: Submits Availability
-    UI->>API: Saves Availability (Full Day or Shift)
-    
-    %% Scheduling Phase
-    L->>UI: Opens Schedule Builder (Desktop)
-    UI->>API: GET /events/:id/scheduling-data
-    API-->>UI: Returns Availability & Auto-Suggestions
-    L->>UI: Adjusts Assignments (Drag/Click)
-    
-    UI->>API: Validate Assignments
-    alt Conflict Detected
-        API-->>UI: Warning (Soft Enforcement)
-        L->>UI: Overrides Warning & Confirms
+    V->>UI: Confirm (pending → confirmed)
+    UI->>API: Persist marks + confirmedAt
+
+    %% Phase 4 — Leader rosters + publishes
+    L->>UI: Open Schedule Builder (this participation)
+    API-->>UI: Confirmed availability + recency-ranked suggestions
+    L->>UI: Assign volunteers to Shifts (Drag/Click)
+    alt Assignment conflict (per-ministry enforcement)
+        API-->>UI: Warning (soft) or block (hard)
+        L->>UI: Override with reason (audited)
     end
-    
-    L->>UI: Publishes Schedule
-    UI->>API: Update Status -> Published
+    Note over UI: Completion % rises toward 100%
+    L->>UI: Publish roster (rostering → published)
+    UI->>API: Flip this ministry's assignments → pending, notify its volunteers
+
+    %% Phase 5 — Live execution
+    V->>UI: (Emergency) Cancel my assignment on a Shift
+    UI->>API: Reopen slot, notify leader ASAP
+    L->>UI: Reassign / adjust mid-cycle
 ```

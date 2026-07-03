@@ -122,6 +122,8 @@ interface EventProps {
 class Event extends Entity<EventProps> {}
 ```
 
+**Refined (017, 2026-07-02):** Drop `ministryId` (Events are Church-owned) and add `planningCycleId: string`. The `status` enum becomes `'draft' | 'scheduled' | 'cancelled' | 'past'` — "published" leaves the Event (publishing is per `MinistryParticipation`). (see ADR 0001 / CONTEXT.md)
+
 ### 6. TimeSlot
 ```typescript
 interface TimeSlotProps {
@@ -135,6 +137,8 @@ interface TimeSlotProps {
 class TimeSlot extends Entity<TimeSlotProps> {}
 ```
 
+**Refined (017, 2026-07-02):** `TimeSlot` is now church-level (shared, opt-in/out). A new **`Shift`** entity is the per-ministry subdivision (`{ timeSlotId, participationId, startTime, endTime }`), living inside a `MinistryParticipation`, and must lie entirely within its parent TimeSlot. Default = one `Shift` = the whole `TimeSlot`. Generated slots also record `sourceTemplateBlockId`. (see ADR 0002 / CONTEXT.md)
+
 ### 7. SlotRequirement
 ```typescript
 interface SlotRequirementProps {
@@ -146,6 +150,8 @@ interface SlotRequirementProps {
 
 class SlotRequirement extends Entity<SlotRequirementProps> {}
 ```
+
+**Refined (017, 2026-07-02):** Re-key from `slotId` to **`shiftId`** and add `participationId` (owning `MinistryParticipation`). (see ADR 0002 / CONTEXT.md)
 
 ### 8. Assignment
 ```typescript
@@ -160,6 +166,8 @@ interface AssignmentProps {
 
 class Assignment extends Entity<AssignmentProps> {}
 ```
+
+**Refined (017, 2026-07-02):** Re-key from `slotId` to **`shiftId`** and add `participationId` (owning `MinistryParticipation`, resolving BL-006 team attribution natively). (see ADR 0001 / ADR 0002 / CONTEXT.md)
 
 ### 9. AssignmentAudit
 ```typescript
@@ -189,6 +197,21 @@ interface AvailabilityProps {
 
 class Availability extends Entity<AvailabilityProps> {}
 ```
+
+**Refined (017, 2026-07-02):** Reshape to a per-**`Shift`** **unavailability** mark (default-available) hung off an `AvailabilityCheck`. Replace the free-span `startTime`/`endTime`/`status` shape with `{ availabilityCheckId, shiftId }` (a mark = "unavailable for this Shift"). See the new `AvailabilityCheck` entity below. (see ADR 0002 / CONTEXT.md)
+
+### 11. New 017 Entities
+
+**Refined (017, 2026-07-02):** The reshape introduces the following new domain entities (see `CONTEXT.md` for full definitions and ADR 0001 / ADR 0002 for the decisions). No `RoleTemplate` entity exists — it is removed for MVP (BL-009); recurring counts come from `MinistryServingProfile`.
+
+- **`PlanningCycle`** — church-scoped `{ churchId, startDate, endDate, status: 'draft' | 'locked' | 'archived' }`; non-overlapping date ranges, dates-only boundaries.
+- **`EventTemplate`** — ChurchAdmin blueprint `{ churchId, weekday, timeBlocks: TimeBlock[] }` for recurring single-day gatherings.
+- **`TimeBlock`** — `{ id, label, startTime, endTime }` inside an EventTemplate; its id is copied to a generated slot as `sourceTemplateBlockId`.
+- **`MinistryServingProfile`** — per-ministry standing rule bound to templates by `sourceTemplateBlockId`; seeds inclusions + Shifts + requirements.
+- **`MinistryParticipation`** — one per `(ministryId, eventId)`; holds inclusions, requirements, and lifecycle `'tailoring' | 'availability_fired' | 'rostering' | 'published'`.
+- **`Shift`** — `{ timeSlotId, participationId, startTime, endTime }`; per-ministry subdivision of a TimeSlot, bounded within it.
+- **`AvailabilityCheck`** — one per `(planningCycleId, membership)`; `status: 'pending' | 'confirmed'` with `confirmedAt`.
+- **`Ministry`** also gains `defaultDirection: 'all_in' | 'all_out'` (participation default; not a template concept).
 
 ## Layer Responsibilities
 

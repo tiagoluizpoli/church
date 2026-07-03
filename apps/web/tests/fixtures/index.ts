@@ -2,11 +2,13 @@
 // + `expect` and the leader storage-state path from here. Domain seeding lives
 // server-side and runs in Playwright global setup (see `auth.ts`).
 export {
+  CHURCH_ADMIN_STORAGE_STATE,
   expect,
   LEADER_STORAGE_STATE,
   SUB_LEADER_STORAGE_STATE,
   signUpLeader,
   test,
+  VOLUNTEER_STORAGE_STATE,
 } from './auth';
 
 export const volunteerDashboardFixtureIds = {

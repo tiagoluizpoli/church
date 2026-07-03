@@ -1,7 +1,9 @@
 import { test as base, type Page } from '@playwright/test';
 import {
+  CHURCH_ADMIN_STORAGE_STATE,
   LEADER_STORAGE_STATE,
   SUB_LEADER_STORAGE_STATE,
+  VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
 
 /**
@@ -17,7 +19,12 @@ import {
  *
  * Existing unauthenticated specs (layout/theme/timezone/search) are untouched.
  */
-export { LEADER_STORAGE_STATE, SUB_LEADER_STORAGE_STATE };
+export {
+  CHURCH_ADMIN_STORAGE_STATE,
+  LEADER_STORAGE_STATE,
+  SUB_LEADER_STORAGE_STATE,
+  VOLUNTEER_STORAGE_STATE,
+};
 
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 

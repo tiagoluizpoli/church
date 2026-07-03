@@ -3,23 +3,34 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { request } from '@playwright/test';
+import { z } from 'zod';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Playwright global setup (T126): provisions two authenticated users
- * (leader + sub-leader) and seeded domain data for the scheduling E2E specs.
+ * Playwright global setup: provisions authenticated role sessions and seeded
+ * domain data for scheduling E2E specs.
  *
- *  1. Sign up a disposable leader via Better Auth → capture user id.
- *  2. Sign up a disposable sub-leader via Better Auth → capture user id.
- *  3. Shell out to the SERVER seed script (frontend stays DB-free).
- *  4. Persist both sessions to `tests/.auth/` so specs can opt in with
+ *  1. Sign up disposable leader, sub-leader, and volunteer users.
+ *  2. Shell out to the SERVER seed script (frontend stays DB-free).
+ *  3. Persist admin/leader/volunteer sessions to `tests/.auth/` so specs opt in
  *     `test.use({ storageState })` — existing unauthenticated specs untouched.
+ *
+ * ChurchAdmin and leader states share one session, proving role coexistence
+ * once ChurchAdmin authorization is introduced by the foundational phase.
  */
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 const SERVER_DIR = path.resolve(dirname, '../../server');
 
+export const CHURCH_ADMIN_STORAGE_STATE = path.resolve(
+  dirname,
+  '.auth/church-admin.json',
+);
 export const LEADER_STORAGE_STATE = path.resolve(dirname, '.auth/leader.json');
+export const VOLUNTEER_STORAGE_STATE = path.resolve(
+  dirname,
+  '.auth/volunteer.json',
+);
 export const SUB_LEADER_STORAGE_STATE = path.resolve(
   dirname,
   '.auth/sub-leader.json',
@@ -36,14 +47,20 @@ const SUB_LEADER_BASE = {
   name: 'E2E Sub-Leader',
 };
 
-interface AuthResponse {
-  user?: { id?: string };
-}
+const VOLUNTEER_BASE = {
+  password: 'e2e-Password-789',
+  name: 'E2E Volunteer',
+};
 
-interface E2eAuthMeta {
-  leaderUserId: string;
-  subLeaderUserId: string;
-}
+const AUTH_RESPONSE_SCHEMA = z.object({
+  user: z.object({ id: z.string().min(1) }),
+});
+
+export const E2E_AUTH_META_SCHEMA = z.object({
+  leaderUserId: z.string().min(1),
+  subLeaderUserId: z.string().min(1),
+  volunteerUserId: z.string().min(1),
+});
 
 function makeUniqueEmail(label: string): string {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -62,19 +79,13 @@ async function authUser(
       `Auth failed for ${creds.email} (${res.status()}): ${await res.text()}`,
     );
   }
-  const body = (await res.json()) as AuthResponse;
-  const userId = body.user?.id;
-  if (!userId) {
-    throw new Error(
-      `Auth response for ${creds.email} did not include a user id`,
-    );
-  }
-  return userId;
+  return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
 }
 
 export default async function globalSetup(): Promise<void> {
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const subLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
+  const volunteerCtx = await request.newContext({ baseURL: SERVER_URL });
   const leaderCreds = {
     ...LEADER_BASE,
     email: makeUniqueEmail('e2e-leader'),
@@ -83,10 +94,15 @@ export default async function globalSetup(): Promise<void> {
     ...SUB_LEADER_BASE,
     email: makeUniqueEmail('e2e-subleader'),
   };
+  const volunteerCreds = {
+    ...VOLUNTEER_BASE,
+    email: makeUniqueEmail('e2e-volunteer'),
+  };
 
-  const [leaderId, subLeaderId] = await Promise.all([
+  const [leaderId, subLeaderId, volunteerId] = await Promise.all([
     authUser(leaderCtx, leaderCreds),
     authUser(subLeaderCtx, subLeaderCreds),
+    authUser(volunteerCtx, volunteerCreds),
   ]);
 
   execFileSync(
@@ -97,6 +113,7 @@ export default async function globalSetup(): Promise<void> {
       '--',
       `--leader-user-id=${leaderId}`,
       `--sub-leader-user-id=${subLeaderId}`,
+      `--volunteer-user-id=${volunteerId}`,
     ],
     { cwd: SERVER_DIR, stdio: 'inherit' },
   );
@@ -104,16 +121,25 @@ export default async function globalSetup(): Promise<void> {
   mkdirSync(path.dirname(E2E_AUTH_META), { recursive: true });
   writeFileSync(
     E2E_AUTH_META,
-    JSON.stringify({
-      leaderUserId: leaderId,
-      subLeaderUserId: subLeaderId,
-    } satisfies E2eAuthMeta),
+    JSON.stringify(
+      E2E_AUTH_META_SCHEMA.parse({
+        leaderUserId: leaderId,
+        subLeaderUserId: subLeaderId,
+        volunteerUserId: volunteerId,
+      }),
+    ),
   );
 
   await Promise.all([
+    leaderCtx.storageState({ path: CHURCH_ADMIN_STORAGE_STATE }),
     leaderCtx.storageState({ path: LEADER_STORAGE_STATE }),
     subLeaderCtx.storageState({ path: SUB_LEADER_STORAGE_STATE }),
+    volunteerCtx.storageState({ path: VOLUNTEER_STORAGE_STATE }),
   ]);
 
-  await Promise.all([leaderCtx.dispose(), subLeaderCtx.dispose()]);
+  await Promise.all([
+    leaderCtx.dispose(),
+    subLeaderCtx.dispose(),
+    volunteerCtx.dispose(),
+  ]);
 }

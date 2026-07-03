@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as schema from '@church/db';
 import {
   assignment,
@@ -10,17 +12,39 @@ import {
   slotRequirement,
   team,
   timeSlot,
+  user,
   volunteer,
   volunteerNotification,
 } from '@church/db';
+import { eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+
+const workspaceRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../../..',
+);
+const e2eAuthDirectory = path.resolve(workspaceRoot, 'apps/web/tests/.auth');
+
+export const CHURCH_ADMIN_STORAGE_STATE = path.resolve(
+  e2eAuthDirectory,
+  'church-admin.json',
+);
+export const LEADER_STORAGE_STATE = path.resolve(
+  e2eAuthDirectory,
+  'leader.json',
+);
+export const VOLUNTEER_STORAGE_STATE = path.resolve(
+  e2eAuthDirectory,
+  'volunteer.json',
+);
 
 /**
  * E2E domain seed (T126). Lives in `apps/server` because the frontend package
  * must not depend on DB tooling. Invoked from the web Playwright `globalSetup`
  * via shell-out:
- *   bun run --cwd apps/server seed:e2e -- --leader-user-id=<id> --sub-leader-user-id=<id>
+ *   bun run --cwd apps/server seed:e2e -- --leader-user-id=<id>
+ *     --sub-leader-user-id=<id> --volunteer-user-id=<id>
  *
  * Links the leader volunteer to `--leader-user-id` (a real Better Auth user
  * created at sign-up) so `findByUserIdGlobally` resolves it and
@@ -38,6 +62,7 @@ export const E2E_IDS = {
   ministry: 'e2e33333-3333-3333-3333-333333333331',
   ministryCare: 'e2e33333-3333-3333-3333-333333333332',
   leaderVolunteer: 'e2e44444-4444-4444-4444-444444444441',
+  schedulingVolunteer: 'e2e44444-4444-4444-4444-444444444442',
   subLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444446',
   team1: 'e2eaaaa1-0000-0000-0000-000000000001',
   careTeam: 'e2eaaaa1-0000-0000-0000-000000000002',
@@ -105,22 +130,31 @@ function makeDb() {
   return { pool, db: drizzle(pool, { schema }) };
 }
 
-export async function seedE2e(
-  leaderUserId: string,
-  subLeaderUserId: string,
-): Promise<typeof E2E_IDS> {
+export interface SeedE2eOptions {
+  leaderUserId: string;
+  subLeaderUserId: string;
+  volunteerUserId: string;
+}
+
+export async function seedE2e({
+  leaderUserId,
+  subLeaderUserId,
+  volunteerUserId,
+}: SeedE2eOptions): Promise<typeof E2E_IDS> {
   const { pool, db } = makeDb();
   try {
-    // Pool volunteers each need a `user` row (volunteer.user_id is NOT NULL +
-    // UNIQUE FK). Raw insert — these are passwordless; they never sign in.
-    const poolUserValues = POOL_VOLUNTEERS.map(
-      (v) => `('${v.userId}', '${v.name}', '${v.email}', true, now(), now())`,
-    ).join(', ');
-    await db.execute(`
-      INSERT INTO "user" (id, name, email, email_verified, created_at, updated_at)
-      VALUES ${poolUserValues}
-      ON CONFLICT (id) DO NOTHING
-    `);
+    // Pool volunteers need passwordless users for the volunteer.user_id FK.
+    await db
+      .insert(user)
+      .values(
+        POOL_VOLUNTEERS.map((poolVolunteer) => ({
+          id: poolVolunteer.userId,
+          name: poolVolunteer.name,
+          email: poolVolunteer.email,
+          emailVerified: true,
+        })),
+      )
+      .onConflictDoNothing();
 
     await db
       .insert(church)
@@ -232,12 +266,31 @@ export async function seedE2e(
       })
       .returning({ id: volunteer.id });
 
+    const [schedulingVolunteerRow] = await db
+      .insert(volunteer)
+      .values({
+        id: E2E_IDS.schedulingVolunteer,
+        churchId: E2E_IDS.church,
+        userId: volunteerUserId,
+        status: 'active',
+      })
+      .onConflictDoUpdate({
+        target: [volunteer.id],
+        set: {
+          churchId: E2E_IDS.church,
+          userId: volunteerUserId,
+          status: 'active',
+        },
+      })
+      .returning({ id: volunteer.id });
+
     const leaderVolunteerId = leaderVolunteerRow?.id;
     const subLeaderVolunteerId = subLeaderVolunteerRow?.id;
+    const schedulingVolunteerId = schedulingVolunteerRow?.id;
 
-    if (!leaderVolunteerId || !subLeaderVolunteerId) {
+    if (!leaderVolunteerId || !subLeaderVolunteerId || !schedulingVolunteerId) {
       throw new Error(
-        'Failed to bind leader/sub-leader volunteers for E2E seed.',
+        'Failed to bind scheduling role volunteers for E2E seed.',
       );
     }
 
@@ -281,6 +334,14 @@ export async function seedE2e(
           ministryId: E2E_IDS.ministry,
           systemRole: 'sub_leader',
           teamId: E2E_IDS.team1,
+          status: 'active',
+        },
+        {
+          id: 'e2eccccc-cccc-cccc-cccc-cccccccccca7',
+          churchId: E2E_IDS.church,
+          volunteerId: schedulingVolunteerId,
+          ministryId: E2E_IDS.ministry,
+          systemRole: 'volunteer',
           status: 'active',
         },
         ...POOL_VOLUNTEERS.map((v, i) => ({
@@ -523,25 +584,32 @@ export async function seedE2e(
   }
 }
 
-export async function cleanupE2e(
-  leaderUserId?: string,
-  subLeaderUserId?: string,
-): Promise<void> {
+export interface CleanupE2eOptions {
+  leaderUserId?: string;
+  subLeaderUserId?: string;
+  volunteerUserId?: string;
+}
+
+export async function cleanupE2e({
+  leaderUserId,
+  subLeaderUserId,
+  volunteerUserId,
+}: CleanupE2eOptions = {}): Promise<void> {
   const { pool, db } = makeDb();
   try {
     // CASCADE from church removes ministry/role/volunteer/event/slot rows.
-    await db.execute(`DELETE FROM "church" WHERE id = '${E2E_IDS.church}'`);
+    await db.delete(church).where(eq(church.id, E2E_IDS.church));
     // Pool users and disposable auth users are not reachable by church
     // cascade — remove them too.
     const cleanupUserIds = [
       ...POOL_VOLUNTEERS.map((v) => v.userId),
       leaderUserId,
       subLeaderUserId,
+      volunteerUserId,
     ].filter((value): value is string => Boolean(value));
 
     if (cleanupUserIds.length > 0) {
-      const userIdsSql = cleanupUserIds.map((id) => `'${id}'`).join(', ');
-      await db.execute(`DELETE FROM "user" WHERE id IN (${userIdsSql})`);
+      await db.delete(user).where(inArray(user.id, cleanupUserIds));
     }
   } finally {
     await pool.end();
@@ -558,21 +626,27 @@ if (import.meta.main) {
   const argv = process.argv.slice(2);
   const run = async () => {
     if (argv.includes('cleanup')) {
-      await cleanupE2e(
-        parseArg(argv, 'leader-user-id'),
-        parseArg(argv, 'sub-leader-user-id'),
-      );
+      await cleanupE2e({
+        leaderUserId: parseArg(argv, 'leader-user-id'),
+        subLeaderUserId: parseArg(argv, 'sub-leader-user-id'),
+        volunteerUserId: parseArg(argv, 'volunteer-user-id'),
+      });
       console.log('[e2e-seed] cleaned up');
       return;
     }
     const leaderUserId = parseArg(argv, 'leader-user-id');
     const subLeaderUserId = parseArg(argv, 'sub-leader-user-id');
-    if (!leaderUserId || !subLeaderUserId) {
+    const volunteerUserId = parseArg(argv, 'volunteer-user-id');
+    if (!leaderUserId || !subLeaderUserId || !volunteerUserId) {
       throw new Error(
-        'Usage: seed:e2e -- --leader-user-id=<id> --sub-leader-user-id=<id>',
+        'Usage: seed:e2e -- --leader-user-id=<id> --sub-leader-user-id=<id> --volunteer-user-id=<id>',
       );
     }
-    const ids = await seedE2e(leaderUserId, subLeaderUserId);
+    const ids = await seedE2e({
+      leaderUserId,
+      subLeaderUserId,
+      volunteerUserId,
+    });
     console.log(
       `[e2e-seed] seeded event ${ids.event} for leader ${leaderUserId} and sub-leader ${subLeaderUserId}`,
     );

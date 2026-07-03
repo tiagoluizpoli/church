@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { E2E_AUTH_META } from './global-setup';
+import { E2E_AUTH_META, E2E_AUTH_META_SCHEMA } from './global-setup';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_DIR = path.resolve(dirname, '../../server');
@@ -13,10 +13,7 @@ export default function globalTeardown(): void {
 
   if (existsSync(E2E_AUTH_META)) {
     const rawMeta = readFileSync(E2E_AUTH_META, 'utf8');
-    const meta = JSON.parse(rawMeta) as {
-      leaderUserId?: string;
-      subLeaderUserId?: string;
-    };
+    const meta = E2E_AUTH_META_SCHEMA.parse(JSON.parse(rawMeta));
 
     if (meta.leaderUserId) {
       args.push(`--leader-user-id=${meta.leaderUserId}`);
@@ -24,6 +21,10 @@ export default function globalTeardown(): void {
 
     if (meta.subLeaderUserId) {
       args.push(`--sub-leader-user-id=${meta.subLeaderUserId}`);
+    }
+
+    if (meta.volunteerUserId) {
+      args.push(`--volunteer-user-id=${meta.volunteerUserId}`);
     }
   }
 

@@ -24,7 +24,6 @@ interface BuilderHeaderProps {
     startDate: string | Date;
     endDate: string | Date;
     status: string;
-    ministryId: string;
   };
   ministryName?: string;
   fillPercentage: number;
@@ -61,7 +60,7 @@ export function BuilderHeader({
   onOpenPrintExport,
 }: BuilderHeaderProps) {
   const { format } = useTimezone();
-  const isPublished = event.status === 'published';
+  const isPublished = event.status === 'scheduled';
 
   return (
     <header className="flex flex-col gap-2 border-b pb-3">

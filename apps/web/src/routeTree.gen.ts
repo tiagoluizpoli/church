@@ -16,6 +16,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SchedulingIndexRouteImport } from './routes/scheduling/index'
+import { Route as SchedulingPlanningRouteImport } from './routes/scheduling/planning'
 import { Route as SchedulingEventsEventIdBuilderRouteImport } from './routes/scheduling/events/$eventId/builder'
 
 const TodosRoute = TodosRouteImport.update({
@@ -53,6 +54,11 @@ const SchedulingIndexRoute = SchedulingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SchedulingRoute,
 } as any)
+const SchedulingPlanningRoute = SchedulingPlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
+  getParentRoute: () => SchedulingRoute,
+} as any)
 const SchedulingEventsEventIdBuilderRoute =
   SchedulingEventsEventIdBuilderRouteImport.update({
     id: '/events/$eventId/builder',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/scheduling': typeof SchedulingRouteWithChildren
   '/todos': typeof TodosRoute
+  '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/todos': typeof TodosRoute
+  '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/scheduling': typeof SchedulingRouteWithChildren
   '/todos': typeof TodosRoute
+  '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/scheduling'
     | '/todos'
+    | '/scheduling/planning'
     | '/scheduling/'
     | '/scheduling/events/$eventId/builder'
   fileRoutesByTo: FileRoutesByTo
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/todos'
+    | '/scheduling/planning'
     | '/scheduling'
     | '/scheduling/events/$eventId/builder'
   id:
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/scheduling'
     | '/todos'
+    | '/scheduling/planning'
     | '/scheduling/'
     | '/scheduling/events/$eventId/builder'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulingIndexRouteImport
       parentRoute: typeof SchedulingRoute
     }
+    '/scheduling/planning': {
+      id: '/scheduling/planning'
+      path: '/planning'
+      fullPath: '/scheduling/planning'
+      preLoaderRoute: typeof SchedulingPlanningRouteImport
+      parentRoute: typeof SchedulingRoute
+    }
     '/scheduling/events/$eventId/builder': {
       id: '/scheduling/events/$eventId/builder'
       path: '/events/$eventId/builder'
@@ -193,11 +212,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface SchedulingRouteChildren {
+  SchedulingPlanningRoute: typeof SchedulingPlanningRoute
   SchedulingIndexRoute: typeof SchedulingIndexRoute
   SchedulingEventsEventIdBuilderRoute: typeof SchedulingEventsEventIdBuilderRoute
 }
 
 const SchedulingRouteChildren: SchedulingRouteChildren = {
+  SchedulingPlanningRoute: SchedulingPlanningRoute,
   SchedulingIndexRoute: SchedulingIndexRoute,
   SchedulingEventsEventIdBuilderRoute: SchedulingEventsEventIdBuilderRoute,
 }

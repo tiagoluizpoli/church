@@ -93,7 +93,7 @@ export function EventList() {
                 <h3 className="font-semibold">{event.title}</h3>
                 <Badge
                   className={
-                    event.status === 'published'
+                    event.status === 'scheduled'
                       ? 'bg-green-600 text-white'
                       : 'bg-muted text-foreground'
                   }

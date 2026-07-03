@@ -5,29 +5,38 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  ApplyRoleTemplate201,
-  ApplyRoleTemplateBody,
+  ApplyPlanningTemplates201,
+  ApplyPlanningTemplatesBody,
   CreateAssignment201,
   CreateAssignmentBody,
-  CreateEvent201,
-  CreateEventBody,
+  CreateEventTemplate201,
+  CreateEventTemplateBody,
+  CreatePlanningCycle201,
+  CreatePlanningCycleBody,
+  CreatePlanningEvent201,
+  CreatePlanningEventBody,
   CreateSlot201,
   CreateSlotBody,
   GenerateSlots201,
   GenerateSlotsBody,
   GetAssignmentAudit200,
+  GetPlanningCycle200,
   GetScheduleBuilderData200,
   GetScheduleBuilderDataParams,
+  ListEventTemplates200,
   ListEvents200,
   ListEventsParams,
   ListMinistries200,
-  ListRoleTemplates200,
+  ListPlanningCycles200,
+  ListPlanningCyclesParams,
   OverrideAssignment201,
   OverrideAssignmentBody,
+  UpdateEventTemplate200,
+  UpdateEventTemplateBody,
+  UpdatePlanningEvent200,
+  UpdatePlanningEventBody,
   UpdateSlot200,
   UpdateSlotBody,
-  UpsertRoleTemplate200,
-  UpsertRoleTemplateBody,
   UpsertSlotRequirement200,
   UpsertSlotRequirementBody
 } from './churchAPI.schemas';
@@ -64,24 +73,6 @@ const listMinistries = (
     },
       );
     }
-  const createEvent = (
-    createEventBody: CreateEventBody,
- ) => {
-      return apiClient<CreateEvent201>(
-      {url: `/api/v1/admin/events`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: createEventBody
-    },
-      );
-    }
-  const publishEvent = (
-    eventId: string,
- ) => {
-      return apiClient<void>(
-      {url: `/api/v1/admin/events/${eventId}/publish`, method: 'POST'
-    },
-      );
-    }
   const cancelEvent = (
     eventId: string,
  ) => {
@@ -95,17 +86,6 @@ const listMinistries = (
  ) => {
       return apiClient<void>(
       {url: `/api/v1/admin/events/${eventId}/reminders`, method: 'POST'
-    },
-      );
-    }
-  const applyRoleTemplate = (
-    eventId: string,
-    applyRoleTemplateBody: ApplyRoleTemplateBody,
- ) => {
-      return apiClient<ApplyRoleTemplate201>(
-      {url: `/api/v1/admin/events/${eventId}/apply-template`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: applyRoleTemplateBody
     },
       );
     }
@@ -201,42 +181,136 @@ const listMinistries = (
     },
       );
     }
-  const listRoleTemplates = (
+  const createPlanningCycle = (
+    createPlanningCycleBody: CreatePlanningCycleBody,
+ ) => {
+      return apiClient<CreatePlanningCycle201>(
+      {url: `/api/v1/admin/planning-cycles`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createPlanningCycleBody
+    },
+      );
+    }
+  const listPlanningCycles = (
+    params?: ListPlanningCyclesParams,
+ ) => {
+      return apiClient<ListPlanningCycles200>(
+      {url: `/api/v1/admin/planning-cycles`, method: 'GET',
+        params
+    },
+      );
+    }
+  const getPlanningCycle = (
+    cycleId: string,
+ ) => {
+      return apiClient<GetPlanningCycle200>(
+      {url: `/api/v1/admin/planning-cycles/${cycleId}`, method: 'GET'
+    },
+      );
+    }
+  const lockPlanningCycle = (
+    cycleId: string,
+ ) => {
+      return apiClient<void>(
+      {url: `/api/v1/admin/planning-cycles/${cycleId}/lock`, method: 'POST'
+    },
+      );
+    }
+  const reopenPlanningEvent = (
+    cycleId: string,
+    eventId: string,
+ ) => {
+      return apiClient<void>(
+      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/reopen`, method: 'POST'
+    },
+      );
+    }
+  const createEventTemplate = (
+    createEventTemplateBody: CreateEventTemplateBody,
+ ) => {
+      return apiClient<CreateEventTemplate201>(
+      {url: `/api/v1/admin/event-templates`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createEventTemplateBody
+    },
+      );
+    }
+  const listEventTemplates = (
 
  ) => {
-      return apiClient<ListRoleTemplates200>(
-      {url: `/api/v1/admin/role-templates`, method: 'GET'
+      return apiClient<ListEventTemplates200>(
+      {url: `/api/v1/admin/event-templates`, method: 'GET'
     },
       );
     }
-  const upsertRoleTemplate = (
+  const updateEventTemplate = (
     templateId: string,
-    upsertRoleTemplateBody: UpsertRoleTemplateBody,
+    updateEventTemplateBody: UpdateEventTemplateBody,
  ) => {
-      return apiClient<UpsertRoleTemplate200>(
-      {url: `/api/v1/admin/role-templates/${templateId}`, method: 'PUT',
+      return apiClient<UpdateEventTemplate200>(
+      {url: `/api/v1/admin/event-templates/${templateId}`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
-      data: upsertRoleTemplateBody
+      data: updateEventTemplateBody
     },
       );
     }
-  const deleteRoleTemplate = (
+  const deleteEventTemplate = (
     templateId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/admin/role-templates/${templateId}`, method: 'DELETE'
+      {url: `/api/v1/admin/event-templates/${templateId}`, method: 'DELETE'
     },
       );
     }
-  return {listMinistries,getScheduleBuilderData,listEvents,createEvent,publishEvent,cancelEvent,sendReminders,applyRoleTemplate,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,listRoleTemplates,upsertRoleTemplate,deleteRoleTemplate}};
+  const applyPlanningTemplates = (
+    cycleId: string,
+    applyPlanningTemplatesBody: ApplyPlanningTemplatesBody,
+ ) => {
+      return apiClient<ApplyPlanningTemplates201>(
+      {url: `/api/v1/admin/planning-cycles/${cycleId}/apply-templates`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: applyPlanningTemplatesBody
+    },
+      );
+    }
+  const createPlanningEvent = (
+    cycleId: string,
+    createPlanningEventBody: CreatePlanningEventBody,
+ ) => {
+      return apiClient<CreatePlanningEvent201>(
+      {url: `/api/v1/admin/planning-cycles/${cycleId}/events`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createPlanningEventBody
+    },
+      );
+    }
+  const updatePlanningEvent = (
+    cycleId: string,
+    eventId: string,
+    updatePlanningEventBody: UpdatePlanningEventBody,
+ ) => {
+      return apiClient<UpdatePlanningEvent200>(
+      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updatePlanningEventBody
+    },
+      );
+    }
+  const cancelPlanningEvent = (
+    cycleId: string,
+    eventId: string,
+ ) => {
+      return apiClient<void>(
+      {url: `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/cancel`, method: 'POST'
+    },
+      );
+    }
+  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistries']>>>
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEvents']>>>
-export type CreateEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createEvent']>>>
-export type PublishEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['publishEvent']>>>
 export type CancelEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['cancelEvent']>>>
 export type SendRemindersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['sendReminders']>>>
-export type ApplyRoleTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['applyRoleTemplate']>>>
 export type CreateSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createSlot']>>>
 export type UpdateSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['updateSlot']>>>
 export type DeleteSlotResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteSlot']>>>
@@ -246,6 +320,16 @@ export type UpsertSlotRequirementResult = NonNullable<Awaited<ReturnType<ReturnT
 export type CreateAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createAssignment']>>>
 export type DeleteAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteAssignment']>>>
 export type GetAssignmentAuditResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getAssignmentAudit']>>>
-export type ListRoleTemplatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listRoleTemplates']>>>
-export type UpsertRoleTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['upsertRoleTemplate']>>>
-export type DeleteRoleTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteRoleTemplate']>>>
+export type CreatePlanningCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createPlanningCycle']>>>
+export type ListPlanningCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listPlanningCycles']>>>
+export type GetPlanningCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getPlanningCycle']>>>
+export type LockPlanningCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['lockPlanningCycle']>>>
+export type ReopenPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['reopenPlanningEvent']>>>
+export type CreateEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createEventTemplate']>>>
+export type ListEventTemplatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEventTemplates']>>>
+export type UpdateEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['updateEventTemplate']>>>
+export type DeleteEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteEventTemplate']>>>
+export type ApplyPlanningTemplatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['applyPlanningTemplates']>>>
+export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createPlanningEvent']>>>
+export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['updatePlanningEvent']>>>
+export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['cancelPlanningEvent']>>>

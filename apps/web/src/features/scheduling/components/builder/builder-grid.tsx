@@ -54,7 +54,7 @@ export function BuilderGrid({
   onDeleteSlot,
   onAddSlot,
 }: BuilderGridProps) {
-  const isPublished = data.event.status === 'published';
+  const isPublished = data.event.status === 'scheduled';
   const eventType = data.event.eventType;
 
   const slotModels = useMemo<GridSlotModel[]>(() => {

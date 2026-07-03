@@ -12,9 +12,7 @@ import type {
   GetVolunteerDashboard200,
   MarkNotificationRead200,
   RespondToAssignment200,
-  RespondToAssignmentBody,
-  UpsertAvailability200,
-  UpsertAvailabilityBody
+  RespondToAssignmentBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -52,16 +50,6 @@ const getVolunteerDashboard = (
  ) => {
       return apiClient<GetMyAvailability200>(
       {url: `/api/v1/volunteer/availability`, method: 'GET'
-    },
-      );
-    }
-  const upsertAvailability = (
-    upsertAvailabilityBody: UpsertAvailabilityBody,
- ) => {
-      return apiClient<UpsertAvailability200>(
-      {url: `/api/v1/volunteer/availability`, method: 'PUT',
-      headers: {'Content-Type': 'application/json', },
-      data: upsertAvailabilityBody
     },
       );
     }
@@ -108,12 +96,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,getMyAvailability,upsertAvailability,deleteAvailability,respondToAssignment,getNotifications,markNotificationRead,markAllNotificationsRead}};
+  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,getMyAvailability,deleteAvailability,respondToAssignment,getNotifications,markNotificationRead,markAllNotificationsRead}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
 export type GetMyAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAvailability']>>>
-export type UpsertAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['upsertAvailability']>>>
 export type DeleteAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['deleteAvailability']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
 export type GetNotificationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getNotifications']>>>

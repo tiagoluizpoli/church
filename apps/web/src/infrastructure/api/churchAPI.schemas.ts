@@ -35,7 +35,7 @@ export type GetScheduleBuilderData200EventsItemEventStatus = typeof GetScheduleB
 
 export const GetScheduleBuilderData200EventsItemEventStatus = {
   draft: 'draft',
-  published: 'published',
+  scheduled: 'scheduled',
   cancelled: 'cancelled',
   past: 'past',
 } as const;
@@ -51,7 +51,8 @@ export const GetScheduleBuilderData200EventsItemEventEventType = {
 export type GetScheduleBuilderData200EventsItemEvent = {
   id: string;
   churchId: string;
-  ministryId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
   title: string;
   description?: string;
   location?: string;
@@ -166,7 +167,7 @@ export type ListEventsStatus = typeof ListEventsStatus[keyof typeof ListEventsSt
 
 export const ListEventsStatus = {
   draft: 'draft',
-  published: 'published',
+  scheduled: 'scheduled',
   cancelled: 'cancelled',
   past: 'past',
 } as const;
@@ -176,7 +177,7 @@ export type ListEvents200EventsItemStatus = typeof ListEvents200EventsItemStatus
 
 export const ListEvents200EventsItemStatus = {
   draft: 'draft',
-  published: 'published',
+  scheduled: 'scheduled',
   cancelled: 'cancelled',
   past: 'past',
 } as const;
@@ -192,7 +193,8 @@ export const ListEvents200EventsItemEventType = {
 export type ListEvents200EventsItem = {
   id: string;
   churchId: string;
-  ministryId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
   title: string;
   description?: string;
   location?: string;
@@ -206,68 +208,6 @@ export type ListEvents200EventsItem = {
 
 export type ListEvents200 = {
   events: ListEvents200EventsItem[];
-};
-
-export type CreateEventBodyEventType = typeof CreateEventBodyEventType[keyof typeof CreateEventBodyEventType];
-
-
-export const CreateEventBodyEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
-export type CreateEventBody = {
-  ministryId: string;
-  /** @minLength 1 */
-  title: string;
-  description?: string;
-  location?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  startDate: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  endDate: string;
-  eventType?: CreateEventBodyEventType;
-};
-
-export type CreateEvent201Status = typeof CreateEvent201Status[keyof typeof CreateEvent201Status];
-
-
-export const CreateEvent201Status = {
-  draft: 'draft',
-  published: 'published',
-  cancelled: 'cancelled',
-  past: 'past',
-} as const;
-
-export type CreateEvent201EventType = typeof CreateEvent201EventType[keyof typeof CreateEvent201EventType];
-
-
-export const CreateEvent201EventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
-export type CreateEvent201 = {
-  id: string;
-  churchId: string;
-  ministryId: string;
-  title: string;
-  description?: string;
-  location?: string;
-  startDate: string;
-  endDate: string;
-  status: CreateEvent201Status;
-  eventType: CreateEvent201EventType;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ApplyRoleTemplateBody = {
-  templateId: string;
-};
-
-export type ApplyRoleTemplate201 = {
-  applied: true;
 };
 
 export type CreateSlotBody = {
@@ -484,52 +424,394 @@ export type GetAssignmentAudit200 = {
   items: GetAssignmentAudit200ItemsItem[];
 };
 
-export type ListRoleTemplates200ItemsItemItemsItem = {
-  id: string;
-  roleId: string;
-  requiredCount: number;
-};
-
-export type ListRoleTemplates200ItemsItem = {
-  id: string;
-  churchId: string;
-  ministryId: string;
-  name: string;
-  items: ListRoleTemplates200ItemsItemItemsItem[];
-};
-
-export type ListRoleTemplates200 = {
-  items: ListRoleTemplates200ItemsItem[];
-};
-
-export type UpsertRoleTemplateBodyItemsItem = {
-  roleId: string;
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  requiredCount: number;
-};
-
-export type UpsertRoleTemplateBody = {
-  ministryId: string;
+export type CreatePlanningCycleBody = {
   /** @minLength 1 */
   name: string;
-  items: UpsertRoleTemplateBodyItemsItem[];
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
 };
 
-export type UpsertRoleTemplate200ItemsItem = {
-  id: string;
-  roleId: string;
-  requiredCount: number;
-};
+export type CreatePlanningCycle201State = typeof CreatePlanningCycle201State[keyof typeof CreatePlanningCycle201State];
 
-export type UpsertRoleTemplate200 = {
+
+export const CreatePlanningCycle201State = {
+  draft: 'draft',
+  locked: 'locked',
+  archived: 'archived',
+} as const;
+
+export type CreatePlanningCycle201 = {
   id: string;
   churchId: string;
-  ministryId: string;
   name: string;
-  items: UpsertRoleTemplate200ItemsItem[];
+  startDate: string;
+  endDate: string;
+  state: CreatePlanningCycle201State;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListPlanningCyclesParams = {
+state?: ListPlanningCyclesState;
+};
+
+export type ListPlanningCyclesState = typeof ListPlanningCyclesState[keyof typeof ListPlanningCyclesState];
+
+
+export const ListPlanningCyclesState = {
+  draft: 'draft',
+  locked: 'locked',
+  archived: 'archived',
+} as const;
+
+export type ListPlanningCycles200CyclesItemState = typeof ListPlanningCycles200CyclesItemState[keyof typeof ListPlanningCycles200CyclesItemState];
+
+
+export const ListPlanningCycles200CyclesItemState = {
+  draft: 'draft',
+  locked: 'locked',
+  archived: 'archived',
+} as const;
+
+export type ListPlanningCycles200CyclesItem = {
+  id: string;
+  churchId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  state: ListPlanningCycles200CyclesItemState;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListPlanningCycles200 = {
+  cycles: ListPlanningCycles200CyclesItem[];
+};
+
+export type GetPlanningCycle200CycleState = typeof GetPlanningCycle200CycleState[keyof typeof GetPlanningCycle200CycleState];
+
+
+export const GetPlanningCycle200CycleState = {
+  draft: 'draft',
+  locked: 'locked',
+  archived: 'archived',
+} as const;
+
+export type GetPlanningCycle200Cycle = {
+  id: string;
+  churchId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  state: GetPlanningCycle200CycleState;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GetPlanningCycle200EventsItemEventStatus = typeof GetPlanningCycle200EventsItemEventStatus[keyof typeof GetPlanningCycle200EventsItemEventStatus];
+
+
+export const GetPlanningCycle200EventsItemEventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type GetPlanningCycle200EventsItemEventEventType = typeof GetPlanningCycle200EventsItemEventEventType[keyof typeof GetPlanningCycle200EventsItemEventEventType];
+
+
+export const GetPlanningCycle200EventsItemEventEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type GetPlanningCycle200EventsItemEvent = {
+  id: string;
+  churchId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  status: GetPlanningCycle200EventsItemEventStatus;
+  eventType: GetPlanningCycle200EventsItemEventEventType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GetPlanningCycle200EventsItemSlotsItemStatus = typeof GetPlanningCycle200EventsItemSlotsItemStatus[keyof typeof GetPlanningCycle200EventsItemSlotsItemStatus];
+
+
+export const GetPlanningCycle200EventsItemSlotsItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetPlanningCycle200EventsItemSlotsItemRequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type GetPlanningCycle200EventsItemSlotsItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: GetPlanningCycle200EventsItemSlotsItemStatus;
+  requirements: GetPlanningCycle200EventsItemSlotsItemRequirementsItem[];
+};
+
+export type GetPlanningCycle200EventsItem = {
+  event: GetPlanningCycle200EventsItemEvent;
+  slots: GetPlanningCycle200EventsItemSlotsItem[];
+};
+
+export type GetPlanningCycle200 = {
+  cycle: GetPlanningCycle200Cycle;
+  events: GetPlanningCycle200EventsItem[];
+};
+
+export type CreateEventTemplateBodyBlocksItem = {
+  /** @minLength 1 */
+  label: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  order: number;
+};
+
+export type CreateEventTemplateBody = {
+  /** @minLength 1 */
+  name: string;
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  weekday: number;
+  blocks: CreateEventTemplateBodyBlocksItem[];
+};
+
+export type CreateEventTemplate201BlocksItem = {
+  id: string;
+  churchId: string;
+  templateId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  order: number;
+};
+
+export type CreateEventTemplate201 = {
+  id: string;
+  churchId: string;
+  name: string;
+  weekday: number;
+  blocks: CreateEventTemplate201BlocksItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListEventTemplates200TemplatesItemBlocksItem = {
+  id: string;
+  churchId: string;
+  templateId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  order: number;
+};
+
+export type ListEventTemplates200TemplatesItem = {
+  id: string;
+  churchId: string;
+  name: string;
+  weekday: number;
+  blocks: ListEventTemplates200TemplatesItemBlocksItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListEventTemplates200 = {
+  templates: ListEventTemplates200TemplatesItem[];
+};
+
+export type UpdateEventTemplateBodyBlocksItem = {
+  /** @minLength 1 */
+  label: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  startTime: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  endTime: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  order: number;
+};
+
+export type UpdateEventTemplateBody = {
+  /** @minLength 1 */
+  name: string;
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  weekday: number;
+  blocks: UpdateEventTemplateBodyBlocksItem[];
+};
+
+export type UpdateEventTemplate200BlocksItem = {
+  id: string;
+  churchId: string;
+  templateId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  order: number;
+};
+
+export type UpdateEventTemplate200 = {
+  id: string;
+  churchId: string;
+  name: string;
+  weekday: number;
+  blocks: UpdateEventTemplate200BlocksItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ApplyPlanningTemplatesBody = {
+  /** @minItems 1 */
+  templateIds: string[];
+};
+
+export type ApplyPlanningTemplates201 = {
+  generatedEventCount: number;
+  generatedSlotCount: number;
+};
+
+export type CreatePlanningEventBodyEventType = typeof CreatePlanningEventBodyEventType[keyof typeof CreatePlanningEventBodyEventType];
+
+
+export const CreatePlanningEventBodyEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type CreatePlanningEventBody = {
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endDate: string;
+  eventType?: CreatePlanningEventBodyEventType;
+};
+
+export type CreatePlanningEvent201Status = typeof CreatePlanningEvent201Status[keyof typeof CreatePlanningEvent201Status];
+
+
+export const CreatePlanningEvent201Status = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type CreatePlanningEvent201EventType = typeof CreatePlanningEvent201EventType[keyof typeof CreatePlanningEvent201EventType];
+
+
+export const CreatePlanningEvent201EventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type CreatePlanningEvent201 = {
+  id: string;
+  churchId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  status: CreatePlanningEvent201Status;
+  eventType: CreatePlanningEvent201EventType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpdatePlanningEventBodyEventType = typeof UpdatePlanningEventBodyEventType[keyof typeof UpdatePlanningEventBodyEventType];
+
+
+export const UpdatePlanningEventBodyEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type UpdatePlanningEventBody = {
+  /** @minLength 1 */
+  title?: string;
+  description?: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startDate?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endDate?: string;
+  eventType?: UpdatePlanningEventBodyEventType;
+};
+
+export type UpdatePlanningEvent200Status = typeof UpdatePlanningEvent200Status[keyof typeof UpdatePlanningEvent200Status];
+
+
+export const UpdatePlanningEvent200Status = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type UpdatePlanningEvent200EventType = typeof UpdatePlanningEvent200EventType[keyof typeof UpdatePlanningEvent200EventType];
+
+
+export const UpdatePlanningEvent200EventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type UpdatePlanningEvent200 = {
+  id: string;
+  churchId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  status: UpdatePlanningEvent200Status;
+  eventType: UpdatePlanningEvent200EventType;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ListFeatureFlags200Flags = {[key: string]: boolean};
@@ -725,48 +1007,6 @@ export type GetMyAvailability200AvailabilityItem = {
 
 export type GetMyAvailability200 = {
   availability: GetMyAvailability200AvailabilityItem[];
-};
-
-export type UpsertAvailabilityBodyType = typeof UpsertAvailabilityBodyType[keyof typeof UpsertAvailabilityBodyType];
-
-
-export const UpsertAvailabilityBodyType = {
-  available: 'available',
-  unavailable: 'unavailable',
-} as const;
-
-export type UpsertAvailabilityBody = {
-  availabilityId?: string;
-  eventId?: string;
-  type: UpsertAvailabilityBodyType;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  startTime: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  endTime: string;
-  isAllDay?: boolean;
-  reason?: string;
-  repeatRule?: string;
-};
-
-export type UpsertAvailability200Type = typeof UpsertAvailability200Type[keyof typeof UpsertAvailability200Type];
-
-
-export const UpsertAvailability200Type = {
-  available: 'available',
-  unavailable: 'unavailable',
-} as const;
-
-export type UpsertAvailability200 = {
-  id: string;
-  churchId: string;
-  volunteerId: string;
-  eventId?: string;
-  type: UpsertAvailability200Type;
-  startTime: string;
-  endTime: string;
-  isAllDay: boolean;
-  reason?: string;
-  repeatRule?: string;
 };
 
 export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];

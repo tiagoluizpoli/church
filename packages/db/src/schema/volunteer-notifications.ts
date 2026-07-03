@@ -11,6 +11,7 @@ import { assignment } from './assignments';
 import { church } from './church';
 import { ministry, volunteer } from './core';
 import { volunteerNotificationTypeEnum } from './enums';
+import { planningCycle } from './planning';
 import { event } from './scheduling';
 
 export const volunteerNotification = pgTable(
@@ -23,6 +24,10 @@ export const volunteerNotification = pgTable(
     volunteerId: uuid('volunteer_id')
       .notNull()
       .references(() => volunteer.id, { onDelete: 'cascade' }),
+    planningCycleId: uuid('planning_cycle_id').references(
+      () => planningCycle.id,
+      { onDelete: 'set null' },
+    ),
     ministryId: uuid('ministry_id').references(() => ministry.id, {
       onDelete: 'set null',
     }),

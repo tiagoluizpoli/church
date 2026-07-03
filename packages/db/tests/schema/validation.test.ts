@@ -4,7 +4,10 @@ import {
   church,
   event,
   ministry,
+  ministryParticipation,
+  planningCycle,
   role,
+  shift,
   slotRequirement,
   timeSlot,
   user,
@@ -18,6 +21,8 @@ describe('Database Level Constraints (T035)', () => {
   let eventId: string;
   let roleId: string;
   let volunteerId: string;
+  let participationId: string;
+  let shiftId: string;
 
   beforeEach(async () => {
     await clearDatabase();
@@ -43,11 +48,22 @@ describe('Database Level Constraints (T035)', () => {
     if (!insertedMinistry) throw new Error('Ministry insert failed');
     ministryId = insertedMinistry.id;
 
+    const [cycle] = await testDb
+      .insert(planningCycle)
+      .values({
+        churchId,
+        name: 'Constraint cycle',
+        startDate: new Date('2026-05-01T00:00:00Z'),
+        endDate: new Date('2026-06-01T00:00:00Z'),
+      })
+      .returning();
+    if (!cycle) throw new Error('Cycle insert failed');
+
     const [insertedEvent] = await testDb
       .insert(event)
       .values({
         churchId,
-        ministryId,
+        planningCycleId: cycle.id,
         title: 'Constraint Event',
         startDate: new Date('2026-05-10T09:00:00Z'),
         endDate: new Date('2026-05-10T12:00:00Z'),
@@ -55,6 +71,36 @@ describe('Database Level Constraints (T035)', () => {
       .returning();
     if (!insertedEvent) throw new Error('Event insert failed');
     eventId = insertedEvent.id;
+
+    const [participation] = await testDb
+      .insert(ministryParticipation)
+      .values({ churchId, ministryId, eventId })
+      .returning();
+    if (!participation) throw new Error('Participation insert failed');
+    participationId = participation.id;
+
+    const [slot] = await testDb
+      .insert(timeSlot)
+      .values({
+        churchId,
+        eventId,
+        startTime: new Date('2026-05-10T09:00:00Z'),
+        endTime: new Date('2026-05-10T10:00:00Z'),
+      })
+      .returning();
+    if (!slot) throw new Error('Slot insert failed');
+    const [insertedShift] = await testDb
+      .insert(shift)
+      .values({
+        churchId,
+        participationId,
+        timeSlotId: slot.id,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      })
+      .returning();
+    if (!insertedShift) throw new Error('Shift insert failed');
+    shiftId = insertedShift.id;
 
     const [insertedRole] = await testDb
       .insert(role)
@@ -118,22 +164,12 @@ describe('Database Level Constraints (T035)', () => {
 
   describe('SlotRequirement Constraints', () => {
     it('should prevent SlotRequirement with requiredCount < 1', async () => {
-      const [insertedSlot] = await testDb
-        .insert(timeSlot)
-        .values({
-          churchId,
-          eventId,
-          startTime: new Date('2026-05-10T09:00:00Z'),
-          endTime: new Date('2026-05-10T10:00:00Z'),
-        })
-        .returning();
-      if (!insertedSlot) throw new Error('Slot insert failed');
-
       let failed = false;
       try {
         await testDb.insert(slotRequirement).values({
           churchId,
-          slotId: insertedSlot.id,
+          participationId,
+          shiftId,
           roleId,
           requiredCount: 0,
         });
@@ -146,23 +182,13 @@ describe('Database Level Constraints (T035)', () => {
 
   describe('Assignment Status Constraints', () => {
     it('should only allow valid status values', async () => {
-      const [insertedSlot] = await testDb
-        .insert(timeSlot)
-        .values({
-          churchId,
-          eventId,
-          startTime: new Date('2026-05-10T09:00:00Z'),
-          endTime: new Date('2026-05-10T10:00:00Z'),
-        })
-        .returning();
-      if (!insertedSlot) throw new Error('Slot insert failed');
-
       let failed = false;
       try {
         // @ts-expect-error
         await testDb.insert(assignment).values({
           churchId,
-          slotId: insertedSlot.id,
+          participationId,
+          shiftId,
           volunteerId,
           roleId,
           status: 'invalid_status',

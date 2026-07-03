@@ -52,17 +52,10 @@ interface DemoEventPlan {
 
 interface EnsureAssignmentInput {
   context: DemoContext;
-  slotId: string;
+  participationId: string;
+  shiftId: string;
   roleId: string;
   status: 'pending' | 'confirmed';
-}
-
-interface EnsureAvailabilityInput {
-  context: DemoContext;
-  eventId: string;
-  startTime: Date;
-  endTime: Date;
-  type: 'available' | 'unavailable';
 }
 
 interface EnsureNotificationInput {
@@ -388,11 +381,28 @@ function buildEventSpecs(now: Date): DemoEventPlan {
 }
 
 async function ensureEvent(context: DemoContext, spec: DemoEventSpec) {
+  const planningCycle =
+    (await db.query.planningCycle.findFirst({
+      where: eq(schema.planningCycle.churchId, context.church.id),
+    })) ??
+    (
+      await db
+        .insert(schema.planningCycle)
+        .values({
+          churchId: context.church.id,
+          name: 'Volunteer dashboard demo',
+          startDate: new Date(Date.now() - 86_400_000),
+          endDate: new Date(Date.now() + 60 * 86_400_000),
+          state: 'locked',
+        })
+        .returning()
+    )[0];
+  if (!planningCycle) throw new Error('Unable to resolve demo planning cycle.');
+
   const event =
     (await db.query.event.findFirst({
       where: and(
         eq(schema.event.churchId, context.church.id),
-        eq(schema.event.ministryId, context.ministry.id),
         eq(schema.event.title, spec.title),
       ),
     })) ??
@@ -401,14 +411,14 @@ async function ensureEvent(context: DemoContext, spec: DemoEventSpec) {
         .insert(schema.event)
         .values({
           churchId: context.church.id,
-          ministryId: context.ministry.id,
+          planningCycleId: planningCycle.id,
           title: spec.title,
           description:
             'Seeded sample event for volunteer dashboard evaluation.',
           location: 'Main Auditorium',
           startDate: spec.startDate,
           endDate: spec.endDate,
-          status: 'published',
+          status: 'scheduled',
           eventType: 'hourly',
         })
         .returning()
@@ -492,18 +502,65 @@ async function ensureEvent(context: DemoContext, spec: DemoEventSpec) {
     }),
   );
 
-  return { event, slots };
+  const participation =
+    (await db.query.ministryParticipation.findFirst({
+      where: and(
+        eq(schema.ministryParticipation.eventId, event.id),
+        eq(schema.ministryParticipation.ministryId, context.ministry.id),
+      ),
+    })) ??
+    (
+      await db
+        .insert(schema.ministryParticipation)
+        .values({
+          churchId: context.church.id,
+          eventId: event.id,
+          ministryId: context.ministry.id,
+          state: 'published',
+        })
+        .returning()
+    )[0];
+  if (!participation) throw new Error('Unable to resolve demo participation.');
+
+  const shifts = await Promise.all(
+    slots.map(async (slot) => {
+      const existingShift = await db.query.shift.findFirst({
+        where: and(
+          eq(schema.shift.participationId, participation.id),
+          eq(schema.shift.timeSlotId, slot.id),
+        ),
+      });
+      if (existingShift) return existingShift;
+
+      const [createdShift] = await db
+        .insert(schema.shift)
+        .values({
+          churchId: context.church.id,
+          participationId: participation.id,
+          timeSlotId: slot.id,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          label: slot.label,
+        })
+        .returning();
+      if (!createdShift) throw new Error('Unable to create demo shift.');
+      return createdShift;
+    }),
+  );
+
+  return { event, participation, slots, shifts };
 }
 
 async function ensureSlotRequirement(
   context: DemoContext,
-  slotId: string,
+  participationId: string,
+  shiftId: string,
   roleId: string,
 ) {
   const existingRequirement = await db.query.slotRequirement.findFirst({
     where: and(
       eq(schema.slotRequirement.churchId, context.church.id),
-      eq(schema.slotRequirement.slotId, slotId),
+      eq(schema.slotRequirement.shiftId, shiftId),
       eq(schema.slotRequirement.roleId, roleId),
     ),
   });
@@ -516,7 +573,8 @@ async function ensureSlotRequirement(
     .insert(schema.slotRequirement)
     .values({
       churchId: context.church.id,
-      slotId,
+      participationId,
+      shiftId,
       roleId,
       teamId: context.team.id,
       requiredCount: 1,
@@ -535,7 +593,7 @@ async function ensureAssignment(input: EnsureAssignmentInput) {
   const existingAssignment = await db.query.assignment.findFirst({
     where: and(
       eq(schema.assignment.churchId, input.context.church.id),
-      eq(schema.assignment.slotId, input.slotId),
+      eq(schema.assignment.shiftId, input.shiftId),
       eq(schema.assignment.volunteerId, input.context.volunteer.id),
     ),
   });
@@ -548,7 +606,8 @@ async function ensureAssignment(input: EnsureAssignmentInput) {
     .insert(schema.assignment)
     .values({
       churchId: input.context.church.id,
-      slotId: input.slotId,
+      participationId: input.participationId,
+      shiftId: input.shiftId,
       volunteerId: input.context.volunteer.id,
       roleId: input.roleId,
       status: input.status,
@@ -561,42 +620,6 @@ async function ensureAssignment(input: EnsureAssignmentInput) {
   }
 
   return createdAssignment;
-}
-
-async function ensureAvailability(input: EnsureAvailabilityInput) {
-  const existingAvailability = await db.query.availability.findFirst({
-    where: and(
-      eq(schema.availability.churchId, input.context.church.id),
-      eq(schema.availability.volunteerId, input.context.volunteer.id),
-      eq(schema.availability.eventId, input.eventId),
-      eq(schema.availability.startTime, input.startTime),
-      eq(schema.availability.endTime, input.endTime),
-    ),
-  });
-
-  if (existingAvailability) {
-    return existingAvailability;
-  }
-
-  const [createdAvailability] = await db
-    .insert(schema.availability)
-    .values({
-      churchId: input.context.church.id,
-      volunteerId: input.context.volunteer.id,
-      eventId: input.eventId,
-      type: input.type,
-      startTime: input.startTime,
-      endTime: input.endTime,
-      isAllDay: false,
-      reason: 'Seeded dashboard demo availability.',
-    })
-    .returning();
-
-  if (!createdAvailability) {
-    throw new Error('Unable to create demo availability.');
-  }
-
-  return createdAvailability;
 }
 
 async function ensureNotification(input: EnsureNotificationInput) {
@@ -648,43 +671,39 @@ export async function seedVolunteerDashboardDemo(email?: string) {
   const confirmed = await ensureEvent(context, confirmedEvent);
 
   await Promise.all(
-    pending.slots.map((slot) =>
-      ensureSlotRequirement(context, slot.id, context.hostRole.id),
+    pending.shifts.map((shift) =>
+      ensureSlotRequirement(
+        context,
+        pending.participation.id,
+        shift.id,
+        context.hostRole.id,
+      ),
     ),
   );
   await Promise.all(
-    confirmed.slots.map((slot) =>
-      ensureSlotRequirement(context, slot.id, context.greeterRole.id),
+    confirmed.shifts.map((shift) =>
+      ensureSlotRequirement(
+        context,
+        confirmed.participation.id,
+        shift.id,
+        context.greeterRole.id,
+      ),
     ),
   );
 
   const pendingAssignment = await ensureAssignment({
     context,
-    slotId: pending.slots[0]?.id ?? '',
+    participationId: pending.participation.id,
+    shiftId: pending.shifts[0]?.id ?? '',
     roleId: context.hostRole.id,
     status: 'pending',
   });
   const confirmedAssignment = await ensureAssignment({
     context,
-    slotId: confirmed.slots[0]?.id ?? '',
+    participationId: confirmed.participation.id,
+    shiftId: confirmed.shifts[0]?.id ?? '',
     roleId: context.greeterRole.id,
     status: 'confirmed',
-  });
-
-  await ensureAvailability({
-    context,
-    eventId: pending.event.id,
-    startTime: pending.slots[0]?.startTime ?? pending.event.startDate,
-    endTime: pending.slots[0]?.endTime ?? pending.event.endDate,
-    type: 'available',
-  });
-
-  await ensureAvailability({
-    context,
-    eventId: confirmed.event.id,
-    startTime: confirmed.slots[0]?.startTime ?? confirmed.event.startDate,
-    endTime: confirmed.slots[0]?.endTime ?? confirmed.event.endDate,
-    type: 'available',
   });
 
   await ensureNotification({

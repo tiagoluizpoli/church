@@ -6,42 +6,19 @@ import { logStep, logSuccess } from '../utils';
 
 export async function generateAssignmentsAndAvailability(
   volunteers: (typeof schema.volunteer.$inferSelect)[],
-  slots: (typeof schema.timeSlot.$inferSelect)[],
   requirements: (typeof schema.slotRequirement.$inferSelect)[],
   links: (typeof schema.ministryVolunteer.$inferSelect)[],
   roles: (typeof schema.role.$inferSelect)[],
+  events: (typeof schema.event.$inferSelect)[],
+  participations: (typeof schema.ministryParticipation.$inferSelect)[],
 ) {
   logStep('Generating assignments and availability...');
   faker.seed(SEED_CONFIG.GLOBAL_SEED + 7);
 
-  const availabilityData: (typeof schema.availability.$inferInsert)[] = [];
   const assignmentsData: (typeof schema.assignment.$inferInsert)[] = [];
 
-  // 1. Generate Availability
-  // We'll generate random availability for a subset of volunteers using slot times as ranges
-  for (const v of volunteers) {
-    const selectedSlots = faker.helpers
-      .arrayElements(slots, {
-        min: 1,
-        max: 3,
-      })
-      .sort((a, b) => a.id.localeCompare(b.id));
-
-    for (const slot of selectedSlots) {
-      availabilityData.push({
-        id: faker.string.uuid(),
-        churchId: v.churchId,
-        volunteerId: v.id,
-        type: faker.helpers.arrayElement(['available', 'unavailable'] as const),
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        isAllDay: false,
-      });
-    }
-  }
-
-  // 2. Generate Assignments
-  // For each requirement, assign volunteers from the correct ministry
+  // Availability is available-by-default in the reshaped model. Only explicit
+  // unavailability marks are stored, so the general demo seed needs none.
   for (const req of requirements) {
     const role = roles.find((r) => r.id === req.roleId);
     if (!role?.ministryId) continue;
@@ -60,16 +37,20 @@ export async function generateAssignmentsAndAvailability(
       .sort((a, b) => a.id.localeCompare(b.id));
 
     for (const link of selectedLinks) {
-      // Avoid duplicate assignments for the same slot and volunteer
+      if (!volunteers.some(({ id }) => id === link.volunteerId)) continue;
+
       const exists = assignmentsData.some(
-        (a) => a.slotId === req.slotId && a.volunteerId === link.volunteerId,
+        (assignment) =>
+          assignment.shiftId === req.shiftId &&
+          assignment.volunteerId === link.volunteerId,
       );
       if (exists) continue;
 
       assignmentsData.push({
         id: faker.string.uuid(),
         churchId: req.churchId,
-        slotId: req.slotId,
+        participationId: req.participationId,
+        shiftId: req.shiftId,
         volunteerId: link.volunteerId,
         roleId: req.roleId,
         status: faker.helpers.arrayElement(['confirmed', 'pending'] as const),
@@ -77,16 +58,59 @@ export async function generateAssignmentsAndAvailability(
     }
   }
 
-  // Batch insert
-  if (availabilityData.length > 0) {
-    await db.insert(schema.availability).values(availabilityData);
-  }
-
   if (assignmentsData.length > 0) {
     await db.insert(schema.assignment).values(assignmentsData);
   }
 
+  const checksData: (typeof schema.availabilityCheck.$inferInsert)[] = [];
+  const seenChecks = new Set<string>();
+  for (const link of links) {
+    const ministryParticipations = participations.filter(
+      ({ ministryId }) => ministryId === link.ministryId,
+    );
+    for (const participation of ministryParticipations) {
+      const cycleId = events.find(
+        ({ id }) => id === participation.eventId,
+      )?.planningCycleId;
+      if (!cycleId) continue;
+      const key = `${cycleId}:${link.id}`;
+      if (seenChecks.has(key)) continue;
+      seenChecks.add(key);
+      checksData.push({
+        id: faker.string.uuid(),
+        churchId: link.churchId,
+        planningCycleId: cycleId,
+        ministryVolunteerId: link.id,
+      });
+    }
+  }
+
+  const checks = checksData.length
+    ? await db.insert(schema.availabilityCheck).values(checksData).returning()
+    : [];
+  const marks = checks.flatMap((check, index) => {
+    if (index % 3 !== 0) return [];
+    const membership = links.find(({ id }) => id === check.ministryVolunteerId);
+    const participation = participations.find(
+      ({ ministryId }) => ministryId === membership?.ministryId,
+    );
+    const requirement = requirements.find(
+      ({ participationId }) => participationId === participation?.id,
+    );
+    return requirement
+      ? [
+          {
+            id: faker.string.uuid(),
+            churchId: check.churchId,
+            availabilityCheckId: check.id,
+            shiftId: requirement.shiftId,
+          },
+        ]
+      : [];
+  });
+  if (marks.length) await db.insert(schema.availability).values(marks);
+
   logSuccess(
-    `Generated ${availabilityData.length} availability records and ${assignmentsData.length} assignments.`,
+    `Generated ${assignmentsData.length} assignments, ${checks.length} checks, and ${marks.length} unavailability marks.`,
   );
 }

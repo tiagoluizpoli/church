@@ -9,8 +9,10 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
-import { ministry, role, team } from './core';
+import { role, team } from './core';
 import { eventStatusEnum, eventTypeEnum } from './enums';
+import { ministryParticipation } from './participation';
+import { eventTemplate, planningCycle, timeBlock } from './planning';
 
 export const event = pgTable(
   'event',
@@ -19,9 +21,13 @@ export const event = pgTable(
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    ministryId: uuid('ministry_id')
+    planningCycleId: uuid('planning_cycle_id')
       .notNull()
-      .references(() => ministry.id, { onDelete: 'cascade' }),
+      .references(() => planningCycle.id, { onDelete: 'cascade' }),
+    sourceTemplateId: uuid('source_template_id').references(
+      () => eventTemplate.id,
+      { onDelete: 'set null' },
+    ),
     title: varchar('title', { length: 255 }).notNull(),
     description: text('description'),
     location: varchar('location', { length: 255 }),
@@ -33,8 +39,8 @@ export const event = pgTable(
       withTimezone: true,
       mode: 'date',
     }).notNull(),
-    status: eventStatusEnum('status').default('draft').notNull(), // draft, published, cancelled
-    eventType: eventTypeEnum('event_type').default('hourly').notNull(), // hourly, day_based
+    status: eventStatusEnum('status').default('draft').notNull(),
+    eventType: eventTypeEnum('event_type').default('hourly').notNull(),
     createdAt: timestamp('created_at', {
       withTimezone: true,
       mode: 'date',
@@ -61,6 +67,10 @@ export const timeSlot = pgTable(
     eventId: uuid('event_id')
       .notNull()
       .references(() => event.id, { onDelete: 'cascade' }),
+    sourceTemplateBlockId: uuid('source_template_block_id').references(
+      () => timeBlock.id,
+      { onDelete: 'set null' },
+    ),
     startTime: timestamp('start_time', {
       withTimezone: true,
       mode: 'date',
@@ -85,6 +95,37 @@ export const timeSlot = pgTable(
   ],
 );
 
+export const shift = pgTable(
+  'shift',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    participationId: uuid('participation_id')
+      .notNull()
+      .references(() => ministryParticipation.id, { onDelete: 'cascade' }),
+    timeSlotId: uuid('time_slot_id')
+      .notNull()
+      .references(() => timeSlot.id, { onDelete: 'cascade' }),
+    startTime: timestamp('start_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    endTime: timestamp('end_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    label: varchar('label', { length: 255 }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check('shift_duration_check', sql`${table.startTime} < ${table.endTime}`),
+  ],
+);
+
 export const slotRequirement = pgTable(
   'slot_requirement',
   {
@@ -92,9 +133,12 @@ export const slotRequirement = pgTable(
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    slotId: uuid('slot_id')
+    participationId: uuid('participation_id')
       .notNull()
-      .references(() => timeSlot.id, { onDelete: 'cascade' }),
+      .references(() => ministryParticipation.id, { onDelete: 'cascade' }),
+    shiftId: uuid('shift_id')
+      .notNull()
+      .references(() => shift.id, { onDelete: 'cascade' }),
     roleId: uuid('role_id')
       .notNull()
       .references(() => role.id, { onDelete: 'cascade' }),

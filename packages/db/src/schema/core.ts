@@ -3,12 +3,14 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth';
 import { church } from './church';
 import {
+  defaultDirectionEnum,
   enforcementTypeEnum,
   membershipStatusEnum,
   systemRoleEnum,
@@ -24,6 +26,9 @@ export const ministry = pgTable('ministry', {
   description: text('description'),
   enforcementType: enforcementTypeEnum('enforcement_type')
     .default('soft')
+    .notNull(),
+  defaultDirection: defaultDirectionEnum('default_direction')
+    .default('all_out')
     .notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -108,3 +113,25 @@ export const role = pgTable('role', {
   name: varchar('name', { length: 255 }).notNull(),
   isGlobal: boolean('is_global').default(false).notNull(),
 });
+
+export const churchAdmin = pgTable(
+  'church_admin',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('church_admin_church_user_idx').on(
+      table.churchId,
+      table.userId,
+    ),
+  ],
+);

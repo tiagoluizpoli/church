@@ -21,8 +21,32 @@ export const membershipStatusEnum = pgEnum('membership_status', [
 
 export const eventStatusEnum = pgEnum('event_status', [
   'draft',
-  'published',
+  'scheduled',
   'cancelled',
+  'past',
+]);
+
+export const planningCycleStateEnum = pgEnum('planning_cycle_state', [
+  'draft',
+  'locked',
+  'archived',
+]);
+
+export const participationStateEnum = pgEnum('participation_state', [
+  'tailoring',
+  'availability_fired',
+  'rostering',
+  'published',
+]);
+
+export const availabilityCheckStateEnum = pgEnum('availability_check_state', [
+  'pending',
+  'confirmed',
+]);
+
+export const defaultDirectionEnum = pgEnum('default_direction', [
+  'all_in',
+  'all_out',
 ]);
 
 export const eventTypeEnum = pgEnum('event_type', ['hourly', 'day_based']);
@@ -33,11 +57,6 @@ export const assignmentStatusEnum = pgEnum('assignment_status', [
   'confirmed',
   'declined',
   'cancelled',
-]);
-
-export const availabilityTypeEnum = pgEnum('availability_type', [
-  'available',
-  'unavailable',
 ]);
 
 export const auditActionEnum = pgEnum('audit_action', [

@@ -13,13 +13,18 @@ export const testDb = drizzle(pool, { schema });
 
 export async function clearDatabase() {
   await testDb.execute(sql`
-    DO $$ 
+    DO $$
     DECLARE 
-        r RECORD;
+        table_names text;
     BEGIN
-        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'drizzle_migrations') LOOP
-            EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
-        END LOOP;
+        SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+        INTO table_names
+        FROM pg_tables
+        WHERE schemaname = 'public';
+
+        IF table_names IS NOT NULL THEN
+            EXECUTE 'TRUNCATE TABLE ' || table_names || ' CASCADE';
+        END IF;
     END $$;
   `);
 }

@@ -27,18 +27,24 @@ export async function seedDatabase() {
     ministries,
     teams,
   );
-  const events = await generateEvents(ministries);
-  const { slots, requirements } = await generateSlotsAndRequirements(
+  const { events, participations, blocks } = await generateEvents(
+    ministries,
+    roles,
+  );
+  const { requirements } = await generateSlotsAndRequirements(
     events,
+    participations,
+    blocks,
     roles,
   );
 
   await generateAssignmentsAndAvailability(
     volunteers,
-    slots,
     requirements,
     links,
     roles,
+    events,
+    participations,
   );
 
   logSuccess('Database seeding complete.');

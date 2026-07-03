@@ -6,7 +6,10 @@ import {
   church,
   event,
   ministry,
+  ministryParticipation,
+  planningCycle,
   role,
+  shift,
   timeSlot,
   user,
   volunteer,
@@ -20,6 +23,8 @@ describe('Assignments and Audit Schema', () => {
   let userId: string;
   let eventId: string;
   let slotId: string;
+  let participationId: string;
+  let shiftId: string;
   let roleId: string;
 
   beforeAll(async () => {
@@ -82,12 +87,22 @@ describe('Assignments and Audit Schema', () => {
     if (!newRole) throw new Error('Failed to create role');
     roleId = newRole.id;
 
-    // Create an event
+    const [cycle] = await testDb
+      .insert(planningCycle)
+      .values({
+        churchId,
+        name: 'Assignment cycle',
+        startDate: new Date(Date.now() - 86_400_000),
+        endDate: new Date(Date.now() + 86_400_000),
+      })
+      .returning();
+    if (!cycle) throw new Error('Failed to create cycle');
+
     const [newEvent] = await testDb
       .insert(event)
       .values({
         churchId: churchId,
-        ministryId: ministryId,
+        planningCycleId: cycle.id,
         title: 'Test Event',
         startDate: new Date(),
         endDate: new Date(Date.now() + 3600000),
@@ -95,6 +110,13 @@ describe('Assignments and Audit Schema', () => {
       .returning();
     if (!newEvent) throw new Error('Failed to create event');
     eventId = newEvent.id;
+
+    const [participation] = await testDb
+      .insert(ministryParticipation)
+      .values({ churchId, ministryId, eventId })
+      .returning();
+    if (!participation) throw new Error('Failed to create participation');
+    participationId = participation.id;
 
     // Create a time slot
     const [newSlot] = await testDb
@@ -108,6 +130,19 @@ describe('Assignments and Audit Schema', () => {
       .returning();
     if (!newSlot) throw new Error('Failed to create slot');
     slotId = newSlot.id;
+
+    const [newShift] = await testDb
+      .insert(shift)
+      .values({
+        churchId,
+        participationId,
+        timeSlotId: slotId,
+        startTime: newSlot.startTime,
+        endTime: newSlot.endTime,
+      })
+      .returning();
+    if (!newShift) throw new Error('Failed to create shift');
+    shiftId = newShift.id;
   }, 30000);
 
   afterAll(async () => {
@@ -119,7 +154,8 @@ describe('Assignments and Audit Schema', () => {
       .insert(assignment)
       .values({
         churchId,
-        slotId,
+        participationId,
+        shiftId,
         volunteerId,
         roleId,
         assignedBy: userId,
@@ -137,7 +173,8 @@ describe('Assignments and Audit Schema', () => {
     try {
       await testDb.insert(assignment).values({
         churchId,
-        slotId,
+        participationId,
+        shiftId,
         volunteerId,
         roleId,
       });
@@ -168,7 +205,8 @@ describe('Assignments and Audit Schema', () => {
       .insert(assignment)
       .values({
         churchId,
-        slotId,
+        participationId,
+        shiftId,
         volunteerId: newVolunteer.id,
         roleId,
       })
@@ -213,7 +251,8 @@ describe('Assignments and Audit Schema', () => {
       .insert(assignment)
       .values({
         churchId,
-        slotId,
+        participationId,
+        shiftId,
         volunteerId: newVolunteer.id,
         roleId,
       })

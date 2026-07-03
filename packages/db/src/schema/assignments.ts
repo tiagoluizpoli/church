@@ -1,24 +1,19 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
   check,
-  index,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
-  varchar,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth';
+import { availabilityCheck } from './availability-checks';
 import { church } from './church';
 import { role, volunteer } from './core';
-import {
-  assignmentStatusEnum,
-  auditActionEnum,
-  availabilityTypeEnum,
-} from './enums';
-import { event, timeSlot } from './scheduling';
+import { assignmentStatusEnum, auditActionEnum } from './enums';
+import { ministryParticipation } from './participation';
+import { shift } from './scheduling';
 
 export const assignment = pgTable(
   'assignment',
@@ -27,9 +22,12 @@ export const assignment = pgTable(
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    slotId: uuid('slot_id')
+    participationId: uuid('participation_id')
       .notNull()
-      .references(() => timeSlot.id, { onDelete: 'cascade' }),
+      .references(() => ministryParticipation.id, { onDelete: 'cascade' }),
+    shiftId: uuid('shift_id')
+      .notNull()
+      .references(() => shift.id, { onDelete: 'cascade' }),
     volunteerId: uuid('volunteer_id')
       .notNull()
       .references(() => volunteer.id, { onDelete: 'cascade' }),
@@ -52,8 +50,8 @@ export const assignment = pgTable(
     // Partial: a volunteer may hold only one ACTIVE assignment per slot.
     // Declined/cancelled rows are excluded so a volunteer can be re-assigned
     // (or substituted in) after declining the same slot.
-    uniqueIndex('assignment_slot_volunteer_idx')
-      .on(table.slotId, table.volunteerId)
+    uniqueIndex('assignment_shift_volunteer_idx')
+      .on(table.shiftId, table.volunteerId)
       .where(sql`${table.status} IN ('draft', 'pending', 'confirmed')`),
     check(
       'assignment_status_check',
@@ -69,34 +67,20 @@ export const availability = pgTable(
     churchId: uuid('church_id')
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
-    volunteerId: uuid('volunteer_id')
+    availabilityCheckId: uuid('availability_check_id')
       .notNull()
-      .references(() => volunteer.id, { onDelete: 'cascade' }),
-    eventId: uuid('event_id').references(() => event.id, {
-      onDelete: 'cascade',
-    }),
-    type: availabilityTypeEnum('type').default('unavailable').notNull(), // available, unavailable
-    startTime: timestamp('start_time', {
-      withTimezone: true,
-      mode: 'date',
-    }).notNull(),
-    endTime: timestamp('end_time', {
-      withTimezone: true,
-      mode: 'date',
-    }).notNull(),
-    isAllDay: boolean('is_all_day').default(false).notNull(),
-    reason: varchar('reason', { length: 255 }),
-    repeatRule: varchar('repeat_rule', { length: 255 }),
+      .references(() => availabilityCheck.id, { onDelete: 'cascade' }),
+    shiftId: uuid('shift_id')
+      .notNull()
+      .references(() => shift.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
-    index('availability_church_volunteer_event_idx').on(
-      table.churchId,
-      table.volunteerId,
-      table.eventId,
-    ),
-    check(
-      'availability_time_check',
-      sql`${table.startTime} < ${table.endTime}`,
+    uniqueIndex('availability_check_shift_idx').on(
+      table.availabilityCheckId,
+      table.shiftId,
     ),
   ],
 );

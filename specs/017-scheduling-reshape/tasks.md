@@ -28,11 +28,11 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 **Purpose**: Make the safeguard runnable before any code.
 
-- [ ] T001 [P] Add scheduling coverage thresholds (domain 100, application 95, repos 90, dtos 100) to `apps/server/vitest.config.ts` per test-plan.md.
-- [ ] T002 [P] Create dual-church + role seed helpers (`churchA`, `churchB`, user holding admin+leader) in `apps/server/src/test-support/scheduling-fixtures.ts`.
-- [ ] T003 [P] Add injectable fixed-clock + church-timezone helper for date-only boundary tests in `apps/server/src/test-support/clock.ts`.
-- [ ] T004 [P] Add spy `INotificationService` + stub `IFeatureFlagService` (deterministic `PARTICIPATION_DEFAULT_ALL_IN`, `VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE`) test doubles in `apps/server/src/test-support/`.
-- [ ] T005 [P] Add Playwright storage states `CHURCH_ADMIN_STORAGE_STATE` / `LEADER_STORAGE_STATE` / `VOLUNTEER_STORAGE_STATE` to `apps/server/src/test-support/e2e-seed.ts` (closes BL-007 for this feature).
+- [X] T001 [P] Add scheduling coverage thresholds (domain 100, application 95, repos 90, dtos 100) to `apps/server/vitest.config.ts` per test-plan.md.
+- [X] T002 [P] Create dual-church + role seed helpers (`churchA`, `churchB`, user holding admin+leader) in `apps/server/src/test-support/scheduling-fixtures.ts`.
+- [X] T003 [P] Add injectable fixed-clock + church-timezone helper for date-only boundary tests in `apps/server/src/test-support/clock.ts`.
+- [X] T004 [P] Add spy `INotificationService` + stub `IFeatureFlagService` (deterministic `PARTICIPATION_DEFAULT_ALL_IN`, `VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE`) test doubles in `apps/server/src/test-support/`.
+- [X] T005 [P] Add Playwright storage states `CHURCH_ADMIN_STORAGE_STATE` / `LEADER_STORAGE_STATE` / `VOLUNTEER_STORAGE_STATE` to `apps/server/src/test-support/e2e-seed.ts` (closes BL-007 for this feature).
 
 ---
 

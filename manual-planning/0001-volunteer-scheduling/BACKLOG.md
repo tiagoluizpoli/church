@@ -20,6 +20,8 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 | BL-008 | `MinistryServingProfile` authoring UX polish   | Scheduling Reshape (017) | Backlog |
 | BL-009 | Free-standing role-count presets (ex-`RoleTemplate`) | Scheduling Reshape (017) | Backlog |
 | BL-010 | Per-ministry `Shift` model refinements         | Scheduling Reshape (017) | Backlog |
+| BL-011 | Centralize repeated controller auth preValidation | Backend Architecture | Backlog |
+| BL-012 | Add OpenAPI `summary` and `description` metadata across controller routes | API Documentation | Backlog |
 
 ---
 
@@ -426,3 +428,121 @@ Grilled 2026-07-02 (question "B"). Decided to delete `RoleTemplate` because:
 - Volunteer availability spanning *partial* `Shift`s. By design the availability atom **is** the whole `Shift` (Q7). A finer grain contradicts a locked decision.
 
 **Prerequisites**: `TimeSlot` + `Shift` shipped in 017; real usage revealing which convenience refinement matters first.
+
+---
+
+### BL-011 — Centralize repeated controller auth `preValidation`
+
+**Status**: Backlog
+
+**Feature area**: Backend Architecture
+
+**Summary**: Several Fastify controllers repeat the same session-resolution and volunteer-context bootstrapping inside controller-local `preValidation` hooks. The shared core should be centralized, while keeping controller-specific authorization policy explicit.
+
+**Full Context**:
+
+Current duplication exists in:
+
+- `apps/server/src/api/controllers/church-admin-controller.ts`
+- `apps/server/src/api/controllers/admin-leader-controller.ts`
+- `apps/server/src/api/controllers/leader-controller.ts`
+- `apps/server/src/api/controllers/volunteer-controller.ts`
+
+The repeated core is the same:
+
+1. Read auth headers from the Fastify request.
+2. Resolve Better Auth session with `auth.api.getSession(...)`.
+3. Reject unauthenticated requests with `401`.
+4. Resolve volunteer context via `IVolunteerManager.resolveVolunteerContext(...)`.
+5. Reject missing volunteer profile with `401`.
+6. Decorate the request with `userId`, `volunteerId`, and `churchId`.
+
+What differs is the final authorization policy:
+
+- `ChurchAdminController`: requires `ctx.isAdmin`.
+- `LeaderController`: requires `ctx.isLeader || ctx.isAdmin`.
+- `VolunteerController`: no extra role gate after context resolution.
+- `AdminLeaderController`: requires `ctx.isAdmin || ctx.isLeader`, except for its route-specific `/admin/schedule-builder` GET carve-out.
+
+**Validation note**:
+
+This is **not** byte-for-byte identical across controllers, so the right extraction is probably **not** a single opaque hook moved into `main/`. The best reuse target is the auth-context resolution path, plus a small policy layer for controller-specific checks.
+
+**Why deferred**:
+
+- The current implementation is functional and secure enough for ongoing 017 delivery.
+- A rushed extraction could accidentally flatten important differences, especially the `AdminLeaderController` exception path.
+- This is cleanup/architecture work, not a story blocker.
+
+**Recommended direction when implementing**:
+
+- Prefer a focused module near `apps/server/src/api/auth/`, not a generic "shared" folder.
+- Extract either:
+  - a reusable hook factory, or
+  - a smaller helper that resolves authenticated volunteer context and leaves role checks to controllers.
+- Only place it under `apps/server/src/main/fastify/` if it becomes a true app-wide Fastify plugin rather than an API-layer auth helper.
+
+**Possible shapes**:
+
+- `apps/server/src/api/auth/create-auth-prevalidation.ts`
+  - builds a `preValidation` hook from an explicit policy object.
+- `apps/server/src/api/auth/resolve-request-auth-context.ts`
+  - centralizes session + volunteer-context resolution only.
+
+**Success criteria**:
+
+1. Shared auth-context resolution lives in one place.
+2. Role requirements remain readable at controller call sites.
+3. The `/admin/schedule-builder` exception remains covered by tests.
+4. `401`/`403` behavior and request decoration remain unchanged.
+
+---
+
+### BL-012 — Add OpenAPI `summary` and `description` metadata across controller routes
+
+**Status**: Backlog
+
+**Feature area**: API Documentation
+
+**Summary**: Fastify route schemas already define `operationId` broadly, but most routes still lack explicit `summary` and `description`. Add those metadata fields consistently so Swagger/Scalar show human-readable operation names and explanations instead of only technical identifiers.
+
+**Full Context**:
+
+Current state:
+
+- `operationId` is present across the backend controllers.
+- `summary` and `description` are largely absent.
+- A concrete example now exists in `apps/server/src/api/controllers/church-admin-controller.ts` on `getMinistryServingProfile`, where:
+  - `summary` gives the operation a readable label
+  - `description` explains what the endpoint returns in Swagger/Scalar
+
+Validated scope:
+
+- `apps/server/src/api/controllers/church-admin-controller.ts`
+- `apps/server/src/api/controllers/admin-leader-controller.ts`
+- `apps/server/src/api/controllers/leader-controller.ts`
+- `apps/server/src/api/controllers/volunteer-controller.ts`
+- `apps/server/src/api/controllers/feature-flag-controller.ts`
+
+Across those controllers, `operationId` is common, while explicit route-level `summary` and `description` are not.
+
+**Why deferred**:
+
+- This is documentation polish, not a functional blocker.
+- It is best done as a deliberate sweep so naming stays consistent across the full API surface.
+- Doing it piecemeal risks uneven wording and mixed conventions.
+
+**Recommended direction when implementing**:
+
+- Run this as a single documentation pass across all route schemas.
+- Keep `operationId` as the machine-stable identifier.
+- Add:
+  - `summary`: short human-readable operation title
+  - `description`: one clear sentence about behavior, scope, or returned data
+- Prefer business-language wording over internal method names where helpful.
+
+**Success criteria**:
+
+1. Every documented route schema has `operationId`, `summary`, and `description`.
+2. Swagger and Scalar display readable operation labels and explanations throughout the API.
+3. Naming is consistent across admin, leader, volunteer, and feature-flag surfaces.

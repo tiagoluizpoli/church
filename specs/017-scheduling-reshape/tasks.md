@@ -108,23 +108,23 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 ### Tests (write first, must fail)
 
-- [ ] T036 [P] [US2] L1 `Shift`+`ShiftSplitter` — DL1-SH-01..06, DL1-SS-01..07 (bounds, equal-N, manual, remainder decision).
-- [ ] T037 [P] [US2] L1 `MinistryParticipation` lifecycle + `ProfileSeeder`/three-tier — DL1-MP-01..07, DL1-PS-01..05 (both flag states).
-- [ ] T038 [P] [US2] L2 `ParticipationManager` — DL2-PT-01..08 (lazy create, inclusions, split, bounds 409, per-shift reqs, cross-ministry isolation, independent splits).
-- [ ] T039 [P] [US2] L2 `AvailabilityCheckManager` fire/resend — DL2-AF-01..07 (one per membership, notify once, inactive excluded, no dupes).
-- [ ] T040 [P] [US2] L3 contract + HTTP — DL3-HT-04 (shifts, out-of-bounds/scope), DL3-HT-05 (fire).
-- [ ] T041 [P] [US2] E2E DL4-US2 in `us2-leader-tailor.spec.ts`.
+- [X] T036 [P] [US2] L1 `Shift`+`ShiftSplitter` — DL1-SH-01..06, DL1-SS-01..07 (bounds, equal-N, manual, remainder decision).
+- [X] T037 [P] [US2] L1 `MinistryParticipation` lifecycle + `ProfileSeeder`/three-tier — DL1-MP-01..07, DL1-PS-01..05 (both flag states).
+- [X] T038 [P] [US2] L2 `ParticipationManager` — DL2-PT-01..08 (lazy create, inclusions, split, bounds 409, per-shift reqs, cross-ministry isolation, independent splits).
+- [X] T039 [P] [US2] L2 `AvailabilityCheckManager` fire/resend — DL2-AF-01..07 (one per membership, notify once, inactive excluded, no dupes).
+- [X] T040 [P] [US2] L3 contract + HTTP — DL3-HT-04 (shifts, out-of-bounds/scope), DL3-HT-05 (fire).
+- [X] T041 [P] [US2] E2E DL4-US2 in `us2-leader-tailor.spec.ts`.
 
 ### Implementation
 
-- [ ] T042 [P] [US2] `Shift` entity (bounds invariant) + `ShiftSplitter` service + repo/mapper.
-- [ ] T043 [P] [US2] `MinistryParticipation` + `ParticipationSlotInclusion` entities + repos/mappers.
-- [ ] T044 [P] [US2] `MinistryServingProfile` entity + repo/mapper; reshape `SlotRequirement` → shift+participation.
-- [ ] T045 [US2] `ProfileSeeder` domain service (three-tier default direction; dynamic events never seeded); wire into `CycleEventGenerator` (T031).
-- [ ] T046 [US2] `IParticipationManager` + `DbParticipationManager` (get/lazy-create, setInclusions, splitShifts, upsertRequirement, servingProfile, defaultDirection).
-- [ ] T047 [US2] `IAvailabilityCheckManager` + `DbAvailabilityCheckManager` (fire spawns checks per membership + notify; resend); participation `tailoring→availability_fired`. Notifications write with `planning_cycle_id` scope (T011a) — reminder kind is leader-resendable (FR-027).
-- [ ] T048 [US2] Extend `admin-leader-controller.ts` (leader participation/shift/requirement/fire) + serving-profile + default-direction admin routes; DTOs; DI.
-- [ ] T049 [US2] Web: participation tailoring, shift-split form (bounds guard), headcount matrix, fire button; orval regen.
+- [X] T042 [P] [US2] `Shift` entity (bounds invariant) + `ShiftSplitter` service + repo/mapper.
+- [X] T043 [P] [US2] `MinistryParticipation` + `ParticipationSlotInclusion` entities + repos/mappers.
+- [X] T044 [P] [US2] `MinistryServingProfile` entity + repo/mapper; reshape `SlotRequirement` → shift+participation.
+- [X] T045 [US2] `ProfileSeeder` domain service (three-tier default direction; dynamic events never seeded); wire into `CycleEventGenerator` (T031).
+- [X] T046 [US2] `IParticipationManager` + `DbParticipationManager` (get/lazy-create, setInclusions, splitShifts, upsertRequirement, servingProfile, defaultDirection).
+- [X] T047 [US2] `IAvailabilityCheckManager` + `DbAvailabilityCheckManager` (fire spawns checks per membership + notify; resend); participation `tailoring→availability_fired`. Notifications write with `planning_cycle_id` scope (T011a) — reminder kind is leader-resendable (FR-027).
+- [X] T048 [US2] Extend `admin-leader-controller.ts` (leader participation/shift/requirement/fire) + serving-profile + default-direction admin routes; DTOs; DI.
+- [X] T049 [US2] Web: participation tailoring, shift-split form (bounds guard), headcount matrix, fire button; orval regen.
 
 **Checkpoint**: leaders tailor + fire; US1+US2 independently testable.
 

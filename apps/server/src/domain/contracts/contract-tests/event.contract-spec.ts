@@ -1,6 +1,11 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId, EventId, MinistryId } from '../../branded-ids';
+import type {
+  ChurchId,
+  EventId,
+  MinistryId,
+  PlanningCycleId,
+} from '../../branded-ids';
 import type { EventRepository } from '../infrastructure/event.repository';
 
 export function runEventRepositoryContractTests(
@@ -63,7 +68,7 @@ export function runEventRepositoryContractTests(
       const list = await repo.listByMinistry(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '33333333-3333-3333-3333-333333333331' as MinistryId,
-        'published',
+        'scheduled',
       );
       expect(list.length).toBe(1);
       expect(list[0]?.id).toBe('66666666-6666-6666-6666-666666666662');
@@ -73,7 +78,8 @@ export function runEventRepositoryContractTests(
       const created = await repo.create(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         {
-          ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
+          planningCycleId:
+            '22222222-2222-2222-2222-222222222231' as PlanningCycleId,
           title: 'New Event',
           startDate: new Date('2024-06-10T10:00:00Z'),
           endDate: new Date('2024-06-10T12:00:00Z'),
@@ -90,14 +96,14 @@ export function runEventRepositoryContractTests(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '66666666-6666-6666-6666-666666666661' as EventId,
         {
-          status: 'published',
+          status: 'scheduled',
         },
       );
       const found = await repo.getById(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '66666666-6666-6666-6666-666666666661' as EventId,
       );
-      expect(found.status).toBe('published');
+      expect(found.status).toBe('scheduled');
     });
   });
 }

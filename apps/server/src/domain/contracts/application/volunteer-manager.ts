@@ -124,6 +124,53 @@ export interface NotificationListResult {
   nextCursor?: Date;
 }
 
+export interface GetDashboardInput {
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface GetUpcomingAssignmentsInput {
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface GetMinistryScheduleInput {
+  ministryId: MinistryId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface DeleteAvailabilityInput {
+  availabilityId: AvailabilityId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface GetAvailabilityInput {
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+  startTime?: Date;
+  endTime?: Date;
+}
+
+export interface GetNotificationsInput {
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+  cursor?: Date;
+  limit?: number;
+}
+
+export interface MarkNotificationReadInput {
+  notificationId: VolunteerNotificationId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface MarkAllNotificationsReadInput {
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
 export interface VolunteerContext {
   churchId: ChurchId;
   isAdmin: boolean;
@@ -133,45 +180,20 @@ export interface VolunteerContext {
 
 export interface IVolunteerManager {
   resolveVolunteerContext(userId: UserId): Promise<VolunteerContext | null>;
-  getDashboard(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<VolunteerDashboard>;
-  getUpcomingAssignments(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<Assignment[]>;
-  getMinistrySchedule(input: {
-    ministryId: MinistryId;
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<MinistrySchedule>;
+  getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard>;
+  getUpcomingAssignments(
+    input: GetUpcomingAssignmentsInput,
+  ): Promise<Assignment[]>;
+  getMinistrySchedule(
+    input: GetMinistryScheduleInput,
+  ): Promise<MinistrySchedule>;
   upsertAvailability(input: UpsertAvailabilityInput): Promise<Availability>;
-  deleteAvailability(input: {
-    availabilityId: AvailabilityId;
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<void>;
-  getAvailability(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-    startTime?: Date;
-    endTime?: Date;
-  }): Promise<Availability[]>;
+  deleteAvailability(input: DeleteAvailabilityInput): Promise<void>;
+  getAvailability(input: GetAvailabilityInput): Promise<Availability[]>;
   respondToAssignment(input: RespondToAssignmentInput): Promise<Assignment>;
-  getNotifications(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-    cursor?: Date;
-    limit?: number;
-  }): Promise<NotificationListResult>;
-  markNotificationRead(input: {
-    notificationId: VolunteerNotificationId;
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<void>;
-  markAllNotificationsRead(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<void>;
+  getNotifications(
+    input: GetNotificationsInput,
+  ): Promise<NotificationListResult>;
+  markNotificationRead(input: MarkNotificationReadInput): Promise<void>;
+  markAllNotificationsRead(input: MarkAllNotificationsReadInput): Promise<void>;
 }

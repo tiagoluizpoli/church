@@ -1,5 +1,12 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
-import type { ChurchId, RoleId, TeamId, TimeSlotId } from '../branded-ids';
+import type {
+  ChurchId,
+  MinistryParticipationId,
+  RoleId,
+  ShiftId,
+  TeamId,
+  TimeSlotId,
+} from '../branded-ids';
 import { InvalidRequiredCountError } from '../errors/invalid-required-count';
 
 export type SlotRequirementId = BrandedId<'SlotRequirementId'>;
@@ -7,6 +14,8 @@ export type SlotRequirementId = BrandedId<'SlotRequirementId'>;
 export interface SlotRequirementProps {
   churchId: ChurchId;
   slotId: TimeSlotId;
+  participationId?: MinistryParticipationId;
+  shiftId?: ShiftId;
   roleId: RoleId;
   teamId?: TeamId;
   requiredCount: number;
@@ -40,6 +49,14 @@ export class SlotRequirement extends Entity<
 
   get slotId(): TimeSlotId {
     return this._props.slotId;
+  }
+
+  get participationId(): MinistryParticipationId | undefined {
+    return this._props.participationId;
+  }
+
+  get shiftId(): ShiftId | undefined {
+    return this._props.shiftId;
   }
 
   get roleId(): RoleId {

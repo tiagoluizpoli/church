@@ -2,6 +2,7 @@ import {
   assignment,
   assignmentAudit,
   role,
+  shift,
   timeSlot,
   user,
   volunteer,
@@ -132,7 +133,8 @@ export class DrizzleAssignmentAuditRepository
       })
       .from(assignmentAudit)
       .innerJoin(assignment, eq(assignmentAudit.assignmentId, assignment.id))
-      .innerJoin(timeSlot, eq(assignment.slotId, timeSlot.id))
+      .innerJoin(shift, eq(assignment.shiftId, shift.id))
+      .innerJoin(timeSlot, eq(shift.timeSlotId, timeSlot.id))
       .innerJoin(role, eq(assignment.roleId, role.id))
       .innerJoin(volunteer, eq(assignment.volunteerId, volunteer.id))
       .leftJoin(volunteerUser, eq(volunteer.userId, volunteerUser.id))

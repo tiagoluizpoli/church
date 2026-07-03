@@ -1,18 +1,19 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
-import type {
-  AvailabilityId,
-  ChurchId,
-  MinistryId,
-  UserId,
-  VolunteerId,
-  VolunteerNotificationId,
-} from '../domain/branded-ids';
+import type { MinistryId, UserId } from '../domain/branded-ids';
 import type {
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
   DashboardAvailabilityTask,
+  DeleteAvailabilityInput,
+  GetAvailabilityInput,
+  GetDashboardInput,
+  GetMinistryScheduleInput,
+  GetNotificationsInput,
+  GetUpcomingAssignmentsInput,
   IVolunteerManager,
+  MarkAllNotificationsReadInput,
+  MarkNotificationReadInput,
   MinistrySchedule,
   NotificationListResult,
   RespondToAssignmentInput,
@@ -41,7 +42,14 @@ const UPCOMING_DAYS = 30;
 const DEFAULT_NOTIFICATION_LIMIT = 20;
 const NOTIFICATION_PREVIEW_LIMIT = 3;
 
-const ADMINISTRATION_MINISTRY_NAME = 'Administration';
+interface DashboardAssignmentGroupDraft {
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+  eventStart: string;
+  items: DashboardAssignmentItem[];
+}
 
 function slotKey(startTime: Date, endTime: Date): string {
   return `${startTime.toISOString()}::${endTime.toISOString()}`;
@@ -120,24 +128,19 @@ export class DbVolunteerManager implements IVolunteerManager {
   ): Promise<VolunteerContext | null> {
     const volunteer = await this.volunteerRepo.findByUserIdGlobally(userId);
     if (!volunteer) return null;
-    const ledMinistries = await this.volunteerRepo.listLedMinistries(
-      volunteer.churchId,
-      volunteer.id,
-    );
+    const [ledMinistries, isAdmin] = await Promise.all([
+      this.volunteerRepo.listLedMinistries(volunteer.churchId, volunteer.id),
+      this.volunteerRepo.isChurchAdmin(volunteer.churchId, userId),
+    ]);
     return {
       volunteerId: volunteer.id,
       churchId: volunteer.churchId,
-      isAdmin: ledMinistries.some(
-        (m) => m.ministryName === ADMINISTRATION_MINISTRY_NAME,
-      ),
+      isAdmin,
       isLeader: ledMinistries.length > 0,
     };
   }
 
-  async getDashboard(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<VolunteerDashboard> {
+  async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
     const { volunteerId, churchId } = input;
     const now = new Date();
 
@@ -209,17 +212,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       volunteerId,
     );
 
-    const groupMap = new Map<
-      string,
-      {
-        eventId: string;
-        eventTitle: string;
-        ministryId: string;
-        ministryName: string;
-        eventStart: string;
-        items: DashboardAssignmentItem[];
-      }
-    >();
+    const groupMap = new Map<string, DashboardAssignmentGroupDraft>();
 
     for (const assignment of allAssignments) {
       if (!isPublishedStatus(assignment.status)) continue;
@@ -227,9 +220,13 @@ export class DbVolunteerManager implements IVolunteerManager {
       const slot = await this.timeSlotRepo.getById(churchId, assignment.slotId);
       const event = await this.eventRepo.getById(churchId, slot.eventId);
 
-      if (event.status !== 'published' || slot.endTime <= now) continue;
+      if (event.status !== 'scheduled' || slot.endTime <= now) continue;
 
-      const ministry = ministryById.get(event.ministryId as string);
+      const eventMinistryId = await this.eventRepo.getMinistryId(
+        churchId,
+        event.id,
+      );
+      const ministry = ministryById.get(eventMinistryId as string);
       if (!ministry) continue;
 
       const role = await this.roleRepo.getById(churchId, assignment.roleId);
@@ -255,7 +252,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         groupMap.set(event.id as string, {
           eventId: event.id as string,
           eventTitle: event.title,
-          ministryId: event.ministryId as string,
+          ministryId: eventMinistryId as string,
           ministryName: ministry.name,
           eventStart: event.startDate.toISOString(),
           items: [item],
@@ -318,10 +315,9 @@ export class DbVolunteerManager implements IVolunteerManager {
     };
   }
 
-  async getUpcomingAssignments(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<Assignment[]> {
+  async getUpcomingAssignments(
+    input: GetUpcomingAssignmentsInput,
+  ): Promise<Assignment[]> {
     const { volunteerId, churchId } = input;
     const now = new Date();
     const future = new Date(
@@ -335,11 +331,9 @@ export class DbVolunteerManager implements IVolunteerManager {
     );
   }
 
-  async getMinistrySchedule(input: {
-    ministryId: MinistryId;
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<MinistrySchedule> {
+  async getMinistrySchedule(
+    input: GetMinistryScheduleInput,
+  ): Promise<MinistrySchedule> {
     const { churchId, ministryId, volunteerId } = input;
 
     const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds(
@@ -352,7 +346,7 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     const [ministry, ministryEvents, roles, memberships] = await Promise.all([
       this.ministryRepo.getById(churchId, ministryId),
-      this.eventRepo.listByMinistry(churchId, ministryId, 'published'),
+      this.eventRepo.listByMinistry(churchId, ministryId, 'scheduled'),
       this.roleRepo.listByMinistry(churchId, ministryId),
       this.volunteerRepo.listMinistryMemberships(churchId, ministryId),
     ]);
@@ -511,11 +505,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     });
   }
 
-  async deleteAvailability(input: {
-    availabilityId: AvailabilityId;
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<void> {
+  async deleteAvailability(input: DeleteAvailabilityInput): Promise<void> {
     const { availabilityId, volunteerId, churchId } = input;
     const existing = await this.availabilityRepo.getById(
       churchId,
@@ -529,12 +519,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     return this.availabilityRepo.delete(churchId, availabilityId);
   }
 
-  async getAvailability(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-    startTime?: Date;
-    endTime?: Date;
-  }): Promise<Availability[]> {
+  async getAvailability(input: GetAvailabilityInput): Promise<Availability[]> {
     const { volunteerId, churchId, startTime, endTime } = input;
     const start = startTime ?? new Date(0);
     const end = endTime ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
@@ -558,12 +543,9 @@ export class DbVolunteerManager implements IVolunteerManager {
     return this.assignmentRepo.getById(churchId, assignmentId);
   }
 
-  async getNotifications(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-    cursor?: Date;
-    limit?: number;
-  }): Promise<NotificationListResult> {
+  async getNotifications(
+    input: GetNotificationsInput,
+  ): Promise<NotificationListResult> {
     const {
       volunteerId,
       churchId,
@@ -577,19 +559,14 @@ export class DbVolunteerManager implements IVolunteerManager {
     });
   }
 
-  async markNotificationRead(input: {
-    notificationId: VolunteerNotificationId;
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<void> {
+  async markNotificationRead(input: MarkNotificationReadInput): Promise<void> {
     const { notificationId, volunteerId, churchId } = input;
     await this.notificationRepo.markRead(churchId, volunteerId, notificationId);
   }
 
-  async markAllNotificationsRead(input: {
-    volunteerId: VolunteerId;
-    churchId: ChurchId;
-  }): Promise<void> {
+  async markAllNotificationsRead(
+    input: MarkAllNotificationsReadInput,
+  ): Promise<void> {
     await this.notificationRepo.markAllRead(input.churchId, input.volunteerId);
   }
 }

@@ -129,13 +129,13 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
     for (const a of assignments) {
       validationMap.set(a.id, {
         volunteerId: a.volunteerId,
-        ministryId: event.ministryId,
+        ministryId: event.planningCycleId,
         roleId: a.roleId,
         slotId: a.slotId,
         eventStartTime: event.startDate,
         existingSlotIds: [],
         volunteerQualifiedRoleIds: [a.roleId],
-        volunteerMinistryIds: [event.ministryId],
+        volunteerMinistryIds: [event.planningCycleId],
       });
     }
 
@@ -149,7 +149,7 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
       assignmentValidationData: validationMap,
     });
 
-    expect(publishResult.event.status).toBe('published');
+    expect(publishResult.event.status).toBe('scheduled');
     expect(publishResult.audits).toBeDefined();
     expect(publishResult.audits?.length).toBe(1);
 
@@ -173,7 +173,7 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
 
     const qualifiedVolunteers = await mockVolunteerRepo.listQualifiedForRole(
       churchId,
-      event.ministryId,
+      event.planningCycleId as unknown as MinistryId,
       'role-1' as RoleId,
     );
     const declinedAssignments = await mockAssignmentRepo.listDeclinedBySlot(

@@ -1,5 +1,10 @@
 import { Entity, type LooseProps } from '@church/core';
-import type { ChurchId, EventId, TimeSlotId } from '../branded-ids';
+import type {
+  ChurchId,
+  EventId,
+  TimeBlockId,
+  TimeSlotId,
+} from '../branded-ids';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { SlotRequirement } from './slot-requirement';
 
@@ -9,6 +14,7 @@ export type TimeSlotStatus = (typeof TIME_SLOT_STATUS_OPTIONS)[number];
 export interface TimeSlotProps {
   churchId: ChurchId;
   eventId: EventId;
+  sourceTemplateBlockId?: TimeBlockId;
   startTime: Date;
   endTime: Date;
   label?: string;
@@ -45,6 +51,10 @@ export class TimeSlot extends Entity<TimeSlotProps, TimeSlotId> {
 
   get eventId(): EventId {
     return this._props.eventId;
+  }
+
+  get sourceTemplateBlockId(): TimeBlockId | undefined {
+    return this._props.sourceTemplateBlockId;
   }
 
   get startTime(): Date {

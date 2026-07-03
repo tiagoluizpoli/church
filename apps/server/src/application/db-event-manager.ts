@@ -2,18 +2,15 @@ import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
 import { AssignmentManagerService } from '../domain/assignment/assignment-manager-service';
 import type {
-  ChurchId,
-  EventId,
-  TimeSlotId,
-  VolunteerId,
-} from '../domain/branded-ids';
-import type {
-  CreateEventInput,
+  CancelEventInput,
   CreateSlotInput,
+  DeleteSlotInput,
   GenerateSlotsInput,
+  GetScheduleBuilderDataInput,
   IEventManager,
   ListEventsInput,
   ScheduleBuilderData,
+  SendReminderInput,
   UpdateSlotInput,
   UpsertSlotRequirementInput,
 } from '../domain/contracts/application/event-manager';
@@ -24,7 +21,7 @@ import type { NotificationService } from '../domain/contracts/infrastructure/not
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import { Event as DomainEvent, type Event } from '../domain/entities/event';
+import type { Event } from '../domain/entities/event';
 import type { SlotRequirement } from '../domain/entities/slot-requirement';
 import type { TimeSlot } from '../domain/entities/time-slot';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
@@ -48,14 +45,12 @@ export class DbEventManager implements IEventManager {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async getScheduleBuilderData(input: {
-    churchId: ChurchId;
-    eventId: EventId;
-    volunteerId: VolunteerId;
-  }): Promise<ScheduleBuilderData> {
+  async getScheduleBuilderData(
+    input: GetScheduleBuilderDataInput,
+  ): Promise<ScheduleBuilderData> {
     const { churchId, eventId, volunteerId } = input;
     const event = await this.eventRepo.getById(churchId, eventId);
-    const ministryId = event.ministryId;
+    const ministryId = await this.eventRepo.getMinistryId(churchId, eventId);
 
     const memberships = await this.volunteerRepo.listMinistryMemberships(
       churchId,
@@ -120,40 +115,6 @@ export class DbEventManager implements IEventManager {
     };
   }
 
-  async createEvent(input: CreateEventInput): Promise<Event> {
-    const {
-      churchId,
-      ministryId,
-      title,
-      description,
-      location,
-      startDate,
-      endDate,
-      eventType,
-    } = input;
-    // Validate via domain entity constructor (throws InvalidDateRangeError)
-    new DomainEvent({
-      churchId,
-      ministryId,
-      title,
-      description,
-      location,
-      startDate,
-      endDate,
-      status: 'draft',
-      eventType: eventType ?? 'hourly',
-    });
-    return this.eventRepo.create(churchId, {
-      ministryId,
-      title,
-      description,
-      location,
-      startDate,
-      endDate,
-      eventType,
-    });
-  }
-
   async listEvents(input: ListEventsInput): Promise<Event[]> {
     return this.eventRepo.listByMinistry(
       input.churchId,
@@ -162,20 +123,7 @@ export class DbEventManager implements IEventManager {
     );
   }
 
-  async publishEvent(input: {
-    eventId: EventId;
-    churchId: ChurchId;
-  }): Promise<void> {
-    const { eventId, churchId } = input;
-    await this.eventRepo.updateStatus(churchId, eventId, {
-      status: 'published',
-    });
-  }
-
-  async cancelEvent(input: {
-    eventId: EventId;
-    churchId: ChurchId;
-  }): Promise<void> {
+  async cancelEvent(input: CancelEventInput): Promise<void> {
     const { eventId, churchId } = input;
     await this.eventRepo.updateStatus(churchId, eventId, {
       status: 'cancelled',
@@ -201,10 +149,7 @@ export class DbEventManager implements IEventManager {
     });
   }
 
-  async deleteSlot(input: {
-    slotId: TimeSlotId;
-    churchId: ChurchId;
-  }): Promise<void> {
+  async deleteSlot(input: DeleteSlotInput): Promise<void> {
     return this.slotRepo.deleteById(input.churchId, input.slotId);
   }
 
@@ -249,15 +194,13 @@ export class DbEventManager implements IEventManager {
     });
   }
 
-  async sendReminder(input: {
-    eventId: EventId;
-    churchId: ChurchId;
-  }): Promise<void> {
+  async sendReminder(input: SendReminderInput): Promise<void> {
     const { eventId, churchId } = input;
-    const ev = await this.eventRepo.getById(churchId, eventId);
+    await this.eventRepo.getById(churchId, eventId);
+    const ministryId = await this.eventRepo.getMinistryId(churchId, eventId);
     const volunteers = await this.volunteerRepo.listByMinistry(
       churchId,
-      ev.ministryId,
+      ministryId,
     );
     await Promise.all(
       volunteers.map((vol) =>

@@ -30,7 +30,6 @@ const ROUTES: Array<{
   { method: 'GET', url: '/api/v1/volunteer/assignments' },
   { method: 'GET', url: '/api/v1/volunteer/ministries/some-id/schedule' },
   { method: 'GET', url: '/api/v1/volunteer/availability' },
-  { method: 'PUT', url: '/api/v1/volunteer/availability' },
   { method: 'DELETE', url: '/api/v1/volunteer/availability/some-id' },
   { method: 'PATCH', url: '/api/v1/volunteer/assignments/some-id' },
   { method: 'GET', url: '/api/v1/volunteer/notifications' },

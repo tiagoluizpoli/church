@@ -52,6 +52,9 @@ export class DrizzleMinistryRepository implements MinistryRepository {
     tx?: TransactionContext,
   ): Promise<MinistrySettings> {
     const m = await this.getById(churchId, ministryId, tx);
-    return { enforcementType: m.enforcementType };
+    return {
+      enforcementType: m.enforcementType,
+      defaultDirection: m.defaultDirection,
+    };
   }
 }

@@ -6,7 +6,6 @@ import {
   AssignmentId,
   AvailabilityId,
   ChurchId,
-  EventId,
   MinistryId,
   UserId,
   VolunteerId,
@@ -23,14 +22,28 @@ import {
   assignmentListResponseSchema,
   assignmentResponseSchema,
   availabilityListResponseSchema,
-  availabilityResponseSchema,
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
   respondToAssignmentBodySchema,
-  upsertAvailabilityBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 import { headersFromRequest } from '../utils/headers';
+
+interface MinistryRouteParams {
+  ministryId: string;
+}
+
+interface AvailabilityRouteParams {
+  availabilityId: string;
+}
+
+interface AssignmentRouteParams {
+  assignmentId: string;
+}
+
+interface NotificationRouteParams {
+  notificationId: string;
+}
 
 @injectable()
 export class VolunteerController implements FastifyController {
@@ -114,7 +127,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as { ministryId: string };
+        const { ministryId } = request.params as MinistryRouteParams;
         const schedule = await this.volunteerManager.getMinistrySchedule({
           ministryId: MinistryId.from(ministryId),
           volunteerId: VolunteerId.from(request.volunteerId),
@@ -142,43 +155,11 @@ export class VolunteerController implements FastifyController {
       },
     );
 
-    app.put(
-      '/availability',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'upsertAvailability',
-          body: upsertAvailabilityBodySchema,
-          response: { 200: availabilityResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const body = request.body as z.infer<
-          typeof upsertAvailabilityBodySchema
-        >;
-        const result = await this.volunteerManager.upsertAvailability({
-          volunteerId: VolunteerId.from(request.volunteerId),
-          churchId: ChurchId.from(request.churchId),
-          availabilityId: body.availabilityId
-            ? AvailabilityId.from(body.availabilityId)
-            : undefined,
-          eventId: body.eventId ? EventId.from(body.eventId) : undefined,
-          type: body.type,
-          startTime: new Date(body.startTime),
-          endTime: new Date(body.endTime),
-          isAllDay: body.isAllDay,
-          reason: body.reason,
-          repeatRule: body.repeatRule,
-        });
-        return reply.send(volunteerMapper.availabilityToResponse(result));
-      },
-    );
-
     app.delete(
       '/availability/:availabilityId',
       { schema: { tags: ['volunteer'], operationId: 'deleteAvailability' } },
       async (request, reply) => {
-        const { availabilityId } = request.params as { availabilityId: string };
+        const { availabilityId } = request.params as AvailabilityRouteParams;
         await this.volunteerManager.deleteAvailability({
           availabilityId: AvailabilityId.from(availabilityId),
           volunteerId: VolunteerId.from(request.volunteerId),
@@ -199,7 +180,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as { assignmentId: string };
+        const { assignmentId } = request.params as AssignmentRouteParams;
         const body = request.body as z.infer<
           typeof respondToAssignmentBodySchema
         >;
@@ -242,7 +223,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { notificationId } = request.params as { notificationId: string };
+        const { notificationId } = request.params as NotificationRouteParams;
         await this.volunteerManager.markNotificationRead({
           notificationId: VolunteerNotificationId.from(notificationId),
           volunteerId: VolunteerId.from(request.volunteerId),

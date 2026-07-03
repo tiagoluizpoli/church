@@ -10,6 +10,7 @@ describe('TimeSlot Entity', () => {
     const timeSlot = new TimeSlot({
       churchId: 'c1',
       eventId: 'e1',
+      sourceTemplateBlockId: 'tb1',
       startTime,
       endTime,
       label: 'Morning Slot',
@@ -17,6 +18,7 @@ describe('TimeSlot Entity', () => {
 
     expect(timeSlot.churchId).toBe('c1');
     expect(timeSlot.eventId).toBe('e1');
+    expect(timeSlot.sourceTemplateBlockId).toBe('tb1');
     expect(timeSlot.label).toBe('Morning Slot');
     expect(timeSlot.startTime).toBe(startTime);
     expect(timeSlot.endTime).toBe(endTime);

@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { db } from '@church/db';
 import { container } from 'tsyringe';
+import { SchedulingRbacGuard } from '../../api/auth/scheduling-rbac-guard';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
@@ -8,8 +9,9 @@ import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbEventManager } from '../../application/db-event-manager';
 import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
-import { DbRoleManager } from '../../application/db-role-manager';
+import { DbSchedulingRbacManager } from '../../application/db-scheduling-rbac-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
+import { DrizzleSchedulingRbacResolver } from '../../infrastructure/auth/drizzle-scheduling-rbac-resolver';
 import {
   DrizzleAssignmentAuditRepository,
   DrizzleAssignmentRepository,
@@ -18,7 +20,6 @@ import {
   DrizzleEventRepository,
   DrizzleMinistryRepository,
   DrizzleRoleRepository,
-  DrizzleRoleTemplateRepository,
   DrizzleTeamRepository,
   DrizzleTimeSlotRepository,
   DrizzleUnitOfWork,
@@ -30,6 +31,15 @@ import { UnleashFeatureFlagService } from '../../infrastructure/services/unleash
 import { injection } from './injection-tokens';
 
 export function registerInjections(): void {
+  container.register(injection.auth.scopeRepository, {
+    useFactory: () => new DrizzleSchedulingRbacResolver(db),
+  });
+  container.register(injection.auth.manager, {
+    useClass: DbSchedulingRbacManager,
+  });
+  container.register(injection.auth.schedulingRbacResolver, {
+    useClass: SchedulingRbacGuard,
+  });
   container.register(injection.infra.eventRepository, {
     useFactory: () => new DrizzleEventRepository(db),
   });
@@ -53,9 +63,6 @@ export function registerInjections(): void {
   });
   container.register(injection.infra.roleRepository, {
     useFactory: () => new DrizzleRoleRepository(db),
-  });
-  container.register(injection.infra.roleTemplateRepository, {
-    useFactory: () => new DrizzleRoleTemplateRepository(db),
   });
   container.register(injection.infra.teamRepository, {
     useFactory: () => new DrizzleTeamRepository(db),
@@ -85,9 +92,6 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.ministryManager, {
     useClass: DbMinistryManager,
-  });
-  container.register(injection.managers.roleManager, {
-    useClass: DbRoleManager,
   });
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,

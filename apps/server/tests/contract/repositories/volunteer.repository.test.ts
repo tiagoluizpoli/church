@@ -184,6 +184,10 @@ class MockVolunteerRepository implements VolunteerRepository {
   ): Promise<MinistryMembership[]> {
     return [];
   }
+
+  async isChurchAdmin(): Promise<boolean> {
+    return false;
+  }
 }
 
 runVolunteerRepositoryContractTests(

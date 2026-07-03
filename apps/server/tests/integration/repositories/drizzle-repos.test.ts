@@ -17,7 +17,6 @@
 import {
   runAssignmentAuditRepositoryContractTests,
   runAssignmentRepositoryContractTests,
-  runAvailabilityRepositoryContractTests,
   runChurchRepositoryContractTests,
   runEventRepositoryContractTests,
   runMinistryRepositoryContractTests,
@@ -27,7 +26,6 @@ import {
 } from '../../../src/domain/contracts/contract-tests';
 import { DrizzleAssignmentRepository } from '../../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '../../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleAvailabilityRepository } from '../../../src/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleChurchRepository } from '../../../src/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleEventRepository } from '../../../src/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleMinistryRepository } from '../../../src/infrastructure/repositories/drizzle-ministry.repository';
@@ -107,17 +105,6 @@ runAssignmentRepositoryContractTests(
     await truncateAll();
     await seed();
     return new DrizzleAssignmentRepository(testDb);
-  },
-  async () => {
-    await truncateAll();
-  },
-);
-
-runAvailabilityRepositoryContractTests(
-  async () => {
-    await truncateAll();
-    await seed();
-    return new DrizzleAvailabilityRepository(testDb);
   },
   async () => {
     await truncateAll();

@@ -14,19 +14,20 @@ export const createEventBodySchema = z.object({
 
 export const listEventsQuerySchema = z.object({
   ministryId: z.string(),
-  status: z.enum(['draft', 'published', 'cancelled', 'past']).optional(),
+  status: z.enum(['draft', 'scheduled', 'cancelled', 'past']).optional(),
 });
 
 export const eventResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
-  ministryId: z.string(),
+  planningCycleId: z.string(),
+  sourceTemplateId: z.string().optional(),
   title: z.string(),
   description: z.string().optional(),
   location: z.string().optional(),
   startDate: z.string(),
   endDate: z.string(),
-  status: z.enum(['draft', 'published', 'cancelled', 'past']),
+  status: z.enum(['draft', 'scheduled', 'cancelled', 'past']),
   eventType: z.enum(['hourly', 'day_based']),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -107,7 +108,8 @@ function eventToResponse(ev: Event): EventResponse {
   return {
     id: ev.id as string,
     churchId: ev.churchId as string,
-    ministryId: ev.ministryId as string,
+    planningCycleId: ev.planningCycleId as string,
+    sourceTemplateId: ev.sourceTemplateId as string | undefined,
     title: ev.title,
     description: ev.description,
     location: ev.location,

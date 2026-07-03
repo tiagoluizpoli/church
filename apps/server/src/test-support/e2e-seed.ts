@@ -4,11 +4,16 @@ import * as schema from '@church/db';
 import {
   assignment,
   availability,
+  availabilityCheck,
   church,
+  churchAdmin,
   event,
   ministry,
+  ministryParticipation,
   ministryVolunteer,
+  planningCycle,
   role,
+  shift,
   slotRequirement,
   team,
   timeSlot,
@@ -59,6 +64,7 @@ const DATABASE_URL =
 
 export const E2E_IDS = {
   church: 'e2e11111-1111-1111-1111-111111111111',
+  planningCycle: 'e2e21111-1111-1111-1111-111111111111',
   ministry: 'e2e33333-3333-3333-3333-333333333331',
   ministryCare: 'e2e33333-3333-3333-3333-333333333332',
   leaderVolunteer: 'e2e44444-4444-4444-4444-444444444441',
@@ -85,6 +91,22 @@ export const E2E_IDS = {
   careEvent: 'e2e66666-6666-6666-6666-666666666665',
   careSlot: 'e2e77777-7777-7777-7777-777777777775',
   careAssignment: 'e2e99999-9999-9999-9999-999999999992',
+} as const;
+
+const PARTICIPATION_IDS = {
+  [E2E_IDS.event]: 'e2e61111-1111-1111-1111-111111111111',
+  [E2E_IDS.eventOverride]: 'e2e61111-1111-1111-1111-111111111112',
+  [E2E_IDS.declineEvent]: 'e2e61111-1111-1111-1111-111111111113',
+  [E2E_IDS.us6Event]: 'e2e61111-1111-1111-1111-111111111114',
+  [E2E_IDS.careEvent]: 'e2e61111-1111-1111-1111-111111111115',
+} as const;
+
+const SHIFT_IDS = {
+  [E2E_IDS.slot]: 'e2e71111-1111-1111-1111-111111111111',
+  [E2E_IDS.slotOverride]: 'e2e71111-1111-1111-1111-111111111112',
+  [E2E_IDS.declineSlot]: 'e2e71111-1111-1111-1111-111111111113',
+  [E2E_IDS.us6Slot]: 'e2e71111-1111-1111-1111-111111111114',
+  [E2E_IDS.careSlot]: 'e2e71111-1111-1111-1111-111111111115',
 } as const;
 
 const POOL_VOLUNTEERS = [
@@ -163,6 +185,23 @@ export async function seedE2e({
         name: 'E2E Church',
         slug: 'e2e-church',
         timezone: 'America/New_York',
+      })
+      .onConflictDoNothing();
+
+    await db
+      .insert(churchAdmin)
+      .values({ churchId: E2E_IDS.church, userId: leaderUserId })
+      .onConflictDoNothing();
+
+    await db
+      .insert(planningCycle)
+      .values({
+        id: E2E_IDS.planningCycle,
+        churchId: E2E_IDS.church,
+        name: 'E2E December cycle',
+        startDate: new Date('2026-12-01T00:00:00Z'),
+        endDate: new Date('2027-01-01T00:00:00Z'),
+        state: 'locked',
       })
       .onConflictDoNothing();
 
@@ -365,7 +404,7 @@ export async function seedE2e({
         {
           id: E2E_IDS.event,
           churchId: E2E_IDS.church,
-          ministryId: E2E_IDS.ministry,
+          planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Sunday Service',
           startDate: new Date('2026-12-25T09:00:00Z'),
           endDate: new Date('2026-12-25T11:00:00Z'),
@@ -375,7 +414,7 @@ export async function seedE2e({
         {
           id: E2E_IDS.eventOverride,
           churchId: E2E_IDS.church,
-          ministryId: E2E_IDS.ministry,
+          planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Override Service',
           startDate: new Date('2026-12-26T09:00:00Z'),
           endDate: new Date('2026-12-26T11:00:00Z'),
@@ -385,17 +424,17 @@ export async function seedE2e({
         {
           id: E2E_IDS.declineEvent,
           churchId: E2E_IDS.church,
-          ministryId: E2E_IDS.ministry,
+          planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Decline Service',
           startDate: new Date('2026-12-27T09:00:00Z'),
           endDate: new Date('2026-12-27T11:00:00Z'),
-          status: 'published',
+          status: 'scheduled',
           eventType: 'hourly',
         },
         {
           id: E2E_IDS.us6Event,
           churchId: E2E_IDS.church,
-          ministryId: E2E_IDS.ministry,
+          planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Sub-Leader Service',
           startDate: new Date('2026-12-28T09:00:00Z'),
           endDate: new Date('2026-12-28T11:00:00Z'),
@@ -405,14 +444,30 @@ export async function seedE2e({
         {
           id: E2E_IDS.careEvent,
           churchId: E2E_IDS.church,
-          ministryId: E2E_IDS.ministryCare,
+          planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Care Gathering',
           startDate: new Date('2026-12-24T09:00:00Z'),
           endDate: new Date('2026-12-24T11:00:00Z'),
-          status: 'published',
+          status: 'scheduled',
           eventType: 'hourly',
         },
       ])
+      .onConflictDoNothing();
+
+    await db
+      .insert(ministryParticipation)
+      .values(
+        Object.entries(PARTICIPATION_IDS).map(([eventId, id]) => ({
+          id,
+          churchId: E2E_IDS.church,
+          eventId,
+          ministryId:
+            eventId === E2E_IDS.careEvent
+              ? E2E_IDS.ministryCare
+              : E2E_IDS.ministry,
+          state: 'published' as const,
+        })),
+      )
       .onConflictDoNothing();
 
     await db
@@ -461,6 +516,52 @@ export async function seedE2e({
       ])
       .onConflictDoNothing();
 
+    const slotSpecs = [
+      [
+        E2E_IDS.slot,
+        E2E_IDS.event,
+        '2026-12-25T09:00:00Z',
+        '2026-12-25T11:00:00Z',
+      ],
+      [
+        E2E_IDS.slotOverride,
+        E2E_IDS.eventOverride,
+        '2026-12-26T09:00:00Z',
+        '2026-12-26T11:00:00Z',
+      ],
+      [
+        E2E_IDS.declineSlot,
+        E2E_IDS.declineEvent,
+        '2026-12-27T09:00:00Z',
+        '2026-12-27T11:00:00Z',
+      ],
+      [
+        E2E_IDS.us6Slot,
+        E2E_IDS.us6Event,
+        '2026-12-28T09:00:00Z',
+        '2026-12-28T11:00:00Z',
+      ],
+      [
+        E2E_IDS.careSlot,
+        E2E_IDS.careEvent,
+        '2026-12-24T09:00:00Z',
+        '2026-12-24T11:00:00Z',
+      ],
+    ] as const;
+    await db
+      .insert(shift)
+      .values(
+        slotSpecs.map(([slotId, eventId, startTime, endTime]) => ({
+          id: SHIFT_IDS[slotId],
+          churchId: E2E_IDS.church,
+          participationId: PARTICIPATION_IDS[eventId],
+          timeSlotId: slotId,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+        })),
+      )
+      .onConflictDoNothing();
+
     await db
       .insert(slotRequirement)
       .values([
@@ -468,7 +569,8 @@ export async function seedE2e({
         {
           id: 'e2e88888-8888-8888-8888-888888888881',
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.slot,
+          participationId: PARTICIPATION_IDS[E2E_IDS.event],
+          shiftId: SHIFT_IDS[E2E_IDS.slot],
           roleId: E2E_IDS.roleUsher,
           requiredCount: 2,
         },
@@ -476,7 +578,8 @@ export async function seedE2e({
         {
           id: 'e2e88888-8888-8888-8888-888888888882',
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.slotOverride,
+          participationId: PARTICIPATION_IDS[E2E_IDS.eventOverride],
+          shiftId: SHIFT_IDS[E2E_IDS.slotOverride],
           roleId: E2E_IDS.roleUsher,
           requiredCount: 1,
         },
@@ -484,7 +587,8 @@ export async function seedE2e({
         {
           id: 'e2e88888-8888-8888-8888-888888888883',
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.declineSlot,
+          participationId: PARTICIPATION_IDS[E2E_IDS.declineEvent],
+          shiftId: SHIFT_IDS[E2E_IDS.declineSlot],
           roleId: E2E_IDS.roleUsher,
           requiredCount: 1,
         },
@@ -492,7 +596,8 @@ export async function seedE2e({
         {
           id: 'e2e88888-8888-8888-8888-888888888884',
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.us6Slot,
+          participationId: PARTICIPATION_IDS[E2E_IDS.us6Event],
+          shiftId: SHIFT_IDS[E2E_IDS.us6Slot],
           roleId: E2E_IDS.roleGreeter,
           requiredCount: 1,
           teamId: E2E_IDS.team1,
@@ -501,14 +606,16 @@ export async function seedE2e({
         {
           id: 'e2e88888-8888-8888-8888-888888888885',
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.us6Slot,
+          participationId: PARTICIPATION_IDS[E2E_IDS.us6Event],
+          shiftId: SHIFT_IDS[E2E_IDS.us6Slot],
           roleId: E2E_IDS.roleUsher,
           requiredCount: 1,
         },
         {
           id: 'e2e88888-8888-8888-8888-888888888886',
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.careSlot,
+          participationId: PARTICIPATION_IDS[E2E_IDS.careEvent],
+          shiftId: SHIFT_IDS[E2E_IDS.careSlot],
           roleId: E2E_IDS.roleCareHost,
           requiredCount: 1,
           teamId: E2E_IDS.careTeam,
@@ -524,7 +631,8 @@ export async function seedE2e({
         {
           id: E2E_IDS.declineAssignment,
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.declineSlot,
+          participationId: PARTICIPATION_IDS[E2E_IDS.declineEvent],
+          shiftId: SHIFT_IDS[E2E_IDS.declineSlot],
           volunteerId: POOL_VOLUNTEERS[0].id, // Grace Hopper
           roleId: E2E_IDS.roleUsher,
           status: 'declined',
@@ -532,7 +640,8 @@ export async function seedE2e({
         {
           id: E2E_IDS.careAssignment,
           churchId: E2E_IDS.church,
-          slotId: E2E_IDS.careSlot,
+          participationId: PARTICIPATION_IDS[E2E_IDS.careEvent],
+          shiftId: SHIFT_IDS[E2E_IDS.careSlot],
           volunteerId: leaderVolunteerId,
           roleId: E2E_IDS.roleCareHost,
           status: 'confirmed',
@@ -540,20 +649,24 @@ export async function seedE2e({
       ])
       .onConflictDoNothing();
 
+    const availabilityChecks = POOL_VOLUNTEERS.map((_volunteer, index) => ({
+      id: `e2eacccc-cccc-cccc-cccc-cccccccccc0${index + 1}`,
+      churchId: E2E_IDS.church,
+      planningCycleId: E2E_IDS.planningCycle,
+      ministryVolunteerId: `e2eccccc-cccc-cccc-cccc-cccccccccc0${index + 2}`,
+    }));
+    await db
+      .insert(availabilityCheck)
+      .values(availabilityChecks)
+      .onConflictDoNothing();
     await db
       .insert(availability)
-      .values(
-        POOL_VOLUNTEERS.map((v, i) => ({
-          id: `e2eaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa0${i + 1}`,
-          churchId: E2E_IDS.church,
-          volunteerId: v.id,
-          type: v.avail,
-          // Spans all seeded events (Dec 25–29).
-          startTime: new Date('2026-12-25T00:00:00Z'),
-          endTime: new Date('2026-12-29T00:00:00Z'),
-          isAllDay: false,
-        })),
-      )
+      .values({
+        id: 'e2eaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04',
+        churchId: E2E_IDS.church,
+        availabilityCheckId: availabilityChecks[3]?.id as string,
+        shiftId: SHIFT_IDS[E2E_IDS.slotOverride],
+      })
       .onConflictDoNothing();
 
     await db

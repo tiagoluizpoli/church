@@ -62,6 +62,7 @@ class MockMinistryRepository implements MinistryRepository {
     const min = await this.getById(churchId, ministryId);
     return {
       enforcementType: min.enforcementType,
+      defaultDirection: min.defaultDirection,
     };
   }
 }

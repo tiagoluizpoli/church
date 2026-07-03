@@ -3,6 +3,7 @@ import type {
   ChurchId,
   EventId,
   MinistryId,
+  PlanningCycleId,
   RoleId,
   TimeSlotId,
 } from '../../../src/domain/branded-ids';
@@ -27,6 +28,7 @@ import { TimeSlot } from '../../../src/domain/entities/time-slot';
 class MockEventRepository implements EventRepository {
   private events = new Map<string, Event>();
   private slots = new Map<string, TimeSlot[]>();
+  private ministries = new Map<string, MinistryId>();
   private idCounter = 1;
 
   constructor() {
@@ -48,13 +50,21 @@ class MockEventRepository implements EventRepository {
         title: 'Sunday Service',
         startDate: new Date('2024-06-04T10:00:00Z'),
         endDate: new Date('2024-06-04T12:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       },
       '66666666-6666-6666-6666-666666666662' as EventId,
     );
 
     this.events.set(e1.id, e1);
     this.events.set(e2.id, e2);
+    this.ministries.set(
+      e1.id,
+      '33333333-3333-3333-3333-333333333331' as MinistryId,
+    );
+    this.ministries.set(
+      e2.id,
+      '33333333-3333-3333-3333-333333333331' as MinistryId,
+    );
 
     const req = new SlotRequirement(
       {
@@ -95,13 +105,21 @@ class MockEventRepository implements EventRepository {
     return { event, slots };
   }
 
+  async getMinistryId(churchId: ChurchId, id: EventId): Promise<MinistryId> {
+    await this.getById(churchId, id);
+    const ministryId = this.ministries.get(id);
+    if (!ministryId) throw new NotFoundError('Participation not found');
+    return ministryId;
+  }
+
   async listByMinistry(
     churchId: ChurchId,
     ministryId: MinistryId,
     status?: EventStatus,
   ): Promise<Event[]> {
     let list = Array.from(this.events.values()).filter(
-      (e) => e.churchId === churchId && e.ministryId === ministryId,
+      (e) =>
+        e.churchId === churchId && this.ministries.get(e.id) === ministryId,
     );
     if (status) {
       list = list.filter((e) => e.status === status);
@@ -114,7 +132,8 @@ class MockEventRepository implements EventRepository {
     const e = new Event(
       {
         churchId,
-        ministryId: input.ministryId,
+        planningCycleId: input.planningCycleId,
+        sourceTemplateId: input.sourceTemplateId,
         title: input.title,
         description: input.description,
         location: input.location,
@@ -125,6 +144,10 @@ class MockEventRepository implements EventRepository {
       id,
     );
     this.events.set(e.id, e);
+    this.ministries.set(
+      e.id,
+      '33333333-3333-3333-3333-333333333331' as MinistryId,
+    );
     return e;
   }
 
@@ -134,8 +157,8 @@ class MockEventRepository implements EventRepository {
     input: UpdateEventStatusInput,
   ): Promise<void> {
     const e = await this.getById(churchId, id);
-    if (input.status === 'published') {
-      e.publish();
+    if (input.status === 'scheduled') {
+      e.markScheduled();
     } else if (input.status === 'cancelled') {
       e.cancel();
     } else if (input.status === 'past') {
@@ -153,7 +176,7 @@ class MockEventRepository implements EventRepository {
     const updated = new Event(
       {
         churchId: e.churchId,
-        ministryId: e.ministryId,
+        planningCycleId: e.planningCycleId as PlanningCycleId,
         title: input.title ?? e.title,
         description: e.description,
         location: e.location,

@@ -5,7 +5,6 @@ export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
 export { DrizzleRoleRepository } from './drizzle-role.repository';
-export { DrizzleRoleTemplateRepository } from './drizzle-role-template.repository';
 export { DrizzleTeamRepository } from './drizzle-team.repository';
 export { DrizzleTimeSlotRepository } from './drizzle-time-slot.repository';
 export { DrizzleTransactionContext } from './drizzle-transaction-context';

@@ -1,4 +1,10 @@
-import type { ChurchId, EventId, MinistryId } from '../../branded-ids';
+import type {
+  ChurchId,
+  EventId,
+  EventTemplateId,
+  MinistryId,
+  PlanningCycleId,
+} from '../../branded-ids';
 import type {
   Event,
   EventStatus,
@@ -8,7 +14,8 @@ import type {
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateEventInput {
-  ministryId: MinistryId;
+  planningCycleId: PlanningCycleId;
+  sourceTemplateId?: EventTemplateId;
   title: string;
   description?: string;
   location?: string;
@@ -29,6 +36,12 @@ export interface UpdateEventInput {
 }
 
 export interface EventRepository {
+  getMinistryId(
+    churchId: ChurchId,
+    id: EventId,
+    tx?: TransactionContext,
+  ): Promise<MinistryId>;
+
   getById(
     churchId: ChurchId,
     id: EventId,

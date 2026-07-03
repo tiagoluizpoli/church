@@ -9,6 +9,7 @@ describe('Ministry Entity', () => {
     expect(ministry.name).toBe('Worship');
     expect(ministry.description).toBeUndefined();
     expect(ministry.enforcementType).toBe('soft');
+    expect(ministry.defaultDirection).toBe('all_out');
     expect(ministry.deletedAt).toBeUndefined();
   });
 

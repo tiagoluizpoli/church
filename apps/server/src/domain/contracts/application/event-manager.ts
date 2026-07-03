@@ -9,20 +9,9 @@ import type {
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
 import type { Availability } from '../../entities/availability';
-import type { Event, EventStatus, EventType } from '../../entities/event';
+import type { Event, EventStatus } from '../../entities/event';
 import type { SlotRequirement } from '../../entities/slot-requirement';
 import type { TimeSlot } from '../../entities/time-slot';
-
-export interface CreateEventInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  title: string;
-  description?: string;
-  location?: string;
-  startDate: Date;
-  endDate: Date;
-  eventType?: EventType;
-}
 
 export interface ListEventsInput {
   churchId: ChurchId;
@@ -53,23 +42,27 @@ export interface GenerateSlotsEqualSplit {
 
 export interface GenerateSlotsTemplateBased {
   kind: 'template-based';
-  periods: Array<{
-    label: string;
-    startTime: Date;
-    endTime: Date;
-    requirements?: Array<{
-      roleId: string;
-      teamId?: string;
-      requiredCount: number;
-      notes?: string;
-    }>;
-  }>;
+  periods: GenerateSlotsTemplatePeriod[];
 }
 
 export interface GenerateSlotsInput {
   churchId: ChurchId;
   eventId: EventId;
   strategy: GenerateSlotsEqualSplit | GenerateSlotsTemplateBased;
+}
+
+export interface GenerateSlotsTemplateRequirement {
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+}
+
+export interface GenerateSlotsTemplatePeriod {
+  label: string;
+  startTime: Date;
+  endTime: Date;
+  requirements?: GenerateSlotsTemplateRequirement[];
 }
 
 export interface UpsertSlotRequirementInput {
@@ -81,34 +74,63 @@ export interface UpsertSlotRequirementInput {
   notes?: string;
 }
 
+export interface ScheduleBuilderEventGroup {
+  event: Event;
+  slots: TimeSlot[];
+}
+
+export interface ScheduleBuilderVolunteerOption {
+  id: VolunteerId;
+  name: string;
+}
+
+export interface ScheduleBuilderRoleOption {
+  id: RoleId;
+  name: string;
+}
+
 export interface ScheduleBuilderData {
-  events: Array<{
-    event: Event;
-    slots: TimeSlot[];
-  }>;
+  events: ScheduleBuilderEventGroup[];
   assignments: Assignment[];
   availability: Availability[];
-  volunteers: Array<{ id: VolunteerId; name: string }>;
-  roles: Array<{ id: RoleId; name: string }>;
+  volunteers: ScheduleBuilderVolunteerOption[];
+  roles: ScheduleBuilderRoleOption[];
   callerTeamId: string | null;
 }
 
+export interface GetScheduleBuilderDataInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  volunteerId: VolunteerId;
+}
+
+export interface CancelEventInput {
+  eventId: EventId;
+  churchId: ChurchId;
+}
+
+export interface DeleteSlotInput {
+  slotId: TimeSlotId;
+  churchId: ChurchId;
+}
+
+export interface SendReminderInput {
+  eventId: EventId;
+  churchId: ChurchId;
+}
+
 export interface IEventManager {
-  getScheduleBuilderData(input: {
-    churchId: ChurchId;
-    eventId: EventId;
-    volunteerId: VolunteerId;
-  }): Promise<ScheduleBuilderData>;
-  createEvent(input: CreateEventInput): Promise<Event>;
+  getScheduleBuilderData(
+    input: GetScheduleBuilderDataInput,
+  ): Promise<ScheduleBuilderData>;
   listEvents(input: ListEventsInput): Promise<Event[]>;
-  publishEvent(input: { eventId: EventId; churchId: ChurchId }): Promise<void>;
-  cancelEvent(input: { eventId: EventId; churchId: ChurchId }): Promise<void>;
+  cancelEvent(input: CancelEventInput): Promise<void>;
   createSlot(input: CreateSlotInput): Promise<TimeSlot>;
   updateSlot(input: UpdateSlotInput): Promise<TimeSlot>;
-  deleteSlot(input: { slotId: TimeSlotId; churchId: ChurchId }): Promise<void>;
+  deleteSlot(input: DeleteSlotInput): Promise<void>;
   generateSlots(input: GenerateSlotsInput): Promise<TimeSlot[]>;
   upsertSlotRequirement(
     input: UpsertSlotRequirementInput,
   ): Promise<SlotRequirement>;
-  sendReminder(input: { eventId: EventId; churchId: ChurchId }): Promise<void>;
+  sendReminder(input: SendReminderInput): Promise<void>;
 }

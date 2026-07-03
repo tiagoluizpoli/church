@@ -8,7 +8,6 @@ import {
   EventId,
   MinistryId,
   RoleId,
-  RoleTemplateId,
   TeamId,
   TimeSlotId,
   UserId,
@@ -17,7 +16,6 @@ import {
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
-import type { IRoleManager } from '../../domain/contracts/application/role-manager';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -29,10 +27,8 @@ import {
   overrideAssignmentBodySchema,
 } from '../dtos/assignment.dto';
 import {
-  createEventBodySchema,
   eventListResponseSchema,
   eventMapper,
-  eventResponseSchema,
   listEventsQuerySchema,
   scheduleBuilderDataResponseSchema,
 } from '../dtos/event.dto';
@@ -40,12 +36,6 @@ import {
   ministryListResponseSchema,
   ministryMapper,
 } from '../dtos/ministry.dto';
-import {
-  roleTemplateListResponseSchema,
-  roleTemplateMapper,
-  roleTemplateResponseSchema,
-  upsertRoleTemplateBodySchema,
-} from '../dtos/role.dto';
 import {
   createSlotBodySchema,
   generateSlotsBodySchema,
@@ -58,6 +48,28 @@ import {
 } from '../dtos/time-slot.dto';
 import { headersFromRequest } from '../utils/headers';
 
+interface ScheduleBuilderQuery {
+  eventId: string;
+}
+
+interface ListEventsQuery {
+  ministryId: string;
+  status?: string;
+}
+
+interface EventRouteParams {
+  eventId: string;
+}
+
+interface EventSlotRouteParams {
+  eventId: string;
+  slotId: string;
+}
+
+interface AssignmentRouteParams {
+  assignmentId: string;
+}
+
 @injectable()
 export class AdminLeaderController implements FastifyController {
   readonly prefix = '/admin';
@@ -69,8 +81,6 @@ export class AdminLeaderController implements FastifyController {
     private readonly eventManager: IEventManager,
     @inject('IAssignmentManager')
     private readonly assignmentManager: IAssignmentManager,
-    @inject('IRoleManager')
-    private readonly roleManager: IRoleManager,
     @inject('IVolunteerManager')
     private readonly volunteerManager: IVolunteerManager,
   ) {}
@@ -144,7 +154,7 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { eventId } = request.query as { eventId: string };
+        const { eventId } = request.query as ScheduleBuilderQuery;
         const data = await this.eventManager.getScheduleBuilderData({
           churchId: ChurchId.from(request.churchId),
           eventId: EventId.from(eventId),
@@ -166,10 +176,7 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId, status } = request.query as {
-          ministryId: string;
-          status?: string;
-        };
+        const { ministryId, status } = request.query as ListEventsQuery;
         const events = await this.eventManager.listEvents({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
@@ -182,49 +189,10 @@ export class AdminLeaderController implements FastifyController {
     );
 
     app.post(
-      '/events',
-      {
-        schema: {
-          tags: ['admin'],
-          operationId: 'createEvent',
-          body: createEventBodySchema,
-          response: { 201: eventResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const body = request.body as z.infer<typeof createEventBodySchema>;
-        const ev = await this.eventManager.createEvent({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(body.ministryId),
-          title: body.title,
-          description: body.description,
-          location: body.location,
-          startDate: new Date(body.startDate),
-          endDate: new Date(body.endDate),
-          eventType: body.eventType,
-        });
-        return reply.status(201).send(eventMapper.toResponse(ev));
-      },
-    );
-
-    app.post(
-      '/events/:eventId/publish',
-      { schema: { tags: ['admin'], operationId: 'publishEvent' } },
-      async (request, reply) => {
-        const { eventId } = request.params as { eventId: string };
-        await this.eventManager.publishEvent({
-          eventId: EventId.from(eventId),
-          churchId: ChurchId.from(request.churchId),
-        });
-        return reply.status(201).send({ published: true });
-      },
-    );
-
-    app.post(
       '/events/:eventId/cancel',
       { schema: { tags: ['admin'], operationId: 'cancelEvent' } },
       async (request, reply) => {
-        const { eventId } = request.params as { eventId: string };
+        const { eventId } = request.params as EventRouteParams;
         await this.eventManager.cancelEvent({
           eventId: EventId.from(eventId),
           churchId: ChurchId.from(request.churchId),
@@ -237,34 +205,12 @@ export class AdminLeaderController implements FastifyController {
       '/events/:eventId/reminders',
       { schema: { tags: ['admin'], operationId: 'sendReminders' } },
       async (request, reply) => {
-        const { eventId } = request.params as { eventId: string };
+        const { eventId } = request.params as EventRouteParams;
         await this.eventManager.sendReminder({
           eventId: EventId.from(eventId),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.status(201).send({ sent: true });
-      },
-    );
-
-    app.post(
-      '/events/:eventId/apply-template',
-      {
-        schema: {
-          tags: ['admin'],
-          operationId: 'applyRoleTemplate',
-          body: z.object({ templateId: z.string() }),
-          response: { 201: z.object({ applied: z.literal(true) }) },
-        },
-      },
-      async (request, reply) => {
-        const { eventId } = request.params as { eventId: string };
-        const body = request.body as { templateId: string };
-        await this.roleManager.applyTemplate({
-          churchId: ChurchId.from(request.churchId),
-          eventId: EventId.from(eventId),
-          templateId: RoleTemplateId.from(body.templateId),
-        });
-        return reply.status(201).send({ applied: true });
       },
     );
 
@@ -280,7 +226,7 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { eventId } = request.params as { eventId: string };
+        const { eventId } = request.params as EventRouteParams;
         const body = request.body as z.infer<typeof createSlotBodySchema>;
         const slot = await this.eventManager.createSlot({
           churchId: ChurchId.from(request.churchId),
@@ -304,10 +250,7 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { slotId } = request.params as {
-          eventId: string;
-          slotId: string;
-        };
+        const { slotId } = request.params as EventSlotRouteParams;
         const body = request.body as z.infer<typeof updateSlotBodySchema>;
         const slot = await this.eventManager.updateSlot({
           churchId: ChurchId.from(request.churchId),
@@ -324,10 +267,7 @@ export class AdminLeaderController implements FastifyController {
       '/events/:eventId/slots/:slotId',
       { schema: { tags: ['admin'], operationId: 'deleteSlot' } },
       async (request, reply) => {
-        const { slotId } = request.params as {
-          eventId: string;
-          slotId: string;
-        };
+        const { slotId } = request.params as EventSlotRouteParams;
         await this.eventManager.deleteSlot({
           slotId: TimeSlotId.from(slotId),
           churchId: ChurchId.from(request.churchId),
@@ -347,7 +287,7 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as { assignmentId: string };
+        const { assignmentId } = request.params as AssignmentRouteParams;
         const body = request.body as z.infer<
           typeof overrideAssignmentBodySchema
         >;
@@ -372,7 +312,7 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { eventId } = request.params as { eventId: string };
+        const { eventId } = request.params as EventRouteParams;
         const body = request.body as z.infer<typeof generateSlotsBodySchema>;
 
         const strategy =
@@ -408,10 +348,7 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { slotId } = request.params as {
-          eventId: string;
-          slotId: string;
-        };
+        const { slotId } = request.params as EventSlotRouteParams;
         const body = request.body as z.infer<typeof slotRequirementBodySchema>;
         const req = await this.eventManager.upsertSlotRequirement({
           churchId: ChurchId.from(request.churchId),
@@ -454,7 +391,7 @@ export class AdminLeaderController implements FastifyController {
       '/assignments/:assignmentId',
       { schema: { tags: ['admin'], operationId: 'deleteAssignment' } },
       async (request, reply) => {
-        const { assignmentId } = request.params as { assignmentId: string };
+        const { assignmentId } = request.params as AssignmentRouteParams;
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
           churchId: ChurchId.from(request.churchId),
@@ -473,74 +410,12 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as { assignmentId: string };
+        const { assignmentId } = request.params as AssignmentRouteParams;
         const items = await this.assignmentManager.listAuditLog({
           assignmentId: AssignmentId.from(assignmentId),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(assignmentMapper.auditListToResponse(items));
-      },
-    );
-
-    // Role template routes
-    app.get(
-      '/role-templates',
-      {
-        schema: {
-          tags: ['admin'],
-          operationId: 'listRoleTemplates',
-          response: { 200: roleTemplateListResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { ministryId } = request.query as { ministryId: string };
-        const templates = await this.roleManager.listTemplates({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(ministryId),
-        });
-        return reply.send(roleTemplateMapper.listToResponse(templates));
-      },
-    );
-
-    app.put(
-      '/role-templates/:templateId',
-      {
-        schema: {
-          tags: ['admin'],
-          operationId: 'upsertRoleTemplate',
-          body: upsertRoleTemplateBodySchema,
-          response: { 200: roleTemplateResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { templateId } = request.params as { templateId: string };
-        const body = request.body as z.infer<
-          typeof upsertRoleTemplateBodySchema
-        >;
-        const template = await this.roleManager.upsertTemplate({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(body.ministryId),
-          templateId: RoleTemplateId.from(templateId),
-          name: body.name,
-          items: body.items.map((i) => ({
-            roleId: RoleId.from(i.roleId),
-            requiredCount: i.requiredCount,
-          })),
-        });
-        return reply.send(roleTemplateMapper.toResponse(template));
-      },
-    );
-
-    app.delete(
-      '/role-templates/:templateId',
-      { schema: { tags: ['admin'], operationId: 'deleteRoleTemplate' } },
-      async (request, reply) => {
-        const { templateId } = request.params as { templateId: string };
-        await this.roleManager.deleteTemplate({
-          templateId: RoleTemplateId.from(templateId),
-          churchId: ChurchId.from(request.churchId),
-        });
-        return reply.status(204).send();
       },
     );
   }

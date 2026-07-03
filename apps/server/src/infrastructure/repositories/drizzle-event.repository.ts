@@ -1,5 +1,11 @@
 import { NotFoundError } from '@church/core';
-import { event, slotRequirement, timeSlot } from '@church/db';
+import {
+  event,
+  ministryParticipation,
+  shift,
+  slotRequirement,
+  timeSlot,
+} from '@church/db';
 import { and, asc, eq } from 'drizzle-orm';
 import type { ChurchId, EventId, MinistryId } from '../../domain/branded-ids';
 import type {
@@ -21,6 +27,25 @@ import type { AnyDrizzleDb } from './types';
 
 export class DrizzleEventRepository implements EventRepository {
   constructor(private readonly db: AnyDrizzleDb) {}
+
+  async getMinistryId(
+    churchId: ChurchId,
+    id: EventId,
+    tx?: TransactionContext,
+  ): Promise<MinistryId> {
+    const [row] = await getClient(this.db, tx)
+      .select({ ministryId: ministryParticipation.ministryId })
+      .from(ministryParticipation)
+      .where(
+        and(
+          eq(ministryParticipation.eventId, id),
+          withChurchIsolation(ministryParticipation, churchId),
+        ),
+      )
+      .limit(1);
+    if (!row) throw new NotFoundError(`Event participation not found: ${id}`);
+    return row.ministryId as MinistryId;
+  }
 
   async getById(
     churchId: ChurchId,
@@ -57,10 +82,13 @@ export class DrizzleEventRepository implements EventRepository {
     const slots = await Promise.all(
       slotRows.map(async (slotRow) => {
         const reqRows = await db
-          .select()
+          .select({ requirement: slotRequirement })
           .from(slotRequirement)
-          .where(eq(slotRequirement.slotId, slotRow.id));
-        const requirements = reqRows.map(mapSlotRequirement);
+          .innerJoin(shift, eq(shift.id, slotRequirement.shiftId))
+          .where(eq(shift.timeSlotId, slotRow.id));
+        const requirements = reqRows.map(({ requirement }) =>
+          mapSlotRequirement(requirement, slotRow.id),
+        );
         return mapTimeSlot(slotRow, requirements);
       }),
     );
@@ -77,18 +105,19 @@ export class DrizzleEventRepository implements EventRepository {
     const db = getClient(this.db, tx);
     const conditions = [
       withChurchIsolation(event, churchId),
-      eq(event.ministryId, ministryId),
+      eq(ministryParticipation.ministryId, ministryId),
     ];
-    if (status != null)
-      conditions.push(
-        eq(event.status, status as 'draft' | 'published' | 'cancelled'),
-      );
+    if (status != null) conditions.push(eq(event.status, status));
     const rows = await db
       .select()
       .from(event)
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.eventId, event.id),
+      )
       .where(and(...conditions))
       .orderBy(asc(event.startDate));
-    return rows.map(mapEvent);
+    return rows.map(({ event: row }) => mapEvent(row));
   }
 
   async create(
@@ -101,16 +130,14 @@ export class DrizzleEventRepository implements EventRepository {
       .insert(event)
       .values({
         churchId,
-        ministryId: input.ministryId,
+        planningCycleId: input.planningCycleId,
+        sourceTemplateId: input.sourceTemplateId ?? null,
         title: input.title,
         description: input.description ?? null,
         location: input.location ?? null,
         startDate: input.startDate,
         endDate: input.endDate,
-        status: (input.status ?? 'draft') as
-          | 'draft'
-          | 'published'
-          | 'cancelled',
+        status: input.status ?? 'draft',
         eventType: (input.eventType ?? 'hourly') as 'hourly' | 'day_based',
       })
       .returning();
@@ -150,7 +177,7 @@ export class DrizzleEventRepository implements EventRepository {
     await getClient(this.db, tx)
       .update(event)
       .set({
-        status: input.status as 'draft' | 'published' | 'cancelled',
+        status: input.status,
         updatedAt: new Date(),
       })
       .where(and(eq(event.id, id), withChurchIsolation(event, churchId)));

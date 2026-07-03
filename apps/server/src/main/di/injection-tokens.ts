@@ -8,7 +8,6 @@ export const injection = {
     churchRepository: 'IChurchRepository',
     ministryRepository: 'IMinistryRepository',
     roleRepository: 'IRoleRepository',
-    roleTemplateRepository: 'IRoleTemplateRepository',
     teamRepository: 'ITeamRepository',
     timeSlotRepository: 'ITimeSlotRepository',
     volunteerNotificationRepository: 'IVolunteerNotificationRepository',
@@ -21,8 +20,12 @@ export const injection = {
     volunteerManager: 'IVolunteerManager',
     assignmentManager: 'IAssignmentManager',
     ministryManager: 'IMinistryManager',
-    roleManager: 'IRoleManager',
     featureFlagManager: 'IFeatureFlagManager',
+  },
+  auth: {
+    scopeRepository: 'ISchedulingScopeRepository',
+    manager: 'ISchedulingRbacManager',
+    schedulingRbacResolver: 'SchedulingRbacResolver',
   },
   controllers: {
     fastify: 'FastifyController',

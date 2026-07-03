@@ -1,9 +1,16 @@
 import { NotFoundError } from '@church/core';
-import { availability } from '@church/db';
-import { and, between, eq, inArray } from 'drizzle-orm';
+import {
+  availability,
+  availabilityCheck,
+  ministryVolunteer,
+  shift,
+  timeSlot,
+} from '@church/db';
+import { and, between, eq, inArray, type SQL } from 'drizzle-orm';
 import type {
   AvailabilityId,
   ChurchId,
+  EventId,
   VolunteerId,
 } from '../../domain/branded-ids';
 import type {
@@ -20,66 +27,76 @@ import type { AnyDrizzleDb } from './types';
 export class DrizzleAvailabilityRepository implements AvailabilityRepository {
   constructor(private readonly db: AnyDrizzleDb) {}
 
+  private async rows(
+    churchId: ChurchId,
+    conditions: SQL[],
+    tx?: TransactionContext,
+  ): Promise<Availability[]> {
+    const rows = await getClient(this.db, tx)
+      .select({
+        availability,
+        volunteerId: ministryVolunteer.volunteerId,
+        eventId: timeSlot.eventId,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+      })
+      .from(availability)
+      .innerJoin(
+        availabilityCheck,
+        eq(availabilityCheck.id, availability.availabilityCheckId),
+      )
+      .innerJoin(
+        ministryVolunteer,
+        eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
+      )
+      .innerJoin(shift, eq(shift.id, availability.shiftId))
+      .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId))
+      .where(and(withChurchIsolation(availability, churchId), ...conditions));
+    return rows.map((row) => mapAvailability(row.availability, row));
+  }
+
   async getById(
     churchId: ChurchId,
     id: AvailabilityId,
     tx?: TransactionContext,
   ): Promise<Availability> {
-    const [row] = await getClient(this.db, tx)
-      .select()
-      .from(availability)
-      .where(
-        and(
-          eq(availability.id, id),
-          withChurchIsolation(availability, churchId),
-        ),
-      );
-
-    if (!row) {
-      throw new NotFoundError(`Availability entry not found: ${id}`);
-    }
-
-    return mapAvailability(row);
+    const rows = await this.rows(churchId, [eq(availability.id, id)], tx);
+    const row = rows[0];
+    if (!row) throw new NotFoundError(`Availability entry not found: ${id}`);
+    return row;
   }
 
-  async listByVolunteerInRange(
+  listByVolunteerInRange(
     churchId: ChurchId,
     volunteerId: VolunteerId,
     startTime: Date,
     endTime: Date,
     tx?: TransactionContext,
   ): Promise<Availability[]> {
-    const rows = await getClient(this.db, tx)
-      .select()
-      .from(availability)
-      .where(
-        and(
-          withChurchIsolation(availability, churchId),
-          eq(availability.volunteerId, volunteerId),
-          between(availability.startTime, startTime, endTime),
-        ),
-      );
-    return rows.map(mapAvailability);
+    return this.rows(
+      churchId,
+      [
+        eq(ministryVolunteer.volunteerId, volunteerId),
+        between(shift.startTime, startTime, endTime),
+      ],
+      tx,
+    );
   }
 
-  async listByVolunteerForEvent(
+  listByVolunteerForEvent(
     churchId: ChurchId,
     volunteerId: VolunteerId,
-    eventId: string,
+    eventId: EventId,
     tx?: TransactionContext,
   ): Promise<Availability[]> {
-    const rows = await getClient(this.db, tx)
-      .select()
-      .from(availability)
-      .where(
-        and(
-          withChurchIsolation(availability, churchId),
-          eq(availability.volunteerId, volunteerId),
-          eq(availability.eventId, eventId),
-        ),
-      );
-
-    return rows.map(mapAvailability);
+    return this.rows(
+      churchId,
+      [
+        eq(ministryVolunteer.volunteerId, volunteerId),
+        eq(timeSlot.eventId, eventId),
+      ],
+      tx,
+    );
   }
 
   async listByVolunteers(
@@ -88,65 +105,28 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
     tx?: TransactionContext,
   ): Promise<Availability[]> {
     if (volunteerIds.length === 0) return [];
-    const rows = await getClient(this.db, tx)
-      .select()
-      .from(availability)
-      .where(
-        and(
-          withChurchIsolation(availability, churchId),
-          inArray(availability.volunteerId, volunteerIds),
-        ),
-      );
-    return rows.map(mapAvailability);
+    return this.rows(
+      churchId,
+      [inArray(ministryVolunteer.volunteerId, volunteerIds)],
+      tx,
+    );
   }
 
   async create(
-    churchId: ChurchId,
-    input: CreateAvailabilityInput,
-    tx?: TransactionContext,
+    _churchId: ChurchId,
+    _input: CreateAvailabilityInput,
+    _tx?: TransactionContext,
   ): Promise<Availability> {
-    const [row] = await getClient(this.db, tx)
-      .insert(availability)
-      .values({
-        churchId,
-        volunteerId: input.volunteerId,
-        eventId: input.eventId ?? null,
-        type: input.type,
-        startTime: input.startTime,
-        endTime: input.endTime,
-        isAllDay: input.isAllDay,
-        reason: input.reason ?? null,
-        repeatRule: input.repeatRule ?? null,
-      })
-      .returning();
-    if (!row) throw new Error('Availability insert failed');
-    return mapAvailability(row);
+    throw new Error('Legacy free-span availability writes are removed');
   }
 
   async update(
-    churchId: ChurchId,
-    id: AvailabilityId,
-    input: UpdateAvailabilityInput,
-    tx?: TransactionContext,
+    _churchId: ChurchId,
+    _id: AvailabilityId,
+    _input: UpdateAvailabilityInput,
+    _tx?: TransactionContext,
   ): Promise<void> {
-    const update: Partial<typeof availability.$inferInsert> = {};
-    if (input.type != null) update.type = input.type;
-    if (input.eventId !== undefined) update.eventId = input.eventId ?? null;
-    if (input.startTime != null) update.startTime = input.startTime;
-    if (input.endTime != null) update.endTime = input.endTime;
-    if (input.isAllDay != null) update.isAllDay = input.isAllDay;
-    if (input.reason !== undefined) update.reason = input.reason ?? null;
-    if (input.repeatRule !== undefined)
-      update.repeatRule = input.repeatRule ?? null;
-    await getClient(this.db, tx)
-      .update(availability)
-      .set(update)
-      .where(
-        and(
-          eq(availability.id, id),
-          withChurchIsolation(availability, churchId),
-        ),
-      );
+    throw new Error('Legacy free-span availability writes are removed');
   }
 
   async delete(

@@ -2,12 +2,14 @@ import * as schema from '@church/db';
 import {
   assignment,
   assignmentAudit,
-  availability,
   church,
   event,
   ministry,
+  ministryParticipation,
   ministryVolunteer,
+  planningCycle,
   role,
+  shift,
   slotRequirement,
   timeSlot,
   volunteer,
@@ -41,21 +43,7 @@ export const volunteerDashboardTimeline = {
 
 export async function truncateAll(): Promise<void> {
   await testDb.execute(`
-    TRUNCATE TABLE
-      assignment_audit,
-      assignment,
-      volunteer_notification,
-      availability,
-      slot_requirement,
-      time_slot,
-      event,
-      ministry_volunteer,
-      role,
-      volunteer,
-      ministry,
-      church,
-      "user"
-    RESTART IDENTITY CASCADE
+    TRUNCATE TABLE church, "user" RESTART IDENTITY CASCADE
   `);
 }
 
@@ -152,12 +140,20 @@ export async function seed(): Promise<void> {
     },
   ]);
 
+  await testDb.insert(planningCycle).values({
+    id: '22222222-2222-2222-2222-222222222231',
+    churchId: '11111111-1111-1111-1111-111111111111',
+    name: 'June cycle',
+    startDate: new Date('2024-06-01T00:00:00Z'),
+    endDate: new Date('2024-07-01T00:00:00Z'),
+  });
+
   // Events (event-2 June 4 = older, event-1 June 5 = newer; list ascending by start_date returns event-2 first)
   await testDb.insert(event).values([
     {
       id: '66666666-6666-6666-6666-666666666661',
       churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '33333333-3333-3333-3333-333333333331',
+      planningCycleId: '22222222-2222-2222-2222-222222222231',
       title: 'Youth Gathering',
       startDate: new Date('2024-06-05T09:00:00Z'),
       endDate: new Date('2024-06-05T11:00:00Z'),
@@ -166,11 +162,27 @@ export async function seed(): Promise<void> {
     {
       id: '66666666-6666-6666-6666-666666666662',
       churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '33333333-3333-3333-3333-333333333331',
+      planningCycleId: '22222222-2222-2222-2222-222222222231',
       title: 'Adult Service',
       startDate: new Date('2024-06-04T09:00:00Z'),
       endDate: new Date('2024-06-04T11:00:00Z'),
-      status: 'published',
+      status: 'scheduled',
+    },
+  ]);
+
+  await testDb.insert(ministryParticipation).values([
+    {
+      id: '61616161-6161-6161-6161-616161616161',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryId: '33333333-3333-3333-3333-333333333331',
+      eventId: '66666666-6666-6666-6666-666666666661',
+    },
+    {
+      id: '61616161-6161-6161-6161-616161616162',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryId: '33333333-3333-3333-3333-333333333331',
+      eventId: '66666666-6666-6666-6666-666666666662',
+      state: 'published',
     },
   ]);
 
@@ -194,11 +206,31 @@ export async function seed(): Promise<void> {
     },
   ]);
 
+  await testDb.insert(shift).values([
+    {
+      id: '71717171-7171-7171-7171-717171717171',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      participationId: '61616161-6161-6161-6161-616161616161',
+      timeSlotId: '77777777-7777-7777-7777-777777777771',
+      startTime: new Date('2024-06-05T09:00:00Z'),
+      endTime: new Date('2024-06-05T11:00:00Z'),
+    },
+    {
+      id: '71717171-7171-7171-7171-717171717172',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      participationId: '61616161-6161-6161-6161-616161616162',
+      timeSlotId: '77777777-7777-7777-7777-777777777772',
+      startTime: new Date('2024-06-05T11:00:00Z'),
+      endTime: new Date('2024-06-05T13:00:00Z'),
+    },
+  ]);
+
   await testDb.insert(slotRequirement).values([
     {
       id: '88888888-8888-8888-8888-888888888881',
       churchId: '11111111-1111-1111-1111-111111111111',
-      slotId: '77777777-7777-7777-7777-777777777771',
+      participationId: '61616161-6161-6161-6161-616161616161',
+      shiftId: '71717171-7171-7171-7171-717171717171',
       roleId: '55555555-5555-5555-5555-555555555551',
       requiredCount: 2,
     },
@@ -209,7 +241,8 @@ export async function seed(): Promise<void> {
     {
       id: '99999999-9999-9999-9999-999999999991',
       churchId: '11111111-1111-1111-1111-111111111111',
-      slotId: '77777777-7777-7777-7777-777777777771',
+      participationId: '61616161-6161-6161-6161-616161616161',
+      shiftId: '71717171-7171-7171-7171-717171717171',
       volunteerId: '44444444-4444-4444-4444-444444444441',
       roleId: '55555555-5555-5555-5555-555555555551',
       status: 'confirmed',
@@ -219,7 +252,8 @@ export async function seed(): Promise<void> {
     {
       id: '99999999-9999-9999-9999-999999999992',
       churchId: '11111111-1111-1111-1111-111111111111',
-      slotId: '77777777-7777-7777-7777-777777777771',
+      participationId: '61616161-6161-6161-6161-616161616161',
+      shiftId: '71717171-7171-7171-7171-717171717171',
       volunteerId: '44444444-4444-4444-4444-444444444442',
       roleId: '55555555-5555-5555-5555-555555555551',
       status: 'declined',
@@ -228,25 +262,13 @@ export async function seed(): Promise<void> {
     {
       id: '99999999-9999-9999-9999-999999999993',
       churchId: '11111111-1111-1111-1111-111111111111',
-      slotId: '77777777-7777-7777-7777-777777777772',
+      participationId: '61616161-6161-6161-6161-616161616162',
+      shiftId: '71717171-7171-7171-7171-717171717172',
       volunteerId: '44444444-4444-4444-4444-444444444441',
       roleId: '55555555-5555-5555-5555-555555555551',
       status: 'confirmed',
       assignedAt: new Date('2024-06-01T10:10:00Z'),
       assignedBy: '22222222-2222-2222-2222-222222222221',
-    },
-  ]);
-
-  // Availability (volunteer-1, overlapping with June 1 09:00-13:00 UTC)
-  await testDb.insert(availability).values([
-    {
-      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      volunteerId: '44444444-4444-4444-4444-444444444441',
-      type: 'available',
-      startTime: new Date('2024-06-01T10:00:00Z'),
-      endTime: new Date('2024-06-01T12:00:00Z'),
-      isAllDay: false,
     },
   ]);
 

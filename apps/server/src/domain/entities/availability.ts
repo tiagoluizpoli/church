@@ -1,8 +1,10 @@
 import { Entity, type LooseProps } from '@church/core';
 import type {
+  AvailabilityCheckId,
   AvailabilityId,
   ChurchId,
   EventId,
+  ShiftId,
   VolunteerId,
 } from '../branded-ids';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
@@ -12,6 +14,8 @@ export type AvailabilityType = (typeof AVAILABILITY_TYPE_OPTIONS)[number];
 
 export interface AvailabilityProps {
   churchId: ChurchId;
+  availabilityCheckId?: AvailabilityCheckId;
+  shiftId?: ShiftId;
   volunteerId: VolunteerId;
   eventId?: EventId;
   type: AvailabilityType;
@@ -47,6 +51,14 @@ export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
 
   get churchId(): ChurchId {
     return this._props.churchId;
+  }
+
+  get availabilityCheckId(): AvailabilityCheckId | undefined {
+    return this._props.availabilityCheckId;
+  }
+
+  get shiftId(): ShiftId | undefined {
+    return this._props.shiftId;
   }
 
   get volunteerId(): VolunteerId {

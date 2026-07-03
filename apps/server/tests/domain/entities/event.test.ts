@@ -1,64 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { Event } from '../../../src/domain/entities/event';
+import {
+  EVENT_STATUS_OPTIONS,
+  Event,
+} from '../../../src/domain/entities/event';
 import { InvalidDateRangeError } from '../../../src/domain/errors/invalid-date-range';
 
-describe('Event Entity', () => {
-  it('constructs with valid props and defaults', () => {
-    const startDate = new Date('2026-05-15T10:00:00Z');
-    const endDate = new Date('2026-05-15T12:00:00Z');
+const props = {
+  churchId: 'c1',
+  planningCycleId: 'pc1',
+  sourceTemplateId: 'et1',
+  title: 'Sunday Service',
+  startDate: new Date('2026-05-15T10:00:00Z'),
+  endDate: new Date('2026-05-15T12:00:00Z'),
+};
 
-    const event = new Event({
-      churchId: 'c1',
-      ministryId: 'm1',
-      title: 'Sunday Service',
-      startDate,
-      endDate,
-    });
+describe('Event Entity', () => {
+  it('constructs as church-owned cycle event', () => {
+    const event = new Event(props);
 
     expect(event.churchId).toBe('c1');
-    expect(event.ministryId).toBe('m1');
-    expect(event.title).toBe('Sunday Service');
-    expect(event.startDate).toBe(startDate);
-    expect(event.endDate).toBe(endDate);
+    expect(event.planningCycleId).toBe('pc1');
+    expect(event.sourceTemplateId).toBe('et1');
+    expect('ministryId' in event).toBe(false);
     expect(event.status).toBe('draft');
   });
 
-  it('throws InvalidDateRangeError if startDate >= endDate', () => {
-    const startDate = new Date('2026-05-15T12:00:00Z');
-    const endDate = new Date('2026-05-15T10:00:00Z');
-
-    expect(() => {
-      new Event({
-        churchId: 'c1',
-        ministryId: 'm1',
-        title: 'Sunday Service',
-        startDate,
-        endDate,
-      });
-    }).toThrow(InvalidDateRangeError);
+  it('supports only cycle event statuses', () => {
+    expect(EVENT_STATUS_OPTIONS).toEqual([
+      'draft',
+      'scheduled',
+      'cancelled',
+      'past',
+    ]);
   });
 
-  it('handles mutations correctly', () => {
-    const startDate = new Date('2026-05-15T10:00:00Z');
-    const endDate = new Date('2026-05-15T12:00:00Z');
+  it('moves through cycle-driven states without event publishing', () => {
+    const event = new Event(props);
 
-    const event = new Event({
-      churchId: 'c1',
-      ministryId: 'm1',
-      title: 'Sunday Service',
-      startDate,
-      endDate,
-    });
-
-    expect(event.status).toBe('draft');
-
-    event.publish();
-    expect(event.status).toBe('published');
-
+    event.markScheduled();
+    expect(event.status).toBe('scheduled');
     event.cancel();
     expect(event.status).toBe('cancelled');
-
     event.markAsPast();
     expect(event.status).toBe('past');
+    expect('publish' in event).toBe(false);
+  });
+
+  it('rejects an invalid date range', () => {
+    expect(() => new Event({ ...props, startDate: props.endDate })).toThrow(
+      InvalidDateRangeError,
+    );
   });
 });

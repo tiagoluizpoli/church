@@ -39,7 +39,7 @@ describe('User Story 4: Transaction Context Type Safety', () => {
       eventRepo.updateStatus(
         churchId,
         'event-1' as EventId,
-        { status: 'published' },
+        { status: 'scheduled' },
         tx,
       );
 

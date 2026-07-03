@@ -1,11 +1,17 @@
 import { Entity, type LooseProps } from '@church/core';
-import type { ChurchId, EventId, MinistryId } from '../branded-ids';
+import type {
+  ChurchId,
+  EventId,
+  EventTemplateId,
+  MinistryId,
+  PlanningCycleId,
+} from '../branded-ids';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { TimeSlot } from './time-slot';
 
 export const EVENT_STATUS_OPTIONS = [
   'draft',
-  'published',
+  'scheduled',
   'cancelled',
   'past',
 ] as const;
@@ -16,7 +22,8 @@ export type EventType = (typeof EVENT_TYPE_OPTIONS)[number];
 
 export interface EventProps {
   churchId: ChurchId;
-  ministryId: MinistryId;
+  planningCycleId: PlanningCycleId;
+  sourceTemplateId?: EventTemplateId;
   title: string;
   description?: string;
   location?: string;
@@ -33,8 +40,15 @@ export interface EventWithSlots {
 
 export class Event extends Entity<EventProps, EventId> {
   constructor(
-    props: Omit<LooseProps<EventProps>, 'status' | 'eventType'> &
-      Partial<Pick<LooseProps<EventProps>, 'status' | 'eventType'>>,
+    props:
+      | (Omit<LooseProps<EventProps>, 'status' | 'eventType'> &
+          Partial<Pick<LooseProps<EventProps>, 'status' | 'eventType'>>)
+      | (Omit<
+          LooseProps<EventProps>,
+          'planningCycleId' | 'sourceTemplateId' | 'status' | 'eventType'
+        > & {
+          ministryId: MinistryId | string;
+        } & Partial<Pick<LooseProps<EventProps>, 'status' | 'eventType'>>),
     id?: string,
     createdAt?: Date,
     updatedAt?: Date,
@@ -42,9 +56,17 @@ export class Event extends Entity<EventProps, EventId> {
     if (props.startDate >= props.endDate) {
       throw new InvalidDateRangeError();
     }
+    const normalizedProps =
+      'planningCycleId' in props
+        ? props
+        : {
+            ...props,
+            ministryId: undefined,
+            planningCycleId: props.ministryId,
+          };
     super(
       {
-        ...props,
+        ...normalizedProps,
         status: props.status ?? 'draft',
         eventType: props.eventType ?? 'hourly',
       } as EventProps,
@@ -58,8 +80,12 @@ export class Event extends Entity<EventProps, EventId> {
     return this._props.churchId;
   }
 
-  get ministryId(): MinistryId {
-    return this._props.ministryId;
+  get planningCycleId(): PlanningCycleId {
+    return this._props.planningCycleId;
+  }
+
+  get sourceTemplateId(): EventTemplateId | undefined {
+    return this._props.sourceTemplateId;
   }
 
   get title(): string {
@@ -90,8 +116,8 @@ export class Event extends Entity<EventProps, EventId> {
     return this._props.eventType;
   }
 
-  public publish(): void {
-    this._props.status = 'published';
+  public markScheduled(): void {
+    this._props.status = 'scheduled';
     this._updatedAt = new Date();
   }
 

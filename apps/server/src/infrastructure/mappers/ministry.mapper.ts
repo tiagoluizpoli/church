@@ -12,6 +12,7 @@ export function mapMinistry(row: MinistryRow): Ministry {
     name: row.name,
     description: row.description ?? undefined,
     enforcementType: row.enforcementType as MinistryProps['enforcementType'],
+    defaultDirection: row.defaultDirection,
     deletedAt: row.deletedAt ?? undefined,
   };
 

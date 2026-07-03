@@ -33,6 +33,26 @@ import type {
   TemplateBasedStrategy,
 } from './types';
 
+interface GenerateEqualSplitSlotsInput {
+  request: SlotGenerationRequest;
+  strategy: EqualSplitStrategy;
+}
+
+interface BuildEqualSplitSlotLabelInput {
+  slotStartTime: Date;
+  slotNumber: number;
+  spansMultipleDays: boolean;
+}
+
+interface GenerateTemplateSlotsInput {
+  request: SlotGenerationRequest;
+  strategy: TemplateBasedStrategy;
+}
+
+interface ErrorWithReason {
+  reason: unknown;
+}
+
 export const AssignmentManagerService = {
   generateSlots(request: SlotGenerationRequest): SlotGenerationResult {
     // Tenant isolation validation
@@ -57,10 +77,9 @@ export const AssignmentManagerService = {
     return this.generateTemplateSlots({ request, strategy: request.strategy });
   },
 
-  generateEqualSplitSlots(params: {
-    request: SlotGenerationRequest;
-    strategy: EqualSplitStrategy;
-  }): SlotGenerationResult {
+  generateEqualSplitSlots(
+    params: GenerateEqualSplitSlotsInput,
+  ): SlotGenerationResult {
     const { request, strategy } = params;
     const { slotDurationMinutes } = strategy;
     if (slotDurationMinutes <= 0) {
@@ -148,11 +167,7 @@ export const AssignmentManagerService = {
     };
   },
 
-  buildEqualSplitSlotLabel(params: {
-    slotStartTime: Date;
-    slotNumber: number;
-    spansMultipleDays: boolean;
-  }): string {
+  buildEqualSplitSlotLabel(params: BuildEqualSplitSlotLabelInput): string {
     const { slotStartTime, slotNumber, spansMultipleDays } = params;
     if (!spansMultipleDays) {
       return `Slot ${slotNumber}`;
@@ -161,10 +176,9 @@ export const AssignmentManagerService = {
     return `${slotStartTime.toISOString().slice(0, 10)} - Slot ${slotNumber}`;
   },
 
-  generateTemplateSlots(params: {
-    request: SlotGenerationRequest;
-    strategy: TemplateBasedStrategy;
-  }): SlotGenerationResult {
+  generateTemplateSlots(
+    params: GenerateTemplateSlotsInput,
+  ): SlotGenerationResult {
     const { request, strategy } = params;
     const slots: GeneratedSlot[] = [];
 
@@ -281,7 +295,7 @@ export const AssignmentManagerService = {
             : 'Hard constraint validation failed';
         const reason =
           error && typeof error === 'object' && 'reason' in error
-            ? ((error as { reason: unknown }).reason as HardConstraintReason)
+            ? ((error as ErrorWithReason).reason as HardConstraintReason)
             : 'NOT_QUALIFIED';
 
         failures.push({
@@ -298,7 +312,7 @@ export const AssignmentManagerService = {
     }
 
     // 5. Apply transitions atomically
-    event.publish();
+    event.markScheduled();
     for (const a of draftAssignments) {
       a.markAsPending();
     }
@@ -363,7 +377,7 @@ export const AssignmentManagerService = {
     // 5. Handle assignments based on original event status
     if (originalStatus === 'draft') {
       assignmentsDeleted = assignments.length;
-    } else if (originalStatus === 'published') {
+    } else if (originalStatus === 'scheduled') {
       for (const a of assignments) {
         if (a.status === 'pending' || a.status === 'confirmed') {
           a.cancel();
@@ -577,7 +591,7 @@ export const AssignmentManagerService = {
     }
 
     // 4. Perform transition based on event status
-    if (event.status === 'published') {
+    if (event.status === 'scheduled') {
       event.markAsPast();
       let assignmentsAutoConfirmed = 0;
       for (const assignment of assignments) {

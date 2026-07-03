@@ -3,7 +3,10 @@ import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   EventId,
+  MinistryParticipationId,
   RoleId,
+  ShiftId,
+  TimeBlockId,
   TimeSlotId,
 } from '../../domain/branded-ids';
 import type {
@@ -17,10 +20,15 @@ import { TimeSlot } from '../../domain/entities/time-slot';
 type TimeSlotRow = InferSelectModel<typeof timeSlot>;
 type SlotRequirementRow = InferSelectModel<typeof slotRequirement>;
 
-export function mapSlotRequirement(row: SlotRequirementRow): SlotRequirement {
+export function mapSlotRequirement(
+  row: SlotRequirementRow,
+  timeSlotId?: string,
+): SlotRequirement {
   const props: SlotRequirementProps = {
     churchId: row.churchId as ChurchId,
-    slotId: row.slotId as TimeSlotId,
+    participationId: row.participationId as MinistryParticipationId,
+    shiftId: row.shiftId as ShiftId,
+    slotId: (timeSlotId ?? row.shiftId) as TimeSlotId,
     roleId: row.roleId as RoleId,
     teamId: row.teamId
       ? (row.teamId as SlotRequirementProps['teamId'])
@@ -39,6 +47,8 @@ export function mapTimeSlot(
   const props: TimeSlotProps = {
     churchId: row.churchId as ChurchId,
     eventId: row.eventId as EventId,
+    sourceTemplateBlockId:
+      (row.sourceTemplateBlockId as TimeBlockId | null) ?? undefined,
     startTime: row.startTime,
     endTime: row.endTime,
     label: row.label ?? undefined,

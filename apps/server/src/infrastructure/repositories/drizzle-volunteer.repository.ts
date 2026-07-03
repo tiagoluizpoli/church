@@ -1,5 +1,12 @@
 import { NotFoundError } from '@church/core';
-import { ministry, ministryVolunteer, role, user, volunteer } from '@church/db';
+import {
+  churchAdmin,
+  ministry,
+  ministryVolunteer,
+  role,
+  user,
+  volunteer,
+} from '@church/db';
 import { and, eq, inArray } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -25,6 +32,21 @@ import type { AnyDrizzleDb } from './types';
 
 export class DrizzleVolunteerRepository implements VolunteerRepository {
   constructor(private readonly db: AnyDrizzleDb) {}
+
+  async isChurchAdmin(
+    churchId: ChurchId,
+    userId: UserId,
+    tx?: TransactionContext,
+  ): Promise<boolean> {
+    const [row] = await getClient(this.db, tx)
+      .select({ id: churchAdmin.id })
+      .from(churchAdmin)
+      .where(
+        and(eq(churchAdmin.churchId, churchId), eq(churchAdmin.userId, userId)),
+      )
+      .limit(1);
+    return row != null;
+  }
 
   async getById(
     churchId: ChurchId,

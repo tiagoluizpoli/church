@@ -1,5 +1,11 @@
 import { NotFoundError } from '@church/core';
-import { assignment, slotRequirement, timeSlot } from '@church/db';
+import {
+  assignment,
+  ministryParticipation,
+  shift,
+  slotRequirement,
+  timeSlot,
+} from '@church/db';
 import { and, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -29,10 +35,16 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
     slotRow: typeof timeSlot.$inferSelect,
   ): Promise<TimeSlot> {
     const reqRows = await db
-      .select()
+      .select({ requirement: slotRequirement })
       .from(slotRequirement)
-      .where(eq(slotRequirement.slotId, slotRow.id));
-    return mapTimeSlot(slotRow, reqRows.map(mapSlotRequirement));
+      .innerJoin(shift, eq(shift.id, slotRequirement.shiftId))
+      .where(eq(shift.timeSlotId, slotRow.id));
+    return mapTimeSlot(
+      slotRow,
+      reqRows.map(({ requirement }) =>
+        mapSlotRequirement(requirement, slotRow.id),
+      ),
+    );
   }
 
   async getById(
@@ -76,6 +88,17 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
     tx?: TransactionContext,
   ): Promise<TimeSlot[]> {
     const db = getClient(this.db, tx);
+    const [participation] = await db
+      .select()
+      .from(ministryParticipation)
+      .where(
+        and(
+          eq(ministryParticipation.eventId, input.eventId),
+          withChurchIsolation(ministryParticipation, churchId),
+        ),
+      )
+      .limit(1);
+    if (!participation) throw new NotFoundError('Participation not found');
     const result: TimeSlot[] = [];
     for (const slotInput of input.slots) {
       const [slotRow] = await db
@@ -89,6 +112,18 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
         })
         .returning();
       if (!slotRow) throw new Error('TimeSlot insert failed');
+      const [shiftRow] = await db
+        .insert(shift)
+        .values({
+          churchId,
+          participationId: participation.id,
+          timeSlotId: slotRow.id,
+          startTime: slotRow.startTime,
+          endTime: slotRow.endTime,
+          label: slotRow.label,
+        })
+        .returning();
+      if (!shiftRow) throw new Error('Shift insert failed');
 
       const requirements = [];
       if (slotInput.requirements?.length) {
@@ -97,7 +132,8 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
           .values(
             slotInput.requirements.map((r) => ({
               churchId,
-              slotId: slotRow.id,
+              participationId: participation.id,
+              shiftId: shiftRow.id,
               roleId: r.roleId,
               teamId: r.teamId ?? null,
               requiredCount: r.requiredCount,
@@ -105,7 +141,9 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
             })),
           )
           .returning();
-        requirements.push(...reqRows.map(mapSlotRequirement));
+        requirements.push(
+          ...reqRows.map((row) => mapSlotRequirement(row, slotRow.id)),
+        );
       }
 
       result.push(mapTimeSlot(slotRow, requirements));
@@ -130,6 +168,27 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
       })
       .returning();
     if (!row) throw new Error('TimeSlot insert failed');
+    const participations = await db
+      .select()
+      .from(ministryParticipation)
+      .where(
+        and(
+          eq(ministryParticipation.eventId, input.eventId),
+          withChurchIsolation(ministryParticipation, churchId),
+        ),
+      );
+    if (participations.length) {
+      await db.insert(shift).values(
+        participations.map((participation) => ({
+          churchId,
+          participationId: participation.id,
+          timeSlotId: row.id,
+          startTime: row.startTime,
+          endTime: row.endTime,
+          label: row.label,
+        })),
+      );
+    }
     return mapTimeSlot(row, []);
   }
 
@@ -211,12 +270,20 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
     tx?: TransactionContext,
   ): Promise<SlotRequirement> {
     const db = getClient(this.db, tx);
+    const [targetShift] = await db
+      .select()
+      .from(shift)
+      .where(
+        and(eq(shift.timeSlotId, slotId), withChurchIsolation(shift, churchId)),
+      )
+      .limit(1);
+    if (!targetShift) throw new NotFoundError('Shift not found for slot');
     const [existing] = await db
       .select()
       .from(slotRequirement)
       .where(
         and(
-          eq(slotRequirement.slotId, slotId),
+          eq(slotRequirement.shiftId, targetShift.id),
           eq(slotRequirement.roleId, input.roleId),
         ),
       )
@@ -229,14 +296,15 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
         .where(eq(slotRequirement.id, existing.id))
         .returning();
       if (!updated) throw new Error('SlotRequirement update failed');
-      return mapSlotRequirement(updated);
+      return mapSlotRequirement(updated, slotId);
     }
 
     const [inserted] = await db
       .insert(slotRequirement)
       .values({
         churchId,
-        slotId,
+        participationId: targetShift.participationId,
+        shiftId: targetShift.id,
         roleId: input.roleId,
         teamId: input.teamId ?? null,
         requiredCount: input.requiredCount,
@@ -244,7 +312,7 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
       })
       .returning();
     if (!inserted) throw new Error('SlotRequirement insert failed');
-    return mapSlotRequirement(inserted);
+    return mapSlotRequirement(inserted, slotId);
   }
 
   async countActiveAssignments(
@@ -257,10 +325,11 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
     const [result] = await db
       .select({ cnt: count() })
       .from(assignment)
+      .innerJoin(shift, eq(assignment.shiftId, shift.id))
       .where(
         and(
           withChurchIsolation(assignment, churchId),
-          eq(assignment.slotId, slotId),
+          eq(shift.timeSlotId, slotId),
           eq(assignment.roleId, roleId),
           inArray(assignment.status, ['pending', 'confirmed']),
         ),

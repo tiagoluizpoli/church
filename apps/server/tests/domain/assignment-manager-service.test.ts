@@ -660,7 +660,7 @@ describe('Publish Schedule', () => {
       assignmentValidationData: validationData,
     });
 
-    expect(result.event.status).toBe('published');
+    expect(result.event.status).toBe('scheduled');
     expect(result.transitionedCount).toBe(5);
     expect(result.warnings).toEqual([]);
     expect(result.audits).toBeDefined();
@@ -717,7 +717,7 @@ describe('Publish Schedule', () => {
       assignmentValidationData: validationData,
     });
 
-    expect(result.event.status).toBe('published');
+    expect(result.event.status).toBe('scheduled');
     expect(result.transitionedCount).toBe(1);
     expect(assignment.status).toBe('pending');
   });
@@ -751,7 +751,7 @@ describe('Publish Schedule', () => {
       title: 'Sunday Service',
       startDate: new Date('2026-05-19T10:00:00Z'),
       endDate: new Date('2026-05-19T12:00:00Z'),
-      status: 'published',
+      status: 'scheduled',
     });
 
     const assignment = new Assignment({
@@ -1126,7 +1126,7 @@ describe('Publish Schedule', () => {
       assignmentValidationData: validationData,
     });
 
-    expect(event.status).toBe('published');
+    expect(event.status).toBe('scheduled');
     expect(result.transitionedCount).toBe(1);
     expect(result.audits).toHaveLength(1);
     expect(result.audits?.[0]?.assignmentId).toBe(draftAssignment.id);
@@ -1143,7 +1143,7 @@ describe('Publish Schedule', () => {
         title: 'Sunday Service',
         startDate: new Date('2026-05-19T10:00:00Z'),
         endDate: new Date('2026-05-19T12:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const slot1 = new TimeSlot({
@@ -1321,7 +1321,7 @@ describe('Publish Schedule', () => {
         title: 'Sunday Service',
         startDate: new Date('2026-05-19T10:00:00Z'),
         endDate: new Date('2026-05-19T12:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const slot = new TimeSlot({
@@ -1379,7 +1379,7 @@ describe('Publish Schedule', () => {
         title: 'Sunday Service',
         startDate: new Date('2026-05-19T10:00:00Z'),
         endDate: new Date('2026-05-19T12:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const slot = new TimeSlot({
@@ -1412,7 +1412,7 @@ describe('Publish Schedule', () => {
         title: 'Sunday Service',
         startDate: new Date('2026-05-19T10:00:00Z'),
         endDate: new Date('2026-05-19T12:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const slot = new TimeSlot({
@@ -2035,7 +2035,7 @@ describe('Publish Schedule', () => {
         title: 'Sunday Service',
         startDate: new Date('2026-05-20T08:00:00Z'),
         endDate: new Date('2026-05-20T10:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const assignment1 = new Assignment({
@@ -2114,7 +2114,7 @@ describe('Publish Schedule', () => {
         title: 'Future Service',
         startDate: new Date('2026-05-20T14:00:00Z'),
         endDate: new Date('2026-05-20T16:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const result = AssignmentManagerService.transitionExpiredEvent({
@@ -2129,7 +2129,7 @@ describe('Publish Schedule', () => {
         assignmentsAutoConfirmed: 0,
       });
 
-      expect(futureEvent.status).toBe('published');
+      expect(futureEvent.status).toBe('scheduled');
     });
 
     it('edge: already past → no transition', () => {
@@ -2185,7 +2185,7 @@ describe('Publish Schedule', () => {
         title: 'Service',
         startDate: new Date('2026-05-20T08:00:00Z'),
         endDate: new Date('2026-05-20T10:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const pending = new Assignment({
@@ -2232,7 +2232,7 @@ describe('Publish Schedule', () => {
         title: 'Empty Service',
         startDate: new Date('2026-05-20T08:00:00Z'),
         endDate: new Date('2026-05-20T10:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const result = AssignmentManagerService.transitionExpiredEvent({
@@ -2257,7 +2257,7 @@ describe('Publish Schedule', () => {
         title: 'Sunday Service',
         startDate: new Date('2026-05-20T08:00:00Z'),
         endDate: new Date('2026-05-20T10:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       expect(() => {
@@ -2277,7 +2277,7 @@ describe('Publish Schedule', () => {
         title: 'Sunday Service',
         startDate: new Date('2026-05-20T08:00:00Z'),
         endDate: new Date('2026-05-20T10:00:00Z'),
-        status: 'published',
+        status: 'scheduled',
       });
 
       const assignment = new Assignment({

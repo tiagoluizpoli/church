@@ -2,7 +2,9 @@ import { Entity, type LooseProps } from '@church/core';
 import type {
   AssignmentId,
   ChurchId,
+  MinistryParticipationId,
   RoleId,
+  ShiftId,
   TimeSlotId,
   UserId,
   VolunteerId,
@@ -20,6 +22,8 @@ export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];
 export interface AssignmentProps {
   churchId: ChurchId;
   slotId: TimeSlotId;
+  participationId?: MinistryParticipationId;
+  shiftId?: ShiftId;
   volunteerId: VolunteerId;
   roleId: RoleId;
   status: AssignmentStatus;
@@ -54,6 +58,14 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
 
   get slotId(): TimeSlotId {
     return this._props.slotId;
+  }
+
+  get participationId(): MinistryParticipationId | undefined {
+    return this._props.participationId;
+  }
+
+  get shiftId(): ShiftId | undefined {
+    return this._props.shiftId;
   }
 
   get volunteerId(): VolunteerId {

@@ -79,22 +79,22 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 ### Tests (write first, must fail)
 
-- [ ] T023 [P] [US1] L1 `PlanningCycle` entity + `DateRange` cycle cases — DL1-PC-01..07, DL1-DR-01..06 — in `planning-cycle.test.ts`, `date-range.test.ts`.
-- [ ] T024 [P] [US1] L1 `EventTemplate`/`TimeBlock` — DL1-ET-01..05.
-- [ ] T025 [P] [US1] L2 `PlanningCycleManager` — DL2-PC-01..10 (overlap, isolation, concurrency, lock txn, append-only, reopen, auto-archive).
-- [ ] T026 [P] [US1] L2 `CycleEventGenerator` — DL2-EG-01..08 (counts, date-only, manual multi-day, rollback).
-- [ ] T027 [P] [US1] L3 repo contract + HTTP — DL3-RC-01..04 (cycle/template/event repos), DL3-HT-01/02/03.
-- [ ] T028 [P] [US1] E2E DL4-US1 in `apps/web/tests/scheduling/us1-admin-plan.spec.ts`.
+- [X] T023 [P] [US1] L1 `PlanningCycle` entity + `DateRange` cycle cases — DL1-PC-01..07, DL1-DR-01..06 — in `planning-cycle.test.ts`, `date-range.test.ts`.
+- [X] T024 [P] [US1] L1 `EventTemplate`/`TimeBlock` — DL1-ET-01..05.
+- [X] T025 [P] [US1] L2 `PlanningCycleManager` — DL2-PC-01..10 (overlap, isolation, concurrency, lock txn, append-only, reopen, auto-archive).
+- [X] T026 [P] [US1] L2 `CycleEventGenerator` — DL2-EG-01..08 (counts, date-only, manual multi-day, rollback).
+- [X] T027 [P] [US1] L3 repo contract + HTTP — DL3-RC-01..04 (cycle/template/event repos), DL3-HT-01/02/03.
+- [X] T028 [P] [US1] E2E DL4-US1 in `apps/web/tests/scheduling/us1-admin-plan.spec.ts`.
 
 ### Implementation
 
-- [ ] T029 [P] [US1] `PlanningCycle` entity + repo interface + drizzle repo + mapper.
-- [ ] T030 [P] [US1] `EventTemplate`+`TimeBlock` entity + repo + mapper.
-- [ ] T031 [US1] `CycleEventGenerator` domain service (template×dates → events+slots, `sourceTemplateBlockId`) in `apps/server/src/domain/services/cycle-event-generator.ts`.
-- [ ] T032 [US1] `IPlanningCycleManager` + `DbPlanningCycleManager` (create/list/get/lock/reopen/archive, overlap guard, lock cascades events→scheduled in one txn). **Lazy auto-archive (C1/CL-006)**: on any read/access, a cycle past `endDate` (church tz) resolves to `archived` and rejects mutations — no background scheduler. Covered by test DL2-PC-10 (T025).
-- [ ] T033 [US1] `IEventTemplateManager` + `DbEventTemplateManager`; extend `IEventManager` with `generateFromTemplates` + manual `createEvent`/`updateEvent`/`cancelEvent` (cycle-scoped).
-- [ ] T034 [US1] `church-admin-controller.ts` (cycles, templates, apply-templates, manual events, cancel) + Zod DTOs; DI registration.
-- [ ] T035 [US1] Web: cycle admin + template config + calendar review/lock in `apps/web/src/features/scheduling/`; regenerate orval client.
+- [X] T029 [P] [US1] `PlanningCycle` entity + repo interface + drizzle repo + mapper.
+- [X] T030 [P] [US1] `EventTemplate`+`TimeBlock` entity + repo + mapper.
+- [X] T031 [US1] `CycleEventGenerator` domain service (template×dates → events+slots, `sourceTemplateBlockId`) in `apps/server/src/domain/services/cycle-event-generator.ts`.
+- [X] T032 [US1] `IPlanningCycleManager` + `DbPlanningCycleManager` (create/list/get/lock/reopen/archive, overlap guard, lock cascades events→scheduled in one txn). **Lazy auto-archive (C1/CL-006)**: on any read/access, a cycle past `endDate` (church tz) resolves to `archived` and rejects mutations — no background scheduler. Covered by test DL2-PC-10 (T025).
+- [X] T033 [US1] `IEventTemplateManager` + `DbEventTemplateManager`; extend `IEventManager` with `generateFromTemplates` + manual `createEvent`/`updateEvent`/`cancelEvent` (cycle-scoped).
+- [X] T034 [US1] `church-admin-controller.ts` (cycles, templates, apply-templates, manual events, cancel) + Zod DTOs; DI registration.
+- [X] T035 [US1] Web: cycle admin + template config + calendar review/lock in `apps/web/src/features/scheduling/`; regenerate orval client.
 
 **Checkpoint**: MVP — admin owns a lockable church calendar.
 

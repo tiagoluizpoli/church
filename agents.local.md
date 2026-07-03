@@ -47,5 +47,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/014-volunteer-dashboard/plan.md](specs/014-volunteer-dashboard/plan.md)
+- Current Plan: [specs/017-scheduling-reshape/plan.md](specs/017-scheduling-reshape/plan.md)
 <!-- SPECKIT END -->

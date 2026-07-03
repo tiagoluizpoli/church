@@ -34,6 +34,9 @@
       "cache": false,
       "persistent": true
     },
+    "db:reset": {
+      "cache": false
+    },
     "db:studio": {
       "cache": false,
       "persistent": true

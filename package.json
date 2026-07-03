@@ -39,6 +39,7 @@
     "db:studio": "turbo -F @church/db db:studio",
     "db:generate": "turbo -F @church/db db:generate",
     "db:migrate": "turbo -F @church/db db:migrate",
+    "db:reset": "turbo -F @church/db db:reset",
     "db:start": "turbo -F @church/db db:start",
     "db:watch": "turbo -F @church/db db:watch",
     "db:stop": "turbo -F @church/db db:stop",

@@ -42,30 +42,30 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 ### Enums & schema (greenfield reset)
 
-- [ ] T006 Update `packages/db/src/schema/enums.ts`: change `event_status` → `draft|scheduled|cancelled|past`; add `planning_cycle_state`, `participation_state`, `availability_check_state`, `default_direction`; keep `enforcement_type`. **Retain** all existing `volunteer_notification_type` values (still consumed by 014 dashboard — do not drop; I1/CL-notifications); add cycle-scoped kinds only if new ones are needed.
-- [ ] T007 [P] New `packages/db/src/schema/planning.ts`: `planning_cycle` (church-scoped, date range, no-overlap exclusion constraint via `btree_gist` per research R2), `event_template`, `time_block`, `ministry_serving_profile`.
-- [ ] T008 [P] New `packages/db/src/schema/participation.ts`: `ministry_participation`, `participation_slot_inclusion`.
-- [ ] T009 [P] New `packages/db/src/schema/availability-checks.ts`: `availability_check`.
-- [ ] T010 Edit `packages/db/src/schema/scheduling.ts`: `event` drop `ministry_id`, add `planning_cycle_id` + `source_template_id`; `time_slot` add `source_template_block_id`; add `shift` table (FK `time_slot_id`+`participation_id`, bounds `CHECK`); re-FK `slot_requirement` → `shift_id` + `participation_id`.
-- [ ] T011 Edit `packages/db/src/schema/assignments.ts`: re-FK `assignment` → `shift_id` + `participation_id`; reshape `availability` → `availability_check_id` + `shift_id` (unavailability mark).
-- [ ] T011a [P] Edit `packages/db/src/schema/volunteer-notifications.ts`: add nullable `planning_cycle_id` scope for per-cycle notifications (FR-027 / C2); keep existing `event_id`/`assignment_id`/`ministry_id` columns (additive, non-breaking for 014).
-- [ ] T012 [P] Edit `packages/db/src/schema/core.ts`: add `ministry.default_direction`.
-- [ ] T013 Delete `packages/db/src/schema/role-templates.ts`; update `packages/db/src/schema/index.ts` exports.
-- [ ] T014 Regenerate migration + `bun run db:reset`; update `packages/db/src/seed/factories/scheduling.factory.ts` for cycles/templates/participations demo data.
-- [ ] T015 [P] DB schema integration tests (constraints, cascades, exclusion) in `packages/db/tests/schema/scheduling.test.ts` per DL3-RC-05.
+- [X] T006 Update `packages/db/src/schema/enums.ts`: change `event_status` → `draft|scheduled|cancelled|past`; add `planning_cycle_state`, `participation_state`, `availability_check_state`, `default_direction`; keep `enforcement_type`. **Retain** all existing `volunteer_notification_type` values (still consumed by 014 dashboard — do not drop; I1/CL-notifications); add cycle-scoped kinds only if new ones are needed.
+- [X] T007 [P] New `packages/db/src/schema/planning.ts`: `planning_cycle` (church-scoped, date range, no-overlap exclusion constraint via `btree_gist` per research R2), `event_template`, `time_block`, `ministry_serving_profile`.
+- [X] T008 [P] New `packages/db/src/schema/participation.ts`: `ministry_participation`, `participation_slot_inclusion`.
+- [X] T009 [P] New `packages/db/src/schema/availability-checks.ts`: `availability_check`.
+- [X] T010 Edit `packages/db/src/schema/scheduling.ts`: `event` drop `ministry_id`, add `planning_cycle_id` + `source_template_id`; `time_slot` add `source_template_block_id`; add `shift` table (FK `time_slot_id`+`participation_id`, bounds `CHECK`); re-FK `slot_requirement` → `shift_id` + `participation_id`.
+- [X] T011 Edit `packages/db/src/schema/assignments.ts`: re-FK `assignment` → `shift_id` + `participation_id`; reshape `availability` → `availability_check_id` + `shift_id` (unavailability mark).
+- [X] T011a [P] Edit `packages/db/src/schema/volunteer-notifications.ts`: add nullable `planning_cycle_id` scope for per-cycle notifications (FR-027 / C2); keep existing `event_id`/`assignment_id`/`ministry_id` columns (additive, non-breaking for 014).
+- [X] T012 [P] Edit `packages/db/src/schema/core.ts`: add `ministry.default_direction`.
+- [X] T013 Delete `packages/db/src/schema/role-templates.ts`; update `packages/db/src/schema/index.ts` exports.
+- [X] T014 Regenerate migration + `bun run db:reset`; update `packages/db/src/seed/factories/scheduling.factory.ts` for cycles/templates/participations demo data.
+- [X] T015 [P] DB schema integration tests (constraints, cascades, exclusion) in `packages/db/tests/schema/scheduling.test.ts` per DL3-RC-05.
 
 ### Shared domain primitives
 
-- [ ] T016 [P] New branded ids in `apps/server/src/domain/branded-ids/`: `planning-cycle-id`, `event-template-id`, `time-block-id`, `ministry-serving-profile-id`, `ministry-participation-id`, `participation-slot-inclusion-id`, `shift-id`, `availability-check-id`; update `index.ts`. Remove `role-template-id`.
-- [ ] T017 [P] Reshape `Event` entity `apps/server/src/domain/entities/event.ts`: drop `ministryId`, add `planningCycleId`/`sourceTemplateId`, status enum, `markScheduled()`, remove `publish()`.
-- [ ] T018 [P] Reshape `TimeSlot` entity (add `sourceTemplateBlockId`) + `Ministry` entity (add `defaultDirection`).
-- [ ] T019 [P] New domain errors in `apps/server/src/domain/errors/`: overlapping-cycle, shift-out-of-bounds, illegal-state-transition, below-full-publish, cross-ministry-scope.
-- [ ] T020 L1 tests for T017 reshape (DL1-EV-01..05) in `event.test.ts`.
+- [X] T016 [P] New branded ids in `apps/server/src/domain/branded-ids/`: `planning-cycle-id`, `event-template-id`, `time-block-id`, `ministry-serving-profile-id`, `ministry-participation-id`, `participation-slot-inclusion-id`, `shift-id`, `availability-check-id`; update `index.ts`. Remove `role-template-id`.
+- [X] T017 [P] Reshape `Event` entity `apps/server/src/domain/entities/event.ts`: drop `ministryId`, add `planningCycleId`/`sourceTemplateId`, status enum, `markScheduled()`, remove `publish()`.
+- [X] T018 [P] Reshape `TimeSlot` entity (add `sourceTemplateBlockId`) + `Ministry` entity (add `defaultDirection`).
+- [X] T019 [P] New domain errors in `apps/server/src/domain/errors/`: overlapping-cycle, shift-out-of-bounds, illegal-state-transition, below-full-publish, cross-ministry-scope.
+- [X] T020 L1 tests for T017 reshape (DL1-EV-01..05) in `event.test.ts`.
 
 ### Legacy removal & RBAC
 
-- [ ] T021 Delete RoleTemplate entity/repo/mapper/manager methods/DTO/routes; drop DI registration; add regression test DL2-RB-01 + DL3-HT-11.
-- [ ] T022 Add `ChurchAdmin` church-level role + RBAC middleware resolver (participation→ministry, shift→participation) in `apps/server/src/api/` + auth; support one user holding admin+leader (FR-030/031). Tests DL3-HT-12/13.
+- [X] T021 Delete RoleTemplate entity/repo/mapper/manager methods/DTO/routes; drop DI registration; add regression test DL2-RB-01 + DL3-HT-11.
+- [X] T022 Add `ChurchAdmin` church-level role + RBAC middleware resolver (participation→ministry, shift→participation) in `apps/server/src/api/` + auth; support one user holding admin+leader (FR-030/031). Tests DL3-HT-12/13.
 
 **Checkpoint**: schema live, primitives + RBAC ready — stories can begin.
 

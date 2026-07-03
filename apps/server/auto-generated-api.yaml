@@ -94,7 +94,9 @@ paths:
                               type: string
                             churchId:
                               type: string
-                            ministryId:
+                            planningCycleId:
+                              type: string
+                            sourceTemplateId:
                               type: string
                             title:
                               type: string
@@ -110,7 +112,7 @@ paths:
                               type: string
                               enum:
                                 - draft
-                                - published
+                                - scheduled
                                 - cancelled
                                 - past
                             eventType:
@@ -125,7 +127,7 @@ paths:
                           required:
                             - id
                             - churchId
-                            - ministryId
+                            - planningCycleId
                             - title
                             - startDate
                             - endDate
@@ -310,7 +312,7 @@ paths:
             type: string
             enum:
               - draft
-              - published
+              - scheduled
               - cancelled
               - past
           in: query
@@ -333,7 +335,9 @@ paths:
                           type: string
                         churchId:
                           type: string
-                        ministryId:
+                        planningCycleId:
+                          type: string
+                        sourceTemplateId:
                           type: string
                         title:
                           type: string
@@ -349,7 +353,7 @@ paths:
                           type: string
                           enum:
                             - draft
-                            - published
+                            - scheduled
                             - cancelled
                             - past
                         eventType:
@@ -364,7 +368,7 @@ paths:
                       required:
                         - id
                         - churchId
-                        - ministryId
+                        - planningCycleId
                         - title
                         - startDate
                         - endDate
@@ -376,110 +380,6 @@ paths:
                 required:
                   - events
                 additionalProperties: false
-    post:
-      operationId: createEvent
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                ministryId:
-                  type: string
-                title:
-                  type: string
-                  minLength: 1
-                description:
-                  type: string
-                location:
-                  type: string
-                startDate:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endDate:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                eventType:
-                  type: string
-                  enum:
-                    - hourly
-                    - day_based
-              required:
-                - ministryId
-                - title
-                - startDate
-                - endDate
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  ministryId:
-                    type: string
-                  title:
-                    type: string
-                  description:
-                    type: string
-                  location:
-                    type: string
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - published
-                      - cancelled
-                      - past
-                  eventType:
-                    type: string
-                    enum:
-                      - hourly
-                      - day_based
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - ministryId
-                  - title
-                  - startDate
-                  - endDate
-                  - status
-                  - eventType
-                  - createdAt
-                  - updatedAt
-                additionalProperties: false
-  /api/v1/admin/events/{eventId}/publish:
-    post:
-      operationId: publishEvent
-      tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
   /api/v1/admin/events/{eventId}/cancel:
     post:
       operationId: cancelEvent
@@ -508,43 +408,6 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/admin/events/{eventId}/apply-template:
-    post:
-      operationId: applyRoleTemplate
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                templateId:
-                  type: string
-              required:
-                - templateId
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  applied:
-                    type: boolean
-                    enum:
-                      - true
-                required:
-                  - applied
-                additionalProperties: false
   /api/v1/admin/events/{eventId}/slots:
     post:
       operationId: createSlot
@@ -1119,9 +982,437 @@ paths:
                 required:
                   - items
                 additionalProperties: false
-  /api/v1/admin/role-templates:
+  /api/v1/admin/planning-cycles:
+    post:
+      operationId: createPlanningCycle
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                startDate:
+                  type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                endDate:
+                  type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+              required:
+                - name
+                - startDate
+                - endDate
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  name:
+                    type: string
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
+                  state:
+                    type: string
+                    enum:
+                      - draft
+                      - locked
+                      - archived
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - name
+                  - startDate
+                  - endDate
+                  - state
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
     get:
-      operationId: listRoleTemplates
+      operationId: listPlanningCycles
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - draft
+              - locked
+              - archived
+          in: query
+          name: state
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        name:
+                          type: string
+                        startDate:
+                          type: string
+                        endDate:
+                          type: string
+                        state:
+                          type: string
+                          enum:
+                            - draft
+                            - locked
+                            - archived
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - name
+                        - startDate
+                        - endDate
+                        - state
+                        - createdAt
+                        - updatedAt
+                      additionalProperties: false
+                required:
+                  - cycles
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}:
+    get:
+      operationId: getPlanningCycle
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycle:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      churchId:
+                        type: string
+                      name:
+                        type: string
+                      startDate:
+                        type: string
+                      endDate:
+                        type: string
+                      state:
+                        type: string
+                        enum:
+                          - draft
+                          - locked
+                          - archived
+                      createdAt:
+                        type: string
+                      updatedAt:
+                        type: string
+                    required:
+                      - id
+                      - churchId
+                      - name
+                      - startDate
+                      - endDate
+                      - state
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        event:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            churchId:
+                              type: string
+                            planningCycleId:
+                              type: string
+                            sourceTemplateId:
+                              type: string
+                            title:
+                              type: string
+                            description:
+                              type: string
+                            location:
+                              type: string
+                            startDate:
+                              type: string
+                            endDate:
+                              type: string
+                            status:
+                              type: string
+                              enum:
+                                - draft
+                                - scheduled
+                                - cancelled
+                                - past
+                            eventType:
+                              type: string
+                              enum:
+                                - hourly
+                                - day_based
+                            createdAt:
+                              type: string
+                            updatedAt:
+                              type: string
+                          required:
+                            - id
+                            - churchId
+                            - planningCycleId
+                            - title
+                            - startDate
+                            - endDate
+                            - status
+                            - eventType
+                            - createdAt
+                            - updatedAt
+                          additionalProperties: false
+                        slots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              churchId:
+                                type: string
+                              eventId:
+                                type: string
+                              startTime:
+                                type: string
+                              endTime:
+                                type: string
+                              label:
+                                type: string
+                              status:
+                                type: string
+                                enum:
+                                  - active
+                                  - cancelled
+                              requirements:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                    slotId:
+                                      type: string
+                                    roleId:
+                                      type: string
+                                    teamId:
+                                      type: string
+                                    requiredCount:
+                                      type: number
+                                    notes:
+                                      type: string
+                                  required:
+                                    - id
+                                    - slotId
+                                    - roleId
+                                    - requiredCount
+                                  additionalProperties: false
+                            required:
+                              - id
+                              - churchId
+                              - eventId
+                              - startTime
+                              - endTime
+                              - status
+                              - requirements
+                            additionalProperties: false
+                      required:
+                        - event
+                        - slots
+                      additionalProperties: false
+                required:
+                  - cycle
+                  - events
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}/lock:
+    post:
+      operationId: lockPlanningCycle
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/reopen:
+    post:
+      operationId: reopenPlanningEvent
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/event-templates:
+    post:
+      operationId: createEventTemplate
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                weekday:
+                  type: integer
+                  minimum: 0
+                  maximum: 6
+                blocks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      label:
+                        type: string
+                        minLength: 1
+                      startTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      endTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      order:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - label
+                      - startTime
+                      - endTime
+                      - order
+              required:
+                - name
+                - weekday
+                - blocks
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  name:
+                    type: string
+                  weekday:
+                    type: number
+                  blocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        templateId:
+                          type: string
+                        label:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        order:
+                          type: number
+                      required:
+                        - id
+                        - churchId
+                        - templateId
+                        - label
+                        - startTime
+                        - endTime
+                        - order
+                      additionalProperties: false
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - name
+                  - weekday
+                  - blocks
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+    get:
+      operationId: listEventTemplates
       tags:
         - admin
       responses:
@@ -1132,7 +1423,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  templates:
                     type: array
                     items:
                       type: object
@@ -1141,39 +1432,57 @@ paths:
                           type: string
                         churchId:
                           type: string
-                        ministryId:
-                          type: string
                         name:
                           type: string
-                        items:
+                        weekday:
+                          type: number
+                        blocks:
                           type: array
                           items:
                             type: object
                             properties:
                               id:
                                 type: string
-                              roleId:
+                              churchId:
                                 type: string
-                              requiredCount:
+                              templateId:
+                                type: string
+                              label:
+                                type: string
+                              startTime:
+                                type: string
+                              endTime:
+                                type: string
+                              order:
                                 type: number
                             required:
                               - id
-                              - roleId
-                              - requiredCount
+                              - churchId
+                              - templateId
+                              - label
+                              - startTime
+                              - endTime
+                              - order
                             additionalProperties: false
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
                       required:
                         - id
                         - churchId
-                        - ministryId
                         - name
-                        - items
+                        - weekday
+                        - blocks
+                        - createdAt
+                        - updatedAt
                       additionalProperties: false
                 required:
-                  - items
+                  - templates
                 additionalProperties: false
-  /api/v1/admin/role-templates/{templateId}:
-    put:
-      operationId: upsertRoleTemplate
+  /api/v1/admin/event-templates/{templateId}:
+    patch:
+      operationId: updateEventTemplate
       tags:
         - admin
       requestBody:
@@ -1183,29 +1492,40 @@ paths:
             schema:
               type: object
               properties:
-                ministryId:
-                  type: string
                 name:
                   type: string
                   minLength: 1
-                items:
+                weekday:
+                  type: integer
+                  minimum: 0
+                  maximum: 6
+                blocks:
                   type: array
                   items:
                     type: object
                     properties:
-                      roleId:
+                      label:
                         type: string
-                      requiredCount:
+                        minLength: 1
+                      startTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      endTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      order:
                         type: integer
-                        minimum: 1
+                        minimum: 0
                         maximum: 9007199254740991
                     required:
-                      - roleId
-                      - requiredCount
+                      - label
+                      - startTime
+                      - endTime
+                      - order
               required:
-                - ministryId
                 - name
-                - items
+                - weekday
+                - blocks
       parameters:
         - schema:
             type: string
@@ -1224,35 +1544,53 @@ paths:
                     type: string
                   churchId:
                     type: string
-                  ministryId:
-                    type: string
                   name:
                     type: string
-                  items:
+                  weekday:
+                    type: number
+                  blocks:
                     type: array
                     items:
                       type: object
                       properties:
                         id:
                           type: string
-                        roleId:
+                        churchId:
                           type: string
-                        requiredCount:
+                        templateId:
+                          type: string
+                        label:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        order:
                           type: number
                       required:
                         - id
-                        - roleId
-                        - requiredCount
+                        - churchId
+                        - templateId
+                        - label
+                        - startTime
+                        - endTime
+                        - order
                       additionalProperties: false
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
                 required:
                   - id
                   - churchId
-                  - ministryId
                   - name
-                  - items
+                  - weekday
+                  - blocks
+                  - createdAt
+                  - updatedAt
                 additionalProperties: false
     delete:
-      operationId: deleteRoleTemplate
+      operationId: deleteEventTemplate
       tags:
         - admin
       parameters:
@@ -1260,6 +1598,259 @@ paths:
             type: string
           in: path
           name: templateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/planning-cycles/{cycleId}/apply-templates:
+    post:
+      operationId: applyPlanningTemplates
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                templateIds:
+                  minItems: 1
+                  type: array
+                  items:
+                    type: string
+              required:
+                - templateIds
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generatedEventCount:
+                    type: number
+                  generatedSlotCount:
+                    type: number
+                required:
+                  - generatedEventCount
+                  - generatedSlotCount
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}/events:
+    post:
+      operationId: createPlanningEvent
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                description:
+                  type: string
+                location:
+                  type: string
+                startDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                eventType:
+                  type: string
+                  enum:
+                    - hourly
+                    - day_based
+              required:
+                - title
+                - startDate
+                - endDate
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  planningCycleId:
+                    type: string
+                  sourceTemplateId:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  location:
+                    type: string
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - scheduled
+                      - cancelled
+                      - past
+                  eventType:
+                    type: string
+                    enum:
+                      - hourly
+                      - day_based
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - planningCycleId
+                  - title
+                  - startDate
+                  - endDate
+                  - status
+                  - eventType
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}:
+    patch:
+      operationId: updatePlanningEvent
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                description:
+                  type: string
+                location:
+                  type: string
+                startDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                eventType:
+                  type: string
+                  enum:
+                    - hourly
+                    - day_based
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  planningCycleId:
+                    type: string
+                  sourceTemplateId:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  location:
+                    type: string
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - scheduled
+                      - cancelled
+                      - past
+                  eventType:
+                    type: string
+                    enum:
+                      - hourly
+                      - day_based
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - planningCycleId
+                  - title
+                  - startDate
+                  - endDate
+                  - status
+                  - eventType
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/cancel:
+    post:
+      operationId: cancelPlanningEvent
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
           required: true
       responses:
         "200":
@@ -1647,85 +2238,6 @@ paths:
                       additionalProperties: false
                 required:
                   - availability
-                additionalProperties: false
-    put:
-      operationId: upsertAvailability
-      tags:
-        - volunteer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                availabilityId:
-                  type: string
-                eventId:
-                  type: string
-                type:
-                  type: string
-                  enum:
-                    - available
-                    - unavailable
-                startTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                isAllDay:
-                  default: false
-                  type: boolean
-                reason:
-                  type: string
-                repeatRule:
-                  type: string
-              required:
-                - type
-                - startTime
-                - endTime
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  volunteerId:
-                    type: string
-                  eventId:
-                    type: string
-                  type:
-                    type: string
-                    enum:
-                      - available
-                      - unavailable
-                  startTime:
-                    type: string
-                  endTime:
-                    type: string
-                  isAllDay:
-                    type: boolean
-                  reason:
-                    type: string
-                  repeatRule:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - volunteerId
-                  - type
-                  - startTime
-                  - endTime
-                  - isAllDay
                 additionalProperties: false
   /api/v1/volunteer/availability/{availabilityId}:
     delete:

@@ -1,6 +1,9 @@
 export const injection = {
   infra: {
     eventRepository: 'IEventRepository',
+    eventTemplateRepository: 'IEventTemplateRepository',
+    planningCycleRepository: 'IPlanningCycleRepository',
+    planningEventRepository: 'IPlanningEventRepository',
     volunteerRepository: 'IVolunteerRepository',
     assignmentRepository: 'IAssignmentRepository',
     assignmentAuditRepository: 'IAssignmentAuditRepository',
@@ -17,6 +20,9 @@ export const injection = {
   },
   managers: {
     eventManager: 'IEventManager',
+    eventTemplateManager: 'IEventTemplateManager',
+    planningCycleManager: 'IPlanningCycleManager',
+    planningEventManager: 'IPlanningEventManager',
     volunteerManager: 'IVolunteerManager',
     assignmentManager: 'IAssignmentManager',
     ministryManager: 'IMinistryManager',

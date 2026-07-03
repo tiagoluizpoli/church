@@ -3,12 +3,16 @@ import { db } from '@church/db';
 import { container } from 'tsyringe';
 import { SchedulingRbacGuard } from '../../api/auth/scheduling-rbac-guard';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
+import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbEventManager } from '../../application/db-event-manager';
+import { DbEventTemplateManager } from '../../application/db-event-template-manager';
 import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
+import { DbPlanningCycleManager } from '../../application/db-planning-cycle-manager';
+import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
 import { DbSchedulingRbacManager } from '../../application/db-scheduling-rbac-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
 import { DrizzleSchedulingRbacResolver } from '../../infrastructure/auth/drizzle-scheduling-rbac-resolver';
@@ -18,7 +22,10 @@ import {
   DrizzleAvailabilityRepository,
   DrizzleChurchRepository,
   DrizzleEventRepository,
+  DrizzleEventTemplateRepository,
   DrizzleMinistryRepository,
+  DrizzlePlanningCycleRepository,
+  DrizzlePlanningEventRepository,
   DrizzleRoleRepository,
   DrizzleTeamRepository,
   DrizzleTimeSlotRepository,
@@ -42,6 +49,15 @@ export function registerInjections(): void {
   });
   container.register(injection.infra.eventRepository, {
     useFactory: () => new DrizzleEventRepository(db),
+  });
+  container.register(injection.infra.eventTemplateRepository, {
+    useFactory: () => new DrizzleEventTemplateRepository(db),
+  });
+  container.register(injection.infra.planningCycleRepository, {
+    useFactory: () => new DrizzlePlanningCycleRepository(db),
+  });
+  container.register(injection.infra.planningEventRepository, {
+    useFactory: () => new DrizzlePlanningEventRepository(db),
   });
   container.register(injection.infra.volunteerRepository, {
     useFactory: () => new DrizzleVolunteerRepository(db),
@@ -90,8 +106,17 @@ export function registerInjections(): void {
   container.register(injection.managers.eventManager, {
     useClass: DbEventManager,
   });
+  container.register(injection.managers.eventTemplateManager, {
+    useClass: DbEventTemplateManager,
+  });
   container.register(injection.managers.ministryManager, {
     useClass: DbMinistryManager,
+  });
+  container.register(injection.managers.planningCycleManager, {
+    useClass: DbPlanningCycleManager,
+  });
+  container.register(injection.managers.planningEventManager, {
+    useClass: DbPlanningEventManager,
   });
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,
@@ -104,6 +129,10 @@ export function registerInjections(): void {
   container.registerSingleton(
     injection.controllers.fastify,
     AdminLeaderController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
+    ChurchAdminController,
   );
   container.registerSingleton(
     injection.controllers.fastify,

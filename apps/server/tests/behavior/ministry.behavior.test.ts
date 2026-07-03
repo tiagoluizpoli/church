@@ -1,14 +1,21 @@
-import { db, ministry, ministryVolunteer, user, volunteer } from '@church/db';
+import {
+  church,
+  db,
+  ministry,
+  ministryVolunteer,
+  user,
+  volunteer,
+} from '@church/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbMinistryManager } from '../../src/application/db-ministry-manager';
-import type { ChurchId, VolunteerId } from '../../src/domain/branded-ids';
+import { ChurchId, VolunteerId } from '../../src/domain/branded-ids';
 import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 
-const CHURCH = '11111111-1111-1111-1111-111111111111' as ChurchId;
-const LEADER_VOL = 'aaaa0001-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as VolunteerId;
-const NON_LEADER_VOL = 'bbbb0002-bbbb-bbbb-bbbb-bbbbbbbbbbbb' as VolunteerId;
+const CHURCH = ChurchId.from('11111111-1111-1111-1111-111111111111');
+const LEADER_VOL = VolunteerId.from('aaaa0001-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+const NON_LEADER_VOL = VolunteerId.from('bbbb0002-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 const MINISTRY_A = 'cccc0001-cccc-cccc-cccc-cccccccccccc';
 const MINISTRY_B = 'dddd0002-dddd-dddd-dddd-dddddddddddd';
 const MV_LEADER_A = 'eeee0001-eeee-eeee-eeee-eeeeeeeeeeee';
@@ -18,11 +25,19 @@ async function truncate() {
   await db.delete(ministryVolunteer);
   await db.delete(volunteer);
   await db.delete(ministry);
+  await db.delete(church).where(sql`id = ${CHURCH}`);
   await db.delete(user).where(sql`id IN ('user-leader-1', 'user-member-2')`);
 }
 
 beforeAll(async () => {
   await truncate();
+
+  await db.insert(church).values({
+    id: CHURCH,
+    name: 'Behavior Test Church',
+    slug: 'behavior-test-church',
+    timezone: 'America/New_York',
+  });
 
   await db.insert(user).values([
     {
@@ -111,7 +126,7 @@ describe('DbMinistryManager.listByLeader (T032)', () => {
   });
 
   it('does not cross church boundaries', async () => {
-    const otherChurch = '22222222-2222-2222-2222-222222222222' as ChurchId;
+    const otherChurch = ChurchId.from('22222222-2222-2222-2222-222222222222');
     const result = await manager.listByLeader({
       leaderId: LEADER_VOL,
       churchId: otherChurch,

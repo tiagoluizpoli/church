@@ -3,7 +3,10 @@ export { DrizzleAssignmentAuditRepository } from './drizzle-assignment-audit.rep
 export { DrizzleAvailabilityRepository } from './drizzle-availability.repository';
 export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
+export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
+export { DrizzlePlanningCycleRepository } from './drizzle-planning-cycle.repository';
+export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
 export { DrizzleRoleRepository } from './drizzle-role.repository';
 export { DrizzleTeamRepository } from './drizzle-team.repository';
 export { DrizzleTimeSlotRepository } from './drizzle-time-slot.repository';

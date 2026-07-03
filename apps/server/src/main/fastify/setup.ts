@@ -23,13 +23,18 @@ type FastifyFactory = (opts?: Record<string, unknown>) => FastifyInstance;
 const createFastifyInstance = Fastify as unknown as FastifyFactory;
 const ERROR_MAP: Record<string, { status: number }> = {
   INVALID_DATE_RANGE: { status: 400 },
+  INVALID_TIME_RANGE: { status: 400 },
   INVALID_REQUIRED_COUNT: { status: 400 },
+  INVALID_WEEKDAY: { status: 400 },
   INVALID_EVENT_DURATION: { status: 400 },
   INVALID_SLOT_DURATION: { status: 400 },
   INVALID_OVERRIDE_REASON: { status: 400 },
   NOT_FOUND: { status: 404 },
   UNAUTHORIZED_OVERRIDE: { status: 403 },
   ISOLATION_BREACH: { status: 409 },
+  OVERLAPPING_CYCLE: { status: 409 },
+  ILLEGAL_STATE_TRANSITION: { status: 409 },
+  EVENT_OUTSIDE_PLANNING_CYCLE: { status: 409 },
   DUPLICATE_SLOTS: { status: 409 },
   INVALID_STATE_TRANSITION: { status: 409 },
   HARD_CONSTRAINT_VIOLATION: { status: 409 },
@@ -112,7 +117,7 @@ export async function createFastify() {
     }
 
     if (hasZodFastifySchemaValidationErrors(error)) {
-      return reply.code(400).send({
+      return reply.code(422).send({
         error: 'VALIDATION_ERROR',
         issues: error.validation,
       });

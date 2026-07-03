@@ -104,7 +104,7 @@ After a roster is published, a Volunteer who can no longer serve a shift they ar
 - **Period boundaries**: An event that starts at 23:00 on the last day of a period and runs past midnight belongs to that period (boundaries are evaluated by date only, in the church's timezone; the hour is ignored).
 - **Straddling multi-day event**: A multi-day event is linked to the period of its start date and may leak into later dates, even into another period's calendar span, without belonging to two periods.
 - **No serving profile**: A ministry with no standing profile starts from its default direction (all-in or all-out) and the leader picks manually; dynamic events (no template) are never auto-seeded.
-- **Reopening a locked period**: Editing/removing an already-locked event, or shrinking a period after events exist, must be an explicit, deliberate action; downstream participations that already fired availability must be re-notified of material changes.
+- **Reopening a locked period**: Editing/removing an already-locked event, or shrinking a period after events exist, must be an explicit, deliberate action; downstream participations that already fired availability must be re-notified when the change is **material** — defined as a **time-shift or removal of an included slot/event** (pure additions do not force re-notify). See [Clarifications](#clarifications) Session 2026-07-03.
 - **Volunteer in many ministries**: Overlapping availability across ministries on the same date is governed by a single global policy flag; overlapping *assignments* are governed per-ministry.
 - **Partial publish**: Publishing below 100% headcount is allowed with confirmation; unfilled slots stay open and enter the same triage flow as late dropouts.
 - **Whole-day unavailability**: Marking a whole date unavailable marks every shift on that date; there is no finer grain than a shift.
@@ -120,12 +120,12 @@ After a roster is published, a Volunteer who can no longer serve a shift they ar
 - **FR-003**: The system MUST evaluate cycle boundaries by date only, in the church's timezone, ignoring time-of-day.
 - **FR-004**: The system MUST keep a draft cycle visible only to Church Admins and hidden from ministry leaders and volunteers.
 - **FR-005**: The system MUST let a Church Admin lock a cycle, freezing its events' dates and times and making it visible to ministry leaders; after lock the cycle is append-only (new events may be added; editing/removing a locked event requires an explicit reopen).
-- **FR-006**: The system MUST automatically archive a cycle once its end date has passed (church timezone), making it read-only history.
+- **FR-006**: The system MUST treat a cycle whose end date has passed (church timezone) as archived, read-only history. Archival is evaluated **lazily on read/access** (no background scheduler in the MVP): any access to a cycle past its end date resolves it to the archived state and rejects mutations. See [Clarifications](#clarifications) CL-006.
 
 #### Templates & event generation
 
 - **FR-007**: The system MUST let a Church Admin define reusable Event Templates targeting a weekday and containing ordered time blocks (label, start, end), each block with a stable identity.
-- **FR-008**: Applying an Event Template to a cycle MUST create one church-owned Event per matching date in the cycle's range, with one time slot per template block, and each generated time slot MUST record which template block produced it.
+- **FR-008**: Applying an Event Template to a cycle MUST create one church-owned Event per matching date in the cycle's range, with one time slot per template block, and each generated time slot MUST record which template block produced it. Re-applying a template MUST be **idempotent**: generation is keyed by (date, source template block); existing generated slots are not duplicated, and any leader tailoring already attached is preserved. See [Clarifications](#clarifications) CL-008.
 - **FR-009**: The system MUST let a Church Admin create dynamic and multi-day events manually (no template), and link each event to the cycle of its start date.
 
 #### Church ownership & participation
@@ -137,18 +137,18 @@ After a roster is published, a Volunteer who can no longer serve a shift they ar
 
 #### Shifts, requirements, availability
 
-- **FR-014**: The system MUST let a Ministry Leader subdivide a time slot into shifts within their participation, by equal division into N parts or by manual (possibly unequal) times, with every shift constrained to lie entirely within its parent time slot; a slot with no explicit split has exactly one shift equal to the whole slot.
+- **FR-014**: The system MUST let a Ministry Leader subdivide a time slot into shifts within their participation, by equal division into N parts or by manual (possibly unequal) times, with every shift constrained to lie entirely within its parent time slot; a slot with no explicit split has exactly one shift equal to the whole slot. For an equal division whose span is not evenly divisible by N, the **final shift absorbs the remainder** so the shifts tile the slot exactly with no gap or overlap. Overlapping manual spans are rejected. See [Clarifications](#clarifications) CL-014.
 - **FR-015**: Requirements, assignments, and availability MUST attach to shifts, never directly to a time slot.
 - **FR-016**: The system MUST let a Ministry Leader set required headcount per shift, per role (and per team where a team applies), owned by that ministry's participation.
-- **FR-017**: Firing availability MUST create one Availability Check per (cycle, ministry membership); a volunteer serving in multiple ministries/teams receives multiple checks.
+- **FR-017**: Firing availability MUST create one Availability Check per (cycle, ministry-volunteer membership), where a membership is scoped to a **(ministry, team)** pair; a volunteer in two teams of the same ministry — or in two ministries — receives a separate check for each (per-cycle notification still fires once, FR-027). See [Clarifications](#clarifications) Session 2026-07-03.
 - **FR-018**: Volunteers MUST be treated as available by default; the system MUST record only their unavailability marks, whose atomic unit is a single shift (with a whole-day helper that marks every shift on a date).
 - **FR-019**: The system MUST require an explicit confirmation on each Availability Check (recording a confirmation timestamp) even when no unavailability is marked.
 - **FR-020**: On availability confirmation, the system MUST detect overlapping availability across a volunteer's other ministries on the same date and, per a global policy flag, either block confirmation until one is dropped or allow it while flagging a conflict for affected leaders.
 
 #### Rostering & publishing
 
-- **FR-021**: When filling a shift, the system MUST present eligible volunteers ranked first by availability for that shift and then by least-recent serving frequency.
-- **FR-022**: The system MUST track a completion percentage per participation as assigned headcount over total required headcount.
+- **FR-021**: When filling a shift, the system MUST present eligible volunteers ranked first by availability for that shift and then by least-recent serving frequency measured **within the current ministry**. Volunteers who marked themselves unavailable for the shift are excluded from the default list but remain reachable via an explicit "show unavailable" action that assigns them with a **soft warning** (leader may proceed); this is advisory and distinct from the overlapping-assignment conflict control (FR-023). See [Clarifications](#clarifications) Session 2026-07-03.
+- **FR-022**: The system MUST track a completion percentage per participation as assigned headcount over total required headcount. A participation with **zero total required headcount is defined as 100% complete**. See [Clarifications](#clarifications) CL-022.
 - **FR-023**: On assignment, the system MUST evaluate overlapping-assignment conflicts using the ministry's soft/hard enforcement setting, with an audited override (reason + authorization) for hard conflicts.
 - **FR-024**: The system MUST let a Ministry Leader publish their participation's roster independently of other ministries on the same event, allowing publish below 100% headcount with an explicit confirmation.
 - **FR-025**: Publishing a participation MUST reveal that ministry's schedule slice to that ministry's volunteers only, and MUST NOT change the state of other ministries' participations on the same event.
@@ -157,7 +157,7 @@ After a roster is published, a Volunteer who can no longer serve a shift they ar
 #### Notifications & live execution
 
 - **FR-027**: Notifications MUST be scoped to a Planning Cycle (the package), not to individual slots; base kinds are an availability reminder (which a leader can resend) and a schedule-published notice.
-- **FR-028**: After publish, a Volunteer MUST be able to cancel only shifts assigned to their own user; doing so MUST notify the corresponding leader promptly and reopen the slot for triage.
+- **FR-028**: After publish, a Volunteer MUST be able to cancel only shifts assigned to their own user, and only until a **church-configurable lead time before the event** (default 3 days; sourced from an environment variable in the MVP, intended to become a church-level setting later; a value of 0 days means up to the event start). Self-cancel MUST notify the corresponding leader promptly and reopen the slot for triage; after the cutoff, only the leader may adjust the roster (FR-029). See [Clarifications](#clarifications) Session 2026-07-03.
 - **FR-029**: Ministry Leaders MUST retain the ability to reassign volunteers and adjust shift staffing mid-cycle after publication.
 
 #### Roles & access
@@ -177,7 +177,7 @@ After a roster is published, a Volunteer who can no longer serve a shift they ar
 - **Ministry Participation**: A single ministry's tailoring of one event — its included shifts, requirements, and lifecycle (tailoring → availability_fired → rostering → published).
 - **Shift**: A ministry's subdivision of a time slot (default one shift = whole slot); the unit that carries requirements, assignments, and availability.
 - **Slot Requirement**: The headcount needed for a role (and team) within a shift, owned by a participation.
-- **Availability Check**: The unit a volunteer answers and confirms, one per (cycle, membership).
+- **Availability Check**: The unit a volunteer answers and confirms, one per (cycle, ministry-volunteer membership) where membership is scoped to a (ministry, team) pair.
 - **Availability (mark)**: A volunteer's unavailability exception for a specific shift, hung off a check (available by default).
 - **Assignment**: A volunteer committed to a role within a shift, scoped to a participation; one per volunteer per shift.
 - **Volunteer / Ministry / Team / Role**: Existing entities, unchanged in essence (a volunteer may belong to multiple ministries/teams).
@@ -204,4 +204,23 @@ After a roster is published, a Volunteer who can no longer serve a shift they ar
 - **Manual-shift creation UX is deferred in detail**: Shifts can be created by equal split or manual times in the MVP; the richer manual-editing interaction (timeline/drag, fine-grained picker) is an open design question tracked in the backlog (BL-010), not part of this spec's scope.
 - **Reusable count presets deferred**: Free-standing role-count presets (the removed RoleTemplate) are out of scope for the MVP (backlog BL-009); recurring counts come from serving profiles, dynamic-event counts from copying a profile block or manual entry.
 - **Timezone**: Each church has a single timezone used for all date-only boundary evaluation.
-- **Notifications channel**: Delivered via the existing in-app / push mechanism; scoped per cycle to limit noise.
+- **Notifications channel**: Delivered via the existing in-app / push mechanism; scoped per cycle to limit noise. The existing per-assignment notification kinds (feature 014) are **retained**; the reshape **adds** cycle-scoped kinds (availability reminder, schedule-published) and a cycle scope on the notification record — it does not remove the 014 kinds still consumed by the volunteer dashboard.
+
+## Clarifications
+
+Decisions resolving open items surfaced during `/speckit-analyze` (2026-07-03). Each pins a contract the tests assert.
+
+- **CL-006 (FR-006) — Auto-archive is lazy**: There is no background scheduler in the MVP. A cycle past its end date (church timezone) is resolved to the archived, read-only state on the next read/access; mutations on it are rejected. A scheduled sweep is deferred (future backlog).
+- **CL-008 (FR-008) — Template re-apply is idempotent**: Generation is keyed by (event date, `sourceTemplateBlockId`). Re-applying a template creates only the missing Events/TimeSlots for dates not yet generated; it never duplicates an existing generated slot and never discards leader tailoring already attached to a participation.
+- **CL-014 (FR-014) — Equal-split remainder & manual overlap**: In equal-division-into-N, the final shift absorbs any remainder so shifts tile the parent slot exactly (no gap/overlap). Manual spans may leave gaps but **may not overlap each other**; overlapping manual spans are rejected.
+- **CL-020 (FR-020) — Overlap is timestamp intersection, not date-only**: The date-only rule (FR-003) governs *cycle boundaries only*. Availability and assignment overlap are evaluated by absolute shift start/end **timestamp** intersection, so a shift crossing midnight is compared correctly. "Same date" in the narrative means the shifts' actual times intersect.
+- **CL-022 (FR-022) — Zero-required completion**: A participation whose total required headcount is 0 is defined as 100% complete (nothing to fill), so it never blocks a full-roster publish.
+- **CL-PROFILE (FR-013) — Serving-profile authoring owner**: The `MinistryServingProfile` (standing rule layered on the admin's `EventTemplate`s) is authored at the **church-admin surface** (`/admin/ministries/:ministryId/serving-profile`); the ministry leader confirms and tweaks the *seeded participation* after cycle-lock, not the standing profile itself. Authoring-UX polish is BL-008.
+
+### Session 2026-07-03
+
+- Q: When a volunteer belongs to two Teams inside the same ministry, how many AvailabilityChecks per cycle? → A: One per (ministry, team) membership — two teams in one ministry = two checks.
+- Q: Can a leader assign a volunteer who marked themselves unavailable for that shift? → A: Soft-warn + allow — unavailable volunteers are hidden from the default eligible list but reachable with a warning; the leader may still assign.
+- Q: Over what scope is "least-recent serving" measured for ranking? → A: Per ministry (serving history within the current ministry only).
+- Q: What counts as a "material change" on reopen that re-notifies fired participations? → A: A time-shift or removal of an included slot/event; pure additions do not force re-notify.
+- Q: Until when can a volunteer self-cancel a published assignment? → A: Until a church-configurable lead time before the event — default 3 days, via env var for now (church-level config later); 0 days = until event start.

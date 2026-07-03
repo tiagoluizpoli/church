@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/016-architecture-reshape/plan.md`.
+at `specs/017-scheduling-reshape/plan.md`.
 <!-- SPECKIT END -->
 
 ## Repository Instructions

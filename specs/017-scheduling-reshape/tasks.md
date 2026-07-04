@@ -191,16 +191,16 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 ### Tests (write first, must fail)
 
-- [ ] T069 [P] [US5] L2 live changes — DL2-LC-01..03 (cancel-own reopen+notify, permission 403, triage).
-- [ ] T070 [P] [US5] L3 HTTP — DL3-HT-10 (cancel own/other).
-- [ ] T071 [P] [US5] E2E DL4-US5 in `us5-live-changes.spec.ts`.
+- [X] T069 [P] [US5] L2 live changes — DL2-LC-01..03 (cancel-own reopen+notify, permission 403, triage); added DL2-LC-04 for the FR-028 lead-time cutoff (`ASSIGNMENT_CANCEL_LEAD_TIME_DAYS`, default 3) caught missing by code review.
+- [X] T070 [P] [US5] L3 HTTP — DL3-HT-10 (cancel own/other).
+- [X] T071 [P] [US5] E2E DL4-US5 in `us5-live-changes.spec.ts`.
 
 ### Implementation
 
-- [ ] T072 [US5] Extend `IVolunteerManager`: cancelOwnAssignment (own-only, notify leader, reopen slot).
-- [ ] T073 [US5] Extend `IAssignmentManager`: reassign mid-cycle + notify affected volunteers; per-cycle notification kinds.
-- [ ] T074 [US5] Controller routes (`POST /volunteer/assignments/:id/cancel`, `PATCH /leader/assignments/:id/reassign`) + DTOs; DI.
-- [ ] T075 [US5] Web: cancel-own control (own shifts only) + leader reassign; notifications view; orval regen.
+- [X] T072 [US5] Extend `IVolunteerManager`: cancelOwnAssignment (own-only, notify leader, reopen slot).
+- [X] T073 [US5] Extend `IAssignmentManager`: reassign mid-cycle + notify affected volunteers; per-cycle notification kinds. (Method already existed from phase 6 spillover; fixed two transaction bugs surfaced by new tests — missing `tx` on the audit insert, and the notification writes running before the transaction committed.)
+- [X] T074 [US5] Controller routes (`POST /volunteer/assignments/:id/cancel`, `PATCH /leader/assignments/:id/reassign`) + DTOs; DI.
+- [X] T075 [US5] Web: cancel-own control (own shifts only) + leader reassign; notifications view; orval regen.
 
 **Checkpoint**: all five stories independently functional.
 

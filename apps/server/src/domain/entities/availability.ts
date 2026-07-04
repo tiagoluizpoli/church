@@ -3,46 +3,40 @@ import type {
   AvailabilityCheckId,
   AvailabilityId,
   ChurchId,
-  EventId,
   ShiftId,
   VolunteerId,
 } from '../branded-ids';
-import { InvalidDateRangeError } from '../errors/invalid-date-range';
+import { InvalidTimeRangeError } from '../errors/invalid-time-range';
 
-export const AVAILABILITY_TYPE_OPTIONS = ['available', 'unavailable'] as const;
-export type AvailabilityType = (typeof AVAILABILITY_TYPE_OPTIONS)[number];
-
+/**
+ * Unavailability mark: its existence means the volunteer is unavailable for
+ * the shift. A volunteer with no marks is available by default (FR-018).
+ * `volunteerId` and the shift times are denormalized from the repository join
+ * (the row itself stores only check + shift keys).
+ */
 export interface AvailabilityProps {
   churchId: ChurchId;
-  availabilityCheckId?: AvailabilityCheckId;
-  shiftId?: ShiftId;
+  availabilityCheckId: AvailabilityCheckId;
+  shiftId: ShiftId;
   volunteerId: VolunteerId;
-  eventId?: EventId;
-  type: AvailabilityType;
-  startTime: Date;
-  endTime: Date;
-  isAllDay: boolean;
-  reason?: string;
-  repeatRule?: string;
+  shiftStartTime: Date;
+  shiftEndTime: Date;
+}
+
+export interface AvailabilityInput {
+  props: LooseProps<AvailabilityProps>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
-  constructor(
-    props: Omit<LooseProps<AvailabilityProps>, 'type' | 'isAllDay'> &
-      Partial<Pick<LooseProps<AvailabilityProps>, 'type' | 'isAllDay'>>,
-    id?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    if (props.startTime >= props.endTime) {
-      throw new InvalidDateRangeError();
+  constructor({ props, id, createdAt, updatedAt }: AvailabilityInput) {
+    if (props.shiftStartTime >= props.shiftEndTime) {
+      throw new InvalidTimeRangeError();
     }
     super(
-      {
-        ...props,
-        type: props.type ?? 'unavailable',
-        isAllDay: props.isAllDay ?? false,
-      } as unknown as AvailabilityProps,
+      props as AvailabilityProps,
       id as AvailabilityId,
       createdAt,
       updatedAt,
@@ -53,11 +47,11 @@ export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
     return this._props.churchId;
   }
 
-  get availabilityCheckId(): AvailabilityCheckId | undefined {
+  get availabilityCheckId(): AvailabilityCheckId {
     return this._props.availabilityCheckId;
   }
 
-  get shiftId(): ShiftId | undefined {
+  get shiftId(): ShiftId {
     return this._props.shiftId;
   }
 
@@ -65,31 +59,11 @@ export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
     return this._props.volunteerId;
   }
 
-  get type(): AvailabilityType {
-    return this._props.type;
+  get shiftStartTime(): Date {
+    return this._props.shiftStartTime;
   }
 
-  get eventId(): EventId | undefined {
-    return this._props.eventId;
-  }
-
-  get startTime(): Date {
-    return this._props.startTime;
-  }
-
-  get endTime(): Date {
-    return this._props.endTime;
-  }
-
-  get isAllDay(): boolean {
-    return this._props.isAllDay;
-  }
-
-  get reason(): string | undefined {
-    return this._props.reason;
-  }
-
-  get repeatRule(): string | undefined {
-    return this._props.repeatRule;
+  get shiftEndTime(): Date {
+    return this._props.shiftEndTime;
   }
 }

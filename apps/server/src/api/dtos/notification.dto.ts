@@ -14,6 +14,7 @@ export const notificationResponseSchema = z.object({
     'assignment_changed',
     'assignment_removed',
     'availability_reminder',
+    'availability_conflict',
     'assignment_reminder',
   ]),
   title: z.string(),

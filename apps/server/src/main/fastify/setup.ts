@@ -32,6 +32,8 @@ const ERROR_MAP: Record<string, { status: number }> = {
   INVALID_OVERRIDE_REASON: { status: 400 },
   NOT_FOUND: { status: 404 },
   UNAUTHORIZED_OVERRIDE: { status: 403 },
+  CHECK_ACCESS_DENIED: { status: 403 },
+  AVAILABILITY_OVERLAP: { status: 409 },
   ISOLATION_BREACH: { status: 409 },
   CROSS_MINISTRY_SCOPE: { status: 409 },
   OVERLAPPING_CYCLE: { status: 409 },

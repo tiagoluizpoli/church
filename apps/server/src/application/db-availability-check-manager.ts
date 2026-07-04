@@ -2,9 +2,12 @@ import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
 import type { PlanningCycleId } from '../domain/branded-ids';
 import type {
+  CheckStatusRow,
   FireAvailabilityInput,
   FireAvailabilityResult,
   IAvailabilityCheckManager,
+  ListCheckStatusesInput,
+  ListCycleCheckStatusesInput,
   ResendReminderInput,
 } from '../domain/contracts/application/availability-check-manager';
 import type {
@@ -118,6 +121,54 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       createdCheckCount: fired.createdCheckCount,
       notifiedVolunteerCount: fired.newMemberships.length,
     };
+  }
+
+  async listCheckStatuses(
+    input: ListCheckStatusesInput,
+  ): Promise<CheckStatusRow[]> {
+    const participation = await this.participationRepository.getById({
+      churchId: input.churchId,
+      participationId: input.participationId,
+    });
+    const event = await this.eventRepository.getEvent({
+      churchId: input.churchId,
+      eventId: participation.eventId,
+    });
+    return this.listCycleCheckStatuses({
+      churchId: input.churchId,
+      cycleId: event.planningCycleId,
+      ministryId: participation.ministryId,
+    });
+  }
+
+  async listCycleCheckStatuses(
+    input: ListCycleCheckStatusesInput,
+  ): Promise<CheckStatusRow[]> {
+    const memberships =
+      await this.availabilityCheckRepository.listActiveMemberships({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+      });
+    const checks = await this.availabilityCheckRepository.listByCycle({
+      churchId: input.churchId,
+      planningCycleId: input.cycleId,
+      ministryVolunteerIds: memberships.map(
+        (membership) => membership.ministryVolunteerId,
+      ),
+    });
+    const checkByMembershipId = new Map(
+      checks.map((check) => [check.ministryVolunteerId, check]),
+    );
+
+    return memberships.map((membership) => {
+      const check = checkByMembershipId.get(membership.ministryVolunteerId);
+      return {
+        volunteerId: membership.volunteerId as string,
+        volunteerName: membership.volunteerName,
+        state: check?.state,
+        confirmedAt: check?.confirmedAt,
+      };
+    });
   }
 
   async resendReminder(input: ResendReminderInput): Promise<void> {

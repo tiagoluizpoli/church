@@ -1864,8 +1864,11 @@ paths:
   /api/v1/admin/ministries/{ministryId}/serving-profile:
     get:
       operationId: getMinistryServingProfile
+      summary: getMinistryServingProfile
       tags:
         - admin
+      description: Get the serving profile for a specific ministry, including roles
+        and teams.
       parameters:
         - schema:
             type: string
@@ -2755,6 +2758,110 @@ paths:
                   - createdCheckCount
                   - notifiedVolunteerCount
                 additionalProperties: false
+  /api/v1/leader/cycles/{cycleId}/availability-status:
+    get:
+      operationId: getCycleAvailabilityStatus
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        volunteerId:
+                          type: string
+                        volunteerName:
+                          type: string
+                        state:
+                          type: string
+                          enum:
+                            - pending
+                            - confirmed
+                        confirmedAt:
+                          type: string
+                      required:
+                        - volunteerId
+                        - volunteerName
+                      additionalProperties: false
+                required:
+                  - statuses
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/participations/{participationId}/availability-status:
+    get:
+      operationId: getAvailabilityStatus
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        volunteerId:
+                          type: string
+                        volunteerName:
+                          type: string
+                        state:
+                          type: string
+                          enum:
+                            - pending
+                            - confirmed
+                        confirmedAt:
+                          type: string
+                      required:
+                        - volunteerId
+                        - volunteerName
+                      additionalProperties: false
+                required:
+                  - statuses
+                additionalProperties: false
   /api/v1/leader/participations/{participationId}/resend-availability:
     post:
       operationId: resendAvailabilityReminder
@@ -3080,9 +3187,9 @@ paths:
                   - ministryName
                   - events
                 additionalProperties: false
-  /api/v1/volunteer/availability:
+  /api/v1/volunteer/availability-checks:
     get:
-      operationId: getMyAvailability
+      operationId: listAvailabilityChecks
       tags:
         - volunteer
       responses:
@@ -3093,56 +3200,217 @@ paths:
               schema:
                 type: object
                 properties:
-                  availability:
+                  checks:
                     type: array
                     items:
                       type: object
                       properties:
                         id:
                           type: string
-                        churchId:
+                        planningCycleId:
                           type: string
-                        volunteerId:
+                        planningCycleName:
                           type: string
-                        eventId:
+                        ministryId:
                           type: string
-                        type:
+                        ministryName:
+                          type: string
+                        state:
                           type: string
                           enum:
-                            - available
-                            - unavailable
-                        startTime:
+                            - pending
+                            - confirmed
+                        confirmedAt:
                           type: string
-                        endTime:
-                          type: string
-                        isAllDay:
-                          type: boolean
-                        reason:
-                          type: string
-                        repeatRule:
-                          type: string
+                        totalShiftCount:
+                          type: number
+                        unavailableShiftCount:
+                          type: number
                       required:
                         - id
-                        - churchId
-                        - volunteerId
-                        - type
-                        - startTime
-                        - endTime
-                        - isAllDay
+                        - planningCycleId
+                        - planningCycleName
+                        - ministryId
+                        - ministryName
+                        - state
+                        - totalShiftCount
+                        - unavailableShiftCount
                       additionalProperties: false
                 required:
-                  - availability
+                  - checks
                 additionalProperties: false
-  /api/v1/volunteer/availability/{availabilityId}:
-    delete:
-      operationId: deleteAvailability
+  /api/v1/volunteer/availability-checks/{checkId}:
+    get:
+      operationId: getAvailabilityCheck
       tags:
         - volunteer
       parameters:
         - schema:
             type: string
           in: path
-          name: availabilityId
+          name: checkId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  planningCycleId:
+                    type: string
+                  planningCycleName:
+                    type: string
+                  ministryId:
+                    type: string
+                  ministryName:
+                    type: string
+                  state:
+                    type: string
+                    enum:
+                      - pending
+                      - confirmed
+                  confirmedAt:
+                    type: string
+                  shifts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        shiftId:
+                          type: string
+                        eventId:
+                          type: string
+                        eventTitle:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        label:
+                          type: string
+                        available:
+                          type: boolean
+                      required:
+                        - shiftId
+                        - eventId
+                        - eventTitle
+                        - startTime
+                        - endTime
+                        - available
+                      additionalProperties: false
+                required:
+                  - id
+                  - planningCycleId
+                  - planningCycleName
+                  - ministryId
+                  - ministryName
+                  - state
+                  - shifts
+                additionalProperties: false
+  /api/v1/volunteer/availability-checks/{checkId}/marks:
+    put:
+      operationId: setUnavailabilityMarks
+      tags:
+        - volunteer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shiftIds:
+                  type: array
+                  items:
+                    type: string
+                wholeDayDates:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^\d{4}-\d{2}-\d{2}$
+              required:
+                - shiftIds
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: checkId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  planningCycleId:
+                    type: string
+                  planningCycleName:
+                    type: string
+                  ministryId:
+                    type: string
+                  ministryName:
+                    type: string
+                  state:
+                    type: string
+                    enum:
+                      - pending
+                      - confirmed
+                  confirmedAt:
+                    type: string
+                  shifts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        shiftId:
+                          type: string
+                        eventId:
+                          type: string
+                        eventTitle:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        label:
+                          type: string
+                        available:
+                          type: boolean
+                      required:
+                        - shiftId
+                        - eventId
+                        - eventTitle
+                        - startTime
+                        - endTime
+                        - available
+                      additionalProperties: false
+                required:
+                  - id
+                  - planningCycleId
+                  - planningCycleName
+                  - ministryId
+                  - ministryName
+                  - state
+                  - shifts
+                additionalProperties: false
+  /api/v1/volunteer/availability-checks/{checkId}/confirm:
+    post:
+      operationId: confirmAvailabilityCheck
+      tags:
+        - volunteer
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: checkId
           required: true
       responses:
         "200":
@@ -3251,6 +3519,7 @@ paths:
                             - assignment_changed
                             - assignment_removed
                             - availability_reminder
+                            - availability_conflict
                             - assignment_reminder
                         title:
                           type: string

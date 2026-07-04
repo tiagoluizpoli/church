@@ -1,33 +1,52 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
-import type { MinistryId, UserId } from '../domain/branded-ids';
 import type {
+  ChurchId,
+  MinistryId,
+  ShiftId,
+  UserId,
+} from '../domain/branded-ids';
+import type {
+  AvailabilityOverlapItem,
+  ConfirmAvailabilityCheckInput,
+  ConfirmAvailabilityCheckResult,
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
   DashboardAvailabilityTask,
-  DeleteAvailabilityInput,
-  GetAvailabilityInput,
+  GetAvailabilityCheckInput,
   GetDashboardInput,
   GetMinistryScheduleInput,
   GetNotificationsInput,
   GetUpcomingAssignmentsInput,
   IVolunteerManager,
+  ListAvailabilityChecksInput,
   MarkAllNotificationsReadInput,
   MarkNotificationReadInput,
   MinistrySchedule,
   NotificationListResult,
   RespondToAssignmentInput,
-  UpsertAvailabilityInput,
+  SetUnavailabilityInput,
+  VolunteerAvailabilityCheckDetail,
+  VolunteerAvailabilityCheckSummary,
+  VolunteerCheckShift,
   VolunteerContext,
   VolunteerDashboard,
 } from '../domain/contracts/application/volunteer-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
+import type {
+  AvailabilityCheckRepository,
+  CheckContext,
+  CheckShiftRow,
+} from '../domain/contracts/infrastructure/availability-check.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
+import type { IFeatureFlagService } from '../domain/contracts/infrastructure/feature-flag-service';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
+import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TeamRepository } from '../domain/contracts/infrastructure/team.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
+import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { VolunteerNotificationRepository } from '../domain/contracts/infrastructure/volunteer-notification.repository';
 import type {
@@ -36,11 +55,26 @@ import type {
 } from '../domain/entities/assignment';
 import type { Availability } from '../domain/entities/availability';
 import type { TimeSlot } from '../domain/entities/time-slot';
+import { AvailabilityOverlapError } from '../domain/errors/availability-overlap';
+import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
+import {
+  assertMarksWithinScope,
+  expandWholeDayShiftIds,
+  resolveShiftAvailability,
+} from '../domain/services/availability-marks';
+import type { ShiftOverlapPair } from '../domain/services/availability-overlap';
+import { detectCrossMinistryOverlaps } from '../domain/services/availability-overlap';
 
 const UPCOMING_DAYS = 30;
 const DEFAULT_NOTIFICATION_LIMIT = 20;
 const NOTIFICATION_PREVIEW_LIMIT = 3;
+
+interface NotifyLeadersOfOverlapInput {
+  churchId: ChurchId;
+  planningCycleId: string;
+  overlapPairs: ShiftOverlapPair[];
+}
 
 interface DashboardAssignmentGroupDraft {
   eventId: string;
@@ -61,7 +95,7 @@ function availabilityCompletionState(
 ): 'missing' | 'partial' | 'complete' {
   if (slots.length === 0) return 'missing';
   const matchingKeys = new Set(
-    entries.map((e) => slotKey(e.startTime, e.endTime)),
+    entries.map((e) => slotKey(e.shiftStartTime, e.shiftEndTime)),
   );
   const answered = slots.filter((s) =>
     matchingKeys.has(slotKey(s.startTime, s.endTime)),
@@ -121,6 +155,14 @@ export class DbVolunteerManager implements IVolunteerManager {
     private readonly roleRepo: RoleRepository,
     @inject('ITeamRepository')
     private readonly teamRepo: TeamRepository,
+    @inject('IAvailabilityCheckRepository')
+    private readonly availabilityCheckRepo: AvailabilityCheckRepository,
+    @inject('IFeatureFlagService')
+    private readonly featureFlagService: IFeatureFlagService,
+    @inject('INotificationService')
+    private readonly notificationService: NotificationService,
+    @inject('IUnitOfWork')
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
   async resolveVolunteerContext(
@@ -466,69 +508,237 @@ export class DbVolunteerManager implements IVolunteerManager {
     };
   }
 
-  async upsertAvailability(
-    input: UpsertAvailabilityInput,
-  ): Promise<Availability> {
-    const {
-      churchId,
-      availabilityId,
-      volunteerId,
-      eventId,
-      type,
-      startTime,
-      endTime,
-      isAllDay,
-      reason,
-      repeatRule,
-    } = input;
-    if (availabilityId) {
-      await this.availabilityRepo.update(churchId, availabilityId, {
-        eventId,
-        type,
-        startTime,
-        endTime,
-        isAllDay,
-        reason,
-        repeatRule,
-      });
-      return this.availabilityRepo.getById(churchId, availabilityId);
-    }
-    return this.availabilityRepo.create(churchId, {
-      volunteerId,
-      eventId,
-      type,
-      startTime,
-      endTime,
-      isAllDay,
-      reason,
-      repeatRule,
+  /** Loads the check context and enforces the check belongs to the requesting volunteer. */
+  private async getOwnedCheckContext(
+    input: GetAvailabilityCheckInput,
+  ): Promise<CheckContext> {
+    const context = await this.availabilityCheckRepo.getCheckContext({
+      churchId: input.churchId,
+      checkId: input.checkId,
     });
-  }
-
-  async deleteAvailability(input: DeleteAvailabilityInput): Promise<void> {
-    const { availabilityId, volunteerId, churchId } = input;
-    const existing = await this.availabilityRepo.getById(
-      churchId,
-      availabilityId,
-    );
-    if ((existing.volunteerId as string) !== (volunteerId as string)) {
-      throw new IsolationBreachError(
-        'Isolation breach: availability does not belong to the requesting volunteer',
-      );
+    if ((context.volunteerId as string) !== (input.volunteerId as string)) {
+      throw new CheckAccessDeniedError();
     }
-    return this.availabilityRepo.delete(churchId, availabilityId);
+    return context;
   }
 
-  async getAvailability(input: GetAvailabilityInput): Promise<Availability[]> {
-    const { volunteerId, churchId, startTime, endTime } = input;
-    const start = startTime ?? new Date(0);
-    const end = endTime ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-    return this.availabilityRepo.listByVolunteerInRange(
-      churchId,
-      volunteerId,
-      start,
-      end,
+  private async resolveCheckDetail(
+    context: CheckContext,
+    input: GetAvailabilityCheckInput,
+  ): Promise<VolunteerAvailabilityCheckDetail> {
+    const [shifts, marks] = await Promise.all([
+      this.availabilityCheckRepo.listCheckShifts({
+        churchId: input.churchId,
+        checkId: input.checkId,
+      }),
+      this.availabilityRepo.listMarksByCheck({
+        churchId: input.churchId,
+        availabilityCheckId: input.checkId,
+      }),
+    ]);
+
+    const resolutions = resolveShiftAvailability({
+      shiftIds: shifts.map((shift) => shift.shiftId),
+      markedShiftIds: marks.map((mark) => mark.shiftId),
+    });
+    const availableByShiftId = new Map(
+      resolutions.map((entry) => [entry.shiftId, entry.available]),
     );
+
+    const checkShifts: VolunteerCheckShift[] = shifts.map(
+      (shift: CheckShiftRow) => ({
+        shiftId: shift.shiftId as string,
+        eventId: shift.eventId as string,
+        eventTitle: shift.eventTitle,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        label: shift.label,
+        available: availableByShiftId.get(shift.shiftId) ?? true,
+      }),
+    );
+
+    return {
+      id: context.check.id as string,
+      planningCycleId: context.check.planningCycleId as string,
+      planningCycleName: context.planningCycleName,
+      ministryId: context.ministryId as string,
+      ministryName: context.ministryName,
+      state: context.check.state,
+      confirmedAt: context.check.confirmedAt,
+      shifts: checkShifts,
+    };
+  }
+
+  async listAvailabilityChecks(
+    input: ListAvailabilityChecksInput,
+  ): Promise<VolunteerAvailabilityCheckSummary[]> {
+    const contexts = await this.availabilityCheckRepo.listByVolunteer({
+      churchId: input.churchId,
+      volunteerId: input.volunteerId,
+    });
+
+    return Promise.all(
+      contexts.map(async (context) => {
+        const checkId = context.check.id;
+        const [shifts, marks] = await Promise.all([
+          this.availabilityCheckRepo.listCheckShifts({
+            churchId: input.churchId,
+            checkId,
+          }),
+          this.availabilityRepo.listMarksByCheck({
+            churchId: input.churchId,
+            availabilityCheckId: checkId,
+          }),
+        ]);
+
+        return {
+          id: checkId as string,
+          planningCycleId: context.check.planningCycleId as string,
+          planningCycleName: context.planningCycleName,
+          ministryId: context.ministryId as string,
+          ministryName: context.ministryName,
+          state: context.check.state,
+          confirmedAt: context.check.confirmedAt,
+          totalShiftCount: shifts.length,
+          unavailableShiftCount: marks.length,
+        };
+      }),
+    );
+  }
+
+  async getAvailabilityCheck(
+    input: GetAvailabilityCheckInput,
+  ): Promise<VolunteerAvailabilityCheckDetail> {
+    const context = await this.getOwnedCheckContext(input);
+    return this.resolveCheckDetail(context, input);
+  }
+
+  async setUnavailability(
+    input: SetUnavailabilityInput,
+  ): Promise<VolunteerAvailabilityCheckDetail> {
+    const context = await this.getOwnedCheckContext(input);
+    const shifts = await this.availabilityCheckRepo.listCheckShifts({
+      churchId: input.churchId,
+      checkId: input.checkId,
+    });
+
+    const wholeDayShiftIds = (input.wholeDayDates ?? []).flatMap((date) =>
+      expandWholeDayShiftIds({
+        churchDate: date,
+        timeZone: context.timeZone,
+        shifts,
+      }),
+    );
+    const requestedShiftIds = [
+      ...new Set<ShiftId>([...input.shiftIds, ...wholeDayShiftIds]),
+    ];
+
+    assertMarksWithinScope({
+      candidateShiftIds: shifts.map((shift) => shift.shiftId),
+      requestedShiftIds,
+    });
+
+    await this.unitOfWork.run(async (tx) => {
+      await this.availabilityRepo.replaceMarksForCheck({
+        churchId: input.churchId,
+        availabilityCheckId: input.checkId,
+        shiftIds: requestedShiftIds,
+        tx,
+      });
+    });
+
+    return this.resolveCheckDetail(context, input);
+  }
+
+  async confirmAvailabilityCheck(
+    input: ConfirmAvailabilityCheckInput,
+  ): Promise<ConfirmAvailabilityCheckResult> {
+    const context = await this.getOwnedCheckContext(input);
+
+    // Entity transition guards the confirm gate (pending → confirmed, FR-019).
+    context.check.confirm();
+
+    const unmarkedShifts =
+      await this.availabilityCheckRepo.listUnmarkedVolunteerShifts({
+        churchId: input.churchId,
+        volunteerId: input.volunteerId,
+        planningCycleId: context.check.planningCycleId,
+      });
+    const overlapPairs = detectCrossMinistryOverlaps({
+      shifts: unmarkedShifts,
+    });
+
+    if (overlapPairs.length > 0) {
+      const allowOverlapSave = await this.featureFlagService.isEnabled(
+        'VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE',
+      );
+      if (!allowOverlapSave) {
+        throw new AvailabilityOverlapError();
+      }
+    }
+
+    const confirmedAt = context.check.confirmedAt ?? new Date();
+    await this.availabilityCheckRepo.confirm({
+      churchId: input.churchId,
+      checkId: input.checkId,
+      confirmedAt,
+    });
+
+    const overlaps: AvailabilityOverlapItem[] = overlapPairs.map((pair) => ({
+      shiftId: pair.first.shiftId as string,
+      otherShiftId: pair.second.shiftId as string,
+      ministryId: pair.first.ministryId as string,
+      otherMinistryId: pair.second.ministryId as string,
+    }));
+
+    if (overlaps.length > 0) {
+      await this.notifyLeadersOfOverlap({
+        churchId: input.churchId,
+        planningCycleId: context.check.planningCycleId as string,
+        overlapPairs,
+      });
+    }
+
+    return {
+      state: 'confirmed',
+      confirmedAt,
+      overlaps,
+    };
+  }
+
+  private async notifyLeadersOfOverlap({
+    churchId,
+    planningCycleId,
+    overlapPairs,
+  }: NotifyLeadersOfOverlapInput): Promise<void> {
+    const ministryIds = [
+      ...new Set(
+        overlapPairs.flatMap((pair) => [
+          pair.first.ministryId,
+          pair.second.ministryId,
+        ]),
+      ),
+    ];
+    const leaders =
+      await this.availabilityCheckRepo.listMinistryLeaderVolunteerIds({
+        churchId,
+        ministryIds,
+      });
+
+    for (const leader of leaders) {
+      await this.notificationService.notifyVolunteer({
+        churchId: churchId as string,
+        volunteerId: leader.volunteerId as string,
+        ministryId: leader.ministryId,
+        type: 'availability_conflict',
+        title: 'Availability conflict',
+        body: 'A volunteer confirmed availability that overlaps another ministry in the same planning period.',
+        payload: {
+          planningCycleId,
+          ministryId: leader.ministryId as string,
+        },
+      });
+    }
   }
 
   async respondToAssignment(

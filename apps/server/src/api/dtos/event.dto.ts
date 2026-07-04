@@ -163,10 +163,11 @@ export const eventMapper = {
       availability: data.availability.map((av) => ({
         id: av.id as string,
         volunteerId: av.volunteerId as string,
-        type: av.type,
-        startTime: av.startTime.toISOString(),
-        endTime: av.endTime.toISOString(),
-        isAllDay: av.isAllDay,
+        // Marks are unavailability-only in the reshaped model (FR-018).
+        type: 'unavailable' as const,
+        startTime: av.shiftStartTime.toISOString(),
+        endTime: av.shiftEndTime.toISOString(),
+        isAllDay: false,
       })),
       volunteers: data.volunteers,
       roles: data.roles.map((role) => ({

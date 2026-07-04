@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import type {
   MinistrySchedule,
+  VolunteerAvailabilityCheckDetail,
+  VolunteerAvailabilityCheckSummary,
   VolunteerDashboard,
 } from '../../domain/contracts/application/volunteer-manager';
 import type { Assignment } from '../../domain/entities/assignment';
-import type { Availability } from '../../domain/entities/availability';
 
 export const assignmentResponseSchema = z.object({
   id: z.string(),
@@ -19,19 +20,47 @@ export const assignmentResponseSchema = z.object({
 });
 export type AssignmentResponse = z.infer<typeof assignmentResponseSchema>;
 
-export const availabilityResponseSchema = z.object({
+export const availabilityCheckSummarySchema = z.object({
   id: z.string(),
-  churchId: z.string(),
-  volunteerId: z.string(),
-  eventId: z.string().optional(),
-  type: z.enum(['available', 'unavailable']),
+  planningCycleId: z.string(),
+  planningCycleName: z.string(),
+  ministryId: z.string(),
+  ministryName: z.string(),
+  state: z.enum(['pending', 'confirmed']),
+  confirmedAt: z.string().optional(),
+  totalShiftCount: z.number(),
+  unavailableShiftCount: z.number(),
+});
+
+export const availabilityCheckListResponseSchema = z.object({
+  checks: z.array(availabilityCheckSummarySchema),
+});
+
+const availabilityCheckShiftSchema = z.object({
+  shiftId: z.string(),
+  eventId: z.string(),
+  eventTitle: z.string(),
   startTime: z.string(),
   endTime: z.string(),
-  isAllDay: z.boolean(),
-  reason: z.string().optional(),
-  repeatRule: z.string().optional(),
+  label: z.string().optional(),
+  available: z.boolean(),
 });
-export type AvailabilityResponse = z.infer<typeof availabilityResponseSchema>;
+
+export const availabilityCheckDetailResponseSchema = z.object({
+  id: z.string(),
+  planningCycleId: z.string(),
+  planningCycleName: z.string(),
+  ministryId: z.string(),
+  ministryName: z.string(),
+  state: z.enum(['pending', 'confirmed']),
+  confirmedAt: z.string().optional(),
+  shifts: z.array(availabilityCheckShiftSchema),
+});
+
+export const setUnavailabilityMarksBodySchema = z.object({
+  shiftIds: z.array(z.string()),
+  wholeDayDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+});
 
 const dashboardAssignmentItemSchema = z.object({
   assignmentId: z.string(),
@@ -125,21 +154,6 @@ export const ministryScheduleResponseSchema = z.object({
   ),
 });
 
-export const availabilityListResponseSchema = z.object({
-  availability: z.array(availabilityResponseSchema),
-});
-
-export const upsertAvailabilityBodySchema = z.object({
-  availabilityId: z.string().optional(),
-  eventId: z.string().optional(),
-  type: z.enum(['available', 'unavailable']),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
-  isAllDay: z.boolean().default(false),
-  reason: z.string().optional(),
-  repeatRule: z.string().optional(),
-});
-
 export const respondToAssignmentBodySchema = z.object({
   response: z.enum(['accepted', 'declined']),
   reason: z.string().optional(),
@@ -159,18 +173,42 @@ function assignmentToResponse(a: Assignment): AssignmentResponse {
   };
 }
 
-function availabilityToResponse(av: Availability): AvailabilityResponse {
+function availabilityCheckSummaryToResponse(
+  summary: VolunteerAvailabilityCheckSummary,
+): z.infer<typeof availabilityCheckSummarySchema> {
   return {
-    id: av.id as string,
-    churchId: av.churchId as string,
-    volunteerId: av.volunteerId as string,
-    eventId: av.eventId as string | undefined,
-    type: av.type,
-    startTime: av.startTime.toISOString(),
-    endTime: av.endTime.toISOString(),
-    isAllDay: av.isAllDay,
-    reason: av.reason,
-    repeatRule: av.repeatRule,
+    id: summary.id,
+    planningCycleId: summary.planningCycleId,
+    planningCycleName: summary.planningCycleName,
+    ministryId: summary.ministryId,
+    ministryName: summary.ministryName,
+    state: summary.state,
+    confirmedAt: summary.confirmedAt?.toISOString(),
+    totalShiftCount: summary.totalShiftCount,
+    unavailableShiftCount: summary.unavailableShiftCount,
+  };
+}
+
+function availabilityCheckDetailToResponse(
+  detail: VolunteerAvailabilityCheckDetail,
+): z.infer<typeof availabilityCheckDetailResponseSchema> {
+  return {
+    id: detail.id,
+    planningCycleId: detail.planningCycleId,
+    planningCycleName: detail.planningCycleName,
+    ministryId: detail.ministryId,
+    ministryName: detail.ministryName,
+    state: detail.state,
+    confirmedAt: detail.confirmedAt?.toISOString(),
+    shifts: detail.shifts.map((shift) => ({
+      shiftId: shift.shiftId,
+      eventId: shift.eventId,
+      eventTitle: shift.eventTitle,
+      startTime: shift.startTime.toISOString(),
+      endTime: shift.endTime.toISOString(),
+      label: shift.label,
+      available: shift.available,
+    })),
   };
 }
 
@@ -191,9 +229,11 @@ export const volunteerMapper = {
   ministryScheduleToResponse(schedule: MinistrySchedule) {
     return schedule;
   },
-  availabilityListToResponse(items: Availability[]) {
-    return { availability: items.map(availabilityToResponse) };
+  availabilityCheckListToResponse(
+    summaries: VolunteerAvailabilityCheckSummary[],
+  ) {
+    return { checks: summaries.map(availabilityCheckSummaryToResponse) };
   },
+  availabilityCheckDetailToResponse,
   assignmentToResponse,
-  availabilityToResponse,
 };

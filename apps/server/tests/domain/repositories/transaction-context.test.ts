@@ -3,7 +3,6 @@
 import { describe, it } from 'vitest';
 import type {
   AssignmentId,
-  AvailabilityId,
   ChurchId,
   EventId,
 } from '../../../src/domain/branded-ids';
@@ -22,16 +21,19 @@ describe('User Story 4: Transaction Context Type Safety', () => {
       const churchId = 'church-1' as ChurchId;
       const tx = {} as TransactionContext;
 
-      // 1. AvailabilityRepository
+      // 1. AvailabilityRepository (unavailability marks)
       const availabilityRepo = {} as AvailabilityRepository;
-      availabilityRepo.create(churchId, {} as any, tx);
-      availabilityRepo.update(
+      availabilityRepo.replaceMarksForCheck({
         churchId,
-        'availability-1' as AvailabilityId,
-        {} as any,
+        availabilityCheckId: 'check-1' as any,
+        shiftIds: [],
         tx,
-      );
-      availabilityRepo.delete(churchId, 'availability-1' as AvailabilityId, tx);
+      });
+      availabilityRepo.listMarksByCheck({
+        churchId,
+        availabilityCheckId: 'check-1' as any,
+        tx,
+      });
 
       // 2. EventRepository
       const eventRepo = {} as EventRepository;

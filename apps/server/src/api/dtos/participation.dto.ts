@@ -110,6 +110,17 @@ export const fireAvailabilityResponseSchema = z.object({
   notifiedVolunteerCount: z.number(),
 });
 
+export const availabilityStatusResponseSchema = z.object({
+  statuses: z.array(
+    z.object({
+      volunteerId: z.string(),
+      volunteerName: z.string(),
+      state: z.enum(['pending', 'confirmed']).optional(),
+      confirmedAt: z.string().optional(),
+    }),
+  ),
+});
+
 function toParticipationResponse(
   participation: MinistryParticipation,
 ): ParticipationResponse {

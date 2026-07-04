@@ -22,6 +22,7 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { SchedulingRbacGuard } from '../auth/scheduling-rbac-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
   fireAvailabilityResponseSchema,
   participationMapper,
@@ -39,7 +40,7 @@ interface CycleParticipationRouteParams {
   cycleId: string;
 }
 
-interface CycleParticipationQuery {
+interface CycleMinistryQuery {
   ministryId: string;
 }
 
@@ -135,7 +136,7 @@ export class LeaderController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId } = request.query as CycleParticipationQuery;
+        const { ministryId } = request.query as CycleMinistryQuery;
 
         const allowed = await this.rbacGuard.canManageMinistry({
           churchId: ChurchId.from(request.churchId),
@@ -315,6 +316,85 @@ export class LeaderController implements FastifyController {
           participationId: MinistryParticipationId.from(participationId),
         });
         return reply.status(202).send(result);
+      },
+    );
+
+    app.get(
+      '/cycles/:cycleId/availability-status',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'getCycleAvailabilityStatus',
+          querystring: cycleParticipationQuerySchema,
+          response: {
+            200: availabilityStatusResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        const allowed = await this.rbacGuard.canManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (!allowed) {
+          return reply.status(403).send({
+            error: 'FORBIDDEN',
+            message: 'Not a leader of this ministry',
+          });
+        }
+
+        const statuses =
+          await this.availabilityCheckManager.listCycleCheckStatuses({
+            churchId: ChurchId.from(request.churchId),
+            cycleId: PlanningCycleId.from(cycleId),
+            ministryId: MinistryId.from(ministryId),
+          });
+        return reply.send({
+          statuses: statuses.map((status) => ({
+            volunteerId: status.volunteerId,
+            volunteerName: status.volunteerName,
+            state: status.state,
+            confirmedAt: status.confirmedAt?.toISOString(),
+          })),
+        });
+      },
+    );
+
+    app.get(
+      '/participations/:participationId/availability-status',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'getAvailabilityStatus',
+          response: { 200: availabilityStatusResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { participationId } = request.params as ParticipationRouteParams;
+        const denied = await this.denyParticipationScope(
+          request,
+          reply,
+          participationId,
+        );
+        if (denied) return denied;
+
+        const statuses = await this.availabilityCheckManager.listCheckStatuses({
+          churchId: ChurchId.from(request.churchId),
+          participationId: MinistryParticipationId.from(participationId),
+        });
+        return reply.send({
+          statuses: statuses.map((status) => ({
+            volunteerId: status.volunteerId,
+            volunteerName: status.volunteerName,
+            state: status.state,
+            confirmedAt: status.confirmedAt?.toISOString(),
+          })),
+        });
       },
     );
 

@@ -2,9 +2,7 @@ import type { availability } from '@church/db';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AvailabilityCheckId,
-  AvailabilityId,
   ChurchId,
-  EventId,
   ShiftId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -13,11 +11,10 @@ import { Availability } from '../../domain/entities/availability';
 
 type AvailabilityRow = InferSelectModel<typeof availability>;
 
-interface AvailabilityJoinedRow {
+export interface AvailabilityJoinedRow {
   volunteerId: string;
-  eventId: string;
-  startTime: Date;
-  endTime: Date;
+  shiftStartTime: Date;
+  shiftEndTime: Date;
 }
 
 export function mapAvailability(
@@ -29,12 +26,13 @@ export function mapAvailability(
     availabilityCheckId: row.availabilityCheckId as AvailabilityCheckId,
     shiftId: row.shiftId as ShiftId,
     volunteerId: joined.volunteerId as VolunteerId,
-    eventId: joined.eventId as EventId,
-    type: 'unavailable',
-    startTime: joined.startTime,
-    endTime: joined.endTime,
-    isAllDay: false,
+    shiftStartTime: joined.shiftStartTime,
+    shiftEndTime: joined.shiftEndTime,
   };
 
-  return new Availability(props, row.id as AvailabilityId);
+  return new Availability({
+    props,
+    id: row.id,
+    createdAt: row.createdAt,
+  });
 }

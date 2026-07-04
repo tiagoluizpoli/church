@@ -1,6 +1,5 @@
 export * from './assignment.contract-spec';
 export * from './assignment-audit.contract-spec';
-export * from './availability.contract-spec';
 export * from './church.contract-spec';
 export * from './event.contract-spec';
 export * from './ministry.contract-spec';

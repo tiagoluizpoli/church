@@ -29,8 +29,16 @@ const ROUTES: Array<{
   { method: 'GET', url: '/api/v1/volunteer/dashboard' },
   { method: 'GET', url: '/api/v1/volunteer/assignments' },
   { method: 'GET', url: '/api/v1/volunteer/ministries/some-id/schedule' },
-  { method: 'GET', url: '/api/v1/volunteer/availability' },
-  { method: 'DELETE', url: '/api/v1/volunteer/availability/some-id' },
+  { method: 'GET', url: '/api/v1/volunteer/availability-checks' },
+  { method: 'GET', url: '/api/v1/volunteer/availability-checks/some-id' },
+  {
+    method: 'PUT',
+    url: '/api/v1/volunteer/availability-checks/some-id/marks',
+  },
+  {
+    method: 'POST',
+    url: '/api/v1/volunteer/availability-checks/some-id/confirm',
+  },
   { method: 'PATCH', url: '/api/v1/volunteer/assignments/some-id' },
   { method: 'GET', url: '/api/v1/volunteer/notifications' },
   { method: 'PATCH', url: '/api/v1/volunteer/notifications/some-id' },

@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import {
   availability,
   availabilityCheck,
@@ -6,17 +5,12 @@ import {
   shift,
   timeSlot,
 } from '@church/db';
-import { and, between, eq, inArray, type SQL } from 'drizzle-orm';
-import type {
-  AvailabilityId,
-  ChurchId,
-  EventId,
-  VolunteerId,
-} from '../../domain/branded-ids';
+import { and, eq, inArray, type SQL } from 'drizzle-orm';
+import type { ChurchId, EventId, VolunteerId } from '../../domain/branded-ids';
 import type {
   AvailabilityRepository,
-  CreateAvailabilityInput,
-  UpdateAvailabilityInput,
+  ListMarksByCheckInput,
+  ReplaceMarksForCheckInput,
 } from '../../domain/contracts/infrastructure/availability.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Availability } from '../../domain/entities/availability';
@@ -36,9 +30,35 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
       .select({
         availability,
         volunteerId: ministryVolunteer.volunteerId,
-        eventId: timeSlot.eventId,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
+        shiftStartTime: shift.startTime,
+        shiftEndTime: shift.endTime,
+      })
+      .from(availability)
+      .innerJoin(
+        availabilityCheck,
+        eq(availabilityCheck.id, availability.availabilityCheckId),
+      )
+      .innerJoin(
+        ministryVolunteer,
+        eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
+      )
+      .innerJoin(shift, eq(shift.id, availability.shiftId))
+      .where(and(withChurchIsolation(availability, churchId), ...conditions));
+    return rows.map((row) => mapAvailability(row.availability, row));
+  }
+
+  async listByVolunteerForEvent(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    eventId: EventId,
+    tx?: TransactionContext,
+  ): Promise<Availability[]> {
+    const rows = await getClient(this.db, tx)
+      .select({
+        availability,
+        volunteerId: ministryVolunteer.volunteerId,
+        shiftStartTime: shift.startTime,
+        shiftEndTime: shift.endTime,
       })
       .from(availability)
       .innerJoin(
@@ -51,52 +71,14 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
       )
       .innerJoin(shift, eq(shift.id, availability.shiftId))
       .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId))
-      .where(and(withChurchIsolation(availability, churchId), ...conditions));
+      .where(
+        and(
+          withChurchIsolation(availability, churchId),
+          eq(ministryVolunteer.volunteerId, volunteerId),
+          eq(timeSlot.eventId, eventId),
+        ),
+      );
     return rows.map((row) => mapAvailability(row.availability, row));
-  }
-
-  async getById(
-    churchId: ChurchId,
-    id: AvailabilityId,
-    tx?: TransactionContext,
-  ): Promise<Availability> {
-    const rows = await this.rows(churchId, [eq(availability.id, id)], tx);
-    const row = rows[0];
-    if (!row) throw new NotFoundError(`Availability entry not found: ${id}`);
-    return row;
-  }
-
-  listByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    startTime: Date,
-    endTime: Date,
-    tx?: TransactionContext,
-  ): Promise<Availability[]> {
-    return this.rows(
-      churchId,
-      [
-        eq(ministryVolunteer.volunteerId, volunteerId),
-        between(shift.startTime, startTime, endTime),
-      ],
-      tx,
-    );
-  }
-
-  listByVolunteerForEvent(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    eventId: EventId,
-    tx?: TransactionContext,
-  ): Promise<Availability[]> {
-    return this.rows(
-      churchId,
-      [
-        eq(ministryVolunteer.volunteerId, volunteerId),
-        eq(timeSlot.eventId, eventId),
-      ],
-      tx,
-    );
   }
 
   async listByVolunteers(
@@ -112,35 +94,35 @@ export class DrizzleAvailabilityRepository implements AvailabilityRepository {
     );
   }
 
-  async create(
-    _churchId: ChurchId,
-    _input: CreateAvailabilityInput,
-    _tx?: TransactionContext,
-  ): Promise<Availability> {
-    throw new Error('Legacy free-span availability writes are removed');
+  async listMarksByCheck(
+    input: ListMarksByCheckInput,
+  ): Promise<Availability[]> {
+    return this.rows(
+      input.churchId,
+      [eq(availability.availabilityCheckId, input.availabilityCheckId)],
+      input.tx,
+    );
   }
 
-  async update(
-    _churchId: ChurchId,
-    _id: AvailabilityId,
-    _input: UpdateAvailabilityInput,
-    _tx?: TransactionContext,
-  ): Promise<void> {
-    throw new Error('Legacy free-span availability writes are removed');
-  }
-
-  async delete(
-    churchId: ChurchId,
-    id: AvailabilityId,
-    tx?: TransactionContext,
-  ): Promise<void> {
-    await getClient(this.db, tx)
+  async replaceMarksForCheck(input: ReplaceMarksForCheckInput): Promise<void> {
+    const client = getClient(this.db, input.tx);
+    await client
       .delete(availability)
       .where(
         and(
-          eq(availability.id, id),
-          withChurchIsolation(availability, churchId),
+          withChurchIsolation(availability, input.churchId),
+          eq(availability.availabilityCheckId, input.availabilityCheckId),
         ),
       );
+
+    if (input.shiftIds.length === 0) return;
+
+    await client.insert(availability).values(
+      input.shiftIds.map((shiftId) => ({
+        churchId: input.churchId,
+        availabilityCheckId: input.availabilityCheckId,
+        shiftId,
+      })),
+    );
   }
 }

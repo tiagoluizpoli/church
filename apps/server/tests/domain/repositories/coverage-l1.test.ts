@@ -12,20 +12,20 @@ describe('Coverage L1: Availability Engine Data Access', () => {
   it('should fetch all required L1 data from repositories and calculate availability', async () => {
     // 1. Mock repositories using the defined interfaces
     const mockAvailabilityRepo: AvailabilityRepository = {
-      listByVolunteerInRange: async (
+      listByVolunteers: async (
         churchId: ChurchId,
-        volunteerId: VolunteerId,
-        _startTime: Date,
-        _endTime: Date,
+        volunteerIds: VolunteerId[],
       ) => {
         return [
           new Availability({
-            churchId,
-            volunteerId,
-            type: 'unavailable',
-            startTime: new Date('2024-06-01T10:00:00Z'),
-            endTime: new Date('2024-06-01T12:00:00Z'),
-            isAllDay: false,
+            props: {
+              churchId,
+              availabilityCheckId: 'check-1' as any,
+              shiftId: 'shift-1' as any,
+              volunteerId: volunteerIds[0] as VolunteerId,
+              shiftStartTime: new Date('2024-06-01T10:00:00Z'),
+              shiftEndTime: new Date('2024-06-01T12:00:00Z'),
+            },
           }),
         ];
       },
@@ -56,13 +56,10 @@ describe('Coverage L1: Availability Engine Data Access', () => {
     const rangeStart = new Date('2024-06-01T00:00:00Z');
     const rangeEnd = new Date('2024-06-01T23:59:59Z');
 
-    // Retrieve availability blockouts
-    const blockouts = await mockAvailabilityRepo.listByVolunteerInRange(
-      churchId,
+    // Retrieve unavailability marks
+    const blockouts = await mockAvailabilityRepo.listByVolunteers(churchId, [
       volunteerId,
-      rangeStart,
-      rangeEnd,
-    );
+    ]);
 
     // Retrieve existing assignments
     const assignments = await mockAssignmentRepo.listByVolunteerInRange(
@@ -77,10 +74,10 @@ describe('Coverage L1: Availability Engine Data Access', () => {
       id: b.id,
       churchId: b.churchId,
       timeRange: {
-        start: b.startTime,
-        end: b.endTime,
+        start: b.shiftStartTime,
+        end: b.shiftEndTime,
       },
-      isAllDay: b.isAllDay,
+      isAllDay: false,
     }));
 
     const engineAssignments = assignments.map((a) => ({

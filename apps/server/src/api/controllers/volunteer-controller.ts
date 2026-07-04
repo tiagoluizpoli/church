@@ -4,9 +4,10 @@ import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
   AssignmentId,
-  AvailabilityId,
+  AvailabilityCheckId,
   ChurchId,
   MinistryId,
+  ShiftId,
   UserId,
   VolunteerId,
   VolunteerNotificationId,
@@ -21,10 +22,12 @@ import {
 import {
   assignmentListResponseSchema,
   assignmentResponseSchema,
-  availabilityListResponseSchema,
+  availabilityCheckDetailResponseSchema,
+  availabilityCheckListResponseSchema,
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
   respondToAssignmentBodySchema,
+  setUnavailabilityMarksBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 import { headersFromRequest } from '../utils/headers';
@@ -33,8 +36,8 @@ interface MinistryRouteParams {
   ministryId: string;
 }
 
-interface AvailabilityRouteParams {
-  availabilityId: string;
+interface AvailabilityCheckRouteParams {
+  checkId: string;
 }
 
 interface AssignmentRouteParams {
@@ -138,30 +141,87 @@ export class VolunteerController implements FastifyController {
     );
 
     app.get(
-      '/availability',
+      '/availability-checks',
       {
         schema: {
           tags: ['volunteer'],
-          operationId: 'getMyAvailability',
-          response: { 200: availabilityListResponseSchema },
+          operationId: 'listAvailabilityChecks',
+          response: { 200: availabilityCheckListResponseSchema },
         },
       },
       async (request, reply) => {
-        const items = await this.volunteerManager.getAvailability({
+        const summaries = await this.volunteerManager.listAvailabilityChecks({
           volunteerId: VolunteerId.from(request.volunteerId),
           churchId: ChurchId.from(request.churchId),
         });
-        return reply.send(volunteerMapper.availabilityListToResponse(items));
+        return reply.send(
+          volunteerMapper.availabilityCheckListToResponse(summaries),
+        );
       },
     );
 
-    app.delete(
-      '/availability/:availabilityId',
-      { schema: { tags: ['volunteer'], operationId: 'deleteAvailability' } },
+    app.get(
+      '/availability-checks/:checkId',
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'getAvailabilityCheck',
+          response: { 200: availabilityCheckDetailResponseSchema },
+        },
+      },
       async (request, reply) => {
-        const { availabilityId } = request.params as AvailabilityRouteParams;
-        await this.volunteerManager.deleteAvailability({
-          availabilityId: AvailabilityId.from(availabilityId),
+        const { checkId } = request.params as AvailabilityCheckRouteParams;
+        const detail = await this.volunteerManager.getAvailabilityCheck({
+          checkId: AvailabilityCheckId.from(checkId),
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
+        });
+        return reply.send(
+          volunteerMapper.availabilityCheckDetailToResponse(detail),
+        );
+      },
+    );
+
+    app.put(
+      '/availability-checks/:checkId/marks',
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'setUnavailabilityMarks',
+          body: setUnavailabilityMarksBodySchema,
+          response: { 200: availabilityCheckDetailResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { checkId } = request.params as AvailabilityCheckRouteParams;
+        const body = request.body as z.infer<
+          typeof setUnavailabilityMarksBodySchema
+        >;
+        const detail = await this.volunteerManager.setUnavailability({
+          checkId: AvailabilityCheckId.from(checkId),
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
+          shiftIds: body.shiftIds.map((shiftId) => ShiftId.from(shiftId)),
+          wholeDayDates: body.wholeDayDates,
+        });
+        return reply.send(
+          volunteerMapper.availabilityCheckDetailToResponse(detail),
+        );
+      },
+    );
+
+    app.post(
+      '/availability-checks/:checkId/confirm',
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'confirmAvailabilityCheck',
+        },
+      },
+      async (request, reply) => {
+        const { checkId } = request.params as AvailabilityCheckRouteParams;
+        await this.volunteerManager.confirmAvailabilityCheck({
+          checkId: AvailabilityCheckId.from(checkId),
           volunteerId: VolunteerId.from(request.volunteerId),
           churchId: ChurchId.from(request.churchId),
         });

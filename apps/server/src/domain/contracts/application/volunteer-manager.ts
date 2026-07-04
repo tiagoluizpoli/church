@@ -1,18 +1,15 @@
 import type {
   AssignmentId,
-  AvailabilityId,
+  AvailabilityCheckId,
   ChurchId,
-  EventId,
   MinistryId,
+  ShiftId,
   UserId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
-import type {
-  Availability,
-  AvailabilityType,
-} from '../../entities/availability';
+import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { VolunteerNotification } from '../../entities/volunteer-notification';
 
 export interface DashboardAvailabilityTask {
@@ -98,17 +95,76 @@ export interface MinistrySchedule {
   events: MinistryScheduleEvent[];
 }
 
-export interface UpsertAvailabilityInput {
-  availabilityId?: AvailabilityId;
-  churchId: ChurchId;
-  endTime: Date;
-  eventId?: EventId;
-  isAllDay: boolean;
-  reason?: string;
-  repeatRule?: string;
+export interface VolunteerAvailabilityCheckSummary {
+  id: string;
+  planningCycleId: string;
+  planningCycleName: string;
+  ministryId: string;
+  ministryName: string;
+  state: AvailabilityCheckState;
+  confirmedAt?: Date;
+  totalShiftCount: number;
+  unavailableShiftCount: number;
+}
+
+export interface VolunteerCheckShift {
+  shiftId: string;
+  eventId: string;
+  eventTitle: string;
   startTime: Date;
-  type: AvailabilityType;
+  endTime: Date;
+  label?: string;
+  available: boolean;
+}
+
+export interface VolunteerAvailabilityCheckDetail {
+  id: string;
+  planningCycleId: string;
+  planningCycleName: string;
+  ministryId: string;
+  ministryName: string;
+  state: AvailabilityCheckState;
+  confirmedAt?: Date;
+  shifts: VolunteerCheckShift[];
+}
+
+export interface ListAvailabilityChecksInput {
   volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface GetAvailabilityCheckInput {
+  checkId: AvailabilityCheckId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface SetUnavailabilityInput {
+  checkId: AvailabilityCheckId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+  shiftIds: ShiftId[];
+  /** Church-local dates (`yyyy-MM-dd`); each expands to one mark per shift on that date. */
+  wholeDayDates?: string[];
+}
+
+export interface ConfirmAvailabilityCheckInput {
+  checkId: AvailabilityCheckId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
+export interface AvailabilityOverlapItem {
+  shiftId: string;
+  otherShiftId: string;
+  ministryId: string;
+  otherMinistryId: string;
+}
+
+export interface ConfirmAvailabilityCheckResult {
+  state: AvailabilityCheckState;
+  confirmedAt: Date;
+  overlaps: AvailabilityOverlapItem[];
 }
 
 export interface RespondToAssignmentInput {
@@ -138,19 +194,6 @@ export interface GetMinistryScheduleInput {
   ministryId: MinistryId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
-}
-
-export interface DeleteAvailabilityInput {
-  availabilityId: AvailabilityId;
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-}
-
-export interface GetAvailabilityInput {
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-  startTime?: Date;
-  endTime?: Date;
 }
 
 export interface GetNotificationsInput {
@@ -187,9 +230,18 @@ export interface IVolunteerManager {
   getMinistrySchedule(
     input: GetMinistryScheduleInput,
   ): Promise<MinistrySchedule>;
-  upsertAvailability(input: UpsertAvailabilityInput): Promise<Availability>;
-  deleteAvailability(input: DeleteAvailabilityInput): Promise<void>;
-  getAvailability(input: GetAvailabilityInput): Promise<Availability[]>;
+  listAvailabilityChecks(
+    input: ListAvailabilityChecksInput,
+  ): Promise<VolunteerAvailabilityCheckSummary[]>;
+  getAvailabilityCheck(
+    input: GetAvailabilityCheckInput,
+  ): Promise<VolunteerAvailabilityCheckDetail>;
+  setUnavailability(
+    input: SetUnavailabilityInput,
+  ): Promise<VolunteerAvailabilityCheckDetail>;
+  confirmAvailabilityCheck(
+    input: ConfirmAvailabilityCheckInput,
+  ): Promise<ConfirmAvailabilityCheckResult>;
   respondToAssignment(input: RespondToAssignmentInput): Promise<Assignment>;
   getNotifications(
     input: GetNotificationsInput,

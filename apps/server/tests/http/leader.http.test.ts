@@ -44,6 +44,7 @@ const participationManager = {
 
 const availabilityCheckManager = {
   fireAvailability: vi.fn(),
+  listCycleCheckStatuses: vi.fn(),
   resendReminder: vi.fn(),
 };
 
@@ -236,6 +237,42 @@ describe('Leader participation routes', () => {
     expect(response.json()).toEqual({
       error: 'ILLEGAL_STATE_TRANSITION',
       message: 'Cannot transition from availability_fired to fire',
+    });
+  });
+
+  it('GET /api/v1/leader/cycles/:id/availability-status returns 200', async () => {
+    availabilityCheckManager.listCycleCheckStatuses.mockResolvedValue([
+      {
+        volunteerId: 'vol-1',
+        volunteerName: 'E2E Volunteer',
+        state: 'confirmed',
+        confirmedAt: new Date('2026-08-03T10:00:00.000Z'),
+      },
+      {
+        volunteerId: 'vol-2',
+        volunteerName: 'Grace Hopper',
+      },
+    ]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/leader/cycles/11111111-1111-1111-8111-111111111111/availability-status?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      statuses: [
+        {
+          volunteerId: 'vol-1',
+          volunteerName: 'E2E Volunteer',
+          state: 'confirmed',
+          confirmedAt: '2026-08-03T10:00:00.000Z',
+        },
+        {
+          volunteerId: 'vol-2',
+          volunteerName: 'Grace Hopper',
+        },
+      ],
     });
   });
 });

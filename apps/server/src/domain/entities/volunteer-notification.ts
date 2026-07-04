@@ -15,6 +15,7 @@ export const VOLUNTEER_NOTIFICATION_TYPE_OPTIONS = [
   'assignment_changed',
   'assignment_removed',
   'availability_reminder',
+  'availability_conflict',
   'assignment_reminder',
 ] as const;
 export type VolunteerNotificationType =

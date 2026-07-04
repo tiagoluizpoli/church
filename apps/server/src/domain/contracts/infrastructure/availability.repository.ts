@@ -1,51 +1,28 @@
 import type {
-  AvailabilityId,
+  AvailabilityCheckId,
   ChurchId,
   EventId,
+  ShiftId,
   VolunteerId,
 } from '../../branded-ids';
-import type {
-  Availability,
-  AvailabilityType,
-} from '../../entities/availability';
+import type { Availability } from '../../entities/availability';
 import type { TransactionContext } from './transaction-context';
 
-export interface CreateAvailabilityInput {
-  volunteerId: VolunteerId;
-  eventId?: EventId;
-  type: AvailabilityType;
-  startTime: Date;
-  endTime: Date;
-  isAllDay: boolean;
-  reason?: string;
-  repeatRule?: string;
+export interface ListMarksByCheckInput {
+  churchId: ChurchId;
+  availabilityCheckId: AvailabilityCheckId;
+  tx?: TransactionContext;
 }
 
-export interface UpdateAvailabilityInput {
-  eventId?: EventId;
-  type?: AvailabilityType;
-  startTime?: Date;
-  endTime?: Date;
-  isAllDay?: boolean;
-  reason?: string;
-  repeatRule?: string;
+export interface ReplaceMarksForCheckInput {
+  churchId: ChurchId;
+  availabilityCheckId: AvailabilityCheckId;
+  shiftIds: ShiftId[];
+  tx?: TransactionContext;
 }
 
+/** Unavailability marks: existence of a row = volunteer unavailable for that shift. */
 export interface AvailabilityRepository {
-  getById(
-    churchId: ChurchId,
-    id: AvailabilityId,
-    tx?: TransactionContext,
-  ): Promise<Availability>;
-
-  listByVolunteerInRange(
-    churchId: ChurchId,
-    volunteerId: VolunteerId,
-    startTime: Date,
-    endTime: Date,
-    tx?: TransactionContext,
-  ): Promise<Availability[]>;
-
   listByVolunteerForEvent(
     churchId: ChurchId,
     volunteerId: VolunteerId,
@@ -53,29 +30,15 @@ export interface AvailabilityRepository {
     tx?: TransactionContext,
   ): Promise<Availability[]>;
 
-  /** Bulk-fetch availability entries for a set of volunteers. */
+  /** Bulk-fetch unavailability marks for a set of volunteers. */
   listByVolunteers(
     churchId: ChurchId,
     volunteerIds: VolunteerId[],
     tx?: TransactionContext,
   ): Promise<Availability[]>;
 
-  create(
-    churchId: ChurchId,
-    input: CreateAvailabilityInput,
-    tx?: TransactionContext,
-  ): Promise<Availability>;
+  listMarksByCheck(input: ListMarksByCheckInput): Promise<Availability[]>;
 
-  update(
-    churchId: ChurchId,
-    id: AvailabilityId,
-    input: UpdateAvailabilityInput,
-    tx?: TransactionContext,
-  ): Promise<void>;
-
-  delete(
-    churchId: ChurchId,
-    id: AvailabilityId,
-    tx?: TransactionContext,
-  ): Promise<void>;
+  /** Replaces the check's full mark set (PUT semantics). */
+  replaceMarksForCheck(input: ReplaceMarksForCheckInput): Promise<void>;
 }

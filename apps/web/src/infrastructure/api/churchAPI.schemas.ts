@@ -993,6 +993,10 @@ export type GetCycleParticipationParams = {
 ministryId: string;
 };
 
+export type GetCycleAvailabilityStatusParams = {
+ministryId: string;
+};
+
 export type GetCycleParticipation200EventsItemParticipationState = typeof GetCycleParticipation200EventsItemParticipationState[keyof typeof GetCycleParticipation200EventsItemParticipationState];
 
 
@@ -1197,6 +1201,25 @@ export type FireAvailability202 = {
   notifiedVolunteerCount: number;
 };
 
+export type GetAvailabilityStatus200StatusesItemState = typeof GetAvailabilityStatus200StatusesItemState[keyof typeof GetAvailabilityStatus200StatusesItemState];
+
+
+export const GetAvailabilityStatus200StatusesItemState = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+} as const;
+
+export type GetAvailabilityStatus200StatusesItem = {
+  volunteerId: string;
+  volunteerName: string;
+  state?: GetAvailabilityStatus200StatusesItemState;
+  confirmedAt?: string;
+};
+
+export type GetAvailabilityStatus200 = {
+  statuses: GetAvailabilityStatus200StatusesItem[];
+};
+
 export type GetVolunteerDashboard200AvailabilityTasksItemEventType = typeof GetVolunteerDashboard200AvailabilityTasksItemEventType[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemEventType];
 
 
@@ -1361,29 +1384,92 @@ export type GetMinistrySchedule200 = {
   events: GetMinistrySchedule200EventsItem[];
 };
 
-export type GetMyAvailability200AvailabilityItemType = typeof GetMyAvailability200AvailabilityItemType[keyof typeof GetMyAvailability200AvailabilityItemType];
+export type ListAvailabilityChecks200ChecksItemState = typeof ListAvailabilityChecks200ChecksItemState[keyof typeof ListAvailabilityChecks200ChecksItemState];
 
 
-export const GetMyAvailability200AvailabilityItemType = {
-  available: 'available',
-  unavailable: 'unavailable',
+export const ListAvailabilityChecks200ChecksItemState = {
+  pending: 'pending',
+  confirmed: 'confirmed',
 } as const;
 
-export type GetMyAvailability200AvailabilityItem = {
+export type ListAvailabilityChecks200ChecksItem = {
   id: string;
-  churchId: string;
-  volunteerId: string;
-  eventId?: string;
-  type: GetMyAvailability200AvailabilityItemType;
-  startTime: string;
-  endTime: string;
-  isAllDay: boolean;
-  reason?: string;
-  repeatRule?: string;
+  planningCycleId: string;
+  planningCycleName: string;
+  ministryId: string;
+  ministryName: string;
+  state: ListAvailabilityChecks200ChecksItemState;
+  confirmedAt?: string;
+  totalShiftCount: number;
+  unavailableShiftCount: number;
 };
 
-export type GetMyAvailability200 = {
-  availability: GetMyAvailability200AvailabilityItem[];
+export type ListAvailabilityChecks200 = {
+  checks: ListAvailabilityChecks200ChecksItem[];
+};
+
+export type GetAvailabilityCheck200State = typeof GetAvailabilityCheck200State[keyof typeof GetAvailabilityCheck200State];
+
+
+export const GetAvailabilityCheck200State = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+} as const;
+
+export type GetAvailabilityCheck200ShiftsItem = {
+  shiftId: string;
+  eventId: string;
+  eventTitle: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  available: boolean;
+};
+
+export type GetAvailabilityCheck200 = {
+  id: string;
+  planningCycleId: string;
+  planningCycleName: string;
+  ministryId: string;
+  ministryName: string;
+  state: GetAvailabilityCheck200State;
+  confirmedAt?: string;
+  shifts: GetAvailabilityCheck200ShiftsItem[];
+};
+
+export type SetUnavailabilityMarksBody = {
+  shiftIds: string[];
+  /** @items.pattern ^\d{4}-\d{2}-\d{2}$ */
+  wholeDayDates?: string[];
+};
+
+export type SetUnavailabilityMarks200State = typeof SetUnavailabilityMarks200State[keyof typeof SetUnavailabilityMarks200State];
+
+
+export const SetUnavailabilityMarks200State = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+} as const;
+
+export type SetUnavailabilityMarks200ShiftsItem = {
+  shiftId: string;
+  eventId: string;
+  eventTitle: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  available: boolean;
+};
+
+export type SetUnavailabilityMarks200 = {
+  id: string;
+  planningCycleId: string;
+  planningCycleName: string;
+  ministryId: string;
+  ministryName: string;
+  state: SetUnavailabilityMarks200State;
+  confirmedAt?: string;
+  shifts: SetUnavailabilityMarks200ShiftsItem[];
 };
 
 export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];
@@ -1431,6 +1517,7 @@ export const GetNotifications200ItemsItemType = {
   assignment_changed: 'assignment_changed',
   assignment_removed: 'assignment_removed',
   availability_reminder: 'availability_reminder',
+  availability_conflict: 'availability_conflict',
   assignment_reminder: 'assignment_reminder',
 } as const;
 
@@ -1458,4 +1545,3 @@ export type GetNotifications200 = {
 export type MarkNotificationRead200 = {
   marked: boolean;
 };
-

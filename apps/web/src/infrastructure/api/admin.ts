@@ -21,6 +21,8 @@ import type {
   GenerateSlots201,
   GenerateSlotsBody,
   GetAssignmentAudit200,
+  GetAvailabilityStatus200,
+  GetCycleAvailabilityStatusParams,
   GetCycleParticipation200,
   GetCycleParticipationParams,
   GetMinistryServingProfile200,
@@ -320,7 +322,11 @@ const listMinistries = (
     },
       );
     }
-  const getMinistryServingProfile = (
+  /**
+ * Get the serving profile for a specific ministry, including roles and teams.
+ * @summary getMinistryServingProfile
+ */
+const getMinistryServingProfile = (
     ministryId: string,
  ) => {
       return apiClient<GetMinistryServingProfile200>(
@@ -421,6 +427,24 @@ const listMinistries = (
     },
       );
     }
+  const getCycleAvailabilityStatus = (
+    cycleId: string,
+    params: GetCycleAvailabilityStatusParams,
+ ) => {
+      return apiClient<GetAvailabilityStatus200>(
+      {url: `/api/v1/leader/cycles/${cycleId}/availability-status`, method: 'GET',
+        params
+    },
+      );
+    }
+  const getAvailabilityStatus = (
+    participationId: string,
+ ) => {
+      return apiClient<GetAvailabilityStatus200>(
+      {url: `/api/v1/leader/participations/${participationId}/availability-status`, method: 'GET'
+    },
+      );
+    }
   const resendAvailabilityReminder = (
     participationId: string,
  ) => {
@@ -429,7 +453,7 @@ const listMinistries = (
     },
       );
     }
-  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,resendAvailabilityReminder}};
+  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistries']>>>
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEvents']>>>
@@ -467,4 +491,6 @@ export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof
 export type DeleteShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteShift']>>>
 export type UpsertShiftRequirementResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['upsertShiftRequirement']>>>
 export type FireAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['fireAvailability']>>>
+export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getCycleAvailabilityStatus']>>>
+export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getAvailabilityStatus']>>>
 export type ResendAvailabilityReminderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['resendAvailabilityReminder']>>>

@@ -184,10 +184,9 @@ export function useVolunteerDashboard({
 
   const availabilityQuery = useQuery({
     queryKey: ['my-availability'],
-    queryFn: async () => {
-      await volunteerApi.getMyAvailability();
-      return { slots: [] };
-    },
+    // Free-span availability was removed with the 017 reshape; the dashboard
+    // availability section migrates to availability checks in T067a.
+    queryFn: async () => ({ slots: [] }),
   });
 
   const ministryScheduleQuery = useQuery({

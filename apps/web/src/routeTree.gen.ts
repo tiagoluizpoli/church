@@ -16,6 +16,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SchedulingIndexRouteImport } from './routes/scheduling/index'
+import { Route as VolunteerAvailabilityRouteImport } from './routes/volunteer/availability'
 import { Route as SchedulingTailoringRouteImport } from './routes/scheduling/tailoring'
 import { Route as SchedulingPlanningRouteImport } from './routes/scheduling/planning'
 import { Route as SchedulingEventsEventIdBuilderRouteImport } from './routes/scheduling/events/$eventId/builder'
@@ -55,6 +56,11 @@ const SchedulingIndexRoute = SchedulingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SchedulingRoute,
 } as any)
+const VolunteerAvailabilityRoute = VolunteerAvailabilityRouteImport.update({
+  id: '/volunteer/availability',
+  path: '/volunteer/availability',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SchedulingTailoringRoute = SchedulingTailoringRouteImport.update({
   id: '/tailoring',
   path: '/tailoring',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/todos': typeof TodosRoute
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
+  '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/todos': typeof TodosRoute
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
+  '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/todos': typeof TodosRoute
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
+  '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/todos'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
+    | '/volunteer/availability'
     | '/scheduling/'
     | '/scheduling/events/$eventId/builder'
   fileRoutesByTo: FileRoutesByTo
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/todos'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
+    | '/volunteer/availability'
     | '/scheduling'
     | '/scheduling/events/$eventId/builder'
   id:
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/todos'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
+    | '/volunteer/availability'
     | '/scheduling/'
     | '/scheduling/events/$eventId/builder'
   fileRoutesById: FileRoutesById
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SchedulingRoute: typeof SchedulingRouteWithChildren
   TodosRoute: typeof TodosRoute
+  VolunteerAvailabilityRoute: typeof VolunteerAvailabilityRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulingIndexRouteImport
       parentRoute: typeof SchedulingRoute
     }
+    '/volunteer/availability': {
+      id: '/volunteer/availability'
+      path: '/volunteer/availability'
+      fullPath: '/volunteer/availability'
+      preLoaderRoute: typeof VolunteerAvailabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scheduling/tailoring': {
       id: '/scheduling/tailoring'
       path: '/tailoring'
@@ -255,6 +275,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SchedulingRoute: SchedulingRouteWithChildren,
   TodosRoute: TodosRoute,
+  VolunteerAvailabilityRoute: VolunteerAvailabilityRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

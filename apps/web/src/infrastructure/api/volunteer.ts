@@ -5,14 +5,17 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  GetAvailabilityCheck200,
   GetMinistrySchedule200,
   GetMyAssignments200,
-  GetMyAvailability200,
   GetNotifications200,
   GetVolunteerDashboard200,
+  ListAvailabilityChecks200,
   MarkNotificationRead200,
   RespondToAssignment200,
-  RespondToAssignmentBody
+  RespondToAssignmentBody,
+  SetUnavailabilityMarks200,
+  SetUnavailabilityMarksBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -45,19 +48,38 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const getMyAvailability = (
+  const listAvailabilityChecks = (
 
  ) => {
-      return apiClient<GetMyAvailability200>(
-      {url: `/api/v1/volunteer/availability`, method: 'GET'
+      return apiClient<ListAvailabilityChecks200>(
+      {url: `/api/v1/volunteer/availability-checks`, method: 'GET'
     },
       );
     }
-  const deleteAvailability = (
-    availabilityId: string,
+  const getAvailabilityCheck = (
+    checkId: string,
+ ) => {
+      return apiClient<GetAvailabilityCheck200>(
+      {url: `/api/v1/volunteer/availability-checks/${checkId}`, method: 'GET'
+    },
+      );
+    }
+  const setUnavailabilityMarks = (
+    checkId: string,
+    setUnavailabilityMarksBody: SetUnavailabilityMarksBody,
+ ) => {
+      return apiClient<SetUnavailabilityMarks200>(
+      {url: `/api/v1/volunteer/availability-checks/${checkId}/marks`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: setUnavailabilityMarksBody
+    },
+      );
+    }
+  const confirmAvailabilityCheck = (
+    checkId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/volunteer/availability/${availabilityId}`, method: 'DELETE'
+      {url: `/api/v1/volunteer/availability-checks/${checkId}/confirm`, method: 'POST'
     },
       );
     }
@@ -96,12 +118,14 @@ const getVolunteerDashboard = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,getMyAvailability,deleteAvailability,respondToAssignment,getNotifications,markNotificationRead,markAllNotificationsRead}};
+  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailabilityMarks,confirmAvailabilityCheck,respondToAssignment,getNotifications,markNotificationRead,markAllNotificationsRead}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
-export type GetMyAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAvailability']>>>
-export type DeleteAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['deleteAvailability']>>>
+export type ListAvailabilityChecksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['listAvailabilityChecks']>>>
+export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAvailabilityCheck']>>>
+export type SetUnavailabilityMarksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['setUnavailabilityMarks']>>>
+export type ConfirmAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['confirmAvailabilityCheck']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
 export type GetNotificationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getNotifications']>>>
 export type MarkNotificationReadResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['markNotificationRead']>>>

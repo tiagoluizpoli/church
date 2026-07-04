@@ -13,6 +13,7 @@ import { Skeleton } from '@church/ui/components/skeleton';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { AvailabilityStatusSection } from './availability-status-section';
 import {
   buildCycleOptions,
   countIncludedSlots,
@@ -122,20 +123,17 @@ export function ParticipationTailoring() {
       return;
     }
 
-    const stillExists = cycleOptions.some(
-      (opt) => opt.planningCycleId === selectedCycleId,
-    );
+    const stillExists = cycleOptions.some((opt) => opt.id === selectedCycleId);
     if (!stillExists && cycleOptions[0]) {
-      setSelectedCycleId(cycleOptions[0].planningCycleId);
+      setSelectedCycleId(cycleOptions[0].id);
     }
   }, [cycleOptions, selectedCycleId]);
 
   const participationQuery = useQuery({
     queryKey: ['cycle-participation', selectedMinistryId, selectedCycleId],
     queryFn: () =>
-      adminApi.getCycleParticipation({
+      adminApi.getCycleParticipation(selectedCycleId ?? '', {
         ministryId: selectedMinistryId ?? '',
-        cycleId: selectedCycleId ?? '',
       }),
     enabled: Boolean(selectedMinistryId && selectedCycleId),
     retry: false,
@@ -511,6 +509,13 @@ export function ParticipationTailoring() {
           ))}
         </div>
       )}
+
+      {selectedCycleId && selectedMinistryId ? (
+        <AvailabilityStatusSection
+          cycleId={selectedCycleId}
+          ministryId={selectedMinistryId}
+        />
+      ) : null}
     </div>
   );
 }

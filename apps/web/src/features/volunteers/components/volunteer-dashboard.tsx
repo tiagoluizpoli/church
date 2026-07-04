@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@church/ui/components/dialog';
+import { Link } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { useDashboardRefresh } from '../hooks/use-dashboard-refresh';
 import { useNotificationInbox } from '../hooks/use-notification-inbox';
@@ -136,6 +137,12 @@ export function VolunteerDashboard({
               ? `Review what needs your attention, ${volunteerName}.`
               : 'Review what needs your attention.'}
           </CardDescription>
+          <Link
+            to="/volunteer/availability"
+            className="text-primary text-sm hover:underline"
+          >
+            View availability checks
+          </Link>
         </CardHeader>
       </Card>
 

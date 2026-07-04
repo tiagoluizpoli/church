@@ -74,6 +74,7 @@ export const volunteerNotificationTypeEnum = pgEnum(
     'assignment_changed',
     'assignment_removed',
     'availability_reminder',
+    'availability_conflict',
     'assignment_reminder',
   ],
 );

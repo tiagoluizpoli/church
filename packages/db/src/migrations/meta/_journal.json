@@ -57,6 +57,13 @@
       "when": 1783082091163,
       "tag": "0007_massive_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783119358229,
+      "tag": "0008_light_bucky",
+      "breakpoints": true
     }
   ]
 }

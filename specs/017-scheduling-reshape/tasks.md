@@ -138,18 +138,18 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 ### Tests (write first, must fail)
 
-- [ ] T050 [P] [US3] L1 `AvailabilityCheck` + `Availability` mark + `AvailabilityOverlap` — DL1-AC-01..04, DL1-AV-01..04, DL1-OV-01..04.
-- [ ] T051 [P] [US3] L2 volunteer availability — DL2-VA-01..07 (marks-only, whole-day, confirm zero-marks, permission, both flag states, conflict flagged).
-- [ ] T052 [P] [US3] L3 HTTP — DL3-HT-08 (marks own/other), DL3-HT-09 (confirm + overlap flag).
-- [ ] T053 [P] [US3] E2E DL4-US3 (both flag states) in `us3-volunteer-availability.spec.ts`.
+- [X] T050 [P] [US3] L1 `AvailabilityCheck` + `Availability` mark + `AvailabilityOverlap` — DL1-AC-01..04, DL1-AV-01..04, DL1-OV-01..04.
+- [X] T051 [P] [US3] L2 volunteer availability — DL2-VA-01..07 (marks-only, whole-day, confirm zero-marks, permission, both flag states, conflict flagged).
+- [X] T052 [P] [US3] L3 HTTP — DL3-HT-08 (marks own/other), DL3-HT-09 (confirm + overlap flag).
+- [X] T053 [P] [US3] E2E DL4-US3 (both flag states) in `us3-volunteer-availability.spec.ts`.
 
 ### Implementation
 
-- [ ] T054 [P] [US3] `AvailabilityCheck` entity (confirm gate) + `Availability` reshape (mark) + repos/mappers.
-- [ ] T055 [P] [US3] `AvailabilityOverlap` domain service (same-date cross-ministry shift intersection).
-- [ ] T056 [US3] Extend `IVolunteerManager`/`DbVolunteerManager`: listChecks, getCheck, setUnavailability, confirm (overlap policy via flag, flag conflict to leaders).
-- [ ] T057 [US3] Extend `volunteer-controller.ts` (checks/marks/confirm) + DTOs; remove old free-span `PUT /volunteer/availability`; DI.
-- [ ] T058 [US3] Web: availability-check list, per-shift/whole-day marking, confirm; overlap warning; orval regen.
+- [X] T054 [P] [US3] `AvailabilityCheck` entity (confirm gate) + `Availability` reshape (mark) + repos/mappers.
+- [X] T055 [P] [US3] `AvailabilityOverlap` domain service (same-date cross-ministry shift intersection).
+- [X] T056 [US3] Extend `IVolunteerManager`/`DbVolunteerManager`: listChecks, getCheck, setUnavailability, confirm (overlap policy via flag, flag conflict to leaders).
+- [X] T057 [US3] Extend `volunteer-controller.ts` (checks/marks/confirm) + DTOs; remove old free-span `PUT /volunteer/availability`; DI.
+- [X] T058 [US3] Web: availability-check list, per-shift/whole-day marking, confirm; overlap warning; orval regen.
 
 **Checkpoint**: availability pipeline complete end to end.
 

@@ -7,7 +7,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryId,
@@ -159,7 +159,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   ): Promise<Volunteer[]> {
     const db = getClient(this.db, tx);
     const rows = await db
-      .select({ volunteer })
+      .select({ volunteer, userName: user.name })
       .from(volunteer)
       .innerJoin(
         ministryVolunteer,
@@ -167,14 +167,16 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryVolunteer.volunteerId, volunteer.id),
           eq(ministryVolunteer.ministryId, ministryId),
           eq(ministryVolunteer.status, 'active'),
+          ne(ministryVolunteer.systemRole, 'leader'),
         ),
       )
       .innerJoin(
         role,
         and(eq(role.id, roleId), eq(role.ministryId, ministryId)),
       )
+      .innerJoin(user, eq(user.id, volunteer.userId))
       .where(withChurchIsolation(volunteer, churchId));
-    return rows.map((r) => mapVolunteer(r.volunteer));
+    return rows.map((r) => mapVolunteer(r.volunteer, r.userName));
   }
 
   async updateStatus(

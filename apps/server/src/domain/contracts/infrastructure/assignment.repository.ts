@@ -2,7 +2,9 @@ import type {
   AssignmentId,
   ChurchId,
   EventId,
+  MinistryParticipationId,
   RoleId,
+  ShiftId,
   TimeSlotId,
   UserId,
   VolunteerId,
@@ -11,7 +13,9 @@ import type { Assignment, AssignmentStatus } from '../../entities/assignment';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAssignmentInput {
-  slotId: TimeSlotId;
+  slotId?: TimeSlotId;
+  participationId?: MinistryParticipationId;
+  shiftId?: ShiftId;
   volunteerId: VolunteerId;
   roleId: RoleId;
   status?: AssignmentStatus;
@@ -53,6 +57,18 @@ export interface AssignmentRepository {
   listByEvent(
     churchId: ChurchId,
     eventId: EventId,
+    tx?: TransactionContext,
+  ): Promise<Assignment[]>;
+
+  listByParticipation(
+    churchId: ChurchId,
+    participationId: MinistryParticipationId,
+    tx?: TransactionContext,
+  ): Promise<Assignment[]>;
+
+  listByShift(
+    churchId: ChurchId,
+    shiftId: ShiftId,
     tx?: TransactionContext,
   ): Promise<Assignment[]>;
 

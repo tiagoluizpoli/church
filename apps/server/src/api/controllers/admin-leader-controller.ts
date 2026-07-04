@@ -50,6 +50,7 @@ import { headersFromRequest } from '../utils/headers';
 
 interface ScheduleBuilderQuery {
   eventId: string;
+  ministryId?: string;
 }
 
 interface ListEventsQuery {
@@ -149,16 +150,20 @@ export class AdminLeaderController implements FastifyController {
         schema: {
           tags: ['admin'],
           operationId: 'getScheduleBuilderData',
-          query: z.object({ eventId: z.string() }),
+          query: z.object({
+            eventId: z.string(),
+            ministryId: z.string().optional(),
+          }),
           response: { 200: scheduleBuilderDataResponseSchema },
         },
       },
       async (request, reply) => {
-        const { eventId } = request.query as ScheduleBuilderQuery;
+        const { eventId, ministryId } = request.query as ScheduleBuilderQuery;
         const data = await this.eventManager.getScheduleBuilderData({
           churchId: ChurchId.from(request.churchId),
           eventId: EventId.from(eventId),
           volunteerId: VolunteerId.from(request.volunteerId),
+          ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
         });
         return reply.send(eventMapper.scheduleBuilderToResponse(data));
       },

@@ -70,6 +70,8 @@ export const scheduleBuilderDataResponseSchema = z.object({
       id: z.string(),
       churchId: z.string(),
       slotId: z.string(),
+      participationId: z.string().optional(),
+      shiftId: z.string().optional(),
       volunteerId: z.string(),
       roleId: z.string(),
       status: z.enum([
@@ -153,6 +155,8 @@ export const eventMapper = {
         id: a.id as string,
         churchId: a.churchId as string,
         slotId: a.slotId as string,
+        participationId: a.participationId as string | undefined,
+        shiftId: a.shiftId as string | undefined,
         volunteerId: a.volunteerId as string,
         roleId: a.roleId as string,
         status: a.status,

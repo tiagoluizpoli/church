@@ -8,6 +8,8 @@ import type {
   GetParticipationInput,
   ListInclusionsInput,
   ListParticipationsByEventInput,
+  ListParticipationsByIdsInput,
+  ListParticipationsByMinistryInput,
   MinistryParticipationRepository,
   ReplaceInclusionsInput,
   UpdateParticipationStateInput,
@@ -102,6 +104,48 @@ export class DrizzleMinistryParticipationRepository
       .where(
         and(
           eq(ministryParticipation.eventId, input.eventId),
+          withChurchIsolation(ministryParticipation, input.churchId),
+        ),
+      );
+
+    return rows.map(mapMinistryParticipation);
+  }
+
+  async listByMinistry(
+    input: ListParticipationsByMinistryInput,
+  ): Promise<MinistryParticipation[]> {
+    const db = getClient(this.db, input.tx);
+    const conditions = [
+      eq(ministryParticipation.ministryId, input.ministryId),
+      withChurchIsolation(ministryParticipation, input.churchId),
+    ];
+
+    if (input.state) {
+      conditions.push(eq(ministryParticipation.state, input.state));
+    }
+
+    const rows = await db
+      .select()
+      .from(ministryParticipation)
+      .where(and(...conditions));
+
+    return rows.map(mapMinistryParticipation);
+  }
+
+  async listByIds(
+    input: ListParticipationsByIdsInput,
+  ): Promise<MinistryParticipation[]> {
+    if (input.participationIds.length === 0) {
+      return [];
+    }
+
+    const db = getClient(this.db, input.tx);
+    const rows = await db
+      .select()
+      .from(ministryParticipation)
+      .where(
+        and(
+          inArray(ministryParticipation.id, input.participationIds),
           withChurchIsolation(ministryParticipation, input.churchId),
         ),
       );

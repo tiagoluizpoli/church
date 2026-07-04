@@ -80,6 +80,11 @@ paths:
           in: query
           name: eventId
           required: true
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: false
       responses:
         "200":
           description: Default Response
@@ -210,6 +215,10 @@ paths:
                         churchId:
                           type: string
                         slotId:
+                          type: string
+                        participationId:
+                          type: string
+                        shiftId:
                           type: string
                         volunteerId:
                           type: string
@@ -893,6 +902,10 @@ paths:
                   churchId:
                     type: string
                   slotId:
+                    type: string
+                  participationId:
+                    type: string
+                  shiftId:
                     type: string
                   volunteerId:
                     type: string
@@ -2876,6 +2889,314 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/v1/leader/shifts/{shiftId}/eligible-volunteers:
+    get:
+      operationId: listEligibleVolunteers
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: shiftId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  volunteers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        volunteerId:
+                          type: string
+                        volunteerName:
+                          type: string
+                        isAvailable:
+                          type: boolean
+                        hasConflict:
+                          type: boolean
+                        lastServedAt:
+                          type: string
+                      required:
+                        - volunteerId
+                        - volunteerName
+                        - isAvailable
+                        - hasConflict
+                      additionalProperties: false
+                required:
+                  - volunteers
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/shifts/{shiftId}/assignments:
+    post:
+      operationId: createParticipationAssignment
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                volunteerId:
+                  type: string
+                roleId:
+                  type: string
+                teamId:
+                  type: string
+                override:
+                  type: object
+                  properties:
+                    reason:
+                      type: string
+                      minLength: 10
+                  required:
+                    - reason
+              required:
+                - volunteerId
+                - roleId
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: shiftId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignment:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      churchId:
+                        type: string
+                      slotId:
+                        type: string
+                      participationId:
+                        type: string
+                      shiftId:
+                        type: string
+                      volunteerId:
+                        type: string
+                      roleId:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - pending
+                          - confirmed
+                          - declined
+                          - cancelled
+                      reason:
+                        type: string
+                      assignedAt:
+                        type: string
+                      assignedBy:
+                        type: string
+                    required:
+                      - id
+                      - churchId
+                      - slotId
+                      - volunteerId
+                      - roleId
+                      - status
+                      - assignedAt
+                    additionalProperties: false
+                  warnings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - UNAVAILABLE
+                            - DOUBLE_BOOKED
+                            - FAIRNESS_EXCEEDED
+                        details:
+                          type: string
+                        conflictingId:
+                          type: string
+                      required:
+                        - type
+                        - details
+                      additionalProperties: false
+                required:
+                  - assignment
+                  - warnings
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/assignments/{assignmentId}:
+    delete:
+      operationId: deleteParticipationAssignment
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/participations/{participationId}/completion:
+    get:
+      operationId: getParticipationCompletion
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  participationId:
+                    type: string
+                  requiredCount:
+                    type: number
+                  assignedCount:
+                    type: number
+                  completionPercent:
+                    type: number
+                required:
+                  - participationId
+                  - requiredCount
+                  - assignedCount
+                  - completionPercent
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/participations/{participationId}/publish:
+    post:
+      operationId: publishParticipation
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmBelowFull:
+                  type: boolean
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: participationId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard
@@ -2960,6 +3281,10 @@ paths:
                                 type: string
                               slotId:
                                 type: string
+                              shiftId:
+                                type: string
+                              participationId:
+                                type: string
                               roleId:
                                 type: string
                               roleName:
@@ -2988,6 +3313,8 @@ paths:
                             required:
                               - assignmentId
                               - slotId
+                              - shiftId
+                              - participationId
                               - roleId
                               - roleName
                               - startTime
@@ -3077,6 +3404,10 @@ paths:
                         churchId:
                           type: string
                         slotId:
+                          type: string
+                        participationId:
+                          type: string
+                        shiftId:
                           type: string
                         volunteerId:
                           type: string
@@ -3456,6 +3787,10 @@ paths:
                     type: string
                   slotId:
                     type: string
+                  participationId:
+                    type: string
+                  shiftId:
+                    type: string
                   volunteerId:
                     type: string
                   roleId:
@@ -3580,6 +3915,64 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/v1/volunteer/schedule:
+    get:
+      operationId: getPublishedVolunteerSchedule
+      tags:
+        - volunteer
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        slotId:
+                          type: string
+                        participationId:
+                          type: string
+                        shiftId:
+                          type: string
+                        volunteerId:
+                          type: string
+                        roleId:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - pending
+                            - confirmed
+                            - declined
+                            - cancelled
+                        reason:
+                          type: string
+                        assignedAt:
+                          type: string
+                        assignedBy:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - slotId
+                        - volunteerId
+                        - roleId
+                        - status
+                        - assignedAt
+                      additionalProperties: false
+                required:
+                  - assignments
+                additionalProperties: false
 tags:
   - name: admin
     description: Admin and leader endpoints

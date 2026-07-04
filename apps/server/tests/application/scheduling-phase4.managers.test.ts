@@ -28,13 +28,17 @@ import {
   ShiftOutOfBoundsError,
 } from '../../src/domain/errors';
 import { DrizzleSchedulingRbacResolver } from '../../src/infrastructure/auth/drizzle-scheduling-rbac-resolver';
+import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import { LocalNotificationService } from '../../src/infrastructure/services/local-notification-service';
 import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
@@ -76,8 +80,13 @@ function createPhase4Managers(
       participationRepository,
       shiftRepository,
       eventRepository,
+      new DrizzleAssignmentRepository(schedulingTestDb),
+      new DrizzleAvailabilityRepository(schedulingTestDb),
       timeSlotRepository,
+      new DrizzleVolunteerRepository(schedulingTestDb),
+      new DrizzleMinistryRepository(schedulingTestDb),
       servingProfileRepository,
+      notificationService ?? notificationSpy,
       unitOfWork,
     ),
     availabilityManager: new DbAvailabilityCheckManager(

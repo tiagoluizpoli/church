@@ -17,6 +17,7 @@ import type {
   GetDashboardInput,
   GetMinistryScheduleInput,
   GetNotificationsInput,
+  GetPublishedScheduleInput,
   GetUpcomingAssignmentsInput,
   IVolunteerManager,
   ListAvailabilityChecksInput,
@@ -42,10 +43,11 @@ import type {
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
 import type { IFeatureFlagService } from '../domain/contracts/infrastructure/feature-flag-service';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
+import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
+import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TeamRepository } from '../domain/contracts/infrastructure/team.repository';
-import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { VolunteerNotificationRepository } from '../domain/contracts/infrastructure/volunteer-notification.repository';
@@ -120,10 +122,14 @@ function aggregateState(
   return 'mixed';
 }
 
-function scheduleSlotLabel(slot: TimeSlot): string {
+function scheduleShiftLabel(shift: {
+  label?: string;
+  startTime: Date;
+  endTime: Date;
+}): string {
   return (
-    slot.label ??
-    `${slot.startTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${slot.endTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+    shift.label ??
+    `${shift.startTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${shift.endTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
   );
 }
 
@@ -147,10 +153,12 @@ export class DbVolunteerManager implements IVolunteerManager {
     private readonly notificationRepo: VolunteerNotificationRepository,
     @inject('IEventRepository')
     private readonly eventRepo: EventRepository,
-    @inject('ITimeSlotRepository')
-    private readonly timeSlotRepo: TimeSlotRepository,
+    @inject('IShiftRepository')
+    private readonly shiftRepo: ShiftRepository,
     @inject('IMinistryRepository')
     private readonly ministryRepo: MinistryRepository,
+    @inject('IMinistryParticipationRepository')
+    private readonly participationRepo: MinistryParticipationRepository,
     @inject('IRoleRepository')
     private readonly roleRepo: RoleRepository,
     @inject('ITeamRepository')
@@ -249,39 +257,89 @@ export class DbVolunteerManager implements IVolunteerManager {
       );
 
     // Assignment groups: upcoming published assignments grouped by event
-    const allAssignments = await this.assignmentRepo.listByVolunteer(
+    const allAssignments = await this.listPublishedAssignmentsForVolunteer({
       churchId,
       volunteerId,
+    });
+    const participationIds = [
+      ...new Set(
+        allAssignments
+          .map((assignment) => assignment.participationId)
+          .filter(
+            (
+              participationId,
+            ): participationId is NonNullable<Assignment['participationId']> =>
+              participationId != null,
+          ),
+      ),
+    ];
+    const participations = await this.participationRepo.listByIds({
+      churchId,
+      participationIds,
+    });
+    const participationsById = new Map(
+      participations.map((participation) => [
+        participation.id as string,
+        participation,
+      ]),
+    );
+    const eventIds = [...new Set(participations.map((item) => item.eventId))];
+    const events = await Promise.all(
+      eventIds.map((eventId) => this.eventRepo.getById(churchId, eventId)),
+    );
+    const eventsById = new Map(
+      events.map((event) => [event.id as string, event]),
     );
 
     const groupMap = new Map<string, DashboardAssignmentGroupDraft>();
+    const assignmentShiftIds = [
+      ...new Set(
+        allAssignments
+          .map((assignment) => assignment.shiftId)
+          .filter(
+            (shiftId): shiftId is NonNullable<Assignment['shiftId']> =>
+              shiftId != null,
+          ),
+      ),
+    ];
+    const assignmentShifts = await Promise.all(
+      assignmentShiftIds.map((shiftId) =>
+        this.shiftRepo.getById({
+          churchId,
+          shiftId,
+        }),
+      ),
+    );
+    const assignmentShiftsById = new Map(
+      assignmentShifts.map((shift) => [shift.id as string, shift]),
+    );
 
     for (const assignment of allAssignments) {
       if (!isPublishedStatus(assignment.status)) continue;
 
-      const slot = await this.timeSlotRepo.getById(churchId, assignment.slotId);
-      const event = await this.eventRepo.getById(churchId, slot.eventId);
-
-      if (event.status !== 'scheduled' || slot.endTime <= now) continue;
-
-      const eventMinistryId = await this.eventRepo.getMinistryId(
-        churchId,
-        event.id,
+      const shift = assignmentShiftsById.get(assignment.shiftId as string);
+      const participation = participationsById.get(
+        assignment.participationId as string,
       );
-      const ministry = ministryById.get(eventMinistryId as string);
-      if (!ministry) continue;
+      if (!participation || !shift || shift.endTime <= now) continue;
+
+      const event = eventsById.get(participation.eventId as string);
+      const ministry = ministryById.get(participation.ministryId as string);
+      if (!event || !ministry) continue;
 
       const role = await this.roleRepo.getById(churchId, assignment.roleId);
       const timingState: 'in_progress' | 'upcoming' =
-        slot.startTime <= now ? 'in_progress' : 'upcoming';
+        shift.startTime <= now ? 'in_progress' : 'upcoming';
 
       const item: DashboardAssignmentItem = {
         assignmentId: assignment.id as string,
-        slotId: slot.id as string,
+        slotId: assignment.slotId as string,
+        shiftId: shift.id as string,
+        participationId: participation.id as string,
         roleId: assignment.roleId as string,
         roleName: role.name,
-        startTime: slot.startTime.toISOString(),
-        endTime: slot.endTime.toISOString(),
+        startTime: shift.startTime.toISOString(),
+        endTime: shift.endTime.toISOString(),
         status: assignment.status,
         timingState,
         canRespond: timingState === 'upcoming',
@@ -294,7 +352,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         groupMap.set(event.id as string, {
           eventId: event.id as string,
           eventTitle: event.title,
-          ministryId: eventMinistryId as string,
+          ministryId: participation.ministryId as string,
           ministryName: ministry.name,
           eventStart: event.startDate.toISOString(),
           items: [item],
@@ -360,17 +418,42 @@ export class DbVolunteerManager implements IVolunteerManager {
   async getUpcomingAssignments(
     input: GetUpcomingAssignmentsInput,
   ): Promise<Assignment[]> {
-    const { volunteerId, churchId } = input;
+    const { churchId } = input;
     const now = new Date();
     const future = new Date(
       now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000,
     );
-    return this.assignmentRepo.listByVolunteerInRange(
-      churchId,
-      volunteerId,
-      now,
-      future,
+    const assignments = await this.listPublishedAssignmentsForVolunteer(input);
+    const shifts = await Promise.all(
+      assignments
+        .map((assignment) => assignment.shiftId)
+        .filter(
+          (shiftId): shiftId is NonNullable<Assignment['shiftId']> =>
+            shiftId != null,
+        )
+        .map((shiftId) =>
+          this.shiftRepo.getById({
+            churchId,
+            shiftId,
+          }),
+        ),
     );
+    const shiftsById = new Map(
+      shifts.map((shift) => [shift.id as string, shift]),
+    );
+
+    return assignments.filter((assignment) => {
+      const shift = shiftsById.get(assignment.shiftId as string);
+      return (
+        shift != null && shift.startTime >= now && shift.startTime <= future
+      );
+    });
+  }
+
+  async getPublishedSchedule(
+    input: GetPublishedScheduleInput,
+  ): Promise<Assignment[]> {
+    return this.listPublishedAssignmentsForVolunteer(input);
   }
 
   async getMinistrySchedule(
@@ -386,17 +469,31 @@ export class DbVolunteerManager implements IVolunteerManager {
       throw new IsolationBreachError();
     }
 
-    const [ministry, ministryEvents, roles, memberships] = await Promise.all([
+    const [ministry, participations, roles, memberships] = await Promise.all([
       this.ministryRepo.getById(churchId, ministryId),
-      this.eventRepo.listByMinistry(churchId, ministryId, 'scheduled'),
+      this.participationRepo.listByMinistry({
+        churchId,
+        ministryId,
+        state: 'published',
+      }),
       this.roleRepo.listByMinistry(churchId, ministryId),
       this.volunteerRepo.listMinistryMemberships(churchId, ministryId),
     ]);
     const eventData = await Promise.all(
-      ministryEvents.map(async (event) => ({
-        event,
-        slots: await this.timeSlotRepo.listByEvent(churchId, event.id),
-        assignments: await this.assignmentRepo.listByEvent(churchId, event.id),
+      participations.map(async (participation) => ({
+        event: await this.eventRepo.getById(churchId, participation.eventId),
+        shifts: await this.shiftRepo.listByParticipation({
+          churchId,
+          participationId: participation.id,
+        }),
+        requirements: await this.shiftRepo.listRequirementsByParticipation({
+          churchId,
+          participationId: participation.id,
+        }),
+        assignments: await this.assignmentRepo.listByParticipation(
+          churchId,
+          participation.id,
+        ),
       })),
     );
     const assignments = eventData
@@ -408,10 +505,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     const teamIds = [
       ...new Set(
         eventData.flatMap((item) =>
-          item.slots.flatMap((slot) =>
-            slot.requirements.flatMap((requirement) =>
-              requirement.teamId ? [requirement.teamId] : [],
-            ),
+          item.requirements.flatMap((requirement) =>
+            requirement.teamId ? [requirement.teamId] : [],
           ),
         ),
       ),
@@ -440,24 +535,23 @@ export class DbVolunteerManager implements IVolunteerManager {
       ministryId: ministry.id as string,
       ministryName: ministry.name,
       events: eventData.map(
-        ({ event, slots, assignments: eventAssignments }) => {
+        ({ event, shifts, requirements, assignments: eventAssignments }) => {
           const activeAssignments = eventAssignments.filter((assignment) =>
             isPublishedStatus(assignment.status),
           );
-          const rows = slots.flatMap((slot) => {
-            const slotAssignments = activeAssignments.filter(
-              (assignment) => assignment.slotId === slot.id,
+          const rows = shifts.flatMap((shift) => {
+            const shiftAssignments = activeAssignments.filter(
+              (assignment) => assignment.shiftId === shift.id,
             );
-            const assignmentRows = slotAssignments.map((assignment) => {
-              const requirement = slot.requirements.find(
-                (item) => item.roleId === assignment.roleId,
-              );
+            const shiftRequirements = requirements.filter(
+              (requirement) => requirement.shiftId === shift.id,
+            );
+            const assignmentRows = shiftAssignments.map((assignment) => {
               const teamId =
-                requirement?.teamId ??
-                membershipTeams.get(assignment.volunteerId as string);
+                membershipTeams.get(assignment.volunteerId as string) ?? null;
               return {
-                slotId: slot.id as string,
-                slotLabel: scheduleSlotLabel(slot),
+                slotId: shift.timeSlotId as string,
+                slotLabel: scheduleShiftLabel(shift),
                 roleName:
                   roleNames.get(assignment.roleId as string) ?? 'Unknown role',
                 teamName: teamId ? teamNames.get(teamId as string) : undefined,
@@ -469,9 +563,12 @@ export class DbVolunteerManager implements IVolunteerManager {
                   : 'pending',
               };
             });
-            const openRows = slot.requirements.flatMap((requirement) => {
-              const assignedCount = slotAssignments.filter(
-                (assignment) => assignment.roleId === requirement.roleId,
+            const openRows = shiftRequirements.flatMap((requirement) => {
+              const assignedCount = shiftAssignments.filter(
+                (assignment) =>
+                  assignment.roleId === requirement.roleId &&
+                  (membershipTeams.get(assignment.volunteerId as string) ??
+                    null) === (requirement.teamId ?? null),
               ).length;
               return Array.from(
                 {
@@ -481,8 +578,8 @@ export class DbVolunteerManager implements IVolunteerManager {
                   ),
                 },
                 () => ({
-                  slotId: slot.id as string,
-                  slotLabel: scheduleSlotLabel(slot),
+                  slotId: shift.timeSlotId as string,
+                  slotLabel: scheduleShiftLabel(shift),
                   roleName:
                     roleNames.get(requirement.roleId as string) ??
                     'Unknown role',
@@ -778,5 +875,46 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: MarkAllNotificationsReadInput,
   ): Promise<void> {
     await this.notificationRepo.markAllRead(input.churchId, input.volunteerId);
+  }
+
+  private async listPublishedAssignmentsForVolunteer({
+    volunteerId,
+    churchId,
+  }: GetPublishedScheduleInput): Promise<Assignment[]> {
+    const assignments = await this.assignmentRepo.listByVolunteer(
+      churchId,
+      volunteerId,
+    );
+    const participationIds = [
+      ...new Set(
+        assignments
+          .map((assignment) => assignment.participationId)
+          .filter(
+            (
+              participationId,
+            ): participationId is NonNullable<Assignment['participationId']> =>
+              participationId != null,
+          ),
+      ),
+    ];
+    if (participationIds.length === 0) {
+      return [];
+    }
+
+    const participations = await this.participationRepo.listByIds({
+      churchId,
+      participationIds,
+    });
+    const publishedParticipationIds = new Set(
+      participations
+        .filter((participation) => participation.state === 'published')
+        .map((participation) => participation.id as string),
+    );
+
+    return assignments.filter(
+      (assignment) =>
+        isPublishedStatus(assignment.status) &&
+        publishedParticipationIds.has(assignment.participationId as string),
+    );
   }
 }

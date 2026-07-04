@@ -38,6 +38,19 @@ export interface ListParticipationsByEventInput {
   tx?: TransactionContext;
 }
 
+export interface ListParticipationsByMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  state?: ParticipationState;
+  tx?: TransactionContext;
+}
+
+export interface ListParticipationsByIdsInput {
+  churchId: ChurchId;
+  participationIds: MinistryParticipationId[];
+  tx?: TransactionContext;
+}
+
 export interface UpdateParticipationStateInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -73,6 +86,12 @@ export interface MinistryParticipationRepository {
   create(input: CreateParticipationInput): Promise<MinistryParticipation>;
   listByEvent(
     input: ListParticipationsByEventInput,
+  ): Promise<MinistryParticipation[]>;
+  listByMinistry(
+    input: ListParticipationsByMinistryInput,
+  ): Promise<MinistryParticipation[]>;
+  listByIds(
+    input: ListParticipationsByIdsInput,
   ): Promise<MinistryParticipation[]>;
   updateState(
     input: UpdateParticipationStateInput,

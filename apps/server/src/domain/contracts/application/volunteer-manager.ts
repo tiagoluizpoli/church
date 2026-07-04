@@ -26,6 +26,8 @@ export interface DashboardAvailabilityTask {
 export interface DashboardAssignmentItem {
   assignmentId: string;
   slotId: string;
+  shiftId: string;
+  participationId: string;
   roleId: string;
   roleName: string;
   teamId?: string;
@@ -190,6 +192,11 @@ export interface GetUpcomingAssignmentsInput {
   churchId: ChurchId;
 }
 
+export interface GetPublishedScheduleInput {
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
+}
+
 export interface GetMinistryScheduleInput {
   ministryId: MinistryId;
   volunteerId: VolunteerId;
@@ -227,6 +234,7 @@ export interface IVolunteerManager {
   getUpcomingAssignments(
     input: GetUpcomingAssignmentsInput,
   ): Promise<Assignment[]>;
+  getPublishedSchedule(input: GetPublishedScheduleInput): Promise<Assignment[]>;
   getMinistrySchedule(
     input: GetMinistryScheduleInput,
   ): Promise<MinistrySchedule>;

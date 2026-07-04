@@ -24,9 +24,10 @@ import { DrizzleAvailabilityRepository } from '../../src/infrastructure/reposito
 import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTeamRepository } from '../../src/infrastructure/repositories/drizzle-team.repository';
-import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
@@ -60,8 +61,9 @@ function createPhase5Manager({
     new DrizzleAvailabilityRepository(schedulingTestDb),
     new DrizzleVolunteerNotificationRepository(schedulingTestDb),
     new DrizzleEventRepository(schedulingTestDb),
-    new DrizzleTimeSlotRepository(schedulingTestDb),
+    new DrizzleShiftRepository(schedulingTestDb),
     new DrizzleMinistryRepository(schedulingTestDb),
+    new DrizzleMinistryParticipationRepository(schedulingTestDb),
     new DrizzleRoleRepository(schedulingTestDb),
     new DrizzleTeamRepository(schedulingTestDb),
     new DrizzleAvailabilityCheckRepository(schedulingTestDb),

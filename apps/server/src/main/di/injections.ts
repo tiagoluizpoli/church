@@ -6,7 +6,9 @@ import { AdminLeaderController } from '../../api/controllers/admin-leader-contro
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
 import { LeaderController } from '../../api/controllers/leader-controller';
+import { LeaderRosteringController } from '../../api/controllers/leader-rostering-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
+import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbAvailabilityCheckManager } from '../../application/db-availability-check-manager';
 import { DbEventManager } from '../../application/db-event-manager';
@@ -166,6 +168,14 @@ export function registerInjections(): void {
   container.registerSingleton(injection.controllers.fastify, LeaderController);
   container.registerSingleton(
     injection.controllers.fastify,
+    LeaderRosteringController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
     VolunteerController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
+    VolunteerScheduleController,
   );
 }

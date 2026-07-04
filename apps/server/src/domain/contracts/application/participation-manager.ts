@@ -7,6 +7,7 @@ import type {
   ShiftId,
   TeamId,
   TimeSlotId,
+  VolunteerId,
 } from '../../branded-ids';
 import type { Event } from '../../entities/event';
 import type { MinistryParticipation } from '../../entities/ministry-participation';
@@ -88,6 +89,37 @@ export interface UpsertServingProfileInput {
   entries: ServingProfileEntryInput[];
 }
 
+export interface EligibleVolunteerView {
+  volunteerId: VolunteerId;
+  volunteerName: string;
+  isAvailable: boolean;
+  hasConflict: boolean;
+  lastServedAt?: Date;
+}
+
+export interface ListEligibleVolunteersInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+}
+
+export interface ParticipationCompletionView {
+  participationId: MinistryParticipationId;
+  requiredCount: number;
+  assignedCount: number;
+  completionPercent: number;
+}
+
+export interface GetParticipationCompletionInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+}
+
+export interface PublishParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  confirmBelowFull?: boolean;
+}
+
 export interface IParticipationManager {
   getCycleParticipation(
     input: GetCycleParticipationInput,
@@ -105,4 +137,11 @@ export interface IParticipationManager {
   upsertServingProfile(
     input: UpsertServingProfileInput,
   ): Promise<MinistryServingProfile[]>;
+  listEligibleVolunteers(
+    input: ListEligibleVolunteersInput,
+  ): Promise<EligibleVolunteerView[]>;
+  getCompletion(
+    input: GetParticipationCompletionInput,
+  ): Promise<ParticipationCompletionView>;
+  publish(input: PublishParticipationInput): Promise<void>;
 }

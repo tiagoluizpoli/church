@@ -5,7 +5,9 @@ import type {
   AssignmentId,
   ChurchId,
   EventId,
+  MinistryParticipationId,
   RoleId,
+  ShiftId,
   TimeSlotId,
   VolunteerId,
 } from '../../../src/domain/branded-ids';
@@ -70,7 +72,11 @@ class MockAssignmentRepository implements AssignmentRepository {
     const a = new Assignment(
       {
         churchId,
-        slotId: input.slotId,
+        slotId:
+          input.slotId ??
+          ('77777777-7777-7777-7777-777777777771' as TimeSlotId),
+        participationId: input.participationId,
+        shiftId: input.shiftId,
         volunteerId: input.volunteerId,
         roleId: input.roleId,
         status: input.status ?? 'draft',
@@ -135,6 +141,24 @@ class MockAssignmentRepository implements AssignmentRepository {
   ): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.volunteerId === volunteerId,
+    );
+  }
+
+  async listByParticipation(
+    churchId: ChurchId,
+    participationId: MinistryParticipationId,
+  ): Promise<Assignment[]> {
+    return Array.from(this.assignments.values()).filter(
+      (a) => a.churchId === churchId && a.participationId === participationId,
+    );
+  }
+
+  async listByShift(
+    churchId: ChurchId,
+    shiftId: ShiftId,
+  ): Promise<Assignment[]> {
+    return Array.from(this.assignments.values()).filter(
+      (a) => a.churchId === churchId && a.shiftId === shiftId,
     );
   }
 

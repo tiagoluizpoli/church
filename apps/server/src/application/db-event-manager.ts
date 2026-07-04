@@ -50,7 +50,9 @@ export class DbEventManager implements IEventManager {
   ): Promise<ScheduleBuilderData> {
     const { churchId, eventId, volunteerId } = input;
     const event = await this.eventRepo.getById(churchId, eventId);
-    const ministryId = await this.eventRepo.getMinistryId(churchId, eventId);
+    const ministryId =
+      input.ministryId ??
+      (await this.eventRepo.getMinistryId(churchId, eventId));
 
     const memberships = await this.volunteerRepo.listMinistryMemberships(
       churchId,

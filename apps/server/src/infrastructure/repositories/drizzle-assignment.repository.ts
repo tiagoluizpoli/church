@@ -5,6 +5,8 @@ import type {
   AssignmentId,
   ChurchId,
   EventId,
+  MinistryParticipationId,
+  ShiftId,
   TimeSlotId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -44,15 +46,18 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     tx?: TransactionContext,
   ): Promise<Assignment> {
     const db = getClient(this.db, tx);
+    const targetShiftCondition = input.shiftId
+      ? eq(shift.id, input.shiftId)
+      : input.slotId
+        ? eq(shift.timeSlotId, input.slotId)
+        : null;
+    if (!targetShiftCondition) {
+      throw new Error('Assignment creation requires either shiftId or slotId');
+    }
     const [targetShift] = await db
       .select()
       .from(shift)
-      .where(
-        and(
-          eq(shift.timeSlotId, input.slotId),
-          withChurchIsolation(shift, churchId),
-        ),
-      )
+      .where(and(targetShiftCondition, withChurchIsolation(shift, churchId)))
       .limit(1);
     if (!targetShift) throw new NotFoundError('Shift not found for slot');
 
@@ -60,7 +65,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       .insert(assignment)
       .values({
         churchId,
-        participationId: targetShift.participationId,
+        participationId: input.participationId ?? targetShift.participationId,
         shiftId: targetShift.id,
         volunteerId: input.volunteerId,
         roleId: input.roleId,
@@ -130,6 +135,26 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
         ),
       );
     return rows.map((row) => mapAssignment(row.assignment, row.timeSlotId));
+  }
+
+  listByParticipation(
+    churchId: ChurchId,
+    participationId: MinistryParticipationId,
+    tx?: TransactionContext,
+  ): Promise<Assignment[]> {
+    return this.rows(
+      churchId,
+      [eq(assignment.participationId, participationId)],
+      tx,
+    );
+  }
+
+  listByShift(
+    churchId: ChurchId,
+    shiftId: ShiftId,
+    tx?: TransactionContext,
+  ): Promise<Assignment[]> {
+    return this.rows(churchId, [eq(assignment.shiftId, shiftId)], tx);
   }
 
   listByVolunteer(

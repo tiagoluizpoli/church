@@ -102,6 +102,13 @@ export interface GetScheduleBuilderDataInput {
   churchId: ChurchId;
   eventId: EventId;
   volunteerId: VolunteerId;
+  /**
+   * Disambiguates which ministry's slice to build when the event has more
+   * than one MinistryParticipation (the normal case post-017: a church-owned
+   * Event can be shared by several ministries). Falls back to the legacy
+   * single-ministry-per-event lookup when omitted.
+   */
+  ministryId?: MinistryId;
 }
 
 export interface CancelEventInput {

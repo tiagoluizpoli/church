@@ -163,21 +163,21 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 ### Tests (write first, must fail)
 
-- [ ] T059 [P] [US4] L1 assignment conflict + completion — DL1-OV-05, DL1-MP-05/06.
-- [ ] T060 [P] [US4] L2 rostering — DL2-RS-01..09 (ranking, tie-break, completion, no double-book, soft/hard override+audit, permission, isolation).
-- [ ] T061 [P] [US4] L2 publish — DL2-PB-01..05 (below-full, sibling isolation, scoped reveal).
-- [ ] T062 [P] [US4] L3 HTTP — DL3-HT-06 (assign/override), DL3-HT-07 (publish/below-full).
-- [ ] T063 [P] [US4] E2E DL4-US4 in `us4-roster-publish.spec.ts`.
+- [X] T059 [P] [US4] L1 assignment conflict + completion — DL1-OV-05, DL1-MP-05/06. (Covered by pre-existing `conflict-validation-service.test.ts` soft/hard/override cases plus `ministry-participation.test.ts` DL1-MP-05/06.)
+- [X] T060 [P] [US4] L2 rostering — DL2-RS-01..09 (ranking, tie-break, completion, no double-book, soft/hard override+audit, permission, isolation).
+- [X] T061 [P] [US4] L2 publish — DL2-PB-01..05 (below-full, sibling isolation, scoped reveal).
+- [X] T062 [P] [US4] L3 HTTP — DL3-HT-06 (assign/override), DL3-HT-07 (publish/below-full). (`tests/http/leader-rostering.http.test.ts`, `tests/http/volunteer-schedule.http.test.ts`.)
+- [X] T063 [P] [US4] E2E DL4-US4 in `us4-roster-publish.spec.ts`.
 
 ### Implementation
 
-- [ ] T064 [P] [US4] Reshape `Assignment` entity → shift+participation (native team attribution, closes BL-006) + repo/mapper.
-- [ ] T065 [US4] Extend `IAssignmentManager`/`DbAssignmentManager`: eligible ranking (availability then least-recent), createAssignment with soft/hard conflict + audited override, deleteAssignment reopens slot.
-- [ ] T066 [US4] Extend `IParticipationManager`: completion%, publish (`rostering→published`, below-full confirm, sibling isolation, scoped reveal).
-- [ ] T067 [US4] Extend `admin-leader-controller.ts` (eligible, assignments, completion, publish) + DTOs; DI.
-- [ ] T066a [US4] Extend `IVolunteerManager`/`DbVolunteerManager` with `getPublishedSchedule` (volunteer sees only published-participation slices — FR-025 / C3) + `volunteer-controller.ts` `GET /volunteer/schedule`; DTO; DI.
-- [ ] T067a [US4] Reshape the 014 volunteer-dashboard read paths to the new model (I2): update `apps/web/src/features/volunteers/lib/dashboard-mappers.ts`, `ministry-schedule-section.tsx`, and `use-volunteer-dashboard.ts` to match assignments by `shiftId` + `participationId`; **remove the `claimedAssignmentIds` workaround** (closes BL-006). Update affected component/query tests.
-- [ ] T068 [US4] Web: roster builder (ranked pool, completion meter, conflict badges, publish confirm) in `apps/web/src/features/scheduling/`; orval regen.
+- [X] T064 [P] [US4] Reshape `Assignment` entity → shift+participation (native team attribution, closes BL-006) + repo/mapper.
+- [X] T065 [US4] Extend `IAssignmentManager`/`DbAssignmentManager`: eligible ranking (availability then least-recent), createAssignment with soft/hard conflict + audited override, deleteAssignment reopens slot.
+- [X] T066 [US4] Extend `IParticipationManager`: completion%, publish (`rostering→published`, below-full confirm, sibling isolation, scoped reveal).
+- [X] T067 [US4] Leader rostering routes (eligible, assignments, completion, publish) + DTOs; DI. (Landed in a dedicated `leader-rostering-controller.ts` rather than extending `admin-leader-controller.ts`.)
+- [X] T066a [US4] Extend `IVolunteerManager`/`DbVolunteerManager` with `getPublishedSchedule` (volunteer sees only published-participation slices — FR-025 / C3) + `volunteer-schedule-controller.ts` `GET /volunteer/schedule`; DTO; DI.
+- [X] T067a [US4] Reshape the 014 volunteer-dashboard read paths to the new model (I2): update `apps/web/src/features/volunteers/lib/dashboard-mappers.ts`, `ministry-schedule-section.tsx`, and `use-volunteer-dashboard.ts` to match assignments by `shiftId` + `participationId`; **remove the `claimedAssignmentIds` workaround** (closes BL-006). Update affected component/query tests.
+- [X] T068 [US4] Web: roster builder (ranked pool, completion meter, conflict badges, publish confirm) in `apps/web/src/routes/scheduling/rostering/`; orval regen.
 
 **Checkpoint**: full schedule produced + published per ministry.
 

@@ -46,8 +46,10 @@ export interface UpcomingAssignmentsSectionProps {
   expandedEventId?: string;
   isOnline: boolean;
   responseState: 'idle' | 'saving';
+  cancelState: 'idle' | 'saving';
   onToggleEvent: (eventId: string) => void;
   onRespond: (input: AssignmentResponseInput) => void;
+  onCancel: (assignmentId: string) => void;
 }
 
 const DECLINE_CONFIRMATION_PHRASE = 'I cannot serve';
@@ -64,15 +66,25 @@ function shouldShowDeclineAction(assignment: DashboardAssignmentItem): boolean {
   return assignment.status === 'pending' || assignment.status === 'confirmed';
 }
 
+function shouldShowCancelAction(assignment: DashboardAssignmentItem): boolean {
+  return (
+    assignment.status === 'confirmed' &&
+    assignment.timingState !== 'in_progress'
+  );
+}
+
 export function UpcomingAssignmentsSection({
   groups,
   expandedEventId,
   isOnline,
   responseState,
+  cancelState,
   onToggleEvent,
   onRespond,
+  onCancel,
 }: UpcomingAssignmentsSectionProps) {
   const isSaving = responseState === 'saving';
+  const isCancelling = cancelState === 'saving';
   const [pendingDeclineAssignment, setPendingDeclineAssignment] = useState<
     DashboardAssignmentItem | undefined
   >(undefined);
@@ -216,6 +228,19 @@ export function UpcomingAssignmentsSection({
                                 }
                               >
                                 I cannot serve
+                              </Button>
+                            ) : null}
+                            {shouldShowCancelAction(assignment) ? (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                data-testid="cancel-assignment-button"
+                                disabled={!isOnline || isCancelling}
+                                onClick={() =>
+                                  onCancel(assignment.assignmentId)
+                                }
+                              >
+                                Cancel assignment
                               </Button>
                             ) : null}
                           </div>

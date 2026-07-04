@@ -1342,6 +1342,42 @@ export type DeleteParticipationAssignment403 = {
   message: string;
 };
 
+export type ReassignParticipationAssignmentBody = {
+  volunteerId: string;
+  /** @minLength 10 */
+  reason: string;
+};
+
+export type ReassignParticipationAssignment200Status = typeof ReassignParticipationAssignment200Status[keyof typeof ReassignParticipationAssignment200Status];
+
+
+export const ReassignParticipationAssignment200Status = {
+  draft: 'draft',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export type ReassignParticipationAssignment200 = {
+  id: string;
+  churchId: string;
+  slotId: string;
+  participationId?: string;
+  shiftId?: string;
+  volunteerId: string;
+  roleId: string;
+  status: ReassignParticipationAssignment200Status;
+  reason?: string;
+  assignedAt: string;
+  assignedBy?: string;
+};
+
+export type ReassignParticipationAssignment403 = {
+  error: string;
+  message: string;
+};
+
 export type GetParticipationCompletion200 = {
   participationId: string;
   requiredCount: number;
@@ -1665,6 +1701,15 @@ export type RespondToAssignment200 = {
   assignedAt: string;
   assignedBy?: string;
 };
+
+/**
+ * @nullable
+ */
+export type CancelOwnAssignment204 = typeof CancelOwnAssignment204[keyof typeof CancelOwnAssignment204] | null;
+
+
+export const CancelOwnAssignment204 = {
+} as const;
 
 export type GetNotifications200ItemsItemType = typeof GetNotifications200ItemsItemType[keyof typeof GetNotifications200ItemsItemType];
 

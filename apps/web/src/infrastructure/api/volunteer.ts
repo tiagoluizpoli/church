@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  CancelOwnAssignment204,
   GetAvailabilityCheck200,
   GetMinistrySchedule200,
   GetMyAssignments200,
@@ -95,6 +96,14 @@ const getVolunteerDashboard = (
     },
       );
     }
+  const cancelOwnAssignment = (
+    assignmentId: string,
+ ) => {
+      return apiClient<CancelOwnAssignment204>(
+      {url: `/api/v1/volunteer/assignments/${assignmentId}/cancel`, method: 'POST'
+    },
+      );
+    }
   const getNotifications = (
 
  ) => {
@@ -127,7 +136,7 @@ const getVolunteerDashboard = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailabilityMarks,confirmAvailabilityCheck,respondToAssignment,getNotifications,markNotificationRead,markAllNotificationsRead,getPublishedVolunteerSchedule}};
+  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailabilityMarks,confirmAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getNotifications,markNotificationRead,markAllNotificationsRead,getPublishedVolunteerSchedule}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
@@ -136,6 +145,7 @@ export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnTy
 export type SetUnavailabilityMarksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['setUnavailabilityMarks']>>>
 export type ConfirmAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['confirmAvailabilityCheck']>>>
 export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
+export type CancelOwnAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['cancelOwnAssignment']>>>
 export type GetNotificationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getNotifications']>>>
 export type MarkNotificationReadResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['markNotificationRead']>>>
 export type MarkAllNotificationsReadResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['markAllNotificationsRead']>>>

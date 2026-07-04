@@ -29,7 +29,11 @@ function createVolunteerDashboardHookResult(
     assignmentGroups: [],
     availabilitySlots: [],
     availabilityTasks: [],
+    cancelAssignment: {
+      isPending: false,
+    },
     expandedAssignmentEventId: undefined,
+    handleCancelAssignment: vi.fn(),
     handleRespondToAssignment: vi.fn(),
     handleSaveAvailability: vi.fn(),
     handleToggleAssignmentGroup: vi.fn(),

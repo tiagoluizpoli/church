@@ -242,6 +242,18 @@ export function useVolunteerDashboard({
     },
   });
 
+  const cancelAssignment = useMutation({
+    mutationFn: (assignmentId: string) =>
+      volunteerApi.cancelOwnAssignment(assignmentId),
+    onSuccess: async () => {
+      toast.success('Assignment cancelled. Your leader has been notified.');
+      await invalidateVolunteerDashboard();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const handleSaveAvailability = (_input: AvailabilitySaveInput) => undefined;
 
   const handleRespondToAssignment = (
@@ -257,6 +269,15 @@ export function useVolunteerDashboard({
     respondToAssignment.mutate(input);
   };
 
+  const handleCancelAssignment = (assignmentId: string) => {
+    if (!isOnline) {
+      toast.error('Cancellations stay blocked until your connection returns.');
+      return;
+    }
+
+    cancelAssignment.mutate(assignmentId);
+  };
+
   const handleToggleAssignmentGroup = (eventId: string) => {
     setExpandedAssignmentEventId((currentEventId) =>
       currentEventId === eventId ? undefined : eventId,
@@ -267,7 +288,9 @@ export function useVolunteerDashboard({
     assignmentGroups,
     availabilitySlots: mapAvailabilitySlots(availabilityQuery.data),
     availabilityTasks,
+    cancelAssignment,
     expandedAssignmentEventId,
+    handleCancelAssignment,
     handleRespondToAssignment,
     handleSaveAvailability,
     handleToggleAssignmentGroup,

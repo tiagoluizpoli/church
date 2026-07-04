@@ -171,8 +171,10 @@ export function VolunteerDashboard({
         responseState={
           dashboard.respondToAssignment.isPending ? 'saving' : 'idle'
         }
+        cancelState={dashboard.cancelAssignment.isPending ? 'saving' : 'idle'}
         onToggleEvent={dashboard.handleToggleAssignmentGroup}
         onRespond={dashboard.handleRespondToAssignment}
+        onCancel={dashboard.handleCancelAssignment}
       />
 
       <NotificationsInboxSection

@@ -86,8 +86,10 @@ describe('Volunteer dashboard offline + refresh UI', () => {
           expandedEventId="event-1"
           isOnline={false}
           responseState="idle"
+          cancelState="idle"
           onToggleEvent={vi.fn()}
           onRespond={vi.fn()}
+          onCancel={vi.fn()}
         />
       </div>,
     );

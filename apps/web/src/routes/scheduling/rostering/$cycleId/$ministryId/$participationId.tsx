@@ -12,6 +12,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@church/ui/components/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@church/ui/components/dialog';
+import { Input } from '@church/ui/components/input';
+import { Label } from '@church/ui/components/label';
 import { Skeleton } from '@church/ui/components/skeleton';
 import {
   useMutation,
@@ -20,6 +30,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import type { GetScheduleBuilderData200AssignmentsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
@@ -29,6 +40,8 @@ export const Route = createFileRoute(
 )({
   component: RosterBuilderPage,
 });
+
+const MIN_REASON_LENGTH = 10;
 
 function isActiveAssignment(status: string): boolean {
   return status !== 'cancelled' && status !== 'declined';
@@ -47,9 +60,31 @@ interface AssignMutationInput {
   overrideReason?: string;
 }
 
+interface ReassignMutationInput {
+  assignmentId: string;
+  volunteerId: string;
+  reason: string;
+}
+
+interface ReassignTarget {
+  assignmentId: string;
+  currentVolunteerName: string;
+}
+
 function RosterBuilderPage() {
   const { cycleId, ministryId, participationId } = Route.useParams();
   const queryClient = useQueryClient();
+  const [reassignTarget, setReassignTarget] = useState<
+    ReassignTarget | undefined
+  >(undefined);
+  const [reassignVolunteerId, setReassignVolunteerId] = useState('');
+  const [reassignReason, setReassignReason] = useState('');
+
+  const closeReassignDialog = () => {
+    setReassignTarget(undefined);
+    setReassignVolunteerId('');
+    setReassignReason('');
+  };
 
   const participationQuery = useQuery({
     queryKey: ['roster-participation', cycleId, ministryId],
@@ -118,6 +153,25 @@ function RosterBuilderPage() {
       } else {
         toast.success('Volunteer assigned.');
       }
+      await invalidateRoster();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const reassignMutation = useMutation({
+    mutationFn: ({
+      assignmentId,
+      volunteerId,
+      reason,
+    }: ReassignMutationInput) =>
+      adminApi.reassignParticipationAssignment(assignmentId, {
+        volunteerId,
+        reason,
+      }),
+    onSuccess: async () => {
+      toast.success('Assignment reassigned.');
       await invalidateRoster();
     },
     onError: (error) => {
@@ -352,9 +406,29 @@ function RosterBuilderPage() {
                                       assignment.volunteerId,
                                     ) ?? assignment.volunteerId}
                                   </span>
-                                  <Badge variant="outline">
-                                    {assignment.status}
-                                  </Badge>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">
+                                      {assignment.status}
+                                    </Badge>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      data-testid="reassign-assignment-button"
+                                      disabled={reassignMutation.isPending}
+                                      onClick={() =>
+                                        setReassignTarget({
+                                          assignmentId: assignment.id,
+                                          currentVolunteerName:
+                                            volunteersById.get(
+                                              assignment.volunteerId,
+                                            ) ?? assignment.volunteerId,
+                                        })
+                                      }
+                                    >
+                                      Reassign
+                                    </Button>
+                                  </div>
                                 </div>
                               ))
                             ) : (
@@ -428,7 +502,7 @@ function RosterBuilderPage() {
                                         if (
                                           needsOverride &&
                                           normalizedOverrideReason.trim()
-                                            .length < 10
+                                            .length < MIN_REASON_LENGTH
                                         ) {
                                           toast.error(
                                             'Override reason must be at least 10 characters.',
@@ -464,6 +538,82 @@ function RosterBuilderPage() {
           </Card>
         ))}
       </div>
+
+      <Dialog
+        open={reassignTarget != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeReassignDialog();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reassign shift</DialogTitle>
+            <DialogDescription>
+              {reassignTarget
+                ? `Move this shift from ${reassignTarget.currentVolunteerName} to another volunteer.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="reassign-volunteer-id">New volunteer id</Label>
+              <Input
+                id="reassign-volunteer-id"
+                value={reassignVolunteerId}
+                onChange={(event) => setReassignVolunteerId(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reassign-reason">
+                Reason (min {MIN_REASON_LENGTH} characters)
+              </Label>
+              <Input
+                id="reassign-reason"
+                value={reassignReason}
+                onChange={(event) => setReassignReason(event.target.value)}
+                placeholder="Original volunteer became unavailable"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeReassignDialog}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={reassignMutation.isPending}
+              onClick={() => {
+                if (!reassignTarget || !reassignVolunteerId.trim()) {
+                  return;
+                }
+                if (reassignReason.trim().length < MIN_REASON_LENGTH) {
+                  toast.error(
+                    `Reason must be at least ${MIN_REASON_LENGTH} characters.`,
+                  );
+                  return;
+                }
+
+                reassignMutation.mutate({
+                  assignmentId: reassignTarget.assignmentId,
+                  volunteerId: reassignVolunteerId.trim(),
+                  reason: reassignReason.trim(),
+                });
+                closeReassignDialog();
+              }}
+            >
+              Reassign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

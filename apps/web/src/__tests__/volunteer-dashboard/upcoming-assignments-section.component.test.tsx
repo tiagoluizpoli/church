@@ -56,8 +56,10 @@ describe('UpcomingAssignmentsSection', () => {
         expandedEventId="event-1"
         isOnline={true}
         responseState="idle"
+        cancelState="idle"
         onToggleEvent={vi.fn()}
         onRespond={onRespond}
+        onCancel={vi.fn()}
       />,
     );
 
@@ -115,8 +117,10 @@ describe('UpcomingAssignmentsSection', () => {
         expandedEventId="event-1"
         isOnline={true}
         responseState="idle"
+        cancelState="idle"
         onToggleEvent={vi.fn()}
         onRespond={onRespond}
+        onCancel={vi.fn()}
       />,
     );
 
@@ -147,8 +151,10 @@ describe('UpcomingAssignmentsSection', () => {
         expandedEventId="event-1"
         isOnline={false}
         responseState="idle"
+        cancelState="idle"
         onToggleEvent={vi.fn()}
         onRespond={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
 
@@ -164,5 +170,35 @@ describe('UpcomingAssignmentsSection', () => {
     })) {
       expect(button).toBeDisabled();
     }
+  });
+
+  it('lets a volunteer cancel their own confirmed upcoming assignment (FR-028)', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    renderWithProviders(
+      <UpcomingAssignmentsSection
+        groups={assignmentGroupsFixture}
+        expandedEventId="event-1"
+        isOnline={true}
+        responseState="idle"
+        cancelState="idle"
+        onToggleEvent={vi.fn()}
+        onRespond={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    const cancelButtons = screen.getAllByTestId('cancel-assignment-button');
+    expect(cancelButtons).toHaveLength(1);
+
+    const cancelButton = cancelButtons[0];
+    if (!cancelButton) {
+      throw new Error('Missing cancel-assignment action');
+    }
+
+    await user.click(cancelButton);
+
+    expect(onCancel).toHaveBeenCalledWith('assignment-1');
   });
 });

@@ -45,6 +45,8 @@ import type {
   OverrideAssignmentBody,
   PublishParticipation204,
   PublishParticipationBody,
+  ReassignParticipationAssignment200,
+  ReassignParticipationAssignmentBody,
   SetMinistryDefaultDirection200,
   SetMinistryDefaultDirectionBody,
   SetParticipationInclusionsBody,
@@ -488,6 +490,17 @@ const getMinistryServingProfile = (
     },
       );
     }
+  const reassignParticipationAssignment = (
+    assignmentId: string,
+    reassignParticipationAssignmentBody: ReassignParticipationAssignmentBody,
+ ) => {
+      return apiClient<ReassignParticipationAssignment200>(
+      {url: `/api/v1/leader/assignments/${assignmentId}/reassign`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: reassignParticipationAssignmentBody
+    },
+      );
+    }
   const getParticipationCompletion = (
     participationId: string,
  ) => {
@@ -507,7 +520,7 @@ const getMinistryServingProfile = (
     },
       );
     }
-  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,getParticipationCompletion,publishParticipation}};
+  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistries']>>>
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEvents']>>>
@@ -551,5 +564,6 @@ export type ResendAvailabilityReminderResult = NonNullable<Awaited<ReturnType<Re
 export type ListEligibleVolunteersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEligibleVolunteers']>>>
 export type CreateParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createParticipationAssignment']>>>
 export type DeleteParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteParticipationAssignment']>>>
+export type ReassignParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['reassignParticipationAssignment']>>>
 export type GetParticipationCompletionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getParticipationCompletion']>>>
 export type PublishParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['publishParticipation']>>>

@@ -20,6 +20,7 @@ import { Route as VolunteerAvailabilityRouteImport } from './routes/volunteer/av
 import { Route as SchedulingTailoringRouteImport } from './routes/scheduling/tailoring'
 import { Route as SchedulingPlanningRouteImport } from './routes/scheduling/planning'
 import { Route as SchedulingEventsEventIdBuilderRouteImport } from './routes/scheduling/events/$eventId/builder'
+import { Route as SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport } from './routes/scheduling/rostering/$cycleId/$ministryId/$participationId'
 
 const TodosRoute = TodosRouteImport.update({
   id: '/todos',
@@ -77,6 +78,12 @@ const SchedulingEventsEventIdBuilderRoute =
     path: '/events/$eventId/builder',
     getParentRoute: () => SchedulingRoute,
   } as any)
+const SchedulingRosteringCycleIdMinistryIdParticipationIdRoute =
+  SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport.update({
+    id: '/rostering/$cycleId/$ministryId/$participationId',
+    path: '/rostering/$cycleId/$ministryId/$participationId',
+    getParentRoute: () => SchedulingRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +110,7 @@ export interface FileRoutesByTo {
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +125,7 @@ export interface FileRoutesById {
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/volunteer/availability'
     | '/scheduling/'
     | '/scheduling/events/$eventId/builder'
+    | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/volunteer/availability'
     | '/scheduling'
     | '/scheduling/events/$eventId/builder'
+    | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   id:
     | '__root__'
     | '/'
@@ -156,6 +168,7 @@ export interface FileRouteTypes {
     | '/volunteer/availability'
     | '/scheduling/'
     | '/scheduling/events/$eventId/builder'
+    | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -247,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulingEventsEventIdBuilderRouteImport
       parentRoute: typeof SchedulingRoute
     }
+    '/scheduling/rostering/$cycleId/$ministryId/$participationId': {
+      id: '/scheduling/rostering/$cycleId/$ministryId/$participationId'
+      path: '/rostering/$cycleId/$ministryId/$participationId'
+      fullPath: '/scheduling/rostering/$cycleId/$ministryId/$participationId'
+      preLoaderRoute: typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport
+      parentRoute: typeof SchedulingRoute
+    }
   }
 }
 
@@ -255,6 +275,7 @@ interface SchedulingRouteChildren {
   SchedulingTailoringRoute: typeof SchedulingTailoringRoute
   SchedulingIndexRoute: typeof SchedulingIndexRoute
   SchedulingEventsEventIdBuilderRoute: typeof SchedulingEventsEventIdBuilderRoute
+  SchedulingRosteringCycleIdMinistryIdParticipationIdRoute: typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 
 const SchedulingRouteChildren: SchedulingRouteChildren = {
@@ -262,6 +283,8 @@ const SchedulingRouteChildren: SchedulingRouteChildren = {
   SchedulingTailoringRoute: SchedulingTailoringRoute,
   SchedulingIndexRoute: SchedulingIndexRoute,
   SchedulingEventsEventIdBuilderRoute: SchedulingEventsEventIdBuilderRoute,
+  SchedulingRosteringCycleIdMinistryIdParticipationIdRoute:
+    SchedulingRosteringCycleIdMinistryIdParticipationIdRoute,
 }
 
 const SchedulingRouteWithChildren = SchedulingRoute._addFileChildren(

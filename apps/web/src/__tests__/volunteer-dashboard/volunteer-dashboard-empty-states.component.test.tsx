@@ -1,9 +1,18 @@
 import { screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../setup/render';
 import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
 import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';
 import { useVolunteerDashboard } from '@/features/volunteers/hooks/use-volunteer-dashboard';
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, ...props }: { children: ReactNode; to: string }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
+}));
 
 vi.mock('@/features/volunteers/hooks/use-volunteer-dashboard', () => ({
   useVolunteerDashboard: vi.fn(),

@@ -26,6 +26,7 @@ interface LegacyRoleTemplateListResult {
 }
 
 const generatedAdminApi = getAdmin();
+const generatedVolunteerApi = getVolunteer();
 
 export const adminApi = {
   ...generatedAdminApi,
@@ -39,5 +40,7 @@ export const adminApi = {
     return { items: [] };
   },
 };
-export const volunteerApi = getVolunteer();
+export const volunteerApi = {
+  ...generatedVolunteerApi,
+};
 export const featureFlagsApi = createFeatureFlagsApi();

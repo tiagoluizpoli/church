@@ -70,6 +70,8 @@ describe('Volunteer dashboard offline + refresh UI', () => {
                 {
                   assignmentId: 'assignment-1',
                   slotId: 'slot-1',
+                  shiftId: 'shift-1',
+                  participationId: 'participation-1',
                   roleId: 'role-1',
                   roleName: 'Usher',
                   startTime: '2099-01-06T09:00:00.000Z',

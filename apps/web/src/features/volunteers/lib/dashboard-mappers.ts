@@ -18,6 +18,8 @@ export interface DashboardAvailabilityTask {
 export interface DashboardAssignmentItem {
   assignmentId: string;
   slotId: string;
+  shiftId: string;
+  participationId: string;
   roleId: string;
   roleName: string;
   teamId?: string;

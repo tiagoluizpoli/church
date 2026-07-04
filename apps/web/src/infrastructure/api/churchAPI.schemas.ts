@@ -37,6 +37,7 @@ export type ListMinistries200 = {
 
 export type GetScheduleBuilderDataParams = {
 eventId: string;
+ministryId?: string;
 };
 
 export type GetScheduleBuilderData200EventsItemEventStatus = typeof GetScheduleBuilderData200EventsItemEventStatus[keyof typeof GetScheduleBuilderData200EventsItemEventStatus];
@@ -121,6 +122,8 @@ export type GetScheduleBuilderData200AssignmentsItem = {
   id: string;
   churchId: string;
   slotId: string;
+  participationId?: string;
+  shiftId?: string;
   volunteerId: string;
   roleId: string;
   status: GetScheduleBuilderData200AssignmentsItemStatus;
@@ -400,6 +403,8 @@ export type CreateAssignment201 = {
   id: string;
   churchId: string;
   slotId: string;
+  participationId?: string;
+  shiftId?: string;
   volunteerId: string;
   roleId: string;
   status: CreateAssignment201Status;
@@ -993,10 +998,6 @@ export type GetCycleParticipationParams = {
 ministryId: string;
 };
 
-export type GetCycleAvailabilityStatusParams = {
-ministryId: string;
-};
-
 export type GetCycleParticipation200EventsItemParticipationState = typeof GetCycleParticipation200EventsItemParticipationState[keyof typeof GetCycleParticipation200EventsItemParticipationState];
 
 
@@ -1201,6 +1202,34 @@ export type FireAvailability202 = {
   notifiedVolunteerCount: number;
 };
 
+export type GetCycleAvailabilityStatusParams = {
+ministryId: string;
+};
+
+export type GetCycleAvailabilityStatus200StatusesItemState = typeof GetCycleAvailabilityStatus200StatusesItemState[keyof typeof GetCycleAvailabilityStatus200StatusesItemState];
+
+
+export const GetCycleAvailabilityStatus200StatusesItemState = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+} as const;
+
+export type GetCycleAvailabilityStatus200StatusesItem = {
+  volunteerId: string;
+  volunteerName: string;
+  state?: GetCycleAvailabilityStatus200StatusesItemState;
+  confirmedAt?: string;
+};
+
+export type GetCycleAvailabilityStatus200 = {
+  statuses: GetCycleAvailabilityStatus200StatusesItem[];
+};
+
+export type GetCycleAvailabilityStatus403 = {
+  error: string;
+  message: string;
+};
+
 export type GetAvailabilityStatus200StatusesItemState = typeof GetAvailabilityStatus200StatusesItemState[keyof typeof GetAvailabilityStatus200StatusesItemState];
 
 
@@ -1218,6 +1247,129 @@ export type GetAvailabilityStatus200StatusesItem = {
 
 export type GetAvailabilityStatus200 = {
   statuses: GetAvailabilityStatus200StatusesItem[];
+};
+
+export type ListEligibleVolunteers200VolunteersItem = {
+  volunteerId: string;
+  volunteerName: string;
+  isAvailable: boolean;
+  hasConflict: boolean;
+  lastServedAt?: string;
+};
+
+export type ListEligibleVolunteers200 = {
+  volunteers: ListEligibleVolunteers200VolunteersItem[];
+};
+
+export type ListEligibleVolunteers403 = {
+  error: string;
+  message: string;
+};
+
+export type CreateParticipationAssignmentBodyOverride = {
+  /** @minLength 10 */
+  reason: string;
+};
+
+export type CreateParticipationAssignmentBody = {
+  volunteerId: string;
+  roleId: string;
+  teamId?: string;
+  override?: CreateParticipationAssignmentBodyOverride;
+};
+
+export type CreateParticipationAssignment201AssignmentStatus = typeof CreateParticipationAssignment201AssignmentStatus[keyof typeof CreateParticipationAssignment201AssignmentStatus];
+
+
+export const CreateParticipationAssignment201AssignmentStatus = {
+  draft: 'draft',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export type CreateParticipationAssignment201Assignment = {
+  id: string;
+  churchId: string;
+  slotId: string;
+  participationId?: string;
+  shiftId?: string;
+  volunteerId: string;
+  roleId: string;
+  status: CreateParticipationAssignment201AssignmentStatus;
+  reason?: string;
+  assignedAt: string;
+  assignedBy?: string;
+};
+
+export type CreateParticipationAssignment201WarningsItemType = typeof CreateParticipationAssignment201WarningsItemType[keyof typeof CreateParticipationAssignment201WarningsItemType];
+
+
+export const CreateParticipationAssignment201WarningsItemType = {
+  UNAVAILABLE: 'UNAVAILABLE',
+  DOUBLE_BOOKED: 'DOUBLE_BOOKED',
+  FAIRNESS_EXCEEDED: 'FAIRNESS_EXCEEDED',
+} as const;
+
+export type CreateParticipationAssignment201WarningsItem = {
+  type: CreateParticipationAssignment201WarningsItemType;
+  details: string;
+  conflictingId?: string;
+};
+
+export type CreateParticipationAssignment201 = {
+  assignment: CreateParticipationAssignment201Assignment;
+  warnings: CreateParticipationAssignment201WarningsItem[];
+};
+
+export type CreateParticipationAssignment403 = {
+  error: string;
+  message: string;
+};
+
+/**
+ * @nullable
+ */
+export type DeleteParticipationAssignment204 = typeof DeleteParticipationAssignment204[keyof typeof DeleteParticipationAssignment204] | null;
+
+
+export const DeleteParticipationAssignment204 = {
+} as const;
+
+export type DeleteParticipationAssignment403 = {
+  error: string;
+  message: string;
+};
+
+export type GetParticipationCompletion200 = {
+  participationId: string;
+  requiredCount: number;
+  assignedCount: number;
+  completionPercent: number;
+};
+
+export type GetParticipationCompletion403 = {
+  error: string;
+  message: string;
+};
+
+export type PublishParticipationBody = {
+  confirmBelowFull?: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type PublishParticipation204 = typeof PublishParticipation204[keyof typeof PublishParticipation204] | null;
+
+
+export const PublishParticipation204 = {
+} as const;
+
+export type PublishParticipation403 = {
+  error: string;
+  message: string;
 };
 
 export type GetVolunteerDashboard200AvailabilityTasksItemEventType = typeof GetVolunteerDashboard200AvailabilityTasksItemEventType[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemEventType];
@@ -1278,6 +1430,8 @@ export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem = {
   assignmentId: string;
   slotId: string;
+  shiftId: string;
+  participationId: string;
   roleId: string;
   roleName: string;
   teamId?: string;
@@ -1338,6 +1492,8 @@ export type GetMyAssignments200AssignmentsItem = {
   id: string;
   churchId: string;
   slotId: string;
+  participationId?: string;
+  shiftId?: string;
   volunteerId: string;
   roleId: string;
   status: GetMyAssignments200AssignmentsItemStatus;
@@ -1500,6 +1656,8 @@ export type RespondToAssignment200 = {
   id: string;
   churchId: string;
   slotId: string;
+  participationId?: string;
+  shiftId?: string;
   volunteerId: string;
   roleId: string;
   status: RespondToAssignment200Status;
@@ -1545,3 +1703,33 @@ export type GetNotifications200 = {
 export type MarkNotificationRead200 = {
   marked: boolean;
 };
+
+export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus[keyof typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus];
+
+
+export const GetPublishedVolunteerSchedule200AssignmentsItemStatus = {
+  draft: 'draft',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetPublishedVolunteerSchedule200AssignmentsItem = {
+  id: string;
+  churchId: string;
+  slotId: string;
+  participationId?: string;
+  shiftId?: string;
+  volunteerId: string;
+  roleId: string;
+  status: GetPublishedVolunteerSchedule200AssignmentsItemStatus;
+  reason?: string;
+  assignedAt: string;
+  assignedBy?: string;
+};
+
+export type GetPublishedVolunteerSchedule200 = {
+  assignments: GetPublishedVolunteerSchedule200AssignmentsItem[];
+};
+

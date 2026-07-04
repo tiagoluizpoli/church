@@ -11,6 +11,7 @@ import { Input } from '@church/ui/components/input';
 import { Label } from '@church/ui/components/label';
 import { Skeleton } from '@church/ui/components/skeleton';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AvailabilityStatusSection } from './availability-status-section';
@@ -142,9 +143,12 @@ export function ParticipationTailoring() {
   const roleEventId = participationEvents[0]?.event.id;
 
   const roleCatalogQuery = useQuery({
-    queryKey: ['tailoring-role-catalog', roleEventId],
+    queryKey: ['tailoring-role-catalog', roleEventId, selectedMinistryId],
     queryFn: () =>
-      adminApi.getScheduleBuilderData({ eventId: roleEventId ?? '' }),
+      adminApi.getScheduleBuilderData({
+        eventId: roleEventId ?? '',
+        ministryId: selectedMinistryId ?? '',
+      }),
     enabled: Boolean(roleEventId),
     retry: false,
   });
@@ -447,6 +451,8 @@ export function ParticipationTailoring() {
               splitForms={splitForms}
               headcountDrafts={headcountDrafts}
               roles={roles}
+              cycleId={selectedCycleId ?? ''}
+              ministryId={selectedMinistryId ?? ''}
               fireSummary={fireSummaries[eventView.participation.id]}
               saveInclusionsPending={saveInclusions.isPending}
               splitPending={splitShifts.isPending}
@@ -526,6 +532,8 @@ function ParticipationEventCard({
   splitForms,
   headcountDrafts,
   roles,
+  cycleId,
+  ministryId,
   fireSummary,
   saveInclusionsPending,
   splitPending,
@@ -546,6 +554,8 @@ function ParticipationEventCard({
   splitForms: Record<string, SplitFormState>;
   headcountDrafts: Record<string, string>;
   roles: GetScheduleBuilderData200RolesItem[];
+  cycleId: string;
+  ministryId: string;
   fireSummary?: { createdCheckCount: number; notifiedVolunteerCount: number };
   saveInclusionsPending: boolean;
   splitPending: boolean;
@@ -821,6 +831,20 @@ function ParticipationEventCard({
               {fireSummary.createdCheckCount} checks created ·{' '}
               {fireSummary.notifiedVolunteerCount} volunteers notified
             </div>
+          ) : null}
+
+          {eventView.participation.state !== 'tailoring' ? (
+            <Link
+              to="/scheduling/rostering/$cycleId/$ministryId/$participationId"
+              params={{
+                cycleId,
+                ministryId,
+                participationId: eventView.participation.id,
+              }}
+              className="inline-flex h-9 items-center justify-center border px-3 text-sm"
+            >
+              Open roster
+            </Link>
           ) : null}
         </div>
       </CardContent>

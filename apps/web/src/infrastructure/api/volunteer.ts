@@ -9,6 +9,7 @@ import type {
   GetMinistrySchedule200,
   GetMyAssignments200,
   GetNotifications200,
+  GetPublishedVolunteerSchedule200,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
   MarkNotificationRead200,
@@ -118,7 +119,15 @@ const getVolunteerDashboard = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailabilityMarks,confirmAvailabilityCheck,respondToAssignment,getNotifications,markNotificationRead,markAllNotificationsRead}};
+  const getPublishedVolunteerSchedule = (
+
+ ) => {
+      return apiClient<GetPublishedVolunteerSchedule200>(
+      {url: `/api/v1/volunteer/schedule`, method: 'GET'
+    },
+      );
+    }
+  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,setUnavailabilityMarks,confirmAvailabilityCheck,respondToAssignment,getNotifications,markNotificationRead,markAllNotificationsRead,getPublishedVolunteerSchedule}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
@@ -130,3 +139,4 @@ export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnTyp
 export type GetNotificationsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getNotifications']>>>
 export type MarkNotificationReadResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['markNotificationRead']>>>
 export type MarkAllNotificationsReadResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['markAllNotificationsRead']>>>
+export type GetPublishedVolunteerScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getPublishedVolunteerSchedule']>>>

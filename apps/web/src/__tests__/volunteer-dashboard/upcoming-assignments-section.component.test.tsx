@@ -18,6 +18,8 @@ const assignmentGroupsFixture: DashboardAssignmentGroup[] = [
       {
         assignmentId: 'assignment-1',
         slotId: 'slot-1',
+        shiftId: 'shift-1',
+        participationId: 'participation-1',
         roleId: 'role-1',
         roleName: 'Usher',
         startTime: '2099-01-06T09:00:00.000Z',
@@ -29,6 +31,8 @@ const assignmentGroupsFixture: DashboardAssignmentGroup[] = [
       {
         assignmentId: 'assignment-2',
         slotId: 'slot-2',
+        shiftId: 'shift-2',
+        participationId: 'participation-1',
         roleId: 'role-2',
         roleName: 'Greeter',
         startTime: '2099-01-06T11:00:00.000Z',

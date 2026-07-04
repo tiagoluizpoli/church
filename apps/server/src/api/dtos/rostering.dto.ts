@@ -50,6 +50,11 @@ export const publishParticipationBodySchema = z.object({
   confirmBelowFull: z.boolean().optional(),
 });
 
+export const reassignAssignmentBodySchema = z.object({
+  volunteerId: z.string(),
+  reason: z.string().trim().min(10),
+});
+
 export const rosteringMapper = {
   eligibleVolunteerToResponse(volunteer: EligibleVolunteerView) {
     return {

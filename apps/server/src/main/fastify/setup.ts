@@ -33,6 +33,8 @@ const ERROR_MAP: Record<string, { status: number }> = {
   NOT_FOUND: { status: 404 },
   UNAUTHORIZED_OVERRIDE: { status: 403 },
   CHECK_ACCESS_DENIED: { status: 403 },
+  ASSIGNMENT_ACCESS_DENIED: { status: 403 },
+  CANCEL_WINDOW_CLOSED: { status: 409 },
   AVAILABILITY_OVERLAP: { status: 409 },
   ISOLATION_BREACH: { status: 409 },
   CROSS_MINISTRY_SCOPE: { status: 409 },

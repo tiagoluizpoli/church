@@ -177,6 +177,12 @@ export interface RespondToAssignmentInput {
   volunteerId: VolunteerId;
 }
 
+export interface CancelOwnAssignmentInput {
+  assignmentId: AssignmentId;
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+}
+
 export interface NotificationListResult {
   items: VolunteerNotification[];
   nextCursor?: Date;
@@ -251,6 +257,7 @@ export interface IVolunteerManager {
     input: ConfirmAvailabilityCheckInput,
   ): Promise<ConfirmAvailabilityCheckResult>;
   respondToAssignment(input: RespondToAssignmentInput): Promise<Assignment>;
+  cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void>;
   getNotifications(
     input: GetNotificationsInput,
   ): Promise<NotificationListResult>;

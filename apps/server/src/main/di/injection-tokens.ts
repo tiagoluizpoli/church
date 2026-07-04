@@ -39,6 +39,9 @@ export const injection = {
     manager: 'ISchedulingRbacManager',
     schedulingRbacResolver: 'SchedulingRbacResolver',
   },
+  config: {
+    assignmentCancelLeadTimeDays: 'AssignmentCancelLeadTimeDays',
+  },
   controllers: {
     fastify: 'FastifyController',
   },

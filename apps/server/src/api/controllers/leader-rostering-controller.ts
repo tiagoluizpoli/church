@@ -15,15 +15,21 @@ import {
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
 import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
+import type { Assignment } from '../../domain/entities/assignment';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { SchedulingRbacGuard } from '../auth/scheduling-rbac-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  assignmentMapper,
+  assignmentResponseSchema,
+} from '../dtos/assignment.dto';
 import {
   createParticipationAssignmentBodySchema,
   createParticipationAssignmentResponseSchema,
   eligibleVolunteerListResponseSchema,
   participationCompletionResponseSchema,
   publishParticipationBodySchema,
+  reassignAssignmentBodySchema,
   rosteringMapper,
 } from '../dtos/rostering.dto';
 import { headersFromRequest } from '../utils/headers';
@@ -49,6 +55,18 @@ type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
 type PublishParticipationBody = z.infer<typeof publishParticipationBodySchema>;
+type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
+
+interface ResolveOwnedAssignmentInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  assignmentId: string;
+}
+
+interface ResolveOwnedAssignmentResult {
+  assignment?: Assignment;
+  denied?: FastifyReply;
+}
 
 @injectable()
 export class LeaderRosteringController implements FastifyController {
@@ -174,16 +192,12 @@ export class LeaderRosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
-        const assignment = await this.assignmentManager.getAssignment({
-          churchId: ChurchId.from(request.churchId),
-          assignmentId: AssignmentId.from(assignmentId),
-        });
-        const denied = await this.denyShiftScope(
+        const resolved = await this.resolveOwnedAssignment({
           request,
           reply,
-          assignment.shiftId as string,
-        );
-        if (denied) return denied;
+          assignmentId,
+        });
+        if (resolved.denied) return resolved.denied;
 
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
@@ -191,6 +205,41 @@ export class LeaderRosteringController implements FastifyController {
           actorId: UserId.from(request.userId),
         });
         return reply.status(204).send(null);
+      },
+    );
+
+    app.patch(
+      '/assignments/:assignmentId/reassign',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'reassignParticipationAssignment',
+          body: reassignAssignmentBodySchema,
+          response: {
+            200: assignmentResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { assignmentId } = request.params as AssignmentRouteParams;
+        const resolved = await this.resolveOwnedAssignment({
+          request,
+          reply,
+          assignmentId,
+        });
+        if (resolved.denied) return resolved.denied;
+
+        const body = request.body as ReassignAssignmentBody;
+        const reassigned =
+          await this.assignmentManager.reassignParticipationAssignment({
+            churchId: ChurchId.from(request.churchId),
+            assignmentId: AssignmentId.from(assignmentId),
+            volunteerId: VolunteerId.from(body.volunteerId),
+            actorId: UserId.from(request.userId),
+            reason: body.reason,
+          });
+        return reply.send(assignmentMapper.toResponse(reassigned));
       },
     );
 
@@ -271,6 +320,27 @@ export class LeaderRosteringController implements FastifyController {
       error: 'FORBIDDEN',
       message: 'Participation belongs to another ministry',
     });
+  }
+
+  private async resolveOwnedAssignment({
+    request,
+    reply,
+    assignmentId,
+  }: ResolveOwnedAssignmentInput): Promise<ResolveOwnedAssignmentResult> {
+    const assignment = await this.assignmentManager.getAssignment({
+      churchId: ChurchId.from(request.churchId),
+      assignmentId: AssignmentId.from(assignmentId),
+    });
+    const denied = await this.denyShiftScope(
+      request,
+      reply,
+      assignment.shiftId as string,
+    );
+    if (denied) {
+      return { denied };
+    }
+
+    return { assignment };
   }
 
   private async denyShiftScope(

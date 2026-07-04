@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { db } from '@church/db';
+import { env } from '@church/env/server';
 import { container } from 'tsyringe';
 import { SchedulingRbacGuard } from '../../api/auth/scheduling-rbac-guard';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
@@ -138,6 +139,9 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.planningEventManager, {
     useClass: DbPlanningEventManager,
+  });
+  container.register(injection.config.assignmentCancelLeadTimeDays, {
+    useValue: env.ASSIGNMENT_CANCEL_LEAD_TIME_DAYS,
   });
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,

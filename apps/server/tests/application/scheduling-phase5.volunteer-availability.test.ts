@@ -73,6 +73,7 @@ function createPhase5Manager({
     }),
     notificationSpy,
     new DrizzleUnitOfWork(schedulingTestDb),
+    3,
   );
 
   return { volunteerManager, notificationSpy };

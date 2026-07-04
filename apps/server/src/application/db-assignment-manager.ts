@@ -27,6 +27,11 @@ import type { VolunteerRepository } from '../domain/contracts/infrastructure/vol
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 
+interface ReassignTransactionResult {
+  nextAssignment: Assignment;
+  previousVolunteerId: VolunteerId;
+}
+
 @injectable()
 export class DbAssignmentManager implements IAssignmentManager {
   constructor(
@@ -120,53 +125,70 @@ export class DbAssignmentManager implements IAssignmentManager {
   async reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment> {
-    return this.unitOfWork.run(async (tx) => {
-      const currentAssignment = await this.assignmentRepo.getById(
-        input.churchId,
-        input.assignmentId,
-        tx,
-      );
-      if (!currentAssignment.shiftId) {
-        throw new Error('Assignment is missing a shift reference');
-      }
-      const nextAssignmentResult =
-        await this.createParticipationAssignmentInTransaction(
+    const { nextAssignment, previousVolunteerId } = await this.unitOfWork.run(
+      async (tx): Promise<ReassignTransactionResult> => {
+        const currentAssignment = await this.assignmentRepo.getById(
+          input.churchId,
+          input.assignmentId,
+          tx,
+        );
+        if (!currentAssignment.shiftId) {
+          throw new Error('Assignment is missing a shift reference');
+        }
+        const nextAssignmentResult =
+          await this.createParticipationAssignmentInTransaction(
+            {
+              churchId: input.churchId,
+              shiftId: currentAssignment.shiftId,
+              volunteerId: input.volunteerId,
+              roleId: currentAssignment.roleId,
+              actorId: input.actorId,
+              override: { reason: input.reason },
+            },
+            tx,
+          );
+        if (!nextAssignmentResult.assignment.participationId) {
+          throw new Error('Assignment is missing a participation reference');
+        }
+
+        await this.assignmentRepo.deleteById(
+          input.churchId,
+          currentAssignment.id,
+          tx,
+        );
+        await this.auditRepo.create(
+          input.churchId,
           {
-            churchId: input.churchId,
-            shiftId: currentAssignment.shiftId,
-            volunteerId: input.volunteerId,
-            roleId: currentAssignment.roleId,
+            assignmentId: nextAssignmentResult.assignment.id,
             actorId: input.actorId,
-            override: { reason: input.reason },
+            action: 'updated',
+            reason: input.reason,
           },
           tx,
         );
-      if (!nextAssignmentResult.assignment.participationId) {
-        throw new Error('Assignment is missing a participation reference');
-      }
 
-      await this.assignmentRepo.deleteById(
-        input.churchId,
-        currentAssignment.id,
-        tx,
-      );
-      await this.auditRepo.create(input.churchId, {
-        assignmentId: nextAssignmentResult.assignment.id,
-        actorId: input.actorId,
-        action: 'updated',
-        reason: input.reason,
-      });
+        return {
+          nextAssignment: nextAssignmentResult.assignment,
+          previousVolunteerId: currentAssignment.volunteerId,
+        };
+      },
+    );
 
-      await this.notifyReassignment({
-        churchId: input.churchId,
-        previousVolunteerId: currentAssignment.volunteerId,
-        nextVolunteerId: nextAssignmentResult.assignment.volunteerId,
-        participationId: nextAssignmentResult.assignment.participationId,
-        assignmentId: nextAssignmentResult.assignment.id,
-      });
+    if (!nextAssignment.participationId) {
+      throw new Error('Assignment is missing a participation reference');
+    }
 
-      return nextAssignmentResult.assignment;
+    // Runs after the transaction commits — the notification service writes
+    // on its own connection and can't see the new assignment row otherwise.
+    await this.notifyReassignment({
+      churchId: input.churchId,
+      previousVolunteerId,
+      nextVolunteerId: nextAssignment.volunteerId,
+      participationId: nextAssignment.participationId,
+      assignmentId: nextAssignment.id,
     });
+
+    return nextAssignment;
   }
 
   async listAuditLog(input: {

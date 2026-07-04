@@ -35,6 +35,7 @@ const assignmentManager = {
   getAssignment: vi.fn(),
   createParticipationAssignment: vi.fn(),
   deleteAssignment: vi.fn(),
+  reassignParticipationAssignment: vi.fn(),
 };
 
 const volunteerManager = {
@@ -199,6 +200,64 @@ describe('Leader rostering routes', () => {
     expect(blockedResponse.json()).toEqual({
       error: 'BELOW_FULL_PUBLISH',
       message: 'Publishing below full staffing requires confirmation',
+    });
+  });
+
+  it('PATCH /api/v1/leader/assignments/:id/reassign returns 200 with the new assignment', async () => {
+    assignmentManager.reassignParticipationAssignment.mockResolvedValue(
+      new Assignment(
+        {
+          churchId: '11111111-1111-1111-1111-111111111111',
+          slotId: '77777777-7777-7777-8777-777777777777',
+          participationId: '22222222-2222-2222-8222-222222222222',
+          shiftId: '66666666-6666-6666-8666-666666666666',
+          volunteerId: 'vol-2',
+          roleId: 'role-1',
+          status: 'pending',
+        },
+        'assign-2',
+      ),
+    );
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/leader/assignments/assign-1/reassign',
+      payload: {
+        volunteerId: 'vol-2',
+        reason: 'Original volunteer became unavailable',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      id: 'assign-2',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      slotId: '77777777-7777-7777-8777-777777777777',
+      participationId: '22222222-2222-2222-8222-222222222222',
+      shiftId: '66666666-6666-6666-8666-666666666666',
+      volunteerId: 'vol-2',
+      roleId: 'role-1',
+      status: 'pending',
+      assignedAt: expect.any(String),
+    });
+  });
+
+  it('PATCH /api/v1/leader/assignments/:id/reassign returns 403 for another ministry scope', async () => {
+    rbacGuard.canManageShift.mockResolvedValue(false);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/leader/assignments/assign-1/reassign',
+      payload: {
+        volunteerId: 'vol-2',
+        reason: 'Original volunteer became unavailable',
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: 'Shift belongs to another ministry',
     });
   });
 

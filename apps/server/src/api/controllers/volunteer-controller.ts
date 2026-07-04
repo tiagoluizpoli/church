@@ -255,6 +255,26 @@ export class VolunteerController implements FastifyController {
       },
     );
 
+    app.post(
+      '/assignments/:assignmentId/cancel',
+      {
+        schema: {
+          tags: ['volunteer'],
+          operationId: 'cancelOwnAssignment',
+          response: { 204: z.null() },
+        },
+      },
+      async (request, reply) => {
+        const { assignmentId } = request.params as AssignmentRouteParams;
+        await this.volunteerManager.cancelOwnAssignment({
+          assignmentId: AssignmentId.from(assignmentId),
+          volunteerId: VolunteerId.from(request.volunteerId),
+          churchId: ChurchId.from(request.churchId),
+        });
+        return reply.status(204).send(null);
+      },
+    );
+
     app.get(
       '/notifications',
       {

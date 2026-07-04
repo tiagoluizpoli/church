@@ -3104,6 +3104,92 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/leader/assignments/{assignmentId}/reassign:
+    patch:
+      operationId: reassignParticipationAssignment
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                volunteerId:
+                  type: string
+                reason:
+                  type: string
+                  minLength: 10
+              required:
+                - volunteerId
+                - reason
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  slotId:
+                    type: string
+                  participationId:
+                    type: string
+                  shiftId:
+                    type: string
+                  volunteerId:
+                    type: string
+                  roleId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - pending
+                      - confirmed
+                      - declined
+                      - cancelled
+                  reason:
+                    type: string
+                  assignedAt:
+                    type: string
+                  assignedBy:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - slotId
+                  - volunteerId
+                  - roleId
+                  - status
+                  - assignedAt
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/leader/participations/{participationId}/completion:
     get:
       operationId: getParticipationCompletion
@@ -3818,6 +3904,27 @@ paths:
                   - status
                   - assignedAt
                 additionalProperties: false
+  /api/v1/volunteer/assignments/{assignmentId}/cancel:
+    post:
+      operationId: cancelOwnAssignment
+      tags:
+        - volunteer
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
   /api/v1/volunteer/notifications:
     get:
       operationId: getNotifications

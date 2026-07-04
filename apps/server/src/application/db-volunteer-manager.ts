@@ -8,6 +8,7 @@ import type {
 } from '../domain/branded-ids';
 import type {
   AvailabilityOverlapItem,
+  CancelOwnAssignmentInput,
   ConfirmAvailabilityCheckInput,
   ConfirmAvailabilityCheckResult,
   DashboardAssignmentGroup,
@@ -57,7 +58,9 @@ import type {
 } from '../domain/entities/assignment';
 import type { Availability } from '../domain/entities/availability';
 import type { TimeSlot } from '../domain/entities/time-slot';
+import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { AvailabilityOverlapError } from '../domain/errors/availability-overlap';
+import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 import {
@@ -71,6 +74,12 @@ import { detectCrossMinistryOverlaps } from '../domain/services/availability-ove
 const UPCOMING_DAYS = 30;
 const DEFAULT_NOTIFICATION_LIMIT = 20;
 const NOTIFICATION_PREVIEW_LIMIT = 3;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
+interface NotifyLeadersOfCancellationInput {
+  churchId: ChurchId;
+  assignment: Assignment;
+}
 
 interface NotifyLeadersOfOverlapInput {
   churchId: ChurchId;
@@ -171,6 +180,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     private readonly notificationService: NotificationService,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
+    @inject('AssignmentCancelLeadTimeDays')
+    private readonly cancelLeadTimeDays: number,
   ) {}
 
   async resolveVolunteerContext(
@@ -848,6 +859,75 @@ export class DbVolunteerManager implements IVolunteerManager {
       reason,
     });
     return this.assignmentRepo.getById(churchId, assignmentId);
+  }
+
+  async cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void> {
+    const { assignmentId, churchId, volunteerId } = input;
+    const assignment = await this.assignmentRepo.getById(
+      churchId,
+      assignmentId,
+    );
+    if (assignment.volunteerId !== volunteerId) {
+      throw new AssignmentAccessDeniedError();
+    }
+
+    if (assignment.shiftId) {
+      const shift = await this.shiftRepo.getById({
+        churchId,
+        shiftId: assignment.shiftId,
+      });
+      const cutoff = new Date(
+        shift.startTime.getTime() -
+          this.cancelLeadTimeDays * MILLISECONDS_PER_DAY,
+      );
+      if (new Date() >= cutoff) {
+        throw new CancelWindowClosedError();
+      }
+    }
+
+    await this.notifyLeadersOfCancellation({ churchId, assignment });
+    await this.assignmentRepo.deleteById(churchId, assignmentId);
+  }
+
+  private async notifyLeadersOfCancellation(
+    input: NotifyLeadersOfCancellationInput,
+  ): Promise<void> {
+    const { churchId, assignment } = input;
+    if (!assignment.participationId) {
+      return;
+    }
+
+    const participation = await this.participationRepo.getById({
+      churchId,
+      participationId: assignment.participationId,
+    });
+    const event = await this.eventRepo.getById(churchId, participation.eventId);
+    const leaders =
+      await this.availabilityCheckRepo.listMinistryLeaderVolunteerIds({
+        churchId,
+        ministryIds: [participation.ministryId],
+      });
+
+    await Promise.all(
+      leaders.map((leader) =>
+        this.notificationService.notifyVolunteer({
+          churchId: churchId as string,
+          volunteerId: leader.volunteerId as string,
+          planningCycleId: event.planningCycleId,
+          ministryId: participation.ministryId,
+          eventId: event.id,
+          assignmentId: assignment.id,
+          type: 'assignment_removed',
+          title: 'Volunteer cancelled an assignment',
+          body: `A volunteer cancelled their assignment for ${event.title}. The slot is open again.`,
+          payload: {
+            assignmentId: assignment.id as string,
+            eventId: event.id as string,
+            ministryId: participation.ministryId as string,
+          },
+        }),
+      ),
+    );
   }
 
   async getNotifications(

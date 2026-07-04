@@ -121,6 +121,7 @@ function createPhase6Managers(): Phase6Managers {
       }),
       notificationSpy,
       unitOfWork,
+      3,
     ),
     assignmentRepo,
     participationRepo,

@@ -11,6 +11,7 @@ export const env = createEnv({
     CORS_ORIGIN: z.url(),
     UNLEASH_API_URL: z.url(),
     UNLEASH_API_TOKEN: z.string(),
+    ASSIGNMENT_CANCEL_LEAD_TIME_DAYS: z.coerce.number().int().min(0).default(3),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),

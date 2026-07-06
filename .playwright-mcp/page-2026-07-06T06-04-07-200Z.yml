@@ -1,0 +1,147 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - complementary [ref=f1e4]:
+        - generic [ref=f1e5]:
+          - generic [ref=f1e6]: Church CRM
+          - button [ref=f1e258]:
+            - img [ref=f1e8]
+        - navigation [ref=f1e10]:
+          - link [ref=f1e259] [cursor=pointer]:
+            - /url: /
+            - img [ref=f1e12]
+            - generic [ref=f1e15]: Home
+          - link [ref=f1e260] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=f1e17]
+            - generic [ref=f1e22]: Dashboard
+          - link [ref=f1e261] [cursor=pointer]:
+            - /url: /shifts
+            - img [ref=f1e24]
+            - generic [ref=f1e26]: Shifts
+          - link [ref=f1e262] [cursor=pointer]:
+            - /url: /scheduling
+            - img [ref=f1e28]
+            - generic [ref=f1e32]: Scheduling
+          - link [ref=f1e263] [cursor=pointer]:
+            - /url: /alerts
+            - img [ref=f1e34]
+            - generic [ref=f1e37]: Alerts
+          - link [ref=f1e264] [cursor=pointer]:
+            - /url: /availability
+            - img [ref=f1e39]
+            - generic [ref=f1e42]: Availability
+          - link [ref=f1e265] [cursor=pointer]:
+            - /url: /todos
+            - img [ref=f1e44]
+            - generic [ref=f1e47]: Todos
+      - generic [ref=f1e48]:
+        - banner [ref=f1e49]:
+          - navigation [ref=f1e266]:
+            - link [ref=f1e267] [cursor=pointer]:
+              - /url: /
+              - text: Home
+            - generic [ref=f1e52]: /
+            - generic [ref=f1e53]: Scheduling
+          - generic [ref=f1e54]:
+            - button [ref=f1e268]:
+              - img [ref=f1e56]
+            - button [ref=f1e269]:
+              - img
+              - generic [ref=f1e60]: Church Time
+            - button [ref=f1e270]:
+              - img
+              - generic [ref=f1e62]: Toggle theme
+            - button [ref=f1e271]: Local Admin
+        - main [ref=f1e64]:
+          - generic [ref=f1e66]:
+            - generic [ref=f1e67]:
+              - generic [ref=f1e68]:
+                - heading [level=1] [ref=f1e272]: Scheduling
+                - paragraph [ref=f1e70]: Builder events live here. Planning and participation tailoring live in their own focused surfaces.
+              - generic [ref=f1e71]:
+                - link [ref=f1e273] [cursor=pointer]:
+                  - /url: /scheduling/tailoring
+                  - text: Open tailoring
+                - link [ref=f1e274] [cursor=pointer]:
+                  - /url: /scheduling/planning
+                  - text: Open planning
+            - generic [ref=f1e74]:
+              - generic [ref=f1e75]:
+                - heading [level=2] [ref=f1e275]: Events
+                - generic [ref=f1e77]:
+                  - generic [ref=f1e78]: Viewing in Church Time (America/New_York)
+                  - button [ref=f1e276]:
+                    - img
+                    - text: New Event
+              - paragraph [ref=f1e84]: No events yet. Create one to get started.
+    - region "Notifications alt+T":
+      - list:
+        - listitem [ref=f1e330]:
+          - img [ref=f1e332]
+          - generic [ref=f1e337]: Quick create is not available on the current admin API.
+    - button [ref=f1e277] [cursor=pointer]:
+      - generic [ref=f1e86]:
+        - img [ref=f1e88]
+        - img [ref=f1e123]
+      - generic [ref=f1e157]: "-"
+      - generic [ref=f1e158]: TanStack Router
+    - generic [ref=f1e159]:
+      - img [ref=f1e161]
+      - button [ref=f1e278] [cursor=pointer]:
+        - img [ref=f1e210]
+  - dialog "New Event" [ref=f1e282]:
+    - heading "New Event" [level=2] [ref=f1e284]
+    - generic [ref=f1e285]:
+      - generic [ref=f1e286]:
+        - generic [ref=f1e287]: Title
+        - textbox "Title" [ref=f1e288]:
+          - /placeholder: e.g. Sunday Morning Service
+          - text: Sunday Morning Service
+      - generic [ref=f1e289]:
+        - generic [ref=f1e290]: Start
+        - generic [ref=f1e291]:
+          - generic [ref=f1e292]:
+            - img
+            - textbox "Start date" [ref=f1e293]: 2026-08-15
+          - generic [ref=f1e294]:
+            - img [ref=f1e295]
+            - textbox "Start hour" [ref=f1e298]:
+              - /placeholder: "00"
+              - text: "09"
+            - generic [ref=f1e299]: ":"
+            - textbox "Start minute" [ref=f1e300]:
+              - /placeholder: "00"
+              - text: "00"
+      - generic [ref=f1e301]:
+        - generic [ref=f1e302]: End
+        - generic [ref=f1e303]:
+          - generic [ref=f1e304]:
+            - img
+            - textbox "End date" [ref=f1e305]: 2026-08-15
+          - generic [ref=f1e306]:
+            - img [ref=f1e307]
+            - textbox "End hour" [ref=f1e310]:
+              - /placeholder: "00"
+              - text: "12"
+            - generic [ref=f1e311]: ":"
+            - textbox "End minute" [ref=f1e312]:
+              - /placeholder: "00"
+              - text: "00"
+      - generic [ref=f1e313]:
+        - generic [ref=f1e314]: Event type
+        - radiogroup [ref=f1e315]:
+          - generic [ref=f1e316]:
+            - radio "Hourly (time slots)" [checked] [ref=f1e317]
+            - radio [checked] [ref=f1e320]
+            - text: Hourly (time slots)
+          - generic [ref=f1e321]:
+            - radio "Day-based" [ref=f1e322]
+            - radio [ref=f1e323]
+            - text: Day-based
+    - generic [ref=f1e324]:
+      - button "Cancel" [ref=f1e325]
+      - button "Create" [active] [ref=f1e329]
+    - button "Close" [ref=f1e326]:
+      - img
+      - generic [ref=f1e327]: Close

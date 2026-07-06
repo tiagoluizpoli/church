@@ -1,0 +1,102 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: Church CRM
+        - button "Collapse sidebar" [ref=e7]:
+          - img [ref=e8]
+      - navigation [ref=e10]:
+        - link "Home" [ref=e11] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - generic [ref=e15]: Home
+        - link "Dashboard" [ref=e16] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e17]
+          - generic [ref=e22]: Dashboard
+        - link "Shifts" [ref=e23] [cursor=pointer]:
+          - /url: /shifts
+          - img [ref=e24]
+          - generic [ref=e26]: Shifts
+        - link "Scheduling" [ref=e27] [cursor=pointer]:
+          - /url: /scheduling
+          - img [ref=e28]
+          - generic [ref=e32]: Scheduling
+        - link "Alerts" [ref=e33] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e34]
+          - generic [ref=e37]: Alerts
+        - link "Availability" [ref=e38] [cursor=pointer]:
+          - /url: /availability
+          - img [ref=e39]
+          - generic [ref=e42]: Availability
+        - link "Todos" [ref=e43] [cursor=pointer]:
+          - /url: /todos
+          - img [ref=e44]
+          - generic [ref=e47]: Todos
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - navigation "Breadcrumb" [ref=e50]:
+          - link "Home" [ref=e51] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e271]: /
+          - generic [ref=e272]: Dashboard
+        - generic [ref=e54]:
+          - button "Search" [ref=e55]:
+            - img [ref=e56]
+          - button "Church Time" [ref=e59]:
+            - img
+            - generic [ref=e60]: Church Time
+          - button "Toggle theme" [ref=e61]:
+            - img
+            - generic [ref=e62]: Toggle theme
+          - button "Local Admin" [ref=e273]
+      - main [ref=e65]:
+        - generic [ref=e275]:
+          - generic [ref=e277]:
+            - generic [ref=e278]: Volunteer Dashboard
+            - generic [ref=e279]: Review what needs your attention, Local Admin.
+            - link "View availability checks" [ref=e280] [cursor=pointer]:
+              - /url: /volunteer/availability
+          - generic [ref=e281]:
+            - generic [ref=e282]:
+              - generic [ref=e283]: My Upcoming Assignments
+              - generic [ref=e284]: Review your published assignments and let your leader know if you can no longer serve.
+            - alert [ref=e286]:
+              - generic [ref=e287]: No upcoming assignments
+              - generic [ref=e288]: You are not currently scheduled for any upcoming published assignments.
+          - generic [ref=e289]:
+            - generic [ref=e290]:
+              - generic [ref=e291]:
+                - generic [ref=e292]: Notifications Inbox
+                - generic [ref=e293]: Review schedule history, reminders, and assignment updates.
+              - generic [ref=e294]:
+                - generic [ref=e295]: 0 unread
+                - button "Mark all as read" [disabled]
+            - alert [ref=e297]:
+              - generic [ref=e298]: No notifications yet
+              - generic [ref=e299]: Scheduling updates and reminders will appear here.
+          - generic [ref=e300]:
+            - generic [ref=e302]:
+              - generic [ref=e303]: Ministry Schedule
+              - generic [ref=e304]: Browse published schedule rows without leader-only conflict or audit details.
+            - alert [ref=e306]:
+              - generic [ref=e307]: No published ministry schedule yet
+              - generic [ref=e308]: Published events for this ministry will appear here when leaders finalize them.
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e309]:
+        - img [ref=e311]
+        - generic [ref=e315]: Sign in successful
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e84] [cursor=pointer]:
+        - generic [ref=e85]:
+          - img [ref=e87]
+          - img [ref=e122]
+        - generic [ref=e156]: "-"
+        - generic [ref=e157]: TanStack Router
+  - generic [ref=e158]:
+    - img [ref=e160]
+    - button "Open Tanstack query devtools" [ref=e208] [cursor=pointer]:
+      - img [ref=e209]

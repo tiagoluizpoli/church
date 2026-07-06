@@ -15,6 +15,10 @@
     "better-auth": {
       "type": "http",
       "url": "https://mcp.inkeep.com/better-auth/mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
     }
   }
 }

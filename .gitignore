@@ -53,3 +53,9 @@ temp
 .agents/workflows
 AGENTS.md
 SKILLS_OVERVIEW.md
+
+# Playwright & Impeccable artifacts
+.playwright-mcp
+.impeccable
+/*.png
+

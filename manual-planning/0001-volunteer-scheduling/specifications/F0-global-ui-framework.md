@@ -1,5 +1,7 @@
 # Spec F0: Global UI Framework
 
+> **⚠️ Partially superseded (2026-07-06) — Spec 018: Church-wide UX/IA Redesign.** Two decisions below no longer hold: §1's bottom-nav pillars (`Dashboard, Shifts, Alerts, Profile`) are replaced by role-scoped nav sets (Volunteer: `Dashboard, Availability`; Leader/Sub-leader/Admin: `+ Scheduling`) with a top-bar notification bell instead of an `Alerts` pillar — `Shifts` and `Profile` are removed pending a future, separately-scoped product decision if either is ever built. §2's sharp 4px corner-radius token is out of scope for Spec 018 itself but is flagged there as the next follow-up (`/impeccable polish`) once the IA lands. Everything else in this spec (responsive shell structure, sidebar/topbar regions, CMD+K palette, motion/drawer choices) is unaffected. Authoritative source: [`specs/018-churchwide-ux-redesign/spec.md`](../../../specs/018-churchwide-ux-redesign/spec.md).
+
 ## Purpose
 Define the foundational "App Shell" and design tokens that govern the visual and structural consistency of the entire Volunteer Scheduling platform.
 

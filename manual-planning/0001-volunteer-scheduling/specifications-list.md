@@ -76,6 +76,18 @@ Everything must be built on top of an existing component from **shadcn/ui**. We 
 
 ---
 
+## 🎨 Spec 018: Church-wide UX/IA Redesign (Cross-Cutting)
+
+*Objective: Reorganize navigation, notifications, the volunteer dashboard, and the scheduling/planning flow around one deliberate information architecture. No new domain entities or backend contracts. Ships as presentation-layer changes over the already-implemented Spec 017 scheduling reshape.*
+
+- **[Spec 018: Church-wide UX/IA Redesign](../../specs/018-churchwide-ux-redesign/spec.md)** — role-scoped primary navigation (Volunteer vs. Leader/Sub-leader/Admin); removes dead nav links (`Shifts`, `Profile`) and leftover template scaffolding (`/` ASCII banner, `/todos` stub); consolidates notifications into a single top-bar bell; restructures the volunteer dashboard into tabs; turns the planning-cycle screen into a state-driven step sequence; removes the duplicate `EventList`/create-event surface from `/`; adds role-badge disambiguation for Leader/Sub-leader identity in the schedule builder.
+  - *Grilling source:* [`.plan/grilling/2026-07-06-bl014-churchwide-ux-redesign.md`](../../.plan/grilling/2026-07-06-bl014-churchwide-ux-redesign.md)
+  - *Backlog source:* [BL-014](./BACKLOG.md)
+  - *Partially supersedes:* [F0-global-ui-framework.md](./specifications/F0-global-ui-framework.md) (bottom-nav pillars, 4px radius token only — see F0's own supersession note), [F2-volunteer-dashboard.md](./specifications/F2-volunteer-dashboard.md) (notifications-as-dashboard-section placement only — see F2's own supersession note)
+  - *Explicitly out of scope:* visual/theme redesign (color, radius, typography) — deferred to a follow-up `/impeccable polish` pass after this IA lands; two correctness bugs found alongside this work (builder Publish-button state, reassign-dialog raw UUID) — tracked independently, not gated on this spec
+
+---
+
 ## 🛡️ Mandatory Quality Gates (Every Layer)
 1. **100% Type Safety**: No `any` or `unknown` casts.
 2. **Church Isolation**: Every query must explicitly or implicitly filter by `church_id`.

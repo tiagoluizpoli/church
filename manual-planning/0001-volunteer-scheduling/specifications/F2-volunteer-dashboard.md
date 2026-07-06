@@ -1,5 +1,7 @@
 # Spec F2: Volunteer Dashboard (Mobile/PWA)
 
+> **⚠️ Partially superseded (2026-07-06) — Spec 018: Church-wide UX/IA Redesign.** §1.1/1.2 and §2.3's `Notifications Inbox` as a dashboard section is replaced by a single top-bar notification bell (present for every role, not dashboard-scoped) with its own full-history route — the dashboard itself no longer renders a notifications section at all. The remaining three sections (`Availability Needed`, `My Upcoming Assignments`, `Ministry Schedule`) keep their relative priority/order from §1.2 but move from a flat vertical stack into switchable tabs on the same route. Everything else in this spec (availability model, assignment-response rules, notification *content*/deep-linking semantics in §5, PWA/offline behavior) is unaffected — only where notifications are *displayed* changes, not how they're generated or what they say. Authoritative source: [`specs/018-churchwide-ux-redesign/spec.md`](../../../specs/018-churchwide-ux-redesign/spec.md).
+
 ## Purpose
 Define the volunteer-facing, mobile-first dashboard for availability submission, assignment visibility, response workflows, notifications, and read-only ministry schedule transparency.
 

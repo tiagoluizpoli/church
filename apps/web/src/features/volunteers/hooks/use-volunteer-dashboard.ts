@@ -19,11 +19,7 @@ import { queryClient } from '@/utils/api';
 import { volunteerApi } from '@/utils/api-instances';
 
 export interface UseVolunteerDashboardOptions {
-  initialSection?:
-    | 'availability'
-    | 'assignments'
-    | 'notifications'
-    | 'ministry_schedule';
+  initialSection?: 'availability' | 'assignments' | 'ministry_schedule';
   initialEventId?: string;
   initialAssignmentId?: string;
   initialMinistryId?: string;

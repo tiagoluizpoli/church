@@ -10,6 +10,7 @@ import type {
   GetMinistrySchedule200,
   GetMyAssignments200,
   GetNotifications200,
+  GetNotificationsParams,
   GetPublishedVolunteerSchedule200,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
@@ -105,10 +106,11 @@ const getVolunteerDashboard = (
       );
     }
   const getNotifications = (
-
+    params?: GetNotificationsParams,
  ) => {
       return apiClient<GetNotifications200>(
-      {url: `/api/v1/volunteer/notifications`, method: 'GET'
+      {url: `/api/v1/volunteer/notifications`, method: 'GET',
+        params
     },
       );
     }

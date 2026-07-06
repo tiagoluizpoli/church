@@ -13,7 +13,6 @@ const visibleDataFixture = {
   assignmentGroups: [{ eventId: 'event-1' }],
   availabilityTasks: [{ eventId: 'event-2' }],
   ministrySchedule: [{ eventId: 'event-3' }],
-  notificationPages: [{ dateBucketLabel: 'Today', items: [] }],
 };
 
 describe('useDashboardRefresh', () => {

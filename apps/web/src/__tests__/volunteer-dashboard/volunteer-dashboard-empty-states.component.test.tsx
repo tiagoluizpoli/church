@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../setup/render';
 import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
-import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';
 import { useVolunteerDashboard } from '@/features/volunteers/hooks/use-volunteer-dashboard';
 
 vi.mock('@tanstack/react-router', () => ({
@@ -16,10 +15,6 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@/features/volunteers/hooks/use-volunteer-dashboard', () => ({
   useVolunteerDashboard: vi.fn(),
-}));
-
-vi.mock('@/features/volunteers/hooks/use-notification-inbox', () => ({
-  useNotificationInbox: vi.fn(),
 }));
 
 function createVolunteerDashboardHookResult(
@@ -72,28 +67,6 @@ function createVolunteerDashboardHookResult(
   } as unknown as ReturnType<typeof useVolunteerDashboard>;
 }
 
-function createNotificationInboxHookResult(
-  overrides: Partial<ReturnType<typeof useNotificationInbox>> = {},
-): ReturnType<typeof useNotificationInbox> {
-  return {
-    hasMore: false,
-    isLoading: false,
-    isLoadingMore: false,
-    items: [],
-    loadMore: vi.fn(),
-    markAllRead: vi.fn(),
-    markRead: vi.fn(),
-    openNotification: vi.fn(),
-    pages: [],
-    refresh: vi.fn().mockResolvedValue(undefined),
-    selectedNotification: undefined,
-    setSelectedNotificationId: vi.fn(),
-    unreadCount: 0,
-    ...overrides,
-  } as unknown as ReturnType<typeof useNotificationInbox>;
-}
-
-const mockedUseNotificationInbox = vi.mocked(useNotificationInbox);
 const mockedUseVolunteerDashboard = vi.mocked(useVolunteerDashboard);
 
 describe('VolunteerDashboard empty-state regressions', () => {
@@ -105,9 +78,6 @@ describe('VolunteerDashboard empty-state regressions', () => {
     mockedUseVolunteerDashboard.mockReturnValue(
       createVolunteerDashboardHookResult(),
     );
-    mockedUseNotificationInbox.mockReturnValue(
-      createNotificationInboxHookResult(),
-    );
 
     renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
 
@@ -115,21 +85,19 @@ describe('VolunteerDashboard empty-state regressions', () => {
       screen.queryByText('Availability needed', { exact: true }),
     ).not.toBeInTheDocument();
 
+    expect(
+      screen.queryByText('Scheduling updates and reminders will appear here.'),
+    ).not.toBeInTheDocument();
+
     const assignmentsEmptyState = screen.getByText(
       'You are not currently scheduled for any upcoming published assignments.',
-    );
-    const notificationsEmptyState = screen.getByText(
-      'Scheduling updates and reminders will appear here.',
     );
     const ministryEmptyState = screen.getByText(
       'Published events for this ministry will appear here when leaders finalize them.',
     );
 
     expect(
-      assignmentsEmptyState.compareDocumentPosition(notificationsEmptyState),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(
-      notificationsEmptyState.compareDocumentPosition(ministryEmptyState),
+      assignmentsEmptyState.compareDocumentPosition(ministryEmptyState),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
@@ -149,9 +117,6 @@ describe('VolunteerDashboard empty-state regressions', () => {
           },
         ],
       }),
-    );
-    mockedUseNotificationInbox.mockReturnValue(
-      createNotificationInboxHookResult(),
     );
 
     renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);

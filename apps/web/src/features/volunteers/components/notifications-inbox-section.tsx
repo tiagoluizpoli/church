@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@church/ui/components/card';
 import { ScrollArea } from '@church/ui/components/scroll-area';
+import { Link } from '@tanstack/react-router';
 
 export interface NotificationItemViewModel {
   id: string;
@@ -28,18 +29,45 @@ export interface NotificationPageViewModel {
   items: NotificationItemViewModel[];
 }
 
-export interface NotificationsInboxSectionProps {
+export interface NotificationsInboxItemActions {
+  onOpenNotification: (notificationId: string) => void;
+  onMarkRead: (notificationId: string) => void;
+}
+
+export interface NotificationsInboxFullModeProps
+  extends NotificationsInboxItemActions {
+  variant: 'full';
   unreadCount: number;
   pages: NotificationPageViewModel[];
   isLoadingMore: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
-  onOpenNotification: (notificationId: string) => void;
-  onMarkRead: (notificationId: string) => void;
   onMarkAllRead: () => void;
 }
 
-export function NotificationsInboxSection({
+export interface NotificationsInboxCompactModeProps
+  extends NotificationsInboxItemActions {
+  variant: 'compact';
+  items: NotificationItemViewModel[];
+  onViewAll?: () => void;
+}
+
+export type NotificationsInboxSectionProps =
+  | NotificationsInboxFullModeProps
+  | NotificationsInboxCompactModeProps;
+
+function NoNotificationsAlert() {
+  return (
+    <Alert>
+      <AlertTitle>No notifications yet</AlertTitle>
+      <AlertDescription>
+        Scheduling updates and reminders will appear here.
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function FullModeInbox({
   unreadCount,
   pages,
   isLoadingMore,
@@ -48,7 +76,7 @@ export function NotificationsInboxSection({
   onOpenNotification,
   onMarkRead,
   onMarkAllRead,
-}: NotificationsInboxSectionProps) {
+}: NotificationsInboxFullModeProps) {
   const hasNotifications = pages.some((page) => page.items.length > 0);
 
   return (
@@ -76,12 +104,7 @@ export function NotificationsInboxSection({
       </CardHeader>
       <CardContent className="space-y-4">
         {!hasNotifications ? (
-          <Alert>
-            <AlertTitle>No notifications yet</AlertTitle>
-            <AlertDescription>
-              Scheduling updates and reminders will appear here.
-            </AlertDescription>
-          </Alert>
+          <NoNotificationsAlert />
         ) : (
           <ScrollArea className="h-96 pr-4">
             <div className="space-y-6">
@@ -155,4 +178,63 @@ export function NotificationsInboxSection({
       </CardContent>
     </Card>
   );
+}
+
+function CompactModeInbox({
+  items,
+  onOpenNotification,
+  onViewAll,
+}: NotificationsInboxCompactModeProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      {items.length === 0 ? (
+        <NoNotificationsAlert />
+      ) : (
+        <div className="flex flex-col gap-1">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onOpenNotification(item.id)}
+              className={`flex flex-col gap-1 rounded-sm p-2 text-left text-sm hover:bg-accent ${
+                item.isUnread ? 'bg-muted/40' : ''
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{item.title}</span>
+                {item.isUnread ? (
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary">
+                    <span className="sr-only">Unread</span>
+                  </span>
+                ) : null}
+              </div>
+              <span className="line-clamp-2 text-muted-foreground text-xs">
+                {item.body}
+              </span>
+              <span className="text-muted-foreground text-xs">
+                {item.createdAtLabel}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      <Link
+        to="/notifications"
+        onClick={onViewAll}
+        className="text-center text-primary text-sm hover:underline"
+      >
+        View all
+      </Link>
+    </div>
+  );
+}
+
+export function NotificationsInboxSection(
+  props: NotificationsInboxSectionProps,
+) {
+  if (props.variant === 'compact') {
+    return <CompactModeInbox {...props} />;
+  }
+
+  return <FullModeInbox {...props} />;
 }

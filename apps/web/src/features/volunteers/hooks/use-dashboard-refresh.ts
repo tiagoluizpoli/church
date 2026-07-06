@@ -6,7 +6,6 @@ export interface DashboardRefreshVisibleData {
   assignmentGroups: unknown;
   availabilityTasks: unknown;
   ministrySchedule: unknown;
-  notificationPages: unknown;
 }
 
 export interface UseDashboardRefreshOptions {

@@ -15,6 +15,7 @@ import { useCallerRoles } from '../shared/hooks/use-caller-roles';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
+import { NotificationBell } from './notification-bell/notification-bell';
 import UserMenu from './user-menu';
 
 interface AppShellProps {
@@ -89,8 +90,7 @@ export function AppShell({ children }: AppShellProps) {
         <span className="font-semibold text-lg tracking-tight">Church CRM</span>
 
         <div className="flex items-center gap-2">
-          {/* Reserved for US2's notification bell (T023) */}
-          <div data-testid="notification-bell-slot" />
+          <NotificationBell />
 
           <button
             type="button"
@@ -223,8 +223,7 @@ export function AppShell({ children }: AppShellProps) {
             >
               <Search className="h-4 w-4" />
             </button>
-            {/* Reserved for US2's notification bell (T023) */}
-            <div data-testid="notification-bell-slot" />
+            <NotificationBell />
             <TimezoneToggle />
             <ModeToggle />
             <UserMenu />

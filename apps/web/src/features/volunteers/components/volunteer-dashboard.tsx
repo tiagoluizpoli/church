@@ -12,9 +12,7 @@ import {
   DialogTitle,
 } from '@church/ui/components/dialog';
 import { Link } from '@tanstack/react-router';
-import { toast } from 'sonner';
 import { useDashboardRefresh } from '../hooks/use-dashboard-refresh';
-import { useNotificationInbox } from '../hooks/use-notification-inbox';
 import { useVolunteerDashboard } from '../hooks/use-volunteer-dashboard';
 import {
   mapAvailabilityEvent,
@@ -25,17 +23,11 @@ import { AvailabilityNeededSection } from './availability-needed-section';
 import { BackgroundRefreshIndicator } from './background-refresh-indicator';
 import { DashboardOfflineBanner } from './dashboard-offline-banner';
 import { MinistryScheduleSection } from './ministry-schedule-section';
-import { NotificationDetailSheet } from './notification-detail-sheet';
-import { NotificationsInboxSection } from './notifications-inbox-section';
 import { UpcomingAssignmentsSection } from './upcoming-assignments-section';
 
 export interface VolunteerDashboardProps {
   volunteerName?: string;
-  initialSection?:
-    | 'availability'
-    | 'assignments'
-    | 'notifications'
-    | 'ministry_schedule';
+  initialSection?: 'availability' | 'assignments' | 'ministry_schedule';
   initialEventId?: string;
   initialAssignmentId?: string;
   initialMinistryId?: string;
@@ -44,7 +36,6 @@ export interface VolunteerDashboardProps {
 export const DASHBOARD_SECTION_OPTIONS = [
   'availability',
   'assignments',
-  'notifications',
   'ministry_schedule',
 ] as const;
 
@@ -61,71 +52,14 @@ export function VolunteerDashboard({
     initialAssignmentId,
     initialMinistryId,
   });
-  const inbox = useNotificationInbox(dashboard.notificationUnreadCount);
   const refresh = useDashboardRefresh({
-    onRefresh: async () => {
-      await Promise.all([
-        dashboard.invalidateVolunteerDashboard(),
-        inbox.refresh(),
-      ]);
-    },
+    onRefresh: dashboard.invalidateVolunteerDashboard,
     visibleData: {
       assignmentGroups: dashboard.assignmentGroups,
       availabilityTasks: dashboard.availabilityTasks,
       ministrySchedule: dashboard.ministrySchedule?.events ?? [],
-      notificationPages: inbox.pages,
     },
   });
-
-  const handleOpenNotificationContext = () => {
-    const notification = inbox.selectedNotification;
-    if (!notification) {
-      return;
-    }
-
-    if (notification.deepLink.section === 'availability') {
-      if (
-        notification.deepLink.eventId &&
-        dashboard.availabilityTasks.some(
-          (task) => task.eventId === notification.deepLink.eventId,
-        )
-      ) {
-        dashboard.setSelectedEventId(notification.deepLink.eventId);
-        inbox.setSelectedNotificationId(undefined);
-        return;
-      }
-    }
-
-    if (notification.deepLink.section === 'assignments') {
-      const matchingGroup = dashboard.assignmentGroups.find(
-        (group) =>
-          group.eventId === notification.deepLink.eventId ||
-          group.assignments.some(
-            (assignment) =>
-              assignment.assignmentId === notification.deepLink.assignmentId,
-          ),
-      );
-
-      if (matchingGroup) {
-        dashboard.openAssignmentGroup(matchingGroup.eventId);
-        inbox.setSelectedNotificationId(undefined);
-        return;
-      }
-    }
-
-    if (notification.deepLink.section === 'ministry_schedule') {
-      if (notification.deepLink.ministryId) {
-        dashboard.setSelectedMinistryId(notification.deepLink.ministryId);
-      }
-      inbox.setSelectedNotificationId(undefined);
-      return;
-    }
-
-    toast.info(
-      'Original target changed. Showing latest dashboard context instead.',
-    );
-    inbox.setSelectedNotificationId(undefined);
-  };
 
   return (
     <div className="space-y-4">
@@ -177,17 +111,6 @@ export function VolunteerDashboard({
         onCancel={dashboard.handleCancelAssignment}
       />
 
-      <NotificationsInboxSection
-        unreadCount={inbox.unreadCount}
-        pages={inbox.pages}
-        isLoadingMore={inbox.isLoadingMore}
-        hasMore={inbox.hasMore}
-        onLoadMore={inbox.loadMore}
-        onOpenNotification={inbox.openNotification}
-        onMarkRead={inbox.markRead}
-        onMarkAllRead={inbox.markAllRead}
-      />
-
       <MinistryScheduleSection
         ministries={dashboard.ministryOptions}
         selectedMinistryId={dashboard.selectedMinistryId}
@@ -232,17 +155,6 @@ export function VolunteerDashboard({
           ) : null}
         </DialogContent>
       </Dialog>
-
-      <NotificationDetailSheet
-        open={inbox.selectedNotification != null}
-        notification={inbox.selectedNotification}
-        onOpenChange={(open) => {
-          if (!open) {
-            inbox.setSelectedNotificationId(undefined);
-          }
-        }}
-        onOpenContext={handleOpenNotificationContext}
-      />
     </div>
   );
 }

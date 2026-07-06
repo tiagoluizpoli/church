@@ -48,6 +48,11 @@ interface NotificationRouteParams {
   notificationId: string;
 }
 
+const getNotificationsQuerystringSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().optional(),
+});
+
 @injectable()
 export class VolunteerController implements FastifyController {
   readonly prefix = '/volunteer';
@@ -281,13 +286,19 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getNotifications',
+          querystring: getNotificationsQuerystringSchema,
           response: { 200: notificationListResponseSchema },
         },
       },
       async (request, reply) => {
+        const { cursor, limit } = request.query as z.infer<
+          typeof getNotificationsQuerystringSchema
+        >;
         const result = await this.volunteerManager.getNotifications({
           volunteerId: VolunteerId.from(request.volunteerId),
           churchId: ChurchId.from(request.churchId),
+          cursor: cursor ? new Date(cursor) : undefined,
+          limit,
         });
         return reply.send(notificationMapper.listToResponse(result));
       },

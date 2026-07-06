@@ -1711,6 +1711,11 @@ export type CancelOwnAssignment204 = typeof CancelOwnAssignment204[keyof typeof 
 export const CancelOwnAssignment204 = {
 } as const;
 
+export type GetNotificationsParams = {
+cursor?: string;
+limit?: number;
+};
+
 export type GetNotifications200ItemsItemType = typeof GetNotifications200ItemsItemType[keyof typeof GetNotifications200ItemsItemType];
 
 

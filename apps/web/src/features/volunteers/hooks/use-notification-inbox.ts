@@ -15,7 +15,7 @@ import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAP
 import { queryClient } from '@/utils/api';
 import { volunteerApi } from '@/utils/api-instances';
 
-interface NotificationDeepLink {
+export interface NotificationDeepLink {
   section: 'availability' | 'assignments' | 'ministry_schedule' | 'none';
   eventId?: string;
   ministryId?: string;
@@ -110,6 +110,11 @@ async function refetchNotificationQueries(): Promise<void> {
   ]);
 }
 
+interface NotificationInboxPagingState {
+  pages: NotificationInboxItem[][];
+  nextCursor?: string;
+}
+
 export function useNotificationInbox(initialUnreadCount: number) {
   const isOnline = useOnlineState();
   const cachedInboxState = readCachedNotificationInbox();
@@ -118,53 +123,60 @@ export function useNotificationInbox(initialUnreadCount: number) {
     queryFn: () => volunteerApi.getNotifications(),
     ...getNotificationsQueryConfig(isOnline),
   });
-  const [loadedPages, setLoadedPages] = useState<NotificationInboxItem[][]>(
-    cachedInboxState?.loadedPages ?? [],
-  );
-  const [nextCursor, setNextCursor] = useState<string | undefined>(
-    cachedInboxState?.nextCursor,
-  );
-  const isLoadingMore = false;
+  const [pagingState, setPagingState] = useState<NotificationInboxPagingState>({
+    pages: cachedInboxState?.loadedPages ?? [],
+    nextCursor: cachedInboxState?.nextCursor,
+  });
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedNotificationId, setSelectedNotificationId] = useState<
     string | undefined
   >(undefined);
+  const loadedPages = pagingState.pages;
+  const nextCursor = pagingState.nextCursor;
 
   useEffect(() => {
     if (!firstPageQuery.data) {
       return;
     }
 
-    const firstPageItems = mapNotificationPage(firstPageQuery.data);
-    setLoadedPages((currentPages) =>
-      currentPages.length === 0
-        ? [firstPageItems]
-        : [firstPageItems, ...currentPages.slice(1)],
-    );
-    setNextCursor(undefined);
+    const firstPageData = firstPageQuery.data;
+    const firstPageItems = mapNotificationPage(firstPageData);
+    setPagingState((current) => {
+      const hasAdditionalPages = current.pages.length > 1;
+      return {
+        pages: hasAdditionalPages
+          ? [firstPageItems, ...current.pages.slice(1)]
+          : [firstPageItems],
+        nextCursor: hasAdditionalPages
+          ? current.nextCursor
+          : firstPageData.nextCursor,
+      };
+    });
   }, [firstPageQuery.data]);
 
   useEffect(() => {
-    if (loadedPages.length === 0) {
+    if (pagingState.pages.length === 0) {
       return;
     }
 
     writeCachedNotificationInbox({
-      loadedPages,
-      nextCursor,
+      loadedPages: pagingState.pages,
+      nextCursor: pagingState.nextCursor,
     });
-  }, [loadedPages, nextCursor]);
+  }, [pagingState]);
 
   const markRead = useMutation({
     mutationFn: (notificationId: string) =>
       volunteerApi.markNotificationRead(notificationId),
     onSuccess: async (_result, variables) => {
-      setLoadedPages((currentPages) =>
-        currentPages.map((page) =>
+      setPagingState((current) => ({
+        ...current,
+        pages: current.pages.map((page) =>
           page.map((item) =>
             item.id === variables ? { ...item, isUnread: false } : item,
           ),
         ),
-      );
+      }));
       await invalidateNotificationQueries();
     },
     onError: (error) => {
@@ -175,11 +187,12 @@ export function useNotificationInbox(initialUnreadCount: number) {
   const markAllRead = useMutation({
     mutationFn: () => volunteerApi.markAllNotificationsRead(),
     onSuccess: async () => {
-      setLoadedPages((currentPages) =>
-        currentPages.map((page) =>
+      setPagingState((current) => ({
+        ...current,
+        pages: current.pages.map((page) =>
           page.map((item) => ({ ...item, isUnread: false })),
         ),
-      );
+      }));
       await invalidateNotificationQueries();
     },
     onError: (error) => {
@@ -188,7 +201,20 @@ export function useNotificationInbox(initialUnreadCount: number) {
   });
 
   const loadMore = async () => {
-    return;
+    if (!nextCursor || isLoadingMore) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+    try {
+      const page = await volunteerApi.getNotifications({ cursor: nextCursor });
+      setPagingState((current) => ({
+        pages: [...current.pages, mapNotificationPage(page)],
+        nextCursor: page.nextCursor,
+      }));
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   const items = loadedPages.flat();

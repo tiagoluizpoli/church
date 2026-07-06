@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SchedulingRouteImport } from './routes/scheduling'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AvailabilityRouteImport } from './routes/availability'
@@ -24,6 +25,11 @@ import { Route as SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport
 const SchedulingRoute = SchedulingRouteImport.update({
   id: '/scheduling',
   path: '/scheduling',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/availability': typeof AvailabilityRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/scheduling': typeof SchedulingRouteWithChildren
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AvailabilityRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/availability': typeof AvailabilityRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/scheduling': typeof SchedulingRouteWithChildren
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/dashboard'
     | '/login'
+    | '/notifications'
     | '/scheduling'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/dashboard'
     | '/login'
+    | '/notifications'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/dashboard'
     | '/login'
+    | '/notifications'
     | '/scheduling'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
@@ -164,6 +176,7 @@ export interface RootRouteChildren {
   AvailabilityRoute: typeof AvailabilityRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  NotificationsRoute: typeof NotificationsRoute
   SchedulingRoute: typeof SchedulingRouteWithChildren
   VolunteerAvailabilityRoute: typeof VolunteerAvailabilityRoute
 }
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/scheduling'
       fullPath: '/scheduling'
       preLoaderRoute: typeof SchedulingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -276,6 +296,7 @@ const rootRouteChildren: RootRouteChildren = {
   AvailabilityRoute: AvailabilityRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
   SchedulingRoute: SchedulingRouteWithChildren,
   VolunteerAvailabilityRoute: VolunteerAvailabilityRoute,
 }

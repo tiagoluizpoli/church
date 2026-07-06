@@ -5,7 +5,7 @@ import { authClient } from '@/lib/auth-client';
 
 const dashboardSearchSchema = z.object({
   section: z
-    .enum(['availability', 'assignments', 'notifications', 'ministry_schedule'])
+    .enum(['availability', 'assignments', 'ministry_schedule'])
     .optional(),
   eventId: z.string().optional(),
   assignmentId: z.string().optional(),

@@ -1,0 +1,115 @@
+- generic [ref=f18e2]:
+  - generic [ref=f18e3]:
+    - complementary [ref=f18e4]:
+      - generic [ref=f18e5]:
+        - generic [ref=f18e6]:
+          - img [ref=f18e8]
+          - generic [ref=f18e12]:
+            - generic [ref=f18e13]: Church CRM
+            - generic [ref=f18e14]: Scheduling workspace
+        - button "Collapse sidebar" [ref=f18e15]:
+          - img [ref=f18e16]
+      - navigation [ref=f18e18]:
+        - link "Dashboard" [ref=f18e19] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=f18e21]
+          - generic [ref=f18e26]: Dashboard
+        - link "Availability" [ref=f18e27] [cursor=pointer]:
+          - /url: /availability
+          - img [ref=f18e29]
+          - generic [ref=f18e32]: Availability
+    - generic [ref=f18e33]:
+      - banner [ref=f18e34]:
+        - navigation "Breadcrumb" [ref=f18e35]:
+          - link "Home" [ref=f18e36] [cursor=pointer]:
+            - /url: /
+          - generic [ref=f18e37]: /
+          - link "Scheduling" [ref=f18e38] [cursor=pointer]:
+            - /url: /scheduling
+          - generic [ref=f18e39]: /
+          - generic [ref=f18e40]: Planning
+        - generic [ref=f18e41]:
+          - button "Search" [ref=f18e42]:
+            - img [ref=f18e43]
+          - button "Notifications" [ref=f18e46]:
+            - img [ref=f18e47]
+          - button "Church Time" [ref=f18e50]:
+            - img
+            - generic [ref=f18e51]: Church Time
+          - button "Toggle theme" [ref=f18e52]:
+            - img
+            - generic [ref=f18e53]: Toggle theme
+      - main [ref=f18e55]:
+        - generic [ref=f18e58]:
+          - navigation "Scheduling views" [ref=f18e59]:
+            - link "Builder events" [ref=f18e60] [cursor=pointer]:
+              - /url: /scheduling
+              - img [ref=f18e61]
+              - text: Builder events
+            - link "Tailoring" [ref=f18e66] [cursor=pointer]:
+              - /url: /scheduling/tailoring
+              - img [ref=f18e67]
+              - text: Tailoring
+            - link "Planning" [ref=f18e71] [cursor=pointer]:
+              - /url: /scheduling/planning
+              - img [ref=f18e72]
+              - text: Planning
+          - generic [ref=f18e76]:
+            - generic [ref=f18e77]:
+              - heading "Planning cycles" [level=1] [ref=f18e78]
+              - paragraph [ref=f18e79]: "Build the church calendar in one guided flow: define the period, generate the recurring rhythm, review one-offs, and lock the cycle when leaders can staff against it."
+            - generic [ref=f18e81]:
+              - generic [ref=f18e82]:
+                - generic [ref=f18e83]: Selected cycle None yet
+                - generic [ref=f18e84]: Events 0
+                - generic [ref=f18e85]: Slots 0
+              - generic [ref=f18e86]:
+                - generic [ref=f18e87]:
+                  - heading "Planning flow" [level=2] [ref=f18e88]
+                  - paragraph [ref=f18e89]: This is a progress guide for the selected cycle. Use the sections below to make changes.
+                - list [ref=f18e91]:
+                  - listitem [ref=f18e92]:
+                    - generic "Define the date range and start a planning period." [ref=f18e93]:
+                      - generic [ref=f18e94]: "1"
+                      - generic [ref=f18e95]:
+                        - text: Create cycle
+                        - generic [ref=f18e96]: — Current. Define the date range and start a planning period.
+                  - listitem [ref=f18e98]:
+                    - generic "Generate recurring events, add manual ones, and review the calendar." [ref=f18e99]:
+                      - generic [ref=f18e100]: "2"
+                      - generic [ref=f18e101]:
+                        - text: Apply templates and review
+                        - generic [ref=f18e102]: — Upcoming. Generate recurring events, add manual ones, and review the calendar.
+                  - listitem [ref=f18e104]:
+                    - generic "The cycle is now read-only for leaders and ready for staffing." [ref=f18e105]:
+                      - generic [ref=f18e106]: "3"
+                      - generic [ref=f18e107]:
+                        - text: Locked review
+                        - generic [ref=f18e108]: — Upcoming. The cycle is now read-only for leaders and ready for staffing.
+          - generic [ref=f18e109]:
+            - generic [ref=f18e110]:
+              - generic [ref=f18e111]:
+                - generic [ref=f18e112]: Create cycle
+                - generic [ref=f18e113]: Cycles are church-wide and cannot overlap.
+              - generic [ref=f18e114]:
+                - generic [ref=f18e115]:
+                  - generic [ref=f18e116]: Name
+                  - textbox "Name" [ref=f18e117]:
+                    - /placeholder: August 2026
+                - generic [ref=f18e118]:
+                  - generic [ref=f18e119]:
+                    - generic [ref=f18e120]: Start date
+                    - textbox "Start date" [ref=f18e121]
+                  - generic [ref=f18e122]:
+                    - generic [ref=f18e123]: End date
+                    - textbox "End date" [ref=f18e124]
+                - button "Create cycle" [disabled]
+            - generic [ref=f18e125]:
+              - generic [ref=f18e126]:
+                - generic [ref=f18e127]: What happens next
+                - generic [ref=f18e128]: The cycle becomes the planning container for everything that follows.
+              - generic [ref=f18e129]:
+                - paragraph [ref=f18e130]: 1. Create the date range you want the church to plan as one package.
+                - paragraph [ref=f18e131]: 2. Save reusable templates for weekly rhythms like Sunday and midweek services.
+                - paragraph [ref=f18e132]: 3. Review generated events, add exceptions, then lock when the calendar is ready.
+  - region "Notifications alt+T"

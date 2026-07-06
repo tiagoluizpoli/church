@@ -1,0 +1,46 @@
+- generic [ref=f4e2]:
+  - generic [ref=f4e3]:
+    - complementary [ref=f4e4]:
+      - generic [ref=f4e5]:
+        - generic [ref=f4e6]:
+          - img [ref=f4e8]
+          - generic [ref=f4e12]:
+            - generic [ref=f4e13]: Church CRM
+            - generic [ref=f4e14]: Scheduling workspace
+        - button "Collapse sidebar" [ref=f4e15]:
+          - img [ref=f4e16]
+      - navigation [ref=f4e18]:
+        - link "Dashboard" [ref=f4e19] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=f4e21]
+          - generic [ref=f4e26]: Dashboard
+        - link "Availability" [ref=f4e27] [cursor=pointer]:
+          - /url: /availability
+          - img [ref=f4e29]
+          - generic [ref=f4e32]: Availability
+    - generic [ref=f4e33]:
+      - banner [ref=f4e34]:
+        - navigation "Breadcrumb" [ref=f4e35]:
+          - link "Home" [ref=f4e36] [cursor=pointer]:
+            - /url: /
+          - generic [ref=f4e37]: /
+          - link "Volunteer" [ref=f4e38] [cursor=pointer]:
+            - /url: /volunteer
+          - generic [ref=f4e39]: /
+          - generic [ref=f4e40]: Availability
+        - generic [ref=f4e41]:
+          - button "Search" [ref=f4e42]:
+            - img [ref=f4e43]
+          - button "Notifications" [ref=f4e46]:
+            - img [ref=f4e47]
+          - button "Church Time" [ref=f4e50]:
+            - img
+            - generic [ref=f4e51]: Church Time
+          - button "Toggle theme" [ref=f4e52]:
+            - img
+            - generic [ref=f4e53]: Toggle theme
+      - main [ref=f4e55]:
+        - generic [ref=f4e60]:
+          - heading "Availability checks" [level=1] [ref=f4e61]
+          - paragraph [ref=f4e62]: Mark the shifts you cannot serve, then confirm each check before your leader locks the schedule.
+  - region "Notifications alt+T"

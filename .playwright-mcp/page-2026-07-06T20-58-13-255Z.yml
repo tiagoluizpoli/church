@@ -1,0 +1,37 @@
+- generic [ref=f11e2]:
+  - generic [ref=f11e3]:
+    - banner [ref=f11e4]:
+      - generic [ref=f11e5]:
+        - img [ref=f11e7]
+        - generic [ref=f11e11]:
+          - generic [ref=f11e12]: Church CRM
+          - generic [ref=f11e13]: Calm scheduling
+      - generic [ref=f11e14]:
+        - button "Notifications" [ref=f11e15]:
+          - img [ref=f11e16]
+        - button "Search" [ref=f11e19]:
+          - img [ref=f11e20]
+        - button "Open menu" [ref=f11e23]:
+          - img [ref=f11e24]
+    - main [ref=f11e26]:
+      - generic [ref=f11e28]:
+        - generic [ref=f11e29]:
+          - generic [ref=f11e30]:
+            - generic [ref=f11e31]: Notifications Inbox
+            - generic [ref=f11e32]: Review schedule history, reminders, and assignment updates.
+          - generic [ref=f11e33]:
+            - generic [ref=f11e34]: 0 unread
+            - button "Mark all as read" [disabled]
+        - alert [ref=f11e36]:
+          - generic [ref=f11e37]: No notifications yet
+          - generic [ref=f11e38]: Scheduling updates and reminders will appear here.
+    - navigation [ref=f11e39]:
+      - link "Dashboard" [ref=f11e40] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=f11e41]
+        - generic [ref=f11e46]: Dashboard
+      - link "Availability" [ref=f11e47] [cursor=pointer]:
+        - /url: /availability
+        - img [ref=f11e48]
+        - generic [ref=f11e51]: Availability
+  - region "Notifications alt+T"

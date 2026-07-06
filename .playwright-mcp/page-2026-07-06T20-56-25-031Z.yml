@@ -1,0 +1,51 @@
+- generic [ref=f6e2]:
+  - generic [ref=f6e3]:
+    - complementary [ref=f6e4]:
+      - generic [ref=f6e5]:
+        - generic [ref=f6e6]:
+          - img [ref=f6e8]
+          - generic [ref=f6e12]:
+            - generic [ref=f6e13]: Church CRM
+            - generic [ref=f6e14]: Scheduling workspace
+        - button "Collapse sidebar" [ref=f6e15]:
+          - img [ref=f6e16]
+      - navigation [ref=f6e18]:
+        - link "Dashboard" [ref=f6e19] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=f6e21]
+          - generic [ref=f6e26]: Dashboard
+        - link "Availability" [ref=f6e27] [cursor=pointer]:
+          - /url: /availability
+          - img [ref=f6e29]
+          - generic [ref=f6e32]: Availability
+    - generic [ref=f6e33]:
+      - banner [ref=f6e34]:
+        - navigation "Breadcrumb" [ref=f6e35]:
+          - link "Home" [ref=f6e36] [cursor=pointer]:
+            - /url: /
+          - generic [ref=f6e37]: /
+          - generic [ref=f6e38]: Notifications
+        - generic [ref=f6e39]:
+          - button "Search" [ref=f6e40]:
+            - img [ref=f6e41]
+          - button "Notifications" [ref=f6e44]:
+            - img [ref=f6e45]
+          - button "Church Time" [ref=f6e48]:
+            - img
+            - generic [ref=f6e49]: Church Time
+          - button "Toggle theme" [ref=f6e50]:
+            - img
+            - generic [ref=f6e51]: Toggle theme
+      - main [ref=f6e53]:
+        - generic [ref=f6e55]:
+          - generic [ref=f6e56]:
+            - generic [ref=f6e57]:
+              - generic [ref=f6e58]: Notifications Inbox
+              - generic [ref=f6e59]: Review schedule history, reminders, and assignment updates.
+            - generic [ref=f6e60]:
+              - generic [ref=f6e61]: 0 unread
+              - button "Mark all as read" [disabled]
+          - alert [ref=f6e63]:
+            - generic [ref=f6e64]: No notifications yet
+            - generic [ref=f6e65]: Scheduling updates and reminders will appear here.
+  - region "Notifications alt+T"

@@ -117,9 +117,10 @@ export function registerInjections(): void {
   container.register(injection.infra.notificationService, {
     useClass: LocalNotificationService,
   });
-  container.register(injection.infra.featureFlagService, {
-    useClass: UnleashFeatureFlagService,
-  });
+  container.registerSingleton(
+    injection.infra.featureFlagService,
+    UnleashFeatureFlagService,
+  );
 
   // Managers
   container.register(injection.managers.assignmentManager, {

@@ -94,6 +94,12 @@ export class DbEventManager implements IEventManager {
     const rawVolunteers = ministryVolunteers.filter((volunteer) =>
       allowedVolunteerIds.has(volunteer.id),
     );
+    const systemRoleByVolunteerId = new Map(
+      memberships.map((membership) => [
+        membership.volunteerId,
+        membership.systemRole,
+      ]),
+    );
 
     const allVolunteerIds = rawVolunteers.map((v) => v.id);
     const rawAvailability =
@@ -111,6 +117,7 @@ export class DbEventManager implements IEventManager {
       volunteers: rawVolunteers.map((v) => ({
         id: v.id,
         name: (v.name ?? v.id) as string,
+        systemRole: systemRoleByVolunteerId.get(v.id) ?? 'volunteer',
       })),
       roles: roles.map((role) => ({ id: role.id, name: role.name })),
       callerTeamId,

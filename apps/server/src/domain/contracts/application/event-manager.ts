@@ -10,6 +10,7 @@ import type {
 import type { Assignment } from '../../entities/assignment';
 import type { Availability } from '../../entities/availability';
 import type { Event, EventStatus } from '../../entities/event';
+import type { SystemRole } from '../../entities/ministry-volunteer';
 import type { SlotRequirement } from '../../entities/slot-requirement';
 import type { TimeSlot } from '../../entities/time-slot';
 
@@ -82,6 +83,7 @@ export interface ScheduleBuilderEventGroup {
 export interface ScheduleBuilderVolunteerOption {
   id: VolunteerId;
   name: string;
+  systemRole: SystemRole;
 }
 
 export interface ScheduleBuilderRoleOption {

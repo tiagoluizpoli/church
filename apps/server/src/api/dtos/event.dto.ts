@@ -100,6 +100,7 @@ export const scheduleBuilderDataResponseSchema = z.object({
     z.object({
       id: z.string(),
       name: z.string(),
+      systemRole: z.enum(['leader', 'sub_leader', 'volunteer']),
     }),
   ),
   roles: z.array(z.object({ id: z.string(), name: z.string() })),

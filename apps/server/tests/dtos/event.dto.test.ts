@@ -179,8 +179,16 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       assignments: [assignmentWithExtras, assignmentWithoutExtras],
       availability: [availabilityMark],
       volunteers: [
-        { id: VolunteerId.from('volunteer-1'), name: 'Alice' },
-        { id: VolunteerId.from('volunteer-2'), name: 'Bob' },
+        {
+          id: VolunteerId.from('volunteer-1'),
+          name: 'Alice',
+          systemRole: 'leader',
+        },
+        {
+          id: VolunteerId.from('volunteer-2'),
+          name: 'Bob',
+          systemRole: 'volunteer',
+        },
       ],
       roles: [
         { id: RoleId.from('role-1'), name: 'Vocalist' },
@@ -265,8 +273,8 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     ]);
 
     expect(response.volunteers).toEqual([
-      { id: 'volunteer-1', name: 'Alice' },
-      { id: 'volunteer-2', name: 'Bob' },
+      { id: 'volunteer-1', name: 'Alice', systemRole: 'leader' },
+      { id: 'volunteer-2', name: 'Bob', systemRole: 'volunteer' },
     ]);
 
     expect(response.roles).toEqual([

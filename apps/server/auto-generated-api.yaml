@@ -284,9 +284,16 @@ paths:
                           type: string
                         name:
                           type: string
+                        systemRole:
+                          type: string
+                          enum:
+                            - leader
+                            - sub_leader
+                            - volunteer
                       required:
                         - id
                         - name
+                        - systemRole
                       additionalProperties: false
                   roles:
                     type: array

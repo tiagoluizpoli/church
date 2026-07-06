@@ -329,6 +329,13 @@ describe('DbEventManager', () => {
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
       expect(result.volunteers).toHaveLength(3);
+      expect(result.volunteers).toEqual(
+        expect.arrayContaining([
+          { id: leaderId, name: 'Leader', systemRole: 'leader' },
+          { id: teamAVolunteerId, name: 'Team A Vol', systemRole: 'volunteer' },
+          { id: teamBVolunteerId, name: 'Team B Vol', systemRole: 'volunteer' },
+        ]),
+      );
       expect(result.roles).toEqual([{ id: roleId, name: 'Usher' }]);
       expect(result.assignments).toEqual([]);
       expect(result.availability).toBe(availability);
@@ -390,6 +397,9 @@ describe('DbEventManager', () => {
       expect(result.volunteers.map((v) => v.id)).not.toContain(
         teamBVolunteerId,
       );
+      expect(
+        result.volunteers.find((v) => v.id === subLeaderId)?.systemRole,
+      ).toBe('sub_leader');
     });
 
     it('falls back to the volunteer id as the name when name is missing', async () => {
@@ -408,7 +418,9 @@ describe('DbEventManager', () => {
         volunteerId: leaderId,
       });
 
-      expect(result.volunteers).toEqual([{ id: leaderId, name: leaderId }]);
+      expect(result.volunteers).toEqual([
+        { id: leaderId, name: leaderId, systemRole: 'leader' },
+      ]);
     });
 
     it('skips availability lookup and returns an empty array when there are no visible volunteers', async () => {

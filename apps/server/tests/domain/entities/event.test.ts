@@ -10,6 +10,8 @@ const props = {
   planningCycleId: 'pc1',
   sourceTemplateId: 'et1',
   title: 'Sunday Service',
+  description: 'Weekly gathering',
+  location: 'Main Hall',
   startDate: new Date('2026-05-15T10:00:00Z'),
   endDate: new Date('2026-05-15T12:00:00Z'),
 };
@@ -21,8 +23,18 @@ describe('Event Entity', () => {
     expect(event.churchId).toBe('c1');
     expect(event.planningCycleId).toBe('pc1');
     expect(event.sourceTemplateId).toBe('et1');
+    expect(event.title).toBe('Sunday Service');
+    expect(event.description).toBe('Weekly gathering');
+    expect(event.location).toBe('Main Hall');
     expect('ministryId' in event).toBe(false);
     expect(event.status).toBe('draft');
+    expect(event.eventType).toBe('hourly');
+  });
+
+  it('accepts an explicit eventType', () => {
+    const event = new Event({ ...props, eventType: 'day_based' });
+
+    expect(event.eventType).toBe('day_based');
   });
 
   it('supports only cycle event statuses', () => {

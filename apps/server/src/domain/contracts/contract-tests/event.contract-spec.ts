@@ -10,7 +10,7 @@ import type { EventRepository } from '../infrastructure/event.repository';
 
 export function runEventRepositoryContractTests(
   factory: () => Promise<EventRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('EventRepository Contract', () => {
     let repo: EventRepository;

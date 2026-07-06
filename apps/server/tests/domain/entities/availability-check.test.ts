@@ -23,6 +23,22 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
 
     expect(check.state).toBe('pending');
     expect(check.confirmedAt).toBeUndefined();
+    expect(check.churchId).toBe(churchId);
+    expect(check.planningCycleId).toBe(planningCycleId);
+    expect(check.ministryVolunteerId).toBe(ministryVolunteerId);
+  });
+
+  it('accepts an explicit initial state', () => {
+    const check = new AvailabilityCheck({
+      props: {
+        churchId,
+        planningCycleId,
+        ministryVolunteerId,
+        state: 'confirmed',
+      },
+    });
+
+    expect(check.state).toBe('confirmed');
   });
 
   it('DL1-AC-02 confirm() transitions pending → confirmed and sets confirmedAt even with zero marks', () => {

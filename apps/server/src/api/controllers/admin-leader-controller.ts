@@ -400,6 +400,7 @@ export class AdminLeaderController implements FastifyController {
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
           churchId: ChurchId.from(request.churchId),
+          actorId: UserId.from(request.userId),
         });
         return reply.status(204).send();
       },

@@ -89,6 +89,28 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
     );
   });
 
+  it('accepts manual span times that already include seconds', () => {
+    const entry: ProfileSeederEntry = {
+      sourceTemplateBlockId: blockId,
+      serves: true,
+      shiftSplit: {
+        kind: 'manual',
+        spans: [{ label: 'Serve', startTime: '09:00:00', endTime: '12:00:00' }],
+      },
+      headcounts: [],
+    };
+
+    const result = plan({ profileEntries: [entry] });
+
+    expect(result.shifts).toHaveLength(1);
+    expect(result.shifts[0]?.startTime).toEqual(
+      new Date('2026-08-02T12:00:00.000Z'),
+    );
+    expect(result.shifts[0]?.endTime).toEqual(
+      new Date('2026-08-02T15:00:00.000Z'),
+    );
+  });
+
   it('DL1-PS-02 no profile falls to ministry defaultDirection', () => {
     const allIn = plan({ ministryDefaultDirection: 'all_in' });
     expect(allIn.include).toBe(true);

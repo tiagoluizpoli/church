@@ -112,7 +112,9 @@ export class CycleEventGenerator {
             }),
           }));
 
-        if (slots.length === 0) {
+        const [firstSlot, ...restSlots] = slots;
+        const lastSlot = restSlots.at(-1) ?? firstSlot;
+        if (!firstSlot || !lastSlot) {
           continue;
         }
 
@@ -133,20 +135,8 @@ export class CycleEventGenerator {
           kind: 'create_event',
           sourceTemplateId: template.id as EventTemplateId,
           title: template.name,
-          startDate:
-            slots[0]?.startTime ??
-            buildLocalDateTime({
-              date: eventDate,
-              time: '00:00',
-              timeZone,
-            }),
-          endDate:
-            slots[slots.length - 1]?.endTime ??
-            buildLocalDateTime({
-              date: eventDate,
-              time: '23:59',
-              timeZone,
-            }),
+          startDate: firstSlot.startTime,
+          endDate: lastSlot.endTime,
           slots,
         });
       }

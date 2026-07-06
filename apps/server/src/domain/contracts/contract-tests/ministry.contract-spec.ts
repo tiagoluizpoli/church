@@ -5,7 +5,7 @@ import type { MinistryRepository } from '../infrastructure/ministry.repository';
 
 export function runMinistryRepositoryContractTests(
   factory: () => Promise<MinistryRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('MinistryRepository Contract', () => {
     let repo: MinistryRepository;

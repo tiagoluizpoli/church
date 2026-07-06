@@ -11,7 +11,7 @@ import type { VolunteerRepository } from '../infrastructure/volunteer.repository
 
 export function runVolunteerRepositoryContractTests(
   factory: () => Promise<VolunteerRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('VolunteerRepository Contract', () => {
     let repo: VolunteerRepository;

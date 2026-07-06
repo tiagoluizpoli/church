@@ -104,6 +104,15 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
     const church = await this.churchRepository.getById(input.churchId);
 
     await this.unitOfWork.run(async (tx) => {
+      // Serializes concurrent lock attempts on this church's cycles so two
+      // simultaneous requests can't both read `draft` and both transition —
+      // the second waits for the first's commit, then observes `locked` and
+      // rejects (DL4-X3).
+      await this.cycleRepository.acquireChurchLock({
+        churchId: input.churchId,
+        tx,
+      });
+
       const cycle = await this.ensureResolvedCycle({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,

@@ -17,7 +17,16 @@ export default defineConfig({
         'src/infrastructure/repositories/**/*.ts',
         'src/api/dtos/**/*.ts',
       ],
-      exclude: ['src/domain/**/index.ts'],
+      exclude: [
+        'src/domain/**/index.ts',
+        'src/domain/**/types.ts',
+        'src/domain/contracts/application/**',
+        'src/domain/contracts/infrastructure/*.repository.ts',
+        'src/domain/contracts/infrastructure/transaction-context.ts',
+        'src/domain/contracts/infrastructure/unit-of-work.ts',
+        'src/domain/contracts/infrastructure/notification-service.ts',
+        'src/infrastructure/repositories/types.ts',
+      ],
       thresholds: {
         'src/domain/**': {
           statements: 100,

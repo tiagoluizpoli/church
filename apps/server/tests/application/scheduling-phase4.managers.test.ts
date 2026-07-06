@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import {
+  assignment as assignmentTable,
   ministryVolunteer,
   role,
   shift as shiftTable,
@@ -17,6 +19,7 @@ import {
   PlanningCycleId,
   RoleId,
   ShiftId,
+  TimeBlockId,
   TimeSlotId,
   UserId,
 } from '../../src/domain/branded-ids';
@@ -25,6 +28,7 @@ import {
   CrossMinistryScopeError,
   IllegalStateTransitionError,
   InvalidRequiredCountError,
+  InvalidShiftSplitError,
   ShiftOutOfBoundsError,
 } from '../../src/domain/errors';
 import { DrizzleSchedulingRbacResolver } from '../../src/infrastructure/auth/drizzle-scheduling-rbac-resolver';
@@ -45,6 +49,7 @@ import { createNotificationServiceSpy } from '../../src/test-support/notificatio
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
+  createSchedulingPhase3Template,
   resetSchedulingPhase3Db,
   type SchedulingPhase3Seed,
   schedulingTestDb,
@@ -670,5 +675,441 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.planningCycleId).toBe(cycle.id);
+  });
+});
+
+async function seedRoleFor(input: { churchId: string; ministryId: string }) {
+  const [row] = await schedulingTestDb
+    .insert(role)
+    .values({
+      id: randomUUID(),
+      churchId: input.churchId,
+      ministryId: input.ministryId,
+      name: 'Phase4 role',
+      isGlobal: false,
+    })
+    .returning();
+  if (!row) throw new Error('Phase 4 role seed failed');
+  return row;
+}
+
+async function seedMembershipWithVolunteer(input: {
+  churchId: string;
+  ministryId: string;
+}) {
+  const userId = randomUUID();
+  const volunteerId = randomUUID();
+  await schedulingTestDb.insert((await import('@church/db')).user).values({
+    id: userId,
+    name: `Phase4 volunteer ${volunteerId}`,
+    email: `${volunteerId}@test.com`,
+    emailVerified: true,
+  });
+  const [volunteerRow] = await schedulingTestDb
+    .insert(volunteer)
+    .values({
+      id: volunteerId,
+      churchId: input.churchId,
+      userId,
+      status: 'active',
+    })
+    .returning();
+  const [membership] = await schedulingTestDb
+    .insert(ministryVolunteer)
+    .values({
+      id: randomUUID(),
+      churchId: input.churchId,
+      ministryId: input.ministryId,
+      volunteerId,
+      systemRole: 'volunteer',
+      status: 'active',
+    })
+    .returning();
+  if (!volunteerRow || !membership) {
+    throw new Error('Phase 4 volunteer membership seed failed');
+  }
+  return { volunteer: volunteerRow, membership };
+}
+
+describe('Phase 4 participation manager additional surfaces (shift lifecycle, serving profile, eligible-volunteer conflicts, publish edge states)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('updateShift adjusts bounds/label within tailoring, and is blocked once availability is fired', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participationManager } = createPhase4Managers();
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(participation.id);
+
+    const [createdShift] = await participationManager.splitShifts({
+      churchId,
+      participationId,
+      timeSlotId: TimeSlotId.from(slot.id),
+      strategy: { kind: 'equal-n', n: 1 },
+    });
+    if (!createdShift) throw new Error('split failed');
+
+    const updated = await participationManager.updateShift({
+      churchId,
+      shiftId: ShiftId.from(createdShift.id),
+      label: 'Relabeled shift',
+    });
+    expect(updated.label).toBe('Relabeled shift');
+    expect(updated.startTime).toEqual(slot.startTime);
+
+    const boundsOnlyUpdate = await participationManager.updateShift({
+      churchId,
+      shiftId: ShiftId.from(createdShift.id),
+      startTime: slot.startTime,
+    });
+    expect(boundsOnlyUpdate.label).toBe('Relabeled shift');
+
+    await schedulingTestDb.execute(
+      `UPDATE ministry_participation SET state = 'availability_fired' WHERE id = '${participation.id}'`,
+    );
+
+    await expect(
+      participationManager.updateShift({
+        churchId,
+        shiftId: ShiftId.from(createdShift.id),
+        label: 'Blocked relabel',
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+  });
+
+  it('deleteShift removes a shift within tailoring, and is blocked once availability is fired', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participationManager } = createPhase4Managers();
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(participation.id);
+
+    const created = await participationManager.splitShifts({
+      churchId,
+      participationId,
+      timeSlotId: TimeSlotId.from(slot.id),
+      strategy: { kind: 'equal-n', n: 2 },
+    });
+    expect(created).toHaveLength(2);
+    const [first, second] = created;
+    if (!first || !second) throw new Error('split failed');
+
+    await participationManager.deleteShift({
+      churchId,
+      shiftId: ShiftId.from(first.id),
+    });
+    const remaining = await schedulingTestDb
+      .select()
+      .from(shiftTable)
+      .where(eq(shiftTable.participationId, participation.id));
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.id).toBe(second.id);
+
+    await schedulingTestDb.execute(
+      `UPDATE ministry_participation SET state = 'availability_fired' WHERE id = '${participation.id}'`,
+    );
+
+    await expect(
+      participationManager.deleteShift({
+        churchId,
+        shiftId: ShiftId.from(second.id),
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+  });
+
+  it('getServingProfile/upsertServingProfile persists validated entries and rejects invalid shift-split/headcount input', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participationManager } = createPhase4Managers();
+    const churchId = ChurchId.from(seed.churchAId);
+    const ministryId = MinistryId.from(seed.ministryAId);
+    const roleRow = await seedRoleFor({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+    });
+    const { blocks } = await createSchedulingPhase3Template({
+      churchId: seed.churchAId,
+      name: 'Profile template',
+      weekday: 0,
+      blocks: [
+        {
+          label: 'Welcome',
+          startTime: '09:00:00',
+          endTime: '09:30:00',
+          order: 0,
+        },
+      ],
+    });
+    const block = blocks[0];
+    if (!block) throw new Error('template block seed failed');
+
+    const empty = await participationManager.getServingProfile({
+      churchId,
+      ministryId,
+    });
+    expect(empty).toEqual([]);
+
+    const saved = await participationManager.upsertServingProfile({
+      churchId,
+      ministryId,
+      entries: [
+        {
+          sourceTemplateBlockId: TimeBlockId.from(block.id),
+          serves: true,
+          shiftSplit: { kind: 'equal', count: 2 },
+          headcounts: [{ roleId: RoleId.from(roleRow.id), count: 1 }],
+        },
+      ],
+    });
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.serves).toBe(true);
+
+    const fetched = await participationManager.getServingProfile({
+      churchId,
+      ministryId,
+    });
+    expect(fetched).toHaveLength(1);
+
+    await expect(
+      participationManager.upsertServingProfile({
+        churchId,
+        ministryId,
+        entries: [
+          {
+            sourceTemplateBlockId: TimeBlockId.from(block.id),
+            serves: true,
+            shiftSplit: { kind: 'equal', count: 0 },
+            headcounts: [],
+          },
+        ],
+      }),
+    ).rejects.toThrow(InvalidShiftSplitError);
+
+    await expect(
+      participationManager.upsertServingProfile({
+        churchId,
+        ministryId,
+        entries: [
+          {
+            sourceTemplateBlockId: TimeBlockId.from(block.id),
+            serves: true,
+            shiftSplit: { kind: 'equal', count: 1 },
+            headcounts: [{ roleId: RoleId.from(roleRow.id), count: 0 }],
+          },
+        ],
+      }),
+    ).rejects.toThrow(InvalidRequiredCountError);
+  });
+
+  it('listEligibleVolunteers flags a volunteer with an overlapping active assignment as hasConflict (no per-shift requirement branch)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Eligible-conflict cycle',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const targetGraph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Target event',
+      startDate: new Date('2026-08-09T09:00:00.000Z'),
+      endDate: new Date('2026-08-09T10:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const overlapGraph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Overlap event',
+      startDate: new Date('2026-08-09T09:30:00.000Z'),
+      endDate: new Date('2026-08-09T10:30:00.000Z'),
+      status: 'scheduled',
+    });
+    const roleRow = await seedRoleFor({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+    });
+
+    const { participationManager } = createPhase4Managers();
+    const churchId = ChurchId.from(seed.churchAId);
+    const [targetShift] = await participationManager.splitShifts({
+      churchId,
+      participationId: MinistryParticipationId.from(
+        targetGraph.participation.id,
+      ),
+      timeSlotId: TimeSlotId.from(targetGraph.slot.id),
+      strategy: { kind: 'equal-n', n: 1 },
+    });
+    const [overlapShift] = await participationManager.splitShifts({
+      churchId,
+      participationId: MinistryParticipationId.from(
+        overlapGraph.participation.id,
+      ),
+      timeSlotId: TimeSlotId.from(overlapGraph.slot.id),
+      strategy: { kind: 'equal-n', n: 1 },
+    });
+    if (!targetShift || !overlapShift) throw new Error('split failed');
+
+    const member = await seedMembershipWithVolunteer({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+    });
+    await schedulingTestDb.insert(assignmentTable).values({
+      id: randomUUID(),
+      churchId: seed.churchAId,
+      participationId: overlapGraph.participation.id,
+      shiftId: overlapShift.id,
+      volunteerId: member.volunteer.id,
+      roleId: roleRow.id,
+      status: 'confirmed',
+    });
+
+    const eligible = await participationManager.listEligibleVolunteers({
+      churchId,
+      shiftId: ShiftId.from(targetShift.id),
+    });
+
+    const entry = eligible.find(
+      (candidate) => candidate.volunteerId === member.volunteer.id,
+    );
+    expect(entry?.hasConflict).toBe(true);
+  });
+
+  it('publish() rejects while the participation is still tailoring (never fired/rostering)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participation } = await seedCycleWithEvent({ seed });
+    const { participationManager } = createPhase4Managers();
+
+    await expect(
+      participationManager.publish({
+        churchId: ChurchId.from(seed.churchAId),
+        participationId: MinistryParticipationId.from(participation.id),
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+  });
+
+  it('publish() succeeds with zero required headcount and sends no notifications', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participation } = await seedCycleWithEvent({ seed });
+    const { participationManager, notificationSpy } = createPhase4Managers();
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(participation.id);
+
+    await schedulingTestDb.execute(
+      `UPDATE ministry_participation SET state = 'rostering' WHERE id = '${participation.id}'`,
+    );
+
+    await participationManager.publish({ churchId, participationId });
+
+    const row = await schedulingTestDb
+      .select()
+      .from((await import('@church/db')).ministryParticipation)
+      .where(
+        eq(
+          (await import('@church/db')).ministryParticipation.id,
+          participation.id,
+        ),
+      );
+    expect(row[0]?.state).toBe('published');
+    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
+  });
+});
+
+describe('Phase 4 availability check manager status listings (DL2-AF status surfaces)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('listCheckStatuses/listCycleCheckStatuses report per-membership state, distinguishing fired-and-pending, confirmed, and never-fired', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participation, cycle } = await seedCycleWithEvent({ seed });
+    const { availabilityManager } = createPhase4Managers();
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(participation.id);
+
+    // Base seed already made the admin volunteer a leader-membership of ministryA.
+    // Add one more active member who never gets fired (proves the "no check yet" branch).
+    await schedulingTestDb.insert((await import('@church/db')).user).values({
+      id: 'phase4-status-user',
+      name: 'Status User',
+      email: 'phase4-status@test.com',
+      emailVerified: true,
+    });
+    await seedMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      userId: 'phase4-status-user',
+      volunteerId: '99999999-9999-4999-8999-999999999981',
+    });
+
+    const beforeFire = await availabilityManager.listCycleCheckStatuses({
+      churchId,
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+    expect(beforeFire).toHaveLength(2);
+    expect(beforeFire.every((row) => row.state === undefined)).toBe(true);
+
+    await availabilityManager.fireAvailability({ churchId, participationId });
+
+    const viaParticipation = await availabilityManager.listCheckStatuses({
+      churchId,
+      participationId,
+    });
+    expect(viaParticipation).toHaveLength(2);
+    expect(viaParticipation.every((row) => row.state === 'pending')).toBe(true);
+
+    const adminRow = viaParticipation.find(
+      (row) => row.volunteerId === seed.adminVolunteerId,
+    );
+    expect(adminRow?.confirmedAt).toBeUndefined();
+
+    // Confirm one membership's check directly, then re-list and see the split state.
+    const [checkRow] = await schedulingTestDb
+      .select()
+      .from((await import('@church/db')).availabilityCheck)
+      .innerJoin(
+        (await import('@church/db')).ministryVolunteer,
+        eq(
+          (await import('@church/db')).availabilityCheck.ministryVolunteerId,
+          (await import('@church/db')).ministryVolunteer.id,
+        ),
+      )
+      .where(
+        eq(
+          (await import('@church/db')).ministryVolunteer.volunteerId,
+          seed.adminVolunteerId,
+        ),
+      );
+    if (!checkRow)
+      throw new Error('expected a fired check for the admin volunteer');
+    await schedulingTestDb
+      .update((await import('@church/db')).availabilityCheck)
+      .set({ state: 'confirmed', confirmedAt: new Date() })
+      .where(
+        eq(
+          (await import('@church/db')).availabilityCheck.id,
+          checkRow.availability_check.id,
+        ),
+      );
+
+    const afterConfirm = await availabilityManager.listCycleCheckStatuses({
+      churchId,
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+    const confirmedRow = afterConfirm.find(
+      (row) => row.volunteerId === seed.adminVolunteerId,
+    );
+    const stillPendingRow = afterConfirm.find(
+      (row) => row.volunteerId === '99999999-9999-4999-8999-999999999981',
+    );
+    expect(confirmedRow?.state).toBe('confirmed');
+    expect(confirmedRow?.confirmedAt).toBeInstanceOf(Date);
+    expect(stillPendingRow?.state).toBe('pending');
   });
 });

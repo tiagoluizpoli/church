@@ -1,6 +1,7 @@
 import {
   account,
   church,
+  churchAdmin,
   createDb,
   ministry,
   ministryVolunteer,
@@ -32,19 +33,28 @@ const DEV_TEAM = {
 
 const DEV_USERS = [
   {
+    email: 'admin@local-dev.test',
+    name: 'Local Admin',
+    systemRole: 'leader' as const,
+    isChurchAdmin: true,
+  },
+  {
     email: 'leader@local-dev.test',
     name: 'Local Leader',
     systemRole: 'leader' as const,
+    isChurchAdmin: false,
   },
   {
     email: 'subleader@local-dev.test',
     name: 'Local Sub Leader',
     systemRole: 'sub_leader' as const,
+    isChurchAdmin: false,
   },
   {
     email: 'volunteer@local-dev.test',
     name: 'Local Volunteer',
     systemRole: 'volunteer' as const,
+    isChurchAdmin: false,
   },
 ] as const;
 
@@ -283,6 +293,24 @@ async function ensureMembership(input: {
     .where(eq(ministryVolunteer.id, existingMembership.id));
 }
 
+async function ensureChurchAdmin(input: { churchId: string; userId: string }) {
+  const existingChurchAdmin = await db.query.churchAdmin.findFirst({
+    where: and(
+      eq(churchAdmin.churchId, input.churchId),
+      eq(churchAdmin.userId, input.userId),
+    ),
+  });
+
+  if (existingChurchAdmin) {
+    return;
+  }
+
+  await db.insert(churchAdmin).values({
+    churchId: input.churchId,
+    userId: input.userId,
+  });
+}
+
 export async function seedDevUsers() {
   const passwordHash = await hashPassword(DEV_PASSWORD);
   const localChurch = await ensureChurch();
@@ -310,10 +338,19 @@ export async function seedDevUsers() {
       systemRole: devUser.systemRole,
     });
 
+    if (devUser.isChurchAdmin) {
+      await ensureChurchAdmin({
+        churchId: localChurch.id,
+        userId: authUser.id,
+      });
+    }
+
     results.push({
       email: devUser.email,
       name: devUser.name,
-      role: devUser.systemRole,
+      role: devUser.isChurchAdmin
+        ? `church_admin+${devUser.systemRole}`
+        : devUser.systemRole,
     });
   }
 

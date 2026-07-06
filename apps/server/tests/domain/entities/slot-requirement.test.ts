@@ -7,6 +7,7 @@ describe('SlotRequirement Entity', () => {
     const req = new SlotRequirement({
       churchId: 'c1',
       slotId: 't1',
+      participationId: 'p1',
       roleId: 'r1',
       teamId: 'team1',
       requiredCount: 2,
@@ -14,9 +15,24 @@ describe('SlotRequirement Entity', () => {
 
     expect(req.churchId).toBe('c1');
     expect(req.slotId).toBe('t1');
+    expect(req.participationId).toBe('p1');
     expect(req.roleId).toBe('r1');
     expect(req.teamId).toBe('team1');
     expect(req.requiredCount).toBe(2);
+  });
+
+  it('exposes optional shiftId and notes when supplied', () => {
+    const req = new SlotRequirement({
+      churchId: 'c1',
+      slotId: 't1',
+      shiftId: 's1',
+      roleId: 'r1',
+      requiredCount: 1,
+      notes: 'front row',
+    });
+
+    expect(req.shiftId).toBe('s1');
+    expect(req.notes).toBe('front row');
   });
 
   it('throws InvalidRequiredCountError on construction if count < 1', () => {

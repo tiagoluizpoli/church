@@ -5,7 +5,7 @@ import type { RoleRepository } from '../infrastructure/role.repository';
 
 export function runRoleRepositoryContractTests(
   factory: () => Promise<RoleRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('RoleRepository Contract', () => {
     let repo: RoleRepository;

@@ -6,7 +6,7 @@ import type { ChurchRepository } from '../infrastructure/church.repository';
 
 export function runChurchRepositoryContractTests(
   factory: () => Promise<ChurchRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('ChurchRepository Contract', () => {
     let repo: ChurchRepository;

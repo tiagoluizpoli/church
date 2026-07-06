@@ -30,6 +30,15 @@ describe('VolunteerNotification', () => {
     expect(notification.createdAt).toBeInstanceOf(Date);
   });
 
+  it('exposes an optional planningCycleId when supplied', () => {
+    const notification = new VolunteerNotification({
+      ...props,
+      planningCycleId: 'cycle-1',
+    });
+
+    expect(notification.planningCycleId).toBe('cycle-1');
+  });
+
   it('preserves supplied creation and read times', () => {
     const createdAt = new Date('2026-07-01T10:00:00Z');
     const readAt = new Date('2026-07-01T11:00:00Z');

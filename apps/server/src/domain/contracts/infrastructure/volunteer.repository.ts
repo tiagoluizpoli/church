@@ -13,12 +13,7 @@ export interface VolunteerLeadership {
   ministryName: string;
 }
 
-export const MINISTRY_SYSTEM_ROLES = [
-  'leader',
-  'sub_leader',
-  'volunteer',
-] as const;
-export type MinistrySystemRole = (typeof MINISTRY_SYSTEM_ROLES)[number];
+export type MinistrySystemRole = 'leader' | 'sub_leader' | 'volunteer';
 
 /** A volunteer's membership within a single ministry (role + optional team). */
 export interface MinistryMembership {

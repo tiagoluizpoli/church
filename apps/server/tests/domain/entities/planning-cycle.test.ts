@@ -20,6 +20,22 @@ describe('PlanningCycle', () => {
     const cycle = createPlanningCycle();
 
     expect(cycle.state).toBe('draft');
+    expect(cycle.churchId).toBe('11111111-1111-1111-1111-111111111111');
+    expect(cycle.name).toBe('July 2026');
+  });
+
+  it('accepts an explicit initial state', () => {
+    const cycle = new PlanningCycle({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111',
+        name: 'Pre-locked',
+        startDate: new Date('2026-07-01T00:00:00.000Z'),
+        endDate: new Date('2026-08-01T00:00:00.000Z'),
+        state: 'locked',
+      },
+    });
+
+    expect(cycle.state).toBe('locked');
   });
 
   it('rejects start dates that are not before the end date', () => {
@@ -67,6 +83,13 @@ describe('PlanningCycle', () => {
     expect(locked.state).toBe('archived');
   });
 
+  it('rejects archiving an already archived cycle', () => {
+    const archived = createPlanningCycle();
+    archived.archive();
+
+    expect(() => archived.archive()).toThrow(IllegalStateTransitionError);
+  });
+
   it('only allows reopening events while the cycle is locked', () => {
     const draft = createPlanningCycle();
     expect(() =>
@@ -84,6 +107,20 @@ describe('PlanningCycle', () => {
     expect(() =>
       locked.assertCanReopenEvent({ eventState: 'scheduled' }),
     ).not.toThrow();
+  });
+
+  it('rejects reopening events that are cancelled or past even while locked', () => {
+    const lockedForCancelled = createPlanningCycle();
+    lockedForCancelled.lock();
+    expect(() =>
+      lockedForCancelled.assertCanReopenEvent({ eventState: 'cancelled' }),
+    ).toThrow(IllegalStateTransitionError);
+
+    const lockedForPast = createPlanningCycle();
+    lockedForPast.lock();
+    expect(() =>
+      lockedForPast.assertCanReopenEvent({ eventState: 'past' }),
+    ).toThrow(IllegalStateTransitionError);
   });
 
   it('evaluates date containment using church-local dates', () => {

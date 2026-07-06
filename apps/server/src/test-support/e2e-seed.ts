@@ -91,7 +91,14 @@ export const E2E_IDS = {
   careEvent: 'e2e66666-6666-6666-6666-666666666665',
   careSlot: 'e2e77777-7777-7777-7777-777777777775',
   careAssignment: 'e2e99999-9999-9999-9999-999999999992',
+  // Second tenant — used only by the cross-cutting church-isolation spec
+  // (DL4-X1). Deliberately minimal: one church, one admin, one locked cycle.
+  churchB: 'e2ebbbbb-1111-1111-1111-111111111111',
+  churchBAdminVolunteer: 'e2ebbbbb-4444-4444-4444-444444444441',
+  churchBPlanningCycle: 'e2ebbbbb-2111-1111-1111-111111111111',
 } as const;
+
+export const CHURCH_B_PLANNING_CYCLE_NAME = 'E2E ChurchB Isolated Cycle';
 
 const PARTICIPATION_IDS = {
   [E2E_IDS.event]: 'e2e61111-1111-1111-1111-111111111111',
@@ -108,6 +115,9 @@ const SHIFT_IDS = {
   [E2E_IDS.us6Slot]: 'e2e71111-1111-1111-1111-111111111114',
   [E2E_IDS.careSlot]: 'e2e71111-1111-1111-1111-111111111115',
 } as const;
+
+const US4_SHARED_CARE_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111116';
+const US4_SHARED_CARE_SHIFT_ID = 'e2e71111-1111-1111-1111-111111111116';
 
 const POOL_VOLUNTEERS = [
   {
@@ -156,12 +166,14 @@ export interface SeedE2eOptions {
   leaderUserId: string;
   subLeaderUserId: string;
   volunteerUserId: string;
+  churchBAdminUserId: string;
 }
 
 export async function seedE2e({
   leaderUserId,
   subLeaderUserId,
   volunteerUserId,
+  churchBAdminUserId,
 }: SeedE2eOptions): Promise<typeof E2E_IDS> {
   const { pool, db } = makeDb();
   try {
@@ -199,6 +211,51 @@ export async function seedE2e({
         id: E2E_IDS.planningCycle,
         churchId: E2E_IDS.church,
         name: 'E2E December cycle',
+        startDate: new Date('2026-12-01T00:00:00Z'),
+        endDate: new Date('2027-01-01T00:00:00Z'),
+        state: 'locked',
+      })
+      .onConflictDoNothing();
+
+    // Second tenant (DL4-X1 church isolation, cross-cutting spec only).
+    await db
+      .insert(church)
+      .values({
+        id: E2E_IDS.churchB,
+        name: 'E2E ChurchB',
+        slug: 'e2e-church-b',
+        timezone: 'America/Chicago',
+      })
+      .onConflictDoNothing();
+
+    await db
+      .insert(churchAdmin)
+      .values({ churchId: E2E_IDS.churchB, userId: churchBAdminUserId })
+      .onConflictDoNothing();
+
+    const [churchBAdminVolunteerRow] = await db
+      .insert(volunteer)
+      .values({
+        id: E2E_IDS.churchBAdminVolunteer,
+        churchId: E2E_IDS.churchB,
+        userId: churchBAdminUserId,
+        status: 'active',
+      })
+      .onConflictDoUpdate({
+        target: [volunteer.id],
+        set: { churchId: E2E_IDS.churchB, userId: churchBAdminUserId },
+      })
+      .returning({ id: volunteer.id });
+    if (!churchBAdminVolunteerRow) {
+      throw new Error('Failed to seed the churchB admin volunteer.');
+    }
+
+    await db
+      .insert(planningCycle)
+      .values({
+        id: E2E_IDS.churchBPlanningCycle,
+        churchId: E2E_IDS.churchB,
+        name: CHURCH_B_PLANNING_CYCLE_NAME,
         startDate: new Date('2026-12-01T00:00:00Z'),
         endDate: new Date('2027-01-01T00:00:00Z'),
         state: 'locked',
@@ -456,8 +513,8 @@ export async function seedE2e({
 
     await db
       .insert(ministryParticipation)
-      .values(
-        Object.entries(PARTICIPATION_IDS).map(([eventId, id]) => ({
+      .values([
+        ...Object.entries(PARTICIPATION_IDS).map(([eventId, id]) => ({
           id,
           churchId: E2E_IDS.church,
           eventId,
@@ -465,9 +522,19 @@ export async function seedE2e({
             eventId === E2E_IDS.careEvent
               ? E2E_IDS.ministryCare
               : E2E_IDS.ministry,
-          state: 'published' as const,
+          state:
+            eventId === E2E_IDS.us6Event
+              ? ('availability_fired' as const)
+              : ('published' as const),
         })),
-      )
+        {
+          id: US4_SHARED_CARE_PARTICIPATION_ID,
+          churchId: E2E_IDS.church,
+          eventId: E2E_IDS.us6Event,
+          ministryId: E2E_IDS.ministryCare,
+          state: 'availability_fired' as const,
+        },
+      ])
       .onConflictDoNothing();
 
     await db
@@ -550,8 +617,8 @@ export async function seedE2e({
     ] as const;
     await db
       .insert(shift)
-      .values(
-        slotSpecs.map(([slotId, eventId, startTime, endTime]) => ({
+      .values([
+        ...slotSpecs.map(([slotId, eventId, startTime, endTime]) => ({
           id: SHIFT_IDS[slotId],
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[eventId],
@@ -559,7 +626,15 @@ export async function seedE2e({
           startTime: new Date(startTime),
           endTime: new Date(endTime),
         })),
-      )
+        {
+          id: US4_SHARED_CARE_SHIFT_ID,
+          churchId: E2E_IDS.church,
+          participationId: US4_SHARED_CARE_PARTICIPATION_ID,
+          timeSlotId: E2E_IDS.us6Slot,
+          startTime: new Date('2026-12-28T09:00:00Z'),
+          endTime: new Date('2026-12-28T11:00:00Z'),
+        },
+      ])
       .onConflictDoNothing();
 
     await db
@@ -616,6 +691,15 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.careEvent],
           shiftId: SHIFT_IDS[E2E_IDS.careSlot],
+          roleId: E2E_IDS.roleCareHost,
+          requiredCount: 1,
+          teamId: E2E_IDS.careTeam,
+        },
+        {
+          id: 'e2e88888-8888-8888-8888-888888888887',
+          churchId: E2E_IDS.church,
+          participationId: US4_SHARED_CARE_PARTICIPATION_ID,
+          shiftId: US4_SHARED_CARE_SHIFT_ID,
           roleId: E2E_IDS.roleCareHost,
           requiredCount: 1,
           teamId: E2E_IDS.careTeam,
@@ -701,17 +785,20 @@ export interface CleanupE2eOptions {
   leaderUserId?: string;
   subLeaderUserId?: string;
   volunteerUserId?: string;
+  churchBAdminUserId?: string;
 }
 
 export async function cleanupE2e({
   leaderUserId,
   subLeaderUserId,
   volunteerUserId,
+  churchBAdminUserId,
 }: CleanupE2eOptions = {}): Promise<void> {
   const { pool, db } = makeDb();
   try {
     // CASCADE from church removes ministry/role/volunteer/event/slot rows.
     await db.delete(church).where(eq(church.id, E2E_IDS.church));
+    await db.delete(church).where(eq(church.id, E2E_IDS.churchB));
     // Pool users and disposable auth users are not reachable by church
     // cascade — remove them too.
     const cleanupUserIds = [
@@ -719,6 +806,7 @@ export async function cleanupE2e({
       leaderUserId,
       subLeaderUserId,
       volunteerUserId,
+      churchBAdminUserId,
     ].filter((value): value is string => Boolean(value));
 
     if (cleanupUserIds.length > 0) {
@@ -743,6 +831,7 @@ if (import.meta.main) {
         leaderUserId: parseArg(argv, 'leader-user-id'),
         subLeaderUserId: parseArg(argv, 'sub-leader-user-id'),
         volunteerUserId: parseArg(argv, 'volunteer-user-id'),
+        churchBAdminUserId: parseArg(argv, 'church-b-admin-user-id'),
       });
       console.log('[e2e-seed] cleaned up');
       return;
@@ -750,15 +839,22 @@ if (import.meta.main) {
     const leaderUserId = parseArg(argv, 'leader-user-id');
     const subLeaderUserId = parseArg(argv, 'sub-leader-user-id');
     const volunteerUserId = parseArg(argv, 'volunteer-user-id');
-    if (!leaderUserId || !subLeaderUserId || !volunteerUserId) {
+    const churchBAdminUserId = parseArg(argv, 'church-b-admin-user-id');
+    if (
+      !leaderUserId ||
+      !subLeaderUserId ||
+      !volunteerUserId ||
+      !churchBAdminUserId
+    ) {
       throw new Error(
-        'Usage: seed:e2e -- --leader-user-id=<id> --sub-leader-user-id=<id> --volunteer-user-id=<id>',
+        'Usage: seed:e2e -- --leader-user-id=<id> --sub-leader-user-id=<id> --volunteer-user-id=<id> --church-b-admin-user-id=<id>',
       );
     }
     const ids = await seedE2e({
       leaderUserId,
       subLeaderUserId,
       volunteerUserId,
+      churchBAdminUserId,
     });
     console.log(
       `[e2e-seed] seeded event ${ids.event} for leader ${leaderUserId} and sub-leader ${subLeaderUserId}`,

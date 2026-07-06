@@ -1,21 +1,17 @@
 import type { AvailabilityResult } from '../availability/types';
 
 // --- Hard Constraint Reason Codes ---
-export const HARD_CONSTRAINT_REASONS = [
-  'NOT_QUALIFIED',
-  'NOT_IN_MINISTRY',
-  'EVENT_IN_PAST',
-  'DUPLICATE_ASSIGNMENT',
-] as const;
-export type HardConstraintReason = (typeof HARD_CONSTRAINT_REASONS)[number];
+export type HardConstraintReason =
+  | 'NOT_QUALIFIED'
+  | 'NOT_IN_MINISTRY'
+  | 'EVENT_IN_PAST'
+  | 'DUPLICATE_ASSIGNMENT';
 
 // --- Soft Conflict Issue Types ---
-export const SOFT_CONFLICT_TYPES = [
-  'UNAVAILABLE',
-  'DOUBLE_BOOKED',
-  'FAIRNESS_EXCEEDED',
-] as const;
-export type SoftConflictType = (typeof SOFT_CONFLICT_TYPES)[number];
+export type SoftConflictType =
+  | 'UNAVAILABLE'
+  | 'DOUBLE_BOOKED'
+  | 'FAIRNESS_EXCEEDED';
 
 // --- Conflict Issue (single detected soft conflict) ---
 export type ConflictIssue = {

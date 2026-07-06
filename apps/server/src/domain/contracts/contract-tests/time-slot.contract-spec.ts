@@ -5,7 +5,7 @@ import type { TimeSlotRepository } from '../infrastructure/time-slot.repository'
 
 export function runTimeSlotRepositoryContractTests(
   factory: () => Promise<TimeSlotRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('TimeSlotRepository Contract', () => {
     let repo: TimeSlotRepository;

@@ -47,31 +47,39 @@ export interface ReassignParticipationAssignmentInput {
   reason: string;
 }
 
+export interface GetAssignmentInput {
+  assignmentId: AssignmentId;
+  churchId: ChurchId;
+}
+
+export interface OverrideAssignmentInput {
+  assignmentId: AssignmentId;
+  churchId: ChurchId;
+  actorId: UserId;
+  reason: string;
+}
+
+export interface DeleteAssignmentInput {
+  assignmentId: AssignmentId;
+  churchId: ChurchId;
+  actorId: UserId;
+}
+
+export interface ListAssignmentAuditLogInput {
+  assignmentId: AssignmentId;
+  churchId: ChurchId;
+}
+
 export interface IAssignmentManager {
   createAssignment(input: CreateAssignmentInput): Promise<Assignment>;
-  getAssignment(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-  }): Promise<Assignment>;
+  getAssignment(input: GetAssignmentInput): Promise<Assignment>;
   createParticipationAssignment(
     input: CreateParticipationAssignmentInput,
   ): Promise<CreateParticipationAssignmentResult>;
-  overrideAssignment(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-    actorId: UserId;
-    reason: string;
-  }): Promise<void>;
+  overrideAssignment(input: OverrideAssignmentInput): Promise<void>;
   reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment>;
-  deleteAssignment(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-    actorId?: UserId;
-  }): Promise<void>;
-  listAuditLog(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-  }): Promise<AssignmentAudit[]>;
+  deleteAssignment(input: DeleteAssignmentInput): Promise<void>;
+  listAuditLog(input: ListAssignmentAuditLogInput): Promise<AssignmentAudit[]>;
 }

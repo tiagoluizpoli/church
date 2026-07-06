@@ -21,7 +21,7 @@ const TEST_TYPE = 'assignment_changed' as VolunteerNotificationType;
 
 export function runVolunteerNotificationRepositoryContractTests(
   factory: () => Promise<VolunteerNotificationRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('VolunteerNotificationRepository Contract', () => {
     let repo: VolunteerNotificationRepository;

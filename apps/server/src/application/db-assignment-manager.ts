@@ -11,7 +11,11 @@ import type {
   CreateAssignmentInput,
   CreateParticipationAssignmentInput,
   CreateParticipationAssignmentResult,
+  DeleteAssignmentInput,
+  GetAssignmentInput,
   IAssignmentManager,
+  ListAssignmentAuditLogInput,
+  OverrideAssignmentInput,
   ReassignParticipationAssignmentInput,
 } from '../domain/contracts/application/assignment-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
@@ -76,10 +80,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     return assignment;
   }
 
-  async getAssignment(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-  }): Promise<Assignment> {
+  async getAssignment(input: GetAssignmentInput): Promise<Assignment> {
     return this.assignmentRepo.getById(input.churchId, input.assignmentId);
   }
 
@@ -91,28 +92,23 @@ export class DbAssignmentManager implements IAssignmentManager {
     );
   }
 
-  async deleteAssignment(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-    actorId?: UserId;
-  }): Promise<void> {
+  async deleteAssignment(input: DeleteAssignmentInput): Promise<void> {
     const { assignmentId, churchId, actorId } = input;
-    await this.assignmentRepo.deleteById(churchId, assignmentId);
-    if (actorId) {
-      await this.auditRepo.create(churchId, {
-        assignmentId,
-        actorId,
-        action: 'deleted',
-      });
-    }
+    await this.unitOfWork.run(async (tx) => {
+      await this.auditRepo.create(
+        churchId,
+        {
+          assignmentId,
+          actorId,
+          action: 'deleted',
+        },
+        tx,
+      );
+      await this.assignmentRepo.deleteById(churchId, assignmentId, tx);
+    });
   }
 
-  async overrideAssignment(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-    actorId: UserId;
-    reason: string;
-  }): Promise<void> {
+  async overrideAssignment(input: OverrideAssignmentInput): Promise<void> {
     await this.assignmentRepo.getById(input.churchId, input.assignmentId);
     await this.auditRepo.create(input.churchId, {
       assignmentId: input.assignmentId,
@@ -191,10 +187,9 @@ export class DbAssignmentManager implements IAssignmentManager {
     return nextAssignment;
   }
 
-  async listAuditLog(input: {
-    assignmentId: AssignmentId;
-    churchId: ChurchId;
-  }): Promise<AssignmentAudit[]> {
+  async listAuditLog(
+    input: ListAssignmentAuditLogInput,
+  ): Promise<AssignmentAudit[]> {
     return this.auditRepo.listByAssignment(input.churchId, input.assignmentId);
   }
 

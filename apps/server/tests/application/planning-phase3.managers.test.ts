@@ -1,9 +1,20 @@
+import { randomUUID } from 'node:crypto';
+import {
+  ministry,
+  ministryServingProfile,
+  participationSlotInclusion,
+  role,
+  shift as shiftTable,
+  slotRequirement,
+} from '@church/db';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
 import { DbPlanningCycleManager } from '../../src/application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '../../src/application/db-planning-event-manager';
 import { ChurchId, PlanningCycleId } from '../../src/domain/branded-ids';
 import {
+  EventOutsidePlanningCycleError,
   IllegalStateTransitionError,
   OverlappingCycleError,
 } from '../../src/domain/errors';
@@ -204,6 +215,35 @@ describe('Phase 3 planning managers', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
 
     expect(createdEvent.title).toBe('Sunday Service');
+
+    await expect(
+      cycleManager.lockCycle({
+        churchId: churchAId,
+        cycleId: PlanningCycleId.from(expiredCycle.id),
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+  });
+
+  it('rejects a manual event whose start date falls outside the planning cycle', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+    const cycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'August cycle',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+    });
+
+    await expect(
+      eventManager.createEvent({
+        churchId: churchAId,
+        cycleId: cycle.id,
+        title: 'Outside cycle',
+        startDate: new Date('2026-10-05T12:00:00.000Z'),
+        endDate: new Date('2026-10-05T14:00:00.000Z'),
+      }),
+    ).rejects.toThrow(EventOutsidePlanningCycleError);
   });
 
   it('applies templates idempotently and requires reopen before editing a locked event', async () => {
@@ -291,5 +331,331 @@ describe('Phase 3 planning managers', () => {
 
     expect(updated.title).toBe('Retitled with reopen');
     expect(updated.status).toBe('scheduled');
+
+    // Cycle is already locked (above) — a manually created event must land
+    // directly as 'scheduled', not 'draft'.
+    const manualPostLockEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      title: 'Added after lock',
+      startDate: new Date('2026-12-10T12:00:00.000Z'),
+      endDate: new Date('2026-12-10T14:00:00.000Z'),
+    });
+    expect(manualPostLockEvent.status).toBe('scheduled');
+
+    const postLockTemplate = await templateManager.createTemplate({
+      churchId: churchAId,
+      name: 'Wednesday Service',
+      weekday: 3,
+      blocks: [
+        {
+          label: 'Bible study',
+          startTime: '19:00:00',
+          endTime: '20:00:00',
+          order: 0,
+        },
+      ],
+    });
+
+    const postLockRun = await eventManager.generateFromTemplates({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      templateIds: [postLockTemplate.id],
+    });
+
+    expect(postLockRun.generatedEventCount).toBeGreaterThan(0);
+
+    const postLockDetails = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    const postLockEvent = postLockDetails.events.find(
+      (eventGroup) => eventGroup.event.sourceTemplateId === postLockTemplate.id,
+    )?.event;
+
+    // Events generated after the cycle is already locked must land directly
+    // as 'scheduled', not 'draft' (they'd otherwise never get promoted).
+    expect(postLockEvent?.status).toBe('scheduled');
+  });
+
+  it('cancelEvent cancels a draft event freely, is blocked on a locked cycle unless the event is still draft, and works again after reopen', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+
+    const draftCycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Cancel in draft cycle',
+      startDate: new Date('2027-01-01T00:00:00.000Z'),
+      endDate: new Date('2027-02-01T00:00:00.000Z'),
+    });
+    const draftEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      title: 'Cancel me (draft cycle)',
+      startDate: new Date('2027-01-05T09:00:00.000Z'),
+      endDate: new Date('2027-01-05T10:00:00.000Z'),
+    });
+
+    await eventManager.cancelEvent({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      eventId: draftEvent.id,
+    });
+
+    const afterCancel = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+    });
+    expect(afterCancel.events[0]?.event.status).toBe('cancelled');
+
+    const lockedCycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Cancel in locked cycle',
+      startDate: new Date('2027-02-01T00:00:00.000Z'),
+      endDate: new Date('2027-03-01T00:00:00.000Z'),
+    });
+    const lockedEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: lockedCycle.id,
+      title: 'Scheduled once locked',
+      startDate: new Date('2027-02-05T09:00:00.000Z'),
+      endDate: new Date('2027-02-05T10:00:00.000Z'),
+    });
+    await cycleManager.lockCycle({
+      churchId: churchAId,
+      cycleId: lockedCycle.id,
+    });
+
+    await expect(
+      eventManager.cancelEvent({
+        churchId: churchAId,
+        cycleId: lockedCycle.id,
+        eventId: lockedEvent.id,
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+
+    await cycleManager.reopenEvent({
+      churchId: churchAId,
+      cycleId: lockedCycle.id,
+      eventId: lockedEvent.id,
+    });
+
+    await eventManager.cancelEvent({
+      churchId: churchAId,
+      cycleId: lockedCycle.id,
+      eventId: lockedEvent.id,
+    });
+
+    const finalDetails = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: lockedCycle.id,
+    });
+    expect(finalDetails.events[0]?.event.status).toBe('cancelled');
+  });
+
+  it('updateEvent rejects moving a startDate outside its planning cycle', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+    const cycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Update bounds cycle',
+      startDate: new Date('2027-03-01T00:00:00.000Z'),
+      endDate: new Date('2027-04-01T00:00:00.000Z'),
+    });
+    const event = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      title: 'Movable event',
+      startDate: new Date('2027-03-05T09:00:00.000Z'),
+      endDate: new Date('2027-03-05T10:00:00.000Z'),
+    });
+
+    await expect(
+      eventManager.updateEvent({
+        churchId: churchAId,
+        cycleId: cycle.id,
+        eventId: event.id,
+        startDate: new Date('2027-04-15T09:00:00.000Z'),
+      }),
+    ).rejects.toThrow(EventOutsidePlanningCycleError);
+  });
+
+  it('generateFromTemplates seeds via the three-tier default: explicit profile > ministry direction > (all_out default), including split shifts and headcounts', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager, templateManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+
+    // ministryA (from base seed) is left at its DB default_direction, 'all_out'.
+    const [allInMinistry] = await schedulingTestDb
+      .insert(ministry)
+      .values({
+        churchId: seed.churchAId,
+        name: 'All-in ministry',
+        defaultDirection: 'all_in',
+      })
+      .returning();
+    const [profiledMinistry] = await schedulingTestDb
+      .insert(ministry)
+      .values({
+        churchId: seed.churchAId,
+        name: 'Profiled ministry',
+        defaultDirection: 'all_out',
+      })
+      .returning();
+    const [excludedByProfileMinistry] = await schedulingTestDb
+      .insert(ministry)
+      .values({
+        churchId: seed.churchAId,
+        name: 'Explicitly excluded ministry',
+        defaultDirection: 'all_in',
+      })
+      .returning();
+    if (!allInMinistry || !profiledMinistry || !excludedByProfileMinistry) {
+      throw new Error('ministry seed failed');
+    }
+
+    const cycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Seeding tiers cycle',
+      startDate: new Date('2027-05-01T00:00:00.000Z'),
+      endDate: new Date('2027-06-01T00:00:00.000Z'),
+    });
+    const template = await templateManager.createTemplate({
+      churchId: churchAId,
+      name: 'Tiered Sunday',
+      weekday: 0,
+      blocks: [
+        {
+          label: 'Service',
+          startTime: '09:00:00',
+          endTime: '10:00:00',
+          order: 0,
+        },
+      ],
+    });
+    const block = template.blocks[0];
+    if (!block) throw new Error('template block seed failed');
+
+    const roleRow = await schedulingTestDb
+      .insert(role)
+      .values({
+        id: randomUUID(),
+        churchId: seed.churchAId,
+        ministryId: profiledMinistry.id,
+        name: 'Profiled role',
+        isGlobal: false,
+      })
+      .returning()
+      .then(([row]) => {
+        if (!row) throw new Error('role seed failed');
+        return row;
+      });
+
+    await schedulingTestDb.insert(ministryServingProfile).values([
+      {
+        churchId: seed.churchAId,
+        ministryId: profiledMinistry.id,
+        sourceTemplateBlockId: block.id,
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 2 },
+        headcounts: [{ roleId: roleRow.id, count: 2 }],
+      },
+      {
+        churchId: seed.churchAId,
+        ministryId: excludedByProfileMinistry.id,
+        sourceTemplateBlockId: block.id,
+        serves: false,
+        shiftSplit: { kind: 'equal', count: 1 },
+        headcounts: [],
+      },
+    ]);
+
+    const result = await eventManager.generateFromTemplates({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      templateIds: [template.id],
+    });
+    expect(result.generatedEventCount).toBeGreaterThan(0);
+
+    const cycleDetails = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    const generatedEvent = cycleDetails.events[0]?.event;
+    if (!generatedEvent) throw new Error('expected a generated event');
+    const generatedEventId = generatedEvent.id;
+
+    async function participationIdFor(ministryId: string) {
+      const result = await schedulingTestDb.execute(
+        `SELECT id FROM ministry_participation WHERE ministry_id = '${ministryId}' AND event_id = '${generatedEventId}'`,
+      );
+      const participationRow = result.rows[0] as { id: string } | undefined;
+      if (!participationRow) {
+        throw new Error(`no participation for ministry ${ministryId}`);
+      }
+      return participationRow.id;
+    }
+
+    // ministryA: default direction (all_out), no profile -> excluded entirely.
+    const ministryAParticipationId = await participationIdFor(seed.ministryAId);
+    const ministryAInclusions = await schedulingTestDb
+      .select()
+      .from(participationSlotInclusion)
+      .where(
+        eq(
+          participationSlotInclusion.participationId,
+          ministryAParticipationId,
+        ),
+      );
+    expect(ministryAInclusions).toHaveLength(0);
+
+    // all_in ministry, no profile entry -> whole-slot shift, no requirements.
+    const allInParticipationId = await participationIdFor(allInMinistry.id);
+    const allInInclusions = await schedulingTestDb
+      .select()
+      .from(participationSlotInclusion)
+      .where(
+        eq(participationSlotInclusion.participationId, allInParticipationId),
+      );
+    expect(allInInclusions).toHaveLength(1);
+    const allInShifts = await schedulingTestDb
+      .select()
+      .from(shiftTable)
+      .where(eq(shiftTable.participationId, allInParticipationId));
+    expect(allInShifts).toHaveLength(1);
+
+    // profiled ministry (all_out direction, but explicit serves:true equal-2 profile) -> 2 shifts + requirements of 2 each.
+    const profiledParticipationId = await participationIdFor(
+      profiledMinistry.id,
+    );
+    const profiledShifts = await schedulingTestDb
+      .select()
+      .from(shiftTable)
+      .where(eq(shiftTable.participationId, profiledParticipationId));
+    expect(profiledShifts).toHaveLength(2);
+    const profiledRequirements = await schedulingTestDb
+      .select()
+      .from(slotRequirement)
+      .where(eq(slotRequirement.participationId, profiledParticipationId));
+    expect(profiledRequirements).toHaveLength(2);
+    expect(
+      profiledRequirements.every(
+        (requirement) => requirement.requiredCount === 2,
+      ),
+    ).toBe(true);
+
+    // ministry with default all_in, but explicit serves:false profile entry -> still excluded (profile wins over direction).
+    const excludedParticipationId = await participationIdFor(
+      excludedByProfileMinistry.id,
+    );
+    const excludedInclusions = await schedulingTestDb
+      .select()
+      .from(participationSlotInclusion)
+      .where(
+        eq(participationSlotInclusion.participationId, excludedParticipationId),
+      );
+    expect(excludedInclusions).toHaveLength(0);
   });
 });

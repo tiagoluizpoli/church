@@ -12,7 +12,7 @@ import type { AssignmentRepository } from '../infrastructure/assignment.reposito
 
 export function runAssignmentRepositoryContractTests(
   factory: () => Promise<AssignmentRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('AssignmentRepository Contract', () => {
     let repo: AssignmentRepository;

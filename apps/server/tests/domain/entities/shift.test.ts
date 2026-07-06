@@ -126,4 +126,68 @@ describe('Shift entity (DL1-SH)', () => {
 
     expect(shift.id).toBe('77777777-7777-4777-8777-777777777777');
   });
+
+  it('updateBounds accepts new times within slot bounds', () => {
+    const shift = buildShift({
+      startTime: new Date('2026-08-02T09:30:00.000Z'),
+      endTime: new Date('2026-08-02T11:00:00.000Z'),
+    });
+    const previousUpdatedAt = shift.updatedAt;
+
+    shift.updateBounds({
+      startTime: new Date('2026-08-02T10:00:00.000Z'),
+      endTime: new Date('2026-08-02T11:30:00.000Z'),
+      slotBounds,
+    });
+
+    expect(shift.startTime).toEqual(new Date('2026-08-02T10:00:00.000Z'));
+    expect(shift.endTime).toEqual(new Date('2026-08-02T11:30:00.000Z'));
+    expect(shift.updatedAt.getTime()).toBeGreaterThanOrEqual(
+      previousUpdatedAt.getTime(),
+    );
+  });
+
+  it('updateBounds rejects a start that is not before the end', () => {
+    const shift = buildShift({
+      startTime: new Date('2026-08-02T09:30:00.000Z'),
+      endTime: new Date('2026-08-02T11:00:00.000Z'),
+    });
+
+    expect(() =>
+      shift.updateBounds({
+        startTime: new Date('2026-08-02T10:00:00.000Z'),
+        endTime: new Date('2026-08-02T10:00:00.000Z'),
+        slotBounds,
+      }),
+    ).toThrow(InvalidTimeRangeError);
+  });
+
+  it('updateBounds rejects times outside the slot bounds', () => {
+    const shift = buildShift({
+      startTime: new Date('2026-08-02T09:30:00.000Z'),
+      endTime: new Date('2026-08-02T11:00:00.000Z'),
+    });
+
+    expect(() =>
+      shift.updateBounds({
+        startTime: new Date('2026-08-02T08:00:00.000Z'),
+        endTime: new Date('2026-08-02T11:00:00.000Z'),
+        slotBounds,
+      }),
+    ).toThrow(ShiftOutOfBoundsError);
+  });
+
+  it('updateLabel replaces or clears the label', () => {
+    const shift = buildShift({
+      startTime: new Date('2026-08-02T09:30:00.000Z'),
+      endTime: new Date('2026-08-02T11:00:00.000Z'),
+      label: 'First serve',
+    });
+
+    shift.updateLabel('Second serve');
+    expect(shift.label).toBe('Second serve');
+
+    shift.updateLabel(undefined);
+    expect(shift.label).toBeUndefined();
+  });
 });

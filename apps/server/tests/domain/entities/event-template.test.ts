@@ -50,6 +50,8 @@ describe('EventTemplate and TimeBlock', () => {
       id: '22222222-2222-2222-2222-222222222222',
     });
 
+    expect(template.churchId).toBe('11111111-1111-1111-1111-111111111111');
+    expect(template.name).toBe('Sunday Service');
     expect(template.weekday).toBe(0);
     expect(template.blocks.map((block) => block.order)).toEqual([1, 2]);
   });
@@ -98,6 +100,18 @@ describe('EventTemplate and TimeBlock', () => {
           },
         }),
     ).toThrow(InvalidWeekdayError);
+
+    expect(
+      () =>
+        new EventTemplate({
+          props: {
+            churchId: '11111111-1111-1111-1111-111111111111',
+            name: 'Broken',
+            weekday: -1,
+            blocks: [],
+          },
+        }),
+    ).toThrow(InvalidWeekdayError);
   });
 
   it('preserves stable block ids for later slot generation', () => {
@@ -109,5 +123,24 @@ describe('EventTemplate and TimeBlock', () => {
     });
 
     expect(block.id).toBe('33333333-3333-3333-3333-333333333333');
+  });
+
+  it('exposes every TimeBlock property', () => {
+    const block = createTimeBlock({
+      props: {
+        label: 'Gathering',
+        startTime: '08:30',
+        endTime: '09:00',
+        order: 1,
+      },
+      id: '33333333-3333-3333-3333-333333333334',
+    });
+
+    expect(block.churchId).toBe('11111111-1111-1111-1111-111111111111');
+    expect(block.templateId).toBe('22222222-2222-2222-2222-222222222222');
+    expect(block.label).toBe('Gathering');
+    expect(block.startTime).toBe('08:30');
+    expect(block.endTime).toBe('09:00');
+    expect(block.order).toBe(1);
   });
 });

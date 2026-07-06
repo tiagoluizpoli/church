@@ -77,4 +77,25 @@ describe('DbSchedulingRbacManager', () => {
     ).resolves.toBe(false);
     expect(scopes.isChurchAdmin).not.toHaveBeenCalled();
   });
+
+  it('checks ministry management directly by ministryId', async () => {
+    const scopes = createScopes();
+    vi.mocked(scopes.isMinistryLeader).mockResolvedValue(true);
+    const manager = new DbSchedulingRbacManager(scopes);
+
+    await expect(
+      manager.canManageMinistry({ churchId, ministryId, userId }),
+    ).resolves.toBe(true);
+    expect(scopes.resolveParticipationMinistry).not.toHaveBeenCalled();
+    expect(scopes.resolveShiftMinistry).not.toHaveBeenCalled();
+  });
+
+  it('denies ministry management when neither admin nor leader', async () => {
+    const scopes = createScopes();
+    const manager = new DbSchedulingRbacManager(scopes);
+
+    await expect(
+      manager.canManageMinistry({ churchId, ministryId, userId }),
+    ).resolves.toBe(false);
+  });
 });

@@ -9,7 +9,11 @@ import {
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DbMinistryManager } from '../../src/application/db-ministry-manager';
-import { ChurchId, VolunteerId } from '../../src/domain/branded-ids';
+import {
+  ChurchId,
+  MinistryId,
+  VolunteerId,
+} from '../../src/domain/branded-ids';
 import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 
@@ -132,5 +136,21 @@ describe('DbMinistryManager.listByLeader (T032)', () => {
       churchId: otherChurch,
     });
     expect(result).toHaveLength(0);
+  });
+});
+
+describe('DbMinistryManager.setDefaultDirection', () => {
+  const ministryRepo = new DrizzleMinistryRepository(db);
+  const volunteerRepo = new DrizzleVolunteerRepository(db);
+  const manager = new DbMinistryManager(ministryRepo, volunteerRepo);
+
+  it('updates the ministry default direction', async () => {
+    const updated = await manager.setDefaultDirection({
+      churchId: CHURCH,
+      ministryId: MinistryId.from(MINISTRY_A),
+      defaultDirection: 'all_in',
+    });
+
+    expect(updated.defaultDirection).toBe('all_in');
   });
 });

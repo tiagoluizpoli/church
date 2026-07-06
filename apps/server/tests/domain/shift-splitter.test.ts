@@ -97,6 +97,23 @@ describe('ShiftSplitter (DL1-SS)', () => {
     );
   });
 
+  it('rejects a split count too high for the slot duration', () => {
+    const shortSlot = {
+      id: timeSlot.id,
+      startTime: new Date('2026-08-02T09:00:00.000Z'),
+      endTime: new Date('2026-08-02T09:00:00.001Z'),
+    };
+
+    expect(() =>
+      splitter.split({
+        churchId,
+        participationId,
+        timeSlot: shortSlot,
+        strategy: { kind: 'equal-n', n: 2 },
+      }),
+    ).toThrow(InvalidShiftSplitError);
+  });
+
   it('DL1-SS-05 accepts manual unequal spans within bounds', () => {
     const shifts = split({
       kind: 'manual',

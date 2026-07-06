@@ -17,6 +17,9 @@ import {
   AssignmentId,
   ChurchId,
   MinistryParticipationId,
+  RoleId,
+  ShiftId,
+  TimeSlotId,
   UserId,
   VolunteerId,
 } from '../../src/domain/branded-ids';
@@ -655,5 +658,393 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       AssignmentId.from(assignment.id),
     );
     expect(stillAssigned.volunteerId).toBe(volunteerA.volunteer.id);
+  });
+});
+
+async function seedAvailabilityMark(input: {
+  churchId: string;
+  planningCycleId: string;
+  membershipId: string;
+  shiftId: string;
+}) {
+  const [check] = await schedulingTestDb
+    .insert((await import('@church/db')).availabilityCheck)
+    .values({
+      id: randomUUID(),
+      churchId: input.churchId,
+      planningCycleId: input.planningCycleId,
+      ministryVolunteerId: input.membershipId,
+      state: 'pending',
+    })
+    .returning();
+  if (!check) throw new Error('Phase 7 availability check seed failed');
+
+  await schedulingTestDb
+    .insert((await import('@church/db')).availability)
+    .values({
+      id: randomUUID(),
+      churchId: input.churchId,
+      availabilityCheckId: check.id,
+      shiftId: input.shiftId,
+    });
+}
+
+describe('Phase 7 assignment manager surfaces (direct create/delete/override + hard-constraint branches)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('createAssignment resolves the whole-slot shift by slotId, and getAssignment/listAuditLog reflect the created row', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'March 2027',
+      startDate: new Date('2027-03-01T00:00:00.000Z'),
+      endDate: new Date('2027-04-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Slot-based assignment service',
+      startDate: new Date('2027-03-07T09:00:00.000Z'),
+      endDate: new Date('2027-03-07T10:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const roleRow = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Slot role',
+    });
+    const wholeSlotShift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: graph.slot.startTime,
+      endTime: graph.slot.endTime,
+      label: 'Whole slot',
+    });
+    const target = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Direct Assign Target',
+      email: 'direct-assign-phase7@test.com',
+    });
+
+    const managers = createPhase7Managers();
+    const created = await managers.assignmentManager.createAssignment({
+      churchId: ChurchId.from(seed.churchAId),
+      slotId: TimeSlotId.from(graph.slot.id),
+      volunteerId: VolunteerId.from(target.volunteer.id),
+      roleId: RoleId.from(roleRow.id),
+      actorId: UserId.from(seed.adminUserId),
+      reason: 'Direct staffing',
+    });
+
+    expect(created.shiftId).toBe(wholeSlotShift.id);
+    expect(created.participationId).toBe(graph.participation.id);
+    expect(created.status).toBe('pending');
+
+    const fetched = await managers.assignmentManager.getAssignment({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: created.id,
+    });
+    expect(fetched.id).toBe(created.id);
+
+    const audit = await managers.assignmentManager.listAuditLog({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: created.id,
+    });
+    expect(audit).toEqual([
+      expect.objectContaining({ action: 'created', reason: 'Direct staffing' }),
+    ]);
+  });
+
+  it('deleteAssignment succeeds without an FK violation and removes the assignment row (audit write happens before delete, in the same transaction)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'April 2027',
+      startDate: new Date('2027-04-01T00:00:00.000Z'),
+      endDate: new Date('2027-05-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Delete assignment service',
+      startDate: new Date('2027-04-04T09:00:00.000Z'),
+      endDate: new Date('2027-04-04T10:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const roleRow = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Delete role',
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: graph.slot.startTime,
+      endTime: graph.slot.endTime,
+      label: 'Delete shift',
+    });
+    const volunteerWithActor = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'With Actor Delete',
+      email: 'with-actor-delete-phase7@test.com',
+    });
+
+    const managers = createPhase7Managers();
+    const assignmentWithActor = await seedAssignment({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      volunteerId: volunteerWithActor.volunteer.id,
+      roleId: roleRow.id,
+    });
+
+    await managers.assignmentManager.deleteAssignment({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: AssignmentId.from(assignmentWithActor.id),
+      actorId: UserId.from(seed.adminUserId),
+    });
+
+    await expect(
+      managers.assignmentRepo.getById(
+        ChurchId.from(seed.churchAId),
+        AssignmentId.from(assignmentWithActor.id),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundError);
+
+    // The `assignment_audit.assignment_id` FK is ON DELETE CASCADE, so the
+    // audit row written just before the delete is itself removed once the
+    // parent assignment is gone — this is a separate, pre-existing schema
+    // property (audit history does not outlive its assignment), not
+    // something this fix changes.
+    const audit = await managers.assignmentManager.listAuditLog({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: AssignmentId.from(assignmentWithActor.id),
+    });
+    expect(audit).toEqual([]);
+  });
+
+  it('overrideAssignment writes an audit entry without deleting or mutating the assignment', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'May 2027',
+      startDate: new Date('2027-05-01T00:00:00.000Z'),
+      endDate: new Date('2027-06-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Override service',
+      startDate: new Date('2027-05-09T09:00:00.000Z'),
+      endDate: new Date('2027-05-09T10:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const roleRow = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Override role',
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: graph.slot.startTime,
+      endTime: graph.slot.endTime,
+      label: 'Override shift',
+    });
+    const target = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Override Target',
+      email: 'override-target-phase7@test.com',
+    });
+
+    const managers = createPhase7Managers();
+    const assignment = await seedAssignment({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      volunteerId: target.volunteer.id,
+      roleId: roleRow.id,
+    });
+
+    await managers.assignmentManager.overrideAssignment({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: AssignmentId.from(assignment.id),
+      actorId: UserId.from(seed.adminUserId),
+      reason: 'Leader approved change',
+    });
+
+    const stillThere = await managers.assignmentRepo.getById(
+      ChurchId.from(seed.churchAId),
+      AssignmentId.from(assignment.id),
+    );
+    expect(stillThere.id).toBe(assignment.id);
+
+    const audit = await managers.assignmentManager.listAuditLog({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: AssignmentId.from(assignment.id),
+    });
+    expect(audit).toEqual([
+      expect.objectContaining({
+        action: 'updated',
+        reason: 'Leader approved change',
+      }),
+    ]);
+  });
+
+  it('createParticipationAssignment rejects a volunteer who is not a member of the requested ministry (NOT_IN_MINISTRY)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'June 2027',
+      startDate: new Date('2027-06-01T00:00:00.000Z'),
+      endDate: new Date('2027-07-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Non-member service',
+      startDate: new Date('2027-06-06T09:00:00.000Z'),
+      endDate: new Date('2027-06-06T10:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const roleRow = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Members-only role',
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: graph.slot.startTime,
+      endTime: graph.slot.endTime,
+      label: 'Members-only shift',
+    });
+
+    const [otherMinistry] = await schedulingTestDb
+      .insert((await import('@church/db')).ministry)
+      .values({ churchId: seed.churchAId, name: 'Outside ministry' })
+      .returning();
+    if (!otherMinistry) throw new Error('other ministry seed failed');
+    const outsider = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: otherMinistry.id,
+      name: 'Outsider Volunteer',
+      email: 'outsider-phase7@test.com',
+    });
+
+    const managers = createPhase7Managers();
+    await expect(
+      managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shift.id),
+        volunteerId: VolunteerId.from(outsider.volunteer.id),
+        roleId: RoleId.from(roleRow.id),
+        actorId: UserId.from(seed.adminUserId),
+      }),
+    ).rejects.toMatchObject({ reason: 'NOT_IN_MINISTRY' });
+  });
+
+  it('createParticipationAssignment rejects a volunteer without qualification for the role (NOT_QUALIFIED), and warns when marked unavailable', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'July 2027',
+      startDate: new Date('2027-07-01T00:00:00.000Z'),
+      endDate: new Date('2027-08-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Qualification service',
+      startDate: new Date('2027-07-04T09:00:00.000Z'),
+      endDate: new Date('2027-07-04T10:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const ownRole = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Ministry A role',
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: graph.slot.startTime,
+      endTime: graph.slot.endTime,
+      label: 'Qualification shift',
+    });
+
+    const [otherMinistry] = await schedulingTestDb
+      .insert((await import('@church/db')).ministry)
+      .values({ churchId: seed.churchAId, name: 'Other role-owning ministry' })
+      .returning();
+    if (!otherMinistry) throw new Error('other ministry seed failed');
+    const foreignRole = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: otherMinistry.id,
+      name: 'Foreign role',
+    });
+
+    const member = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Ministry A Member',
+      email: 'ministrya-member-phase7@test.com',
+    });
+
+    const managers = createPhase7Managers();
+
+    // Member of ministry A, but the role belongs to a different ministry.
+    await expect(
+      managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shift.id),
+        volunteerId: VolunteerId.from(member.volunteer.id),
+        roleId: RoleId.from(foreignRole.id),
+        actorId: UserId.from(seed.adminUserId),
+      }),
+    ).rejects.toMatchObject({ reason: 'NOT_QUALIFIED' });
+
+    // Now mark the member unavailable for this exact shift, then assign them
+    // to their own ministry's role — should succeed with an UNAVAILABLE warning.
+    await seedAvailabilityMark({
+      churchId: seed.churchAId,
+      planningCycleId: cycle.id,
+      membershipId: member.membership.id,
+      shiftId: shift.id,
+    });
+
+    const result =
+      await managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shift.id),
+        volunteerId: VolunteerId.from(member.volunteer.id),
+        roleId: RoleId.from(ownRole.id),
+        actorId: UserId.from(seed.adminUserId),
+      });
+
+    expect(result.assignment.volunteerId).toBe(member.volunteer.id);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({ type: 'UNAVAILABLE' }),
+    ]);
   });
 });

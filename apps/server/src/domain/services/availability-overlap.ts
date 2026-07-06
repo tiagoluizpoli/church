@@ -27,11 +27,8 @@ export function detectCrossMinistryOverlaps({
 }: DetectCrossMinistryOverlapsInput): ShiftOverlapPair[] {
   const pairs: ShiftOverlapPair[] = [];
 
-  for (let i = 0; i < shifts.length; i += 1) {
-    for (let j = i + 1; j < shifts.length; j += 1) {
-      const first = shifts[i];
-      const second = shifts[j];
-      if (!first || !second) continue;
+  for (const [i, first] of shifts.entries()) {
+    for (const second of shifts.slice(i + 1)) {
       if (first.ministryId === second.ministryId) continue;
 
       const intersects =

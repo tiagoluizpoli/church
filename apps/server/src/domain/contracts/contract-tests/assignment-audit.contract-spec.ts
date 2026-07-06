@@ -4,7 +4,7 @@ import type { AssignmentAuditRepository } from '../infrastructure/assignment-aud
 
 export function runAssignmentAuditRepositoryContractTests(
   factory: () => Promise<AssignmentAuditRepository>,
-  cleanup: () => Promise<void> = async () => {},
+  cleanup: () => Promise<void>,
 ) {
   describe('AssignmentAuditRepository Contract', () => {
     let repo: AssignmentAuditRepository;

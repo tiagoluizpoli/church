@@ -22,6 +22,8 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 | BL-010 | Per-ministry `Shift` model refinements         | Scheduling Reshape (017) | Backlog |
 | BL-011 | Centralize repeated controller auth preValidation | Backend Architecture | Backlog |
 | BL-012 | Add OpenAPI `summary` and `description` metadata across controller routes | API Documentation | Backlog |
+| BL-013 | Split controllers/routes by domain instead of by caller-role ("admin") | Backend Architecture | Backlog |
+| BL-014 | Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow, visual theme | Frontend UX/IA | Backlog — needs a grilling session before any implementation |
 
 ---
 
@@ -546,3 +548,104 @@ Across those controllers, `operationId` is common, while explicit route-level `s
 1. Every documented route schema has `operationId`, `summary`, and `description`.
 2. Swagger and Scalar display readable operation labels and explanations throughout the API.
 3. Naming is consistent across admin, leader, volunteer, and feature-flag surfaces.
+
+---
+
+### BL-013 — Split controllers/routes by domain instead of by caller-role ("admin")
+
+**Status**: Backlog
+
+**Feature area**: Backend Architecture
+
+**Summary**: `admin-leader-controller.ts` mixes together routes from several different domains (Event, TimeSlot, Assignment) under one controller, one URL prefix (`/admin`), and one flat OpenAPI tag (`'admin'`). "Admin" describes *who is allowed to call it* (an RBAC concern), not *what the route is about* (a domain concern). The two got conflated, so the generated Swagger/Scalar docs group everything under a single undifferentiated "admin" tag instead of by domain, and the controller itself has become a dumping ground regardless of which entity a route actually operates on.
+
+**Full Context**:
+
+Confirmed directly in `apps/server/src/api/controllers/admin-leader-controller.ts`:
+
+- `readonly prefix = '/admin'` — every route below is nested under `/admin/*`.
+- Every route schema uses `tags: ['admin']`, with no per-domain distinction.
+- The actual routes registered are a mix of unrelated domains:
+  - Event: `/events`, `/events/:eventId/cancel`, `/events/:eventId/reminders`
+  - TimeSlot: `/events/:eventId/slots`, `/events/:eventId/slots/:slotId`, `/events/:eventId/slots/generate`, `/events/:eventId/slots/:slotId/requirements`
+  - Assignment: `/assignments`, `/assignments/:assignmentId`, `/assignments/:assignmentId/override`, `/assignments/:assignmentId/audit`
+  - Plus a `/ministries` listing and the legacy `/schedule-builder` GET.
+- Other controllers (`leader-controller.ts`, `leader-rostering-controller.ts`, `volunteer-controller.ts`, `volunteer-schedule-controller.ts`, `church-admin-controller.ts`) already lean closer to a domain/audience split, but `admin-leader-controller.ts` is the clearest offender — it is effectively "every route an admin-or-leader caller can hit," regardless of domain.
+- This is adjacent to but distinct from **BL-011** (centralizing the repeated auth `preValidation` logic across these same controllers) — BL-011 is about *how* callers get authorized, this item is about *how routes are organized and exposed in the API surface* once authorization is settled. They should probably land together (an auth-context split naturally invites a routing split) but are separate concerns.
+
+**Why this matters**:
+
+- Swagger/Scalar tag grouping is the primary human-facing API map for this backend. Right now it groups by "who can call this," which tells a reader nothing about the actual resource being manipulated.
+- Maintainability: a change to Event-cancellation logic and a change to Assignment-override logic currently live in the same 400+ line file, for no reason other than both happening to require admin/leader privileges.
+- As more routes get added, the temptation is to keep dropping them into whichever controller matches the caller's role, rather than the domain — this compounds over time.
+
+**Recommended direction when implementing**:
+
+- Split `admin-leader-controller.ts` into domain-scoped controllers (e.g. `event-controller.ts`, `time-slot-controller.ts`, `assignment-controller.ts`), each still gated by the appropriate admin/leader authorization (ideally reusing whatever BL-011 produces).
+- Tag routes by domain (`tags: ['events']`, `tags: ['time-slots']`, `tags: ['assignments']`), not by caller role. If the caller-role distinction is still useful for readers, express it as a second tag or in the `description` (BL-012), not as the primary grouping.
+- Reconsider the `/admin` URL prefix for routes that aren't conceptually "administration" (church settings, admin-user management) — an Event or Assignment endpoint shouldn't need to imply it's an "admin resource" in its path, only that it's admin-authorized to call.
+- Do this as a single deliberate pass across all controllers (not just `admin-leader-controller.ts`), since `leader-controller.ts`/`leader-rostering-controller.ts` likely have milder versions of the same issue.
+- Sequence after or alongside BL-011, since re-homing routes and centralizing auth are easiest to do together.
+
+**Prerequisites**: None blocking — can start independently, but coordinate with BL-011 (auth centralization) and BL-012 (OpenAPI metadata) since all three touch the same controller files.
+
+**Success criteria**:
+
+1. No controller mixes routes from more than one clear domain purely because they share a caller-role requirement.
+2. OpenAPI/Swagger/Scalar tags group routes by domain (Events, TimeSlots, Assignments, Ministries, etc.), with caller-role expressed separately if needed at all.
+3. URL prefixes reflect the resource being operated on, not just "who is allowed to call it."
+
+---
+
+### BL-014 — Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow, visual theme
+
+**Status**: Backlog — **do not start implementation from this entry alone.** This needs a dedicated grilling/design session first (see "Recommended direction" below). Captured now, verbatim in intent, so the context isn't lost — not to be actioned piecemeal.
+
+**Feature area**: Frontend UX/IA (cross-cutting — touches navigation, volunteer dashboard, notifications, scheduling, and the design system)
+
+**Summary**: The frontend was assembled screen-by-screen without a deliberate information architecture pass. Several concrete symptoms were identified in a live walkthrough (2026-07-06): leftover scaffolding from the original Better-T-Stack template still in production surfaces, a sidebar with dead links to routes that don't exist, a volunteer dashboard that stacks unrelated concerns into one long page instead of separating them, notifications duplicated across two different surfaces with no single source of truth, a scheduling/planning flow whose UI doesn't clearly communicate the underlying cycle → template → event model, and a visual theme still on the installed shadcn default (sharp 4px corners, no real design pass). This product is meant for the whole congregation — including non-technical users — not just the person building it, so the bar for simplicity and clarity is high.
+
+**Full Context**:
+
+This was raised as a single holistic concern, not a checklist — the request was explicitly to "look at the flow" as a whole and organize screens "not only by domain but by context." The concrete, verified symptoms below are evidence *for* that holistic problem, not independent tickets to pick off one at a time:
+
+1. **Leftover template scaffolding still live in production surfaces.**
+   - `apps/web/src/routes/index.tsx` (the `/` homepage) renders a literal ASCII-art "BETTER T STACK" banner (the starter template's default splash) followed by a bare `<EventList />` dropped in with no framing — this is what a real user sees first.
+   - `apps/web/src/routes/todos.tsx` exists purely as a stub that renders the text "Todos removed." — yet the sidebar (`apps/web/src/components/app-shell.tsx:41`) still links to it as `{ label: 'Todos', to: '/todos', icon: CheckSquare }`.
+
+2. **Sidebar has dead links to routes that were never built.** In `apps/web/src/components/app-shell.tsx`, the primary nav array includes `{ label: 'Shifts', to: '/shifts' }`, `{ label: 'Alerts', to: '/alerts' }`, and `{ label: 'Profile', to: '/profile' }` — none of `routes/shifts.tsx`, `routes/alerts.tsx`, or `routes/profile.tsx` exist anywhere in `apps/web/src/routes/`. These links 404 or fall through today.
+
+3. **Notifications exist as two disconnected surfaces with no single source of truth.** The sidebar already has an `{ label: 'Alerts', to: '/alerts', icon: Bell }` entry (a bell icon, a dedicated nav slot — exactly the right *idea*), but that route doesn't exist. Meanwhile, the real notifications UI (`NotificationsInboxSection`) is bolted on as one more stacked section inside the volunteer dashboard (`apps/web/src/features/volunteers/components/volunteer-dashboard.tsx`), addressable via `dashboard.tsx`'s `section: 'notifications'` search param. The explicit ask: notifications should live behind a **bell icon in the top bar**, open a lightweight dropdown/panel for quick triage, and optionally deep-link to their own full page — not be one more section competing for space on the dashboard.
+
+4. **The volunteer dashboard is an undifferentiated vertical stack, not a designed page.** `volunteer-dashboard.tsx` renders `AvailabilityNeededSection`, `UpcomingAssignmentsSection`, `NotificationsInboxSection`, and (conditionally) `MinistryScheduleSection` all inside one `<div className="space-y-4">` — i.e., everything is "on top of the other," in the user's words. `MinistryScheduleSection` in particular was called out as taking too much space for what it is. Each of these concerns likely deserves its own clear surface (or a deliberately-designed single page with real visual hierarchy), not a flat list.
+
+5. **The scheduling/planning flow doesn't communicate its own model.** After walking through cycle creation, template authoring, and event generation (`apps/web/src/routes/scheduling/planning.tsx` and `apps/web/src/features/scheduling/components/planning-admin/*`), the flow was described as "weird" and hard to follow even by the person who commissioned it — specifically the event-templates block-editor component. This isn't one bug to fix; it's a signal that the planning cycle → template → event → participation model needs a UI narrative (progressive disclosure, clearer step sequencing, better empty/guidance states) instead of four cards crammed onto one page (see the `/scheduling/planning` screenshot reviewed live in this session).
+
+6. **No real visual design pass — still the installed shadcn default.** `apps/web/src/index.css` hardcodes `--radius: 0.25rem; /* 4px sharp corners */` across every radius token — literally the starter theme, unchanged. The explicit ask: a real design system pass (color, radius, spacing, typography) suited to a calm, approachable, church-wide tool — not a technical/internal-tool aesthetic.
+
+7. **Target audience constraint that must shape every decision above**: this is not a personal tool. It will be used by an entire congregation, including people with little technology comfort. Every IA and visual decision needs to be evaluated against "would a non-technical volunteer immediately understand this," not "does this look fine to an engineer."
+
+**Why deferred**:
+
+- This is explicitly *not* a quick-fix list — the person who raised it said so directly: it needs careful, deliberate design thought, not a reactive patch, and current context is limited to safely scope it properly right now.
+- Fixing symptoms individually (delete dead nav links, move notifications to a bell) without first agreeing on the target IA risks solving the wrong shape of problem and re-litigating the same screens again shortly after.
+- The right next step is a dedicated design/grilling session (see below), not code changes from this backlog entry directly.
+
+**Recommended direction when implementing** (i.e., when this is picked up):
+
+- Start with a grilling session (this repo has a `grilling` skill for exactly this — stress-testing a plan/design before building) to nail down: the full sitemap/IA (what pages exist, what each owns, how they nest), the notification-center pattern end-to-end (bell → dropdown → optional full page → read/unread state → deep links), and the scheduling flow's UI narrative (how a leader is guided from "create a cycle" to "leaders start staffing," across cycles/templates/events/participations).
+- Remove or replace the leftover template scaffolding (`/`'s ASCII banner, `/todos`, and the dead `/shifts` `/alerts` `/profile` sidebar links) as part of whatever the new IA turns out to be — don't patch them independently of the redesign.
+- Treat the notification bell + panel as a shared, app-wide primitive (top bar, always present), not a dashboard-scoped component — it should work the same whether the caller is a volunteer, leader, sub-leader, or admin.
+- For the visual design pass, the person raising this is open to using an AI-assisted UI design tool to iterate faster and get outside their own aesthetic instincts — options mentioned: Google Stitch, Replit, or comparable AI UI generators/prototyping tools. No tool has been chosen; this should be evaluated during the grilling session, not decided unilaterally now.
+- Whatever comes out of the redesign should be checked against the documented user flows in `specs/017-scheduling-reshape/spec.md` and `test-plan.md` (the DL2/DL3/DL4 scenario IDs) — the redesign must still satisfy those, not silently drop coverage.
+
+**Prerequisites**: A dedicated grilling/design session scoping the target IA, notification pattern, scheduling flow narrative, and visual design direction — before any code changes land against this item.
+
+**Success criteria** (to be refined during the grilling session, provisional for now):
+
+1. No route in the primary nav links to a page that doesn't exist.
+2. No leftover starter-template content (ASCII banner, `/todos`) remains in any user-facing surface.
+3. Notifications have exactly one authoritative surface (top-bar bell + panel, with or without a dedicated full page), not a duplicated/competing second surface.
+4. The volunteer dashboard's sections are deliberately laid out with real visual hierarchy, not a flat vertical stack of unrelated concerns.
+5. A first-time, non-technical leader can complete the cycle → template → event flow without external explanation.
+6. The visual theme is a deliberate design decision (documented rationale for color/radius/spacing/typography), not the untouched shadcn install default.

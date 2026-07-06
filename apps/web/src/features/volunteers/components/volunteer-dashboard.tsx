@@ -1,3 +1,4 @@
+import { Badge } from '@church/ui/components/badge';
 import {
   Card,
   CardDescription,
@@ -11,6 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@church/ui/components/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@church/ui/components/tabs';
 import { Link } from '@tanstack/react-router';
 import { useDashboardRefresh } from '../hooks/use-dashboard-refresh';
 import { useVolunteerDashboard } from '../hooks/use-volunteer-dashboard';
@@ -25,6 +32,11 @@ import { DashboardOfflineBanner } from './dashboard-offline-banner';
 import { MinistryScheduleSection } from './ministry-schedule-section';
 import { UpcomingAssignmentsSection } from './upcoming-assignments-section';
 
+export type DashboardTabId =
+  | 'upcoming-assignments'
+  | 'availability-needed'
+  | 'ministry-schedule';
+
 export interface VolunteerDashboardProps {
   volunteerName?: string;
   initialSection?: 'availability' | 'assignments' | 'ministry_schedule';
@@ -38,6 +50,24 @@ export const DASHBOARD_SECTION_OPTIONS = [
   'assignments',
   'ministry_schedule',
 ] as const;
+
+const DEFAULT_DASHBOARD_TAB_ID: DashboardTabId = 'upcoming-assignments';
+
+function resolveInitialTabId({
+  initialSection,
+}: {
+  initialSection: VolunteerDashboardProps['initialSection'];
+}): DashboardTabId {
+  if (initialSection === 'availability') {
+    return 'availability-needed';
+  }
+
+  if (initialSection === 'ministry_schedule') {
+    return 'ministry-schedule';
+  }
+
+  return DEFAULT_DASHBOARD_TAB_ID;
+}
 
 export function VolunteerDashboard({
   volunteerName,
@@ -93,32 +123,60 @@ export function VolunteerDashboard({
         refreshState={refresh.refreshState}
       />
 
-      <AvailabilityNeededSection
-        tasks={dashboard.availabilityTasks.map(mapAvailabilityTask)}
-        onOpenEvent={dashboard.setSelectedEventId}
-      />
+      <Tabs
+        defaultValue={resolveInitialTabId({ initialSection })}
+        className="w-full"
+      >
+        <TabsList>
+          <TabsTrigger value="upcoming-assignments">
+            Upcoming Assignments
+          </TabsTrigger>
+          <TabsTrigger value="availability-needed">
+            Availability Needed
+            {dashboard.availabilityTasks.length > 0 ? (
+              <Badge variant="secondary">
+                {dashboard.availabilityTasks.length}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger value="ministry-schedule">Ministry Schedule</TabsTrigger>
+        </TabsList>
 
-      <UpcomingAssignmentsSection
-        groups={dashboard.assignmentGroups}
-        expandedEventId={dashboard.expandedAssignmentEventId}
-        isOnline={refresh.isOnline}
-        responseState={
-          dashboard.respondToAssignment.isPending ? 'saving' : 'idle'
-        }
-        cancelState={dashboard.cancelAssignment.isPending ? 'saving' : 'idle'}
-        onToggleEvent={dashboard.handleToggleAssignmentGroup}
-        onRespond={dashboard.handleRespondToAssignment}
-        onCancel={dashboard.handleCancelAssignment}
-      />
+        <TabsContent value="upcoming-assignments">
+          <UpcomingAssignmentsSection
+            groups={dashboard.assignmentGroups}
+            expandedEventId={dashboard.expandedAssignmentEventId}
+            isOnline={refresh.isOnline}
+            responseState={
+              dashboard.respondToAssignment.isPending ? 'saving' : 'idle'
+            }
+            cancelState={
+              dashboard.cancelAssignment.isPending ? 'saving' : 'idle'
+            }
+            onToggleEvent={dashboard.handleToggleAssignmentGroup}
+            onRespond={dashboard.handleRespondToAssignment}
+            onCancel={dashboard.handleCancelAssignment}
+          />
+        </TabsContent>
 
-      <MinistryScheduleSection
-        ministries={dashboard.ministryOptions}
-        selectedMinistryId={dashboard.selectedMinistryId}
-        canSwitchMinistry={dashboard.ministryOptions.length > 1}
-        events={dashboard.ministrySchedule?.events ?? []}
-        isLoading={dashboard.ministryScheduleQuery.isLoading}
-        onSelectMinistry={dashboard.setSelectedMinistryId}
-      />
+        <TabsContent value="availability-needed">
+          <AvailabilityNeededSection
+            tasks={dashboard.availabilityTasks.map(mapAvailabilityTask)}
+            onOpenEvent={dashboard.setSelectedEventId}
+          />
+        </TabsContent>
+
+        <TabsContent value="ministry-schedule">
+          <MinistryScheduleSection
+            ministries={dashboard.ministryOptions}
+            selectedMinistryId={dashboard.selectedMinistryId}
+            canSwitchMinistry={dashboard.ministryOptions.length > 1}
+            events={dashboard.ministrySchedule?.events ?? []}
+            isLoading={dashboard.ministryScheduleQuery.isLoading}
+            onSelectMinistry={dashboard.setSelectedMinistryId}
+          />
+        </TabsContent>
+      </Tabs>
 
       <Dialog
         open={dashboard.selectedTask != null}

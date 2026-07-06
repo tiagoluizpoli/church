@@ -3,7 +3,7 @@ import { LEADER_STORAGE_STATE } from '../global-setup';
 
 test.use({ storageState: LEADER_STORAGE_STATE });
 
-test('US5: volunteer keeps cached dashboard data after reloading offline', async ({
+test('US5: volunteer keeps cached dashboard data readable across all three tabs after reloading offline', async ({
   page,
 }) => {
   await page.goto('/dashboard');
@@ -11,9 +11,7 @@ test('US5: volunteer keeps cached dashboard data after reloading offline', async
   await expect(
     page.getByText('My Upcoming Assignments', { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText('Ministry Schedule', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('E2E Care Gathering').first()).toBeVisible();
 
   await page.addInitScript(() => {
     Object.defineProperty(window.navigator, 'onLine', {
@@ -25,7 +23,6 @@ test('US5: volunteer keeps cached dashboard data after reloading offline', async
   await page.reload();
 
   await expect(page.getByText('Offline mode', { exact: true })).toBeVisible();
-  await expect(page.getByText('E2E Sunday Service').first()).toBeVisible();
   await expect(page.getByText('E2E Care Gathering').first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Refresh dashboard' }).click();
@@ -35,6 +32,11 @@ test('US5: volunteer keeps cached dashboard data after reloading offline', async
     ),
   ).toBeVisible();
 
+  await page.getByRole('tab', { name: 'Ministry Schedule' }).click();
+  await expect(page.getByText('E2E Care Gathering').first()).toBeVisible();
+
+  await page.getByRole('tab', { name: /Availability Needed/i }).click();
+  await expect(page.getByText('E2E Sunday Service').first()).toBeVisible();
   await page
     .getByRole('button', { name: 'Open availability editor' })
     .first()

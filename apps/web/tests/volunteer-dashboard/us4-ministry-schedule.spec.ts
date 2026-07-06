@@ -11,7 +11,13 @@ test('US4: volunteer browses ministry schedule and switches ministries when avai
   await page.goto(DASHBOARD_URL);
 
   await expect(
-    page.getByText('Ministry Schedule', { exact: true }),
+    page.getByRole('tab', { name: 'Ministry Schedule' }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(
+    page.getByText(
+      'Browse published schedule rows without leader-only conflict or audit details.',
+      { exact: true },
+    ),
   ).toBeVisible();
 
   const ministrySelector = page.getByRole('combobox', {

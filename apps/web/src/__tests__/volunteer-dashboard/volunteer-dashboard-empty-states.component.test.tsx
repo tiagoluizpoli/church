@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../setup/render';
@@ -74,7 +75,9 @@ describe('VolunteerDashboard empty-state regressions', () => {
     vi.clearAllMocks();
   });
 
-  it('hides availability section when there are no tasks and keeps other empty states visible in dashboard order', () => {
+  it("hides the availability tab badge when there are no outstanding tasks, and shows each remaining tab's empty state on demand", async () => {
+    const user = userEvent.setup();
+
     mockedUseVolunteerDashboard.mockReturnValue(
       createVolunteerDashboardHookResult(),
     );
@@ -82,26 +85,31 @@ describe('VolunteerDashboard empty-state regressions', () => {
     renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
 
     expect(
+      screen.getByRole('tab', { name: /Availability Needed/i }),
+    ).not.toHaveTextContent(/\d/);
+
+    expect(
+      screen.getByText(
+        'You are not currently scheduled for any upcoming published assignments.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /Availability Needed/i }));
+    expect(
       screen.queryByText('Availability needed', { exact: true }),
     ).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole('tab', { name: 'Ministry Schedule' }));
     expect(
-      screen.queryByText('Scheduling updates and reminders will appear here.'),
-    ).not.toBeInTheDocument();
-
-    const assignmentsEmptyState = screen.getByText(
-      'You are not currently scheduled for any upcoming published assignments.',
-    );
-    const ministryEmptyState = screen.getByText(
-      'Published events for this ministry will appear here when leaders finalize them.',
-    );
-
-    expect(
-      assignmentsEmptyState.compareDocumentPosition(ministryEmptyState),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      screen.getByText(
+        'Published events for this ministry will appear here when leaders finalize them.',
+      ),
+    ).toBeInTheDocument();
   });
 
-  it('keeps availability needed above upcoming assignments when only assignments are empty', () => {
+  it('surfaces an outstanding availability task via the tab badge and its own tab content, without switching away from the default tab', async () => {
+    const user = userEvent.setup();
+
     mockedUseVolunteerDashboard.mockReturnValue(
       createVolunteerDashboardHookResult({
         availabilityTasks: [
@@ -121,11 +129,18 @@ describe('VolunteerDashboard empty-state regressions', () => {
 
     renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
 
-    const availabilityHeading = screen.getByText('Availability needed');
-    const assignmentsHeading = screen.getByText('My Upcoming Assignments');
-
+    expect(screen.getByText('My Upcoming Assignments')).toBeInTheDocument();
     expect(
-      availabilityHeading.compareDocumentPosition(assignmentsHeading),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      screen.queryByText('Availability needed', { exact: true }),
+    ).not.toBeInTheDocument();
+
+    const availabilityTab = screen.getByRole('tab', {
+      name: /Availability Needed/i,
+    });
+    expect(availabilityTab).toHaveTextContent('1');
+
+    await user.click(availabilityTab);
+    expect(screen.getByText('Availability needed')).toBeInTheDocument();
+    expect(screen.getByText('Youth Gathering')).toBeInTheDocument();
   });
 });

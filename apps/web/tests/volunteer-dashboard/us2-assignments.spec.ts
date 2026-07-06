@@ -13,6 +13,9 @@ test('US2: volunteer reviews a pending assignment group and responds within 30 s
   await page.goto(DASHBOARD_URL);
 
   await expect(
+    page.getByRole('tab', { name: 'Upcoming Assignments' }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(
     page.getByText('My Upcoming Assignments', { exact: true }),
   ).toBeVisible();
   await expect(

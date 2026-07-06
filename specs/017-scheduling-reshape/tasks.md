@@ -208,9 +208,9 @@ Entity → branded id (foundational) → repo interface (`domain/contracts/infra
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T076 [P] E2E cross-cutting DL4-X1/X2/X3 (church isolation, network-failure no-partial-state, double-submit) in `apps/web/tests/scheduling/cross-cutting.spec.ts`.
-- [ ] T077 [P] Run quickstart.md end-to-end; confirm SC-001..008 timings/behaviour.
-- [ ] T078 [P] Update planning docs superseding notes if drifted; verify traceability matrix (test-plan.md) all-green.
+- [X] T076 [P] E2E cross-cutting DL4-X1/X2/X3 (church isolation, network-failure no-partial-state, double-submit) in `apps/web/tests/scheduling/cross-cutting.spec.ts`. DL4-X1 needed a second tenant, so `e2e-seed.ts`/`global-setup.ts` gained a minimal churchB (one admin, one locked cycle) behind `CHURCH_B_ADMIN_STORAGE_STATE` — used only by this spec. DL4-X3 (concurrent lock) caught a real race: `lockCycle` read-checked-then-wrote state with no serialization, so two simultaneous locks could both succeed. Fixed in `db-planning-cycle-manager.ts` by acquiring the existing per-church advisory lock (same helper `createCycle` already used) before the state check, so the second request observes `locked` and gets 409.
+- [X] T077 [P] Run quickstart.md end-to-end; confirm SC-001..008 timings/behaviour. Each story spec passes standalone. Found and fixed a real bug surfaced along the way: `us2-leader-tailor.spec.ts` was missing `page.goto('/scheduling/tailoring')`, so it always timed out waiting on `tailoring-ministry-select` — never actually exercised the UI. Note: `us3-volunteer-availability.spec.ts`'s exact-card-count assertion is pre-existing-fragile when multiple scheduling spec files fire availability for the same seeded Worship ministry within one Playwright invocation (reproduces on unmodified code too); it passes standalone and CI's `workers: 1` config narrows exposure, but a durable fix would need per-file-scoped seed identities — out of scope here.
+- [X] T078 [P] Update planning docs superseding notes if drifted; verify traceability matrix (test-plan.md) all-green. Matrix rows all resolve to existing test IDs; no drift found in plan.md/spec.md.
 - [ ] T079 Coverage gate: fill uncovered branches to meet thresholds (T001); no aggregate ships red.
 - [ ] T080 Full safeguard sweep: `bun run check` · `check-types` · `test` · `test:e2e` + `/review` on changed files (agents.local.md phase loop).
 

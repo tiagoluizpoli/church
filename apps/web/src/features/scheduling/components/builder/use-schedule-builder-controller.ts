@@ -147,6 +147,7 @@ export function useScheduleBuilderController({
     setActiveDraggedVolunteer({
       volunteerId: data.volunteerId as string,
       volunteerName: data.volunteerName as string,
+      systemRole: data.systemRole as ActiveDraggedVolunteer['systemRole'],
       status: data.status as ActiveDraggedVolunteer['status'],
       workloadCount: (data.workloadCount as number | undefined) ?? 0,
       conflictReason: data.conflictReason as string | undefined,
@@ -215,6 +216,7 @@ export function useScheduleBuilderController({
             ? 'unavailable'
             : 'double_booked',
         volunteerName: assignment.volunteerName ?? assignment.volunteerId,
+        volunteerSystemRole: assignment.volunteerSystemRole,
         slotLabel:
           slot.label ??
           `${format(slot.startTime, 'p')} – ${format(slot.endTime, 'p')}`,
@@ -231,6 +233,7 @@ export function useScheduleBuilderController({
         declinedAssignmentId: assignmentId,
         declinedVolunteerId: assignment?.volunteerId ?? '',
         declinedVolunteerName: assignment?.volunteerName ?? '',
+        declinedVolunteerSystemRole: assignment?.volunteerSystemRole,
         roleId,
       });
     },

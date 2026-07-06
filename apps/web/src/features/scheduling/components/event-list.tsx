@@ -36,11 +36,19 @@ export function EventList() {
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-bold text-xl">Events</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs">
+    <div className="surface-panel workspace-panel-lg">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1">
+          <h2 className="font-semibold text-2xl tracking-[-0.02em]">
+            Builder events
+          </h2>
+          <p className="max-w-2xl text-muted-foreground text-sm leading-6">
+            Open an event when it needs slot editing, assignee review, or final
+            roster adjustments.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="radius-control border border-border/80 bg-background/72 px-3 py-1.5 text-muted-foreground text-xs">
             Viewing in {mode === 'church' ? 'Church Time' : 'Local Time'} (
             {effectiveTimezone})
           </span>
@@ -48,6 +56,7 @@ export function EventList() {
             type="button"
             size="sm"
             disabled={!ministryId}
+            className="min-h-10 px-4"
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="mr-1 size-3" /> New Event
@@ -56,7 +65,7 @@ export function EventList() {
       </div>
 
       {ministries.data && ministries.data.ministries.length > 1 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-2">
           {ministries.data.ministries.map((m) => (
             <Button
               key={m.id}
@@ -72,22 +81,26 @@ export function EventList() {
       )}
 
       {events.isLoading || ministries.isLoading ? (
-        <div className="grid gap-4">
+        <div className="mt-6 grid gap-4">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>
       ) : (events.data?.events ?? []).length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No events yet. Create one to get started.
-        </p>
+        <div className="surface-subtle workspace-panel mt-6">
+          <p className="font-medium text-sm">No builder events yet.</p>
+          <p className="mt-1 text-muted-foreground text-sm">
+            Create one to get started, or head to Planning if you need to define
+            a cycle first.
+          </p>
+        </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="mt-6 grid gap-4">
           {(events.data?.events ?? []).map((event) => (
             <Link
               key={event.id}
               to="/scheduling/events/$eventId/builder"
               params={{ eventId: event.id }}
-              className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
+              className="surface-subtle workspace-panel transition-colors hover:bg-accent/50"
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">{event.title}</h3>
@@ -114,7 +127,7 @@ export function EventList() {
         <QuickCreateEventModal
           open={createOpen}
           onOpenChange={setCreateOpen}
-          ministryId={ministryId}
+          target={{ kind: 'ministry', ministryId }}
           onCreated={() => events.refetch()}
         />
       )}

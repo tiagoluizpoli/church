@@ -6,6 +6,7 @@ import type {
 import type { VolunteerPoolItem } from '../../hooks/use-volunteer-pool';
 import type { PickerVolunteer } from './assignment-picker';
 import type { SlotEditValues } from './slot-edit-modal';
+import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
 
 export interface UseScheduleBuilderControllerParams {
   builderData: ScheduleBuilderData;
@@ -22,6 +23,7 @@ export interface SubstitutionState {
   declinedAssignmentId: string;
   declinedVolunteerId: string;
   declinedVolunteerName: string;
+  declinedVolunteerSystemRole?: AssigneeSystemRole;
   roleId: string;
 }
 
@@ -29,6 +31,7 @@ export interface OverrideState {
   assignmentId: string;
   conflictType: 'unavailable' | 'double_booked';
   volunteerName: string;
+  volunteerSystemRole?: AssigneeSystemRole;
   slotLabel: string;
 }
 
@@ -41,6 +44,7 @@ export interface SlotModalState {
 export interface SidebarVolunteer {
   volunteerId: string;
   volunteerName: string;
+  systemRole?: AssigneeSystemRole;
   status: 'available' | 'partial' | 'unavailable' | 'no_response';
   conflictReason?: string;
   workloadCount: number;

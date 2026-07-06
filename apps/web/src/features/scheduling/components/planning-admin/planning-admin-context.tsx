@@ -40,6 +40,30 @@ export function useIsPlanningAccessDenied(): boolean {
   return usePlanningAdminContext().isAccessDenied;
 }
 
+export type PlanningStep =
+  | 'create-cycle'
+  | 'template-and-review'
+  | 'locked-review';
+
+/**
+ * Derives the active guided step from existing query state (`research.md`
+ * R4) — no persisted status field. `create-cycle` covers both "no cycles
+ * exist yet" and the brief tick before the first cycle auto-selects.
+ */
+export function usePlanningStep(): PlanningStep {
+  const { selectedCycleId, cycles, selectedCycle } = usePlanningAdminContext();
+
+  if (!selectedCycleId || cycles.length === 0) {
+    return 'create-cycle';
+  }
+
+  if (selectedCycle?.state === 'locked') {
+    return 'locked-review';
+  }
+
+  return 'template-and-review';
+}
+
 export type CreateCycleCardModel = Pick<
   UsePlanningAdminResult,
   | 'cycleForm'
@@ -136,15 +160,7 @@ export type CycleReviewCardModel = Pick<
   | 'cycleDetailsLoading'
   | 'totalSlots'
   | 'cycleEvents'
-  | 'planningEventForm'
-  | 'canCreatePlanningEvent'
-  | 'createPlanningEventPending'
   | 'lockCyclePending'
-  | 'handlePlanningEventTitleChange'
-  | 'handlePlanningEventStartChange'
-  | 'handlePlanningEventEndChange'
-  | 'handlePlanningEventTypeChange'
-  | 'handleCreatePlanningEvent'
   | 'handleLockCycle'
 >;
 
@@ -157,15 +173,7 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     cycleDetailsLoading: context.cycleDetailsLoading,
     totalSlots: context.totalSlots,
     cycleEvents: context.cycleEvents,
-    planningEventForm: context.planningEventForm,
-    canCreatePlanningEvent: context.canCreatePlanningEvent,
-    createPlanningEventPending: context.createPlanningEventPending,
     lockCyclePending: context.lockCyclePending,
-    handlePlanningEventTitleChange: context.handlePlanningEventTitleChange,
-    handlePlanningEventStartChange: context.handlePlanningEventStartChange,
-    handlePlanningEventEndChange: context.handlePlanningEventEndChange,
-    handlePlanningEventTypeChange: context.handlePlanningEventTypeChange,
-    handleCreatePlanningEvent: context.handleCreatePlanningEvent,
     handleLockCycle: context.handleLockCycle,
   };
 }

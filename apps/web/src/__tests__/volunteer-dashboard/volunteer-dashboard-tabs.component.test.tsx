@@ -105,7 +105,7 @@ describe('VolunteerDashboard tabs', () => {
       }),
     );
 
-    renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
+    renderWithProviders(<VolunteerDashboard />);
 
     expect(screen.getByText('My Upcoming Assignments')).toBeInTheDocument();
     expect(screen.queryByText('Availability needed')).not.toBeInTheDocument();
@@ -123,7 +123,7 @@ describe('VolunteerDashboard tabs', () => {
       }),
     );
 
-    renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
+    renderWithProviders(<VolunteerDashboard />);
 
     const availabilityTab = screen.getByRole('tab', {
       name: /Availability Needed/i,
@@ -138,7 +138,7 @@ describe('VolunteerDashboard tabs', () => {
       createVolunteerDashboardHookResult({ availabilityTasks: [] }),
     );
 
-    renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
+    renderWithProviders(<VolunteerDashboard />);
 
     const availabilityTab = screen.getByRole('tab', {
       name: /Availability Needed/i,
@@ -157,7 +157,7 @@ describe('VolunteerDashboard tabs', () => {
     const ministryScheduleDescription =
       'Browse published schedule rows without leader-only conflict or audit details.';
 
-    renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
+    renderWithProviders(<VolunteerDashboard />);
 
     expect(
       screen.queryByText(ministryScheduleDescription),
@@ -180,7 +180,7 @@ describe('VolunteerDashboard tabs', () => {
       }),
     );
 
-    renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
+    renderWithProviders(<VolunteerDashboard />);
 
     await user.click(screen.getByRole('tab', { name: /Availability Needed/i }));
 

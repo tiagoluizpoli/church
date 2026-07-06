@@ -10,7 +10,7 @@ describe('AssignmentChip (T100)', () => {
   });
 
   describe('conflict badge', () => {
-    it('shows an orange double-booked badge', () => {
+    it('shows a navy double-booked badge', () => {
       render(
         <AssignmentChip
           volunteerName="John Doe"
@@ -20,10 +20,10 @@ describe('AssignmentChip (T100)', () => {
       );
       const badge = screen.getByTestId('conflict-badge');
       expect(badge).toHaveTextContent('Double-booked');
-      expect(badge.className).toContain('bg-orange-600');
+      expect(badge.className).toContain('bg-primary');
     });
 
-    it('shows a red unavailable badge', () => {
+    it('shows a destructive unavailable badge', () => {
       render(
         <AssignmentChip
           volunteerName="John Doe"
@@ -33,7 +33,7 @@ describe('AssignmentChip (T100)', () => {
       );
       const badge = screen.getByTestId('conflict-badge');
       expect(badge).toHaveTextContent('Unavailable');
-      expect(badge.className).toContain('bg-red-600');
+      expect(badge.className).toContain('bg-destructive');
     });
 
     it('shows no conflict badge when there is no conflict', () => {
@@ -64,6 +64,45 @@ describe('AssignmentChip (T100)', () => {
       );
       expect(
         screen.queryByTestId('confirmation-badge'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('role badge (FR-013)', () => {
+    it('disambiguates two identically-truncating volunteers by role', () => {
+      const { rerender } = render(
+        <AssignmentChip
+          volunteerName="Local Leader"
+          volunteerSystemRole="leader"
+          isPublished={false}
+        />,
+      );
+      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
+        'Leader',
+      );
+
+      rerender(
+        <AssignmentChip
+          volunteerName="Local Sub Leader"
+          volunteerSystemRole="sub_leader"
+          isPublished={false}
+        />,
+      );
+      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
+        'Sub-leader',
+      );
+    });
+
+    it('shows no role badge for a plain volunteer', () => {
+      render(
+        <AssignmentChip
+          volunteerName="John Doe"
+          volunteerSystemRole="volunteer"
+          isPublished={false}
+        />,
+      );
+      expect(
+        screen.queryByTestId('assignee-role-badge'),
       ).not.toBeInTheDocument();
     });
   });

@@ -8,7 +8,8 @@ const make = (
   name: string,
   status: SuggestedVolunteer['status'],
   workloadCount = 0,
-): SuggestedVolunteer => ({ id, name, status, workloadCount });
+  systemRole?: SuggestedVolunteer['systemRole'],
+): SuggestedVolunteer => ({ id, name, status, workloadCount, systemRole });
 
 describe('SuggestionList (T118)', () => {
   it('renders "No suggestions" when empty', () => {
@@ -50,5 +51,21 @@ describe('SuggestionList (T118)', () => {
     );
     const item = screen.getByText('Partial P.').closest('li');
     expect(item?.className).toContain('opacity-60');
+  });
+
+  it('renders a role badge disambiguating a Leader and a Sub-leader suggestion (FR-013)', () => {
+    render(
+      <SuggestionList
+        suggestions={[
+          make('1', 'Local Leader', 'available', 0, 'leader'),
+          make('2', 'Local Sub Leader', 'available', 0, 'sub_leader'),
+        ]}
+        onAssign={vi.fn()}
+      />,
+    );
+    const badges = screen.getAllByTestId('assignee-role-badge');
+    expect(badges).toHaveLength(2);
+    expect(badges[0]).toHaveTextContent('Leader');
+    expect(badges[1]).toHaveTextContent('Sub-leader');
   });
 });

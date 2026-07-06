@@ -36,7 +36,7 @@ export function TemplateManagerCard() {
   } = useTemplateManagerCard();
 
   return (
-    <Card>
+    <Card className="surface-panel">
       <CardHeader>
         <CardTitle>Event templates</CardTitle>
         <CardDescription>
@@ -122,7 +122,7 @@ export function TemplateManagerCard() {
             templates.map((template) => (
               <div
                 key={template.id}
-                className="flex items-start justify-between gap-3 border p-3"
+                className="surface-subtle workspace-panel flex items-start justify-between gap-3"
                 data-testid="saved-template-row"
               >
                 <label className="flex flex-1 items-start gap-3">

@@ -29,7 +29,10 @@ export function TemplateBlockRow({
   onRemoveBlock,
 }: TemplateBlockRowProps) {
   return (
-    <div className="space-y-2 border p-3" data-testid="template-block-row">
+    <div
+      className="radius-surface workspace-panel space-y-2 border"
+      data-testid="template-block-row"
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="font-medium text-sm">Block {index + 1}</div>
         {totalBlocks > 1 ? (

@@ -4,7 +4,6 @@ import type {
   CycleFormState,
   PlanningCycleEventGroup,
   PlanningCycleSummary,
-  PlanningEventFormState,
   PlanningTemplateSummary,
   SelectedPlanningCycle,
   TemplateFormState,
@@ -12,10 +11,8 @@ import type {
 import {
   calculateTotalSlots,
   canCreateCycle,
-  canCreatePlanningEvent,
   canCreateTemplate,
   createEmptyCycleForm,
-  createEmptyPlanningEventForm,
   createEmptyTemplateBlock,
   createEmptyTemplateForm,
   getSelectedCycleIdOrThrow,
@@ -63,14 +60,6 @@ interface DeleteTemplateInput {
   templateId: string;
 }
 
-interface PlanningEventTextChangeInput {
-  value: string;
-}
-
-interface PlanningEventTypeChangeInput {
-  eventType: PlanningEventFormState['eventType'];
-}
-
 export interface UsePlanningAdminResult {
   isAccessDenied: boolean;
   cycles: PlanningCycleSummary[];
@@ -81,19 +70,16 @@ export interface UsePlanningAdminResult {
   totalSlots: number;
   cycleForm: CycleFormState;
   templateForm: TemplateFormState;
-  planningEventForm: PlanningEventFormState;
   cycleErrorMessage: string | null;
   cyclesLoading: boolean;
   templatesLoading: boolean;
   cycleDetailsLoading: boolean;
   canCreateCycle: boolean;
   canCreateTemplate: boolean;
-  canCreatePlanningEvent: boolean;
   createCyclePending: boolean;
   createTemplatePending: boolean;
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
-  createPlanningEventPending: boolean;
   lockCyclePending: boolean;
   selectedTemplateIds: string[];
   handleCycleNameChange: (input: CycleNameChangeInput) => void;
@@ -106,15 +92,10 @@ export interface UsePlanningAdminResult {
   handleRemoveTemplateBlock: (input: RemoveTemplateBlockInput) => void;
   handleAddTemplateBlock: () => void;
   handleToggleTemplateSelection: (input: ToggleTemplateSelectionInput) => void;
-  handlePlanningEventTitleChange: (input: PlanningEventTextChangeInput) => void;
-  handlePlanningEventStartChange: (input: PlanningEventTextChangeInput) => void;
-  handlePlanningEventEndChange: (input: PlanningEventTextChangeInput) => void;
-  handlePlanningEventTypeChange: (input: PlanningEventTypeChangeInput) => void;
   handleCreateCycle: () => void;
   handleSaveTemplate: () => void;
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: () => void;
-  handleCreatePlanningEvent: () => void;
   handleLockCycle: () => void;
 }
 
@@ -127,8 +108,6 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const [templateForm, setTemplateForm] = useState<TemplateFormState>(
     createEmptyTemplateForm,
   );
-  const [planningEventForm, setPlanningEventForm] =
-    useState<PlanningEventFormState>(createEmptyPlanningEventForm);
   const [cycleErrorMessage, setCycleErrorMessage] = useState<string | null>(
     null,
   );
@@ -164,11 +143,19 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   }, [cycles, selectedCycleId]);
 
   useEffect(() => {
-    setSelectedTemplateIds((currentSelection) =>
-      currentSelection.filter((templateId) =>
+    setSelectedTemplateIds((currentSelection) => {
+      const filtered = currentSelection.filter((templateId) =>
         templates.some((template) => template.id === templateId),
-      ),
-    );
+      );
+      // Bail out with the same reference when nothing was actually removed —
+      // `.filter()` always allocates a new array, and without this guard a
+      // still-unstable `templates` reference (e.g. while its query is
+      // pending, `?? []` allocates fresh each render) turns this into an
+      // infinite render loop (setState → new templates ref → effect reruns).
+      return filtered.length === currentSelection.length
+        ? currentSelection
+        : filtered;
+    });
   }, [templates]);
 
   const isAccessDenied = useMemo(
@@ -184,13 +171,11 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     selectedTemplateIds,
     cycleForm,
     templateForm,
-    planningEventForm,
     setCycleErrorMessage,
     setCycleForm,
     setSelectedCycleId,
     setSelectedTemplateIds,
     setTemplateForm,
-    setPlanningEventForm,
   });
 
   return {
@@ -203,22 +188,16 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     totalSlots,
     cycleForm,
     templateForm,
-    planningEventForm,
     cycleErrorMessage,
     cyclesLoading: cyclesQuery.isLoading,
     templatesLoading: templatesQuery.isLoading,
     cycleDetailsLoading: cycleDetailsQuery.isLoading,
     canCreateCycle: canCreateCycle({ cycleForm }),
     canCreateTemplate: canCreateTemplate({ templateForm }),
-    canCreatePlanningEvent: canCreatePlanningEvent({
-      planningEventForm,
-      selectedCycleId,
-    }),
     createCyclePending: mutationHandlers.createCyclePending,
     createTemplatePending: mutationHandlers.createTemplatePending,
     deleteTemplatePending: mutationHandlers.deleteTemplatePending,
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,
-    createPlanningEventPending: mutationHandlers.createPlanningEventPending,
     lockCyclePending: mutationHandlers.lockCyclePending,
     selectedTemplateIds,
     handleCycleNameChange: ({ name }: CycleNameChangeInput) =>
@@ -265,27 +244,10 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
               (currentTemplateId) => currentTemplateId !== templateId,
             ),
       ),
-    handlePlanningEventTitleChange: ({ value }: PlanningEventTextChangeInput) =>
-      setPlanningEventForm((currentForm) => ({ ...currentForm, title: value })),
-    handlePlanningEventStartChange: ({ value }: PlanningEventTextChangeInput) =>
-      setPlanningEventForm((currentForm) => ({
-        ...currentForm,
-        startDateTime: value,
-      })),
-    handlePlanningEventEndChange: ({ value }: PlanningEventTextChangeInput) =>
-      setPlanningEventForm((currentForm) => ({
-        ...currentForm,
-        endDateTime: value,
-      })),
-    handlePlanningEventTypeChange: ({
-      eventType,
-    }: PlanningEventTypeChangeInput) =>
-      setPlanningEventForm((currentForm) => ({ ...currentForm, eventType })),
     handleCreateCycle: mutationHandlers.handleCreateCycle,
     handleSaveTemplate: mutationHandlers.handleSaveTemplate,
     handleDeleteTemplate: mutationHandlers.handleDeleteTemplate,
     handleApplyTemplates: mutationHandlers.handleApplyTemplates,
-    handleCreatePlanningEvent: mutationHandlers.handleCreatePlanningEvent,
     handleLockCycle: mutationHandlers.handleLockCycle,
   };
 }

@@ -91,7 +91,7 @@ export function TimeSegmentInput({
   return (
     <fieldset className="space-y-1">
       <legend className="font-medium text-sm">{label}</legend>
-      <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2">
+      <div className="radius-control flex items-center gap-2 border border-input bg-background px-3 py-2">
         <Clock3 className="size-4 text-muted-foreground" />
         <div className="flex items-center gap-2">
           <Input

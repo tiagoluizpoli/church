@@ -151,6 +151,9 @@ export function ScheduleBuilderReady({
           open={true}
           onOpenChange={(open) => !open && controller.setSubstitution(null)}
           declinedVolunteerName={controller.substitution.declinedVolunteerName}
+          declinedVolunteerSystemRole={
+            controller.substitution.declinedVolunteerSystemRole
+          }
           declinedVolunteerId={controller.substitution.declinedVolunteerId}
           volunteers={controller.pickerVolunteers}
           onSelect={(newVolunteerId) =>
@@ -171,6 +174,7 @@ export function ScheduleBuilderReady({
           onOpenChange={(open) => !open && controller.setOverride(null)}
           conflictType={controller.override.conflictType}
           volunteerName={controller.override.volunteerName}
+          volunteerSystemRole={controller.override.volunteerSystemRole}
           slotLabel={controller.override.slotLabel}
           isPending={controller.overrideAssignment.isPending}
           onConfirm={(reason) =>

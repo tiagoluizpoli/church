@@ -9,7 +9,12 @@ import {
 } from '@church/ui/components/dialog';
 import { Textarea } from '@church/ui/components/textarea';
 import { useState } from 'react';
+import { AssigneeIdentityBadge } from './assignee-identity-badge';
 import type { ConflictStatus } from './assignment-chip';
+import {
+  type AssigneeSystemRole,
+  formatAssigneeRoleLabel,
+} from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 interface OverrideDialogProps {
@@ -17,6 +22,7 @@ interface OverrideDialogProps {
   onOpenChange: (open: boolean) => void;
   conflictType: ConflictStatus;
   volunteerName: string;
+  volunteerSystemRole?: AssigneeSystemRole;
   slotLabel: string;
   isPending: boolean;
   onConfirm: (reason: string) => void;
@@ -29,6 +35,7 @@ export function OverrideDialog({
   onOpenChange,
   conflictType,
   volunteerName,
+  volunteerSystemRole,
   slotLabel,
   isPending,
   onConfirm,
@@ -45,7 +52,13 @@ export function OverrideDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Override conflict</DialogTitle>
+          <DialogTitle className="flex items-center gap-1">
+            Override conflict
+            <AssigneeIdentityBadge
+              roleLabel={formatAssigneeRoleLabel(volunteerSystemRole)}
+              fullNameOnExpand={volunteerName}
+            />
+          </DialogTitle>
           <DialogDescription>
             {conflictText} for {slotLabel}. Provide a reason to override.
           </DialogDescription>

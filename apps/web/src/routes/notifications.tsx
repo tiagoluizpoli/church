@@ -35,7 +35,7 @@ function RouteComponent() {
   };
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-10">
+    <>
       <NotificationsInboxSection
         variant="full"
         unreadCount={inbox.unreadCount}
@@ -58,6 +58,6 @@ function RouteComponent() {
         }}
         onOpenContext={handleOpenContext}
       />
-    </div>
+    </>
   );
 }

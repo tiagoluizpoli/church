@@ -52,4 +52,22 @@ describe('OverrideDialog (T104)', () => {
     render(<OverrideDialog {...baseProps} isPending={true} />);
     expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
   });
+
+  it('renders a role badge next to the title when the volunteer is a Leader or Sub-leader (FR-013)', () => {
+    render(
+      <OverrideDialog
+        {...baseProps}
+        volunteerName="Local Sub Leader"
+        volunteerSystemRole="sub_leader"
+      />,
+    );
+    expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
+      'Sub-leader',
+    );
+  });
+
+  it('renders no role badge for a plain volunteer', () => {
+    render(<OverrideDialog {...baseProps} volunteerSystemRole="volunteer" />);
+    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
+  });
 });

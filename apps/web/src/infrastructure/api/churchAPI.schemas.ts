@@ -149,9 +149,19 @@ export type GetScheduleBuilderData200AvailabilityItem = {
   isAllDay: boolean;
 };
 
+export type GetScheduleBuilderData200VolunteersItemSystemRole = typeof GetScheduleBuilderData200VolunteersItemSystemRole[keyof typeof GetScheduleBuilderData200VolunteersItemSystemRole];
+
+
+export const GetScheduleBuilderData200VolunteersItemSystemRole = {
+  leader: 'leader',
+  sub_leader: 'sub_leader',
+  volunteer: 'volunteer',
+} as const;
+
 export type GetScheduleBuilderData200VolunteersItem = {
   id: string;
   name: string;
+  systemRole: GetScheduleBuilderData200VolunteersItemSystemRole;
 };
 
 export type GetScheduleBuilderData200RolesItem = {

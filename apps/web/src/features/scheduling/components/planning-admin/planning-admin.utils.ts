@@ -2,14 +2,11 @@ import { isAxiosError } from 'axios';
 import type {
   CycleFormState,
   PlanningCycleEventGroup,
-  PlanningEventFormState,
-  PlanningEventType,
   PlanningTemplateSummary,
   SelectedPlanningCycle,
   TemplateBlockDraft,
   TemplateFormState,
 } from './planning-admin.types';
-import { PLANNING_EVENT_TYPES } from './planning-admin.types';
 import type {
   CreateEventTemplateBody,
   GetPlanningCycle200EventsItemEventStatus,
@@ -48,10 +45,6 @@ interface SelectedCycleIdInput {
   selectedCycleId: string | null;
 }
 
-interface LocalDateTimeInput {
-  localDateTime: string;
-}
-
 interface SortTemplateBlocksInput {
   blocks: TemplateBlockDraft[];
 }
@@ -76,17 +69,8 @@ interface TemplateFormValidityInput {
   templateForm: TemplateFormState;
 }
 
-interface PlanningEventFormValidityInput {
-  planningEventForm: PlanningEventFormState;
-  selectedCycleId: string | null;
-}
-
 interface SelectedCycleInput {
   cycle: SelectedPlanningCycle | null | undefined;
-}
-
-interface ParsePlanningEventTypeInput {
-  value: string;
 }
 
 export function createEmptyCycleForm(): CycleFormState {
@@ -113,15 +97,6 @@ export function createEmptyTemplateForm(): TemplateFormState {
     name: '',
     weekday: '0',
     blocks: [createEmptyTemplateBlock()],
-  };
-}
-
-export function createEmptyPlanningEventForm(): PlanningEventFormState {
-  return {
-    title: '',
-    startDateTime: '',
-    endDateTime: '',
-    eventType: 'day_based',
   };
 }
 
@@ -167,10 +142,6 @@ export function getSelectedCycleIdOrThrow({
   }
 
   return selectedCycleId;
-}
-
-export function toUtcIsoString({ localDateTime }: LocalDateTimeInput): string {
-  return new Date(`${localDateTime}:00.000Z`).toISOString();
 }
 
 export function formatCycleDate({ date }: FormatDateInput): string {
@@ -231,12 +202,6 @@ export function calculateTotalSlots({ events }: TotalSlotsInput): number {
   );
 }
 
-export function parsePlanningEventType({
-  value,
-}: ParsePlanningEventTypeInput): PlanningEventType | null {
-  return PLANNING_EVENT_TYPES.find((eventType) => eventType === value) ?? null;
-}
-
 export function canCreateCycle({ cycleForm }: CycleFormValidityInput): boolean {
   return (
     cycleForm.name.trim() !== '' &&
@@ -259,19 +224,6 @@ export function canCreateTemplate({
         block.endTime !== '' &&
         block.startTime < block.endTime,
     )
-  );
-}
-
-export function canCreatePlanningEvent({
-  planningEventForm,
-  selectedCycleId,
-}: PlanningEventFormValidityInput): boolean {
-  return (
-    selectedCycleId !== null &&
-    planningEventForm.title.trim() !== '' &&
-    planningEventForm.startDateTime !== '' &&
-    planningEventForm.endDateTime !== '' &&
-    planningEventForm.startDateTime < planningEventForm.endDateTime
   );
 }
 

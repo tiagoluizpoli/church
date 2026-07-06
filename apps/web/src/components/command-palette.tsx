@@ -118,7 +118,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 key={cmd.to}
                 to={cmd.to}
                 onClick={handleClose}
-                className="group flex items-center gap-3 rounded-sm px-3 py-2.5 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="radius-control group flex items-center gap-3 px-3 py-2.5 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
               >
                 <Icon className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground" />
                 <div className="flex flex-col text-left align-start">
@@ -159,7 +159,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       />
 
       {/* Centered Modal Dialog */}
-      <div className="fade-in zoom-in-95 relative flex w-full max-w-lg animate-in flex-col overflow-hidden rounded-sm border border-border bg-card shadow-xl duration-150">
+      <div className="radius-floating fade-in zoom-in-95 relative flex w-full max-w-lg animate-in flex-col overflow-hidden border border-border bg-card shadow-xl duration-150">
         {content}
       </div>
     </div>

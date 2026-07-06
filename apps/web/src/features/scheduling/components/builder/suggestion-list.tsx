@@ -1,11 +1,17 @@
 import { Badge } from '@church/ui/components/badge';
 import { Button } from '@church/ui/components/button';
 import { cn } from '@church/ui/lib/utils';
+import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import {
+  type AssigneeSystemRole,
+  formatAssigneeRoleLabel,
+} from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 export interface SuggestedVolunteer {
   id: string;
   name: string;
+  systemRole?: AssigneeSystemRole;
   status: 'available' | 'partial';
   workloadCount: number;
 }
@@ -36,6 +42,10 @@ export function SuggestionList({ suggestions, onAssign }: SuggestionListProps) {
         >
           <span className="flex items-center gap-1 truncate">
             {formatVolunteerName(s.name)}
+            <AssigneeIdentityBadge
+              roleLabel={formatAssigneeRoleLabel(s.systemRole)}
+              fullNameOnExpand={s.name}
+            />
             <Badge
               className={
                 s.status === 'available'

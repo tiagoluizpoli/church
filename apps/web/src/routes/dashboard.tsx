@@ -1,5 +1,9 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
+import {
+  WorkspaceIntroPanel,
+  WorkspacePage,
+} from '@/components/workspace-page';
 import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
 import { authClient } from '@/lib/auth-client';
 
@@ -30,16 +34,32 @@ export const Route = createFileRoute('/dashboard')({
 function RouteComponent() {
   const { session } = Route.useRouteContext();
   const search = Route.useSearch();
+  const volunteerName = session.data?.user.name;
 
   return (
-    <div className="container mx-auto px-4 py-10">
+    <WorkspacePage>
+      <WorkspaceIntroPanel
+        title="Volunteer dashboard"
+        description={
+          volunteerName
+            ? `Review what needs your attention, ${volunteerName}.`
+            : 'Review what needs your attention.'
+        }
+        aside={
+          <Link
+            to="/volunteer/availability"
+            className="radius-control inline-flex min-h-11 items-center justify-center border border-border bg-background px-4 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            View availability checks
+          </Link>
+        }
+      />
       <VolunteerDashboard
-        volunteerName={session.data?.user.name}
         initialSection={search.section}
         initialEventId={search.eventId}
         initialAssignmentId={search.assignmentId}
         initialMinistryId={search.ministryId}
       />
-    </div>
+    </WorkspacePage>
   );
 }

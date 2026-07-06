@@ -101,8 +101,8 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
 
   await volunteerPage.goto('/dashboard?section=ministry_schedule');
   await expect(
-    volunteerPage.getByText('Ministry Schedule', { exact: true }),
-  ).toBeVisible();
+    volunteerPage.getByRole('tab', { name: 'Ministry Schedule' }),
+  ).toHaveAttribute('aria-selected', 'true');
   const scheduleToggle = volunteerPage.getByRole('button', {
     name: `Show schedule for ${EVENT_TITLE}`,
   });

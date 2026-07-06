@@ -11,6 +11,8 @@ import type {
   AvailabilityStatus,
   VolunteerPoolItem,
 } from '../../hooks/use-volunteer-pool';
+import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { formatAssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 const STATUS_STYLE: Record<AvailabilityStatus, string> = {
@@ -48,6 +50,7 @@ export function VolunteerCard({
       data: {
         volunteerId: volunteer.volunteerId,
         volunteerName: volunteer.volunteerName,
+        systemRole: volunteer.systemRole,
         status: volunteer.status,
         workloadCount: volunteer.workloadCount,
         conflictReason: volunteer.conflictReason,
@@ -58,31 +61,43 @@ export function VolunteerCard({
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
     : undefined;
+  const roleLabel = formatAssigneeRoleLabel(volunteer.systemRole);
 
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-2 rounded border bg-card px-2 py-1.5 text-xs',
+        'radius-control flex items-center justify-between gap-2 border bg-card px-2 py-1.5 text-xs',
         isSelected && 'border-primary bg-primary/5 ring-1 ring-primary',
         isDragging && 'opacity-50',
         isOverlay && 'shadow-lg',
       )}
     >
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: dnd-kit's spread
+          `attributes` sets role="button" at runtime, invisible to static
+          analysis here — aria-label disambiguates two same-truncating names
+          (FR-013) for the screen-reader-exposed name of this draggable. */}
       <div
         ref={isOverlay ? undefined : setNodeRef}
         style={isOverlay ? undefined : style}
         {...(isOverlay ? {} : listeners)}
         {...(isOverlay ? {} : attributes)}
         className={cn(
-          'min-w-0 flex-1 cursor-grab rounded-sm active:cursor-grabbing',
+          'radius-control min-w-0 flex-1 cursor-grab active:cursor-grabbing',
           !isOverlay &&
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         )}
         data-testid="volunteer-card"
+        aria-label={
+          roleLabel ? `${volunteer.volunteerName}, ${roleLabel}` : undefined
+        }
       >
         {formatVolunteerName(volunteer.volunteerName)}
       </div>
       <span className="flex items-center gap-1">
+        <AssigneeIdentityBadge
+          roleLabel={roleLabel}
+          fullNameOnExpand={volunteer.volunteerName}
+        />
         {onSelect ? (
           <Button
             type="button"

@@ -151,6 +151,7 @@ export function BuilderGrid({
           .map((v) => ({
             id: v.volunteerId,
             name: v.volunteerName,
+            systemRole: v.systemRole,
             status: v.uiStatus as 'available' | 'partial',
             workloadCount: workload.get(v.volunteerId) ?? 0,
           }));
@@ -159,6 +160,7 @@ export function BuilderGrid({
           data.volunteerAvailability.map((v) => ({
             id: v.volunteerId,
             name: v.volunteerName,
+            systemRole: v.systemRole,
             availabilityStatus: mapAvailabilityStatus(v.status),
             alreadyAssignedCount: workload.get(v.volunteerId) ?? 0,
           }));
@@ -176,6 +178,7 @@ export function BuilderGrid({
                   id: a.id,
                   volunteerId: a.volunteerId,
                   volunteerName: a.volunteerName ?? a.volunteerId,
+                  volunteerSystemRole: a.volunteerSystemRole,
                   conflictStatus: conflictFor(a.volunteerId, slot.id),
                   confirmationStatus: ([
                     'pending',

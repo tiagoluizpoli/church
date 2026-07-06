@@ -1,11 +1,5 @@
 import { Badge } from '@church/ui/components/badge';
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@church/ui/components/card';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,7 +12,6 @@ import {
   TabsList,
   TabsTrigger,
 } from '@church/ui/components/tabs';
-import { Link } from '@tanstack/react-router';
 import { useDashboardRefresh } from '../hooks/use-dashboard-refresh';
 import { useVolunteerDashboard } from '../hooks/use-volunteer-dashboard';
 import {
@@ -38,7 +31,6 @@ export type DashboardTabId =
   | 'ministry-schedule';
 
 export interface VolunteerDashboardProps {
-  volunteerName?: string;
   initialSection?: 'availability' | 'assignments' | 'ministry_schedule';
   initialEventId?: string;
   initialAssignmentId?: string;
@@ -70,7 +62,6 @@ function resolveInitialTabId({
 }
 
 export function VolunteerDashboard({
-  volunteerName,
   initialSection,
   initialEventId,
   initialAssignmentId,
@@ -93,23 +84,6 @@ export function VolunteerDashboard({
 
   return (
     <div className="space-y-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Volunteer Dashboard</CardTitle>
-          <CardDescription>
-            {volunteerName
-              ? `Review what needs your attention, ${volunteerName}.`
-              : 'Review what needs your attention.'}
-          </CardDescription>
-          <Link
-            to="/volunteer/availability"
-            className="text-primary text-sm hover:underline"
-          >
-            View availability checks
-          </Link>
-        </CardHeader>
-      </Card>
-
       <BackgroundRefreshIndicator
         visible={refresh.hasBackgroundUpdate}
         onDismiss={refresh.dismissBackgroundUpdate}
@@ -127,20 +101,24 @@ export function VolunteerDashboard({
         defaultValue={resolveInitialTabId({ initialSection })}
         className="w-full"
       >
-        <TabsList>
-          <TabsTrigger value="upcoming-assignments">
-            Upcoming Assignments
-          </TabsTrigger>
-          <TabsTrigger value="availability-needed">
-            Availability Needed
-            {dashboard.availabilityTasks.length > 0 ? (
-              <Badge variant="secondary">
-                {dashboard.availabilityTasks.length}
-              </Badge>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger value="ministry-schedule">Ministry Schedule</TabsTrigger>
-        </TabsList>
+        <div className="-mx-1 overflow-x-auto px-1">
+          <TabsList className="w-fit min-w-full sm:min-w-0">
+            <TabsTrigger value="upcoming-assignments">
+              Upcoming Assignments
+            </TabsTrigger>
+            <TabsTrigger value="availability-needed">
+              Availability Needed
+              {dashboard.availabilityTasks.length > 0 ? (
+                <Badge variant="secondary">
+                  {dashboard.availabilityTasks.length}
+                </Badge>
+              ) : null}
+            </TabsTrigger>
+            <TabsTrigger value="ministry-schedule">
+              Ministry Schedule
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="upcoming-assignments">
           <UpcomingAssignmentsSection

@@ -10,11 +10,13 @@ import {
 } from './assignment-chip';
 import { AssignmentPicker, type PickerVolunteer } from './assignment-picker';
 import { type SuggestedVolunteer, SuggestionList } from './suggestion-list';
+import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
 
 export interface CellAssignment {
   id: string;
   volunteerId: string;
   volunteerName: string;
+  volunteerSystemRole?: AssigneeSystemRole;
   conflictStatus?: ConflictStatus;
   confirmationStatus?: ConfirmationStatus;
 }
@@ -113,6 +115,7 @@ export function RequirementCell({
         {assignment ? (
           <AssignmentChip
             volunteerName={assignment.volunteerName}
+            volunteerSystemRole={assignment.volunteerSystemRole}
             conflictStatus={assignment.conflictStatus}
             confirmationStatus={assignment.confirmationStatus}
             isPublished={isPublished}
@@ -140,6 +143,7 @@ export function RequirementCell({
           // Declined → clicking finds a substitute (no inline picker).
           <AssignmentChip
             volunteerName={assignment.volunteerName}
+            volunteerSystemRole={assignment.volunteerSystemRole}
             conflictStatus={assignment.conflictStatus}
             confirmationStatus={assignment.confirmationStatus}
             isPublished={isPublished}
@@ -152,6 +156,7 @@ export function RequirementCell({
             trigger={
               <AssignmentChip
                 volunteerName={assignment.volunteerName}
+                volunteerSystemRole={assignment.volunteerSystemRole}
                 conflictStatus={assignment.conflictStatus}
                 confirmationStatus={assignment.confirmationStatus}
                 isPublished={isPublished}
@@ -211,7 +216,7 @@ export function RequirementCell({
       {hasConflict && onOverride && (
         <button
           type="button"
-          className="mt-1 text-orange-600 text-xs underline"
+          className="mt-1 text-primary text-xs underline"
           onClick={onOverride}
         >
           Override

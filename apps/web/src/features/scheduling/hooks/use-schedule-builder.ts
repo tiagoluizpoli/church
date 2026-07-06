@@ -72,11 +72,12 @@ export function useScheduleBuilder(eventId: string) {
     const { event, slots } = eventEntry;
     const slotIds = new Set(slots.map((s) => s.id));
     const eventAssignments = assignments.filter((a) => slotIds.has(a.slotId));
-    const volunteerMap = new Map(volunteers.map((v) => [v.id, v.name]));
+    const volunteerMap = new Map(volunteers.map((v) => [v.id, v]));
 
     const assignmentsWithName = eventAssignments.map((a) => ({
       ...a,
-      volunteerName: volunteerMap.get(a.volunteerId),
+      volunteerName: volunteerMap.get(a.volunteerId)?.name,
+      volunteerSystemRole: volunteerMap.get(a.volunteerId)?.systemRole,
     }));
 
     const eventStartMs = new Date(event.startDate).getTime();
@@ -85,6 +86,7 @@ export function useScheduleBuilder(eventId: string) {
     const volunteerAvailability = volunteers.map((v) => ({
       volunteerId: v.id,
       volunteerName: v.name,
+      systemRole: v.systemRole,
       status: computeAvailabilityStatus(
         v.id,
         availability,

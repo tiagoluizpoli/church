@@ -83,8 +83,10 @@ function FullModeInbox({
     <Card className="w-full">
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
-          <CardTitle>Notifications Inbox</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-balance font-semibold text-2xl tracking-[-0.02em] md:text-3xl">
+            Notifications Inbox
+          </CardTitle>
+          <CardDescription className="text-sm">
             Review schedule history, reminders, and assignment updates.
           </CardDescription>
         </div>

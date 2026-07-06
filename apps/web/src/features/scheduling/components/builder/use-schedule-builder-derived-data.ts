@@ -18,6 +18,7 @@ export function useScheduleBuilderDerivedData({
       builderData.volunteerAvailability.map((item) => ({
         id: item.volunteerId,
         name: item.volunteerName,
+        systemRole: item.systemRole,
         availabilityStatus: mapAvailabilityStatus(item.status),
         alreadyAssignedCount: builderData.assignments.filter(
           (assignment) =>
@@ -34,6 +35,7 @@ export function useScheduleBuilderDerivedData({
       builderData.volunteerAvailability.map((item) => ({
         volunteerId: item.volunteerId,
         volunteerName: item.volunteerName,
+        systemRole: item.systemRole,
         status: mapAvailabilityStatus(item.status),
         conflictReason: item.conflictReason ?? undefined,
         workloadCount: builderData.assignments.filter(

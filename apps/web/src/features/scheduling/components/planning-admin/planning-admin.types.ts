@@ -1,5 +1,4 @@
 import type {
-  CreatePlanningEventBody,
   GetPlanningCycle200Cycle,
   GetPlanningCycle200EventsItem,
   ListEventTemplates200TemplatesItem,
@@ -23,22 +22,6 @@ export interface TemplateFormState {
   name: string;
   weekday: string;
   blocks: TemplateBlockDraft[];
-}
-
-export const PLANNING_EVENT_TYPES = ['day_based', 'hourly'] as const;
-
-export type PlanningEventType = (typeof PLANNING_EVENT_TYPES)[number];
-
-export interface PlanningEventFormState {
-  title: string;
-  startDateTime: string;
-  endDateTime: string;
-  eventType: PlanningEventType;
-}
-
-export interface CreatePlanningEventMutationInput {
-  cycleId: string;
-  body: CreatePlanningEventBody;
 }
 
 export type PlanningCycleSummary = ListPlanningCycles200CyclesItem;

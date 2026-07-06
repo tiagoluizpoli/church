@@ -13,7 +13,7 @@ export function CycleListCard() {
   const { cycles, cyclesLoading, handleSelectCycle } = useCycleListCard();
 
   return (
-    <Card>
+    <Card className="surface-panel">
       <CardHeader>
         <CardTitle>Existing cycles</CardTitle>
         <CardDescription>
@@ -33,7 +33,7 @@ export function CycleListCard() {
               key={cycle.id}
               type="button"
               data-testid="planning-cycle-option"
-              className="w-full border px-3 py-3 text-left transition-colors hover:bg-muted/40"
+              className="surface-subtle workspace-panel w-full text-left transition-colors hover:bg-accent/60"
               onClick={() => handleSelectCycle({ cycleId: cycle.id })}
             >
               <div className="flex items-start justify-between gap-3">

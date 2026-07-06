@@ -7,38 +7,34 @@ import {
   CardHeader,
   CardTitle,
 } from '@church/ui/components/card';
-import { Input } from '@church/ui/components/input';
-import { Label } from '@church/ui/components/label';
+import { useState } from 'react';
+import { QuickCreateEventModal } from '../quick-create-event-modal';
 import {
   cycleIsLocked,
   formatCycleDate,
-  parsePlanningEventType,
   stateBadgeVariant,
 } from './planning-admin.utils';
 import { useCycleReviewCard } from './planning-admin-context';
 import { PlanningEventCard } from './planning-event-card';
 
-export function CycleReviewCard() {
+interface CycleReviewCardProps {
+  isReadOnly: boolean;
+}
+
+export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
   const {
     selectedCycleId,
     selectedCycle,
     cycleDetailsLoading,
     totalSlots,
     cycleEvents,
-    planningEventForm,
-    canCreatePlanningEvent,
-    createPlanningEventPending,
     lockCyclePending,
-    handlePlanningEventTitleChange,
-    handlePlanningEventStartChange,
-    handlePlanningEventEndChange,
-    handlePlanningEventTypeChange,
-    handleCreatePlanningEvent,
     handleLockCycle,
   } = useCycleReviewCard();
+  const [createEventOpen, setCreateEventOpen] = useState(false);
 
   return (
-    <Card>
+    <Card className="surface-panel">
       <CardHeader>
         <CardTitle>Selected cycle review</CardTitle>
         <CardDescription>
@@ -58,7 +54,7 @@ export function CycleReviewCard() {
         ) : selectedCycle ? (
           <>
             <div
-              className="flex flex-wrap items-center justify-between gap-3 border p-3"
+              className="surface-subtle workspace-panel flex flex-wrap items-center justify-between gap-3"
               data-testid="selected-cycle-summary"
             >
               <div className="space-y-1">
@@ -81,88 +77,41 @@ export function CycleReviewCard() {
               </Badge>
             </div>
 
-            <div className="space-y-3 border p-3">
-              <div className="font-medium text-sm">Add manual event</div>
-              <div className="space-y-1">
-                <Label htmlFor="planning-event-title">Title</Label>
-                <Input
-                  id="planning-event-title"
-                  data-testid="planning-event-title-input"
-                  value={planningEventForm.title}
-                  onChange={(event) =>
-                    handlePlanningEventTitleChange({
-                      value: event.target.value,
-                    })
-                  }
-                  placeholder="Retreat weekend"
+            {!isReadOnly ? (
+              <div className="surface-subtle workspace-panel">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="font-medium">Manual exceptions</div>
+                    <div className="text-muted-foreground text-sm">
+                      Add retreats, special services, and other one-off events
+                      without leaving the cycle review.
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => setCreateEventOpen(true)}
+                  >
+                    Add manual event
+                  </Button>
+                </div>
+                <QuickCreateEventModal
+                  open={createEventOpen}
+                  onOpenChange={setCreateEventOpen}
+                  target={{ kind: 'planning-cycle', cycleId: selectedCycle.id }}
+                  onCreated={() => undefined}
                 />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="planning-event-start">Start</Label>
-                  <Input
-                    id="planning-event-start"
-                    data-testid="planning-event-start-input"
-                    type="datetime-local"
-                    value={planningEventForm.startDateTime}
-                    onChange={(event) =>
-                      handlePlanningEventStartChange({
-                        value: event.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="planning-event-end">End</Label>
-                  <Input
-                    id="planning-event-end"
-                    data-testid="planning-event-end-input"
-                    type="datetime-local"
-                    value={planningEventForm.endDateTime}
-                    onChange={(event) =>
-                      handlePlanningEventEndChange({
-                        value: event.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="planning-event-type">Event type</Label>
-                <select
-                  id="planning-event-type"
-                  data-testid="planning-event-type-select"
-                  className="flex h-8 w-full border bg-background px-2.5 text-sm"
-                  value={planningEventForm.eventType}
-                  onChange={(event) => {
-                    const planningEventType = parsePlanningEventType({
-                      value: event.target.value,
-                    });
-
-                    if (planningEventType) {
-                      handlePlanningEventTypeChange({
-                        eventType: planningEventType,
-                      });
-                    }
-                  }}
-                >
-                  <option value="day_based">Day-based</option>
-                  <option value="hourly">Hourly</option>
-                </select>
-              </div>
-              <Button
-                type="button"
-                data-testid="create-planning-event-button"
-                disabled={!canCreatePlanningEvent || createPlanningEventPending}
-                onClick={handleCreatePlanningEvent}
-              >
-                {createPlanningEventPending ? 'Adding…' : 'Add manual event'}
-              </Button>
-            </div>
+            ) : null}
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <div className="font-medium text-sm">Calendar review</div>
+                <div>
+                  <div className="font-medium text-sm">Calendar review</div>
+                  <div className="text-muted-foreground text-xs">
+                    Confirm dates, slots, and event types before locking the
+                    package.
+                  </div>
+                </div>
                 <Button
                   type="button"
                   data-testid="lock-cycle-button"

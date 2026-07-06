@@ -1,18 +1,210 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 @import "@church/ui/globals.css";
 
 :root {
-  --radius: 0.25rem; /* 4px sharp corners */
+  --radius: 0.625rem;
+  --workspace-pad-x: 0.75rem;
+  --workspace-pad-y: 1rem;
+  --workspace-gap: 1rem;
+  --workspace-panel-pad: 1rem;
+  --workspace-panel-pad-lg: 1.25rem;
 }
 
 .dark {
-  --radius: 0.25rem;
+  --radius: 0.625rem;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --workspace-pad-x: 1.25rem;
+    --workspace-pad-y: 1.25rem;
+    --workspace-panel-pad: 1rem;
+    --workspace-panel-pad-lg: 1.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --workspace-pad-x: 1.5rem;
+    --workspace-panel-pad-lg: 1.5rem;
+  }
 }
 
 @theme {
-  --font-sans: "Inter", sans-serif;
+  --font-sans: "Atkinson Hyperlegible", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.25rem;
-  --radius-lg: 0.25rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  body {
+    background:
+      radial-gradient(
+        circle at top left,
+        color-mix(in oklch, var(--color-accent) 56%, white) 0,
+        transparent 20rem
+      ),
+      linear-gradient(
+        180deg,
+        var(--color-background) 0%,
+        color-mix(in oklch, var(--color-background) 92%, var(--color-accent))
+          100%
+      );
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--color-primary) 32%, white);
+    color: var(--color-foreground);
+  }
+
+  select:not([data-slot]),
+  input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not(
+      [type="range"]
+    ):not([type="file"]):not([type="color"]),
+  textarea:not([data-slot]) {
+    border: 1px solid var(--color-input);
+    border-radius: var(--radius-md);
+    background: color-mix(in oklch, var(--color-background) 90%, white);
+    color: var(--color-foreground);
+    min-height: 2.25rem;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 1px 2px
+      color-mix(in oklch, var(--color-foreground) 6%, transparent);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+  }
+
+  select:not([data-slot]):focus,
+  input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not(
+      [type="range"]
+    ):not([type="file"]):not([type="color"]):focus,
+  textarea:not([data-slot]):focus {
+    border-color: var(--color-ring);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--color-ring) 60%, transparent),
+      0 1px 2px color-mix(in oklch, var(--color-foreground) 8%, transparent);
+    outline: none;
+  }
+
+  select:not([data-slot])::placeholder,
+  input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not(
+      [type="range"]
+    ):not([type="file"]):not([type="color"])::placeholder,
+  textarea:not([data-slot])::placeholder {
+    color: color-mix(in oklch, var(--color-muted-foreground) 92%, white);
+  }
+
+  .dark select:not([data-slot]),
+  .dark
+    input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not(
+      [type="range"]
+    ):not([type="file"]):not([type="color"]),
+  .dark textarea:not([data-slot]) {
+    border-color: color-mix(in oklch, var(--color-input) 84%, black);
+    background: color-mix(in oklch, var(--color-background) 88%, black);
+    box-shadow: 0 1px 2px color-mix(in oklch, black 28%, transparent);
+  }
+
+  .dark select:not([data-slot]):focus,
+  .dark
+    input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not(
+      [type="range"]
+    ):not([type="file"]):not([type="color"]):focus,
+  .dark textarea:not([data-slot]):focus {
+    border-color: color-mix(in oklch, var(--color-ring) 88%, white);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--color-ring) 52%, transparent),
+      0 1px 2px color-mix(in oklch, black 36%, transparent);
+  }
+
+  .dark select:not([data-slot])::placeholder,
+  .dark
+    input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not(
+      [type="range"]
+    ):not([type="file"]):not([type="color"])::placeholder,
+  .dark textarea:not([data-slot])::placeholder {
+    color: color-mix(
+      in oklch,
+      var(--color-muted-foreground) 90%,
+      var(--color-background)
+    );
+  }
+}
+
+@layer components {
+  .workspace-page {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: var(--workspace-gap);
+  }
+
+  .workspace-panel {
+    padding: var(--workspace-panel-pad);
+  }
+
+  .workspace-panel-lg {
+    padding: var(--workspace-panel-pad-lg);
+  }
+
+  .workspace-section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .workspace-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .workspace-section-description {
+    max-width: 72ch;
+    color: var(--color-muted-foreground);
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .surface-panel {
+    border-radius: var(--radius-xl);
+    border: 1px solid color-mix(in oklch, var(--color-border) 88%, white);
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--color-card) 86%, white) 0%,
+      var(--color-card) 100%
+    );
+    box-shadow: 0 1px 2px
+      color-mix(in oklch, var(--color-foreground) 6%, transparent);
+  }
+
+  .surface-subtle {
+    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in oklch, var(--color-border) 92%, white);
+    background: color-mix(in oklch, var(--color-card) 58%, white);
+  }
+
+  .dark .surface-panel {
+    border-color: color-mix(in oklch, var(--color-border) 88%, black);
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--color-card) 94%, black) 0%,
+      color-mix(in oklch, var(--color-card) 98%, black) 100%
+    );
+    box-shadow: 0 1px 2px color-mix(in oklch, black 26%, transparent);
+  }
+
+  .dark .surface-subtle {
+    border-color: color-mix(in oklch, var(--color-border) 84%, black);
+    background: color-mix(
+      in oklch,
+      var(--color-card) 82%,
+      var(--color-background)
+    );
+  }
 }

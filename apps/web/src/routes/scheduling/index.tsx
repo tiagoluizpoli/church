@@ -1,5 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import {
+  WorkspaceIntroPanel,
+  WorkspacePage,
+} from '@/components/workspace-page';
 import { EventList } from '@/features/scheduling/components/event-list';
+import { SchedulingNav } from '@/features/scheduling/components/scheduling-nav';
 
 export const Route = createFileRoute('/scheduling/')({
   component: SchedulingIndex,
@@ -7,31 +12,31 @@ export const Route = createFileRoute('/scheduling/')({
 
 function SchedulingIndex() {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-bold text-xl">Scheduling</h1>
-          <p className="text-muted-foreground text-sm">
-            Builder events live here. Planning and participation tailoring live
-            in their own focused surfaces.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            to="/scheduling/tailoring"
-            className="inline-flex h-7 items-center justify-center border px-2.5 text-xs hover:bg-muted"
-          >
-            Open tailoring
-          </Link>
-          <Link
-            to="/scheduling/planning"
-            className="inline-flex h-7 items-center justify-center border px-2.5 text-xs hover:bg-muted"
-          >
-            Open planning
-          </Link>
-        </div>
-      </div>
+    <WorkspacePage>
+      <SchedulingNav />
+
+      <WorkspaceIntroPanel
+        title="Scheduling workspace"
+        description="Move between calendar planning, ministry tailoring, and builder-ready events without losing context. This surface is the live list of events that are ready for roster work."
+        aside={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/scheduling/tailoring"
+              className="radius-control inline-flex min-h-11 items-center justify-center border border-border bg-background px-4 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              Open tailoring
+            </Link>
+            <Link
+              to="/scheduling/planning"
+              className="radius-control inline-flex min-h-11 items-center justify-center bg-primary px-4 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
+            >
+              Open planning
+            </Link>
+          </div>
+        }
+      />
+
       <EventList />
-    </div>
+    </WorkspacePage>
   );
 }

@@ -82,7 +82,7 @@ describe('VolunteerDashboard empty-state regressions', () => {
       createVolunteerDashboardHookResult(),
     );
 
-    renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
+    renderWithProviders(<VolunteerDashboard />);
 
     expect(
       screen.getByRole('tab', { name: /Availability Needed/i }),
@@ -127,7 +127,7 @@ describe('VolunteerDashboard empty-state regressions', () => {
       }),
     );
 
-    renderWithProviders(<VolunteerDashboard volunteerName="Alex" />);
+    renderWithProviders(<VolunteerDashboard />);
 
     expect(screen.getByText('My Upcoming Assignments')).toBeInTheDocument();
     expect(

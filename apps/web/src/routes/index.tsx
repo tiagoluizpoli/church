@@ -49,12 +49,16 @@ function HomeComponent() {
     : BASE_LANDING_CARDS;
 
   return (
-    <div className="container mx-auto max-w-3xl space-y-6 px-4 py-2">
-      <div>
-        <h1 className="font-bold text-2xl">Welcome back</h1>
-        <p className="text-muted-foreground">Pick up where you left off.</p>
+    <div className="workspace-page">
+      <div className="workspace-section-header">
+        <h1 className="text-balance font-semibold text-3xl tracking-[-0.02em] md:text-4xl">
+          Welcome back
+        </h1>
+        <p className="workspace-section-description">
+          Pick up where you left off.
+        </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

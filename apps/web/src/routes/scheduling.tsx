@@ -14,7 +14,7 @@ export const Route = createFileRoute('/scheduling')({
 
 function SchedulingLayout() {
   return (
-    <div className="container mx-auto py-6">
+    <div className="w-full">
       <Outlet />
     </div>
   );

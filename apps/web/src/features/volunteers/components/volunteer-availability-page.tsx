@@ -12,14 +12,6 @@ export function VolunteerAvailabilityPage() {
 
   return (
     <div className="space-y-6" data-testid="volunteer-availability-page">
-      <div className="space-y-1">
-        <h2 className="font-bold text-xl">Availability checks</h2>
-        <p className="text-muted-foreground text-sm">
-          Mark the shifts you cannot serve, then confirm each check before your
-          leader locks the schedule.
-        </p>
-      </div>
-
       {availability.checksQuery.isLoading ? (
         <Skeleton className="h-24 w-full" />
       ) : availability.checksQuery.isError ? (

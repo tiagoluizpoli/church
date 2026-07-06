@@ -12,7 +12,7 @@ export function EmptyBuilderState({
 }: EmptyBuilderStateProps) {
   return (
     <div
-      className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-16 text-center"
+      className="radius-surface flex flex-col items-center justify-center gap-4 border border-dashed py-16 text-center"
       data-testid="empty-builder-state"
     >
       <div className="space-y-1">

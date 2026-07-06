@@ -23,7 +23,7 @@ export function CreateCycleCard() {
   } = useCreateCycleCard();
 
   return (
-    <Card>
+    <Card className="surface-panel">
       <CardHeader>
         <CardTitle>Create cycle</CardTitle>
         <CardDescription>
@@ -80,6 +80,7 @@ export function CreateCycleCard() {
         <Button
           type="button"
           data-testid="create-cycle-button"
+          className="w-full justify-center sm:w-auto"
           disabled={!canCreateCycle || createCyclePending}
           onClick={handleCreateCycle}
         >

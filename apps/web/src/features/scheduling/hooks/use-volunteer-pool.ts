@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
 
 export type AvailabilityStatus =
   | 'available'
@@ -11,6 +12,7 @@ export interface PoolVolunteer {
   volunteerName: string;
   status: AvailabilityStatus;
   conflictReason?: string;
+  systemRole?: AssigneeSystemRole;
 }
 
 interface PoolAssignment {

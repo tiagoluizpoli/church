@@ -29,3 +29,31 @@ test('schedule builder has no critical or serious WCAG violations', async ({
     `a11y violations: ${blocking.map((v) => v.id).join(', ')}`,
   ).toEqual([]);
 });
+
+// FR-013: the ministry's Leader and Sub-leader are two distinct volunteers
+// who both truncate near-identically ("E2E L." / "E2E S." are close, and the
+// underlying draggable's accessible name used to be *only* that truncated
+// text). Each draggable pool card must expose an accessible name that
+// includes the role, so a screen reader never announces two different
+// people identically (the confirmed /impeccable a11y bug).
+test('Leader and Sub-leader volunteers are not screen-reader-identical', async ({
+  page,
+}) => {
+  await page.goto(BUILDER_URL);
+  await expect(page.getByTestId('builder-grid')).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const pool = page.getByTestId('volunteer-pool');
+  const leaderCard = pool
+    .getByTestId('volunteer-card')
+    .filter({ hasText: /^E2E L\.$/ });
+  const subLeaderCard = pool
+    .getByTestId('volunteer-card')
+    .filter({ hasText: /^E2E S\.$/ });
+
+  await expect(leaderCard).toHaveAccessibleName('E2E Leader, Leader');
+  await expect(subLeaderCard).toHaveAccessibleName(
+    'E2E Sub-Leader, Sub-leader',
+  );
+});

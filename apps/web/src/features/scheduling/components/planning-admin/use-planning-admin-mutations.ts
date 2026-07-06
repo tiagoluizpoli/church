@@ -3,19 +3,15 @@ import { useMutation } from '@tanstack/react-query';
 import type { Dispatch, SetStateAction } from 'react';
 import { toast } from 'sonner';
 import type {
-  CreatePlanningEventMutationInput,
   CycleFormState,
-  PlanningEventFormState,
   SelectedPlanningCycle,
   TemplateFormState,
 } from './planning-admin.types';
 import {
   createEmptyCycleForm,
-  createEmptyPlanningEventForm,
   createEmptyTemplateForm,
   getErrorMessage,
   sortTemplateBlocks,
-  toUtcIsoString,
 } from './planning-admin.utils';
 import { adminApi } from '@/utils/api-instances';
 
@@ -26,13 +22,11 @@ export interface UsePlanningAdminMutationsProps {
   selectedTemplateIds: string[];
   cycleForm: CycleFormState;
   templateForm: TemplateFormState;
-  planningEventForm: PlanningEventFormState;
   setCycleErrorMessage: Dispatch<SetStateAction<string | null>>;
   setCycleForm: Dispatch<SetStateAction<CycleFormState>>;
   setSelectedCycleId: Dispatch<SetStateAction<string | null>>;
   setSelectedTemplateIds: Dispatch<SetStateAction<string[]>>;
   setTemplateForm: Dispatch<SetStateAction<TemplateFormState>>;
-  setPlanningEventForm: Dispatch<SetStateAction<PlanningEventFormState>>;
 }
 
 interface DeleteTemplateInput {
@@ -44,13 +38,11 @@ export interface UsePlanningAdminMutationsResult {
   createTemplatePending: boolean;
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
-  createPlanningEventPending: boolean;
   lockCyclePending: boolean;
   handleCreateCycle: () => void;
   handleSaveTemplate: () => void;
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: () => void;
-  handleCreatePlanningEvent: () => void;
   handleLockCycle: () => void;
 }
 
@@ -61,13 +53,11 @@ export function usePlanningAdminMutations({
   selectedTemplateIds,
   cycleForm,
   templateForm,
-  planningEventForm,
   setCycleErrorMessage,
   setCycleForm,
   setSelectedCycleId,
   setSelectedTemplateIds,
   setTemplateForm,
-  setPlanningEventForm,
 }: UsePlanningAdminMutationsProps): UsePlanningAdminMutationsResult {
   const createCycle = useMutation({
     mutationFn: (body: Parameters<typeof adminApi.createPlanningCycle>[0]) =>
@@ -135,21 +125,6 @@ export function usePlanningAdminMutations({
     },
   });
 
-  const createPlanningEvent = useMutation({
-    mutationFn: ({ cycleId, body }: CreatePlanningEventMutationInput) =>
-      adminApi.createPlanningEvent(cycleId, body),
-    onSuccess: async () => {
-      setPlanningEventForm(createEmptyPlanningEventForm());
-      await queryClient.invalidateQueries({
-        queryKey: ['planning-cycle-details', selectedCycleId],
-      });
-      toast.success('Event added to cycle');
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage({ error }));
-    },
-  });
-
   const lockCycle = useMutation({
     mutationFn: (cycleId: string) => adminApi.lockPlanningCycle(cycleId),
     onSuccess: async () => {
@@ -192,26 +167,6 @@ export function usePlanningAdminMutations({
     }
   }
 
-  function handleCreatePlanningEvent() {
-    if (!selectedCycleId) {
-      return;
-    }
-
-    createPlanningEvent.mutate({
-      cycleId: selectedCycleId,
-      body: {
-        title: planningEventForm.title.trim(),
-        startDate: toUtcIsoString({
-          localDateTime: planningEventForm.startDateTime,
-        }),
-        endDate: toUtcIsoString({
-          localDateTime: planningEventForm.endDateTime,
-        }),
-        eventType: planningEventForm.eventType,
-      },
-    });
-  }
-
   function handleLockCycle() {
     if (selectedCycle) {
       lockCycle.mutate(selectedCycle.id);
@@ -223,13 +178,11 @@ export function usePlanningAdminMutations({
     createTemplatePending: createTemplate.isPending,
     deleteTemplatePending: deleteTemplate.isPending,
     applyTemplatesPending: applyTemplates.isPending,
-    createPlanningEventPending: createPlanningEvent.isPending,
     lockCyclePending: lockCycle.isPending,
     handleCreateCycle,
     handleSaveTemplate,
     handleDeleteTemplate,
     handleApplyTemplates,
-    handleCreatePlanningEvent,
     handleLockCycle,
   };
 }

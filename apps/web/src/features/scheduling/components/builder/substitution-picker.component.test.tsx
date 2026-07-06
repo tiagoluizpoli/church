@@ -8,10 +8,12 @@ const pv = (
   id: string,
   name: string,
   availabilityStatus: PickerVolunteer['availabilityStatus'],
+  systemRole?: PickerVolunteer['systemRole'],
 ): PickerVolunteer => ({
   id,
   name,
   availabilityStatus,
+  systemRole,
   alreadyAssignedCount: 0,
 });
 
@@ -86,5 +88,20 @@ describe('SubstitutionPicker (T109)', () => {
       />,
     );
     expect(screen.getByText(/no available volunteers/i)).toBeVisible();
+  });
+
+  it('renders a role badge disambiguating the declined volunteer and candidates (FR-013)', () => {
+    render(
+      <SubstitutionPicker
+        {...baseProps}
+        declinedVolunteerName="Local Leader"
+        declinedVolunteerSystemRole="leader"
+        volunteers={[pv('1', 'Local Sub Leader', 'available', 'sub_leader')]}
+      />,
+    );
+    const badges = screen.getAllByTestId('assignee-role-badge');
+    expect(badges).toHaveLength(2);
+    expect(badges[0]).toHaveTextContent('Leader');
+    expect(badges[1]).toHaveTextContent('Sub-leader');
   });
 });

@@ -9,21 +9,32 @@ import {
 import { Input } from '@church/ui/components/input';
 import { Label } from '@church/ui/components/label';
 import { RadioGroup, RadioGroupItem } from '@church/ui/components/radio-group';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { CalendarDays, Clock3 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { adminApi } from '@/utils/api-instances';
 
+export type QuickCreateEventModalTarget =
+  | { kind: 'ministry'; ministryId: string }
+  | { kind: 'planning-cycle'; cycleId: string };
+
 interface QuickCreateEventModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  ministryId: string;
+  target: QuickCreateEventModalTarget;
   onCreated: () => void;
 }
 
 type EventType = 'hourly' | 'day_based';
+
+interface CreateEventFormValues {
+  title: string;
+  startDate: string;
+  endDate: string;
+  eventType: EventType;
+}
 
 interface DateTimeParts {
   date: string;
@@ -150,10 +161,11 @@ function DateTimeField({ label, value, onChange }: DateTimeFieldProps) {
 export function QuickCreateEventModal({
   open,
   onOpenChange,
-  ministryId,
+  target,
   onCreated,
 }: QuickCreateEventModalProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [startDateTime, setStartDateTime] = useState<DateTimeParts>(
     createEmptyDateTimeParts(),
@@ -164,8 +176,10 @@ export function QuickCreateEventModal({
   const [eventType, setEventType] = useState<EventType>('hourly');
 
   const create = useMutation({
-    mutationFn: (body: Parameters<typeof adminApi.createEvent>[0]) =>
-      adminApi.createEvent(body),
+    mutationFn: (body: CreateEventFormValues) =>
+      target.kind === 'ministry'
+        ? adminApi.createEvent({ ...body, ministryId: target.ministryId })
+        : adminApi.createPlanningEvent(target.cycleId, body),
   });
 
   const startDate = toLocalDateTimeString({ value: startDateTime });
@@ -177,11 +191,17 @@ export function QuickCreateEventModal({
       new Date(startDate).getTime() < new Date(endDate).getTime(),
   );
 
+  const resetForm = () => {
+    setTitle('');
+    setStartDateTime(createEmptyDateTimeParts());
+    setEndDateTime(createEmptyDateTimeParts());
+    setEventType('hourly');
+  };
+
   const handleSubmit = async () => {
     if (!startDate || !endDate) return;
     try {
-      const event = await create.mutateAsync({
-        ministryId,
+      const result = await create.mutateAsync({
         title,
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
@@ -189,10 +209,18 @@ export function QuickCreateEventModal({
       });
       onCreated();
       onOpenChange(false);
-      navigate({
-        to: '/scheduling/events/$eventId/builder',
-        params: { eventId: event.id },
+      resetForm();
+      if (target.kind === 'ministry') {
+        navigate({
+          to: '/scheduling/events/$eventId/builder',
+          params: { eventId: result.id },
+        });
+        return;
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ['planning-cycle-details', target.cycleId],
       });
+      toast.success('Event added to cycle');
     } catch (err) {
       toast.error((err as Error).message);
     }

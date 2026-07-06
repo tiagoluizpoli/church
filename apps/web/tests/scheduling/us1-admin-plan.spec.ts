@@ -16,8 +16,12 @@ interface PlanningMonth {
   lastSunday: string;
   expectedEvents: number;
   expectedSlots: number;
-  dynamicStartDateTime: string;
-  dynamicEndDateTime: string;
+  dynamicStartDate: string;
+  dynamicStartHour: string;
+  dynamicStartMinute: string;
+  dynamicEndDate: string;
+  dynamicEndHour: string;
+  dynamicEndMinute: string;
 }
 
 function getRequiredDate({
@@ -54,8 +58,12 @@ function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function toDateTimeLocalString(date: Date): string {
-  return `${toDateString(date)}T${date.toISOString().slice(11, 16)}`;
+function toHourString(date: Date): string {
+  return date.toISOString().slice(11, 13);
+}
+
+function toMinuteString(date: Date): string {
+  return date.toISOString().slice(14, 16);
 }
 
 function countMatchingWeekdays({
@@ -134,8 +142,12 @@ function createPlanningMonth(): PlanningMonth {
     lastSunday: getLastRequiredDate({ dates: sundayDates, label: 'Sunday' }),
     expectedEvents: sundayDates.length + wednesdayDates.length,
     expectedSlots: sundayDates.length * 3 + wednesdayDates.length,
-    dynamicStartDateTime: toDateTimeLocalString(dynamicStart),
-    dynamicEndDateTime: toDateTimeLocalString(dynamicEnd),
+    dynamicStartDate: toDateString(dynamicStart),
+    dynamicStartHour: toHourString(dynamicStart),
+    dynamicStartMinute: toMinuteString(dynamicStart),
+    dynamicEndDate: toDateString(dynamicEnd),
+    dynamicEndHour: toHourString(dynamicEnd),
+    dynamicEndMinute: toMinuteString(dynamicEnd),
   };
 }
 
@@ -247,19 +259,21 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     month.lastSunday,
   );
 
-  await page
-    .getByTestId('planning-event-title-input')
-    .fill('Three-day retreat');
-  await page
-    .getByTestId('planning-event-start-input')
-    .fill(month.dynamicStartDateTime);
-  await page
-    .getByTestId('planning-event-end-input')
-    .fill(month.dynamicEndDateTime);
-  await page
-    .getByTestId('planning-event-type-select')
-    .selectOption('day_based');
-  await page.getByTestId('create-planning-event-button').click();
+  // FR-012: the one canonical create-event UI, reused here for a
+  // planning-cycle manual event (same form as the ministry "New Event" modal).
+  await page.getByRole('button', { name: 'Add manual event' }).click();
+  const createEventDialog = page.getByRole('dialog');
+  await createEventDialog.getByLabel('Title').fill('Three-day retreat');
+  await createEventDialog.getByLabel('Start date').fill(month.dynamicStartDate);
+  await createEventDialog.getByLabel('Start hour').fill(month.dynamicStartHour);
+  await createEventDialog
+    .getByLabel('Start minute')
+    .fill(month.dynamicStartMinute);
+  await createEventDialog.getByLabel('End date').fill(month.dynamicEndDate);
+  await createEventDialog.getByLabel('End hour').fill(month.dynamicEndHour);
+  await createEventDialog.getByLabel('End minute').fill(month.dynamicEndMinute);
+  await createEventDialog.getByRole('radio', { name: 'Day-based' }).click();
+  await createEventDialog.getByRole('button', { name: 'Create' }).click();
 
   await expect(page.getByTestId('planning-event-card')).toHaveCount(
     month.expectedEvents + 1,
@@ -279,6 +293,15 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
 
   await page.getByTestId('lock-cycle-button').click();
   await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
+
+  // Step-sequence gating: locked-review is read-only — no editable
+  // template/create controls, though the cycle list/create panel below
+  // stays reachable (e.g. for starting a different cycle).
+  await expect(page.getByTestId('template-name-input')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Add manual event' }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId('cycle-name-input')).toBeVisible();
 
   const leaderContext = await browser.newContext({
     storageState: LEADER_STORAGE_STATE,

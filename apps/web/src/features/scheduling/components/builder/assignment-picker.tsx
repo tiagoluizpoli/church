@@ -9,11 +9,13 @@ import {
 import { cn } from '@church/ui/lib/utils';
 import { type ReactNode, useMemo, useState } from 'react';
 import type { AvailabilityStatus } from '../../hooks/use-volunteer-pool';
+import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 export interface PickerVolunteer {
   id: string;
   name: string;
+  systemRole?: AssigneeSystemRole;
   availabilityStatus: AvailabilityStatus;
   alreadyAssignedCount: number;
 }

@@ -15,6 +15,9 @@ vi.mock('@tanstack/react-query', () => ({
     isPending: false,
     mutateAsync: mutateAsyncMock,
   }),
+  useQueryClient: () => ({
+    invalidateQueries: vi.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 vi.mock('@/utils/trpc', () => ({
@@ -46,7 +49,7 @@ describe('QuickCreateEventModal', () => {
       <QuickCreateEventModal
         open={true}
         onOpenChange={vi.fn()}
-        ministryId="ministry-1"
+        target={{ kind: 'ministry', ministryId: 'ministry-1' }}
         onCreated={vi.fn()}
       />,
     );
@@ -55,6 +58,35 @@ describe('QuickCreateEventModal', () => {
     expect(createButton).toBeDisabled();
 
     await user.type(screen.getByLabelText('Title'), 'Domingo');
+    await user.type(screen.getByLabelText('Start date'), '2026-06-28');
+    await user.type(screen.getByLabelText('Start hour'), '09');
+    await user.type(screen.getByLabelText('Start minute'), '30');
+    await user.type(screen.getByLabelText('End date'), '2026-06-28');
+    await user.type(screen.getByLabelText('End hour'), '11');
+    await user.type(screen.getByLabelText('End minute'), '30');
+
+    expect(createButton).toBeEnabled();
+  });
+
+  it('is the same reachable form for both a ministry ad hoc event and a planning-cycle event (FR-012)', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QuickCreateEventModal
+        open={true}
+        onOpenChange={vi.fn()}
+        target={{ kind: 'planning-cycle', cycleId: 'cycle-1' }}
+        onCreated={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Title')).toBeVisible();
+    expect(screen.getByLabelText('Start date')).toBeVisible();
+    expect(screen.getByLabelText('End date')).toBeVisible();
+    const createButton = screen.getByRole('button', { name: 'Create' });
+    expect(createButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText('Title'), 'Retreat');
     await user.type(screen.getByLabelText('Start date'), '2026-06-28');
     await user.type(screen.getByLabelText('Start hour'), '09');
     await user.type(screen.getByLabelText('Start minute'), '30');

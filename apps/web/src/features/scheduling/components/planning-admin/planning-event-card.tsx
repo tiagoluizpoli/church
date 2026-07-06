@@ -11,10 +11,13 @@ export interface PlanningEventCardProps {
 
 export function PlanningEventCard({ eventGroup }: PlanningEventCardProps) {
   return (
-    <div className="border p-3" data-testid="planning-event-card">
+    <div
+      className="surface-subtle workspace-panel"
+      data-testid="planning-event-card"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <div className="font-medium">{eventGroup.event.title}</div>
+          <div className="font-medium text-base">{eventGroup.event.title}</div>
           <div className="text-muted-foreground text-xs">
             {formatEventDateTime({ date: eventGroup.event.startDate })} →{' '}
             {formatEventDateTime({ date: eventGroup.event.endDate })}

@@ -116,6 +116,7 @@ interface SetUpTwoMinistryOverlapCycleParams {
 
 interface TwoMinistryOverlapCycle {
   cycleId: string;
+  cycleName: string;
 }
 
 // Builds one locked planning cycle, applies a single Sunday template block to
@@ -234,27 +235,42 @@ async function setUpTwoMinistryOverlapCycle({
     ministryId: CARE_MINISTRY_ID,
   });
 
-  return { cycleId: cycle.id };
+  return {
+    cycleId: cycle.id,
+    cycleName: month.cycleName,
+  };
 }
 
 interface OpenWorshipCheckAndMarkOneShiftUnavailableParams {
   page: Page;
+  cycleName: string;
 }
 
 async function openWorshipCheckAndMarkOneShiftUnavailable({
   page,
+  cycleName,
 }: OpenWorshipCheckAndMarkOneShiftUnavailableParams): Promise<void> {
   await page.goto('/volunteer/availability');
 
   await expect(page.getByTestId('availability-check-list')).toBeVisible();
   // One check per ministry membership for the locked cycle: Worship (leader
-  // membership) and Care (volunteer membership).
-  await expect(page.getByTestId('availability-check-card')).toHaveCount(2);
-
+  // membership) and Care (volunteer membership). Scoped by ministry name AND
+  // this test's own (uniquely-named) cycle — the dashboard lists pending
+  // checks across every cycle, and an unrelated spec (us2-leader-tailor also
+  // fires availability for the Worship ministry, in its own cycle) can leave
+  // an extra same-ministry card that a ministry-only filter wouldn't exclude.
   const worshipCard = page
     .getByTestId('availability-check-card')
-    .filter({ hasText: 'E2E Worship' });
+    .filter({ hasText: 'E2E Worship' })
+    .filter({ hasText: cycleName });
   await expect(worshipCard).toHaveCount(1);
+
+  const careCard = page
+    .getByTestId('availability-check-card')
+    .filter({ hasText: 'E2E Care' })
+    .filter({ hasText: cycleName });
+  await expect(careCard).toHaveCount(1);
+
   await worshipCard.click();
 
   await expect(page.getByTestId('availability-check-detail')).toBeVisible();
@@ -280,9 +296,9 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap and the
   browser,
   page,
 }) => {
-  const { cycleId } = await setUpTwoMinistryOverlapCycle({ page });
+  const { cycleId, cycleName } = await setUpTwoMinistryOverlapCycle({ page });
 
-  await openWorshipCheckAndMarkOneShiftUnavailable({ page });
+  await openWorshipCheckAndMarkOneShiftUnavailable({ page, cycleName });
 
   const confirmResponsePromise = page.waitForResponse(
     (response) =>
@@ -312,10 +328,12 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap and the
   const volunteerPage = await volunteerContext.newPage();
   await volunteerPage.goto('/volunteer/availability');
 
-  await expect(
-    volunteerPage.getByTestId('availability-check-card'),
-  ).toHaveCount(1);
-  await volunteerPage.getByTestId('availability-check-card').click();
+  const cleanVolunteerCard = volunteerPage
+    .getByTestId('availability-check-card')
+    .filter({ hasText: cycleName })
+    .filter({ hasText: 'E2E Worship' });
+  await expect(cleanVolunteerCard).toHaveCount(1);
+  await cleanVolunteerCard.click();
   await expect(
     volunteerPage.getByTestId('availability-check-detail'),
   ).toBeVisible();
@@ -359,8 +377,8 @@ test('volunteer in two ministries confirms an overlapping check when overlap-sav
     'VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE cannot be toggled from this Playwright suite yet: Unleash is unreachable from the local E2E stack, so apps/server/src/infrastructure/services/unleash-feature-flag-service.ts silently resolves every flag to false and there is no per-test override for the real server process (the deterministic stub in apps/server/src/test-support/feature-flag-service-stub.ts only backs L1/L2 tests). Flip this to a real assertion once E2E gains a way to force the flag on for the server under test.',
   );
 
-  await setUpTwoMinistryOverlapCycle({ page });
-  await openWorshipCheckAndMarkOneShiftUnavailable({ page });
+  const { cycleName } = await setUpTwoMinistryOverlapCycle({ page });
+  await openWorshipCheckAndMarkOneShiftUnavailable({ page, cycleName });
 
   const confirmResponsePromise = page.waitForResponse(
     (response) =>

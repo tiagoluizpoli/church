@@ -842,6 +842,7 @@ function ParticipationEventCard({
                 participationId: eventView.participation.id,
               }}
               className="inline-flex h-9 items-center justify-center border px-3 text-sm"
+              data-testid={`open-roster-link-${eventView.participation.id}`}
             >
               Open roster
             </Link>

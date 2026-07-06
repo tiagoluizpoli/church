@@ -485,7 +485,7 @@ function RosterBuilderPage() {
                                     <Button
                                       type="button"
                                       size="sm"
-                                      data-testid="assign-volunteer-button"
+                                      data-testid={`assign-${requirement.id}-${volunteer.volunteerId}`}
                                       disabled={assignMutation.isPending}
                                       onClick={() => {
                                         const needsOverride =

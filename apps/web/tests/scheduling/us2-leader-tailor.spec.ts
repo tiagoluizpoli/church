@@ -153,6 +153,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   );
   expect(lockResponse.ok()).toBeTruthy();
 
+  await page.goto('/scheduling/tailoring');
   await page
     .getByTestId('tailoring-ministry-select')
     .selectOption(ministryId || '');

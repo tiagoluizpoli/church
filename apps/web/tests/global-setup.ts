@@ -35,6 +35,10 @@ export const SUB_LEADER_STORAGE_STATE = path.resolve(
   dirname,
   '.auth/sub-leader.json',
 );
+export const CHURCH_B_ADMIN_STORAGE_STATE = path.resolve(
+  dirname,
+  '.auth/church-b-admin.json',
+);
 export const E2E_AUTH_META = path.resolve(dirname, '.auth/e2e-users.json');
 
 const LEADER_BASE = {
@@ -52,6 +56,13 @@ const VOLUNTEER_BASE = {
   name: 'E2E Volunteer',
 };
 
+// Distinct tenant's admin, used only by the cross-cutting church-isolation
+// spec (DL4-X1) — never referenced by the five per-story specs.
+const CHURCH_B_ADMIN_BASE = {
+  password: 'e2e-Password-321',
+  name: 'E2E ChurchB Admin',
+};
+
 const AUTH_RESPONSE_SCHEMA = z.object({
   user: z.object({ id: z.string().min(1) }),
 });
@@ -60,6 +71,7 @@ export const E2E_AUTH_META_SCHEMA = z.object({
   leaderUserId: z.string().min(1),
   subLeaderUserId: z.string().min(1),
   volunteerUserId: z.string().min(1),
+  churchBAdminUserId: z.string().min(1),
 });
 
 function makeUniqueEmail(label: string): string {
@@ -86,6 +98,7 @@ export default async function globalSetup(): Promise<void> {
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const subLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const volunteerCtx = await request.newContext({ baseURL: SERVER_URL });
+  const churchBAdminCtx = await request.newContext({ baseURL: SERVER_URL });
   const leaderCreds = {
     ...LEADER_BASE,
     email: makeUniqueEmail('e2e-leader'),
@@ -98,12 +111,18 @@ export default async function globalSetup(): Promise<void> {
     ...VOLUNTEER_BASE,
     email: makeUniqueEmail('e2e-volunteer'),
   };
+  const churchBAdminCreds = {
+    ...CHURCH_B_ADMIN_BASE,
+    email: makeUniqueEmail('e2e-churchb-admin'),
+  };
 
-  const [leaderId, subLeaderId, volunteerId] = await Promise.all([
-    authUser(leaderCtx, leaderCreds),
-    authUser(subLeaderCtx, subLeaderCreds),
-    authUser(volunteerCtx, volunteerCreds),
-  ]);
+  const [leaderId, subLeaderId, volunteerId, churchBAdminId] =
+    await Promise.all([
+      authUser(leaderCtx, leaderCreds),
+      authUser(subLeaderCtx, subLeaderCreds),
+      authUser(volunteerCtx, volunteerCreds),
+      authUser(churchBAdminCtx, churchBAdminCreds),
+    ]);
 
   execFileSync(
     'bun',
@@ -114,6 +133,7 @@ export default async function globalSetup(): Promise<void> {
       `--leader-user-id=${leaderId}`,
       `--sub-leader-user-id=${subLeaderId}`,
       `--volunteer-user-id=${volunteerId}`,
+      `--church-b-admin-user-id=${churchBAdminId}`,
     ],
     { cwd: SERVER_DIR, stdio: 'inherit' },
   );
@@ -126,6 +146,7 @@ export default async function globalSetup(): Promise<void> {
         leaderUserId: leaderId,
         subLeaderUserId: subLeaderId,
         volunteerUserId: volunteerId,
+        churchBAdminUserId: churchBAdminId,
       }),
     ),
   );
@@ -135,11 +156,13 @@ export default async function globalSetup(): Promise<void> {
     leaderCtx.storageState({ path: LEADER_STORAGE_STATE }),
     subLeaderCtx.storageState({ path: SUB_LEADER_STORAGE_STATE }),
     volunteerCtx.storageState({ path: VOLUNTEER_STORAGE_STATE }),
+    churchBAdminCtx.storageState({ path: CHURCH_B_ADMIN_STORAGE_STATE }),
   ]);
 
   await Promise.all([
     leaderCtx.dispose(),
     subLeaderCtx.dispose(),
     volunteerCtx.dispose(),
+    churchBAdminCtx.dispose(),
   ]);
 }

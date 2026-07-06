@@ -64,6 +64,8 @@ export function TemplateBlockRow({
           <Input
             data-testid="template-block-start-time-input"
             type="time"
+            step={60}
+            lang="pt-BR"
             value={block.startTime}
             onChange={(event) =>
               onBlockChange({
@@ -79,6 +81,8 @@ export function TemplateBlockRow({
           <Input
             data-testid="template-block-end-time-input"
             type="time"
+            step={60}
+            lang="pt-BR"
             value={block.endTime}
             onChange={(event) =>
               onBlockChange({

@@ -26,6 +26,10 @@ export default function globalTeardown(): void {
     if (meta.volunteerUserId) {
       args.push(`--volunteer-user-id=${meta.volunteerUserId}`);
     }
+
+    if (meta.churchBAdminUserId) {
+      args.push(`--church-b-admin-user-id=${meta.churchBAdminUserId}`);
+    }
   }
 
   execFileSync('bun', args, {

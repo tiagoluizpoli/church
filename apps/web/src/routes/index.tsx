@@ -1,33 +1,75 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { EventList } from '@/features/scheduling/components/event-list';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@church/ui/components/card';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { CalendarClock, Clock, LayoutDashboard } from 'lucide-react';
+import type * as React from 'react';
+import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
 export const Route = createFileRoute('/')({
   component: HomeComponent,
 });
 
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
+interface LandingCard {
+  label: string;
+  to: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
 
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
+const BASE_LANDING_CARDS: LandingCard[] = [
+  {
+    label: 'Dashboard',
+    to: '/dashboard',
+    description: 'Your upcoming assignments and availability at a glance.',
+    icon: LayoutDashboard,
+  },
+  {
+    label: 'Availability',
+    to: '/availability',
+    description: 'Let leaders know when you can and cannot serve.',
+    icon: Clock,
+  },
+];
+
+const SCHEDULING_LANDING_CARD: LandingCard = {
+  label: 'Scheduling',
+  to: '/scheduling',
+  description: 'Plan cycles, build rosters, and publish assignments.',
+  icon: CalendarClock,
+};
 
 function HomeComponent() {
+  const { canSeeScheduling } = useCallerRoles();
+  const cards = canSeeScheduling
+    ? [...BASE_LANDING_CARDS, SCHEDULING_LANDING_CARD]
+    : BASE_LANDING_CARDS;
+
   return (
     <div className="container mx-auto max-w-3xl space-y-6 px-4 py-2">
-      <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-      <section>
-        <EventList />
-      </section>
+      <div>
+        <h1 className="font-bold text-2xl">Welcome back</h1>
+        <p className="text-muted-foreground">Pick up where you left off.</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {cards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Link key={card.to} to={card.to}>
+              <Card className="h-full transition-colors hover:bg-accent">
+                <CardHeader>
+                  <Icon className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>{card.label}</CardTitle>
+                  <CardDescription>{card.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

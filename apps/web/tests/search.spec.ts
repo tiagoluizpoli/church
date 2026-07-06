@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { VOLUNTEER_STORAGE_STATE } from './global-setup';
 
 test.describe('Global Search Command Palette', () => {
+  test.use({ storageState: VOLUNTEER_STORAGE_STATE });
+
   test('should open command palette on keyboard shortcut, filter items, and navigate', async ({
     page,
   }) => {
@@ -17,14 +20,14 @@ test.describe('Global Search Command Palette', () => {
     await expect(input).toBeFocused();
 
     // 2. Type search query to filter
-    await input.fill('shifts');
+    await input.fill('dashboard');
 
-    const resultLink = page.getByRole('link', { name: 'Go to Shifts' });
+    const resultLink = page.getByRole('link', { name: 'Go to Dashboard' });
     await expect(resultLink).toBeVisible();
 
     // 3. Click search result and verify navigation
     await resultLink.click();
-    await expect(page).toHaveURL(/\/shifts/);
+    await expect(page).toHaveURL(/\/dashboard/);
     await expect(palette).not.toBeVisible();
 
     // 4. Open again and test escape key closing

@@ -1,21 +1,17 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Bell,
-  Calendar,
   CalendarClock,
-  CheckSquare,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Home,
   LayoutDashboard,
   Menu,
   Search,
-  User,
 } from 'lucide-react';
 import * as React from 'react';
 import { TimezoneToggle } from '../shared/components/timezone-toggle';
+import { useCallerRoles } from '../shared/hooks/use-caller-roles';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
@@ -31,28 +27,26 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const desktopNavItems: NavItem[] = [
-  { label: 'Home', to: '/', icon: Home },
+const BASE_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Shifts', to: '/shifts', icon: Calendar },
-  { label: 'Scheduling', to: '/scheduling', icon: CalendarClock },
-  { label: 'Alerts', to: '/alerts', icon: Bell },
   { label: 'Availability', to: '/availability', icon: Clock },
-  { label: 'Todos', to: '/todos', icon: CheckSquare },
 ];
 
-const mobileCoreNavItems: NavItem[] = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Shifts', to: '/shifts', icon: Calendar },
-  { label: 'Alerts', to: '/alerts', icon: Bell },
-  { label: 'Profile', to: '/profile', icon: User },
-];
+const SCHEDULING_NAV_ITEM: NavItem = {
+  label: 'Scheduling',
+  to: '/scheduling',
+  icon: CalendarClock,
+};
 
 export function AppShell({ children }: AppShellProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
   const location = useLocation();
+  const { canSeeScheduling } = useCallerRoles();
+  const navItems: NavItem[] = canSeeScheduling
+    ? [...BASE_NAV_ITEMS, SCHEDULING_NAV_ITEM]
+    : BASE_NAV_ITEMS;
 
   // Listen for CTRL+K / CMD+K globally
   React.useEffect(() => {
@@ -95,6 +89,9 @@ export function AppShell({ children }: AppShellProps) {
         <span className="font-semibold text-lg tracking-tight">Church CRM</span>
 
         <div className="flex items-center gap-2">
+          {/* Reserved for US2's notification bell (T023) */}
+          <div data-testid="notification-bell-slot" />
+
           <button
             type="button"
             onClick={() => setIsPaletteOpen(true)}
@@ -147,7 +144,7 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Sidebar Nav */}
         <nav className="flex-1 space-y-1 px-2 py-4">
-          {desktopNavItems.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname === item.to;
             const Icon = item.icon;
             return (
@@ -226,6 +223,8 @@ export function AppShell({ children }: AppShellProps) {
             >
               <Search className="h-4 w-4" />
             </button>
+            {/* Reserved for US2's notification bell (T023) */}
+            <div data-testid="notification-bell-slot" />
             <TimezoneToggle />
             <ModeToggle />
             <UserMenu />
@@ -241,7 +240,7 @@ export function AppShell({ children }: AppShellProps) {
         data-testid="mobile-bottom-nav"
         className="fixed right-0 bottom-0 left-0 z-40 flex h-16 items-center justify-around border-border border-t bg-card px-2 md:hidden"
       >
-        {mobileCoreNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = location.pathname === item.to;
           const Icon = item.icon;
           return (
@@ -273,7 +272,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           <nav className="flex flex-col space-y-1">
-            {desktopNavItems.map((item) => {
+            {navItems.map((item) => {
               const isActive = location.pathname === item.to;
               const Icon = item.icon;
               return (

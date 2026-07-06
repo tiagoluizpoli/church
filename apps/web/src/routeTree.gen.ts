@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TodosRouteImport } from './routes/todos'
 import { Route as SchedulingRouteImport } from './routes/scheduling'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -22,11 +21,6 @@ import { Route as SchedulingPlanningRouteImport } from './routes/scheduling/plan
 import { Route as SchedulingEventsEventIdBuilderRouteImport } from './routes/scheduling/events/$eventId/builder'
 import { Route as SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport } from './routes/scheduling/rostering/$cycleId/$ministryId/$participationId'
 
-const TodosRoute = TodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SchedulingRoute = SchedulingRouteImport.update({
   id: '/scheduling',
   path: '/scheduling',
@@ -91,7 +85,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/scheduling': typeof SchedulingRouteWithChildren
-  '/todos': typeof TodosRoute
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -104,7 +97,6 @@ export interface FileRoutesByTo {
   '/availability': typeof AvailabilityRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/todos': typeof TodosRoute
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -119,7 +111,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/scheduling': typeof SchedulingRouteWithChildren
-  '/todos': typeof TodosRoute
   '/scheduling/planning': typeof SchedulingPlanningRoute
   '/scheduling/tailoring': typeof SchedulingTailoringRoute
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -135,7 +126,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/scheduling'
-    | '/todos'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -148,7 +138,6 @@ export interface FileRouteTypes {
     | '/availability'
     | '/dashboard'
     | '/login'
-    | '/todos'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -162,7 +151,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/scheduling'
-    | '/todos'
     | '/scheduling/planning'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -177,19 +165,11 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   SchedulingRoute: typeof SchedulingRouteWithChildren
-  TodosRoute: typeof TodosRoute
   VolunteerAvailabilityRoute: typeof VolunteerAvailabilityRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/todos': {
-      id: '/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof TodosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/scheduling': {
       id: '/scheduling'
       path: '/scheduling'
@@ -297,7 +277,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   SchedulingRoute: SchedulingRouteWithChildren,
-  TodosRoute: TodosRoute,
   VolunteerAvailabilityRoute: VolunteerAvailabilityRoute,
 }
 export const routeTree = rootRouteImport

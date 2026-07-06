@@ -1,18 +1,14 @@
 import { Link } from '@tanstack/react-router';
 import {
-  Bell,
-  Calendar,
-  CheckSquare,
+  CalendarClock,
   Clock,
   Home,
   LayoutDashboard,
   Search,
-  Settings,
-  User,
-  Users,
 } from 'lucide-react';
 import * as React from 'react';
 import { MobileDrawer } from './mobile-drawer';
+import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
 export interface CommandPaletteProps {
   open: boolean;
@@ -25,22 +21,26 @@ interface CommandItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const commands: CommandItem[] = [
+const BASE_COMMANDS: CommandItem[] = [
   { label: 'Home', to: '/', icon: Home },
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Shifts', to: '/shifts', icon: Calendar },
-  { label: 'Alerts', to: '/alerts', icon: Bell },
   { label: 'Availability', to: '/availability', icon: Clock },
-  { label: 'Todos', to: '/todos', icon: CheckSquare },
-  { label: 'Profile', to: '/profile', icon: User },
-  { label: 'Volunteers', to: '/volunteers', icon: Users },
-  { label: 'Settings', to: '/settings', icon: Settings },
 ];
+
+const SCHEDULING_COMMAND: CommandItem = {
+  label: 'Scheduling',
+  to: '/scheduling',
+  icon: CalendarClock,
+};
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [isMobile, setIsMobile] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const { canSeeScheduling } = useCallerRoles();
+  const commands: CommandItem[] = canSeeScheduling
+    ? [...BASE_COMMANDS, SCHEDULING_COMMAND]
+    : BASE_COMMANDS;
 
   // Check viewport responsiveness
   React.useEffect(() => {

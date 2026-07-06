@@ -1,8 +1,14 @@
 import { expect, test } from '@playwright/test';
+import { VOLUNTEER_STORAGE_STATE } from './global-setup';
+
+// Routes that actually exist for a Volunteer-only caller post-redesign
+// (FR-001) — anything else in the bottom nav or drawer is a dead link.
+const VOLUNTEER_ALLOWED_HREFS = ['/dashboard', '/availability'];
 
 test.describe('Mobile Responsive Navigation', () => {
   // Enforce mobile viewport
   test.use({ viewport: { width: 390, height: 800 } });
+  test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
   test('should display mobile shell, check touch targets, and trigger drawer', async ({
     page,
@@ -20,10 +26,16 @@ test.describe('Mobile Responsive Navigation', () => {
     await expect(topHeader).toBeVisible();
     await expect(drawerTrigger).toBeVisible();
 
-    // 2. Check touch targets on bottom nav links
+    // 2. Role-scoped nav: a Volunteer sees exactly Dashboard + Availability,
+    // and every bottom-nav link targets a route that actually exists.
     const navLinks = page.locator('[data-testid="mobile-bottom-nav"] a');
     const count = await navLinks.count();
-    expect(count).toBeGreaterThanOrEqual(4); // Dashboard, Shifts, Alerts, Profile
+    await expect(navLinks).toHaveText(['Dashboard', 'Availability']);
+
+    for (let i = 0; i < count; i++) {
+      const href = await navLinks.nth(i).getAttribute('href');
+      expect(VOLUNTEER_ALLOWED_HREFS).toContain(href);
+    }
 
     for (let i = 0; i < count; i++) {
       const box = await navLinks.nth(i).boundingBox();
@@ -44,6 +56,10 @@ test.describe('Mobile Responsive Navigation', () => {
     // Check touch target of a link inside the drawer
     const drawerLinks = page.locator('[data-testid="mobile-drawer-content"] a');
     const drawerLinkCount = await drawerLinks.count();
+    for (let i = 0; i < drawerLinkCount; i++) {
+      const href = await drawerLinks.nth(i).getAttribute('href');
+      expect(VOLUNTEER_ALLOWED_HREFS).toContain(href);
+    }
     if (drawerLinkCount > 0) {
       const firstLinkBox = await drawerLinks.first().boundingBox();
       expect(firstLinkBox).not.toBeNull();

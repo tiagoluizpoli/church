@@ -23,8 +23,9 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 | BL-011 | Centralize repeated controller auth preValidation | Backend Architecture | Backlog |
 | BL-012 | Add OpenAPI `summary` and `description` metadata across controller routes | API Documentation | Backlog |
 | BL-013 | Split controllers/routes by domain instead of by caller-role ("admin") | Backend Architecture | Backlog |
-| BL-014 | Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow, visual theme | Frontend UX/IA | Backlog — needs a grilling session before any implementation |
+| BL-014 | Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow, visual theme | Frontend UX/IA | **Implemented — see `specs/018-churchwide-ux-redesign`** (51/56 tasks done as of 2026-07-07; remaining are final polish/regression tasks) |
 | BL-015 | Option for 24-hour time format for time inputs and display | Frontend UX/IA | Backlog |
+| BL-016 | Day/event-level forced-override editing on locked planning cycles, with leader-ack gate and scoped volunteer notification | Scheduling / Planning | Backlog — already grilled, ready for `/speckit-specify` |
 
 ---
 
@@ -600,7 +601,7 @@ Confirmed directly in `apps/server/src/api/controllers/admin-leader-controller.t
 
 ### BL-014 — Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow, visual theme
 
-**Status**: Backlog — **do not start implementation from this entry alone.** This needs a dedicated grilling/design session first (see "Recommended direction" below). Captured now, verbatim in intent, so the context isn't lost — not to be actioned piecemeal.
+**Status**: **Implemented — see `specs/018-churchwide-ux-redesign`.** The grilling session this entry called for happened (`.plan/grilling/2026-07-06-bl014-churchwide-ux-redesign.md`) and produced spec 018, which is 51/56 tasks complete as of 2026-07-07 (remaining tasks are final polish/regression/full-suite verification, not new scope). A second, later grilling session (`.plan/grilling/2026-07-07-planning-cycle-lock-unlock-and-nav.md`) added further planning-cycle-screen refinements folded into 018 as an amendment (nav restructure, chip dedup — see spec.md's 2026-07-07 Amendment note) plus a related but separately-tracked new feature (see BL-016). This entry's original text is left below verbatim for historical context; treat the Status line as authoritative over the "Backlog" framing in the rest of this entry.
 
 **Feature area**: Frontend UX/IA (cross-cutting — touches navigation, volunteer dashboard, notifications, scheduling, and the design system)
 
@@ -684,4 +685,44 @@ This was raised as a single holistic concern, not a checklist — the request wa
 1. A user can toggle between 12-hour (AM/PM) and 24-hour formats.
 2. When 24-hour format is active, all displayed times (e.g., in scheduling views, volunteer dashboards) format as `HH:MM`.
 3. When 24-hour format is active, time inputs accept and display time in 24-hour format without requiring AM/PM input.
+
+---
+
+### BL-016 — Day/event-level forced-override editing on locked planning cycles, with leader-ack gate and scoped volunteer notification
+
+**Status**: Backlog — **already grilled, ready for `/speckit-specify`.** Unlike most entries in this file, this one does not need a dedicated grilling session before implementation — that session already happened (see below). Captured here so it has a tracked ID distinct from BL-014/018, since it introduces a new domain entity and backend surface that spec 018 explicitly disclaims.
+
+**Feature area**: Scheduling / Planning (admin + leader-facing)
+
+**Summary**: Once a planning cycle is locked, none of its generated events can be edited or cancelled today — `updateEvent()`/`cancelEvent()` (`apps/server/src/application/db-planning-event-manager.ts`) hard-throw `IllegalStateTransitionError` for any `scheduled` event while the cycle is `locked`. Real-world testing surfaced the need for an admin to occasionally force through a change on an already-staffed day (e.g., a specific Sunday's last of three services moving one hour later) — discouraged by default, but ultimately the admin's call, with the leader checking the change is still workable before affected volunteers are told.
+
+**Full Context**:
+
+This was originally raised as "let admins unlock a locked cycle." Grilled twice in one session (`.plan/grilling/2026-07-07-planning-cycle-lock-unlock-and-nav.md`): the first pass landed on a cycle-level "soft unlock," but cross-checking against `specs/018-churchwide-ux-redesign` surfaced that 018's already-shipped `PlanningStep`/`locked-review` read-only state and its "no new domain entities" Constitution gate would both be broken by that design. The user then pivoted to a narrower, day/event-level mechanism instead — smaller blast radius, and (checked directly against the code) actually avoids both conflicts: it doesn't touch `PlanningCycle.state` or `PlanningStep` at all, and the leader-facing side can reuse the existing `VolunteerNotification` entity (leaders are just `MinistryVolunteer` records with a real `VolunteerId`) rather than inventing a new "leader notification" concept.
+
+**Decisions from grilling** (full reasoning trail and options considered are in the grilling session file's Answered Questions; summarized here):
+
+1. **Scope**: admins may edit a locked/staffed event/day's time (start/end; shifts follow) or cancel it outright. No shift/headcount restructuring — that would force re-running staffing/generation logic against an already-staffed event, out of scope for this pass.
+2. **Mechanism**: `Event.status`'s existing state machine stays untouched. A new, small acknowledgment record (`eventId`, changed-fields snapshot, `leaderId`, `acknowledgedAt`) gates the downstream volunteer notification; the edit itself applies immediately once the admin forces past the confirm dialog. This is the one genuinely new domain concept this feature needs.
+3. **Friction**: a plain confirm dialog ("already staffed — editing will notify the leader for review before volunteers are told. Continue?"). No typed confirmation.
+4. **Notification scope**: shift-level, not event-level or ministry-wide. Only volunteers with an active assignment on the specific `Shift`(s) whose time actually changed, and only leaders of ministries participating in those shifts, are ever in scope — matches the user's own worked example (3 same-day services, only the last one's time changes → only that service's people are told).
+5. **Leader-ack gate**: hard gate. The "notify affected volunteers" action stays disabled until that specific leader acknowledges that specific change. Acknowledge and notify are two distinct leader-side actions (not one combined button) — the leader can acknowledge, then separately decide when to actually notify.
+6. **Cancel reuses the identical pipeline** as a time-edit (same confirm dialog, same leader-ack gate, same shift-scoped notify) — one mechanism for both, not a bespoke cancel-only path.
+
+**Open tensions** (not yet resolved, flag before/during implementation):
+- What happens if a leader never acknowledges a forced edit — no reminder cadence, escalation, or timeout was specified. Left as an implementation default (the notify action simply stays unavailable indefinitely) unless a future spec pins this down.
+- Whether the acknowledgment record doubles as this feature's full audit trail, or whether a separate explicit audit surface is still wanted, was settled in favor of the former (see grilling session's Q-day-edit-mechanism) but is worth a sanity-check once the data model is drafted.
+
+**Why deferred from spec 018**: 018 explicitly declares "no new domain entities... no schema or persistence changes" as a Constitution gate (Principle I/II) — this feature's acknowledgment record and new server-side override paths would violate that gate if folded in. It needs to be its own spec-kit spec.
+
+**Prerequisites**: None blocking implementation directly — the grilling session already resolved the design questions. Should still traverse `CONTEXT.md`, `specs/017-scheduling-reshape/spec.md`, and `specs/018-churchwide-ux-redesign/spec.md` (per Constitution Principle VI, Maximum Context Specification) before writing the new spec, since this feature sits directly adjacent to both.
+
+**Suggested approach when implementing**: Run `/speckit-specify` using `.plan/handoffs/grill-to-prd-planning-cycle-lock-unlock-and-nav.md` and `.plan/grilling/2026-07-07-planning-cycle-lock-unlock-and-nav.md` as input — both already contain the full resolved decision set, so this should not need a fresh grilling session, only spec-kit's usual plan/tasks generation on top of already-settled decisions.
+
+**Success criteria** (provisional, to be refined when the spec is written):
+1. An admin can edit the time of, or cancel, a specific already-scheduled event/day on a locked cycle, gated behind an explicit confirm step.
+2. The event's assigned leader(s) — scoped to the specific `Shift`(s) affected — receive an acknowledgment prompt before any volunteer is notified.
+3. Once acknowledged, the leader can trigger a notification reaching only the volunteers actually assigned to the affected `Shift`(s) — not the whole event, not the whole ministry.
+4. Cancelling a locked day follows the identical confirm → ack → scoped-notify pipeline as a time-edit.
+5. `specs/017-scheduling-reshape/test-plan.md`'s DL2/DL3/DL4 scenarios and `specs/018-churchwide-ux-redesign`'s SC-001–SC-008 continue to pass — this feature must not regress either prior spec's coverage.
 

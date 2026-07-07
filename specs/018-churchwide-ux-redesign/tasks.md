@@ -14,10 +14,12 @@ description: "Task list for Church-wide UX/IA Redesign (018)"
 
 **Revision note (2026-07-06, post `/speckit-analyze`)**: Three findings from analysis are folded in here: (1) notification pagination (FR-007) needs a backend contract test plus two small backend implementation tasks (T017-T019 below) that the original draft omitted — the domain layer already supports cursor pagination, but the HTTP route never reads a querystring, has zero existing test coverage, and the generated client is stale (`research.md` R3, corrected); (2) an explicit task now exists for repurposing `notifications-inbox-section.tsx` into a dual-mode shared renderer (T021), which the original draft referenced from other tasks without ever actually scheduling it. All task IDs from T017 onward are renumbered accordingly relative to the pre-analysis draft.
 
+**Amendment note (2026-07-07)**: Phase 8 (T056-T063) is new, added after a second grilling session surfaced further planning-cycle-screen fixes (FR-015-FR-019: route-level role guards, `planning-cycles`/`builder-events` naming, promoting `planning-admin.tsx`'s internal view-state to URL segments, and header chip dedup) that fit this spec's existing frontend-only boundary. Phase 8's original scope claim ("nested routes don't exist yet") was corrected during `/speckit-plan` — `research.md` R6 — after checking the actual route files: 3 of the 3 routes already existed; the real gap was role guards + naming + internal-state-to-URL promotion, not routing from scratch. Phase 9 (T064-T068) was added on a `/speckit-tasks` re-run (context: `/test-master`, `/impeccable harden`) to close permission/edge-case gaps Phase 8's own tests don't cover and to schedule a hardening pass once Phase 8 ships. A third fix from the same grilling session — day/event-level forced-override editing with a leader-ack gate — needs a new domain entity and is deliberately **excluded** from this spec (see `spec.md`'s 2026-07-07 Amendment note); it is tracked as a future spec + backlog entry (BL-016) instead.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
-- **[Story]**: US1 / US2 / US3 / US4
+- **[Story]**: US1 / US2 / US3 / US4 / P8 (Phase 8, the 2026-07-07 nav-restructure + chip-dedup amendment) / P9 (Phase 9, hardening + exhaustive-coverage pass on Phase 8) — P8/P9 aren't numbered user stories in `spec.md`, but follow the same tests-then-implementation convention
 - All paths are relative to `apps/web/` unless stated otherwise (backend tasks are marked `apps/server/`)
 
 ---
@@ -169,6 +171,48 @@ description: "Task list for Church-wide UX/IA Redesign (018)"
 
 ---
 
+## Phase 8: Nav Restructure & Chip Dedup (amendment 2026-07-07, FR-015–FR-019)
+
+**Goal**: `/scheduling/planning`, `/scheduling/tailoring`, and the bare `/scheduling` index (labeled "Builder events") — already 3 distinct, real routes today (`research.md` R6) — get route-level role guards, `/scheduling/planning` is renamed `/scheduling/planning-cycles`, "Builder events" gets its own `/scheduling/builder-events` path, and `planning-cycles`'s internal `activeView`/`selectedCycleId` component state is promoted to URL segments. The ambiguous same-route button row is replaced by breadcrumb-style navigation. The planning-cycle header splits into a name+status chip and a separate period chip, with the status badge removed from `Selected cycle review` and `Calendar review`.
+
+**Source**: `.plan/grilling/2026-07-07-planning-cycle-lock-unlock-and-nav.md` (Q-scheduling-nav-parent, Q-nav-url-granularity, Q-status-chip-dedup), corrected during `/speckit-plan` per `research.md` R6, handoff at `.plan/handoffs/grill-to-prd-planning-cycle-lock-unlock-and-nav.md`.
+
+**Independent Test**: As a ChurchAdmin, confirm `/scheduling/planning-cycles`, `/scheduling/planning-cycles/new`, and `/scheduling/planning-cycles/:cycleId` each resolve to distinct URLs with working back/forward; confirm a Leader/Sub-leader can reach `/scheduling/tailoring` and `/scheduling/builder-events` directly, and a non-ChurchAdmin hitting `/scheduling/planning-cycles` by URL is redirected/denied at the route level (before render, not after a query round-trips); confirm a locked cycle's header shows exactly one status badge, with the date range as a separate chip, and no status badge anywhere else on the screen. Independent of Phases 3–7 (same surface as Phase 6, but does not require re-touching that phase's step-sequence logic).
+
+### Tests for Phase 8 (write first, confirm red)
+
+- [ ] T056 [P] New E2E: `apps/web/tests/scheduling/planning-nav-restructure.spec.ts` — as ChurchAdmin, confirm `/scheduling/planning-cycles`, `/scheduling/planning-cycles/new`, `/scheduling/planning-cycles/:cycleId` are distinct URLs, browser back/forward retraces them correctly, and opening the template library from a selected cycle also changes the URL (today it's `activeView` state only) (FR-015, FR-016, SC-007).
+- [ ] T057 [P] New E2E: `apps/web/tests/scheduling/planning-role-guards.spec.ts` — a Leader/Sub-leader can load `/scheduling/tailoring` and `/scheduling/builder-events` directly; a non-ChurchAdmin hitting `/scheduling/planning-cycles` by URL is redirected/denied at `beforeLoad`, before the page renders (not just after `use-planning-admin.ts`'s existing reactive `isAccessDenied` resolves); a ChurchAdmin can load `/scheduling/planning-cycles` (FR-015).
+- [ ] T058 [P] New component test: `src/features/scheduling/components/planning-admin/planning-cycle-header.component.test.tsx` (or wherever the header chip cluster lives) — asserts the name+status chip and the period chip are two separate elements, and that `Selected cycle review`/`Calendar review` render no status badge of their own (FR-018, FR-019, SC-008).
+
+### Implementation for Phase 8
+
+- [ ] T059 [P8] Rename `apps/web/src/routes/scheduling/planning.tsx` → `apps/web/src/routes/scheduling/planning-cycles.tsx` (update `createFileRoute` path and `scheduling-nav.tsx`'s `NAV_ITEMS` entry to match); add `apps/web/src/routes/scheduling/builder-events.tsx` (today's `EventList`/`SchedulingNav` content currently rendered by the bare `/scheduling` index — move it here and have `/scheduling` redirect to `/scheduling/builder-events`, or keep `/scheduling` as an alias). Add dynamic child segments under `planning-cycles/` for `new` and `$cycleId` (TanStack Router file-based nested/dynamic routes) so `PlanningAdmin`'s `activeView`/`selectedCycleId` state can be driven from the URL instead of `useState`. Makes T056 pass.
+- [ ] T060 [P8] Add a `beforeLoad` role guard to `planning-cycles.tsx` (ChurchAdmin only) and to `tailoring.tsx`/`builder-events.tsx` (Leader or Sub-leader), redirecting/denying before render — same role-check precedent `use-planning-admin.ts` already uses reactively (`isForbiddenError` on the cycles/templates queries, per `research.md` R1/R6), just enforced at the route level instead of after a query round-trip. Makes T057 pass.
+- [ ] T061 [P8] Replace the "Back to cycles / Template library / Create cycle" button row (`planning-admin.tsx` lines ~175-247) with breadcrumb-style navigation driven by the new URL segments from T059, keeping "Create cycle" as a distinct primary action button. Makes T056 pass (navigation now reads unambiguously and matches the new URLs).
+- [ ] T062 [P8] Split the header chip cluster into a `<name> [status badge]` chip and a separate period chip (`planning-admin.utils.ts`/`planning-admin-context.tsx` or the header component itself); remove the status badge from `CycleReviewCard`/`Selected cycle review` and from the `Calendar review` section (`planning-admin.utils.ts:194`, `:252`, `planning-admin-context.tsx:60` are the current 3 branch points to consolidate). Makes T058 pass.
+- [ ] T063 [P8] [P] Run `bun run check-types && bunx biome check .` on all files touched in this phase; fix violations. Full suite green: `bun run test` and `apps/web/tests/scheduling/*.spec.ts` (including the new T056/T057 files, plus a re-run of the existing `us1-admin-plan.spec.ts` and any other spec referencing `/scheduling/planning` by its old path).
+
+**Checkpoint**: Nav restructure and chip dedup complete — planning-cycle screen navigation is URL-addressable and role-gated at the route level; status display is single-source-of-truth.
+
+---
+
+## Phase 9: Hardening & Exhaustive Coverage (test-master + `/impeccable harden`, added on `/speckit-tasks` re-run)
+
+**Goal**: Close permission/edge-case gaps Phase 8's tests don't yet cover (test-master lens: exhaustive path coverage, not just the happy path), then run a targeted `/impeccable harden` pass on the new/changed screens once Phase 8 lands.
+
+**Note on scope**: Whether ChurchAdmin should also see `/scheduling/tailoring`/`/scheduling/builder-events` is an explicitly open, unresolved item (see `spec.md`'s Assumptions). This phase does **not** invent an answer; T065's negative matrix only asserts what's actually decided (denial for a plain Volunteer), and ChurchAdmin's status on the two leader routes stays untested until that's resolved.
+
+- [ ] T064 [P] [P9] New E2E: `apps/web/tests/scheduling/planning-cross-tenant-isolation.spec.ts` — a ChurchAdmin from Church A requests `/scheduling/planning-cycles/:cycleId` using a `cycleId` belonging to Church B; confirm denial/404, not the other church's cycle data (test-master: catastrophic-failure coverage for the new `$cycleId` dynamic segment from T059 — cross-tenant leaks are the highest-severity failure mode a URL-addressable resource can have).
+- [ ] T065 [P] [P9] New E2E: `apps/web/tests/scheduling/planning-role-guard-matrix.spec.ts` — a Volunteer-only user (no Leader/Sub-leader/ChurchAdmin capacity) is denied at **all 3** of `/scheduling/planning-cycles`, `/scheduling/tailoring`, `/scheduling/builder-events` (T057 only covered the admin route; this closes the matrix for the other two, per test-master's exhaustive-permission-coverage standard).
+- [ ] T066 [P] [P9] New component test: extend `planning-cycle-header.component.test.tsx` (T058) with the `create-cycle` `PlanningStep` case (no cycle selected yet) — confirm the header renders no stale/placeholder status chip when there's nothing to show status for (edge case T058 didn't originally cover: chip-split assumed a selected cycle).
+- [ ] T067 [P] [P9] New a11y test: extend `apps/web/tests/scheduling/a11y-builder.spec.ts`'s pattern (or a new `a11y-planning-nav.spec.ts`) to the new breadcrumb component from T061 — confirm correct `aria-current`/landmark semantics, consistent with this repo's existing a11y bar (same standard T045 already established for the builder's role badge).
+- [ ] T068 [P9] Run `/impeccable harden` against the rendered `/scheduling/planning-cycles`, `/scheduling/tailoring`, and `/scheduling/builder-events` screens once T059-T063 are implemented and green — a targeted hardening pass (error/loading/empty states, focus management across the new route transitions), sequenced *after* implementation per this spec's own established precedent (`research.md` R5: polish/harden runs once screens are stable, not before or in parallel).
+
+**Checkpoint**: Phase 8's permission/edge-case coverage is exhaustive (not just happy-path), and the new screens have had a dedicated hardening pass.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -180,6 +224,8 @@ description: "Task list for Church-wide UX/IA Redesign (018)"
 - **US3 (Phase 5)**: Depends on US2's removal of the dashboard notifications section (T025) — the tab set is the 3 sections that remain afterward.
 - **US4 (Phase 6)**: Independent of US1–US3 (different surface); only soft-overlaps with US1's home-page cleanup (T010), which already removed `EventList` from `/` — US4 does not re-touch `/`.
 - **Polish (Phase 7)**: Depends on all four stories being complete.
+- **Nav Restructure & Chip Dedup (Phase 8)**: Depends on US4/Phase 6 being complete (same surface — `planning-admin.tsx`, `PlanningStep`); independent of Phases 3, 4, 5, 7 otherwise. T059 (route files) blocks T060 (role guards) and T061 (breadcrumb nav); T062 (chip split) is independent of T059-T061 — different files.
+- **Hardening (Phase 9)**: Depends on Phase 8 being complete (T059-T063) — T064-T067 test the routes/components Phase 8 creates; T068's `/impeccable harden` pass explicitly requires the screens to already be implemented and stable (`research.md` R5's sequencing precedent).
 
 ### Within Each User Story
 
@@ -195,6 +241,8 @@ description: "Task list for Church-wide UX/IA Redesign (018)"
 - T038, T040, T041, T043, T044 (US4 tests, different files) — parallel.
 - T017 → T018 → T019 → T020 (US2 backend-then-client chain) — sequential, NOT parallel.
 - T048 must complete before T049 (T049 reuses T048's component) — not parallel with each other.
+- T056, T057, T058 (Phase 8 tests, different files) — parallel.
+- T064, T065, T066, T067 (Phase 9 tests, different files) — parallel; T068 (`/impeccable harden`) is not parallel with them — it requires T059-T063 already implemented, and benefits from T064-T067's findings existing first.
 
 ---
 

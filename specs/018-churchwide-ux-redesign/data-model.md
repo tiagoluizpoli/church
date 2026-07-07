@@ -57,3 +57,14 @@ Presentational-only addition to the schedule builder's existing volunteer/assign
 | `fullNameOnExpand` | `string` | Full, untruncated name+role shown on hover/expand, in addition to the always-visible badge |
 
 No new domain concept — `roleLabel` is a direct, unmodified read of the existing `MinistrySystemRole` (`'leader' | 'sub_leader'`) already returned by the volunteer/membership data the builder consumes.
+
+## PlanningCycleHeaderModel *(added 2026-07-07 amendment)*
+
+Splits the previously-combined header chip (`<name> [status] <start> → <end>`) into two independently-rendered pieces (FR-018, FR-019). Derived, not persisted — reads the same `selectedCycle` data `PlanningStep` already consumes.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `nameAndStatus` | `{ name: string; status: PlanningCycleState }` | The name+status chip — this is now the **only** place cycle status renders anywhere on the screen |
+| `period` | `{ startDate: Date; endDate: Date }` | The separate date-range chip |
+
+`CycleReviewCard`/`Selected cycle review` and the `Calendar review` section stop rendering their own status badge entirely — they read cycle data for their own purposes but no longer duplicate `nameAndStatus.status` (`research.md`/grilling session Q-status-chip-dedup, option (a)).

@@ -26,6 +26,8 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 | BL-014 | Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow, visual theme | Frontend UX/IA | **Implemented — see `specs/018-churchwide-ux-redesign`** (51/56 tasks done as of 2026-07-07; remaining are final polish/regression tasks) |
 | BL-015 | Option for 24-hour time format for time inputs and display | Frontend UX/IA | Backlog |
 | BL-016 | Day/event-level forced-override editing on locked planning cycles, with leader-ack gate and scoped volunteer notification | Scheduling / Planning | Backlog — already grilled, ready for `/speckit-specify` |
+| BL-017 | `sub_leader` cannot be detected by any existing lightweight endpoint — nav visibility and route guards silently exclude sub-leaders | Backend Architecture / Auth | Backlog |
+| BL-018 | Native `<input type="date">` used instead of a shadcn date-picker component (e.g. `create-cycle-form.tsx`) | Frontend UX/IA | Backlog |
 
 ---
 
@@ -725,4 +727,32 @@ This was originally raised as "let admins unlock a locked cycle." Grilled twice 
 3. Once acknowledged, the leader can trigger a notification reaching only the volunteers actually assigned to the affected `Shift`(s) — not the whole event, not the whole ministry.
 4. Cancelling a locked day follows the identical confirm → ack → scoped-notify pipeline as a time-edit.
 5. `specs/017-scheduling-reshape/test-plan.md`'s DL2/DL3/DL4 scenarios and `specs/018-churchwide-ux-redesign`'s SC-001–SC-008 continue to pass — this feature must not regress either prior spec's coverage.
+
+---
+
+### BL-017 — `sub_leader` cannot be detected by any existing lightweight endpoint
+
+**Status**: Backlog
+
+**Feature area**: Backend Architecture / Auth (surfaced during `specs/018-churchwide-ux-redesign` Phase 8)
+
+**Summary**: There is no "my roles" endpoint (`research.md` R1 already documents this). Every role-based check in the frontend today — nav visibility (`use-caller-roles.ts`) and Phase 8's new `/scheduling/planning-cycles` route guard — works by piggybacking on an existing admin-scoped endpoint and checking whether it 403s. The one endpoint reused for this, `GET /admin/ministries` (`admin-leader-controller.ts`), only allows `ctx.isAdmin || ctx.isLeader` through; `ctx.isLeader` is computed from `listLedMinistries`, which filters `systemRole = 'leader'` only (`drizzle-volunteer.repository.ts:255`). A `sub_leader` membership never passes this check — it 403s exactly like a plain volunteer. Grepped all of `apps/server/src` for `sub_leader`: zero guard/route/manager references it anywhere outside the type union itself.
+
+**Concrete impact**: `use-caller-roles.ts`'s `canSeeScheduling` — despite the intent recorded in `data-model.md`'s `CallerNavVisibility` ("Leader, Sub-leader, or Church Admin capacity") — silently evaluates to `false` for a sub-leader-only caller. A sub-leader today does not see the "Scheduling" nav item at all, even though nothing currently stops them from reaching scheduling routes by typing the URL directly (no route guard existed pre-Phase-8). Phase 8's new `/scheduling/tailoring` and `/scheduling/builder-events` were deliberately left **without** a role guard (rather than reusing the buggy `listMinistries` check and making the exclusion worse) — see `specs/018-churchwide-ux-redesign/tasks.md` Phase 8/9 notes.
+
+**Why deferred**: Fixing this needs new backend surface (either a real "my roles" endpoint, or extending an existing guard to recognize `sub_leader` alongside `leader`), which spec 018's Phase 8 explicitly could not introduce (zero-new-backend-surface constraint, `plan.md`'s Constitution Check II).
+
+**Suggested approach when implementing**: Add a lightweight endpoint (or extend an existing cheap one) whose `preValidation` hook allows `ctx.isAdmin || ctx.isLeader || ctx.isSubLeader`, computing `isSubLeader` the same way `isLeader` is computed today (`listLedMinistries`-style query filtered on `systemRole = 'sub_leader'`). Then: (1) fix `use-caller-roles.ts` to use it so sub-leaders see the Scheduling nav item, and (2) add the previously-skipped role guard to `/scheduling/tailoring` and `/scheduling/builder-events` now that a real signal exists to gate on.
+
+---
+
+### BL-018 — Native `<input type="date">` instead of a shadcn date-picker component
+
+**Status**: Backlog
+
+**Feature area**: Frontend UX/IA (surfaced during `specs/018-churchwide-ux-redesign` Phase 8, `create-cycle-form.tsx`)
+
+**Summary**: `create-cycle-form.tsx`'s Start date/End date fields (and likely other date-taking forms across the app) use a plain `<Input type="date">`, rendering the browser's native date-picker UI instead of a proper shadcn `Popover` + `Calendar` component. This predates Phase 8 — it was not introduced or changed by that work, just reused as-is when the Create Cycle dialog was moved to its own `/scheduling/planning-cycles/new` route.
+
+**Suggested approach when implementing**: Add shadcn's `Calendar` + `Popover` components (`bunx shadcn@latest add calendar popover` from `packages/ui`, following the same precedent as `tabs`/`breadcrumb` in this same spec), build a shared date-field component, and sweep every form-level `type="date"` input across the app to use it — likely more than just `create-cycle-form.tsx`; a full grep for `type="date"` should scope the actual blast radius before starting.
 

@@ -9,7 +9,15 @@ import {
 import { formatCycleDate, stateBadgeVariant } from './planning-admin.utils';
 import { useCycleListCard } from './planning-admin-context';
 
-export function CycleListCard() {
+interface CycleListCardProps {
+  onSelectCycle?: () => void;
+  selectedCycleId?: string | null;
+}
+
+export function CycleListCard({
+  onSelectCycle,
+  selectedCycleId = null,
+}: CycleListCardProps) {
   const { cycles, cyclesLoading, handleSelectCycle } = useCycleListCard();
 
   return (
@@ -33,8 +41,15 @@ export function CycleListCard() {
               key={cycle.id}
               type="button"
               data-testid="planning-cycle-option"
-              className="surface-subtle workspace-panel w-full text-left transition-colors hover:bg-accent/60"
-              onClick={() => handleSelectCycle({ cycleId: cycle.id })}
+              className={`surface-subtle workspace-panel w-full text-left transition-colors hover:bg-accent/60 ${
+                selectedCycleId === cycle.id
+                  ? 'border-primary/30 bg-accent/45'
+                  : ''
+              }`}
+              onClick={() => {
+                handleSelectCycle({ cycleId: cycle.id });
+                onSelectCycle?.();
+              }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">

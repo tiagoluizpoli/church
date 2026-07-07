@@ -28,12 +28,12 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   page,
 }) => {
   await page.goto('/scheduling/tailoring');
+  await page.getByTestId('tailoring-ministry-select').click();
   await page
-    .getByTestId('tailoring-ministry-select')
-    .selectOption(WORSHIP_MINISTRY_ID);
-  await page
-    .getByTestId('tailoring-cycle-select')
-    .selectOption(PLANNING_CYCLE_ID);
+    .getByTestId(`tailoring-ministry-option-${WORSHIP_MINISTRY_ID}`)
+    .click();
+  await page.getByTestId('tailoring-cycle-select').click();
+  await page.getByTestId(`tailoring-cycle-option-${PLANNING_CYCLE_ID}`).click();
 
   const eventCard = page
     .getByTestId('participation-event-card')

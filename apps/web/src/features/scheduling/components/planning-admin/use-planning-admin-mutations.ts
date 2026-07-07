@@ -20,13 +20,16 @@ export interface UsePlanningAdminMutationsProps {
   selectedCycleId: string | null;
   selectedCycle: SelectedPlanningCycle | null;
   selectedTemplateIds: string[];
+  editingTemplateId: string | null;
   cycleForm: CycleFormState;
   templateForm: TemplateFormState;
   setCycleErrorMessage: Dispatch<SetStateAction<string | null>>;
   setCycleForm: Dispatch<SetStateAction<CycleFormState>>;
+  setEditingTemplateId: Dispatch<SetStateAction<string | null>>;
   setSelectedCycleId: Dispatch<SetStateAction<string | null>>;
   setSelectedTemplateIds: Dispatch<SetStateAction<string[]>>;
   setTemplateForm: Dispatch<SetStateAction<TemplateFormState>>;
+  setTemplateSaveSuccessCount: Dispatch<SetStateAction<number>>;
 }
 
 interface DeleteTemplateInput {
@@ -36,6 +39,8 @@ interface DeleteTemplateInput {
 export interface UsePlanningAdminMutationsResult {
   createCyclePending: boolean;
   createTemplatePending: boolean;
+  updateTemplatePending: boolean;
+  saveTemplatePending: boolean;
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
   lockCyclePending: boolean;
@@ -51,13 +56,16 @@ export function usePlanningAdminMutations({
   selectedCycleId,
   selectedCycle,
   selectedTemplateIds,
+  editingTemplateId,
   cycleForm,
   templateForm,
   setCycleErrorMessage,
   setCycleForm,
+  setEditingTemplateId,
   setSelectedCycleId,
   setSelectedTemplateIds,
   setTemplateForm,
+  setTemplateSaveSuccessCount,
 }: UsePlanningAdminMutationsProps): UsePlanningAdminMutationsResult {
   const createCycle = useMutation({
     mutationFn: (body: Parameters<typeof adminApi.createPlanningCycle>[0]) =>
@@ -83,12 +91,34 @@ export function usePlanningAdminMutations({
     mutationFn: (body: Parameters<typeof adminApi.createEventTemplate>[0]) =>
       adminApi.createEventTemplate(body),
     onSuccess: async (template) => {
+      setEditingTemplateId(null);
       setTemplateForm(createEmptyTemplateForm());
+      setTemplateSaveSuccessCount((currentCount) => currentCount + 1);
       setSelectedTemplateIds((currentSelection) => [
         ...new Set([...currentSelection, template.id]),
       ]);
       await queryClient.invalidateQueries({ queryKey: ['planning-templates'] });
       toast.success('Template saved');
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage({ error }));
+    },
+  });
+
+  interface UpdateTemplateParams {
+    body: Parameters<typeof adminApi.updateEventTemplate>[1];
+    templateId: string;
+  }
+
+  const updateTemplate = useMutation({
+    mutationFn: ({ body, templateId }: UpdateTemplateParams) =>
+      adminApi.updateEventTemplate(templateId, body),
+    onSuccess: async () => {
+      setEditingTemplateId(null);
+      setTemplateForm(createEmptyTemplateForm());
+      setTemplateSaveSuccessCount((currentCount) => currentCount + 1);
+      await queryClient.invalidateQueries({ queryKey: ['planning-templates'] });
+      toast.success('Template updated');
     },
     onError: (error) => {
       toast.error(getErrorMessage({ error }));
@@ -150,11 +180,18 @@ export function usePlanningAdminMutations({
   }
 
   function handleSaveTemplate() {
-    createTemplate.mutate({
+    const body = {
       name: templateForm.name.trim(),
       weekday: Number.parseInt(templateForm.weekday, 10),
       blocks: sortTemplateBlocks({ blocks: templateForm.blocks }),
-    });
+    };
+
+    if (editingTemplateId) {
+      updateTemplate.mutate({ body, templateId: editingTemplateId });
+      return;
+    }
+
+    createTemplate.mutate(body);
   }
 
   function handleDeleteTemplate({ templateId }: DeleteTemplateInput) {
@@ -176,6 +213,8 @@ export function usePlanningAdminMutations({
   return {
     createCyclePending: createCycle.isPending,
     createTemplatePending: createTemplate.isPending,
+    updateTemplatePending: updateTemplate.isPending,
+    saveTemplatePending: createTemplate.isPending || updateTemplate.isPending,
     deleteTemplatePending: deleteTemplate.isPending,
     applyTemplatesPending: applyTemplates.isPending,
     lockCyclePending: lockCycle.isPending,

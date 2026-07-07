@@ -161,22 +161,37 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
 
   await page.goto('/scheduling/planning');
 
-  await page.getByTestId('cycle-name-input').fill(month.cycleName);
-  await page.getByTestId('cycle-start-date-input').fill(month.startDate);
-  await page.getByTestId('cycle-end-date-input').fill(month.endDate);
-  await page.getByTestId('create-cycle-button').click();
+  await page.getByTestId('open-create-cycle-dialog-button').click();
+  const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
+  await createCycleDialog.getByTestId('cycle-name-input').fill(month.cycleName);
+  await createCycleDialog
+    .getByTestId('cycle-start-date-input')
+    .fill(month.startDate);
+  await createCycleDialog
+    .getByTestId('cycle-end-date-input')
+    .fill(month.endDate);
+  await createCycleDialog.getByTestId('create-cycle-button').click();
 
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(
     month.cycleName,
   );
   await expect(page.getByTestId('selected-cycle-state')).toHaveText('draft');
 
-  await page.getByTestId('template-name-input').fill('Sunday Service');
-  await page.getByTestId('template-weekday-select').selectOption('0');
-  await page.getByTestId('add-template-block-button').click();
-  await page.getByTestId('add-template-block-button').click();
+  await page.getByTestId('open-template-library-button').click();
 
-  const sundayBlocks = page.getByTestId('template-block-row');
+  await page.getByTestId('open-create-template-dialog-button').click();
+  const createTemplateDialog = page.getByRole('dialog', {
+    name: 'Create template',
+  });
+  await createTemplateDialog
+    .getByTestId('template-name-input')
+    .fill('Sunday Service');
+  await createTemplateDialog.getByTestId('template-weekday-select').click();
+  await page.getByTestId('template-weekday-option-0').click();
+  await createTemplateDialog.getByTestId('add-template-block-button').click();
+  await createTemplateDialog.getByTestId('add-template-block-button').click();
+
+  const sundayBlocks = createTemplateDialog.getByTestId('template-block-row');
   await sundayBlocks
     .nth(0)
     .getByTestId('template-block-label-input')
@@ -213,7 +228,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     .nth(2)
     .getByTestId('template-block-end-time-input')
     .fill('11:00');
-  await page.getByTestId('create-template-button').click();
+  await createTemplateDialog.getByTestId('create-template-button').click();
 
   await expect(
     page
@@ -221,9 +236,18 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
       .filter({ hasText: 'Sunday Service' }),
   ).toBeVisible();
 
-  await page.getByTestId('template-name-input').fill('Wednesday Service');
-  await page.getByTestId('template-weekday-select').selectOption('3');
-  const wednesdayBlock = page.getByTestId('template-block-row').first();
+  await page.getByTestId('open-create-template-dialog-button').click();
+  const secondTemplateDialog = page.getByRole('dialog', {
+    name: 'Create template',
+  });
+  await secondTemplateDialog
+    .getByTestId('template-name-input')
+    .fill('Wednesday Service');
+  await secondTemplateDialog.getByTestId('template-weekday-select').click();
+  await page.getByTestId('template-weekday-option-3').click();
+  const wednesdayBlock = secondTemplateDialog
+    .getByTestId('template-block-row')
+    .first();
   await wednesdayBlock
     .getByTestId('template-block-label-input')
     .fill('Midweek');
@@ -233,7 +257,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await wednesdayBlock
     .getByTestId('template-block-end-time-input')
     .fill('20:00');
-  await page.getByTestId('create-template-button').click();
+  await secondTemplateDialog.getByTestId('create-template-button').click();
 
   await expect(
     page
@@ -241,7 +265,37 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
       .filter({ hasText: 'Wednesday Service' }),
   ).toBeVisible();
 
-  await page.getByTestId('apply-templates-button').click();
+  await page
+    .getByTestId('saved-template-row')
+    .filter({ hasText: 'Sunday Service' })
+    .getByTestId('open-edit-template-dialog-button')
+    .click();
+  const editTemplateDialog = page.getByRole('dialog', {
+    name: 'Edit template',
+  });
+  await editTemplateDialog
+    .getByTestId('template-name-input')
+    .fill('Sunday Gathering');
+  await editTemplateDialog.getByTestId('create-template-button').click();
+
+  await expect(
+    page
+      .getByTestId('saved-template-row')
+      .filter({ hasText: 'Sunday Gathering' }),
+  ).toBeVisible();
+
+  await page.getByTestId('back-from-template-library-button').click();
+  await page.getByTestId('open-apply-templates-dialog-button').click();
+
+  const applyTemplatesDialog = page.getByRole('dialog', {
+    name: 'Apply templates',
+  });
+  const templateCheckboxes = applyTemplatesDialog.getByTestId(
+    'template-select-checkbox',
+  );
+  await templateCheckboxes.nth(0).check();
+  await templateCheckboxes.nth(1).check();
+  await applyTemplatesDialog.getByTestId('apply-templates-button').click();
 
   await expect(page.getByTestId('planning-event-card')).toHaveCount(
     month.expectedEvents,
@@ -257,6 +311,9 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   );
   await expect(page.getByTestId('planning-events-list')).toContainText(
     month.lastSunday,
+  );
+  await expect(page.getByTestId('planning-events-list')).toContainText(
+    'Sunday Gathering',
   );
 
   // FR-012: the one canonical create-event UI, reused here for a
@@ -282,26 +339,38 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     'Three-day retreat',
   );
 
-  await page.getByTestId('cycle-name-input').fill(`${month.cycleName} overlap`);
-  await page.getByTestId('cycle-start-date-input').fill(month.overlapStartDate);
-  await page.getByTestId('cycle-end-date-input').fill(month.overlapEndDate);
-  await page.getByTestId('create-cycle-button').click();
+  await page.getByTestId('open-create-cycle-dialog-button').click();
+  const overlapDialog = page.getByRole('dialog', { name: 'Create cycle' });
+  await overlapDialog
+    .getByTestId('cycle-name-input')
+    .fill(`${month.cycleName} overlap`);
+  await overlapDialog
+    .getByTestId('cycle-start-date-input')
+    .fill(month.overlapStartDate);
+  await overlapDialog
+    .getByTestId('cycle-end-date-input')
+    .fill(month.overlapEndDate);
+  await overlapDialog.getByTestId('create-cycle-button').click();
 
-  await expect(page.getByTestId('cycle-create-error')).toContainText(
+  await expect(overlapDialog.getByTestId('cycle-create-error')).toContainText(
     'Planning cycle overlaps an existing cycle',
   );
+  await overlapDialog.getByRole('button', { name: 'Close' }).click();
 
   await page.getByTestId('lock-cycle-button').click();
   await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
 
   // Step-sequence gating: locked-review is read-only — no editable
-  // template/create controls, though the cycle list/create panel below
-  // stays reachable (e.g. for starting a different cycle).
-  await expect(page.getByTestId('template-name-input')).toHaveCount(0);
+  // template/apply controls, while create-cycle entry stays reachable.
+  await expect(
+    page.getByTestId('open-apply-templates-dialog-button'),
+  ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Add manual event' }),
   ).toHaveCount(0);
-  await expect(page.getByTestId('cycle-name-input')).toBeVisible();
+  await expect(
+    page.getByTestId('open-create-cycle-dialog-button'),
+  ).toBeVisible();
 
   const leaderContext = await browser.newContext({
     storageState: LEADER_STORAGE_STATE,

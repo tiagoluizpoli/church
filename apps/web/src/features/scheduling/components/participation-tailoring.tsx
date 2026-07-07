@@ -9,6 +9,13 @@ import {
 } from '@church/ui/components/card';
 import { Input } from '@church/ui/components/input';
 import { Label } from '@church/ui/components/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@church/ui/components/select';
 import { Skeleton } from '@church/ui/components/skeleton';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -31,6 +38,11 @@ import {
   toIsoString,
   validateManualSpans,
 } from './participation-tailoring.utils';
+import { SchedulingNav } from './scheduling-nav';
+import {
+  WorkspaceIntroPanel,
+  WorkspacePage,
+} from '@/components/workspace-page';
 import type {
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemSlotsItem,
@@ -117,6 +129,8 @@ export function ParticipationTailoring() {
       endDate: event.endDate,
     })),
   );
+  const selectedCycleOption =
+    cycleOptions.find((cycle) => cycle.id === selectedCycleId) ?? null;
 
   useEffect(() => {
     if (cycleOptions.length === 0) {
@@ -295,234 +309,286 @@ export function ParticipationTailoring() {
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
-  if (ministriesQuery.isLoading || eventsQuery.isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
-    );
-  }
-
-  if (ministriesQuery.isError) {
-    return (
-      <div className="rounded border border-destructive p-4 text-destructive text-sm">
-        {getErrorMessage(ministriesQuery.error)}
-      </div>
-    );
-  }
-
-  if (ministries.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No ministries yet</CardTitle>
-          <CardDescription>
-            Join or create a ministry before tailoring participation.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
   const selectedMinistry =
     ministries.find((ministry) => ministry.id === selectedMinistryId) ??
     ministries[0];
   const includedSlotCount = countIncludedSlots(participationEvents);
   const shiftCount = countShifts(participationEvents);
+  const isLoadingScope = ministriesQuery.isLoading || eventsQuery.isLoading;
+  const hasScope =
+    !isLoadingScope && !ministriesQuery.isError && ministries.length > 0;
 
   return (
-    <div className="space-y-6" data-testid="participation-tailoring-page">
-      <div className="space-y-1">
-        <h2 className="font-bold text-xl">Participation tailoring</h2>
-        <p className="text-muted-foreground text-sm">
-          Confirm which slots your ministry serves, split them into workable
-          shifts, set headcounts, then fire availability.
-        </p>
-      </div>
+    <WorkspacePage data-testid="participation-tailoring-page">
+      <SchedulingNav />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Scope</CardTitle>
-            <CardDescription>
-              Pick the ministry and locked cycle you want to tailor.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="tailoring-ministry-select">Ministry</Label>
-              <select
-                id="tailoring-ministry-select"
-                data-testid="tailoring-ministry-select"
-                className="flex h-8 w-full border bg-background px-2.5 text-sm"
-                value={selectedMinistryId ?? ''}
-                onChange={(event) => setSelectedMinistryId(event.target.value)}
-              >
-                {ministries.map((ministry) => (
-                  <option key={ministry.id} value={ministry.id}>
-                    {ministry.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="tailoring-cycle-select">Cycle</Label>
-              <select
-                id="tailoring-cycle-select"
-                data-testid="tailoring-cycle-select"
-                className="flex h-8 w-full border bg-background px-2.5 text-sm"
-                value={selectedCycleId ?? ''}
-                onChange={(event) => setSelectedCycleId(event.target.value)}
-              >
-                {cycleOptions.map((cycle) => (
-                  <option key={cycle.id} value={cycle.id}>
-                    {cycle.label} ({cycle.eventCount} events)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div
-              className="rounded border p-3 text-sm"
-              data-testid="tailoring-summary-card"
-            >
-              <div className="font-medium">{selectedMinistry?.name}</div>
-              <div className="mt-1 text-muted-foreground text-xs">
-                Default direction:{' '}
-                {selectedMinistry?.defaultDirection ?? 'all_out'}
+      <WorkspaceIntroPanel
+        title="Participation tailoring"
+        description="Confirm which slots your ministry serves, split them into workable shifts, set headcounts, then fire availability."
+        aside={
+          selectedMinistry && !isLoadingScope ? (
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+              <div className="radius-surface flex items-center gap-2 border border-border/70 bg-background/70 px-3 py-1.5 text-sm">
+                <span className="font-medium">{selectedMinistry.name}</span>
+                <span className="text-muted-foreground text-xs">·</span>
+                <span className="text-muted-foreground text-xs">
+                  {selectedMinistry.defaultDirection ?? 'all_out'}
+                </span>
               </div>
-              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-                <div>{participationEvents.length} events</div>
-                <div data-testid="tailoring-included-count">
-                  {includedSlotCount} included slots
-                </div>
-                <div data-testid="tailoring-shift-count">
-                  {shiftCount} shifts
-                </div>
+              <div className="radius-surface border border-border/70 bg-background/70 px-3 py-1.5 text-sm">
+                <span className="text-muted-foreground text-xs">Slots</span>{' '}
+                <span
+                  className="font-medium"
+                  data-testid="tailoring-included-count"
+                >
+                  {includedSlotCount}
+                </span>
+              </div>
+              <div className="radius-surface border border-border/70 bg-background/70 px-3 py-1.5 text-sm">
+                <span className="text-muted-foreground text-xs">Shifts</span>{' '}
+                <span
+                  className="font-medium"
+                  data-testid="tailoring-shift-count"
+                >
+                  {shiftCount}
+                </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          ) : null
+        }
+      />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>How it works</CardTitle>
-            <CardDescription>
-              Save included slots first. Splits and headcounts update only the
-              selected participation, not sibling ministries.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p>1. Keep only the slots this ministry will actually serve.</p>
-            <p>2. Split long slots into equal or manual shifts.</p>
-            <p>3. Save the required headcount per role on each shift.</p>
-            <p>4. Fire availability when the participation is ready.</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {participationQuery.isLoading ? (
-        <Skeleton className="h-72 w-full" />
-      ) : participationQuery.isError ? (
-        <div className="rounded border border-destructive p-4 text-destructive text-sm">
-          {getErrorMessage(participationQuery.error)}
+      {isLoadingScope ? (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
         </div>
-      ) : participationEvents.length === 0 ? (
-        <Card>
+      ) : ministriesQuery.isError ? (
+        <div className="surface-subtle workspace-panel text-destructive text-sm">
+          {getErrorMessage(ministriesQuery.error)}
+        </div>
+      ) : ministries.length === 0 ? (
+        <Card className="surface-panel">
           <CardHeader>
-            <CardTitle>No participation data</CardTitle>
+            <CardTitle>No ministries yet</CardTitle>
             <CardDescription>
-              Lock and generate a cycle first so this ministry has events to
-              tailor.
+              Join or create a ministry before tailoring participation.
             </CardDescription>
           </CardHeader>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {participationEvents.map((eventView) => (
-            <ParticipationEventCard
-              key={eventView.participation.id}
-              eventView={eventView}
-              draftInclusions={
-                draftInclusions[eventView.participation.id] ?? []
-              }
-              splitForms={splitForms}
-              headcountDrafts={headcountDrafts}
-              roles={roles}
-              cycleId={selectedCycleId ?? ''}
-              ministryId={selectedMinistryId ?? ''}
-              fireSummary={fireSummaries[eventView.participation.id]}
-              saveInclusionsPending={saveInclusions.isPending}
-              splitPending={splitShifts.isPending}
-              saveHeadcountsPending={saveHeadcounts.isPending}
-              firePending={fireAvailability.isPending}
-              resendPending={resendAvailability.isPending}
-              onToggleInclusion={(timeSlotId, checked) => {
-                setDraftInclusions((current) => {
-                  const previous = current[eventView.participation.id] ?? [];
-                  const next = checked
-                    ? [...new Set([...previous, timeSlotId])]
-                    : previous.filter((id) => id !== timeSlotId);
-                  return { ...current, [eventView.participation.id]: next };
-                });
-              }}
-              onSaveInclusions={() =>
-                saveInclusions.mutate({
-                  participationId: eventView.participation.id,
-                  timeSlotIds:
-                    draftInclusions[eventView.participation.id] ?? [],
-                })
-              }
-              onSplitFormChange={(timeSlotId, nextForm) =>
-                setSplitForms((current) => ({
-                  ...current,
-                  [timeSlotId]: nextForm,
-                }))
-              }
-              onSplitShifts={(slotView) =>
-                splitShifts.mutate({
-                  participationId: eventView.participation.id,
-                  timeSlotId: slotView.slot.id,
-                  slotView,
-                })
-              }
-              onHeadcountChange={(shiftId, roleId, value) =>
-                setHeadcountDrafts((current) => ({
-                  ...current,
-                  [toHeadcountKey(shiftId, roleId)]: value,
-                }))
-              }
-              onSaveHeadcounts={(shiftId, slotView, roleOptions) =>
-                saveHeadcounts.mutate({
-                  shiftId,
-                  requirements: slotView.requirements,
-                  roleOptions,
-                })
-              }
-              onFireAvailability={() =>
-                fireAvailability.mutate({
-                  participationId: eventView.participation.id,
-                })
-              }
-              onResendAvailability={() =>
-                resendAvailability.mutate({
-                  participationId: eventView.participation.id,
-                })
-              }
-            />
-          ))}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <Card className="surface-panel">
+            <CardHeader>
+              <CardTitle>Scope</CardTitle>
+              <CardDescription>
+                Pick the ministry and locked cycle you want to tailor.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label>Ministry</Label>
+                <Select
+                  value={selectedMinistryId ?? ''}
+                  onValueChange={(ministryId) =>
+                    setSelectedMinistryId(ministryId)
+                  }
+                >
+                  <SelectTrigger
+                    id="tailoring-ministry-select"
+                    aria-label="Ministry"
+                    data-testid="tailoring-ministry-select"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Select a ministry">
+                      {selectedMinistry?.name ?? null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ministries.map((ministry) => (
+                      <SelectItem
+                        key={ministry.id}
+                        value={ministry.id}
+                        data-testid={`tailoring-ministry-option-${ministry.id}`}
+                      >
+                        {ministry.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Cycle</Label>
+                <Select
+                  value={selectedCycleId ?? ''}
+                  onValueChange={(cycleId) => setSelectedCycleId(cycleId)}
+                >
+                  <SelectTrigger
+                    id="tailoring-cycle-select"
+                    aria-label="Cycle"
+                    data-testid="tailoring-cycle-select"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Select a cycle">
+                      {selectedCycleOption
+                        ? `${selectedCycleOption.label} (${selectedCycleOption.eventCount} events)`
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cycleOptions.map((cycle) => (
+                      <SelectItem
+                        key={cycle.id}
+                        value={cycle.id}
+                        data-testid={`tailoring-cycle-option-${cycle.id}`}
+                      >
+                        {cycle.label} ({cycle.eventCount} events)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div
+                className="surface-subtle workspace-panel text-sm"
+                data-testid="tailoring-summary-card"
+              >
+                <div className="font-medium">{selectedMinistry?.name}</div>
+                <div className="mt-1 text-muted-foreground text-xs">
+                  Default direction:{' '}
+                  {selectedMinistry?.defaultDirection ?? 'all_out'}
+                </div>
+                <div className="mt-3 text-muted-foreground text-xs">
+                  {participationEvents.length} events in this cycle
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="surface-panel">
+            <CardHeader>
+              <CardTitle>How it works</CardTitle>
+              <CardDescription>
+                Save included slots first. Splits and headcounts update only the
+                selected participation, not sibling ministries.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm leading-6">
+              <p>1. Keep only the slots this ministry will actually serve.</p>
+              <p>2. Split long slots into equal or manual shifts.</p>
+              <p>3. Save the required headcount per role on each shift.</p>
+              <p>4. Fire availability when the participation is ready.</p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {selectedCycleId && selectedMinistryId ? (
-        <AvailabilityStatusSection
-          cycleId={selectedCycleId}
-          ministryId={selectedMinistryId}
-        />
+      {hasScope ? (
+        <>
+          {participationQuery.isLoading ? (
+            <Skeleton className="h-72 w-full" />
+          ) : participationQuery.isError ? (
+            <div className="surface-subtle workspace-panel text-destructive text-sm">
+              {getErrorMessage(participationQuery.error)}
+            </div>
+          ) : participationEvents.length === 0 ? (
+            <Card className="surface-panel">
+              <CardHeader>
+                <CardTitle>No participation data</CardTitle>
+                <CardDescription>
+                  Lock and generate a cycle first so this ministry has events to
+                  tailor.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {participationEvents.map((eventView) => (
+                <ParticipationEventCard
+                  key={eventView.participation.id}
+                  eventView={eventView}
+                  draftInclusions={
+                    draftInclusions[eventView.participation.id] ?? []
+                  }
+                  splitForms={splitForms}
+                  headcountDrafts={headcountDrafts}
+                  roles={roles}
+                  cycleId={selectedCycleId ?? ''}
+                  ministryId={selectedMinistryId ?? ''}
+                  fireSummary={fireSummaries[eventView.participation.id]}
+                  saveInclusionsPending={saveInclusions.isPending}
+                  splitPending={splitShifts.isPending}
+                  saveHeadcountsPending={saveHeadcounts.isPending}
+                  firePending={fireAvailability.isPending}
+                  resendPending={resendAvailability.isPending}
+                  onToggleInclusion={(timeSlotId, checked) => {
+                    setDraftInclusions((current) => {
+                      const previous =
+                        current[eventView.participation.id] ?? [];
+                      const next = checked
+                        ? [...new Set([...previous, timeSlotId])]
+                        : previous.filter((id) => id !== timeSlotId);
+                      return { ...current, [eventView.participation.id]: next };
+                    });
+                  }}
+                  onSaveInclusions={() =>
+                    saveInclusions.mutate({
+                      participationId: eventView.participation.id,
+                      timeSlotIds:
+                        draftInclusions[eventView.participation.id] ?? [],
+                    })
+                  }
+                  onSplitFormChange={(timeSlotId, nextForm) =>
+                    setSplitForms((current) => ({
+                      ...current,
+                      [timeSlotId]: nextForm,
+                    }))
+                  }
+                  onSplitShifts={(slotView) =>
+                    splitShifts.mutate({
+                      participationId: eventView.participation.id,
+                      timeSlotId: slotView.slot.id,
+                      slotView,
+                    })
+                  }
+                  onHeadcountChange={(shiftId, roleId, value) =>
+                    setHeadcountDrafts((current) => ({
+                      ...current,
+                      [toHeadcountKey(shiftId, roleId)]: value,
+                    }))
+                  }
+                  onSaveHeadcounts={(shiftId, slotView, roleOptions) =>
+                    saveHeadcounts.mutate({
+                      shiftId,
+                      requirements: slotView.requirements,
+                      roleOptions,
+                    })
+                  }
+                  onFireAvailability={() =>
+                    fireAvailability.mutate({
+                      participationId: eventView.participation.id,
+                    })
+                  }
+                  onResendAvailability={() =>
+                    resendAvailability.mutate({
+                      participationId: eventView.participation.id,
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {selectedCycleId && selectedMinistryId ? (
+            <AvailabilityStatusSection
+              cycleId={selectedCycleId}
+              ministryId={selectedMinistryId}
+            />
+          ) : null}
+        </>
       ) : null}
-    </div>
+    </WorkspacePage>
   );
 }
 
@@ -589,7 +655,7 @@ function ParticipationEventCard({
         ].map((roleId) => ({ id: roleId, name: roleId }));
 
   return (
-    <Card data-testid="participation-event-card">
+    <Card className="surface-panel" data-testid="participation-event-card">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
@@ -617,12 +683,13 @@ function ParticipationEventCard({
             return (
               <div
                 key={slotView.slot.id}
-                className="space-y-3 rounded border p-3"
+                className="surface-subtle workspace-panel space-y-3"
                 data-testid="participation-slot-card"
               >
                 <label className="flex items-start gap-3">
                   <input
                     type="checkbox"
+                    className="radius-control mt-0.5 size-4 shrink-0 cursor-pointer accent-primary"
                     data-testid={`participation-slot-checkbox-${slotIndex}`}
                     checked={included}
                     onChange={(event) =>
@@ -643,14 +710,14 @@ function ParticipationEventCard({
                 </label>
 
                 {included && splitForm ? (
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-                    <div className="space-y-3 rounded border p-3">
-                      <div className="font-medium text-sm">
+                  <div className="grid gap-5 border-border/60 border-t pt-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+                    <div className="space-y-3">
+                      <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
                         Shift split form
                       </div>
                       <select
                         data-testid={`shift-mode-select-${slotIndex}`}
-                        className="flex h-8 w-full border bg-background px-2.5 text-sm"
+                        className="w-full text-sm"
                         value={splitForm.mode}
                         onChange={(event) =>
                           onSplitFormChange(slotView.slot.id, {
@@ -708,8 +775,8 @@ function ParticipationEventCard({
                       </Button>
                     </div>
 
-                    <div className="space-y-3 rounded border p-3">
-                      <div className="font-medium text-sm">
+                    <div className="space-y-3">
+                      <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
                         Headcount matrix
                       </div>
                       {slotView.shifts.length === 0 ? (
@@ -720,7 +787,7 @@ function ParticipationEventCard({
                         slotView.shifts.map((shift, shiftIndex) => (
                           <div
                             key={shift.id}
-                            className="space-y-3 rounded border p-3"
+                            className="surface-panel workspace-panel space-y-3"
                             data-testid="participation-shift-card"
                           >
                             <div className="space-y-1">
@@ -841,7 +908,7 @@ function ParticipationEventCard({
                 ministryId,
                 participationId: eventView.participation.id,
               }}
-              className="inline-flex h-9 items-center justify-center border px-3 text-sm"
+              className="radius-control inline-flex h-8 items-center justify-center border border-border bg-background px-2.5 font-medium text-sm transition-colors hover:bg-muted hover:text-foreground"
               data-testid={`open-roster-link-${eventView.participation.id}`}
             >
               Open roster

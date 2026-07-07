@@ -350,10 +350,12 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap and the
   await volunteerContext.close();
 
   await page.goto('/scheduling/tailoring');
+  await page.getByTestId('tailoring-ministry-select').click();
   await page
-    .getByTestId('tailoring-ministry-select')
-    .selectOption(WORSHIP_MINISTRY_ID);
-  await page.getByTestId('tailoring-cycle-select').selectOption(cycleId);
+    .getByTestId(`tailoring-ministry-option-${WORSHIP_MINISTRY_ID}`)
+    .click();
+  await page.getByTestId('tailoring-cycle-select').click();
+  await page.getByTestId(`tailoring-cycle-option-${cycleId}`).click();
 
   const statusList = page.getByTestId('availability-status-list');
   await expect(statusList).toBeVisible();

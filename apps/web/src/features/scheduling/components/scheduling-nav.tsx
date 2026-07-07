@@ -2,6 +2,7 @@ import { Link, useLocation } from '@tanstack/react-router';
 import { CalendarClock, CalendarRange, UsersRound } from 'lucide-react';
 
 interface SchedulingNavItem {
+  isActive: (pathname: string) => boolean;
   description: string;
   icon: typeof CalendarClock;
   label: string;
@@ -10,49 +11,47 @@ interface SchedulingNavItem {
 
 const NAV_ITEMS: SchedulingNavItem[] = [
   {
-    to: '/scheduling',
-    label: 'Builder events',
-    description: 'Review active events and open the builder.',
-    icon: CalendarClock,
+    to: '/scheduling/planning',
+    label: 'Planning',
+    description: 'Create cycles, apply templates, and lock the period.',
+    icon: CalendarRange,
+    isActive: (pathname) =>
+      pathname === '/scheduling/planning' ||
+      pathname.startsWith('/scheduling/planning/'),
   },
   {
     to: '/scheduling/tailoring',
     label: 'Tailoring',
     description: 'Shape ministry participation and fire availability.',
     icon: UsersRound,
+    isActive: (pathname) =>
+      pathname === '/scheduling/tailoring' ||
+      pathname.startsWith('/scheduling/tailoring/') ||
+      pathname.startsWith('/scheduling/rostering/'),
   },
   {
-    to: '/scheduling/planning',
-    label: 'Planning',
-    description: 'Create cycles, apply templates, and lock the period.',
-    icon: CalendarRange,
+    to: '/scheduling',
+    label: 'Builder events',
+    description: 'Review active events and open the builder.',
+    icon: CalendarClock,
+    isActive: (pathname) =>
+      pathname === '/scheduling' ||
+      pathname === '/scheduling/' ||
+      pathname.startsWith('/scheduling/events/'),
   },
 ];
-
-function isActivePath({
-  pathname,
-  target,
-}: {
-  pathname: string;
-  target: SchedulingNavItem['to'];
-}): boolean {
-  return pathname === target || pathname.startsWith(`${target}/`);
-}
 
 export function SchedulingNav() {
   const location = useLocation();
 
   return (
     <nav
-      className="-mx-1 flex items-center gap-1 overflow-x-auto border-border border-b px-1"
+      className="flex min-w-0 items-center gap-1 border-border border-b"
       aria-label="Scheduling views"
     >
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const isActive = isActivePath({
-          pathname: location.pathname,
-          target: item.to,
-        });
+        const isActive = item.isActive(location.pathname);
 
         return (
           <Link

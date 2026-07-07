@@ -108,47 +108,83 @@ export function useCycleListCard(): CycleListCardModel {
 
 export type TemplateManagerCardModel = Pick<
   UsePlanningAdminResult,
-  | 'templateForm'
   | 'templates'
-  | 'selectedTemplateIds'
-  | 'selectedCycleId'
-  | 'canCreateTemplate'
   | 'templatesLoading'
-  | 'createTemplatePending'
   | 'deleteTemplatePending'
-  | 'applyTemplatesPending'
-  | 'handleTemplateNameChange'
-  | 'handleTemplateWeekdayChange'
-  | 'handleTemplateBlockChange'
-  | 'handleRemoveTemplateBlock'
-  | 'handleAddTemplateBlock'
-  | 'handleSaveTemplate'
-  | 'handleToggleTemplateSelection'
   | 'handleDeleteTemplate'
-  | 'handleApplyTemplates'
+  | 'handleStartEditTemplate'
 >;
 
 export function useTemplateManagerCard(): TemplateManagerCardModel {
   const context = usePlanningAdminContext();
 
   return {
-    templateForm: context.templateForm,
     templates: context.templates,
-    selectedTemplateIds: context.selectedTemplateIds,
-    selectedCycleId: context.selectedCycleId,
-    canCreateTemplate: context.canCreateTemplate,
     templatesLoading: context.templatesLoading,
-    createTemplatePending: context.createTemplatePending,
     deleteTemplatePending: context.deleteTemplatePending,
-    applyTemplatesPending: context.applyTemplatesPending,
+    handleDeleteTemplate: context.handleDeleteTemplate,
+    handleStartEditTemplate: context.handleStartEditTemplate,
+  };
+}
+
+export type TemplateEditorModel = Pick<
+  UsePlanningAdminResult,
+  | 'editingTemplateId'
+  | 'templateForm'
+  | 'canCreateTemplate'
+  | 'saveTemplatePending'
+  | 'templateSaveSuccessCount'
+  | 'handleStartCreateTemplate'
+  | 'handleResetTemplateEditor'
+  | 'handleTemplateNameChange'
+  | 'handleTemplateWeekdayChange'
+  | 'handleTemplateBlockChange'
+  | 'handleRemoveTemplateBlock'
+  | 'handleAddTemplateBlock'
+  | 'handleSaveTemplate'
+>;
+
+export function useTemplateEditor(): TemplateEditorModel {
+  const context = usePlanningAdminContext();
+
+  return {
+    editingTemplateId: context.editingTemplateId,
+    templateForm: context.templateForm,
+    canCreateTemplate: context.canCreateTemplate,
+    saveTemplatePending: context.saveTemplatePending,
+    templateSaveSuccessCount: context.templateSaveSuccessCount,
+    handleStartCreateTemplate: context.handleStartCreateTemplate,
+    handleResetTemplateEditor: context.handleResetTemplateEditor,
     handleTemplateNameChange: context.handleTemplateNameChange,
     handleTemplateWeekdayChange: context.handleTemplateWeekdayChange,
     handleTemplateBlockChange: context.handleTemplateBlockChange,
     handleRemoveTemplateBlock: context.handleRemoveTemplateBlock,
     handleAddTemplateBlock: context.handleAddTemplateBlock,
     handleSaveTemplate: context.handleSaveTemplate,
+  };
+}
+
+export type TemplateApplyDialogModel = Pick<
+  UsePlanningAdminResult,
+  | 'templates'
+  | 'templatesLoading'
+  | 'selectedTemplateIds'
+  | 'selectedCycleId'
+  | 'applyTemplatesPending'
+  | 'handleToggleTemplateSelection'
+  | 'handleApplyTemplates'
+>;
+
+export function useTemplateApplyDialog(): TemplateApplyDialogModel {
+  const context = usePlanningAdminContext();
+
+  return {
+    templates: context.templates,
+    templatesLoading: context.templatesLoading,
+    selectedTemplateIds: context.selectedTemplateIds,
+    selectedCycleId: context.selectedCycleId,
+    applyTemplatesPending: context.applyTemplatesPending,
     handleToggleTemplateSelection: context.handleToggleTemplateSelection,
-    handleDeleteTemplate: context.handleDeleteTemplate,
     handleApplyTemplates: context.handleApplyTemplates,
   };
 }

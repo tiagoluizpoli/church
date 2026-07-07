@@ -33,6 +33,10 @@ interface DescribeTemplateInput {
   template: PlanningTemplateSummary;
 }
 
+interface TemplateFormFromTemplateInput {
+  template: PlanningTemplateSummary;
+}
+
 interface ErrorMessageInput {
   error: unknown;
 }
@@ -97,6 +101,23 @@ export function createEmptyTemplateForm(): TemplateFormState {
     name: '',
     weekday: '0',
     blocks: [createEmptyTemplateBlock()],
+  };
+}
+
+export function createTemplateFormFromTemplate({
+  template,
+}: TemplateFormFromTemplateInput): TemplateFormState {
+  return {
+    name: template.name,
+    weekday: String(template.weekday),
+    blocks: [...template.blocks]
+      .sort((leftBlock, rightBlock) => leftBlock.order - rightBlock.order)
+      .map((block) => ({
+        id: block.id,
+        label: block.label,
+        startTime: block.startTime,
+        endTime: block.endTime,
+      })),
   };
 }
 

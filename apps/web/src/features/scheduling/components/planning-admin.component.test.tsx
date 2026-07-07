@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PlanningAdmin } from './planning-admin';
 import { renderWithProviders } from '@/__tests__/setup/render';
@@ -24,20 +25,18 @@ function render() {
 }
 
 describe('PlanningAdmin step-sequence gating (T038)', () => {
-  it('shows only CreateCycleCard when there are no cycles yet', async () => {
+  it('defaults to the cycle list view when there are no cycles yet', async () => {
     listPlanningCycles.mockResolvedValue({ cycles: [] });
 
     render();
 
-    expect(
-      await screen.findByText('Cycles are church-wide and cannot overlap.'),
-    ).toBeVisible();
+    expect(await screen.findByText('Existing cycles')).toBeVisible();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
-    expect(screen.queryByText('Existing cycles')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create cycle' })).toBeVisible();
   });
 
-  it('shows template/review steps with CycleListCard demoted to a secondary panel once a cycle is selected', async () => {
+  it('keeps cycles as the entry view, then opens review only after a cycle is selected', async () => {
     listPlanningCycles.mockResolvedValue({
       cycles: [
         {
@@ -60,19 +59,23 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
       events: [],
     });
 
+    const user = userEvent.setup();
+
     render();
 
-    const reviewHeading = await screen.findByText('Selected cycle review');
-    expect(screen.getByText('Event templates')).toBeVisible();
-    expect(await screen.findByText('Apply templates and review')).toBeVisible();
-    const cycleListHeading = screen.getByText('Existing cycles');
+    expect(await screen.findByText('Existing cycles')).toBeVisible();
+    expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
 
-    expect(reviewHeading.compareDocumentPosition(cycleListHeading)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    await user.click(await screen.findByTestId('planning-cycle-option'));
+
+    expect(await screen.findByText('Selected cycle review')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Apply template' }),
+    ).toBeVisible();
+    expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
   });
 
-  it('is read-only when the selected cycle is locked: no editable template/create controls', async () => {
+  it('is read-only when the selected cycle is locked: no apply/manual-event controls', async () => {
     listPlanningCycles.mockResolvedValue({
       cycles: [
         {
@@ -95,14 +98,80 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
       events: [],
     });
 
+    const user = userEvent.setup();
+
     render();
+
+    await user.click(await screen.findByTestId('planning-cycle-option'));
 
     expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
       'locked',
     );
-    expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Apply template' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /add manual event/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps the template library as a saved-list view and opens creation in a dialog', async () => {
+    listPlanningCycles.mockResolvedValue({ cycles: [] });
+
+    const user = userEvent.setup();
+
+    render();
+
+    await screen.findByText('Existing cycles');
+    await user.click(screen.getByTestId('open-template-library-button'));
+
+    expect(await screen.findByText('Saved templates')).toBeVisible();
+    expect(screen.queryByTestId('template-name-input')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('open-create-template-dialog-button'));
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Create template' }),
+    ).toBeVisible();
+    expect(screen.getByTestId('template-name-input')).toBeVisible();
+  });
+
+  it('opens a saved template in edit mode from the library list', async () => {
+    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          weekday: 0,
+          blocks: [
+            {
+              id: 'block-1',
+              label: 'Welcome',
+              startTime: '09:00',
+              endTime: '09:30',
+              order: 0,
+            },
+          ],
+        },
+      ],
+    });
+
+    const user = userEvent.setup();
+
+    render();
+
+    await screen.findByText('Existing cycles');
+    await user.click(screen.getByTestId('open-template-library-button'));
+    await user.click(
+      await screen.findByTestId('open-edit-template-dialog-button'),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit template' }),
+    ).toBeVisible();
+    expect(screen.getByTestId('template-name-input')).toHaveValue(
+      'Sunday Service',
+    );
   });
 });

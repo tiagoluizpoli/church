@@ -30,7 +30,7 @@ export function TemplateBlockRow({
 }: TemplateBlockRowProps) {
   return (
     <div
-      className="radius-surface workspace-panel space-y-2 border"
+      className="surface-subtle workspace-panel space-y-2"
       data-testid="template-block-row"
     >
       <div className="flex items-center justify-between gap-3">

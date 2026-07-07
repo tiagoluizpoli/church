@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "BL-014 — Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow. Grilled to a shared design decision set (see `.plan/grilling/2026-07-06-bl014-churchwide-ux-redesign.md`) covering: role-scoped primary navigation; removal of dead nav links and leftover template scaffolding; a single top-bar notification bell replacing the dashboard-embedded inbox; a tabbed volunteer dashboard replacing an undifferentiated vertical stack; a guided step-sequence for the planning-cycle screen replacing an always-visible 4-card grid; a single canonical create-event UI; and role-badge disambiguation for Leader/Sub-leader identity in the schedule builder. Visual/theme redesign is explicitly deferred to a follow-up pass."
+**Input**: User description: "BL-014 — Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow. Grilled to a shared design decision set (see `.plan/grilling/2026-07-06-bl014-churchwide-ux-redesign.md`) covering: role-scoped primary navigation; removal of dead nav links and leftover template scaffolding; a single top-bar notification bell replacing the dashboard-embedded inbox; a tabbed volunteer dashboard replacing an undifferentiated vertical stack; a guided step-sequence for the planning-cycle screen replacing an always-visible 4-card grid; a single canonical create-event UI; and role-badge disambiguation for Leader/Sub-leader identity in the schedule builder. Visual/theme redesign has been completed as a follow-up pass using the Impeccable tool."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -121,7 +121,7 @@ This feature introduces no new domain entities. It restructures navigation and p
 
 ## Assumptions
 
-- Visual/theme design (color, radius, spacing, typography) is explicitly **out of scope** for this spec. Per the grilling session, that pass runs afterward, against the settled screens this spec produces, using the already-installed Impeccable tool.
+- Visual/theme design (color, radius, spacing, typography) has been completed and integrated using the Impeccable tool, with specifications documented in [apps/web/DESIGN.md](../../apps/web/DESIGN.md) and implemented in `apps/web/src/index.css`.
 - Two correctness bugs surfaced alongside this redesign work (a builder Publish-button state bug and a reassign dialog requiring raw volunteer IDs) are tracked and fixed independently of this feature; they do not block or gate this spec.
 - Role-based navigation gating reuses the existing server-side role model (`leader` / `sub_leader` / `volunteer` / `admin`) — no new permission model is introduced.
 - "Shifts" and "Profile" as real, built destinations are out of scope here; their nav entries are removed entirely, pending a separate future product decision if either is ever built.

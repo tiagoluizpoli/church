@@ -1,6 +1,6 @@
 # Spec F0: Global UI Framework
 
-> **⚠️ Partially superseded (2026-07-06) — Spec 018: Church-wide UX/IA Redesign.** Two decisions below no longer hold: §1's bottom-nav pillars (`Dashboard, Shifts, Alerts, Profile`) are replaced by role-scoped nav sets (Volunteer: `Dashboard, Availability`; Leader/Sub-leader/Admin: `+ Scheduling`) with a top-bar notification bell instead of an `Alerts` pillar — `Shifts` and `Profile` are removed pending a future, separately-scoped product decision if either is ever built. §2's sharp 4px corner-radius token is out of scope for Spec 018 itself but is flagged there as the next follow-up (`/impeccable polish`) once the IA lands. Everything else in this spec (responsive shell structure, sidebar/topbar regions, CMD+K palette, motion/drawer choices) is unaffected. Authoritative source: [`specs/018-churchwide-ux-redesign/spec.md`](../../../specs/018-churchwide-ux-redesign/spec.md).
+> **⚠️ Partially superseded & fully redesigned (2026-07-06) — Spec 018: Church-wide UX/IA Redesign.** The layout and design tokens below have been updated and implemented per the Impeccable Design System in [apps/web/DESIGN.md](../../../apps/web/DESIGN.md): (1) §1's bottom-nav pillars are replaced by role-scoped nav sets with a top-bar notification bell and no dead links; (2) §2's typography is now Atkinson Hyperlegible, and the corner radius token is now 8px (md) / 10px (lg) instead of sharp 4px. Authoritative sources: [spec.md](../../../specs/018-churchwide-ux-redesign/spec.md) and [apps/web/DESIGN.md](../../../apps/web/DESIGN.md).
 
 ## Purpose
 Define the foundational "App Shell" and design tokens that govern the visual and structural consistency of the entire Volunteer Scheduling platform.
@@ -12,19 +12,21 @@ Define the foundational "App Shell" and design tokens that govern the visual and
 - **Regions**:
     - **Sidebar**: 240px expanded / 64px collapsed.
     - **Top Bar**: 64px height; contains Breadcrumbs and Search Trigger.
-    - **Bottom Nav**: 56px height; contains 4 core pillars (Dashboard, Shifts, Alerts, Profile).
+    - **Bottom Nav / Mobile Header**: 56px height bottom bar + sticky top header; contains role-scoped nav items (Volunteer: Dashboard, Availability; Leader: +Scheduling).
+    - **Notification Bell**: Single notification center in desktop top-bar and mobile top header (recent dropdown list + unread count badge + `/notifications` history page).
     - **Content Area**: Fluid width with maximum readability constraints (e.g., `max-w-7xl`).
 
 ## 2. Design System (Tokens)
-- **Palette**: Mono-accented "Clinical" aesthetic.
-    - **Primary**: Zinc / Slate (High contrast).
-    - **Accents**: Subtle semantic colors (Success: Green, Conflict: Orange, Alert: Red).
+- **Palette**: Calm, legible sanctuary aesthetic.
+    - **Primary**: Deep Chapel Blue (`oklch(0.378 0.09 255)`) — ≤10% visual surface.
+    - **Background**: Cool Paper (`oklch(0.978 0.004 236)`).
+    - **Status (Traffic-Light)**: Confirmed Green (`#16a34a`), Pending Amber (`#eab308`), Conflict Red (`#dc2626`).
 - **Typography**: 
-    - **UI**: Inter (Modern Sans-serif).
-    - **Data**: JetBrains Mono (For times, counts, and IDs).
+    - **UI & Body**: Atkinson Hyperlegible (Accessibility-first, sans-serif).
+    - **Data**: JetBrains Mono (For timestamps, counts, and IDs).
 - **Surface**:
-    - **Corner Radius**: Sharp (4px) for all elements.
-    - **Borders**: 1px `border-muted` as the primary separator (avoid heavy shadows).
+    - **Corner Radius**: `radius-control` (8px, `rounded.md`) for inputs/buttons, `radius-surface` (10px, `rounded.lg`) for cards.
+    - **Borders & Elevation**: Flat at rest with subtle 1px border/ring (`ring-1 ring-foreground/10`); shadow reserved only for floating/overlay elements (popovers, dropdowns, dialogs, drawers).
 
 ## 3. Navigation System
 - **Pillars**:

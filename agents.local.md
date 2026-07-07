@@ -47,5 +47,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/017-scheduling-reshape/plan.md](specs/017-scheduling-reshape/plan.md)
+- Current Plan: [specs/018-churchwide-ux-redesign/plan.md](specs/018-churchwide-ux-redesign/plan.md)
 <!-- SPECKIT END -->

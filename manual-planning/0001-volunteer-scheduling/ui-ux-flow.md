@@ -205,7 +205,7 @@ The following updates were made after the F2 grilling session. These apply to th
 ### New: Volunteer Dashboard is the canonical volunteer surface
 
 - The volunteer experience is no longer a loose collection of isolated pages.
-- `Availability`, `My Upcoming Assignments`, `Notifications Inbox`, and `Ministry Schedule` all belong under one volunteer dashboard.
+- `Availability`, `My Upcoming Assignments`, and `Ministry Schedule` belong under the Volunteer Dashboard (structured as switchable tabs). `Notifications Inbox` has been moved to the top-bar notification bell and its own `/notifications` route.
 
 ### New: Availability follows event granularity
 
@@ -220,12 +220,12 @@ The following updates were made after the F2 grilling session. These apply to th
 - The important post-publication volunteer action is `I cannot serve`, protected by a destructive confirmation step to avoid accidental taps.
 - Transitional pending states may still exist in data or APIs, but the intended UX should bias toward schedule visibility plus exception signaling.
 
-### New: Dashboard has a task-first information hierarchy
+### New: Dashboard has a tabbed, task-first information hierarchy
 
-- `Availability needed` is the highest-priority dashboard surface.
-- `My Upcoming Assignments` is the primary service-visibility surface.
-- `Notifications Inbox` is historical and supportive.
-- `Ministry Schedule` is secondary, read-only, and selected one Ministry at a time.
+- `Availability needed` (tab) exposes a count of outstanding items via a badge.
+- `My Upcoming Assignments` is the default active tab.
+- `Ministry Schedule` (tab) is read-only and selected one Ministry at a time.
+- `Notifications Inbox` is removed from the dashboard and lives solely in the top-bar notification bell and `/notifications` history page.
 
 ### New: Offline mode is read-first, not write-first
 

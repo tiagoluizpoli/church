@@ -24,6 +24,7 @@ Each item here is **not forgotten** — it is a deliberate deferral with full co
 | BL-012 | Add OpenAPI `summary` and `description` metadata across controller routes | API Documentation | Backlog |
 | BL-013 | Split controllers/routes by domain instead of by caller-role ("admin") | Backend Architecture | Backlog |
 | BL-014 | Church-wide UX/IA redesign: navigation, dashboard, notifications, scheduling flow, visual theme | Frontend UX/IA | Backlog — needs a grilling session before any implementation |
+| BL-015 | Option for 24-hour time format for time inputs and display | Frontend UX/IA | Backlog |
 
 ---
 
@@ -649,3 +650,38 @@ This was raised as a single holistic concern, not a checklist — the request wa
 4. The volunteer dashboard's sections are deliberately laid out with real visual hierarchy, not a flat vertical stack of unrelated concerns.
 5. A first-time, non-technical leader can complete the cycle → template → event flow without external explanation.
 6. The visual theme is a deliberate design decision (documented rationale for color/radius/spacing/typography), not the untouched shadcn install default.
+
+---
+
+### BL-015 — Option for 24-hour time format for time inputs and display
+
+**Status**: Backlog
+
+**Feature area**: Frontend UX/IA
+
+**Summary**: Currently, time display and inputs (e.g., in EventTemplate / TimeBlock configurations) default to 12-hour AM/PM formatting (or rely entirely on system locale). Provide a setting or toggle (e.g., a global or user-level configuration) to use the 24-hour time format, allowing users to type and view times without AM/PM suffixes.
+
+**Full Context**:
+- Currently, the application formats time using standard `Intl.DateTimeFormat` with `{ hour: 'numeric', minute: '2-digit' }`, which resolves to AM/PM in standard US locales.
+- Input elements for time (like in `template-block-row.tsx`) use `<input type="time" lang="pt-BR">` which behaves depending on the browser locale but doesn't offer a unified, explicit toggle.
+- Users want to be able to input and view times in a standard 24-hour format (e.g., `13:00` or `22:30`) directly and consistently across the entire application without typing or selecting AM/PM.
+
+**Why deferred**:
+- The MVP can function with the default system locale formatting.
+- Implementing a persistent time-format setting requires establishing a user/church preferences storage mechanism (either local storage or database setting) and integrating it into the global UI formatting helpers.
+
+**Prerequisites for implementation**:
+1. A configuration storage mechanism (e.g., a user settings schema or local storage state) to persist the 24-hour preference.
+2. Refactoring UI time-rendering helpers (such as `formatTimeRange` and `formatDateTime` in `participation-tailoring.utils.ts`) to honor the selected format.
+3. Ensuring that time inputs (e.g., `<Input type="time">`) gracefully handle 24-hour entry across all target browsers.
+
+**Suggested approach when implementing**:
+- Add a user-facing toggle (e.g., "Use 24-hour time") in the user profile/settings or global app-shell header/sidebar.
+- Create a global React Context or hook (`useTimeFormatter`) that provides localized formatting functions based on the current user setting.
+- Update `<input type="time">` and any custom time pickers to respect this preference if possible, or fall back to native browser controls configured for the correct locale string (e.g., `'en-GB'` or `hourCycle: 'h23'`).
+
+**Success criteria**:
+1. A user can toggle between 12-hour (AM/PM) and 24-hour formats.
+2. When 24-hour format is active, all displayed times (e.g., in scheduling views, volunteer dashboards) format as `HH:MM`.
+3. When 24-hour format is active, time inputs accept and display time in 24-hour format without requiring AM/PM input.
+

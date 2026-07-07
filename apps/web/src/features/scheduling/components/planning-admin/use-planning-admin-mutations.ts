@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
-import type { Dispatch, SetStateAction } from 'react';
+import { type Dispatch, type SetStateAction, useCallback } from 'react';
 import { toast } from 'sonner';
 import type {
   CycleFormState,
@@ -32,6 +32,10 @@ export interface UsePlanningAdminMutationsProps {
   setTemplateSaveSuccessCount: Dispatch<SetStateAction<number>>;
 }
 
+export interface ApplyTemplatesOptions {
+  onSuccess?: () => void;
+}
+
 interface DeleteTemplateInput {
   templateId: string;
 }
@@ -43,11 +47,13 @@ export interface UsePlanningAdminMutationsResult {
   saveTemplatePending: boolean;
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
+  applyTemplatesError: string | null;
   lockCyclePending: boolean;
+  resetApplyTemplates: () => void;
   handleCreateCycle: () => void;
   handleSaveTemplate: () => void;
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
-  handleApplyTemplates: () => void;
+  handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleLockCycle: () => void;
 }
 
@@ -198,9 +204,13 @@ export function usePlanningAdminMutations({
     deleteTemplate.mutate(templateId);
   }
 
-  function handleApplyTemplates() {
+  function handleApplyTemplates(options?: ApplyTemplatesOptions) {
     if (selectedCycleId) {
-      applyTemplates.mutate(selectedCycleId);
+      applyTemplates.mutate(selectedCycleId, {
+        onSuccess: () => {
+          options?.onSuccess?.();
+        },
+      });
     }
   }
 
@@ -210,6 +220,10 @@ export function usePlanningAdminMutations({
     }
   }
 
+  const resetApplyTemplates = useCallback(() => {
+    applyTemplates.reset();
+  }, [applyTemplates]);
+
   return {
     createCyclePending: createCycle.isPending,
     createTemplatePending: createTemplate.isPending,
@@ -217,7 +231,11 @@ export function usePlanningAdminMutations({
     saveTemplatePending: createTemplate.isPending || updateTemplate.isPending,
     deleteTemplatePending: deleteTemplate.isPending,
     applyTemplatesPending: applyTemplates.isPending,
+    applyTemplatesError: applyTemplates.error
+      ? getErrorMessage({ error: applyTemplates.error })
+      : null,
     lockCyclePending: lockCycle.isPending,
+    resetApplyTemplates,
     handleCreateCycle,
     handleSaveTemplate,
     handleDeleteTemplate,

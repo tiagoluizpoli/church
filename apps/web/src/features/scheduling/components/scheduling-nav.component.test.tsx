@@ -6,8 +6,13 @@ import { renderWithProviders } from '@/__tests__/setup/render';
 
 let mockPathname = '/scheduling/planning';
 
+interface MockLinkProps {
+  children: ReactNode;
+  to: string;
+}
+
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: { children: ReactNode; to: string }) => (
+  Link: ({ children, to, ...props }: MockLinkProps) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -37,8 +42,11 @@ describe('SchedulingNav', () => {
     ).getAllByRole('link');
 
     expect(links[0]).toHaveAttribute('data-active', 'true');
+    expect(links[0]).toHaveAttribute('aria-current', 'page');
     expect(links[1]).toHaveAttribute('data-active', 'false');
+    expect(links[1]).not.toHaveAttribute('aria-current');
     expect(links[2]).toHaveAttribute('data-active', 'false');
+    expect(links[2]).not.toHaveAttribute('aria-current');
   });
 
   it('treats rostering as part of the tailoring flow', () => {
@@ -50,8 +58,11 @@ describe('SchedulingNav', () => {
     ).getAllByRole('link');
 
     expect(links[0]).toHaveAttribute('data-active', 'false');
+    expect(links[0]).not.toHaveAttribute('aria-current');
     expect(links[1]).toHaveAttribute('data-active', 'true');
+    expect(links[1]).toHaveAttribute('aria-current', 'page');
     expect(links[2]).toHaveAttribute('data-active', 'false');
+    expect(links[2]).not.toHaveAttribute('aria-current');
   });
 
   it('keeps builder events active for builder subpages only', () => {
@@ -63,7 +74,10 @@ describe('SchedulingNav', () => {
     ).getAllByRole('link');
 
     expect(links[0]).toHaveAttribute('data-active', 'false');
+    expect(links[0]).not.toHaveAttribute('aria-current');
     expect(links[1]).toHaveAttribute('data-active', 'false');
+    expect(links[1]).not.toHaveAttribute('aria-current');
     expect(links[2]).toHaveAttribute('data-active', 'true');
+    expect(links[2]).toHaveAttribute('aria-current', 'page');
   });
 });

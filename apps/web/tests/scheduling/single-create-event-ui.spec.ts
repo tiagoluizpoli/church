@@ -36,6 +36,11 @@ async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));
 
+  const createButton = page.getByTestId('open-create-cycle-dialog-button');
+  if (await createButton.isVisible()) {
+    await createButton.click();
+  }
+
   await page
     .getByTestId('cycle-name-input')
     .fill(`Single create-event UI check ${now.getTime()}`);

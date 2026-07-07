@@ -19,7 +19,10 @@ import {
   getSelectedCycleIdOrThrow,
   isForbiddenError,
 } from './planning-admin.utils';
-import { usePlanningAdminMutations } from './use-planning-admin-mutations';
+import {
+  type ApplyTemplatesOptions,
+  usePlanningAdminMutations,
+} from './use-planning-admin-mutations';
 import { adminApi } from '@/utils/api-instances';
 
 interface SelectCycleInput {
@@ -88,9 +91,11 @@ export interface UsePlanningAdminResult {
   saveTemplatePending: boolean;
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
+  applyTemplatesError: string | null;
   lockCyclePending: boolean;
   templateSaveSuccessCount: number;
   selectedTemplateIds: string[];
+  resetApplyTemplates: () => void;
   handleCycleNameChange: (input: CycleNameChangeInput) => void;
   handleCycleStartDateChange: (input: CycleDateChangeInput) => void;
   handleCycleEndDateChange: (input: CycleDateChangeInput) => void;
@@ -107,7 +112,7 @@ export interface UsePlanningAdminResult {
   handleCreateCycle: () => void;
   handleSaveTemplate: () => void;
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
-  handleApplyTemplates: () => void;
+  handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleLockCycle: () => void;
 }
 
@@ -215,9 +220,11 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     saveTemplatePending: mutationHandlers.saveTemplatePending,
     deleteTemplatePending: mutationHandlers.deleteTemplatePending,
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,
+    applyTemplatesError: mutationHandlers.applyTemplatesError,
     lockCyclePending: mutationHandlers.lockCyclePending,
     templateSaveSuccessCount,
     selectedTemplateIds,
+    resetApplyTemplates: mutationHandlers.resetApplyTemplates,
     handleCycleNameChange: ({ name }: CycleNameChangeInput) =>
       setCycleForm((currentForm) => ({ ...currentForm, name })),
     handleCycleStartDateChange: ({ date }: CycleDateChangeInput) =>

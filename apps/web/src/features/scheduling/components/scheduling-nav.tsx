@@ -58,6 +58,7 @@ export function SchedulingNav() {
             key={item.to}
             to={item.to}
             data-active={isActive}
+            aria-current={isActive ? 'page' : undefined}
             title={item.description}
             className="group relative inline-flex min-h-11 items-center gap-2 whitespace-nowrap px-3 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground data-[active=true]:text-foreground"
           >

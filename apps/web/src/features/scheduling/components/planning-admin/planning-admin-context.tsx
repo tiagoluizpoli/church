@@ -171,6 +171,8 @@ export type TemplateApplyDialogModel = Pick<
   | 'selectedTemplateIds'
   | 'selectedCycleId'
   | 'applyTemplatesPending'
+  | 'applyTemplatesError'
+  | 'resetApplyTemplates'
   | 'handleToggleTemplateSelection'
   | 'handleApplyTemplates'
 >;
@@ -184,6 +186,8 @@ export function useTemplateApplyDialog(): TemplateApplyDialogModel {
     selectedTemplateIds: context.selectedTemplateIds,
     selectedCycleId: context.selectedCycleId,
     applyTemplatesPending: context.applyTemplatesPending,
+    applyTemplatesError: context.applyTemplatesError,
+    resetApplyTemplates: context.resetApplyTemplates,
     handleToggleTemplateSelection: context.handleToggleTemplateSelection,
     handleApplyTemplates: context.handleApplyTemplates,
   };

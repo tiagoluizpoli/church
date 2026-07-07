@@ -154,19 +154,7 @@ export function ParticipationTailoring() {
     retry: false,
   });
   const participationEvents = participationQuery.data?.events ?? [];
-  const roleEventId = participationEvents[0]?.event.id;
-
-  const roleCatalogQuery = useQuery({
-    queryKey: ['tailoring-role-catalog', roleEventId, selectedMinistryId],
-    queryFn: () =>
-      adminApi.getScheduleBuilderData({
-        eventId: roleEventId ?? '',
-        ministryId: selectedMinistryId ?? '',
-      }),
-    enabled: Boolean(roleEventId),
-    retry: false,
-  });
-  const roles = roleCatalogQuery.data?.roles ?? [];
+  // roleCatalogQuery is now moved inside ParticipationEventCard for per-event roles.
 
   useEffect(() => {
     if (!participationQuery.data) return;
@@ -488,10 +476,27 @@ export function ParticipationTailoring() {
         <>
           {participationQuery.isLoading ? (
             <Skeleton className="h-72 w-full" />
+          ) : eventsQuery.isError ? (
+            <div
+              className="surface-subtle workspace-panel text-destructive text-sm"
+              data-testid="events-error-state"
+            >
+              {getErrorMessage(eventsQuery.error)}
+            </div>
           ) : participationQuery.isError ? (
             <div className="surface-subtle workspace-panel text-destructive text-sm">
               {getErrorMessage(participationQuery.error)}
             </div>
+          ) : !selectedCycleId ? (
+            <Card className="surface-panel">
+              <CardHeader>
+                <CardTitle>No planning cycles</CardTitle>
+                <CardDescription>
+                  Create and lock a cycle first so this ministry has events to
+                  tailor.
+                </CardDescription>
+              </CardHeader>
+            </Card>
           ) : participationEvents.length === 0 ? (
             <Card className="surface-panel">
               <CardHeader>
@@ -513,7 +518,6 @@ export function ParticipationTailoring() {
                   }
                   splitForms={splitForms}
                   headcountDrafts={headcountDrafts}
-                  roles={roles}
                   cycleId={selectedCycleId ?? ''}
                   ministryId={selectedMinistryId ?? ''}
                   fireSummary={fireSummaries[eventView.participation.id]}
@@ -592,37 +596,19 @@ export function ParticipationTailoring() {
   );
 }
 
-function ParticipationEventCard({
-  eventView,
-  draftInclusions,
-  splitForms,
-  headcountDrafts,
-  roles,
-  cycleId,
-  ministryId,
-  fireSummary,
-  saveInclusionsPending,
-  splitPending,
-  saveHeadcountsPending,
-  firePending,
-  resendPending,
-  onToggleInclusion,
-  onSaveInclusions,
-  onSplitFormChange,
-  onSplitShifts,
-  onHeadcountChange,
-  onSaveHeadcounts,
-  onFireAvailability,
-  onResendAvailability,
-}: {
+interface FireSummaryState {
+  createdCheckCount: number;
+  notifiedVolunteerCount: number;
+}
+
+interface ParticipationEventCardProps {
   eventView: GetCycleParticipation200EventsItem;
   draftInclusions: string[];
   splitForms: Record<string, SplitFormState>;
   headcountDrafts: Record<string, string>;
-  roles: GetScheduleBuilderData200RolesItem[];
   cycleId: string;
   ministryId: string;
-  fireSummary?: { createdCheckCount: number; notifiedVolunteerCount: number };
+  fireSummary?: FireSummaryState;
   saveInclusionsPending: boolean;
   splitPending: boolean;
   saveHeadcountsPending: boolean;
@@ -642,7 +628,40 @@ function ParticipationEventCard({
   ) => void;
   onFireAvailability: () => void;
   onResendAvailability: () => void;
-}) {
+}
+
+function ParticipationEventCard({
+  eventView,
+  draftInclusions,
+  splitForms,
+  headcountDrafts,
+  cycleId,
+  ministryId,
+  fireSummary,
+  saveInclusionsPending,
+  splitPending,
+  saveHeadcountsPending,
+  firePending,
+  resendPending,
+  onToggleInclusion,
+  onSaveInclusions,
+  onSplitFormChange,
+  onSplitShifts,
+  onHeadcountChange,
+  onSaveHeadcounts,
+  onFireAvailability,
+  onResendAvailability,
+}: ParticipationEventCardProps) {
+  const roleCatalogQuery = useQuery({
+    queryKey: ['tailoring-role-catalog', eventView.event.id, ministryId],
+    queryFn: () =>
+      adminApi.getScheduleBuilderData({
+        eventId: eventView.event.id,
+        ministryId,
+      }),
+    retry: false,
+  });
+  const roles = roleCatalogQuery.data?.roles ?? [];
   const eventRoleOptions =
     roles.length > 0
       ? roles

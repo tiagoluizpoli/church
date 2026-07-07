@@ -28,7 +28,7 @@ export function CycleListCard({
           Select a cycle to review, add events, apply templates, or lock it.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent role="listbox" className="space-y-3">
         {cyclesLoading ? (
           <p className="text-muted-foreground text-sm">Loading cycles…</p>
         ) : cycles.length === 0 ? (
@@ -40,7 +40,9 @@ export function CycleListCard({
             <button
               key={cycle.id}
               type="button"
+              role="option"
               data-testid="planning-cycle-option"
+              aria-selected={selectedCycleId === cycle.id}
               className={`surface-subtle workspace-panel w-full text-left transition-colors hover:bg-accent/60 ${
                 selectedCycleId === cycle.id
                   ? 'border-primary/30 bg-accent/45'

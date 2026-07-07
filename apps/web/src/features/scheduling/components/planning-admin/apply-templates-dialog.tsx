@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@church/ui/components/dialog';
+import { useEffect, useRef } from 'react';
 import { describeTemplate } from './planning-admin.utils';
 import { useTemplateApplyDialog } from './planning-admin-context';
 
@@ -27,9 +28,22 @@ export function ApplyTemplatesDialog({
     selectedTemplateIds,
     selectedCycleId,
     applyTemplatesPending,
+    applyTemplatesError,
+    resetApplyTemplates,
     handleToggleTemplateSelection,
     handleApplyTemplates,
   } = useTemplateApplyDialog();
+
+  const resetRef = useRef(resetApplyTemplates);
+  useEffect(() => {
+    resetRef.current = resetApplyTemplates;
+  }, [resetApplyTemplates]);
+
+  useEffect(() => {
+    if (!open) {
+      resetRef.current();
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,6 +93,15 @@ export function ApplyTemplatesDialog({
           </div>
         )}
 
+        {applyTemplatesError && (
+          <div
+            className="text-destructive text-sm"
+            data-testid="apply-templates-error"
+          >
+            {applyTemplatesError}
+          </div>
+        )}
+
         <DialogFooter showCloseButton={true}>
           <Button
             type="button"
@@ -89,8 +112,11 @@ export function ApplyTemplatesDialog({
               applyTemplatesPending
             }
             onClick={() => {
-              handleApplyTemplates();
-              onOpenChange(false);
+              handleApplyTemplates({
+                onSuccess: () => {
+                  onOpenChange(false);
+                },
+              });
             }}
           >
             {applyTemplatesPending ? 'Applying…' : 'Apply selected templates'}

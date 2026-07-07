@@ -1,15 +1,17 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { PlanningAdmin } from './planning-admin';
 import { CycleListCard } from './planning-admin/cycle-list-card';
 import { PlanningAdminProvider } from './planning-admin/planning-admin-context';
 import { renderWithProviders } from '@/__tests__/setup/render';
+import { renderRoute } from '@/__tests__/setup/render-route';
 
 const listPlanningCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getPlanningCycle = vi.fn();
 const applyPlanningTemplates = vi.fn();
+const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -21,27 +23,41 @@ vi.mock('@/utils/api-instances', () => ({
   },
 }));
 
-vi.mock('./scheduling-nav', () => ({
-  SchedulingNav: () => <nav data-testid="scheduling-nav" />,
+vi.mock('@/lib/auth-client', () => ({
+  authClient: {
+    getSession: (...args: unknown[]) => getSession(...args),
+  },
 }));
 
-function render() {
-  return renderWithProviders(<PlanningAdmin />);
+vi.mock('@/components/app-shell', () => ({
+  AppShell: ({ children }: { children: ReactNode }) => children,
+}));
+
+vi.mock('@/components/theme-provider', () => ({
+  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+}));
+
+vi.mock('@church/ui/components/sonner', () => ({
+  Toaster: () => null,
+}));
+
+function renderPlanningCycles(initialPath = '/scheduling/planning-cycles') {
+  return renderRoute({ initialPath });
 }
 
-describe('PlanningAdmin step-sequence gating (T038)', () => {
+describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   it('defaults to the cycle list view when there are no cycles yet', async () => {
     listPlanningCycles.mockResolvedValue({ cycles: [] });
 
-    render();
+    renderPlanningCycles();
 
     expect(await screen.findByText('Existing cycles')).toBeVisible();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create cycle' })).toBeVisible();
+    expect(screen.getByTestId('open-create-cycle-dialog-button')).toBeVisible();
   });
 
-  it('keeps cycles as the entry view, then opens review only after a cycle is selected', async () => {
+  it('navigates to the cycle review URL once a cycle is selected', async () => {
     listPlanningCycles.mockResolvedValue({
       cycles: [
         {
@@ -65,8 +81,7 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
     });
 
     const user = userEvent.setup();
-
-    render();
+    renderPlanningCycles();
 
     expect(await screen.findByText('Existing cycles')).toBeVisible();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
@@ -77,7 +92,7 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
 
     expect(await screen.findByText('Selected cycle review')).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Apply template' }),
+      screen.getByTestId('open-apply-templates-dialog-button'),
     ).toBeVisible();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
   });
@@ -106,8 +121,7 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
     });
 
     const user = userEvent.setup();
-
-    render();
+    renderPlanningCycles();
 
     await user.click(await screen.findByTestId('planning-cycle-option'));
 
@@ -115,7 +129,7 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
       'locked',
     );
     expect(
-      screen.queryByRole('button', { name: 'Apply template' }),
+      screen.queryByTestId('open-apply-templates-dialog-button'),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /add manual event/i }),
@@ -126,8 +140,7 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
     listPlanningCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-
-    render();
+    renderPlanningCycles();
 
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-template-library-button'));
@@ -165,8 +178,7 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
     });
 
     const user = userEvent.setup();
-
-    render();
+    renderPlanningCycles();
 
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-template-library-button'));
@@ -180,37 +192,6 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
     expect(screen.getByTestId('template-name-input')).toHaveValue(
       'Sunday Service',
     );
-  });
-
-  it('renders cycles with correct aria-selected attribute based on selection', async () => {
-    listPlanningCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'draft',
-        },
-        {
-          id: 'cycle-2',
-          name: 'September 2026',
-          startDate: '2026-09-01',
-          endDate: '2026-09-30',
-          state: 'draft',
-        },
-      ],
-    });
-
-    renderWithProviders(
-      <PlanningAdminProvider>
-        <CycleListCard selectedCycleId="cycle-1" />
-      </PlanningAdminProvider>,
-    );
-
-    const options = await screen.findAllByTestId('planning-cycle-option');
-    expect(options[0]).toHaveAttribute('aria-selected', 'true');
-    expect(options[1]).toHaveAttribute('aria-selected', 'false');
   });
 
   it('keeps the apply-templates dialog open and displays an inline error when template application fails', async () => {
@@ -258,37 +239,62 @@ describe('PlanningAdmin step-sequence gating (T038)', () => {
     );
 
     const user = userEvent.setup();
+    renderPlanningCycles();
 
-    render();
-
-    // Select cycle
     await user.click(await screen.findByTestId('planning-cycle-option'));
+    await user.click(screen.getByTestId('open-apply-templates-dialog-button'));
 
-    // Click "Apply template" button to open dialog
-    await user.click(screen.getByRole('button', { name: 'Apply template' }));
-
-    // Verify dialog is open
     expect(
       await screen.findByRole('dialog', { name: 'Apply templates' }),
     ).toBeVisible();
 
-    // Check the template checkbox
     const checkbox = screen.getByTestId('template-select-checkbox');
     expect(checkbox).not.toBeChecked();
     await user.click(checkbox);
     expect(checkbox).toBeChecked();
 
-    // Click "Apply selected templates"
     const applyButton = screen.getByTestId('apply-templates-button');
     await user.click(applyButton);
 
-    // Verify dialog remains open and error is shown
     expect(
       screen.getByRole('dialog', { name: 'Apply templates' }),
     ).toBeVisible();
     expect(
       await screen.findByTestId('apply-templates-error'),
     ).toHaveTextContent('Apply templates failed due to conflict');
-    expect(checkbox).toBeChecked(); // Selection is preserved
+    expect(checkbox).toBeChecked();
+  });
+});
+
+describe('CycleListCard selection state', () => {
+  it('renders cycles with correct aria-selected attribute based on selection', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+        {
+          id: 'cycle-2',
+          name: 'September 2026',
+          startDate: '2026-09-01',
+          endDate: '2026-09-30',
+          state: 'draft',
+        },
+      ],
+    });
+
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <CycleListCard selectedCycleId="cycle-1" />
+      </PlanningAdminProvider>,
+    );
+
+    const options = await screen.findAllByTestId('planning-cycle-option');
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+    expect(options[1]).toHaveAttribute('aria-selected', 'false');
   });
 });

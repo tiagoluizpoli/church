@@ -1,5 +1,11 @@
 import { Badge } from '@church/ui/components/badge';
 import { Button } from '@church/ui/components/button';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@church/ui/components/card';
 import { Skeleton } from '@church/ui/components/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -8,6 +14,18 @@ import { useEffect, useState } from 'react';
 import { useTimezone } from '../../../shared/hooks/use-timezone';
 import { QuickCreateEventModal } from './quick-create-event-modal';
 import { adminApi } from '@/utils/api-instances';
+
+interface EventListErrorMessageInput {
+  error: unknown;
+  fallback: string;
+}
+
+function getErrorMessage({
+  error,
+  fallback,
+}: EventListErrorMessageInput): string {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export function EventList() {
   const { format, effectiveTimezone, mode } = useTimezone();
@@ -34,6 +52,8 @@ export function EventList() {
     queryFn: () => adminApi.listEvents({ ministryId: ministryId ?? '' }),
     enabled: !!ministryId,
   });
+
+  const ministriesList = ministries.data?.ministries ?? [];
 
   return (
     <div className="surface-panel workspace-panel-lg">
@@ -64,9 +84,9 @@ export function EventList() {
         </div>
       </div>
 
-      {ministries.data && ministries.data.ministries.length > 1 && (
+      {ministriesList.length > 1 && (
         <div className="mt-5 flex flex-wrap gap-2">
-          {ministries.data.ministries.map((m) => (
+          {ministriesList.map((m) => (
             <Button
               key={m.id}
               type="button"
@@ -85,6 +105,47 @@ export function EventList() {
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>
+      ) : ministries.isError ? (
+        <Card
+          className="surface-subtle mt-6"
+          data-testid="builder-events-scope-error"
+        >
+          <CardHeader>
+            <CardTitle>Unable to load ministries</CardTitle>
+            <CardDescription>
+              {getErrorMessage({
+                error: ministries.error,
+                fallback:
+                  'Check your access, then try loading builder-ready events again.',
+              })}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : ministriesList.length === 0 ? (
+        <Card className="surface-subtle mt-6">
+          <CardHeader>
+            <CardTitle>No ministries yet</CardTitle>
+            <CardDescription>
+              Create or join a ministry before opening builder-ready events.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : events.isError ? (
+        <Card
+          className="surface-subtle mt-6"
+          data-testid="builder-events-error-state"
+        >
+          <CardHeader>
+            <CardTitle>Unable to load builder events</CardTitle>
+            <CardDescription>
+              {getErrorMessage({
+                error: events.error,
+                fallback:
+                  'Try again in a moment once this ministry finishes loading.',
+              })}
+            </CardDescription>
+          </CardHeader>
+        </Card>
       ) : (events.data?.events ?? []).length === 0 ? (
         <div className="surface-subtle workspace-panel mt-6">
           <p className="font-medium text-sm">No builder events yet.</p>
@@ -94,7 +155,7 @@ export function EventList() {
           </p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4">
+        <div className="mt-6 grid gap-4" data-testid="builder-events-list">
           {(events.data?.events ?? []).map((event) => (
             <Link
               key={event.id}

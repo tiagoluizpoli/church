@@ -9,8 +9,12 @@ import {
 import { formatCycleDate, stateBadgeVariant } from './planning-admin.utils';
 import { useCycleListCard } from './planning-admin-context';
 
+interface SelectCycleInput {
+  cycleId: string;
+}
+
 interface CycleListCardProps {
-  onSelectCycle?: () => void;
+  onSelectCycle?: (input: SelectCycleInput) => void;
   selectedCycleId?: string | null;
 }
 
@@ -50,7 +54,7 @@ export function CycleListCard({
               }`}
               onClick={() => {
                 handleSelectCycle({ cycleId: cycle.id });
-                onSelectCycle?.();
+                onSelectCycle?.({ cycleId: cycle.id });
               }}
             >
               <div className="flex items-start justify-between gap-3">

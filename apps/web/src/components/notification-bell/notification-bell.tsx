@@ -67,9 +67,9 @@ export function NotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-label="Notifications"
-        className="radius-icon relative flex h-10 w-10 items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        className="radius-icon relative flex h-8 w-8 items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-4 w-4" />
         {bellViewModel.unreadCount > 0 ? (
           <Badge className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center px-1 text-[10px]">
             {bellViewModel.unreadCount}

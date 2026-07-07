@@ -36,10 +36,10 @@ async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));
 
-  const createButton = page.getByTestId('open-create-cycle-dialog-button');
-  if (await createButton.isVisible()) {
-    await createButton.click();
-  }
+  // `.click()` auto-waits for the button to become actionable — the route's
+  // `beforeLoad` guard (Phase 8) now awaits a network fetch before the page
+  // renders, so a non-waiting `isVisible()` snapshot here would race it.
+  await page.getByTestId('open-create-cycle-dialog-button').click();
 
   await page
     .getByTestId('cycle-name-input')
@@ -64,7 +64,7 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
   await expect(ministryDialog).not.toBeVisible();
 
   // Entry point 2: /scheduling/planning — cycle manual event, same UI.
-  await page.goto('/scheduling/planning');
+  await page.goto('/scheduling/planning-cycles');
   await ensureUnlockedCycleSelected(page);
   await page.getByRole('button', { name: 'Add manual event' }).click();
   const planningDialog = page.getByRole('dialog');

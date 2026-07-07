@@ -20,10 +20,6 @@ vi.mock('@/utils/api-instances', () => ({
   },
 }));
 
-vi.mock('./scheduling-nav', () => ({
-  SchedulingNav: () => <nav data-testid="scheduling-nav" />,
-}));
-
 interface MockLinkProps {
   children: React.ReactNode;
   to: string;

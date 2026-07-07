@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useContext } from 'react';
+import type { SelectedPlanningCycle } from './planning-admin.types';
 import {
   type UsePlanningAdminResult,
   usePlanningAdmin,
@@ -190,6 +191,57 @@ export function useTemplateApplyDialog(): TemplateApplyDialogModel {
     resetApplyTemplates: context.resetApplyTemplates,
     handleToggleTemplateSelection: context.handleToggleTemplateSelection,
     handleApplyTemplates: context.handleApplyTemplates,
+  };
+}
+
+export interface PlanningCycleSelectionModel {
+  selectedCycleId: string | null;
+  handleSelectCycle: (input: { cycleId: string }) => void;
+  handleClearSelectedCycle: () => void;
+}
+
+/**
+ * Route-boundary sync point: `planning-cycles` route files call this to keep
+ * `usePlanningAdmin`'s internal `selectedCycleId` state aligned with the
+ * `$cycleId` URL segment (source of truth is the URL; this hook's state is a
+ * cache/derived-data key, per `research.md` R6).
+ */
+export function usePlanningCycleSelection(): PlanningCycleSelectionModel {
+  const context = usePlanningAdminContext();
+
+  return {
+    selectedCycleId: context.selectedCycleId,
+    handleSelectCycle: context.handleSelectCycle,
+    handleClearSelectedCycle: context.handleClearSelectedCycle,
+  };
+}
+
+export interface PlanningCycleHeaderModel {
+  nameAndStatus: {
+    name: string;
+    status: SelectedPlanningCycle['state'];
+  } | null;
+  period: { startDate: string; endDate: string } | null;
+}
+
+/**
+ * Single source of truth for the selected cycle's status display (`research.md`
+ * Q-status-chip-dedup, `data-model.md`'s `PlanningCycleHeaderModel`) — no
+ * other component should render `selectedCycle.state` as a badge.
+ */
+export function usePlanningCycleHeader(): PlanningCycleHeaderModel {
+  const { selectedCycle } = usePlanningAdminContext();
+
+  if (!selectedCycle) {
+    return { nameAndStatus: null, period: null };
+  }
+
+  return {
+    nameAndStatus: { name: selectedCycle.name, status: selectedCycle.state },
+    period: {
+      startDate: selectedCycle.startDate,
+      endDate: selectedCycle.endDate,
+    },
   };
 }
 

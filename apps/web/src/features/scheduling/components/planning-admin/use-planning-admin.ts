@@ -114,6 +114,7 @@ export interface UsePlanningAdminResult {
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleLockCycle: () => void;
+  handleClearSelectedCycle: () => void;
 }
 
 export function usePlanningAdmin(): UsePlanningAdminResult {
@@ -233,6 +234,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       setCycleForm((currentForm) => ({ ...currentForm, endDate: date })),
     handleSelectCycle: ({ cycleId }: SelectCycleInput) =>
       setSelectedCycleId(cycleId),
+    handleClearSelectedCycle: () => setSelectedCycleId(null),
     handleStartCreateTemplate: () => {
       setEditingTemplateId(null);
       setTemplateForm(createEmptyTemplateForm());

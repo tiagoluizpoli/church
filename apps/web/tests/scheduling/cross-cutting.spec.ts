@@ -95,7 +95,7 @@ test.describe('DL4-X1 church isolation', () => {
     expect(lockResponse.status()).toBe(404);
 
     // Same check from the UI: the cycle list never renders churchA's cycle.
-    await page.goto('/scheduling/planning');
+    await page.goto('/scheduling/planning-cycles');
     await expect(
       page
         .getByTestId('planning-cycle-option')
@@ -150,7 +150,7 @@ test.describe('DL4-X2 network failure on lock', () => {
       route.abort('failed'),
     );
 
-    await page.goto('/scheduling/planning');
+    await page.goto('/scheduling/planning-cycles');
     await page
       .getByTestId('planning-cycle-option')
       .filter({ hasText: month.cycleName })

@@ -1,4 +1,3 @@
-import { Badge } from '@church/ui/components/badge';
 import { Button } from '@church/ui/components/button';
 import {
   Card,
@@ -9,11 +8,7 @@ import {
 } from '@church/ui/components/card';
 import { useState } from 'react';
 import { QuickCreateEventModal } from '../quick-create-event-modal';
-import {
-  cycleIsLocked,
-  formatCycleDate,
-  stateBadgeVariant,
-} from './planning-admin.utils';
+import { formatCycleDate } from './planning-admin.utils';
 import { useCycleReviewCard } from './planning-admin-context';
 import { PlanningEventCard } from './planning-event-card';
 
@@ -69,12 +64,6 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                   {cycleEvents.length} events · {totalSlots} slots
                 </div>
               </div>
-              <Badge
-                data-testid="selected-cycle-state"
-                variant={stateBadgeVariant({ state: selectedCycle.state })}
-              >
-                {selectedCycle.state}
-              </Badge>
             </div>
 
             {!isReadOnly ? (
@@ -104,29 +93,27 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
             ) : null}
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium text-sm">Calendar review</div>
-                  <div className="text-muted-foreground text-xs">
-                    Confirm dates, slots, and event types before locking the
-                    package.
+              {isReadOnly ? (
+                <div className="font-medium text-sm">Calendar review</div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-sm">Calendar review</div>
+                    <div className="text-muted-foreground text-xs">
+                      Confirm dates, slots, and event types before locking the
+                      package.
+                    </div>
                   </div>
+                  <Button
+                    type="button"
+                    data-testid="lock-cycle-button"
+                    disabled={lockCyclePending}
+                    onClick={handleLockCycle}
+                  >
+                    {lockCyclePending ? 'Locking…' : 'Lock cycle'}
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  data-testid="lock-cycle-button"
-                  disabled={
-                    cycleIsLocked({ cycle: selectedCycle }) || lockCyclePending
-                  }
-                  onClick={handleLockCycle}
-                >
-                  {lockCyclePending
-                    ? 'Locking…'
-                    : cycleIsLocked({ cycle: selectedCycle })
-                      ? 'Locked'
-                      : 'Lock cycle'}
-                </Button>
-              </div>
+              )}
 
               {cycleEvents.length > 0 ? (
                 <div className="space-y-3" data-testid="planning-events-list">

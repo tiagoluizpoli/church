@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback } from '@church/ui/components/avatar';
 import { Button } from '@church/ui/components/button';
 import {
   DropdownMenu,
@@ -10,7 +11,21 @@ import {
 } from '@church/ui/components/dropdown-menu';
 import { Skeleton } from '@church/ui/components/skeleton';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { TimezoneToggle } from '../shared/components/timezone-toggle';
 import { authClient } from '@/lib/auth-client';
+
+interface GetInitialsInput {
+  name: string;
+}
+
+function getInitials({ name }: GetInitialsInput): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const initials = [parts[0], parts[parts.length - 1]]
+    .filter(Boolean)
+    .map((part) => part?.[0])
+    .join('');
+  return initials.toUpperCase() || '?';
+}
 
 export default function UserMenu() {
   const navigate = useNavigate();
@@ -30,14 +45,40 @@ export default function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {session.user.name}
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            aria-label={`Account menu for ${session.user.name}`}
+            className="radius-icon flex h-9 w-9 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
+          />
+        }
+      >
+        <Avatar className="size-9 rounded-md after:rounded-md">
+          <AvatarFallback className="rounded-md bg-primary/12 font-medium text-primary">
+            {getInitials({ name: session.user.name })}
+          </AvatarFallback>
+        </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-card">
+      <DropdownMenuContent align="end" className="w-72 bg-card">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel className="flex flex-col gap-0.5 py-2">
+            <span className="font-semibold text-foreground text-sm">
+              {session.user.name}
+            </span>
+            <span className="font-normal text-muted-foreground text-xs">
+              {session.user.email}
+            </span>
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
+          <DropdownMenuItem
+            closeOnClick={false}
+            className="flex items-center justify-between gap-3"
+          >
+            <span>Church time</span>
+            <TimezoneToggle variant="ghost" size="xs" />
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
             onClick={() => {

@@ -38,7 +38,6 @@ import {
   toIsoString,
   validateManualSpans,
 } from './participation-tailoring.utils';
-import { SchedulingNav } from './scheduling-nav';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
@@ -308,11 +307,10 @@ export function ParticipationTailoring() {
 
   return (
     <WorkspacePage data-testid="participation-tailoring-page">
-      <SchedulingNav />
-
       <WorkspaceIntroPanel
         title="Participation tailoring"
         description="Confirm which slots your ministry serves, split them into workable shifts, set headcounts, then fire availability."
+        autoFocusTitle
         aside={
           selectedMinistry && !isLoadingScope ? (
             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">

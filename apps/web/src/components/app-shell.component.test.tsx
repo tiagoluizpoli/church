@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -5,13 +6,16 @@ import { renderWithProviders } from '../__tests__/setup/render';
 import { AppShell } from './app-shell';
 import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
+let mockPathname = '/dashboard';
+const getPlanningCycle = vi.fn();
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: { children: ReactNode; to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
   ),
-  useLocation: () => ({ pathname: '/dashboard' }),
+  useLocation: () => ({ pathname: mockPathname }),
   useNavigate: () => vi.fn(),
 }));
 
@@ -23,6 +27,12 @@ vi.mock('@/lib/auth-client', () => ({
 
 vi.mock('@/shared/hooks/use-caller-roles', () => ({
   useCallerRoles: vi.fn(),
+}));
+
+vi.mock('@/utils/api-instances', () => ({
+  adminApi: {
+    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+  },
 }));
 
 const mockedUseCallerRoles = vi.mocked(useCallerRoles);
@@ -51,6 +61,7 @@ function navLabels(landmark: HTMLElement): (string | undefined)[] {
 describe('AppShell role-scoped navigation', () => {
   afterEach(() => {
     vi.clearAllMocks();
+    mockPathname = '/dashboard';
   });
 
   it('shows only Dashboard and Availability for a Volunteer-only caller', () => {
@@ -80,6 +91,7 @@ describe('AppShell role-scoped navigation', () => {
       canSeeScheduling: true,
       isResolving: false,
     });
+    mockPathname = '/scheduling';
 
     renderWithProviders(<AppShell>content</AppShell>);
 
@@ -87,11 +99,33 @@ describe('AppShell role-scoped navigation', () => {
       'Dashboard',
       'Availability',
       'Scheduling',
+      'Planning',
+      'Tailoring',
+      'Builder events',
     ]);
     expect(navLabels(screen.getByTestId('mobile-bottom-nav'))).toEqual([
       'Dashboard',
       'Availability',
       'Scheduling',
+    ]);
+  });
+
+  it('keeps Scheduling children visible and navigable when a different section is active', () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: true,
+      isResolving: false,
+    });
+    mockPathname = '/dashboard';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    expect(navLabels(screen.getByTestId('sidebar'))).toEqual([
+      'Dashboard',
+      'Availability',
+      'Scheduling',
+      'Planning',
+      'Tailoring',
+      'Builder events',
     ]);
   });
 
@@ -111,5 +145,36 @@ describe('AppShell role-scoped navigation', () => {
         0,
       );
     }
+  });
+
+  it('shows selected planning cycle name in breadcrumbs on nested review routes', () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: true,
+      isResolving: false,
+    });
+    mockPathname = '/scheduling/planning-cycles/cycle-1';
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+        mutations: { retry: false },
+      },
+    });
+    queryClient.setQueryData(['planning-cycle-details', 'cycle-1'], {
+      cycle: {
+        id: 'cycle-1',
+        name: 'August 2026',
+      },
+    });
+
+    renderWithProviders(
+      <QueryClientProvider client={queryClient}>
+        <AppShell>content</AppShell>
+      </QueryClientProvider>,
+    );
+
+    const breadcrumbs = screen.getByTestId('breadcrumbs');
+    expect(within(breadcrumbs).getByText('Planning cycles')).toBeVisible();
+    expect(within(breadcrumbs).getByText('August 2026')).toBeVisible();
   });
 });

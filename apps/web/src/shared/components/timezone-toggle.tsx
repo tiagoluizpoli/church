@@ -1,17 +1,26 @@
 import { Button } from '@church/ui/components/button';
 import { Clock, Globe } from 'lucide-react';
+import type { ComponentProps } from 'react';
 import { useTimezone } from '../hooks/use-timezone';
+
+interface TimezoneToggleProps {
+  variant?: ComponentProps<typeof Button>['variant'];
+  size?: ComponentProps<typeof Button>['size'];
+}
 
 /**
  * Toggle component to switch between Church Time and User Local Time.
  */
-export function TimezoneToggle() {
+export function TimezoneToggle({
+  variant = 'outline',
+  size = 'sm',
+}: TimezoneToggleProps = {}) {
   const { toggleMode, isChurchTime } = useTimezone();
 
   return (
     <Button
-      variant="outline"
-      size="sm"
+      variant={variant}
+      size={size}
       onClick={toggleMode}
       className="flex items-center gap-2"
     >

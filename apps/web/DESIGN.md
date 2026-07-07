@@ -136,7 +136,7 @@ This is explicitly not a generic AI-SaaS-cream tool (no tinted-cream backgrounds
 
 ## 2. Colors
 
-Restrained by default: tinted cool-blue neutrals carry almost the entire surface, with the primary blue-violet appearing only on primary actions, current selection, and the sidebar's active state.
+Restrained by default: tinted cool-blue neutrals carry almost the entire surface, with the primary blue-violet appearing only on primary actions, current selection, and the sidebar's active state. The page background is not perfectly flat: a faint radial wash of the `accent` hue sits in the top-left corner and fades into the base `background` by the bottom edge (`color-mix` in OKLCH, ≤56% strength). This is the one place a gradient is allowed system-wide — an ambient, whole-page atmosphere, never on text, buttons, or cards.
 
 ### Primary
 - **Deep Chapel Blue** (`oklch(0.378 0.09 255)`): primary buttons, active nav/sidebar state, focus accents, badges that need to read as "the main action." Never used decoratively or as a background fill beyond low-opacity tints (`/8`, `/11`, `/12`).
@@ -153,6 +153,9 @@ Restrained by default: tinted cool-blue neutrals carry almost the entire surface
 - **Confirmed Green** (`#16a34a`): staffing at 100%, confirmed assignment icon.
 - **Pending Amber** (`#eab308`): staffing 50–99%, pending confirmation icon.
 - **Conflict Red** (`#dc2626` / `destructive` `oklch(0.614 0.207 26)`): staffing under 50%, declined assignment, destructive actions, unavailable/double-booked conflict chips.
+
+### Dark Mode
+Dark mode is a deliberate re-tuning, not a straight invert. `background` drops to a near-black cool slate (`oklch(0.205 0.018 252)`) rather than pure black, and `primary` lightens and desaturates to `oklch(0.72 0.066 238)` — Deep Chapel Blue would fail contrast as a fill on a dark surface, so its dark-mode counterpart is a lighter, quieter blue that keeps `primary-foreground` dark (`oklch(0.226 0.022 254)`) instead of flipping to white. `card` and `sidebar` both sit one step lighter than `background` (`oklch(0.24 0.018 252)` / `oklch(0.186 0.016 252)`), preserving the same "sidebar is cooler and one layer removed" relationship as light mode. The Status traffic-light colors (`#16a34a` / `#eab308` / `#dc2626`) do not change between themes — they're the one vocabulary that must read identically regardless of mode.
 
 ### Named Rules
 **The One Voice Rule.** Deep Chapel Blue is the only saturated brand color and it never exceeds roughly 10% of a screen's surface. Reach for a neutral tint (`/8`–`/15` opacity) before reaching for a stronger blue.
@@ -204,6 +207,11 @@ Built on base-ui/react primitives (not Radix) with `class-variance-authority` fo
 - **Style:** 20px tall, `radius-control`, used for counts (unread tabs), staffing percentages, and conflict labels.
 - **State:** default (primary fill), secondary, destructive, outline, ghost — same variant vocabulary as buttons for consistency.
 
+### Avatars
+- **Shape:** square, not circular — overridden to `radius-control` (e.g. the user-menu trigger), a deliberate break from the base-ui default circle to match the rest of the system's control shape vocabulary.
+- **Style:** initials-only `AvatarFallback` on a `primary/12` tint with `primary` text; no photo avatars in the current build.
+- **Sizes:** `sm` / `default` / `lg` via `data-size`, each with a matching `AvatarFallback` type scale step.
+
 ### Cards / Containers
 - **Corner style:** `radius-surface` (10px, `rounded.lg`).
 - **Background:** `card`, lifted from `background` by a subtle top-to-bottom gradient (`card` mixed 86%→100% with white) rather than a shadow.
@@ -219,9 +227,10 @@ Built on base-ui/react primitives (not Radix) with `class-variance-authority` fo
 
 ### Navigation
 - **Desktop sidebar:** collapsible (240px ↔ 64px) via a spring transition, active item gets a `primary/11` tinted background with a solid `primary` icon chip; inactive items are `sidebar-foreground/78`.
+- **Nested nav (e.g. Scheduling's Planning / Tailoring / Builder events):** expanded state draws a thin `sidebar-foreground/25` tree stem down the left edge with a stub connecting to each child row — a literal parent/child hierarchy, not a second-level tab bar. Collapsed state drops the tree entirely and shows child icons as a stacked icon rail with tooltips.
 - **Mobile:** a sticky top header (search + notifications + hamburger) plus a fixed bottom tab bar — both live in the cooler `sidebar` surface tone, both use 44px+ touch targets even though desktop controls are 32px, honoring the older-adult/mobile-volunteer accessibility mandate.
 - **Sub-navigation (e.g. Scheduling tabs):** underline-indicator pattern — a `scale-x-0 → scale-x-100` bar beneath the active label, not a filled pill.
-- **Breadcrumbs:** desktop-only, derived from the route path, opaque IDs (UUIDs) are dropped from the trail automatically.
+- **Breadcrumbs:** desktop-only, derived from the route path. Opaque IDs (UUIDs) are dropped from the trail automatically, unless the segment resolves to a real name via live data (e.g. a planning-cycle ID renders as the cycle's name once fetched) — the crumb favors a human label over hiding the segment.
 
 ### Staffing Meter (signature component)
 A dedicated component with two renderings: a compact percentage `Badge` (per time-slot) and a full `Progress` bar (per event), both colored by the Status vocabulary — red under 50%, amber 50–99%, green at 100%. This is the one place in the system where the Traffic-Light Exception applies.
@@ -235,6 +244,7 @@ A dedicated component with two renderings: a compact percentage `Badge` (per tim
 - **Do** use the green/amber/red status vocabulary only for staffing percentage and assignment confirmation state.
 - **Do** size touch targets at 44px+ on mobile/volunteer-facing controls even when the equivalent desktop control is 32px.
 - **Do** reuse `@church/ui` primitives (Button, Card, Badge, Input, Dialog, Tabs) rather than building one-off styled elements — the same control must look and behave identically on the volunteer dashboard and the admin planning screens.
+- **Do** re-tune colors for dark mode rather than inverting them — `primary` lightens/desaturates instead of staying the same hex-equivalent value, so it keeps AA contrast against the dark `background`.
 
 ### Don't:
 - **Don't** introduce a cream/sand/tinted-warm body background — the app background is a cool near-white (`oklch(0.978 0.004 236)`), not a warm neutral.

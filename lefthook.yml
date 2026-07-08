@@ -13,7 +13,7 @@ pre-push:
   parallel: true
   jobs:
     - name: turbo-check
-      run: turbo check-types test
+      run: bun run turbo check-types test
     - name: check-orval
       run: bun run orval && git diff --exit-code apps/web/src/infrastructure/api/
       fail_text: "orval output stale — run orval and commit the generated files"

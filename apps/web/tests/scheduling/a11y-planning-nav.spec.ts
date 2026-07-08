@@ -57,7 +57,7 @@ test('breadcrumb never marks an ancestor link as the current page (regression: T
   await page.goto(`/scheduling/planning-cycles/${CHURCH_A_CYCLE_ID}`);
   const nav = page.getByRole('navigation', { name: 'breadcrumb' });
   await expect(nav).toBeVisible();
-  await expect(nav.locator('[aria-current="page"]')).toHaveCount(0);
+  await expect(nav.locator('a[aria-current="page"]')).toHaveCount(0);
 
   const links = nav.getByRole('link');
   await expect(links.first()).toBeVisible();

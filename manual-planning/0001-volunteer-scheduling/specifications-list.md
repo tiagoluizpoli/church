@@ -38,6 +38,10 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
 - **[✅ Spec L4: Notification Service](./specifications/L4-notification-service.md)**: Triggering PWA Web Push and in-app alerts.
 - **[✅ Spec L5: Background Workers & Cron](./specifications/L5-background-workers.md)**: Managing 24h reminders and cleanup.
 
+## Phase 4.1: Manual Fixes & Code Stabilization
+*Objective: Manually resolve existing architectural/functional misalignments to establish a stable baseline.*
+- **Manual Stabilization & API Polish**: Address incorrect implementations in the API and Domain layers manually. Once a stable version is verified, proceed to frontend building (Phase 5).
+
 ## Phase 5: Presentation Layer (The Frontend)
 *Objective: Build the user interfaces.*
 - **[Spec F0: Global UI Framework](./specifications/F0-global-ui-framework.md)**: Application-wide layout shell, theme providers, and navigation system.

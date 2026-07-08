@@ -28,3 +28,36 @@ export type PlanningCycleSummary = ListPlanningCycles200CyclesItem;
 export type PlanningTemplateSummary = ListEventTemplates200TemplatesItem;
 export type SelectedPlanningCycle = GetPlanningCycle200Cycle;
 export type PlanningCycleEventGroup = GetPlanningCycle200EventsItem;
+
+export interface PlanningCyclesTableRow {
+  id: string;
+  name: string;
+  window: string;
+  state: PlanningCycleSummary['state'];
+}
+
+export interface TemplateLibraryTableRow {
+  id: string;
+  name: string;
+  weekday: string;
+  blockCount: number;
+}
+
+export interface CycleCalendarSlotRow {
+  slotId: string;
+  label: string;
+  window: string;
+}
+
+export interface CycleCalendarTableRow {
+  eventId: string;
+  title: string;
+  window: string;
+  eventType: string;
+  status: PlanningCycleEventGroup['event']['status'];
+  slots: CycleCalendarSlotRow[];
+}
+
+export interface ExpandedCalendarRowsState {
+  expandedEventIds: ReadonlySet<string>;
+}

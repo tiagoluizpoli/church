@@ -1,8 +1,18 @@
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { QuickCreateEventModal } from '../quick-create-event-modal';
-import { formatCycleDate } from './planning-admin.utils';
+import type {
+  CycleCalendarTableRow,
+  ExpandedCalendarRowsState,
+} from './planning-admin.types';
+import {
+  eventStatusBadgeVariant,
+  formatCycleDate,
+  toCycleCalendarTableRow,
+} from './planning-admin.utils';
 import { useCycleReviewCard } from './planning-admin-context';
 import { PlanningEventCard } from './planning-event-card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,9 +21,75 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface CycleReviewCardProps {
   isReadOnly: boolean;
+}
+
+const CALENDAR_TABLE_COLUMNS = [
+  { id: 'event', name: 'Event' },
+  { id: 'window', name: 'Window' },
+  { id: 'slots', name: 'Slots' },
+  { id: 'status', name: 'Status' },
+] as const;
+
+type CalendarVisibleRow =
+  | { kind: 'parent'; row: CycleCalendarTableRow }
+  | {
+      kind: 'slot';
+      parentId: string;
+      slotId: string;
+      label: string;
+      window: string;
+    };
+
+interface BuildVisibleCalendarRowsInput {
+  rows: CycleCalendarTableRow[];
+  expandedEventIds: ReadonlySet<string>;
+}
+
+function buildVisibleCalendarRows({
+  rows,
+  expandedEventIds,
+}: BuildVisibleCalendarRowsInput): CalendarVisibleRow[] {
+  return rows.flatMap((row): CalendarVisibleRow[] => {
+    const parentRow: CalendarVisibleRow = { kind: 'parent', row };
+
+    if (!expandedEventIds.has(row.eventId)) {
+      return [parentRow];
+    }
+
+    return [
+      parentRow,
+      ...row.slots.map(
+        (slot): CalendarVisibleRow => ({
+          kind: 'slot',
+          parentId: row.eventId,
+          slotId: slot.slotId,
+          label: slot.label,
+          window: slot.window,
+        }),
+      ),
+    ];
+  });
+}
+
+interface VisibleRowIdInput {
+  visibleRow: CalendarVisibleRow;
+}
+
+function visibleRowId({ visibleRow }: VisibleRowIdInput): string {
+  return visibleRow.kind === 'parent'
+    ? `event-${visibleRow.row.eventId}`
+    : `slot-${visibleRow.parentId}-${visibleRow.slotId}`;
 }
 
 export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
@@ -27,6 +103,26 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     handleLockCycle,
   } = useCycleReviewCard();
   const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [calendarRowsState, setCalendarRowsState] =
+    useState<ExpandedCalendarRowsState>({ expandedEventIds: new Set() });
+
+  interface ToggleEventExpandedInput {
+    eventId: string;
+  }
+
+  function toggleEventExpanded({ eventId }: ToggleEventExpandedInput): void {
+    setCalendarRowsState((current) => {
+      const next = new Set(current.expandedEventIds);
+
+      if (next.has(eventId)) {
+        next.delete(eventId);
+      } else {
+        next.add(eventId);
+      }
+
+      return { expandedEventIds: next };
+    });
+  }
 
   return (
     <Card className="surface-panel">
@@ -116,14 +212,114 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
               )}
 
               {cycleEvents.length > 0 ? (
-                <div className="space-y-3" data-testid="planning-events-list">
-                  {cycleEvents.map((eventGroup) => (
-                    <PlanningEventCard
-                      key={eventGroup.event.id}
-                      eventGroup={eventGroup}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div
+                    className="space-y-3 md:hidden"
+                    data-testid="planning-events-list"
+                  >
+                    {cycleEvents.map((eventGroup) => (
+                      <PlanningEventCard
+                        key={eventGroup.event.id}
+                        eventGroup={eventGroup}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="hidden md:block">
+                    <Table aria-label="Calendar review">
+                      <TableHeader columns={CALENDAR_TABLE_COLUMNS}>
+                        {(column) => (
+                          <TableColumn isRowHeader={column.id === 'event'}>
+                            {column.name}
+                          </TableColumn>
+                        )}
+                      </TableHeader>
+                      <TableBody
+                        items={buildVisibleCalendarRows({
+                          rows: cycleEvents.map((eventGroup) =>
+                            toCycleCalendarTableRow({ eventGroup }),
+                          ),
+                          expandedEventIds: calendarRowsState.expandedEventIds,
+                        })}
+                      >
+                        {(visibleRow) => (
+                          <TableRow
+                            key={visibleRowId({ visibleRow })}
+                            id={visibleRowId({ visibleRow })}
+                            columns={CALENDAR_TABLE_COLUMNS}
+                          >
+                            {(column) => (
+                              <TableCell>
+                                {visibleRow.kind === 'parent' ? (
+                                  <>
+                                    {column.id === 'event' ? (
+                                      <span className="flex items-center gap-2">
+                                        <Button
+                                          type="button"
+                                          size="icon-xs"
+                                          variant="ghost"
+                                          aria-label={
+                                            calendarRowsState.expandedEventIds.has(
+                                              visibleRow.row.eventId,
+                                            )
+                                              ? `Collapse ${visibleRow.row.title}`
+                                              : `Expand ${visibleRow.row.title}`
+                                          }
+                                          onClick={() =>
+                                            toggleEventExpanded({
+                                              eventId: visibleRow.row.eventId,
+                                            })
+                                          }
+                                        >
+                                          {calendarRowsState.expandedEventIds.has(
+                                            visibleRow.row.eventId,
+                                          ) ? (
+                                            <ChevronDown />
+                                          ) : (
+                                            <ChevronRight />
+                                          )}
+                                        </Button>
+                                        {visibleRow.row.title}
+                                      </span>
+                                    ) : null}
+                                    {column.id === 'window'
+                                      ? visibleRow.row.window
+                                      : null}
+                                    {column.id === 'slots'
+                                      ? `${visibleRow.row.slots.length} slot${visibleRow.row.slots.length === 1 ? '' : 's'}`
+                                      : null}
+                                    {column.id === 'status' ? (
+                                      <Badge
+                                        variant={eventStatusBadgeVariant({
+                                          status: visibleRow.row.status,
+                                        })}
+                                      >
+                                        {visibleRow.row.status}
+                                      </Badge>
+                                    ) : null}
+                                  </>
+                                ) : (
+                                  <>
+                                    {column.id === 'event' ? (
+                                      <span className="pl-8 text-muted-foreground">
+                                        {visibleRow.label}
+                                      </span>
+                                    ) : null}
+                                    {column.id === 'window' ? (
+                                      <span className="text-muted-foreground">
+                                        {visibleRow.window}
+                                      </span>
+                                    ) : null}
+                                  </>
+                                )}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : (
                 <p className="text-muted-foreground text-sm">
                   No events in this cycle yet. Apply templates or add a manual

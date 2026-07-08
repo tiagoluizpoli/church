@@ -1,11 +1,16 @@
 import { isAxiosError } from 'axios';
 import type {
+  CycleCalendarSlotRow,
+  CycleCalendarTableRow,
   CycleFormState,
   PlanningCycleEventGroup,
+  PlanningCycleSummary,
+  PlanningCyclesTableRow,
   PlanningTemplateSummary,
   SelectedPlanningCycle,
   TemplateBlockDraft,
   TemplateFormState,
+  TemplateLibraryTableRow,
 } from './planning-admin.types';
 import type {
   CreateEventTemplateBody,
@@ -75,6 +80,18 @@ interface TemplateFormValidityInput {
 
 interface SelectedCycleInput {
   cycle: SelectedPlanningCycle | null | undefined;
+}
+
+interface PlanningCyclesTableRowInput {
+  cycle: PlanningCycleSummary;
+}
+
+interface TemplateLibraryTableRowInput {
+  template: PlanningTemplateSummary;
+}
+
+interface CycleCalendarTableRowInput {
+  eventGroup: PlanningCycleEventGroup;
 }
 
 export function createEmptyCycleForm(): CycleFormState {
@@ -250,4 +267,45 @@ export function canCreateTemplate({
 
 export function cycleIsLocked({ cycle }: SelectedCycleInput): boolean {
   return cycle?.state === 'locked';
+}
+
+export function toPlanningCyclesTableRow({
+  cycle,
+}: PlanningCyclesTableRowInput): PlanningCyclesTableRow {
+  return {
+    id: cycle.id,
+    name: cycle.name,
+    window: `${formatCycleDate({ date: cycle.startDate })} → ${formatCycleDate({ date: cycle.endDate })}`,
+    state: cycle.state,
+  };
+}
+
+export function toTemplateLibraryTableRow({
+  template,
+}: TemplateLibraryTableRowInput): TemplateLibraryTableRow {
+  return {
+    id: template.id,
+    name: template.name,
+    weekday: WEEKDAYS[template.weekday] ?? 'Unknown',
+    blockCount: template.blocks.length,
+  };
+}
+
+export function toCycleCalendarTableRow({
+  eventGroup,
+}: CycleCalendarTableRowInput): CycleCalendarTableRow {
+  return {
+    eventId: eventGroup.event.id,
+    title: eventGroup.event.title,
+    window: `${formatEventDateTime({ date: eventGroup.event.startDate })} → ${formatEventDateTime({ date: eventGroup.event.endDate })}`,
+    eventType: eventGroup.event.eventType,
+    status: eventGroup.event.status,
+    slots: eventGroup.slots.map(
+      (slot): CycleCalendarSlotRow => ({
+        slotId: slot.id,
+        label: slot.label ?? 'Slot',
+        window: `${formatEventDateTime({ date: slot.startTime })} → ${formatEventDateTime({ date: slot.endTime })}`,
+      }),
+    ),
+  };
 }

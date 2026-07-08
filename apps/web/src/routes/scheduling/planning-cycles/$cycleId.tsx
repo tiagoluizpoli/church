@@ -16,10 +16,9 @@ function PlanningCycleReviewRoute() {
   const { handleSelectCycle } = usePlanningCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handleSelectCycle is a new reference every render (usePlanningAdmin isn't memoized); only the URL's cycleId segment should retrigger this sync.
   useEffect(() => {
     handleSelectCycle({ cycleId });
-  }, [cycleId]);
+  }, [cycleId, handleSelectCycle]);
 
   const isReadOnly = cycleIsLocked({ cycle: selectedCycle });
 

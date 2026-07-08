@@ -1,3 +1,4 @@
+import { buttonVariants } from '@church/ui/components/button';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   WorkspaceIntroPanel,
@@ -20,13 +21,13 @@ function BuilderEventsRoute() {
           <div className="flex flex-wrap items-center gap-2">
             <Link
               to="/scheduling/tailoring"
-              className="radius-control inline-flex min-h-11 items-center justify-center border border-border bg-background px-4 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+              className={buttonVariants({ variant: 'outline' })}
             >
               Open tailoring
             </Link>
             <Link
               to="/scheduling/planning-cycles"
-              className="radius-control inline-flex min-h-11 items-center justify-center bg-primary px-4 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
+              className={buttonVariants({ variant: 'default' })}
             >
               Open planning
             </Link>

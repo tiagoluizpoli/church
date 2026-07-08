@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   CycleFormState,
   PlanningCycleEventGroup,
@@ -181,6 +181,11 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       isForbiddenError({ error: templatesQuery.error }),
     [cyclesQuery.error, templatesQuery.error],
   );
+  const handleSelectCycle = useCallback(
+    ({ cycleId }: SelectCycleInput) => setSelectedCycleId(cycleId),
+    [],
+  );
+
   const mutationHandlers = usePlanningAdminMutations({
     queryClient,
     selectedCycleId,
@@ -232,8 +237,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       setCycleForm((currentForm) => ({ ...currentForm, startDate: date })),
     handleCycleEndDateChange: ({ date }: CycleDateChangeInput) =>
       setCycleForm((currentForm) => ({ ...currentForm, endDate: date })),
-    handleSelectCycle: ({ cycleId }: SelectCycleInput) =>
-      setSelectedCycleId(cycleId),
+    handleSelectCycle,
     handleClearSelectedCycle: () => setSelectedCycleId(null),
     handleStartCreateTemplate: () => {
       setEditingTemplateId(null);

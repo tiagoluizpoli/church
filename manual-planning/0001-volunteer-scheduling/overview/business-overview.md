@@ -3,7 +3,7 @@
 ## Overview
 A system for ministry leaders to manage the scheduling (escalas) of volunteers who serve in their specific ministry. This document outlines the core functional requirements and high-level decisions.
 
-> **Refined (017, 2026-07-02):** Scheduling is now planned at the **church** level in **`PlanningCycle`s**. A **`ChurchAdmin`** drafts a cycle (arbitrary date range), applies **`EventTemplate`s** to generate the recurring Events, and **locks** it. Each **ministry leader** then tailors their **`MinistryParticipation`** (opts into slots via their `MinistryServingProfile`, sets `Shift` headcounts) and **fires availability checks**. Volunteers are **available by default**, mark exceptions per `Shift`, and **confirm**. Each ministry **publishes its own roster** independently; notifications are **per cycle**. See [`CONTEXT.md`](../../CONTEXT.md), [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md), [refinement-02](./refinement-02-scheduling-reshape.md).
+> **Refined (017, 2026-07-02):** Scheduling is now planned at the **church** level in **`PlanningCycle`s**. A **`ChurchAdmin`** drafts a cycle (arbitrary date range), applies **`EventTemplate`s** to generate the recurring Events, and **locks** it. Each **ministry leader** then tailors their **`MinistryParticipation`** (opts into slots via their `MinistryServingProfile`, sets `Shift` headcounts) and **fires availability checks**. Volunteers are **available by default**, mark exceptions per `Shift`, and **confirm**. Each ministry **publishes its own roster** independently; notifications are **per cycle**. See [`CONTEXT.md`](../../CONTEXT.md), [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md), [refinement-02](../../vault/refinements/refinement-02-scheduling-reshape.md).
 
 ## Core Flow
 1. **Team Onboarding**: The ministry leader sends a registration/invite link to potential or existing volunteers.
@@ -28,6 +28,6 @@ A system for ministry leaders to manage the scheduling (escalas) of volunteers w
 ## 🔗 Architecture & Workflows
 
 To see how these business rules map to implementation, refer to:
-- **[Layered Implementation Roadmap](./specifications-list.md)**: The central index of all technical specifications.
-- **[Church Structure Flowchart](./flowcharts/church-structure.md)**: Visual representation of the Ministry/Team/Volunteer hierarchy.
-- **[Scheduling Process Flowchart](./flowcharts/scheduling-process.md)**: End-to-end leader workflow.
+- **[Layered Implementation Roadmap](../specifications-list.md)**: The central index of all technical specifications.
+- **[Church Structure Flowchart](../flowcharts/church-structure.md)**: Visual representation of the Ministry/Team/Volunteer hierarchy.
+- **[Scheduling Process Flowchart](../flowcharts/scheduling-process.md)**: End-to-end leader workflow.

@@ -48,5 +48,5 @@ Define the foundational "App Shell" and design tokens that govern the visual and
 - **Accessibility**: 100% WCAG 2.1 compliance for contrast and touch targets (44x44px).
 
 ## 🔗 References
-- [Design Brief](../design-brief.md)
-- [DESIGN.md](../DESIGN.md)
+- [Design Brief](../../../vault/design-brief.md)
+- [DESIGN.md](../../../apps/web/DESIGN.md)

@@ -10,7 +10,7 @@ Define the **core domain concepts and relationships** required to support:
 
 This document is **technology-agnostic** and should guide future schema design.
 
-> **Refined (017, 2026-07-02):** This model has been reshaped. Events are now **church-owned** and planned in **`PlanningCycle`s** generated from **`EventTemplate`s**, then tailored per ministry via **`MinistryParticipation`** and staffed at the **`Shift`** level. The concepts below are annotated inline; new concepts are listed in the "017 Reshape — New Concepts" block at the end. Authoritative: [`CONTEXT.md`](../../CONTEXT.md), [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md), [refinement-02](./refinement-02-scheduling-reshape.md).
+> **Refined (017, 2026-07-02):** This model has been reshaped. Events are now **church-owned** and planned in **`PlanningCycle`s** generated from **`EventTemplate`s**, then tailored per ministry via **`MinistryParticipation`** and staffed at the **`Shift`** level. The concepts below are annotated inline; new concepts are listed in the "017 Reshape — New Concepts" block at the end. Authoritative: [`CONTEXT.md`](../../CONTEXT.md), [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md), [refinement-02](../../vault/refinements/refinement-02-scheduling-reshape.md).
 
 ---
 

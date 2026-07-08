@@ -62,7 +62,10 @@ function createFreshDraftMonth(
 }
 
 test.describe('DL4-X1 church isolation', () => {
-  test.use({ storageState: CHURCH_B_ADMIN_STORAGE_STATE });
+  test.use({
+    storageState: CHURCH_B_ADMIN_STORAGE_STATE,
+    viewport: { width: 767, height: 1200 },
+  });
 
   test('a churchB admin never sees churchA cycles in any view and cannot reach them by id', async ({
     page,
@@ -110,7 +113,10 @@ test.describe('DL4-X1 church isolation', () => {
 });
 
 test.describe('DL4-X1 church isolation (reverse)', () => {
-  test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
+  test.use({
+    storageState: CHURCH_ADMIN_STORAGE_STATE,
+    viewport: { width: 767, height: 1200 },
+  });
 
   test('the original churchA admin never sees churchB cycles', async ({
     page,
@@ -127,7 +133,10 @@ test.describe('DL4-X1 church isolation (reverse)', () => {
 });
 
 test.describe('DL4-X2 network failure on lock', () => {
-  test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
+  test.use({
+    storageState: CHURCH_ADMIN_STORAGE_STATE,
+    viewport: { width: 767, height: 1200 },
+  });
 
   test('a network failure on lock shows an error and leaves the cycle in draft', async ({
     page,
@@ -182,7 +191,10 @@ test.describe('DL4-X2 network failure on lock', () => {
 });
 
 test.describe('DL4-X3 double-submit has no duplicate side effect', () => {
-  test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
+  test.use({
+    storageState: CHURCH_ADMIN_STORAGE_STATE,
+    viewport: { width: 767, height: 1200 },
+  });
 
   test('two concurrent lock requests for the same cycle produce exactly one success', async ({
     page,

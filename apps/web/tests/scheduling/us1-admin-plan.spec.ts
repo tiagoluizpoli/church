@@ -91,7 +91,7 @@ function countMatchingWeekdays({
 
 function createPlanningMonth(): PlanningMonth {
   const now = new Date();
-  const year = 2100 + (Math.floor(now.getTime() / 1000) % 50);
+  const year = 2100 + (now.getTime() % 2000);
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));
@@ -151,7 +151,10 @@ function createPlanningMonth(): PlanningMonth {
   };
 }
 
-test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
+test.use({
+  storageState: CHURCH_ADMIN_STORAGE_STATE,
+  viewport: { width: 767, height: 1200 },
+});
 
 test('church admin can plan, review, and lock a cycle while volunteers stay hidden from it', async ({
   browser,
@@ -293,11 +296,17 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   const applyTemplatesDialog = page.getByRole('dialog', {
     name: 'Apply templates',
   });
-  const templateCheckboxes = applyTemplatesDialog.getByTestId(
-    'template-select-checkbox',
+  const applyTemplateOptions = applyTemplatesDialog.getByTestId(
+    'apply-template-option',
   );
-  await templateCheckboxes.nth(0).check();
-  await templateCheckboxes.nth(1).check();
+  await applyTemplateOptions
+    .filter({ hasText: 'Sunday Gathering' })
+    .getByTestId('template-select-checkbox')
+    .check();
+  await applyTemplateOptions
+    .filter({ hasText: 'Wednesday Service' })
+    .getByTestId('template-select-checkbox')
+    .check();
   await applyTemplatesDialog.getByTestId('apply-templates-button').click();
 
   await expect(page.getByTestId('planning-event-card')).toHaveCount(
@@ -343,9 +352,13 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   );
 
   // Phase 8: "Create cycle" only lives on the cycles list view now (not on a
-  // cycle's own review page) — go back to the list via the global breadcrumb
-  // first (FR-018/FR-019 nav restructure).
-  await page.getByRole('link', { name: 'Planning cycles' }).click();
+  // cycle's own review page) — go back to the list (FR-018/FR-019 nav
+  // restructure). The breadcrumb link back to the list is desktop-only
+  // chrome (`app-shell.tsx` sidebar/breadcrumb, `md:hidden` below the
+  // desktop breakpoint per `specs/019-planning-cycles-table-view`), so this
+  // spec — now run at a narrow viewport to keep exercising the card/list
+  // presentation — navigates directly instead.
+  await page.goto('/scheduling/planning-cycles');
   await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const overlapDialog = page.getByRole('dialog', { name: 'Create cycle' });

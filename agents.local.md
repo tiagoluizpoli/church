@@ -47,5 +47,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/018-churchwide-ux-redesign/plan.md](specs/018-churchwide-ux-redesign/plan.md)
+- Current Plan: [specs/020-cycle-review-editing/plan.md](specs/020-cycle-review-editing/plan.md)
 <!-- SPECKIT END -->

@@ -23,6 +23,9 @@ export default defineConfig({
       },
       pwaAssets: { disabled: false, config: true },
       devOptions: { enabled: true },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
     }),
   ],
   resolve: {

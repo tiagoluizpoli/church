@@ -51,7 +51,9 @@
       "!!**/packages/db/src/migrations",
       "!!**/apps/web/src/infrastructure/api",
       "!!**/skills-lock.json",
-      "!!**/seed-data.json"
+      "!!**/seed-data.json",
+      "!!**/.github/skills",
+      "!!**/apps/web/tests/.auth"
     ]
   },
   "formatter": {

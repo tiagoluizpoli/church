@@ -1,6 +1,6 @@
-import { Badge } from '@church/ui/components/badge';
 import { formatCycleDate, stateBadgeVariant } from './planning-admin.utils';
 import { usePlanningCycleHeader } from './planning-admin-context';
+import { Badge } from '@/components/ui/badge';
 
 interface PlanningCycleHeaderProps {
   showName?: boolean;

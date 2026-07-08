@@ -1,18 +1,18 @@
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@church/ui/components/card';
-import { Skeleton } from '@church/ui/components/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTimezone } from '../../../shared/hooks/use-timezone';
 import { QuickCreateEventModal } from './quick-create-event-modal';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { adminApi } from '@/utils/api-instances';
 
 interface EventListErrorMessageInput {

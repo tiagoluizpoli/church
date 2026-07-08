@@ -1,29 +1,3 @@
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@church/ui/components/alert';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@church/ui/components/alert-dialog';
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@church/ui/components/card';
-import { Input } from '@church/ui/components/input';
-import { Label } from '@church/ui/components/label';
 import { WifiOff } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -35,6 +9,28 @@ import type {
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
 } from '../lib/dashboard-mappers';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export interface AssignmentResponseInput {
   assignmentId: string;

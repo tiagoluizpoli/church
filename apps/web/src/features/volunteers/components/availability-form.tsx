@@ -1,21 +1,17 @@
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@church/ui/components/alert';
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
+import { TriangleAlert, WifiOff } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import { Label } from '@church/ui/components/label';
-import { cn } from '@church/ui/lib/utils';
-import { TriangleAlert, WifiOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export interface AvailabilityFormProps {
   event: AvailabilityEventViewModel;

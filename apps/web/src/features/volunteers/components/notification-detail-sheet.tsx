@@ -1,12 +1,12 @@
-import { Button } from '@church/ui/components/button';
+import type { NotificationInboxItem } from '../hooks/use-notification-inbox';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import type { NotificationInboxItem } from '../hooks/use-notification-inbox';
+} from '@/components/ui/dialog';
 
 export interface NotificationDetailSheetProps {
   notification?: NotificationInboxItem;

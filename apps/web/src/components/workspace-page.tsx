@@ -1,5 +1,5 @@
-import { cn } from '@church/ui/lib/utils';
 import * as React from 'react';
+import { cn } from '@/lib/utils';
 
 type WorkspacePageProps = React.ComponentProps<'div'>;
 

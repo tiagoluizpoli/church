@@ -1,4 +1,7 @@
-import { Button } from '@church/ui/components/button';
+import { useState } from 'react';
+import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import type { ConflictStatus } from './assignment-chip';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -6,11 +9,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { Textarea } from '@church/ui/components/textarea';
-import { useState } from 'react';
-import { AssigneeIdentityBadge } from './assignee-identity-badge';
-import type { ConflictStatus } from './assignment-chip';
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import {
   type AssigneeSystemRole,
   formatAssigneeRoleLabel,

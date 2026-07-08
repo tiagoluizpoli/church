@@ -1,7 +1,7 @@
-import { Button } from '@church/ui/components/button';
 import { Clock, Globe } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { useTimezone } from '../hooks/use-timezone';
+import { Button } from '@/components/ui/button';
 
 interface TimezoneToggleProps {
   variant?: ComponentProps<typeof Button>['variant'];

@@ -1,5 +1,7 @@
-import { Avatar, AvatarFallback } from '@church/ui/components/avatar';
-import { Button } from '@church/ui/components/button';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { TimezoneToggle } from '../shared/components/timezone-toggle';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,10 +10,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@church/ui/components/dropdown-menu';
-import { Skeleton } from '@church/ui/components/skeleton';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { TimezoneToggle } from '../shared/components/timezone-toggle';
+} from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth-client';
 
 interface GetInitialsInput {

@@ -1,7 +1,7 @@
-import { Input } from '@church/ui/components/input';
-import { cn } from '@church/ui/lib/utils';
 import { Clock3 } from 'lucide-react';
 import { useRef } from 'react';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface TimeSegmentInputProps {
   label: string;

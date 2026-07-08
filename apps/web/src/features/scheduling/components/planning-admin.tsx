@@ -1,10 +1,3 @@
-import { Button, buttonVariants } from '@church/ui/components/button';
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@church/ui/components/card';
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
@@ -17,6 +10,13 @@ import {
   usePlanningCycleSelection,
 } from './planning-admin/planning-admin-context';
 import { PlanningCycleHeader } from './planning-admin/planning-cycle-header';
+import { Button, buttonVariants } from '@/components/ui/button';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,

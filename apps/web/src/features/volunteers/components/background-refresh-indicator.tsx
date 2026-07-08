@@ -1,6 +1,6 @@
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
 import { RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export interface BackgroundRefreshIndicatorProps {
   visible: boolean;

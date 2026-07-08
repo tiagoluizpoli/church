@@ -1,4 +1,7 @@
-import { Button } from '@church/ui/components/button';
+import { useEffect, useRef } from 'react';
+import { describeTemplate } from './planning-admin.utils';
+import { useTemplateApplyDialog } from './planning-admin-context';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -6,10 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { useEffect, useRef } from 'react';
-import { describeTemplate } from './planning-admin.utils';
-import { useTemplateApplyDialog } from './planning-admin-context';
+} from '@/components/ui/dialog';
 
 interface ApplyTemplatesDialogProps {
   open: boolean;

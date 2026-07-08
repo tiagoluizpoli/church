@@ -1,5 +1,5 @@
-import { Button } from '@church/ui/components/button';
 import { Minus, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface RoleCountControlProps {
   count: number;

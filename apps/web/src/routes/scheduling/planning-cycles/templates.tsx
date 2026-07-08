@@ -1,7 +1,7 @@
-import { Button, buttonVariants } from '@church/ui/components/button';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useTemplateEditor } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { TemplateEditorDialog } from '@/features/scheduling/components/planning-admin/template-editor-dialog';
 import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';

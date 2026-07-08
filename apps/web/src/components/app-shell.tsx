@@ -1,17 +1,3 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@church/ui/components/breadcrumb';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@church/ui/components/tooltip';
 import { Link, useLocation } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
@@ -33,6 +19,20 @@ import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
 import { NotificationBell } from './notification-bell/notification-bell';
 import UserMenu from './user-menu';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export interface BreadcrumbSegmentOverride {
   segment: string;

@@ -1,17 +1,17 @@
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@church/ui/components/tooltip';
-import { cn } from '@church/ui/lib/utils';
 import { useDraggable } from '@dnd-kit/core';
 import type {
   AvailabilityStatus,
   VolunteerPoolItem,
 } from '../../hooks/use-volunteer-pool';
 import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { formatAssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 

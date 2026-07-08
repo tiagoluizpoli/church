@@ -1,7 +1,7 @@
-import { Skeleton } from '@church/ui/components/skeleton';
 import { useVolunteerAvailability } from '../hooks/use-volunteer-availability';
 import { AvailabilityCheckDetail } from './availability-check-detail';
 import { AvailabilityCheckList } from './availability-check-list';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong.';

@@ -1,7 +1,7 @@
-import { Button } from '@church/ui/components/button';
-import { Input } from '@church/ui/components/input';
-import { Label } from '@church/ui/components/label';
 import type { TemplateBlockDraft } from './planning-admin.types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface BlockChangeInput {
   blockId: string;

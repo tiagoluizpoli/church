@@ -194,7 +194,7 @@ Flat by default, ring-bordered instead of shadowed at rest. Cards, panels, and i
 
 ## 5. Components
 
-Built on base-ui/react primitives (not Radix) with `class-variance-authority` for variants, styled through Tailwind v4's CSS-first `@theme`. Every interactive primitive is shared from `@church/ui` and consumed identically across the volunteer and admin surfaces — the same button is the same button everywhere.
+Built on base-ui/react primitives (not Radix) with `class-variance-authority` for variants, styled through Tailwind v4's CSS-first `@theme`. Every interactive primitive is local under `@/components/ui` and consumed identically across the volunteer and admin surfaces — the same button is the same button everywhere.
 
 ### Buttons
 - **Shape:** `radius-control` (8px, `rounded.md`).
@@ -243,7 +243,7 @@ A dedicated component with two renderings: a compact percentage `Badge` (per tim
 - **Do** keep cards, panels, and list rows flat with a `ring-1 ring-foreground/10` or `border`; reserve shadow for popovers, dropdowns, dialogs, the drawer, and the command palette.
 - **Do** use the green/amber/red status vocabulary only for staffing percentage and assignment confirmation state.
 - **Do** size touch targets at 44px+ on mobile/volunteer-facing controls even when the equivalent desktop control is 32px.
-- **Do** reuse `@church/ui` primitives (Button, Card, Badge, Input, Dialog, Tabs) rather than building one-off styled elements — the same control must look and behave identically on the volunteer dashboard and the admin planning screens.
+- **Do** reuse local `@/components/ui` primitives (Button, Card, Badge, Input, Dialog, Tabs) rather than building one-off styled elements — the same control must look and behave identically on the volunteer dashboard and the admin planning screens.
 - **Do** re-tune colors for dark mode rather than inverting them — `primary` lightens/desaturates instead of staying the same hex-equivalent value, so it keeps AA contrast against the dark `background`.
 
 ### Don't:

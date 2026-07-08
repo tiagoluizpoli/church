@@ -1,7 +1,7 @@
-import { Badge } from '@church/ui/components/badge';
-import { cn } from '@church/ui/lib/utils';
 import { Check, Clock, X } from 'lucide-react';
 import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import {
   type AssigneeSystemRole,
   formatAssigneeRoleLabel,

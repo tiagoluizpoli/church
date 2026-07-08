@@ -1,17 +1,17 @@
-import { Input } from '@church/ui/components/input';
-import { ScrollArea } from '@church/ui/components/scroll-area';
+import {
+  type PoolVolunteer,
+  useVolunteerPool,
+} from '../../hooks/use-volunteer-pool';
+import { VolunteerCard } from './volunteer-card';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@church/ui/components/select';
-import {
-  type PoolVolunteer,
-  useVolunteerPool,
-} from '../../hooks/use-volunteer-pool';
-import { VolunteerCard } from './volunteer-card';
+} from '@/components/ui/select';
 
 interface RoleOption {
   id: string;

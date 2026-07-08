@@ -1,16 +1,16 @@
-import { Button } from '@church/ui/components/button';
-import { Input } from '@church/ui/components/input';
-import { Label } from '@church/ui/components/label';
+import { WEEKDAYS } from './planning-admin.utils';
+import { useTemplateEditor } from './planning-admin-context';
+import { TemplateBlockRow } from './template-block-row';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@church/ui/components/select';
-import { WEEKDAYS } from './planning-admin.utils';
-import { useTemplateEditor } from './planning-admin-context';
-import { TemplateBlockRow } from './template-block-row';
+} from '@/components/ui/select';
 
 interface TemplateEditorFormProps {
   submitButtonClassName?: string;

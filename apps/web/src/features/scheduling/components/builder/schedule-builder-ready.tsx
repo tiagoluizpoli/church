@@ -1,4 +1,3 @@
-import { TooltipProvider } from '@church/ui/components/tooltip';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import type {
   ScheduleBuilderData,
@@ -15,6 +14,7 @@ import { SubstitutionPicker } from './substitution-picker';
 import { useScheduleBuilderController } from './use-schedule-builder-controller';
 import { VolunteerCard } from './volunteer-card';
 import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 interface ScheduleBuilderReadyProps {

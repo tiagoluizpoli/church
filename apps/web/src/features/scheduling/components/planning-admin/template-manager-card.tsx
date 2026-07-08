@@ -1,13 +1,13 @@
-import { Button } from '@church/ui/components/button';
+import { describeTemplate } from './planning-admin.utils';
+import { useTemplateManagerCard } from './planning-admin-context';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import { describeTemplate } from './planning-admin.utils';
-import { useTemplateManagerCard } from './planning-admin-context';
+} from '@/components/ui/card';
 
 interface TemplateManagerCardProps {
   onEditTemplate: () => void;

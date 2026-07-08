@@ -1,15 +1,15 @@
-import { Button } from '@church/ui/components/button';
+import { useEffect, useState } from 'react';
+import { isValidTimeValue, TimeSegmentInput } from './time-segment-input';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { Input } from '@church/ui/components/input';
-import { Label } from '@church/ui/components/label';
-import { useEffect, useState } from 'react';
-import { isValidTimeValue, TimeSegmentInput } from './time-segment-input';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export interface SlotEditValues {
   startTime: string; // ISO UTC

@@ -1,12 +1,12 @@
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { CalendarClock, Clock, LayoutDashboard } from 'lucide-react';
+import type * as React from 'react';
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { CalendarClock, Clock, LayoutDashboard } from 'lucide-react';
-import type * as React from 'react';
+} from '@/components/ui/card';
 import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
 export const Route = createFileRoute('/')({

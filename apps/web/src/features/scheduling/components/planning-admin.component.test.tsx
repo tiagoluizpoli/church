@@ -37,7 +37,7 @@ vi.mock('@/components/theme-provider', () => ({
   ThemeProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
-vi.mock('@church/ui/components/sonner', () => ({
+vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 

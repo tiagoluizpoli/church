@@ -1,17 +1,3 @@
-import { Badge } from '@church/ui/components/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@church/ui/components/dialog';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@church/ui/components/tabs';
 import { useDashboardRefresh } from '../hooks/use-dashboard-refresh';
 import { useVolunteerDashboard } from '../hooks/use-volunteer-dashboard';
 import {
@@ -24,6 +10,15 @@ import { BackgroundRefreshIndicator } from './background-refresh-indicator';
 import { DashboardOfflineBanner } from './dashboard-offline-banner';
 import { MinistryScheduleSection } from './ministry-schedule-section';
 import { UpcomingAssignmentsSection } from './upcoming-assignments-section';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export type DashboardTabId =
   | 'upcoming-assignments'

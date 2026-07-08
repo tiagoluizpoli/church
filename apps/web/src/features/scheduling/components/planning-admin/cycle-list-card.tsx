@@ -1,13 +1,13 @@
-import { Badge } from '@church/ui/components/badge';
+import { formatCycleDate, stateBadgeVariant } from './planning-admin.utils';
+import { useCycleListCard } from './planning-admin-context';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import { formatCycleDate, stateBadgeVariant } from './planning-admin.utils';
-import { useCycleListCard } from './planning-admin-context';
+} from '@/components/ui/card';
 
 interface SelectCycleInput {
   cycleId: string;

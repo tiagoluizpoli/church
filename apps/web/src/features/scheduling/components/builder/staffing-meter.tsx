@@ -1,12 +1,12 @@
-import { Badge } from '@church/ui/components/badge';
+import { Badge } from '@/components/ui/badge';
 import {
   Progress,
   ProgressIndicator,
   ProgressLabel,
   ProgressTrack,
   ProgressValue,
-} from '@church/ui/components/progress';
-import { cn } from '@church/ui/lib/utils';
+} from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 interface StaffingMeterProps {
   fillRatio: number; // 0–1

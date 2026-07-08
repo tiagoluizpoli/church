@@ -1,4 +1,3 @@
-import { Button } from '@church/ui/components/button';
 import { Plus } from 'lucide-react';
 import { useMemo } from 'react';
 import type { ScheduleBuilderData } from '../../hooks/use-schedule-builder';
@@ -11,6 +10,7 @@ import type {
   GridSlotModel,
 } from './builder-types';
 import { SlotRow } from './slot-row';
+import { Button } from '@/components/ui/button';
 
 interface BuilderGridProps {
   data: ScheduleBuilderData;

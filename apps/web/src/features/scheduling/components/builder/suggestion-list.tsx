@@ -1,7 +1,7 @@
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
-import { cn } from '@church/ui/lib/utils';
 import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   type AssigneeSystemRole,
   formatAssigneeRoleLabel,

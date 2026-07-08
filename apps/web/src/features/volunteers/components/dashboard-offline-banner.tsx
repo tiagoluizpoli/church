@@ -1,11 +1,7 @@
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@church/ui/components/alert';
-import { Button } from '@church/ui/components/button';
 import { CloudOff, RefreshCw } from 'lucide-react';
 import type { DashboardRefreshState } from '../hooks/use-dashboard-refresh';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 export interface DashboardOfflineBannerProps {
   isOffline: boolean;

@@ -1,9 +1,9 @@
-import { Badge } from '@church/ui/components/badge';
+import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@church/ui/components/tooltip';
+} from '@/components/ui/tooltip';
 import type { AssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 
 export interface AssigneeIdentityBadgeProps {

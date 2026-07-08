@@ -1,29 +1,4 @@
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@church/ui/components/alert';
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@church/ui/components/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@church/ui/components/dialog';
-import { Input } from '@church/ui/components/input';
-import { Label } from '@church/ui/components/label';
-import { Skeleton } from '@church/ui/components/skeleton';
-import {
   useMutation,
   useQueries,
   useQuery,
@@ -32,6 +7,27 @@ import {
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { GetScheduleBuilderData200AssignmentsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 

@@ -1,14 +1,14 @@
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
-import { Input } from '@church/ui/components/input';
+import { type ReactNode, useMemo, useState } from 'react';
+import type { AvailabilityStatus } from '../../hooks/use-volunteer-pool';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@church/ui/components/popover';
-import { cn } from '@church/ui/lib/utils';
-import { type ReactNode, useMemo, useState } from 'react';
-import type { AvailabilityStatus } from '../../hooks/use-volunteer-pool';
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 

@@ -1,11 +1,11 @@
+import { CreateCycleForm } from './create-cycle-form';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import { CreateCycleForm } from './create-cycle-form';
+} from '@/components/ui/card';
 
 export function CreateCycleCard() {
   return (

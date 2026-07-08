@@ -1,12 +1,12 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useRef } from 'react';
+} from '@/components/ui/dialog';
 import { CreateCycleForm } from '@/features/scheduling/components/planning-admin/create-cycle-form';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { usePlanningCycleSelection } from '@/features/scheduling/components/planning-admin/planning-admin-context';

@@ -1,9 +1,9 @@
-import { Badge } from '@church/ui/components/badge';
 import type { PlanningCycleEventGroup } from './planning-admin.types';
 import {
   eventStatusBadgeVariant,
   formatEventDateTime,
 } from './planning-admin.utils';
+import { Badge } from '@/components/ui/badge';
 
 export interface PlanningEventCardProps {
   eventGroup: PlanningCycleEventGroup;

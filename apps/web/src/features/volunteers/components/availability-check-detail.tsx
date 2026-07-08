@@ -1,16 +1,16 @@
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
+import {
+  type AvailabilityMarkDraft,
+  getShiftDate,
+} from '../lib/availability-marks';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import {
-  type AvailabilityMarkDraft,
-  getShiftDate,
-} from '../lib/availability-marks';
+} from '@/components/ui/card';
 import type {
   GetAvailabilityCheck200,
   GetAvailabilityCheck200ShiftsItem,

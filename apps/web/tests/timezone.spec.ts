@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { LEADER_STORAGE_STATE } from './global-setup';
 
 test.describe('Timezone Policy', () => {
   // Emulate a user in London (UTC+1 in May)
   test.use({ timezoneId: 'Europe/London' });
+  test.use({ storageState: LEADER_STORAGE_STATE });
 
   // NOTE: This test verifies the Church Time / Local Time toggle state only.
   // Event-row date-format assertions were removed when the home EventList
@@ -11,6 +13,9 @@ test.describe('Timezone Policy', () => {
   // which depends on the e2e auth + seed fixtures tracked in T126.
   test('should toggle between Church Time and Local Time', async ({ page }) => {
     await page.goto('/');
+
+    // Open user menu dropdown
+    await page.getByRole('button', { name: /Account menu for/ }).click();
 
     const toggleButton = page.getByRole('button', {
       name: /Church Time|Local Time/,

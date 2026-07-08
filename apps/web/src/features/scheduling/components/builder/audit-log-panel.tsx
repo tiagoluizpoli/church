@@ -1,11 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
+import type { ScheduleBuilderData } from '../../hooks/use-schedule-builder';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { useQuery } from '@tanstack/react-query';
-import type { ScheduleBuilderData } from '../../hooks/use-schedule-builder';
+} from '@/components/ui/dialog';
 import { adminApi } from '@/utils/api-instances';
 
 interface AuditLogPanelProps {

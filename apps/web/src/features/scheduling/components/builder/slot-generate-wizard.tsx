@@ -1,17 +1,17 @@
-import { Button } from '@church/ui/components/button';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { Input } from '@church/ui/components/input';
-import { Label } from '@church/ui/components/label';
-import { RadioGroup, RadioGroupItem } from '@church/ui/components/radio-group';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { toast } from 'sonner';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { adminApi } from '@/utils/api-instances';
 
 interface SlotGenerateWizardProps {

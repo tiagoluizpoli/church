@@ -1,16 +1,16 @@
-import { Button } from '@church/ui/components/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@church/ui/components/tooltip';
-import { cn } from '@church/ui/lib/utils';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useTimezone } from '../../../../shared/hooks/use-timezone';
 import type { GridSlotModel } from './builder-types';
 import { RequirementCell } from './requirement-cell';
 import { RoleCountControl } from './role-count-control';
 import { StaffingMeter } from './staffing-meter';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface SlotRowProps {
   slot: GridSlotModel;

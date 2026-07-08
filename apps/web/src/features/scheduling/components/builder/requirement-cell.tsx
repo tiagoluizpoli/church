@@ -1,5 +1,3 @@
-import { Button } from '@church/ui/components/button';
-import { cn } from '@church/ui/lib/utils';
 import { useDroppable } from '@dnd-kit/core';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { useState } from 'react';
@@ -10,6 +8,8 @@ import {
 } from './assignment-chip';
 import { AssignmentPicker, type PickerVolunteer } from './assignment-picker';
 import { type SuggestedVolunteer, SuggestionList } from './suggestion-list';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
 
 export interface CellAssignment {

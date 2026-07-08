@@ -41,7 +41,10 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   const ministriesBody = (await ministriesResponse.json()) as {
     ministries: { id: string; name: string }[];
   };
-  const ministryId = ministriesBody.ministries[0]?.id;
+  const ministryId = ministriesBody.ministries.find(
+    (m) => m.name === 'E2E Worship',
+  )?.id;
+  if (!ministryId) throw new Error('E2E Worship ministry not found');
   expect(ministryId).toBeTruthy();
 
   const existingEventsResponse = await page.request.get(
@@ -54,7 +57,10 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   const existingEventsBody = (await existingEventsResponse.json()) as {
     events: { id: string }[];
   };
-  const existingEventId = existingEventsBody.events[0]?.id;
+  const existingEventId = existingEventsBody.events.find(
+    (e) => e.id === 'e2e66666-6666-6666-6666-666666666661',
+  )?.id;
+  if (!existingEventId) throw new Error('E2E Seed Event not found');
   expect(existingEventId).toBeTruthy();
 
   const builderDataResponse = await page.request.get(

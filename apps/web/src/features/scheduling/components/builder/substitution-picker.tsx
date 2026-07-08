@@ -1,14 +1,14 @@
-import { Badge } from '@church/ui/components/badge';
+import { useMemo, useState } from 'react';
+import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import type { PickerVolunteer } from './assignment-picker';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { Input } from '@church/ui/components/input';
-import { useMemo, useState } from 'react';
-import { AssigneeIdentityBadge } from './assignee-identity-badge';
-import type { PickerVolunteer } from './assignment-picker';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
   type AssigneeSystemRole,
   formatAssigneeRoleLabel,

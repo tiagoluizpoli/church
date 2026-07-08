@@ -1,8 +1,8 @@
-import { Skeleton } from '@church/ui/components/skeleton';
 import { useEffect, useState } from 'react';
 import { useScheduleBuilder } from '../../hooks/use-schedule-builder';
 import { MobileInterstitial } from './mobile-interstitial';
 import { ScheduleBuilderReady } from './schedule-builder-ready';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ScheduleBuilderProps {
   eventId: string;

@@ -1,4 +1,4 @@
-import { Button } from '@church/ui/components/button';
+import { Button } from '@/components/ui/button';
 
 interface MobileInterstitialProps {
   onContinue: () => void;

@@ -1,12 +1,12 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import { Skeleton } from '@church/ui/components/skeleton';
-import { useQuery } from '@tanstack/react-query';
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { GetAvailabilityStatus200StatusesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 

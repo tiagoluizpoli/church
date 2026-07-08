@@ -20,6 +20,10 @@
       "dependsOn": ["^test:e2e"],
       "cache": false
     },
+    "test:e2e:ui": {
+      "dependsOn": ["^test:e2e:ui"],
+      "cache": false
+    },
     "dev": {
       "cache": false,
       "persistent": true

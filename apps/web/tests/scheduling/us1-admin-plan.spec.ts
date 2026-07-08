@@ -235,6 +235,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
       .getByTestId('saved-template-row')
       .filter({ hasText: 'Sunday Service' }),
   ).toBeVisible();
+  await expect(createTemplateDialog).not.toBeVisible();
 
   await page.getByTestId('open-create-template-dialog-button').click();
   const secondTemplateDialog = page.getByRole('dialog', {
@@ -264,6 +265,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
       .getByTestId('saved-template-row')
       .filter({ hasText: 'Wednesday Service' }),
   ).toBeVisible();
+  await expect(secondTemplateDialog).not.toBeVisible();
 
   await page
     .getByTestId('saved-template-row')
@@ -283,6 +285,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
       .getByTestId('saved-template-row')
       .filter({ hasText: 'Sunday Gathering' }),
   ).toBeVisible();
+  await expect(editTemplateDialog).not.toBeVisible();
 
   await page.getByTestId('back-from-template-library-button').click();
   await page.getByTestId('open-apply-templates-dialog-button').click();

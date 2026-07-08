@@ -1,21 +1,17 @@
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@church/ui/components/alert';
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@church/ui/components/dropdown-menu';
 import { Link } from '@tanstack/react-router';
 import { Bell, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useTimezone } from '../../../../shared/hooks/use-timezone';
 import type { SaveStatus } from '../../hooks/use-auto-save';
 import { StaffingMeter } from './staffing-meter';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface BuilderHeaderProps {
   event: {

@@ -62,7 +62,12 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
 
   page.once('dialog', (dialog) => dialog.accept());
+  const publishPromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/publish') && response.status() === 204,
+  );
   await page.getByTestId('publish-participation-button').click();
+  await publishPromise;
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(

@@ -1,4 +1,3 @@
-import { Toaster } from '@church/ui/components/sonner';
 import type { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import {
@@ -9,6 +8,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { AppShell } from '@/components/app-shell';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/sonner';
 import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
 
 import '../index.css';

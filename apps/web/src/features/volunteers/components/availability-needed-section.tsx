@@ -1,12 +1,12 @@
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
+} from '@/components/ui/card';
 
 export interface AvailabilityNeededSectionProps {
   tasks: AvailabilityTaskViewModel[];

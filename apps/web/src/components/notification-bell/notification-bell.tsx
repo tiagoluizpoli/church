@@ -1,12 +1,12 @@
-import { Badge } from '@church/ui/components/badge';
+import { useNavigate } from '@tanstack/react-router';
+import { Bell } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@church/ui/components/popover';
-import { useNavigate } from '@tanstack/react-router';
-import { Bell } from 'lucide-react';
-import { useState } from 'react';
+} from '@/components/ui/popover';
 import { NotificationsInboxSection } from '@/features/volunteers/components/notifications-inbox-section';
 import type { NotificationInboxItem } from '@/features/volunteers/hooks/use-notification-inbox';
 import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';

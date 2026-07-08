@@ -1,5 +1,5 @@
-import { buttonVariants } from '@church/ui/components/button';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,

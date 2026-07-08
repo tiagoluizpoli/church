@@ -1,29 +1,25 @@
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@church/ui/components/alert';
-import { Badge } from '@church/ui/components/badge';
-import { Button } from '@church/ui/components/button';
+import { useEffect, useState } from 'react';
+import type {
+  DashboardMinistryOption,
+  DashboardMinistryScheduleEvent,
+} from '../lib/dashboard-mappers';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
+} from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@church/ui/components/select';
-import { useEffect, useState } from 'react';
-import type {
-  DashboardMinistryOption,
-  DashboardMinistryScheduleEvent,
-} from '../lib/dashboard-mappers';
+} from '@/components/ui/select';
 
 export interface MinistryScheduleSectionProps {
   ministries: DashboardMinistryOption[];

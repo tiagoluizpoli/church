@@ -1,16 +1,16 @@
-import { Button } from '@church/ui/components/button';
+import { useState } from 'react';
+import { QuickCreateEventModal } from '../quick-create-event-modal';
+import { formatCycleDate } from './planning-admin.utils';
+import { useCycleReviewCard } from './planning-admin-context';
+import { PlanningEventCard } from './planning-event-card';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@church/ui/components/card';
-import { useState } from 'react';
-import { QuickCreateEventModal } from '../quick-create-event-modal';
-import { formatCycleDate } from './planning-admin.utils';
-import { useCycleReviewCard } from './planning-admin-context';
-import { PlanningEventCard } from './planning-event-card';
+} from '@/components/ui/card';
 
 interface CycleReviewCardProps {
   isReadOnly: boolean;

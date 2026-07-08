@@ -1,12 +1,12 @@
+import { useTemplateEditor } from './planning-admin-context';
+import { TemplateEditorForm } from './template-editor-form';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@church/ui/components/dialog';
-import { useTemplateEditor } from './planning-admin-context';
-import { TemplateEditorForm } from './template-editor-form';
+} from '@/components/ui/dialog';
 
 interface TemplateEditorDialogProps {
   open: boolean;

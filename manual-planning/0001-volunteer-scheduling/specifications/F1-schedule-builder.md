@@ -251,17 +251,17 @@ The following decisions were made during a detailed grilling session on the Sche
 ### Manual Refresh (new)
 
 **Original**: Not addressed.
-**Added**: A refresh button in the builder header pulls fresh availability and conflict state for all volunteers without a full page reload. Required because real-time availability updates are deferred to post-MVP (BACKLOG.md, BL-001).
+**Added**: A refresh button in the builder header pulls fresh availability and conflict state for all volunteers without a full page reload. Required because real-time availability updates are deferred to post-MVP ([BL-001](../backlog/items/BL-001.md)).
 
 ---
 
 ### Deferred to Backlog
 
-See [BACKLOG.md](../BACKLOG.md) for full context on each item:
+See [the backlog index](../backlog/index.md) for full context on each item:
 
-- **BL-001**: Real-time builder updates when volunteer availability changes after assignment.
-- **BL-002**: Schedule duplication from past events.
-- **BL-003**: Per-event volunteer exclusion by leader (mark a volunteer as excluded from a specific event without removing them from the ministry).
+- **[BL-001](../backlog/items/BL-001.md)**: Real-time builder updates when volunteer availability changes after assignment.
+- **BL-002**: Schedule duplication from past events (Superseded by Spec 017).
+- **[BL-003](../backlog/items/BL-003.md)**: Per-event volunteer exclusion by leader (mark a volunteer as excluded from a specific event without removing them from the ministry).
 
 ---
 

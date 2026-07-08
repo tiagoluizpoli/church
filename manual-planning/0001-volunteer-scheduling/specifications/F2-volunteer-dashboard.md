@@ -279,7 +279,7 @@ The following sections should remain readable offline from cached last-known dat
 - [Spec 03: Assignments & Availability](./03-assignments-availability.md)
 - [Spec 10: Scheduling API](./10-scheduling-api.md)
 - [Spec 11: Notifications & Alerts](./11-notifications.md)
-- [BACKLOG.md](../BACKLOG.md)
+- [Backlog Index](../backlog/index.md)
 
 ## 🔴 Mandatory UI Component Rule
 

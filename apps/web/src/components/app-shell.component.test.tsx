@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +6,6 @@ import { AppShell } from './app-shell';
 import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
 let mockPathname = '/dashboard';
-const getPlanningCycle = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: { children: ReactNode; to: string }) => (
@@ -27,12 +25,6 @@ vi.mock('@/lib/auth-client', () => ({
 
 vi.mock('@/shared/hooks/use-caller-roles', () => ({
   useCallerRoles: vi.fn(),
-}));
-
-vi.mock('@/utils/api-instances', () => ({
-  adminApi: {
-    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
-  },
 }));
 
 const mockedUseCallerRoles = vi.mocked(useCallerRoles);
@@ -147,34 +139,37 @@ describe('AppShell role-scoped navigation', () => {
     }
   });
 
-  it('shows selected planning cycle name in breadcrumbs on nested review routes', () => {
+  it('shows a caller-supplied breadcrumb override in place of the raw id segment', () => {
     mockedUseCallerRoles.mockReturnValue({
       canSeeScheduling: true,
       isResolving: false,
     });
     mockPathname = '/scheduling/planning-cycles/cycle-1';
 
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
-        mutations: { retry: false },
-      },
-    });
-    queryClient.setQueryData(['planning-cycle-details', 'cycle-1'], {
-      cycle: {
-        id: 'cycle-1',
-        name: 'August 2026',
-      },
-    });
-
     renderWithProviders(
-      <QueryClientProvider client={queryClient}>
-        <AppShell>content</AppShell>
-      </QueryClientProvider>,
+      <AppShell
+        breadcrumbOverrides={[{ segment: 'cycle-1', label: 'August 2026' }]}
+      >
+        content
+      </AppShell>,
     );
 
     const breadcrumbs = screen.getByTestId('breadcrumbs');
     expect(within(breadcrumbs).getByText('Planning cycles')).toBeVisible();
     expect(within(breadcrumbs).getByText('August 2026')).toBeVisible();
+  });
+
+  it('hides an opaque id segment from breadcrumbs when no override is supplied', () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: true,
+      isResolving: false,
+    });
+    mockPathname = '/scheduling/planning-cycles/cycle-1';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    const breadcrumbs = screen.getByTestId('breadcrumbs');
+    expect(within(breadcrumbs).getByText('Planning cycles')).toBeVisible();
+    expect(within(breadcrumbs).queryByText('cycle-1')).not.toBeInTheDocument();
   });
 });

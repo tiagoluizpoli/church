@@ -12,7 +12,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@church/ui/components/tooltip';
-import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
@@ -34,11 +33,15 @@ import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
 import { NotificationBell } from './notification-bell/notification-bell';
 import UserMenu from './user-menu';
-import type { GetPlanningCycle200 } from '@/infrastructure/api/churchAPI.schemas';
-import { adminApi } from '@/utils/api-instances';
+
+export interface BreadcrumbSegmentOverride {
+  segment: string;
+  label: string;
+}
 
 interface AppShellProps {
   children: React.ReactNode;
+  breadcrumbOverrides?: BreadcrumbSegmentOverride[];
 }
 
 interface NavIconProps {
@@ -66,10 +69,8 @@ interface ToBreadcrumbLabelInput {
 }
 
 interface ResolveBreadcrumbLabelInput {
-  pathSegments: string[];
   segment: string;
-  segmentIndex: number;
-  planningCycleDetails: Pick<GetPlanningCycle200, 'cycle'> | undefined;
+  overridesBySegment: Map<string, string>;
 }
 
 interface BreadcrumbItemModel {
@@ -91,10 +92,6 @@ interface FindActiveNavBranchInput {
 interface NavLabelInput {
   itemLabel: string;
   childLabel: string | null;
-}
-
-interface PlanningCycleBreadcrumbInput {
-  pathSegments: string[];
 }
 
 const BASE_NAV_ITEMS: NavItem[] = [
@@ -135,16 +132,12 @@ function toBreadcrumbLabel({ segment }: ToBreadcrumbLabelInput): string {
 }
 
 function resolveBreadcrumbLabel({
-  pathSegments,
   segment,
-  segmentIndex,
-  planningCycleDetails,
+  overridesBySegment,
 }: ResolveBreadcrumbLabelInput): string | null {
-  if (
-    pathSegments[segmentIndex - 1] === 'planning-cycles' &&
-    planningCycleDetails?.cycle.id === segment
-  ) {
-    return planningCycleDetails.cycle.name;
+  const override = overridesBySegment.get(segment);
+  if (override !== undefined) {
+    return override;
   }
 
   if (isOpaqueIdSegment({ segment })) {
@@ -178,25 +171,7 @@ function formatNavLabel({ itemLabel, childLabel }: NavLabelInput): string {
   return childLabel ? `${itemLabel}: ${childLabel}` : itemLabel;
 }
 
-function getPlanningCycleBreadcrumbId({
-  pathSegments,
-}: PlanningCycleBreadcrumbInput): string | null {
-  const planningCyclesIndex = pathSegments.indexOf('planning-cycles');
-  const cycleId = pathSegments[planningCyclesIndex + 1] ?? null;
-
-  if (
-    planningCyclesIndex === -1 ||
-    cycleId === null ||
-    cycleId === 'new' ||
-    cycleId === 'templates'
-  ) {
-    return null;
-  }
-
-  return cycleId;
-}
-
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
@@ -231,27 +206,28 @@ export function AppShell({ children }: AppShellProps) {
 
   // Compute breadcrumbs dynamically based on path. `isLast` is tracked
   // against the *raw* path segments, not the filtered array — an opaque
-  // trailing id may still resolve to a human label (e.g. a planning-cycle
-  // name). When no label is known yet, the hidden-id rule still applies, so
-  // the last visible crumb remains a real link rather than being mislabeled
-  // as the current page.
+  // trailing id may still resolve to a human label via `breadcrumbOverrides`
+  // (supplied by the composition root for whichever feature route is
+  // active). When no label is known yet, the hidden-id rule still applies,
+  // so the last visible crumb remains a real link rather than being
+  // mislabeled as the current page.
   const pathSegments = location.pathname.split('/').filter(Boolean);
-  const planningCycleId = getPlanningCycleBreadcrumbId({ pathSegments });
-  const planningCycleDetailsQuery = useQuery({
-    queryKey: ['planning-cycle-details', planningCycleId],
-    queryFn: () => adminApi.getPlanningCycle(planningCycleId ?? ''),
-    enabled: planningCycleId !== null,
-    retry: false,
-  });
-  const planningCycleDetails = planningCycleDetailsQuery.data;
+  const overridesBySegment = React.useMemo(
+    () =>
+      new Map(
+        (breadcrumbOverrides ?? []).map((override) => [
+          override.segment,
+          override.label,
+        ]),
+      ),
+    [breadcrumbOverrides],
+  );
   const breadcrumbs: BreadcrumbItemModel[] = [
     { label: 'Home', to: '/', isLast: pathSegments.length === 0 },
     ...pathSegments.flatMap((segment, index) => {
       const label = resolveBreadcrumbLabel({
-        pathSegments,
         segment,
-        segmentIndex: index,
-        planningCycleDetails,
+        overridesBySegment,
       });
 
       if (label === null) {

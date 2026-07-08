@@ -9,6 +9,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { AppShell } from '@/components/app-shell';
 import { ThemeProvider } from '@/components/theme-provider';
+import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
 
 import '../index.css';
 
@@ -38,6 +39,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 });
 
 function RootComponent() {
+  const planningCycleBreadcrumb = usePlanningCycleBreadcrumb();
+  const breadcrumbOverrides = planningCycleBreadcrumb
+    ? [planningCycleBreadcrumb]
+    : undefined;
+
   return (
     <>
       <HeadContent />
@@ -47,7 +53,7 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <AppShell>
+        <AppShell breadcrumbOverrides={breadcrumbOverrides}>
           <Outlet />
         </AppShell>
         <Toaster richColors />

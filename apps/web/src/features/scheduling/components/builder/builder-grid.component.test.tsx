@@ -77,4 +77,20 @@ describe('BuilderGrid suggestion derivation (T117)', () => {
       within(list).getAllByRole('button', { name: /accept/i }),
     ).toHaveLength(3);
   });
+
+  it('renders the slot row Delete action with destructive styling, distinct from Edit', () => {
+    renderWithProviders(
+      <DndContext>
+        <BuilderGrid data={data} callerTeamId={null} {...handlers} />
+      </DndContext>,
+    );
+    const row = screen.getByTestId('slot-row');
+
+    expect(
+      within(row).getByRole('button', { name: 'Delete slot' }),
+    ).toHaveClass('text-destructive');
+    expect(
+      within(row).getByRole('button', { name: 'Edit slot' }),
+    ).not.toHaveClass('text-destructive');
+  });
 });

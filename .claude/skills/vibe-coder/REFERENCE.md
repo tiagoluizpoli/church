@@ -1,4 +1,22 @@
-# Vibe Coder — Reference
+## Branch Skip Rules (Step 4a)
+
+Skip `speckit.git.feature` (4a) only when the current branch is already a
+feature branch — i.e., it is NOT one of the protected branches below:
+
+| Protected branch pattern | Examples |
+|---|---|
+| `main` | `main` |
+| `master` | `master` |
+| `develop` | `develop` |
+| `release/*` | `release/1.4`, `release/2026-q3` |
+| `hotfix/*` | `hotfix/critical-bug` |
+
+If on any of the above, always run 4a first. If on any other branch name,
+treat it as an existing feature branch and skip 4a.
+
+---
+
+
 
 Disclosed detail for Step 3 (sync) and phase-scoping rules.
 

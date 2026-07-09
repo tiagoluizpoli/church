@@ -21,6 +21,11 @@ import {
 } from './planning-admin.utils';
 import {
   type ApplyTemplatesOptions,
+  type CreateSlotInput,
+  type DeleteEventInput,
+  type DeleteSlotInput,
+  type UpdateEventInput,
+  type UpdateSlotInput,
   usePlanningAdminMutations,
 } from './use-planning-admin-mutations';
 import { adminApi } from '@/utils/api-instances';
@@ -93,6 +98,11 @@ export interface UsePlanningAdminResult {
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
   lockCyclePending: boolean;
+  updateEventPending: boolean;
+  deleteEventPending: boolean;
+  createSlotPending: boolean;
+  updateSlotPending: boolean;
+  deleteSlotPending: boolean;
   templateSaveSuccessCount: number;
   selectedTemplateIds: string[];
   resetApplyTemplates: () => void;
@@ -115,6 +125,11 @@ export interface UsePlanningAdminResult {
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
   handleLockCycle: () => void;
   handleClearSelectedCycle: () => void;
+  handleUpdateEvent: (input: UpdateEventInput) => void;
+  handleDeleteEvent: (input: DeleteEventInput) => void;
+  handleCreateSlot: (input: CreateSlotInput) => void;
+  handleUpdateSlot: (input: UpdateSlotInput) => void;
+  handleDeleteSlot: (input: DeleteSlotInput) => void;
 }
 
 export function usePlanningAdmin(): UsePlanningAdminResult {
@@ -156,7 +171,12 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const cycles = cyclesQuery.data?.cycles ?? [];
   const templates = templatesQuery.data?.templates ?? [];
   const selectedCycle = cycleDetailsQuery.data?.cycle ?? null;
-  const cycleEvents = cycleDetailsQuery.data?.events ?? [];
+  // A cancelled event (FR-006's day-delete) is a soft delete at the data
+  // layer only — the Calendar review table and header counts must still
+  // treat it as removed, per FR-006's acceptance scenario and edge case.
+  const cycleEvents = (cycleDetailsQuery.data?.events ?? []).filter(
+    (eventGroup) => eventGroup.event.status !== 'cancelled',
+  );
   const totalSlots = calculateTotalSlots({ events: cycleEvents });
 
   useEffect(() => {
@@ -228,6 +248,11 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,
     applyTemplatesError: mutationHandlers.applyTemplatesError,
     lockCyclePending: mutationHandlers.lockCyclePending,
+    updateEventPending: mutationHandlers.updateEventPending,
+    deleteEventPending: mutationHandlers.deleteEventPending,
+    createSlotPending: mutationHandlers.createSlotPending,
+    updateSlotPending: mutationHandlers.updateSlotPending,
+    deleteSlotPending: mutationHandlers.deleteSlotPending,
     templateSaveSuccessCount,
     selectedTemplateIds,
     resetApplyTemplates: mutationHandlers.resetApplyTemplates,
@@ -300,5 +325,10 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     handleDeleteTemplate: mutationHandlers.handleDeleteTemplate,
     handleApplyTemplates: mutationHandlers.handleApplyTemplates,
     handleLockCycle: mutationHandlers.handleLockCycle,
+    handleUpdateEvent: mutationHandlers.handleUpdateEvent,
+    handleDeleteEvent: mutationHandlers.handleDeleteEvent,
+    handleCreateSlot: mutationHandlers.handleCreateSlot,
+    handleUpdateSlot: mutationHandlers.handleUpdateSlot,
+    handleDeleteSlot: mutationHandlers.handleDeleteSlot,
   };
 }

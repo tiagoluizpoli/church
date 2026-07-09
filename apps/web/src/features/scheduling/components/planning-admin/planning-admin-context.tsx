@@ -216,12 +216,25 @@ export function usePlanningCycleSelection(): PlanningCycleSelectionModel {
   };
 }
 
+export interface PlanningCycleHeaderCounts {
+  eventCount: number;
+  slotCount: number;
+}
+
+export interface PlanningCycleHeaderNameAndStatus {
+  name: string;
+  status: SelectedPlanningCycle['state'];
+}
+
+export interface PlanningCycleHeaderPeriod {
+  startDate: string;
+  endDate: string;
+}
+
 export interface PlanningCycleHeaderModel {
-  nameAndStatus: {
-    name: string;
-    status: SelectedPlanningCycle['state'];
-  } | null;
-  period: { startDate: string; endDate: string } | null;
+  nameAndStatus: PlanningCycleHeaderNameAndStatus | null;
+  period: PlanningCycleHeaderPeriod | null;
+  counts: PlanningCycleHeaderCounts | null;
 }
 
 /**
@@ -230,10 +243,10 @@ export interface PlanningCycleHeaderModel {
  * other component should render `selectedCycle.state` as a badge.
  */
 export function usePlanningCycleHeader(): PlanningCycleHeaderModel {
-  const { selectedCycle } = usePlanningAdminContext();
+  const { selectedCycle, cycleEvents, totalSlots } = usePlanningAdminContext();
 
   if (!selectedCycle) {
-    return { nameAndStatus: null, period: null };
+    return { nameAndStatus: null, period: null, counts: null };
   }
 
   return {
@@ -242,7 +255,44 @@ export function usePlanningCycleHeader(): PlanningCycleHeaderModel {
       startDate: selectedCycle.startDate,
       endDate: selectedCycle.endDate,
     },
+    counts: { eventCount: cycleEvents.length, slotCount: totalSlots },
   };
+}
+
+export interface PlanningCycleListStatsModel {
+  totalCount: number;
+  draftCount: number;
+  lockedCount: number;
+}
+
+/**
+ * Counts for the plain "Planning cycles" list view's own stat chips —
+ * distinct from `usePlanningCycleHeader`, which only ever reflects the
+ * single selected cycle.
+ */
+export function usePlanningCycleListStats(): PlanningCycleListStatsModel {
+  const { cycles } = usePlanningAdminContext();
+
+  return {
+    totalCount: cycles.length,
+    draftCount: cycles.filter((cycle) => cycle.state === 'draft').length,
+    lockedCount: cycles.filter((cycle) => cycle.state === 'locked').length,
+  };
+}
+
+export interface PlanningTemplateLibraryStatsModel {
+  totalCount: number;
+}
+
+/**
+ * The template library's own stat chip (saved-template count) — the block
+ * count per template isn't meaningful at the library level, so this stays a
+ * single chip rather than mirroring `PlanningCycleListStats`'s three.
+ */
+export function usePlanningTemplateLibraryStats(): PlanningTemplateLibraryStatsModel {
+  const { templates } = usePlanningAdminContext();
+
+  return { totalCount: templates.length };
 }
 
 export type CycleReviewCardModel = Pick<
@@ -250,10 +300,19 @@ export type CycleReviewCardModel = Pick<
   | 'selectedCycleId'
   | 'selectedCycle'
   | 'cycleDetailsLoading'
-  | 'totalSlots'
   | 'cycleEvents'
   | 'lockCyclePending'
   | 'handleLockCycle'
+  | 'updateEventPending'
+  | 'deleteEventPending'
+  | 'createSlotPending'
+  | 'updateSlotPending'
+  | 'deleteSlotPending'
+  | 'handleUpdateEvent'
+  | 'handleDeleteEvent'
+  | 'handleCreateSlot'
+  | 'handleUpdateSlot'
+  | 'handleDeleteSlot'
 >;
 
 export function useCycleReviewCard(): CycleReviewCardModel {
@@ -263,8 +322,17 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     selectedCycleId: context.selectedCycleId,
     selectedCycle: context.selectedCycle,
     cycleDetailsLoading: context.cycleDetailsLoading,
-    totalSlots: context.totalSlots,
     cycleEvents: context.cycleEvents,
+    updateEventPending: context.updateEventPending,
+    deleteEventPending: context.deleteEventPending,
+    createSlotPending: context.createSlotPending,
+    updateSlotPending: context.updateSlotPending,
+    deleteSlotPending: context.deleteSlotPending,
+    handleUpdateEvent: context.handleUpdateEvent,
+    handleDeleteEvent: context.handleDeleteEvent,
+    handleCreateSlot: context.handleCreateSlot,
+    handleUpdateSlot: context.handleUpdateSlot,
+    handleDeleteSlot: context.handleDeleteSlot,
     lockCyclePending: context.lockCyclePending,
     handleLockCycle: context.handleLockCycle,
   };

@@ -42,7 +42,7 @@ describe('QuickCreateEventModal', () => {
     mutateAsyncMock.mockReset();
   });
 
-  it('enables create after valid date and time values are entered', async () => {
+  it('enables create for an hourly event after title and a single date are entered', async () => {
     const user = userEvent.setup();
 
     render(
@@ -57,18 +57,16 @@ describe('QuickCreateEventModal', () => {
     const createButton = screen.getByRole('button', { name: 'Create' });
     expect(createButton).toBeDisabled();
 
+    expect(screen.getByLabelText('Date')).toBeVisible();
+    expect(screen.queryByLabelText('Start date')).not.toBeInTheDocument();
+
     await user.type(screen.getByLabelText('Title'), 'Domingo');
-    await user.type(screen.getByLabelText('Start date'), '2026-06-28');
-    await user.type(screen.getByLabelText('Start hour'), '09');
-    await user.type(screen.getByLabelText('Start minute'), '30');
-    await user.type(screen.getByLabelText('End date'), '2026-06-28');
-    await user.type(screen.getByLabelText('End hour'), '11');
-    await user.type(screen.getByLabelText('End minute'), '30');
+    await user.type(screen.getByLabelText('Date'), '2026-06-28');
 
     expect(createButton).toBeEnabled();
   });
 
-  it('is the same reachable form for both a ministry ad hoc event and a planning-cycle event (FR-012)', async () => {
+  it('switches to a start/end date range for a day-based event, and stays the same reachable form for a planning-cycle target (FR-012)', async () => {
     const user = userEvent.setup();
 
     render(
@@ -81,18 +79,18 @@ describe('QuickCreateEventModal', () => {
     );
 
     expect(screen.getByLabelText('Title')).toBeVisible();
-    expect(screen.getByLabelText('Start date')).toBeVisible();
-    expect(screen.getByLabelText('End date')).toBeVisible();
     const createButton = screen.getByRole('button', { name: 'Create' });
     expect(createButton).toBeDisabled();
 
+    await user.click(screen.getByRole('radio', { name: 'Day-based' }));
+
+    expect(screen.getByLabelText('Start date')).toBeVisible();
+    expect(screen.getByLabelText('End date')).toBeVisible();
+    expect(screen.queryByLabelText('Date')).not.toBeInTheDocument();
+
     await user.type(screen.getByLabelText('Title'), 'Retreat');
     await user.type(screen.getByLabelText('Start date'), '2026-06-28');
-    await user.type(screen.getByLabelText('Start hour'), '09');
-    await user.type(screen.getByLabelText('Start minute'), '30');
-    await user.type(screen.getByLabelText('End date'), '2026-06-28');
-    await user.type(screen.getByLabelText('End hour'), '11');
-    await user.type(screen.getByLabelText('End minute'), '30');
+    await user.type(screen.getByLabelText('End date'), '2026-06-29');
 
     expect(createButton).toBeEnabled();
   });

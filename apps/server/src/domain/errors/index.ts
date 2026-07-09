@@ -12,5 +12,6 @@ export * from './invalid-shift-split';
 export * from './invalid-time-range';
 export * from './invalid-weekday';
 export * from './isolation-breach-error';
+export * from './last-remaining-slot-error';
 export * from './overlapping-cycle';
 export * from './shift-out-of-bounds';

@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { CalendarDays, Clock3 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -36,126 +35,20 @@ interface CreateEventFormValues {
   eventType: EventType;
 }
 
-interface DateTimeParts {
+interface ToDayBoundsInput {
   date: string;
-  hour: string;
-  minute: string;
 }
 
-interface DateTimeFieldProps {
-  label: string;
-  value: DateTimeParts;
-  onChange: (value: DateTimeParts) => void;
+/** A day's full span, per the event's own calendar day (FR: hourly events
+ * carry all their slots within one day; day-based events span the full
+ * start-to-end date range). Start is that day's midnight; end is the last
+ * millisecond of the final day. */
+function toDayStartIso({ date }: ToDayBoundsInput): string {
+  return new Date(`${date}T00:00:00.000Z`).toISOString();
 }
 
-function createEmptyDateTimeParts(): DateTimeParts {
-  return { date: '', hour: '', minute: '' };
-}
-
-function sanitizeTimeSegment({ rawValue }: { rawValue: string }): string {
-  return rawValue.replaceAll(/\D/g, '').slice(0, 2);
-}
-
-function normalizeTimeSegment({
-  rawValue,
-  max,
-}: {
-  rawValue: string;
-  max: number;
-}): string {
-  const sanitized = sanitizeTimeSegment({ rawValue });
-  if (sanitized === '') return '';
-  const num = Number.parseInt(sanitized, 10);
-  if (Number.isNaN(num)) return '';
-  return String(Math.min(num, max)).padStart(2, '0');
-}
-
-function toLocalDateTimeString({
-  value,
-}: {
-  value: DateTimeParts;
-}): string | null {
-  if (!value.date || value.hour.length !== 2 || value.minute.length !== 2)
-    return null;
-  const hour = Number.parseInt(value.hour, 10);
-  const minute = Number.parseInt(value.minute, 10);
-  if (
-    Number.isNaN(hour) ||
-    Number.isNaN(minute) ||
-    hour < 0 ||
-    hour > 23 ||
-    minute < 0 ||
-    minute > 59
-  )
-    return null;
-  return `${value.date}T${value.hour}:${value.minute}:00`;
-}
-
-function DateTimeField({ label, value, onChange }: DateTimeFieldProps) {
-  return (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-        <div className="relative">
-          <CalendarDays className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            aria-label={`${label} date`}
-            className="pl-8"
-            type="date"
-            value={value.date}
-            onChange={(e) => onChange({ ...value, date: e.target.value })}
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Clock3 className="size-3.5 text-muted-foreground" />
-          <Input
-            aria-label={`${label} hour`}
-            className="w-12 px-2 text-center tabular-nums"
-            inputMode="numeric"
-            maxLength={2}
-            placeholder="00"
-            value={value.hour}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                hour: sanitizeTimeSegment({ rawValue: e.target.value }),
-              })
-            }
-            onBlur={() =>
-              onChange({
-                ...value,
-                hour: normalizeTimeSegment({ rawValue: value.hour, max: 23 }),
-              })
-            }
-          />
-          <span className="text-muted-foreground text-xs">:</span>
-          <Input
-            aria-label={`${label} minute`}
-            className="w-12 px-2 text-center tabular-nums"
-            inputMode="numeric"
-            maxLength={2}
-            placeholder="00"
-            value={value.minute}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                minute: sanitizeTimeSegment({ rawValue: e.target.value }),
-              })
-            }
-            onBlur={() =>
-              onChange({
-                ...value,
-                minute: normalizeTimeSegment({
-                  rawValue: value.minute,
-                  max: 59,
-                }),
-              })
-            }
-          />
-        </div>
-      </div>
-    </div>
-  );
+function toDayEndIso({ date }: ToDayBoundsInput): string {
+  return new Date(`${date}T23:59:59.999Z`).toISOString();
 }
 
 export function QuickCreateEventModal({
@@ -167,12 +60,8 @@ export function QuickCreateEventModal({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
-  const [startDateTime, setStartDateTime] = useState<DateTimeParts>(
-    createEmptyDateTimeParts(),
-  );
-  const [endDateTime, setEndDateTime] = useState<DateTimeParts>(
-    createEmptyDateTimeParts(),
-  );
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [eventType, setEventType] = useState<EventType>('hourly');
 
   const create = useMutation({
@@ -182,29 +71,28 @@ export function QuickCreateEventModal({
         : adminApi.createPlanningEvent(target.cycleId, body),
   });
 
-  const startDate = toLocalDateTimeString({ value: startDateTime });
-  const endDate = toLocalDateTimeString({ value: endDateTime });
+  const effectiveEndDate = eventType === 'hourly' ? startDate : endDate;
   const canSubmit = Boolean(
     title.trim() &&
       startDate &&
-      endDate &&
-      new Date(startDate).getTime() < new Date(endDate).getTime(),
+      effectiveEndDate &&
+      startDate <= effectiveEndDate,
   );
 
   const resetForm = () => {
     setTitle('');
-    setStartDateTime(createEmptyDateTimeParts());
-    setEndDateTime(createEmptyDateTimeParts());
+    setStartDate('');
+    setEndDate('');
     setEventType('hourly');
   };
 
   const handleSubmit = async () => {
-    if (!startDate || !endDate) return;
+    if (!startDate || !effectiveEndDate) return;
     try {
       const result = await create.mutateAsync({
         title,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
+        startDate: toDayStartIso({ date: startDate }),
+        endDate: toDayEndIso({ date: effectiveEndDate }),
         eventType,
       });
       onCreated();
@@ -242,16 +130,6 @@ export function QuickCreateEventModal({
               placeholder="e.g. Sunday Morning Service"
             />
           </div>
-          <DateTimeField
-            label="Start"
-            value={startDateTime}
-            onChange={setStartDateTime}
-          />
-          <DateTimeField
-            label="End"
-            value={endDateTime}
-            onChange={setEndDateTime}
-          />
           <div className="space-y-1">
             <Label>Event type</Label>
             <RadioGroup
@@ -266,6 +144,38 @@ export function QuickCreateEventModal({
               </Label>
             </RadioGroup>
           </div>
+          {eventType === 'hourly' ? (
+            <div className="space-y-1">
+              <Label htmlFor="event-date">Date</Label>
+              <Input
+                id="event-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="event-start-date">Start date</Label>
+                <Input
+                  id="event-start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="event-end-date">End date</Label>
+                <Input
+                  id="event-end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button

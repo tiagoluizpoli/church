@@ -9,7 +9,12 @@ import {
   usePlanningCycleHeader,
   usePlanningCycleSelection,
 } from './planning-admin/planning-admin-context';
-import { PlanningCycleHeader } from './planning-admin/planning-cycle-header';
+import {
+  PlanningCycleHeader,
+  PlanningCycleListStats,
+  PlanningTemplateLibraryStats,
+} from './planning-admin/planning-cycle-header';
+import { QuickCreateEventModal } from './quick-create-event-modal';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -23,6 +28,21 @@ import {
 } from '@/components/workspace-page';
 
 const CYCLES_PATH = '/scheduling/planning-cycles';
+
+interface IsReviewingCyclePathInput {
+  pathname: string;
+}
+
+function isReviewingCyclePath({
+  pathname,
+}: IsReviewingCyclePathInput): boolean {
+  return (
+    pathname !== CYCLES_PATH &&
+    pathname !== `${CYCLES_PATH}/` &&
+    !pathname.endsWith('/new') &&
+    !pathname.endsWith('/templates')
+  );
+}
 
 interface DescribePlanningIntroInput {
   pathname: string;
@@ -103,6 +123,8 @@ function PlanningAdminLayout() {
 
   const pathname = location.pathname;
   const isTemplatesView = pathname.endsWith('/templates');
+  const isPlainListView =
+    pathname === CYCLES_PATH || pathname === `${CYCLES_PATH}/`;
   const { nameAndStatus } = usePlanningCycleHeader();
   const intro = describePlanningIntro({
     pathname,
@@ -114,9 +136,22 @@ function PlanningAdminLayout() {
       <WorkspaceIntroPanel
         key={pathname}
         title={intro.title}
+        titleTestId={
+          nameAndStatus && intro.title === nameAndStatus.name
+            ? 'selected-cycle-name'
+            : undefined
+        }
         description={intro.description}
         autoFocusTitle
-        aside={<PlanningCycleHeader showName={false} />}
+        aside={
+          isReviewingCyclePath({ pathname }) ? (
+            <PlanningCycleHeader showName={false} />
+          ) : isTemplatesView ? (
+            <PlanningTemplateLibraryStats />
+          ) : isPlainListView ? (
+            <PlanningCycleListStats />
+          ) : null
+        }
       />
 
       {isTemplatesView ? null : <PlanningCyclesActions pathname={pathname} />}
@@ -134,18 +169,19 @@ function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
   const { selectedCycleId } = usePlanningCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
-  const isReviewingCycle =
-    pathname !== CYCLES_PATH &&
-    pathname !== `${CYCLES_PATH}/` &&
-    !pathname.endsWith('/new');
-  const canApplyTemplates =
+  const [createEventOpen, setCreateEventOpen] = useState(false);
+  const isReviewingCycle = isReviewingCyclePath({ pathname });
+  const canMutateCalendar =
     isReviewingCycle &&
     Boolean(selectedCycle) &&
     !cycleIsLocked({ cycle: selectedCycle });
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div
+        className="flex flex-wrap items-center justify-end gap-2"
+        data-testid="planning-cycles-actions-row"
+      >
         <Link
           to="/scheduling/planning-cycles/templates"
           search={
@@ -158,13 +194,18 @@ function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
         >
           Template library
         </Link>
-        {canApplyTemplates ? (
+        {canMutateCalendar ? (
           <Button
             type="button"
             data-testid="open-apply-templates-dialog-button"
             onClick={() => setApplyTemplatesOpen(true)}
           >
             Apply template
+          </Button>
+        ) : null}
+        {canMutateCalendar ? (
+          <Button type="button" onClick={() => setCreateEventOpen(true)}>
+            Add event
           </Button>
         ) : null}
         {isReviewingCycle ? null : (
@@ -179,11 +220,19 @@ function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
       </div>
 
       {isReviewingCycle && selectedCycle ? (
-        <ApplyTemplatesDialog
-          open={applyTemplatesOpen}
-          onOpenChange={setApplyTemplatesOpen}
-          selectedCycleName={selectedCycle.name}
-        />
+        <>
+          <ApplyTemplatesDialog
+            open={applyTemplatesOpen}
+            onOpenChange={setApplyTemplatesOpen}
+            selectedCycleName={selectedCycle.name}
+          />
+          <QuickCreateEventModal
+            open={createEventOpen}
+            onOpenChange={setCreateEventOpen}
+            target={{ kind: 'planning-cycle', cycleId: selectedCycle.id }}
+            onCreated={() => undefined}
+          />
+        </>
       ) : null}
     </>
   );

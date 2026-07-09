@@ -3,8 +3,10 @@ import type {
   EventId,
   EventTemplateId,
   PlanningCycleId,
+  TimeSlotId,
 } from '../../branded-ids';
 import type { Event } from '../../entities/event';
+import type { TimeSlot } from '../../entities/time-slot';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
@@ -45,6 +47,32 @@ export interface CancelPlanningEventManagerInput {
   eventId: EventId;
 }
 
+export interface CreatePlanningEventSlotManagerInput {
+  churchId: ChurchId;
+  cycleId: PlanningCycleId;
+  eventId: EventId;
+  startTime: Date;
+  endTime: Date;
+  label?: string;
+}
+
+export interface UpdatePlanningEventSlotManagerInput {
+  churchId: ChurchId;
+  cycleId: PlanningCycleId;
+  eventId: EventId;
+  slotId: TimeSlotId;
+  startTime?: Date;
+  endTime?: Date;
+  label?: string;
+}
+
+export interface DeletePlanningEventSlotManagerInput {
+  churchId: ChurchId;
+  cycleId: PlanningCycleId;
+  eventId: EventId;
+  slotId: TimeSlotId;
+}
+
 export interface IPlanningEventManager {
   generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
@@ -52,4 +80,7 @@ export interface IPlanningEventManager {
   createEvent(input: CreatePlanningEventManagerInput): Promise<Event>;
   updateEvent(input: UpdatePlanningEventManagerInput): Promise<Event>;
   cancelEvent(input: CancelPlanningEventManagerInput): Promise<void>;
+  createSlot(input: CreatePlanningEventSlotManagerInput): Promise<TimeSlot>;
+  updateSlot(input: UpdatePlanningEventSlotManagerInput): Promise<TimeSlot>;
+  deleteSlot(input: DeletePlanningEventSlotManagerInput): Promise<void>;
 }

@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import {
   afterAll,
   beforeAll,
@@ -12,6 +13,7 @@ import { RoleId } from '../../src/domain/branded-ids';
 import { Ministry } from '../../src/domain/entities/ministry';
 import { MinistryServingProfile } from '../../src/domain/entities/ministry-serving-profile';
 import { IllegalStateTransitionError } from '../../src/domain/errors/illegal-state-transition';
+import { LastRemainingSlotError } from '../../src/domain/errors/last-remaining-slot-error';
 import { OverlappingCycleError } from '../../src/domain/errors/overlapping-cycle';
 import { createFastify } from '../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../src/main/fastify/types';
@@ -55,6 +57,9 @@ const planningEventManager = {
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
   cancelEvent: vi.fn(),
+  createSlot: vi.fn(),
+  updateSlot: vi.fn(),
+  deleteSlot: vi.fn(),
 };
 
 const participationManager = {
@@ -321,5 +326,103 @@ describe('Church admin planning routes', () => {
       defaultDirection: 'all_in',
       enforcementType: 'soft',
     });
+  });
+
+  it('POST .../slots: creates a slot and returns 201, and returns 409 for a locked cycle', async () => {
+    const cycleId = '22222222-2222-2222-2222-222222222222';
+    const eventId = '66666666-6666-6666-6666-666666666666';
+    const slotsUrl = `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots`;
+
+    planningEventManager.createSlot.mockResolvedValue({
+      id: '99999999-9999-9999-9999-999999999999',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      eventId,
+      startTime: new Date('2026-08-02T09:00:00.000Z'),
+      endTime: new Date('2026-08-02T10:00:00.000Z'),
+      label: 'Worship',
+      status: 'active',
+      requirements: [],
+    });
+
+    const success = await app.inject({
+      method: 'POST',
+      url: slotsUrl,
+      payload: {
+        startTime: '2026-08-02T09:00:00.000Z',
+        endTime: '2026-08-02T10:00:00.000Z',
+        label: 'Worship',
+      },
+    });
+    expect(success.statusCode).toBe(201);
+    expect(success.json()).toMatchObject({ label: 'Worship' });
+
+    planningEventManager.createSlot.mockRejectedValueOnce(
+      new IllegalStateTransitionError('scheduled', 'update'),
+    );
+    const locked = await app.inject({
+      method: 'POST',
+      url: slotsUrl,
+      payload: {
+        startTime: '2026-08-02T09:00:00.000Z',
+        endTime: '2026-08-02T10:00:00.000Z',
+      },
+    });
+    expect(locked.statusCode).toBe(409);
+  });
+
+  it('PATCH/DELETE .../slots/:slotId: happy paths, 404, 409 locked, 409 last remaining slot', async () => {
+    const cycleId = '22222222-2222-2222-2222-222222222222';
+    const eventId = '66666666-6666-6666-6666-666666666666';
+    const slotId = '99999999-9999-9999-9999-999999999999';
+    const slotUrl = `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots/${slotId}`;
+
+    planningEventManager.updateSlot.mockResolvedValue({
+      id: slotId,
+      churchId: '11111111-1111-1111-1111-111111111111',
+      eventId,
+      startTime: new Date('2026-08-02T09:00:00.000Z'),
+      endTime: new Date('2026-08-02T10:00:00.000Z'),
+      label: 'Worship',
+      status: 'active',
+      requirements: [],
+    });
+
+    const updateOk = await app.inject({
+      method: 'PATCH',
+      url: slotUrl,
+      payload: { label: 'Worship' },
+    });
+    expect(updateOk.statusCode).toBe(200);
+    expect(updateOk.json()).toMatchObject({ id: slotId, label: 'Worship' });
+
+    planningEventManager.deleteSlot.mockResolvedValue(undefined);
+    const deleteOk = await app.inject({ method: 'DELETE', url: slotUrl });
+    expect(deleteOk.statusCode).toBe(204);
+
+    planningEventManager.updateSlot.mockRejectedValueOnce(
+      new NotFoundError(`TimeSlot not found: ${slotId}`),
+    );
+    const notFound = await app.inject({
+      method: 'PATCH',
+      url: slotUrl,
+      payload: { label: 'Mismatched' },
+    });
+    expect(notFound.statusCode).toBe(404);
+
+    planningEventManager.updateSlot.mockRejectedValueOnce(
+      new IllegalStateTransitionError('scheduled', 'update'),
+    );
+    const locked = await app.inject({
+      method: 'PATCH',
+      url: slotUrl,
+      payload: { label: 'Too late' },
+    });
+    expect(locked.statusCode).toBe(409);
+
+    planningEventManager.deleteSlot.mockRejectedValueOnce(
+      new LastRemainingSlotError(),
+    );
+    const lastSlot = await app.inject({ method: 'DELETE', url: slotUrl });
+    expect(lastSlot.statusCode).toBe(409);
   });
 });

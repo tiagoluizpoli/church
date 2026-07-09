@@ -46,13 +46,15 @@ export interface TemplateLibraryTableRow {
 export interface CycleCalendarSlotRow {
   slotId: string;
   label: string;
-  window: string;
+  startTime: string;
+  endTime: string;
+  isOnlySlotInEvent: boolean;
 }
 
 export interface CycleCalendarTableRow {
   eventId: string;
   title: string;
-  window: string;
+  startDate: string;
   eventType: string;
   status: PlanningCycleEventGroup['event']['status'];
   slots: CycleCalendarSlotRow[];
@@ -60,4 +62,31 @@ export interface CycleCalendarTableRow {
 
 export interface ExpandedCalendarRowsState {
   expandedEventIds: ReadonlySet<string>;
+}
+
+export interface EditingEventState {
+  eventId: string;
+  title: string;
+  description: string;
+  location: string;
+  startDateTimeLocal: string;
+  originalStartDate: string;
+  originalEndDate: string;
+}
+
+export interface EditingSlotState {
+  eventId: string;
+  slotId: string;
+  label: string;
+  startTimeLocal: string;
+  endTimeLocal: string;
+  isMultiDayEvent: boolean;
+}
+
+export interface CreatingSlotState {
+  eventId: string;
+  label: string;
+  startTimeLocal: string;
+  endTimeLocal: string;
+  isMultiDayEvent: boolean;
 }

@@ -12,21 +12,22 @@ async function assertCanonicalCreateEventForm(dialog: Locator): Promise<void> {
     dialog.getByRole('heading', { name: 'New Event' }),
   ).toBeVisible();
   await expect(dialog.getByLabel('Title')).toBeVisible();
-  await expect(dialog.getByLabel('Start date')).toBeVisible();
-  await expect(dialog.getByLabel('Start hour')).toBeVisible();
-  await expect(dialog.getByLabel('Start minute')).toBeVisible();
-  await expect(dialog.getByLabel('End date')).toBeVisible();
-  await expect(dialog.getByLabel('End hour')).toBeVisible();
-  await expect(dialog.getByLabel('End minute')).toBeVisible();
   await expect(dialog.getByRole('radio', { name: /hourly/i })).toBeVisible();
   await expect(dialog.getByRole('radio', { name: /day-based/i })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
+
+  // Hourly (default): a single date, no time fields — slots own the time.
+  await expect(dialog.getByLabel('Date')).toBeVisible();
+
+  // Day-based: a start/end date range instead.
+  await dialog.getByRole('radio', { name: /day-based/i }).click();
+  await expect(dialog.getByLabel('Start date')).toBeVisible();
+  await expect(dialog.getByLabel('End date')).toBeVisible();
+  await dialog.getByRole('radio', { name: /hourly/i }).click();
 }
 
 async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
-  if (
-    await page.getByRole('button', { name: 'Add manual event' }).isVisible()
-  ) {
+  if (await page.getByRole('button', { name: 'Add event' }).isVisible()) {
     return;
   }
 
@@ -47,9 +48,7 @@ async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
   await page.getByTestId('cycle-start-date-input').fill(toDateString(start));
   await page.getByTestId('cycle-end-date-input').fill(toDateString(end));
   await page.getByTestId('create-cycle-button').click();
-  await expect(
-    page.getByRole('button', { name: 'Add manual event' }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
 }
 
 test('exactly one create-event UI is reachable from every entry point (FR-012, SC-004)', async ({
@@ -66,7 +65,7 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
   // Entry point 2: /scheduling/planning — cycle manual event, same UI.
   await page.goto('/scheduling/planning-cycles');
   await ensureUnlockedCycleSelected(page);
-  await page.getByRole('button', { name: 'Add manual event' }).click();
+  await page.getByRole('button', { name: 'Add event' }).click();
   const planningDialog = page.getByRole('dialog');
   await assertCanonicalCreateEventForm(planningDialog);
   await planningDialog.getByRole('button', { name: 'Cancel' }).click();

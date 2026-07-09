@@ -1881,6 +1881,217 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots:
+    post:
+      operationId: createPlanningEventSlot
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                label:
+                  type: string
+              required:
+                - startTime
+                - endTime
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  eventId:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  label:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - cancelled
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        slotId:
+                          type: string
+                        roleId:
+                          type: string
+                        teamId:
+                          type: string
+                        requiredCount:
+                          type: number
+                        notes:
+                          type: string
+                      required:
+                        - id
+                        - slotId
+                        - roleId
+                        - requiredCount
+                      additionalProperties: false
+                required:
+                  - id
+                  - churchId
+                  - eventId
+                  - startTime
+                  - endTime
+                  - status
+                  - requirements
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots/{slotId}:
+    patch:
+      operationId: updatePlanningEventSlot
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                label:
+                  type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: slotId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  eventId:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  label:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - cancelled
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        slotId:
+                          type: string
+                        roleId:
+                          type: string
+                        teamId:
+                          type: string
+                        requiredCount:
+                          type: number
+                        notes:
+                          type: string
+                      required:
+                        - id
+                        - slotId
+                        - roleId
+                        - requiredCount
+                      additionalProperties: false
+                required:
+                  - id
+                  - churchId
+                  - eventId
+                  - startTime
+                  - endTime
+                  - status
+                  - requirements
+                additionalProperties: false
+    delete:
+      operationId: deletePlanningEventSlot
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: slotId
+          required: true
+      responses:
+        "200":
+          description: Default Response
   /api/v1/admin/ministries/{ministryId}/serving-profile:
     get:
       operationId: getMinistryServingProfile

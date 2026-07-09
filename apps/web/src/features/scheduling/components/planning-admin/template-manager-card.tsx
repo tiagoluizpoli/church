@@ -90,7 +90,7 @@ export function TemplateManagerCard({
                     <Button
                       type="button"
                       size="xs"
-                      variant="ghost"
+                      variant="destructive"
                       data-testid="delete-template-button"
                       disabled={deleteTemplatePending}
                       onClick={() =>
@@ -147,7 +147,7 @@ export function TemplateManagerCard({
                               <Button
                                 type="button"
                                 size="xs"
-                                variant="ghost"
+                                variant="destructive"
                                 disabled={deleteTemplatePending}
                                 onClick={() =>
                                   handleDeleteTemplate({ templateId: row.id })

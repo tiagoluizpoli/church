@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -90,7 +90,7 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
     expect(cycleOption).toHaveAttribute('aria-selected', 'false');
     await user.click(cycleOption);
 
-    expect(await screen.findByText('Selected cycle review')).toBeVisible();
+    expect(await screen.findByText('Calendar review')).toBeVisible();
     expect(
       screen.getByTestId('open-apply-templates-dialog-button'),
     ).toBeVisible();
@@ -263,6 +263,196 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
       await screen.findByTestId('apply-templates-error'),
     ).toHaveTextContent('Apply templates failed due to conflict');
     expect(checkbox).toBeChecked();
+  });
+});
+
+describe('PlanningCyclesActions (US4)', () => {
+  it('renders "Add event" beside "Apply template" in the top action row for a draft cycle, and opens the create-event modal', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue({
+      cycle: {
+        id: 'cycle-1',
+        name: 'August 2026',
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        state: 'draft',
+      },
+      events: [],
+    });
+
+    const user = userEvent.setup();
+    renderPlanningCycles();
+
+    await user.click(await screen.findByTestId('planning-cycle-option'));
+
+    const actionsRow = await screen.findByTestId('planning-cycles-actions-row');
+    const applyTemplateButton = within(actionsRow).getByTestId(
+      'open-apply-templates-dialog-button',
+    );
+    const addManualEventButton = within(actionsRow).getByRole('button', {
+      name: 'Add event',
+    });
+    expect(applyTemplateButton).toBeVisible();
+    expect(addManualEventButton).toBeVisible();
+
+    await user.click(addManualEventButton);
+
+    expect(
+      await screen.findByRole('dialog', { name: 'New Event' }),
+    ).toBeVisible();
+  });
+
+  it('does not render a "Manual exceptions" panel in the review body', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue({
+      cycle: {
+        id: 'cycle-1',
+        name: 'August 2026',
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        state: 'draft',
+      },
+      events: [],
+    });
+
+    const user = userEvent.setup();
+    renderPlanningCycles();
+
+    await user.click(await screen.findByTestId('planning-cycle-option'));
+    await screen.findByText('Calendar review');
+
+    expect(screen.queryByText('Manual exceptions')).not.toBeInTheDocument();
+  });
+});
+
+describe('Planning cycle header visibility (chip-leak fix)', () => {
+  it('shows list-level total/draft/locked chips, not per-cycle chips, on the plain list route', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+        {
+          id: 'cycle-2',
+          name: 'September 2026',
+          startDate: '2026-09-01',
+          endDate: '2026-09-30',
+          state: 'locked',
+        },
+      ],
+    });
+
+    renderPlanningCycles();
+
+    expect(
+      await screen.findByTestId('planning-cycles-total-chip'),
+    ).toHaveTextContent('2');
+    expect(screen.getByTestId('planning-cycles-draft-chip')).toHaveTextContent(
+      '1',
+    );
+    expect(screen.getByTestId('planning-cycles-locked-chip')).toHaveTextContent(
+      '1',
+    );
+    expect(
+      screen.queryByTestId('planning-cycle-period-chip'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('planning-cycle-event-count-chip'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('clears the selected-cycle stat chips after navigating back to the plain list route', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue({
+      cycle: {
+        id: 'cycle-1',
+        name: 'August 2026',
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        state: 'draft',
+      },
+      events: [],
+    });
+
+    const user = userEvent.setup();
+    const { router } = renderPlanningCycles();
+
+    await user.click(await screen.findByTestId('planning-cycle-option'));
+    expect(
+      await screen.findByTestId('planning-cycle-period-chip'),
+    ).toBeInTheDocument();
+
+    await router.navigate({ to: '/scheduling/planning-cycles' });
+
+    expect(
+      await screen.findByTestId('planning-cycles-total-chip'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('planning-cycle-period-chip'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('planning-cycle-event-count-chip'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('planning-cycle-slot-count-chip'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a saved-template-count chip on the template library route', async () => {
+    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        { id: 'template-2', name: 'Midweek', weekday: 3, blocks: [] },
+      ],
+    });
+
+    const user = userEvent.setup();
+    renderPlanningCycles();
+
+    await screen.findByText('Existing cycles');
+    await user.click(screen.getByTestId('open-template-library-button'));
+
+    expect(
+      await screen.findByTestId('planning-templates-total-chip'),
+    ).toHaveTextContent('2');
+    expect(
+      screen.queryByTestId('planning-cycles-total-chip'),
+    ).not.toBeInTheDocument();
   });
 });
 

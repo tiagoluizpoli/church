@@ -94,7 +94,12 @@ async function authUser(
   return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
 }
 
+import globalTeardown from './global-teardown';
+
 export default async function globalSetup(): Promise<void> {
+  // Clean up any stale data from previous aborted runs before seeding.
+  globalTeardown();
+
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const subLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const volunteerCtx = await request.newContext({ baseURL: SERVER_URL });

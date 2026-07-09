@@ -60,8 +60,9 @@ async function createCycleWithSundayTemplateApplied({
     name: 'Apply templates',
   });
   await applyTemplatesDialog
+    .getByTestId('apply-template-option')
+    .filter({ hasText: templateName })
     .getByTestId('template-select-checkbox')
-    .first()
     .check();
   await applyTemplatesDialog.getByTestId('apply-templates-button').click();
   await expect(page.getByTestId('planning-event-card').first()).toBeAttached();
@@ -161,7 +162,7 @@ test.describe('Planning cycles table view — desktop (US1/US2)', () => {
     const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
     await expect(calendarTable).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Add manual event' }),
+      page.getByRole('button', { name: 'Add event' }),
     ).not.toBeAttached();
     await expect(page.getByTestId('lock-cycle-button')).not.toBeAttached();
   });
@@ -191,6 +192,166 @@ test.describe('Planning cycles table view — mobile no-regression (US3)', () =>
     await expect(
       page.getByTestId('planning-cycle-option').first(),
     ).toBeVisible();
+  });
+});
+
+test.describe('Planning cycles day/slot edit and delete (US3)', () => {
+  test('draft cycle supports day/slot edit and delete with slot cascade; locked cycle shows no controls', async ({
+    page,
+  }) => {
+    page.on('console', (msg) => console.log('BROWSER LOG:', msg.text()));
+    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
+    const cycleName = `US3 Edit ${uniqueSuffix}`;
+    const templateName = `US3 Template ${uniqueSuffix}`;
+    const now = new Date();
+    const year = 2100 + (Math.floor(now.getTime() / 1000) % 50);
+    const month = now.getUTCMonth();
+    const startDate = new Date(Date.UTC(year, month, 1))
+      .toISOString()
+      .slice(0, 10);
+    const endDate = new Date(Date.UTC(year, month + 1, 1))
+      .toISOString()
+      .slice(0, 10);
+
+    await page.goto('/scheduling/planning-cycles');
+    await page.getByTestId('open-create-cycle-dialog-button').click();
+    const createCycleDialog = page.getByRole('dialog', {
+      name: 'Create cycle',
+    });
+    await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
+    await createCycleDialog
+      .getByTestId('cycle-start-date-input')
+      .fill(startDate);
+    await createCycleDialog.getByTestId('cycle-end-date-input').fill(endDate);
+    await createCycleDialog.getByTestId('create-cycle-button').click();
+    await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
+
+    await page.getByTestId('open-template-library-button').click();
+    await page.getByTestId('open-create-template-dialog-button').click();
+    const createTemplateDialog = page.getByRole('dialog', {
+      name: 'Create template',
+    });
+    await createTemplateDialog
+      .getByTestId('template-name-input')
+      .fill(templateName);
+    await createTemplateDialog.getByTestId('template-weekday-select').click();
+    await page.getByTestId('template-weekday-option-0').click();
+    const firstBlock = createTemplateDialog
+      .getByTestId('template-block-row')
+      .first();
+    await firstBlock.getByTestId('template-block-label-input').fill('Worship');
+    await firstBlock
+      .getByTestId('template-block-start-time-input')
+      .fill('09:00');
+    await firstBlock.getByTestId('template-block-end-time-input').fill('10:00');
+    await createTemplateDialog.getByTestId('add-template-block-button').click();
+    const secondBlock = createTemplateDialog
+      .getByTestId('template-block-row')
+      .nth(1);
+    await secondBlock.getByTestId('template-block-label-input').fill('Message');
+    await secondBlock
+      .getByTestId('template-block-start-time-input')
+      .fill('10:00');
+    await secondBlock
+      .getByTestId('template-block-end-time-input')
+      .fill('11:00');
+    await createTemplateDialog.getByTestId('create-template-button').click();
+    await expect(createTemplateDialog).not.toBeAttached();
+
+    await page.getByTestId('back-from-template-library-button').click();
+    await page.getByTestId('open-apply-templates-dialog-button').click();
+    const applyTemplatesDialog = page.getByRole('dialog', {
+      name: 'Apply templates',
+    });
+    await applyTemplatesDialog
+      .getByTestId('apply-template-option')
+      .filter({ hasText: templateName })
+      .getByTestId('template-select-checkbox')
+      .check();
+    await applyTemplatesDialog.getByTestId('apply-templates-button').click();
+    await expect(
+      page.getByTestId('planning-event-card').first(),
+    ).toBeAttached();
+
+    const table = page.getByRole('grid', { name: 'Calendar review' });
+    await expect(table).toBeVisible();
+
+    const firstMatch = table
+      .getByRole('row', { name: new RegExp(templateName) })
+      .first();
+    // Capture a stable id-based locator: editing the day's date can reorder
+    // rows (sorted by date), which would silently re-target `.first()` to a
+    // different Sunday partway through the test.
+    const dayRowId = await firstMatch.getAttribute('id');
+    const dayRow = page.locator(`#${dayRowId}`);
+    await dayRow.getByRole('button', { name: /^Expand/ }).click();
+
+    // Delete the non-last slot (Message); Worship must remain, and its own
+    // delete control becomes disabled once it's the day's only slot.
+    await table.getByRole('button', { name: 'Delete slot Message' }).click();
+    await page.getByRole('button', { name: 'Delete slot' }).click();
+    await expect(
+      table.getByRole('button', { name: 'Delete slot Message' }),
+    ).not.toBeAttached();
+    await expect(
+      table.getByRole('button', { name: 'Delete slot Worship' }),
+    ).toBeDisabled();
+
+    // Edit the day's start date (+1 day); FR-007a's cascade shifts the
+    // remaining slot's underlying time by the same delta in the same
+    // transaction (verified precisely at the integration level in
+    // planning-phase3.managers.test.ts) — here we confirm the edit persists
+    // and is visible end-to-end via the day row's own date text changing.
+    const dayRowTextBefore = await dayRow.textContent();
+
+    await dayRow.getByRole('button', { name: /^Edit day/ }).click();
+    const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
+    const startInput = editDayDialog.getByLabel('Start');
+    const currentStart = await startInput.inputValue();
+    const shiftedStart = new Date(currentStart);
+    shiftedStart.setDate(shiftedStart.getDate() + 1);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const shiftedStartValue = `${shiftedStart.getFullYear()}-${pad(shiftedStart.getMonth() + 1)}-${pad(shiftedStart.getDate())}T${pad(shiftedStart.getHours())}:${pad(shiftedStart.getMinutes())}`;
+    await startInput.fill(shiftedStartValue);
+    await editDayDialog.getByRole('button', { name: 'Save' }).click();
+    await expect(editDayDialog).not.toBeAttached();
+
+    await expect.poll(() => dayRow.textContent()).not.toBe(dayRowTextBefore);
+
+    // Edit the slot itself.
+    await table.getByRole('button', { name: 'Edit slot Worship' }).click();
+    const editSlotDialog = page.getByRole('dialog', { name: 'Edit slot' });
+    await editSlotDialog.getByLabel('Label').fill('Worship (edited)');
+    await editSlotDialog.getByRole('button', { name: 'Save' }).click();
+    await expect(editSlotDialog).not.toBeAttached();
+    await expect(table.getByText('Worship (edited)')).toBeVisible();
+
+    // Delete the whole day. cancelPlanningEvent soft-deletes at the data
+    // layer, but per FR-006 the row and its slots must disappear from the
+    // table and the header's event/slot counts must decrease.
+    const eventCountChipBefore = await page
+      .getByTestId('planning-cycle-event-count-chip')
+      .textContent();
+
+    await dayRow.getByRole('button', { name: /^Delete day/ }).click();
+    await page.getByRole('button', { name: 'Delete event' }).click();
+
+    await expect(dayRow).not.toBeAttached();
+    await expect
+      .poll(() =>
+        page.getByTestId('planning-cycle-event-count-chip').textContent(),
+      )
+      .not.toBe(eventCountChipBefore);
+
+    // Lock the cycle: no edit/delete controls should render anywhere.
+    await page.getByTestId('lock-cycle-button').click();
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
+    await expect(
+      table.getByRole('button', { name: /^Delete day/ }),
+    ).toHaveCount(0);
+    await expect(table.getByRole('button', { name: /^Edit day/ })).toHaveCount(
+      0,
+    );
   });
 });
 

@@ -233,6 +233,27 @@ export function eventStatusBadgeVariant({
   return 'secondary';
 }
 
+export interface ShiftedEndDateInput {
+  newStartDate: string;
+  originalStartDate: string;
+  originalEndDate: string;
+}
+
+/**
+ * Preserves a day/event's own duration when only its start moves (FR-007's
+ * date edit): shifts the end by the same delta so start < end always holds,
+ * mirroring FR-007a's slot-cascade delta but for the event row itself.
+ */
+export function shiftedEndDate({
+  newStartDate,
+  originalStartDate,
+  originalEndDate,
+}: ShiftedEndDateInput): string {
+  const delta =
+    new Date(newStartDate).getTime() - new Date(originalStartDate).getTime();
+  return new Date(new Date(originalEndDate).getTime() + delta).toISOString();
+}
+
 export function calculateTotalSlots({ events }: TotalSlotsInput): number {
   return (
     events?.reduce((count, eventGroup) => count + eventGroup.slots.length, 0) ??
@@ -269,6 +290,25 @@ export function cycleIsLocked({ cycle }: SelectedCycleInput): boolean {
   return cycle?.state === 'locked';
 }
 
+export interface IsMultiDayEventInput {
+  startDate: string;
+  endDate: string;
+}
+
+/**
+ * A slot's start/end only needs its own date field when the parent event
+ * spans 2+ calendar days (a multi-day day-based event) — for a single-day
+ * event the date is already implied, so the slot dialogs show time only.
+ */
+export function isMultiDayEvent({
+  startDate,
+  endDate,
+}: IsMultiDayEventInput): boolean {
+  return (
+    formatCycleDate({ date: startDate }) !== formatCycleDate({ date: endDate })
+  );
+}
+
 export function toPlanningCyclesTableRow({
   cycle,
 }: PlanningCyclesTableRowInput): PlanningCyclesTableRow {
@@ -291,20 +331,82 @@ export function toTemplateLibraryTableRow({
   };
 }
 
+interface PadTwoDigitsInput {
+  value: number;
+}
+
+function padTwoDigits({ value }: PadTwoDigitsInput): string {
+  return String(value).padStart(2, '0');
+}
+
+export interface ToDateTimeLocalValueInput {
+  iso: string;
+}
+
+export function toDateTimeLocalValue({
+  iso,
+}: ToDateTimeLocalValueInput): string {
+  const date = new Date(iso);
+  const month = padTwoDigits({ value: date.getMonth() + 1 });
+  const day = padTwoDigits({ value: date.getDate() });
+  const hours = padTwoDigits({ value: date.getHours() });
+  const minutes = padTwoDigits({ value: date.getMinutes() });
+  return `${date.getFullYear()}-${month}-${day}T${hours}:${minutes}`;
+}
+
+export interface FromDateTimeLocalValueInput {
+  value: string;
+}
+
+export function fromDateTimeLocalValue({
+  value,
+}: FromDateTimeLocalValueInput): string {
+  return new Date(value).toISOString();
+}
+
+export interface TimePartOfInput {
+  value: string;
+}
+
+export function timePartOf({ value }: TimePartOfInput): string {
+  return value.split('T')[1] ?? '';
+}
+
+export interface WithUpdatedTimeInput {
+  value: string;
+  time: string;
+}
+
+export function withUpdatedTime({ value, time }: WithUpdatedTimeInput): string {
+  return `${value.split('T')[0]}T${time}`;
+}
+
 export function toCycleCalendarTableRow({
   eventGroup,
 }: CycleCalendarTableRowInput): CycleCalendarTableRow {
+  const isOnlySlotInEvent = eventGroup.slots.length === 1;
+  console.log(
+    'toCycleCalendarTableRow event:',
+    eventGroup.event.title,
+    'slots:',
+    eventGroup.slots.map((s) => s.label),
+    'isOnly:',
+    isOnlySlotInEvent,
+  );
+
   return {
     eventId: eventGroup.event.id,
     title: eventGroup.event.title,
-    window: `${formatEventDateTime({ date: eventGroup.event.startDate })} → ${formatEventDateTime({ date: eventGroup.event.endDate })}`,
+    startDate: eventGroup.event.startDate,
     eventType: eventGroup.event.eventType,
     status: eventGroup.event.status,
     slots: eventGroup.slots.map(
       (slot): CycleCalendarSlotRow => ({
         slotId: slot.id,
         label: slot.label ?? 'Slot',
-        window: `${formatEventDateTime({ date: slot.startTime })} → ${formatEventDateTime({ date: slot.endTime })}`,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        isOnlySlotInEvent,
       }),
     ),
   };

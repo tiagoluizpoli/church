@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { NotFoundError } from '@church/core';
 import { inject, injectable } from 'tsyringe';
 import type {
   ChurchId,
@@ -9,10 +10,13 @@ import type {
 import type {
   CancelPlanningEventManagerInput,
   CreatePlanningEventManagerInput,
+  CreatePlanningEventSlotManagerInput,
+  DeletePlanningEventSlotManagerInput,
   GeneratedPlanningCounts,
   GeneratePlanningTemplatesInput,
   IPlanningEventManager,
   UpdatePlanningEventManagerInput,
+  UpdatePlanningEventSlotManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
@@ -26,15 +30,19 @@ import type { MinistryServingProfileRepository } from '../domain/contracts/infra
 import type { PlanningCycleRepository } from '../domain/contracts/infrastructure/planning-cycle.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { Church } from '../domain/entities/church';
 import type { Event } from '../domain/entities/event';
 import type { DefaultDirection } from '../domain/entities/ministry';
 import type { PlanningCycle } from '../domain/entities/planning-cycle';
 import { Shift } from '../domain/entities/shift';
+import type { TimeSlot } from '../domain/entities/time-slot';
 import {
   EventOutsidePlanningCycleError,
   IllegalStateTransitionError,
+  LastRemainingSlotError,
 } from '../domain/errors';
 import {
   CycleEventGenerator,
@@ -49,6 +57,33 @@ import { toChurchDate } from '../test-support/clock';
 interface EnsurePlanningCycleWritableInput {
   cycle: PlanningCycle;
   churchTimeZone: string;
+}
+
+/**
+ * Actions that can be attempted against an event/slot while checking
+ * whether the owning planning cycle still allows writes. Local to
+ * `DbPlanningEventManager` — the shared `IPlanningEventManager` contract has
+ * no concept of this distinction.
+ */
+type WritableEntityAction = 'update' | 'delete';
+
+interface EnsureWritableEventInput {
+  input:
+    | CreatePlanningEventSlotManagerInput
+    | UpdatePlanningEventSlotManagerInput
+    | DeletePlanningEventSlotManagerInput;
+  church: Church;
+  action: WritableEntityAction;
+  tx: TransactionContext;
+}
+
+interface LoadWritableEventSlotInput {
+  input:
+    | UpdatePlanningEventSlotManagerInput
+    | DeletePlanningEventSlotManagerInput;
+  church: Church;
+  action: WritableEntityAction;
+  tx: TransactionContext;
 }
 
 interface PlanningSeedContext {
@@ -105,6 +140,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     private readonly ministryRepository: MinistryRepository,
     @inject('IFeatureFlagService')
     private readonly featureFlagService: IFeatureFlagService,
+    @inject('ITimeSlotRepository')
+    private readonly timeSlotRepository: TimeSlotRepository,
   ) {}
 
   async generateFromTemplates(
@@ -238,13 +275,19 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     timeZone,
     tx,
   }: BuildSeedContextInput): Promise<PlanningSeedContext> {
-    const [profiles, ministries, globalDefaultAllIn] = await Promise.all([
-      this.servingProfileRepository.listByChurch({ churchId, tx }),
-      this.ministryRepository.listByChurch(churchId, tx),
-      this.featureFlagService.isEnabled(PARTICIPATION_DEFAULT_ALL_IN_FLAG, {
+    // Sequential awaits are required here: calling repository queries concurrently via
+    // Promise.all on a single transaction connection (tx) triggers pg deprecation warnings.
+    const profiles = await this.servingProfileRepository.listByChurch({
+      churchId,
+      tx,
+    });
+    const ministries = await this.ministryRepository.listByChurch(churchId, tx);
+    const globalDefaultAllIn = await this.featureFlagService.isEnabled(
+      PARTICIPATION_DEFAULT_ALL_IN_FLAG,
+      {
         churchId: churchId as string,
-      }),
-    ]);
+      },
+    );
 
     const profilesByMinistry = new Map<string, ProfileSeederEntry[]>();
     for (const profile of profiles) {
@@ -431,7 +474,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         });
       }
 
-      return this.eventRepository.updateEvent({
+      const updatedEvent = await this.eventRepository.updateEvent({
         churchId: input.churchId,
         eventId: input.eventId,
         title: input.title,
@@ -442,7 +485,149 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         status: cycle.state === 'locked' ? 'scheduled' : currentEvent.status,
         tx,
       });
+
+      if (
+        input.startDate &&
+        input.startDate.getTime() !== currentEvent.startDate.getTime()
+      ) {
+        const delta =
+          input.startDate.getTime() - currentEvent.startDate.getTime();
+        const slots = await this.timeSlotRepository.listByEvent(
+          input.churchId,
+          input.eventId,
+          tx,
+        );
+
+        // Sequential await is required here: node-postgres emits deprecation
+        // warnings and will fail under pg@9.0 if concurrent queries are executed
+        // on a single transaction connection (tx). Although each update targets
+        // a distinct row, we must process them sequentially to preserve the
+        // single-connection model used by the transaction client.
+        for (const slot of slots) {
+          await this.timeSlotRepository.update(
+            input.churchId,
+            slot.id,
+            {
+              startTime: new Date(slot.startTime.getTime() + delta),
+              endTime: new Date(slot.endTime.getTime() + delta),
+            },
+            tx,
+          );
+        }
+      }
+
+      return updatedEvent;
     });
+  }
+
+  async createSlot(
+    input: CreatePlanningEventSlotManagerInput,
+  ): Promise<TimeSlot> {
+    const church = await this.churchRepository.getById(input.churchId);
+
+    return this.unitOfWork.run(async (tx) => {
+      await this.ensureWritableEvent({ input, church, action: 'update', tx });
+
+      return this.timeSlotRepository.create(
+        input.churchId,
+        {
+          eventId: input.eventId,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          label: input.label,
+        },
+        tx,
+      );
+    });
+  }
+
+  async updateSlot(
+    input: UpdatePlanningEventSlotManagerInput,
+  ): Promise<TimeSlot> {
+    const church = await this.churchRepository.getById(input.churchId);
+
+    return this.unitOfWork.run(async (tx) => {
+      await this.loadWritableEventSlot({ input, church, action: 'update', tx });
+
+      return this.timeSlotRepository.update(
+        input.churchId,
+        input.slotId,
+        {
+          startTime: input.startTime,
+          endTime: input.endTime,
+          label: input.label,
+        },
+        tx,
+      );
+    });
+  }
+
+  async deleteSlot(input: DeletePlanningEventSlotManagerInput): Promise<void> {
+    const church = await this.churchRepository.getById(input.churchId);
+
+    await this.unitOfWork.run(async (tx) => {
+      await this.loadWritableEventSlot({ input, church, action: 'delete', tx });
+
+      const eventSlots = await this.timeSlotRepository.listByEvent(
+        input.churchId,
+        input.eventId,
+        tx,
+      );
+
+      if (eventSlots.length <= 1) {
+        throw new LastRemainingSlotError();
+      }
+
+      await this.timeSlotRepository.deleteById(
+        input.churchId,
+        input.slotId,
+        tx,
+      );
+    });
+  }
+
+  private async ensureWritableEvent({
+    input,
+    church,
+    action,
+    tx,
+  }: EnsureWritableEventInput): Promise<Event> {
+    const cycle = await this.ensurePlanningCycleWritable({
+      cycle: await this.cycleRepository.getById({ ...input, tx }),
+      churchTimeZone: church.timezone,
+    });
+    const event = await this.eventRepository.getEvent({
+      churchId: input.churchId,
+      eventId: input.eventId,
+      tx,
+    });
+
+    if (cycle.state === 'locked' && event.status !== 'draft') {
+      throw new IllegalStateTransitionError(event.status, action);
+    }
+
+    return event;
+  }
+
+  private async loadWritableEventSlot({
+    input,
+    church,
+    action,
+    tx,
+  }: LoadWritableEventSlotInput): Promise<TimeSlot> {
+    await this.ensureWritableEvent({ input, church, action, tx });
+
+    const slot = await this.timeSlotRepository.getById(
+      input.churchId,
+      input.slotId,
+      tx,
+    );
+
+    if (slot.eventId !== input.eventId) {
+      throw new NotFoundError(`TimeSlot not found: ${input.slotId}`);
+    }
+
+    return slot;
   }
 
   async cancelEvent(input: CancelPlanningEventManagerInput): Promise<void> {

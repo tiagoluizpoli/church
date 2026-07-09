@@ -10,6 +10,7 @@ interface WorkspaceIntroPanelProps {
   className?: string;
   description: string;
   title: string;
+  titleTestId?: string;
 }
 
 export function WorkspacePage({
@@ -31,6 +32,7 @@ export function WorkspaceIntroPanel({
   className,
   description,
   title,
+  titleTestId,
 }: WorkspaceIntroPanelProps) {
   const titleRef = React.useRef<HTMLHeadingElement>(null);
 
@@ -52,6 +54,7 @@ export function WorkspaceIntroPanel({
             ref={titleRef}
             tabIndex={autoFocusTitle ? -1 : undefined}
             className="max-w-3xl text-balance font-semibold text-3xl tracking-[-0.02em] outline-none md:text-4xl"
+            data-testid={titleTestId}
           >
             {title}
           </h1>

@@ -8,17 +8,16 @@ disable-model-invocation: false
 
 # Vibe Coder — Session Pipeline
 
-Seven ordered steps. Complete each step fully before advancing.
+Complete each step fully before advancing.
 **Invoke each named skill — never re-implement it.**
 
 ---
 
 ## Step 0 · Compress (`caveman`)
 
-Invoke `caveman` immediately. All session output — every step, every response —
-runs in caveman mode until the session closes.
+Invoke `caveman` immediately. All session output runs in caveman mode until the session closes.
 
-Completion criterion: caveman mode active for the remainder of the session.
+Completion criterion: all subsequent output is compressed.
 
 ---
 
@@ -59,13 +58,22 @@ Zero unresolved gaps.
 
 ## Step 4 · Plan (speckit pipeline)
 
-1. `speckit-specify` — only if no spec exists for this change.
-2. `speckit-plan`   — generate or update the implementation plan.
-3. `speckit-tasks`  — produce dependency-ordered `tasks.md`.
+**4a. Branch — MANDATORY** (`speckit.git.feature`):
+Invoke `speckit.git.feature` with the feature description.
+Wait for JSON output — capture `BRANCH_NAME` and `FEATURE_NUM`.
+Do NOT proceed to 4b until the branch is created and checked out.
+Verify with `git branch --show-current`.
+
+> Skip 4a only if already on a feature branch. See [REFERENCE.md](REFERENCE.md) for
+> protected-branch list and skip rules.
+
+**4b.** Invoke `speckit-specify`.
+**4c.** Invoke `speckit-plan`.
+**4d.** Invoke `speckit-tasks`.
 
 Present the plan. **Wait for explicit user approval before continuing.**
 
-Completion criterion: user approves ("proceed", "looks good", or equivalent).
+Completion criterion: user approves AND `git branch --show-current` is a feature branch.
 
 ---
 
@@ -92,10 +100,10 @@ the session.
 
 ## Session rules
 
-- Steps 1–3 are mandatory even for "tiny" changes — drift compounds.
+- Steps 0–3 are mandatory even for "tiny" changes — drift compounds.
 - User approval gates Step 5; never self-approve.
 - If the user names a **phase** (e.g. "phase 4.1 manual fixes"), scope the
   sync and polish to that phase's files only. Log the phase label in `drift-log.md`.
 - If a required skill is unavailable, stop and name the missing skill.
 
-See [REFERENCE.md](REFERENCE.md) for drift-log format and phase-scoping rules.
+See [REFERENCE.md](REFERENCE.md) for drift-log format, phase-scoping, and branch rules.

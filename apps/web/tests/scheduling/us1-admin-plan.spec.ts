@@ -17,11 +17,7 @@ interface PlanningMonth {
   expectedEvents: number;
   expectedSlots: number;
   dynamicStartDate: string;
-  dynamicStartHour: string;
-  dynamicStartMinute: string;
   dynamicEndDate: string;
-  dynamicEndHour: string;
-  dynamicEndMinute: string;
 }
 
 function getRequiredDate({
@@ -58,14 +54,6 @@ function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function toHourString(date: Date): string {
-  return date.toISOString().slice(11, 13);
-}
-
-function toMinuteString(date: Date): string {
-  return date.toISOString().slice(14, 16);
-}
-
 function countMatchingWeekdays({
   start,
   end,
@@ -91,7 +79,7 @@ function countMatchingWeekdays({
 
 function createPlanningMonth(): PlanningMonth {
   const now = new Date();
-  const year = 2100 + (now.getTime() % 2000);
+  const year = 2400 + (Math.floor(now.getTime() / 1000) % 50);
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));
@@ -143,11 +131,7 @@ function createPlanningMonth(): PlanningMonth {
     expectedEvents: sundayDates.length + wednesdayDates.length,
     expectedSlots: sundayDates.length * 3 + wednesdayDates.length,
     dynamicStartDate: toDateString(dynamicStart),
-    dynamicStartHour: toHourString(dynamicStart),
-    dynamicStartMinute: toMinuteString(dynamicStart),
     dynamicEndDate: toDateString(dynamicEnd),
-    dynamicEndHour: toHourString(dynamicEnd),
-    dynamicEndMinute: toMinuteString(dynamicEnd),
   };
 }
 
@@ -161,6 +145,9 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   page,
 }) => {
   const month = createPlanningMonth();
+  const sundayTemplateName = `Sunday Service ${month.cycleName}`;
+  const wednesdayTemplateName = `Wednesday Service ${month.cycleName}`;
+  const sundayGatheringName = `Sunday Gathering ${month.cycleName}`;
 
   await page.goto('/scheduling/planning-cycles');
 
@@ -188,7 +175,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   });
   await createTemplateDialog
     .getByTestId('template-name-input')
-    .fill('Sunday Service');
+    .fill(sundayTemplateName);
   await createTemplateDialog.getByTestId('template-weekday-select').click();
   await page.getByTestId('template-weekday-option-0').click();
   await createTemplateDialog.getByTestId('add-template-block-button').click();
@@ -236,7 +223,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await expect(
     page
       .getByTestId('saved-template-row')
-      .filter({ hasText: 'Sunday Service' }),
+      .filter({ hasText: sundayTemplateName }),
   ).toBeVisible();
   await expect(createTemplateDialog).not.toBeAttached();
 
@@ -246,7 +233,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   });
   await secondTemplateDialog
     .getByTestId('template-name-input')
-    .fill('Wednesday Service');
+    .fill(wednesdayTemplateName);
   await secondTemplateDialog.getByTestId('template-weekday-select').click();
   await page.getByTestId('template-weekday-option-3').click();
   const wednesdayBlock = secondTemplateDialog
@@ -266,13 +253,13 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await expect(
     page
       .getByTestId('saved-template-row')
-      .filter({ hasText: 'Wednesday Service' }),
+      .filter({ hasText: wednesdayTemplateName }),
   ).toBeVisible();
   await expect(secondTemplateDialog).not.toBeAttached();
 
   await page
     .getByTestId('saved-template-row')
-    .filter({ hasText: 'Sunday Service' })
+    .filter({ hasText: sundayTemplateName })
     .getByTestId('open-edit-template-dialog-button')
     .click();
   const editTemplateDialog = page.getByRole('dialog', {
@@ -280,13 +267,13 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   });
   await editTemplateDialog
     .getByTestId('template-name-input')
-    .fill('Sunday Gathering');
+    .fill(sundayGatheringName);
   await editTemplateDialog.getByTestId('create-template-button').click();
 
   await expect(
     page
       .getByTestId('saved-template-row')
-      .filter({ hasText: 'Sunday Gathering' }),
+      .filter({ hasText: sundayGatheringName }),
   ).toBeVisible();
   await expect(editTemplateDialog).not.toBeAttached();
 
@@ -300,11 +287,11 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     'apply-template-option',
   );
   await applyTemplateOptions
-    .filter({ hasText: 'Sunday Gathering' })
+    .filter({ hasText: sundayGatheringName })
     .getByTestId('template-select-checkbox')
     .check();
   await applyTemplateOptions
-    .filter({ hasText: 'Wednesday Service' })
+    .filter({ hasText: wednesdayTemplateName })
     .getByTestId('template-select-checkbox')
     .check();
   await applyTemplatesDialog.getByTestId('apply-templates-button').click();
@@ -325,23 +312,17 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     month.lastSunday,
   );
   await expect(page.getByTestId('planning-events-list')).toContainText(
-    'Sunday Gathering',
+    sundayGatheringName,
   );
 
   // FR-012: the one canonical create-event UI, reused here for a
   // planning-cycle manual event (same form as the ministry "New Event" modal).
-  await page.getByRole('button', { name: 'Add manual event' }).click();
+  await page.getByRole('button', { name: 'Add event' }).click();
   const createEventDialog = page.getByRole('dialog');
   await createEventDialog.getByLabel('Title').fill('Three-day retreat');
-  await createEventDialog.getByLabel('Start date').fill(month.dynamicStartDate);
-  await createEventDialog.getByLabel('Start hour').fill(month.dynamicStartHour);
-  await createEventDialog
-    .getByLabel('Start minute')
-    .fill(month.dynamicStartMinute);
-  await createEventDialog.getByLabel('End date').fill(month.dynamicEndDate);
-  await createEventDialog.getByLabel('End hour').fill(month.dynamicEndHour);
-  await createEventDialog.getByLabel('End minute').fill(month.dynamicEndMinute);
   await createEventDialog.getByRole('radio', { name: 'Day-based' }).click();
+  await createEventDialog.getByLabel('Start date').fill(month.dynamicStartDate);
+  await createEventDialog.getByLabel('End date').fill(month.dynamicEndDate);
   await createEventDialog.getByRole('button', { name: 'Create' }).click();
 
   await expect(page.getByTestId('planning-event-card')).toHaveCount(
@@ -397,9 +378,7 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await expect(
     page.getByTestId('open-apply-templates-dialog-button'),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: 'Add manual event' }),
-  ).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add event' })).toHaveCount(0);
   await expect(page.getByTestId('open-template-library-button')).toBeVisible();
 
   const leaderContext = await browser.newContext({

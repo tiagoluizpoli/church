@@ -11,6 +11,7 @@ import {
   RoleId,
   TeamId,
   TimeBlockId,
+  TimeSlotId,
   UserId,
 } from '../../domain/branded-ids';
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
@@ -51,6 +52,12 @@ import {
   type UpsertServingProfileBody,
   upsertServingProfileBodySchema,
 } from '../dtos/serving-profile.dto';
+import {
+  createSlotBodySchema,
+  timeSlotMapper,
+  timeSlotResponseSchema,
+  updateSlotBodySchema,
+} from '../dtos/time-slot.dto';
 import { headersFromRequest } from '../utils/headers';
 
 interface PlanningCycleRouteParams {
@@ -64,6 +71,12 @@ interface EventTemplateRouteParams {
 interface PlanningEventRouteParams {
   cycleId: string;
   eventId: string;
+}
+
+interface PlanningEventSlotRouteParams {
+  cycleId: string;
+  eventId: string;
+  slotId: string;
 }
 
 interface MinistryRouteParams {
@@ -390,6 +403,74 @@ export class ChurchAdminController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           cycleId: PlanningCycleId.from(cycleId),
           eventId: EventId.from(eventId),
+        });
+        return reply.status(204).send();
+      },
+    );
+
+    app.post(
+      '/planning-cycles/:cycleId/events/:eventId/slots',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'createPlanningEventSlot',
+          body: createSlotBodySchema,
+          response: { 201: timeSlotResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as z.infer<typeof createSlotBodySchema>;
+        const slot = await this.planningEventManager.createSlot({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: PlanningCycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          startTime: new Date(body.startTime),
+          endTime: new Date(body.endTime),
+          label: body.label,
+        });
+        return reply.status(201).send(timeSlotMapper.toResponse(slot));
+      },
+    );
+
+    app.patch(
+      '/planning-cycles/:cycleId/events/:eventId/slots/:slotId',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'updatePlanningEventSlot',
+          body: updateSlotBodySchema,
+          response: { 200: timeSlotResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, slotId } =
+          request.params as PlanningEventSlotRouteParams;
+        const body = request.body as z.infer<typeof updateSlotBodySchema>;
+        const slot = await this.planningEventManager.updateSlot({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: PlanningCycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          slotId: TimeSlotId.from(slotId),
+          startTime: body.startTime ? new Date(body.startTime) : undefined,
+          endTime: body.endTime ? new Date(body.endTime) : undefined,
+          label: body.label,
+        });
+        return reply.send(timeSlotMapper.toResponse(slot));
+      },
+    );
+
+    app.delete(
+      '/planning-cycles/:cycleId/events/:eventId/slots/:slotId',
+      { schema: { tags: ['admin'], operationId: 'deletePlanningEventSlot' } },
+      async (request, reply) => {
+        const { cycleId, eventId, slotId } =
+          request.params as PlanningEventSlotRouteParams;
+        await this.planningEventManager.deleteSlot({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: PlanningCycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          slotId: TimeSlotId.from(slotId),
         });
         return reply.status(204).send();
       },

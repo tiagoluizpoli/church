@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
+import { usePlanningCycleSelection } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
 export const Route = createFileRoute('/scheduling/planning-cycles/')({
   component: PlanningCyclesIndexRoute,
@@ -7,6 +9,11 @@ export const Route = createFileRoute('/scheduling/planning-cycles/')({
 
 function PlanningCyclesIndexRoute() {
   const navigate = Route.useNavigate();
+  const { handleClearSelectedCycle } = usePlanningCycleSelection();
+
+  useEffect(() => {
+    handleClearSelectedCycle();
+  }, [handleClearSelectedCycle]);
 
   return (
     <CycleListCard

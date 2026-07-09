@@ -838,6 +838,78 @@ export type UpdatePlanningEvent200 = {
   updatedAt: string;
 };
 
+export type CreatePlanningEventSlotBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+};
+
+export type CreatePlanningEventSlot201Status = typeof CreatePlanningEventSlot201Status[keyof typeof CreatePlanningEventSlot201Status];
+
+
+export const CreatePlanningEventSlot201Status = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type CreatePlanningEventSlot201RequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type CreatePlanningEventSlot201 = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: CreatePlanningEventSlot201Status;
+  requirements: CreatePlanningEventSlot201RequirementsItem[];
+};
+
+export type UpdatePlanningEventSlotBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startTime?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endTime?: string;
+  label?: string;
+};
+
+export type UpdatePlanningEventSlot200Status = typeof UpdatePlanningEventSlot200Status[keyof typeof UpdatePlanningEventSlot200Status];
+
+
+export const UpdatePlanningEventSlot200Status = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type UpdatePlanningEventSlot200RequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type UpdatePlanningEventSlot200 = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: UpdatePlanningEventSlot200Status;
+  requirements: UpdatePlanningEventSlot200RequirementsItem[];
+};
+
 export type GetMinistryServingProfile200EntriesItemShiftSplit = {
   kind: 'equal';
   /**

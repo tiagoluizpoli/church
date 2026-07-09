@@ -78,7 +78,7 @@ export function SlotRow({
               <Button
                 type="button"
                 size="icon"
-                variant="ghost"
+                variant="destructive"
                 className="size-5"
                 onClick={() => onDeleteSlot(slot.slotId)}
                 aria-label="Delete slot"

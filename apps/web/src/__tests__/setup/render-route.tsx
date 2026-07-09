@@ -14,6 +14,7 @@ interface RenderRouteOptions {
 
 interface RenderRouteResult extends RenderResult {
   queryClient: QueryClient;
+  router: ReturnType<typeof createRouter<typeof routeTree>>;
 }
 
 /**
@@ -47,5 +48,5 @@ export function renderRoute({
     </QueryClientProvider>,
   );
 
-  return { ...result, queryClient };
+  return { ...result, queryClient, router };
 }

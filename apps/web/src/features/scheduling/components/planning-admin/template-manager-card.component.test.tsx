@@ -102,6 +102,31 @@ describe('TemplateManagerCard table view (US1)', () => {
     expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
   });
 
+  it('renders the Delete action with destructive styling, distinct from Edit', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          weekday: 0,
+          blocks: [],
+        },
+      ],
+    });
+
+    render();
+
+    const table = await screen.findByRole('grid');
+    const row = within(table).getByRole('row', { name: /Sunday Service/ });
+
+    expect(within(row).getByRole('button', { name: 'Delete' })).toHaveClass(
+      'text-destructive',
+    );
+    expect(within(row).getByRole('button', { name: 'Edit' })).not.toHaveClass(
+      'text-destructive',
+    );
+  });
+
   it('shows the empty-state message instead of an empty table when there are no templates', async () => {
     listEventTemplates.mockResolvedValue({ templates: [] });
 

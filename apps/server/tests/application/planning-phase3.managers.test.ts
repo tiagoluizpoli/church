@@ -1,21 +1,29 @@
 import { randomUUID } from 'node:crypto';
 import {
+  event,
   ministry,
   ministryServingProfile,
   participationSlotInclusion,
   role,
   shift as shiftTable,
   slotRequirement,
+  timeSlot,
 } from '@church/db';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
 import { DbPlanningCycleManager } from '../../src/application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '../../src/application/db-planning-event-manager';
-import { ChurchId, PlanningCycleId } from '../../src/domain/branded-ids';
+import {
+  ChurchId,
+  EventId,
+  PlanningCycleId,
+  TimeSlotId,
+} from '../../src/domain/branded-ids';
 import {
   EventOutsidePlanningCycleError,
   IllegalStateTransitionError,
+  LastRemainingSlotError,
   OverlappingCycleError,
 } from '../../src/domain/errors';
 import { DrizzleChurchRepository } from '../../src/infrastructure/repositories/drizzle-church.repository';
@@ -26,6 +34,7 @@ import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructur
 import { DrizzlePlanningCycleRepository } from '../../src/infrastructure/repositories/drizzle-planning-cycle.repository';
 import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
 import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
 import {
@@ -55,6 +64,7 @@ function createManagers() {
     participationDefaultAllIn: false,
     volunteerDashboardAllowOverlapSave: false,
   });
+  const timeSlotRepository = new DrizzleTimeSlotRepository(schedulingTestDb);
 
   return {
     cycleManager: new DbPlanningCycleManager(
@@ -74,9 +84,38 @@ function createManagers() {
       servingProfileRepository,
       ministryRepository,
       featureFlagService,
+      timeSlotRepository,
     ),
     templateManager: new DbEventTemplateManager(templateRepository),
+    timeSlotRepository,
   };
+}
+
+interface SeedEventSlotInput {
+  churchId: string;
+  eventId: string;
+  startTime: Date;
+  endTime: Date;
+  label?: string;
+}
+
+async function seedEventSlot(input: SeedEventSlotInput) {
+  const [row] = await schedulingTestDb
+    .insert(timeSlot)
+    .values({
+      churchId: input.churchId,
+      eventId: input.eventId,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      label: input.label,
+    })
+    .returning();
+
+  if (!row) {
+    throw new Error('Scheduling phase 3 slot seed failed');
+  }
+
+  return row;
 }
 
 describe('Phase 3 planning managers', () => {
@@ -657,5 +696,361 @@ describe('Phase 3 planning managers', () => {
         eq(participationSlotInclusion.participationId, excludedParticipationId),
       );
     expect(excludedInclusions).toHaveLength(0);
+  });
+
+  it('createSlot: happy path on a draft cycle, rejected on a locked cycle', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+
+    const draftCycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Create slot cycle',
+      startDate: new Date('2027-08-01T00:00:00.000Z'),
+      endDate: new Date('2027-09-01T00:00:00.000Z'),
+    });
+    const event = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      title: 'Bare manual day',
+      startDate: new Date('2027-08-02T00:00:00.000Z'),
+      endDate: new Date('2027-08-02T23:59:59.999Z'),
+    });
+
+    const created = await eventManager.createSlot({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      eventId: event.id,
+      startTime: new Date('2027-08-02T09:00:00.000Z'),
+      endTime: new Date('2027-08-02T10:00:00.000Z'),
+      label: 'Worship',
+    });
+
+    expect(created.label).toBe('Worship');
+    expect(created.eventId).toBe(event.id);
+
+    const lockedCycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Create slot locked cycle',
+      startDate: new Date('2027-09-01T00:00:00.000Z'),
+      endDate: new Date('2027-10-01T00:00:00.000Z'),
+    });
+    const lockedEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: lockedCycle.id,
+      title: 'Locked day',
+      startDate: new Date('2027-09-02T00:00:00.000Z'),
+      endDate: new Date('2027-09-02T23:59:59.999Z'),
+    });
+    await cycleManager.lockCycle({
+      churchId: churchAId,
+      cycleId: lockedCycle.id,
+    });
+
+    await expect(
+      eventManager.createSlot({
+        churchId: churchAId,
+        cycleId: lockedCycle.id,
+        eventId: lockedEvent.id,
+        startTime: new Date('2027-09-02T09:00:00.000Z'),
+        endTime: new Date('2027-09-02T10:00:00.000Z'),
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+  });
+
+  it('updateSlot/deleteSlot: happy paths, ownership/lock guards, and last-remaining-slot rejection', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+
+    const draftCycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Slot mutation cycle',
+      startDate: new Date('2027-05-01T00:00:00.000Z'),
+      endDate: new Date('2027-06-01T00:00:00.000Z'),
+    });
+
+    const twoSlotEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      title: 'Two-slot day',
+      startDate: new Date('2027-05-02T09:00:00.000Z'),
+      endDate: new Date('2027-05-02T12:00:00.000Z'),
+    });
+    const [slotA, slotB] = await Promise.all([
+      seedEventSlot({
+        churchId: seed.churchAId,
+        eventId: twoSlotEvent.id,
+        startTime: new Date('2027-05-02T09:00:00.000Z'),
+        endTime: new Date('2027-05-02T10:00:00.000Z'),
+        label: 'Worship',
+      }),
+      seedEventSlot({
+        churchId: seed.churchAId,
+        eventId: twoSlotEvent.id,
+        startTime: new Date('2027-05-02T10:00:00.000Z'),
+        endTime: new Date('2027-05-02T11:00:00.000Z'),
+        label: 'Message',
+      }),
+    ]);
+
+    // Happy-path update.
+    const updated = await eventManager.updateSlot({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      eventId: twoSlotEvent.id,
+      slotId: TimeSlotId.from(slotA.id),
+      label: 'Renamed slot',
+    });
+    expect(updated.label).toBe('Renamed slot');
+
+    // Happy-path delete (non-last slot).
+    await eventManager.deleteSlot({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      eventId: twoSlotEvent.id,
+      slotId: TimeSlotId.from(slotB.id),
+    });
+    const remaining = await schedulingTestDb
+      .select()
+      .from(timeSlot)
+      .where(eq(timeSlot.eventId, twoSlotEvent.id));
+    expect(remaining).toHaveLength(1);
+
+    // Reject deleting a day's only remaining slot.
+    await expect(
+      eventManager.deleteSlot({
+        churchId: churchAId,
+        cycleId: draftCycle.id,
+        eventId: twoSlotEvent.id,
+        slotId: TimeSlotId.from(slotA.id),
+      }),
+    ).rejects.toThrow(LastRemainingSlotError);
+
+    // Reject when slot/event/cycle triple mismatches (slot belongs to a
+    // different event than the one supplied).
+    const otherEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      title: 'Other day',
+      startDate: new Date('2027-05-03T09:00:00.000Z'),
+      endDate: new Date('2027-05-03T10:00:00.000Z'),
+    });
+    await expect(
+      eventManager.updateSlot({
+        churchId: churchAId,
+        cycleId: draftCycle.id,
+        eventId: otherEvent.id,
+        slotId: TimeSlotId.from(slotA.id),
+        label: 'Mismatched',
+      }),
+    ).rejects.toThrow('TimeSlot not found');
+
+    // Reject on archived cycle.
+    const archivedCycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Archived slot cycle',
+      startDate: new Date('2000-01-01T00:00:00.000Z'),
+      endDate: new Date('2000-02-01T00:00:00.000Z'),
+    });
+    await expect(
+      eventManager.updateSlot({
+        churchId: churchAId,
+        cycleId: PlanningCycleId.from(archivedCycle.id),
+        eventId: twoSlotEvent.id,
+        slotId: TimeSlotId.from(slotA.id),
+        label: 'Archived',
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+
+    // Reject when the cycle locks between load and mutation (re-fetched
+    // fresh inside the same transaction, so a lock that lands before the
+    // call is always observed).
+    const raceEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+      title: 'Race day',
+      startDate: new Date('2027-05-04T09:00:00.000Z'),
+      endDate: new Date('2027-05-04T10:00:00.000Z'),
+    });
+    const raceSlot = await seedEventSlot({
+      churchId: seed.churchAId,
+      eventId: raceEvent.id,
+      startTime: new Date('2027-05-04T09:00:00.000Z'),
+      endTime: new Date('2027-05-04T10:00:00.000Z'),
+    });
+    await cycleManager.lockCycle({
+      churchId: churchAId,
+      cycleId: draftCycle.id,
+    });
+
+    await expect(
+      eventManager.updateSlot({
+        churchId: churchAId,
+        cycleId: draftCycle.id,
+        eventId: raceEvent.id,
+        slotId: TimeSlotId.from(raceSlot.id),
+        label: 'Too late',
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+    await expect(
+      eventManager.deleteSlot({
+        churchId: churchAId,
+        cycleId: draftCycle.id,
+        eventId: raceEvent.id,
+        slotId: TimeSlotId.from(raceSlot.id),
+      }),
+    ).rejects.toThrow(IllegalStateTransitionError);
+  });
+
+  it('updateEvent cascades a startDate change onto every child slot atomically, and leaves slots alone for non-date edits', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager, timeSlotRepository } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+
+    const cycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Cascade cycle',
+      startDate: new Date('2027-06-01T00:00:00.000Z'),
+      endDate: new Date('2027-07-01T00:00:00.000Z'),
+    });
+    const cascadeEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      title: 'Cascade day',
+      startDate: new Date('2027-06-02T09:00:00.000Z'),
+      endDate: new Date('2027-06-02T12:00:00.000Z'),
+    });
+    const [slotOne, slotTwo] = await Promise.all([
+      seedEventSlot({
+        churchId: seed.churchAId,
+        eventId: cascadeEvent.id,
+        startTime: new Date('2027-06-02T09:00:00.000Z'),
+        endTime: new Date('2027-06-02T10:00:00.000Z'),
+      }),
+      seedEventSlot({
+        churchId: seed.churchAId,
+        eventId: cascadeEvent.id,
+        startTime: new Date('2027-06-02T10:30:00.000Z'),
+        endTime: new Date('2027-06-02T11:30:00.000Z'),
+      }),
+    ]);
+
+    // Changing only title/endDate must NOT move any slot.
+    await eventManager.updateEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      eventId: cascadeEvent.id,
+      title: 'Cascade day (retitled)',
+      endDate: new Date('2027-06-05T00:00:00.000Z'),
+    });
+    const slotsAfterNonDateEdit = await schedulingTestDb
+      .select()
+      .from(timeSlot)
+      .where(eq(timeSlot.eventId, cascadeEvent.id));
+    for (const slot of slotsAfterNonDateEdit) {
+      const original = [slotOne, slotTwo].find((s) => s.id === slot.id);
+      expect(slot.startTime.getTime()).toBe(original?.startTime.getTime());
+      expect(slot.endTime.getTime()).toBe(original?.endTime.getTime());
+    }
+
+    // Changing startDate by 2 days + 3 hours must shift every slot by the
+    // same delta, preserving each slot's own duration.
+    const newStartDate = new Date('2027-06-04T12:00:00.000Z');
+    const delta =
+      newStartDate.getTime() - new Date('2027-06-02T09:00:00.000Z').getTime();
+
+    await eventManager.updateEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      eventId: cascadeEvent.id,
+      startDate: newStartDate,
+    });
+
+    const slotsAfterDateShift = await schedulingTestDb
+      .select()
+      .from(timeSlot)
+      .where(eq(timeSlot.eventId, cascadeEvent.id));
+
+    for (const original of [slotOne, slotTwo]) {
+      const shifted = slotsAfterDateShift.find((s) => s.id === original.id);
+      if (!shifted) throw new Error('expected slot to still exist');
+      const originalDuration =
+        original.endTime.getTime() - original.startTime.getTime();
+      const shiftedDuration =
+        shifted.endTime.getTime() - shifted.startTime.getTime();
+
+      expect(shifted.startTime.getTime()).toBe(
+        original.startTime.getTime() + delta,
+      );
+      expect(shifted.endTime.getTime()).toBe(
+        original.endTime.getTime() + delta,
+      );
+      expect(shiftedDuration).toBe(originalDuration);
+    }
+
+    // Atomic rollback: if a slot in the cascade loop fails partway through,
+    // the whole transaction — including the event's own startDate — must
+    // roll back together, not leave a half-shifted day.
+    const rollbackEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      title: 'Rollback day',
+      startDate: new Date('2027-06-10T09:00:00.000Z'),
+      endDate: new Date('2027-06-10T10:00:00.000Z'),
+    });
+    const survivingSlot = await seedEventSlot({
+      churchId: seed.churchAId,
+      eventId: rollbackEvent.id,
+      startTime: new Date('2027-06-10T09:00:00.000Z'),
+      endTime: new Date('2027-06-10T10:00:00.000Z'),
+    });
+    const failingSlot = await seedEventSlot({
+      churchId: seed.churchAId,
+      eventId: rollbackEvent.id,
+      startTime: new Date('2027-06-10T10:00:00.000Z'),
+      endTime: new Date('2027-06-10T11:00:00.000Z'),
+    });
+
+    const realUpdate = timeSlotRepository.update.bind(timeSlotRepository);
+    const updateSpy = vi
+      .spyOn(timeSlotRepository, 'update')
+      .mockImplementation((slotChurchId, slotId, input, tx) => {
+        if (slotId === failingSlot.id) {
+          throw new Error('Simulated mid-cascade failure');
+        }
+        return realUpdate(slotChurchId, slotId, input, tx);
+      });
+
+    await expect(
+      eventManager.updateEvent({
+        churchId: churchAId,
+        cycleId: cycle.id,
+        eventId: EventId.from(rollbackEvent.id),
+        startDate: new Date('2027-06-10T09:30:00.000Z'),
+        endDate: new Date('2027-06-10T10:30:00.000Z'),
+      }),
+    ).rejects.toThrow('Simulated mid-cascade failure');
+
+    updateSpy.mockRestore();
+
+    const [rolledBackEvent] = await schedulingTestDb
+      .select()
+      .from(event)
+      .where(eq(event.id, rollbackEvent.id));
+    expect(rolledBackEvent?.startDate.getTime()).toBe(
+      new Date('2027-06-10T09:00:00.000Z').getTime(),
+    );
+    expect(rolledBackEvent?.endDate.getTime()).toBe(
+      new Date('2027-06-10T10:00:00.000Z').getTime(),
+    );
+
+    const [survivingSlotAfterRollback] = await schedulingTestDb
+      .select()
+      .from(timeSlot)
+      .where(eq(timeSlot.id, survivingSlot.id));
+    expect(survivingSlotAfterRollback?.startTime.getTime()).toBe(
+      new Date('2027-06-10T09:00:00.000Z').getTime(),
+    );
   });
 });

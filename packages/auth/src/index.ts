@@ -6,6 +6,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 
 export function createAuth() {
   const db = createDb();
+  const isSecureOrigin = env.BETTER_AUTH_URL.startsWith('https://');
 
   return betterAuth({
     database: drizzleAdapter(db, {
@@ -21,8 +22,11 @@ export function createAuth() {
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
       defaultCookieAttributes: {
-        sameSite: 'none',
-        secure: true,
+        // `Secure` cookies are silently dropped by browsers over plain HTTP
+        // (e.g. LAN-IP dev access from a phone) — only require it, and the
+        // stricter `SameSite=None` it implies, when actually serving HTTPS.
+        sameSite: isSecureOrigin ? 'none' : 'lax',
+        secure: isSecureOrigin,
         httpOnly: true,
       },
     },

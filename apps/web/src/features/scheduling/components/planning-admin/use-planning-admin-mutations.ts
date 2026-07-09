@@ -189,7 +189,7 @@ export function usePlanningAdminMutations({
       ['planning-cycles'],
       ['planning-cycle-details', cycle.id],
     ],
-    successMessage: 'Planning cycle created',
+    successMessage: 'Cycle created',
     onSuccess: async (cycle) => {
       setCycleErrorMessage(null);
       setCycleForm(createEmptyCycleForm());

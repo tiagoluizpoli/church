@@ -105,7 +105,7 @@ const SCHEDULING_NAV_ITEM: NavItem = {
   icon: CalendarClock,
   children: [
     {
-      label: 'Planning',
+      label: 'Cycles',
       to: '/scheduling/planning-cycles',
       icon: CalendarRange,
     },

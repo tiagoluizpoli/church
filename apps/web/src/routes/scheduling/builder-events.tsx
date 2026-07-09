@@ -29,7 +29,7 @@ function BuilderEventsRoute() {
               to="/scheduling/planning-cycles"
               className={buttonVariants({ variant: 'default' })}
             >
-              Open planning
+              Open cycles
             </Link>
           </div>
         }

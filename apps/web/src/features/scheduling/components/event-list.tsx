@@ -150,8 +150,8 @@ export function EventList() {
         <div className="surface-subtle workspace-panel mt-6">
           <p className="font-medium text-sm">No builder events yet.</p>
           <p className="mt-1 text-muted-foreground text-sm">
-            Create one to get started, or head to Planning if you need to define
-            a cycle first.
+            Create one to get started, or head to Cycles if you need to define a
+            cycle first.
           </p>
         </div>
       ) : (

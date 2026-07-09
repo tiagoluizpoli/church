@@ -488,7 +488,7 @@ export function ParticipationTailoring() {
           ) : !selectedCycleId ? (
             <Card className="surface-panel">
               <CardHeader>
-                <CardTitle>No planning cycles</CardTitle>
+                <CardTitle>No cycles</CardTitle>
                 <CardDescription>
                   Create and lock a cycle first so this ministry has events to
                   tailor.

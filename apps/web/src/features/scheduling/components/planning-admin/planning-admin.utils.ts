@@ -176,7 +176,7 @@ export function getSelectedCycleIdOrThrow({
   selectedCycleId,
 }: SelectedCycleIdInput): string {
   if (!selectedCycleId) {
-    throw new Error('No planning cycle selected');
+    throw new Error('No cycle selected');
   }
 
   return selectedCycleId;

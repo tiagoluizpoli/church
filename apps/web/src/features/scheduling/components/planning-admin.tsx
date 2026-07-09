@@ -68,7 +68,7 @@ function describePlanningIntro({
 
   if (pathname.endsWith('/new')) {
     return {
-      title: 'Create planning cycle',
+      title: 'Create cycle',
       description:
         'Define the date range first, then move into review when the cycle is ready for templates and exceptions.',
     };
@@ -82,12 +82,12 @@ function describePlanningIntro({
     return {
       title: selectedCycleName,
       description:
-        'Planning cycles. Review this cycle, apply templates on demand, add exceptions, and lock the calendar when it is ready for staffing.',
+        'Cycles. Review this cycle, apply templates on demand, add exceptions, and lock the calendar when it is ready for staffing.',
     };
   }
 
   return {
-    title: 'Planning cycles',
+    title: 'Cycles',
     description:
       'Start from the cycle list, open the one you want to review, and only bring template work or cycle creation into view when you need it.',
   };

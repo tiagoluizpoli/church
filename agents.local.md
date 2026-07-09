@@ -47,5 +47,5 @@
 
 ## Current Plan Reference
 <!-- SPECKIT START -->
-- Current Plan: [specs/020-cycle-review-editing/plan.md](specs/020-cycle-review-editing/plan.md)
+- Current Plan: [specs/021-mobile-parity-cycles/plan.md](specs/021-mobile-parity-cycles/plan.md)
 <!-- SPECKIT END -->

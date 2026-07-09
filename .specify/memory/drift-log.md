@@ -42,3 +42,13 @@ Feature 019 spec/plan/tasks were authored this session and no implementation has
 
 ### Notes
 This turn's request (merge review-body stats into the page header, church-timezone-aware date/time formatting, draft-cycle day/slot delete-and-edit UI, de-emphasize "manual exceptions" styling) is **new scope beyond 019's FRs** (019 was presentation-only: card→table, no editing affordances, no timezone handling). Investigated during sync: backend has event-level create/update/cancel (`createPlanningEvent`, `updatePlanningEvent`, `cancelPlanningEvent`) but **no slot-level delete/update endpoint exists** — user chose "full stack now" to build slot-level CRUD in this same pass rather than backlog it. Proceeding to open a new spec for this follow-on work rather than amending 019 (019 is closed/shipped).
+
+## 2026-07-09 Drift sync — 020-cycle-review-editing post-implementation
+
+### Artifact changes
+| Artifact | Divergence | Action taken |
+|---|---|---|
+| specs/020-cycle-review-editing/spec.md, plan.md, tasks.md | All tasks (T001-T040) confirmed `[x]`; spot-checked `cycle-review-card.tsx`/`planning-cycle-header.tsx` — `selected-cycle-summary`/"Manual exceptions" markers absent (removed per FR-002/FR-012), `eventCount`/`slotCount` chips present (FR-001). No drift. | No patch needed. |
+
+### Notes
+This turn's request is new scope beyond 020 (020 was desktop-only editing/timezone/header work). New asks: (1) rename "Planning Cycle" -> "Cycle" in UI copy app-wide (i18n prep), (2) table-view expand-all/collapse-all for roles, (3) mobile parity for slot/event CRUD, (4) mobile timezone formatting/auto-update parity, (5) mobile drawer nested-hierarchy visual redesign, (6) bug: theme toggle non-functional on mobile, (7) bug: 401 on volunteer/notifications after LAN-IP same-origin env change, blocking sign-in on mobile testing. Item 7 handled as immediate hotfix (blocks testing items 3-6). Item 1 handled as a mechanical copy-only sweep. Items 2-6 opened as a new spec (021) rather than amending 020 (020 is closed/shipped).

@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { formatInTimeZone, toDate } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime, toDate } from 'date-fns-tz';
 
 /**
  * Formats a date in a specific timezone.
@@ -20,6 +20,14 @@ export function formatInTZ(
 export function toTZ(date: Date | string | number, timeZone: string): Date {
   const d = typeof date === 'string' ? parseISO(date) : date;
   return toDate(d, { timeZone });
+}
+
+/**
+ * Converts a wall-clock time (as understood in the given timezone) to the
+ * equivalent UTC instant. Inverse of `toTZ`/`formatInTZ`.
+ */
+export function fromTZ(wallClock: string, timeZone: string): Date {
+  return fromZonedTime(wallClock, timeZone);
 }
 
 /**

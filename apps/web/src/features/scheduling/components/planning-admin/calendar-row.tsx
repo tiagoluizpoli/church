@@ -102,7 +102,7 @@ function ConfirmDeleteDialogContent({
         <AlertDialogDescription>{description}</AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogCancel disabled={disabled}>Cancel</AlertDialogCancel>
         <AlertDialogAction
           variant="destructive"
           disabled={disabled}
@@ -179,7 +179,12 @@ export interface CalendarRowProps {
  * `<TableRow columns={...}>{(column) => ...}</TableRow>` — react-aria's
  * dynamic-column `Collection` model (see `ui/table.tsx`) requires the
  * per-column render prop, a plain `.map()` over cells won't register
- * correctly with the table's collection. */
+ * correctly with the table's collection. That same Collection model also
+ * memoizes a row's rendered content independent of the `TableBody`
+ * `dependencies` array once built, so `rowKey` folds in every prop that must
+ * force a fresh render (dialog open state, delete-pending state) — without
+ * it, e.g. a delete mutation's pending flag flips in React state but never
+ * reaches the DOM. */
 export function CalendarRow({
   visibleRow,
   isExpanded,
@@ -199,7 +204,7 @@ export function CalendarRow({
   onDeleteSlotConfirm,
 }: CalendarRowProps) {
   const id = visibleRowId({ visibleRow });
-  const rowKey = `${id}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}`;
+  const rowKey = `${id}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteSlotPending ? 'slot-pending' : 'slot-idle'}`;
 
   return (
     <TableRow key={rowKey} id={rowKey} columns={CALENDAR_TABLE_COLUMNS}>
@@ -338,7 +343,7 @@ function ParentRowCell({
             <ConfirmDeleteDialogContent
               title="Delete this day?"
               description={`This removes "${row.title}" and its slots from the cycle.`}
-              actionLabel="Delete event"
+              actionLabel={deletePending ? 'Deleting…' : 'Delete event'}
               disabled={deletePending}
               onConfirm={() => onDeleteConfirm({ eventId: row.eventId })}
             />
@@ -434,7 +439,7 @@ function SlotRowCell({
               <ConfirmDeleteDialogContent
                 title="Delete this slot?"
                 description={`This removes "${visibleRow.label}" from the day.`}
-                actionLabel="Delete slot"
+                actionLabel={deletePending ? 'Deleting…' : 'Delete slot'}
                 disabled={deletePending}
                 onConfirm={() =>
                   onDeleteConfirm({

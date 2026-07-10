@@ -66,14 +66,6 @@ function describePlanningIntro({
     };
   }
 
-  if (pathname.endsWith('/new')) {
-    return {
-      title: 'Create cycle',
-      description:
-        'Define the date range first, then move into review when the cycle is ready for templates and exceptions.',
-    };
-  }
-
   if (
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&

@@ -28,6 +28,8 @@ export function SlotFormFields({
   labelPlaceholder,
   onChange,
 }: SlotFormFieldsProps) {
+  const isInvalidRange = values.startTimeLocal >= values.endTimeLocal;
+
   return (
     <div className="space-y-3">
       <div className="space-y-1">
@@ -84,6 +86,9 @@ export function SlotFormFields({
             })
           }
         />
+        {isInvalidRange ? (
+          <p className="text-destructive text-xs">End must be after start.</p>
+        ) : null}
       </div>
     </div>
   );

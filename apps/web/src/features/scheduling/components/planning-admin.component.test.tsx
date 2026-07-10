@@ -136,6 +136,24 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps the "Cycles" page title behind the create-cycle dialog instead of swapping it to "Create cycle"', async () => {
+    listPlanningCycles.mockResolvedValue({ cycles: [] });
+
+    const user = userEvent.setup();
+    renderPlanningCycles();
+
+    await screen.findByText('Existing cycles');
+    await user.click(screen.getByTestId('open-create-cycle-dialog-button'));
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Create cycle' }),
+    ).toBeVisible();
+    // The h1 lives in the (now aria-hidden, inert) page behind the dialog,
+    // so query it directly instead of screen.getByRole('heading', ...),
+    // which excludes aria-hidden content from the accessibility tree.
+    expect(document.querySelector('h1')).toHaveTextContent('Cycles');
+  });
+
   it('keeps the template library as a saved-list view and opens creation in a dialog', async () => {
     listPlanningCycles.mockResolvedValue({ cycles: [] });
 

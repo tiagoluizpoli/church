@@ -1,15 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
+import { Button } from '@/components/ui/button';
 import { CreateCycleForm } from '@/features/scheduling/components/planning-admin/create-cycle-form';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
-import { usePlanningCycleSelection } from '@/features/scheduling/components/planning-admin/planning-admin-context';
+import {
+  useCreateCycleCard,
+  usePlanningCycleSelection,
+} from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
 export const Route = createFileRoute('/scheduling/planning-cycles/new')({
   component: NewPlanningCycleRoute,
@@ -17,6 +15,8 @@ export const Route = createFileRoute('/scheduling/planning-cycles/new')({
 
 function NewPlanningCycleRoute() {
   const { selectedCycleId } = usePlanningCycleSelection();
+  const { canCreateCycle, createCyclePending, handleCreateCycle } =
+    useCreateCycleCard();
   const navigate = Route.useNavigate();
   const selectionOnEntry = useRef(selectedCycleId);
 
@@ -39,18 +39,33 @@ function NewPlanningCycleRoute() {
     <>
       <CycleListCard />
 
-      <Dialog open onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Create cycle</DialogTitle>
-            <DialogDescription>
-              Define the date range first, then move into review when the cycle
-              is ready for templates and exceptions.
-            </DialogDescription>
-          </DialogHeader>
-          <CreateCycleForm submitButtonClassName="w-full justify-center sm:w-auto" />
-        </DialogContent>
-      </Dialog>
+      <ResponsiveFormSurface
+        open
+        onOpenChange={handleOpenChange}
+        title="Create cycle"
+        description="Define the date range first, then move into review when the cycle is ready for templates and exceptions."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              data-testid="create-cycle-button"
+              disabled={!canCreateCycle || createCyclePending}
+              onClick={handleCreateCycle}
+            >
+              {createCyclePending ? 'Creating…' : 'Create cycle'}
+            </Button>
+          </>
+        }
+      >
+        <CreateCycleForm hideSubmitButton />
+      </ResponsiveFormSurface>
     </>
   );
 }

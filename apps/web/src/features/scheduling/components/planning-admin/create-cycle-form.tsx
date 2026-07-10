@@ -5,10 +5,15 @@ import { Label } from '@/components/ui/label';
 
 interface CreateCycleFormProps {
   submitButtonClassName?: string;
+  /** Skip the built-in submit button when a parent (e.g. a dialog/drawer
+   * footer) owns Cancel/Submit placement instead — see
+   * `routes/scheduling/planning-cycles/new.tsx`. */
+  hideSubmitButton?: boolean;
 }
 
 export function CreateCycleForm({
   submitButtonClassName,
+  hideSubmitButton = false,
 }: CreateCycleFormProps) {
   const {
     cycleForm,
@@ -69,15 +74,17 @@ export function CreateCycleForm({
           {cycleErrorMessage}
         </p>
       ) : null}
-      <Button
-        type="button"
-        data-testid="create-cycle-button"
-        className={submitButtonClassName}
-        disabled={!canCreateCycle || createCyclePending}
-        onClick={handleCreateCycle}
-      >
-        {createCyclePending ? 'Creating…' : 'Create cycle'}
-      </Button>
+      {hideSubmitButton ? null : (
+        <Button
+          type="button"
+          data-testid="create-cycle-button"
+          className={submitButtonClassName}
+          disabled={!canCreateCycle || createCyclePending}
+          onClick={handleCreateCycle}
+        >
+          {createCyclePending ? 'Creating…' : 'Create cycle'}
+        </Button>
+      )}
     </div>
   );
 }

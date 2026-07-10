@@ -2,14 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -115,69 +109,12 @@ export function QuickCreateEventModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New Event</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor="event-title">Title</Label>
-            <Input
-              id="event-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Sunday Morning Service"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Event type</Label>
-            <RadioGroup
-              value={eventType}
-              onValueChange={(v) => setEventType(v as EventType)}
-            >
-              <Label className="flex items-center gap-2">
-                <RadioGroupItem value="hourly" /> Hourly (time slots)
-              </Label>
-              <Label className="flex items-center gap-2">
-                <RadioGroupItem value="day_based" /> Day-based
-              </Label>
-            </RadioGroup>
-          </div>
-          {eventType === 'hourly' ? (
-            <div className="space-y-1">
-              <Label htmlFor="event-date">Date</Label>
-              <Input
-                id="event-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="event-start-date">Start date</Label>
-                <Input
-                  id="event-start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="event-end-date">End date</Label>
-                <Input
-                  id="event-end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
+    <ResponsiveFormSurface
+      open={open}
+      onOpenChange={onOpenChange}
+      title="New Event"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -192,8 +129,66 @@ export function QuickCreateEventModal({
           >
             {create.isPending ? 'Creating…' : 'Create'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="event-title">Title</Label>
+          <Input
+            id="event-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Sunday Morning Service"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Event type</Label>
+          <RadioGroup
+            value={eventType}
+            onValueChange={(v) => setEventType(v as EventType)}
+          >
+            <Label className="flex items-center gap-2">
+              <RadioGroupItem value="hourly" /> Hourly (time slots)
+            </Label>
+            <Label className="flex items-center gap-2">
+              <RadioGroupItem value="day_based" /> Day-based
+            </Label>
+          </RadioGroup>
+        </div>
+        {eventType === 'hourly' ? (
+          <div className="space-y-1">
+            <Label htmlFor="event-date">Date</Label>
+            <Input
+              id="event-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="event-start-date">Start date</Label>
+              <Input
+                id="event-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="event-end-date">End date</Label>
+              <Input
+                id="event-end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </ResponsiveFormSurface>
   );
 }

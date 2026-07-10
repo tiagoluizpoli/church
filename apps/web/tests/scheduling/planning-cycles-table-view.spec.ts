@@ -151,6 +151,31 @@ test.describe('Planning cycles table view — desktop (US1/US2)', () => {
     await expect(calendarTable.getByText('Worship')).not.toBeVisible();
   });
 
+  test('"Expand all"/"Collapse all" toggle every day row at once, one-shot not synced (US5, 021)', async ({
+    page,
+  }) => {
+    await createCycleWithSundayTemplateApplied({ page });
+
+    const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
+    await expect(calendarTable).toBeVisible();
+    const rowCount = await calendarTable.getByRole('row').count();
+
+    await page.getByRole('button', { name: 'Expand all' }).click();
+    await expect(calendarTable.getByText('Worship').first()).toBeVisible();
+    expect(await calendarTable.getByText('Worship').count()).toBe(rowCount - 1);
+
+    await page.getByRole('button', { name: 'Collapse all' }).click();
+    await expect(calendarTable.getByText('Worship')).toHaveCount(0);
+
+    // One-shot, not a synced toggle: re-expanding one row manually after
+    // "Expand all" then "Collapse all" must still collapse everything.
+    await page.getByRole('button', { name: 'Expand all' }).click();
+    const firstRow = calendarTable.getByRole('row').nth(1);
+    await firstRow.getByRole('button', { name: /^Collapse/ }).click();
+    await page.getByRole('button', { name: 'Collapse all' }).click();
+    await expect(calendarTable.getByText('Worship')).toHaveCount(0);
+  });
+
   test('locked cycle calendar review table stays read-only', async ({
     page,
   }) => {
@@ -352,6 +377,179 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
     await expect(table.getByRole('button', { name: /^Edit day/ })).toHaveCount(
       0,
     );
+  });
+});
+
+test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test('draft cycle supports mobile add/edit/delete for day-events and slots; locked cycle shows no controls', async ({
+    page,
+  }) => {
+    const { templateName } = await createCycleWithSundayTemplateApplied({
+      page,
+    });
+
+    const mobileList = page.getByTestId('planning-events-list');
+    await expect(mobileList).toBeVisible();
+
+    // Add a day-event from the mobile surface — opens as a bottom drawer.
+    await mobileList.getByRole('button', { name: 'Add day-event' }).click();
+    const addDialog = page.getByRole('dialog', { name: 'New Event' });
+    await expect(addDialog).toBeVisible();
+    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
+    const newEventTitle = `Mobile Added ${uniqueSuffix}`;
+    await addDialog.getByLabel('Title').fill(newEventTitle);
+    await addDialog.getByLabel('Date').fill('2026-08-09');
+    await addDialog.getByRole('button', { name: 'Create' }).click();
+    await expect(addDialog).not.toBeAttached();
+    await expect(mobileList.getByText(newEventTitle)).toBeVisible();
+
+    // Edit and delete that new day-event.
+    const newCard = mobileList
+      .getByTestId('planning-event-card')
+      .filter({ hasText: newEventTitle });
+    await newCard.getByRole('button', { name: /^Edit day/ }).click();
+    const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
+    await editDayDialog.getByLabel('Title').fill(`${newEventTitle} (edited)`);
+    await editDayDialog.getByRole('button', { name: 'Save' }).click();
+    await expect(editDayDialog).not.toBeAttached();
+    await expect(
+      mobileList.getByText(`${newEventTitle} (edited)`),
+    ).toBeVisible();
+
+    await newCard.getByRole('button', { name: /^Delete day/ }).click();
+    await page.getByRole('button', { name: 'Delete event' }).click();
+    await expect(
+      mobileList.getByText(`${newEventTitle} (edited)`),
+    ).not.toBeAttached();
+
+    // Expand the templated Sunday card, add a slot, edit it, then confirm
+    // its delete becomes disabled once it is the day's only remaining slot.
+    const templatedCard = mobileList
+      .getByTestId('planning-event-card')
+      .filter({ hasText: templateName })
+      .first();
+    await templatedCard.getByRole('button', { name: /^Add slot to/ }).click();
+    const addSlotDialog = page.getByRole('dialog', { name: 'Add slot' });
+    await addSlotDialog.getByLabel('Label').fill('Prayer');
+    await addSlotDialog.getByLabel('Start').fill('08:00');
+    await addSlotDialog.getByLabel('End').fill('08:30');
+    await addSlotDialog.getByRole('button', { name: 'Add slot' }).click();
+    await expect(addSlotDialog).not.toBeAttached();
+    await expect(templatedCard.getByText('Prayer')).toBeVisible();
+
+    await templatedCard
+      .getByRole('button', { name: 'Edit slot Prayer' })
+      .click();
+    const editSlotDialog = page.getByRole('dialog', { name: 'Edit slot' });
+    await editSlotDialog.getByLabel('Label').fill('Prayer (edited)');
+    await editSlotDialog.getByRole('button', { name: 'Save' }).click();
+    await expect(editSlotDialog).not.toBeAttached();
+    await expect(templatedCard.getByText('Prayer (edited)')).toBeVisible();
+
+    // Delete the added slot; the day's original templated slot must remain
+    // and, once it is the only slot left, its own delete becomes disabled.
+    await templatedCard
+      .getByRole('button', { name: 'Delete slot Prayer (edited)' })
+      .click();
+    await page.getByRole('button', { name: 'Delete slot' }).click();
+    await expect(
+      templatedCard.getByRole('button', {
+        name: 'Delete slot Prayer (edited)',
+      }),
+    ).not.toBeAttached();
+    await expect(
+      templatedCard.getByRole('button', { name: 'Delete slot Worship' }),
+    ).toBeDisabled();
+
+    // Lock the cycle: no mobile add/edit/delete affordance may remain.
+    await page.getByTestId('lock-cycle-button').click();
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
+    await expect(
+      mobileList.getByRole('button', { name: 'Add day-event' }),
+    ).not.toBeAttached();
+    await expect(
+      mobileList.getByRole('button', { name: /^Edit day/ }),
+    ).toHaveCount(0);
+    await expect(
+      mobileList.getByRole('button', { name: /^Delete day/ }),
+    ).toHaveCount(0);
+    await expect(
+      mobileList.getByRole('button', { name: /^Edit slot/ }),
+    ).toHaveCount(0);
+    await expect(
+      mobileList.getByRole('button', { name: /^Delete slot/ }),
+    ).toHaveCount(0);
+  });
+
+  test('a lock that races a mobile edit fails the save with a visible error and applies no change (FR-010)', async ({
+    page,
+    browser,
+  }) => {
+    const { templateName } = await createCycleWithSundayTemplateApplied({
+      page,
+    });
+    const cycleUrl = page.url();
+
+    const mobileList = page.getByTestId('planning-events-list');
+    const templatedCard = mobileList
+      .getByTestId('planning-event-card')
+      .filter({ hasText: templateName })
+      .first();
+
+    await templatedCard.getByRole('button', { name: /^Edit day/ }).click();
+    const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
+    await expect(editDayDialog).toBeVisible();
+    await editDayDialog.getByLabel('Title').fill('Raced edit');
+
+    // A second session locks the cycle while the first session's mobile
+    // drawer is still open — the "lock that occurs between page load and
+    // the action" race from spec 020's FR-013, verified here specifically
+    // on the mobile ResponsiveFormSurface.
+    const secondContext = await browser.newContext({
+      storageState: CHURCH_ADMIN_STORAGE_STATE,
+    });
+    const secondPage = await secondContext.newPage();
+    await secondPage.goto(cycleUrl);
+    await secondPage.getByTestId('lock-cycle-button').click();
+    await expect(secondPage.getByTestId('selected-cycle-state')).toHaveText(
+      'locked',
+    );
+    await secondContext.close();
+
+    await editDayDialog.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.getByText(/fail|error|forbidden/i).first()).toBeVisible();
+    await page.reload();
+    await expect(page.getByText('Raced edit')).toHaveCount(0);
+    await expect(
+      page.getByTestId('planning-events-list').getByText(templateName),
+    ).toBeVisible();
+  });
+});
+
+test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test('toggling church/local time from the mobile nav drawer updates every visible date/time on the card list', async ({
+    page,
+  }) => {
+    await createCycleWithSundayTemplateApplied({ page });
+
+    const mobileList = page.getByTestId('planning-events-list');
+    await expect(mobileList).toBeVisible();
+    await expect(mobileList.getByText(/Z/)).toHaveCount(0);
+
+    const firstCard = mobileList.getByTestId('planning-event-card').first();
+    const timeBefore = await firstCard.textContent();
+
+    await page.getByTestId('mobile-drawer-trigger').click();
+    await page.getByRole('button', { name: /Church Time|Local Time/ }).click();
+    await page.keyboard.press('Escape');
+
+    await expect.poll(() => firstCard.textContent()).not.toBe(timeBefore);
+    await expect(mobileList.getByText(/Z/)).toHaveCount(0);
   });
 });
 

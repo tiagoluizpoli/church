@@ -1,13 +1,7 @@
 import type { EditingSlotState } from './planning-admin.types';
 import { SlotFormFields } from './slot-form-fields';
+import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 export interface EditSlotDialogProps {
   editingSlot: EditingSlotState | null;
@@ -27,19 +21,12 @@ export function EditSlotDialog({
   onSubmit,
 }: EditSlotDialogProps) {
   return (
-    <Dialog open={editingSlot !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit slot</DialogTitle>
-        </DialogHeader>
-        {editingSlot ? (
-          <SlotFormFields
-            idPrefix="edit-slot"
-            values={editingSlot}
-            onChange={(values) => onChange({ ...editingSlot, ...values })}
-          />
-        ) : null}
-        <DialogFooter>
+    <ResponsiveFormSurface
+      open={editingSlot !== null}
+      onOpenChange={onOpenChange}
+      title="Edit slot"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -58,8 +45,16 @@ export function EditSlotDialog({
           >
             {updateSlotPending ? 'Saving…' : 'Save'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      {editingSlot ? (
+        <SlotFormFields
+          idPrefix="edit-slot"
+          values={editingSlot}
+          onChange={(values) => onChange({ ...editingSlot, ...values })}
+        />
+      ) : null}
+    </ResponsiveFormSurface>
   );
 }

@@ -1,13 +1,7 @@
 import type { CreatingSlotState } from './planning-admin.types';
 import { SlotFormFields } from './slot-form-fields';
+import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 export interface CreateSlotDialogProps {
   creatingSlot: CreatingSlotState | null;
@@ -27,20 +21,12 @@ export function CreateSlotDialog({
   onSubmit,
 }: CreateSlotDialogProps) {
   return (
-    <Dialog open={creatingSlot !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add slot</DialogTitle>
-        </DialogHeader>
-        {creatingSlot ? (
-          <SlotFormFields
-            idPrefix="create-slot"
-            values={creatingSlot}
-            labelPlaceholder="e.g. Worship"
-            onChange={(values) => onChange({ ...creatingSlot, ...values })}
-          />
-        ) : null}
-        <DialogFooter>
+    <ResponsiveFormSurface
+      open={creatingSlot !== null}
+      onOpenChange={onOpenChange}
+      title="Add slot"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -59,8 +45,17 @@ export function CreateSlotDialog({
           >
             {createSlotPending ? 'Adding…' : 'Add slot'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      {creatingSlot ? (
+        <SlotFormFields
+          idPrefix="create-slot"
+          values={creatingSlot}
+          labelPlaceholder="e.g. Worship"
+          onChange={(values) => onChange({ ...creatingSlot, ...values })}
+        />
+      ) : null}
+    </ResponsiveFormSurface>
   );
 }

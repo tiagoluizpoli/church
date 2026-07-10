@@ -1,12 +1,6 @@
 import type { EditingEventState } from './planning-admin.types';
+import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,60 +24,12 @@ export function EditEventDialog({
   onSubmit,
 }: EditEventDialogProps) {
   return (
-    <Dialog open={editingEvent !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit day</DialogTitle>
-        </DialogHeader>
-        {editingEvent ? (
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="edit-event-title">Title</Label>
-              <Input
-                id="edit-event-title"
-                value={editingEvent.title}
-                onChange={(e) =>
-                  onChange({ ...editingEvent, title: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="edit-event-description">Description</Label>
-              <Textarea
-                id="edit-event-description"
-                value={editingEvent.description}
-                onChange={(e) =>
-                  onChange({ ...editingEvent, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="edit-event-location">Location</Label>
-              <Input
-                id="edit-event-location"
-                value={editingEvent.location}
-                onChange={(e) =>
-                  onChange({ ...editingEvent, location: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="edit-event-start">Start</Label>
-              <Input
-                id="edit-event-start"
-                type="datetime-local"
-                value={editingEvent.startDateTimeLocal}
-                onChange={(e) =>
-                  onChange({
-                    ...editingEvent,
-                    startDateTimeLocal: e.target.value,
-                  })
-                }
-              />
-            </div>
-          </div>
-        ) : null}
-        <DialogFooter>
+    <ResponsiveFormSurface
+      open={editingEvent !== null}
+      onOpenChange={onOpenChange}
+      title="Edit day"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -98,8 +44,57 @@ export function EditEventDialog({
           >
             {updateEventPending ? 'Saving…' : 'Save'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      {editingEvent ? (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="edit-event-title">Title</Label>
+            <Input
+              id="edit-event-title"
+              value={editingEvent.title}
+              onChange={(e) =>
+                onChange({ ...editingEvent, title: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-event-description">Description</Label>
+            <Textarea
+              id="edit-event-description"
+              value={editingEvent.description}
+              onChange={(e) =>
+                onChange({ ...editingEvent, description: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-event-location">Location</Label>
+            <Input
+              id="edit-event-location"
+              value={editingEvent.location}
+              onChange={(e) =>
+                onChange({ ...editingEvent, location: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-event-start">Start</Label>
+            <Input
+              id="edit-event-start"
+              type="datetime-local"
+              value={editingEvent.startDateTimeLocal}
+              onChange={(e) =>
+                onChange({
+                  ...editingEvent,
+                  startDateTimeLocal: e.target.value,
+                })
+              }
+            />
+          </div>
+        </div>
+      ) : null}
+    </ResponsiveFormSurface>
   );
 }

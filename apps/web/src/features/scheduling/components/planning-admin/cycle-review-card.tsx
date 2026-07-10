@@ -1,4 +1,5 @@
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
+import { QuickCreateEventModal } from '../quick-create-event-modal';
 import {
   buildVisibleCalendarRows,
   CALENDAR_TABLE_COLUMNS,
@@ -154,6 +155,37 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
   const [dialogState, dispatchDialog] = useReducer(dialogReducer, {
     kind: 'none',
   });
+  const [addEventOpen, setAddEventOpen] = useState(false);
+
+  /** Auto-close the confirm-delete dialog on the falling edge of pending
+   * (mutation settled) instead of synchronously in the confirm handler —
+   * otherwise the dialog disappears before `deleteEventPending`/
+   * `deleteSlotPending` ever gets a chance to render, leaving no visible
+   * feedback during the delete (mirrors the same fix in PlanningEventCard,
+   * the mobile fork of this same delete flow). */
+  const prevDeleteEventPendingRef = useRef(deleteEventPending);
+  useEffect(() => {
+    if (
+      prevDeleteEventPendingRef.current &&
+      !deleteEventPending &&
+      dialogState.kind === 'confirm-delete-event'
+    ) {
+      dispatchDialog({ type: 'close' });
+    }
+    prevDeleteEventPendingRef.current = deleteEventPending;
+  }, [deleteEventPending, dialogState]);
+
+  const prevDeleteSlotPendingRef = useRef(deleteSlotPending);
+  useEffect(() => {
+    if (
+      prevDeleteSlotPendingRef.current &&
+      !deleteSlotPending &&
+      dialogState.kind === 'confirm-delete-slot'
+    ) {
+      dispatchDialog({ type: 'close' });
+    }
+    prevDeleteSlotPendingRef.current = deleteSlotPending;
+  }, [deleteSlotPending, dialogState]);
 
   const editingEvent =
     dialogState.kind === 'edit-event' ? dialogState.event : null;
@@ -174,6 +206,18 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
 
       return { expandedEventIds: next };
     });
+  }
+
+  function expandAll(): void {
+    setCalendarRowsState({
+      expandedEventIds: new Set(
+        cycleEvents.map((eventGroup) => eventGroup.event.id),
+      ),
+    });
+  }
+
+  function collapseAll(): void {
+    setCalendarRowsState({ expandedEventIds: new Set() });
   }
 
   function startEditEvent({ row }: StartEditEventInput): void {
@@ -340,15 +384,45 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                   className="space-y-3 md:hidden"
                   data-testid="planning-events-list"
                 >
+                  {!isReadOnly ? (
+                    <Button
+                      type="button"
+                      size="touch"
+                      variant="outline"
+                      onClick={() => setAddEventOpen(true)}
+                    >
+                      Add day-event
+                    </Button>
+                  ) : null}
                   {cycleEvents.map((eventGroup) => (
                     <PlanningEventCard
                       key={eventGroup.event.id}
-                      eventGroup={eventGroup}
+                      row={toCycleCalendarTableRow({ eventGroup })}
+                      isReadOnly={isReadOnly}
+                      deleteEventPending={deleteEventPending}
+                      deleteSlotPending={deleteSlotPending}
+                      onAddSlotRequest={startCreateSlot}
+                      onEditEventRequest={startEditEvent}
+                      onDeleteEventConfirm={handleDeleteEvent}
+                      onEditSlotRequest={startEditSlot}
+                      onDeleteSlotConfirm={handleDeleteSlot}
                     />
                   ))}
                 </div>
 
                 <div className="hidden md:block">
+                  <div className="mb-2 flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={expandAll}>
+                      Expand all
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={collapseAll}
+                    >
+                      Collapse all
+                    </Button>
+                  </div>
                   <Table aria-label="Calendar review">
                     <TableHeader columns={CALENDAR_TABLE_COLUMNS}>
                       {(column) => (
@@ -412,10 +486,9 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                                   : { type: 'close' },
                               )
                             }
-                            onDeleteEventConfirm={({ eventId }) => {
-                              handleDeleteEvent({ eventId });
-                              dispatchDialog({ type: 'close' });
-                            }}
+                            onDeleteEventConfirm={({ eventId }) =>
+                              handleDeleteEvent({ eventId })
+                            }
                             onEditSlotRequest={startEditSlot}
                             onDeleteSlotOpenChange={({ slotId, open }) =>
                               dispatchDialog(
@@ -424,10 +497,9 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                                   : { type: 'close' },
                               )
                             }
-                            onDeleteSlotConfirm={({ eventId, slotId }) => {
-                              handleDeleteSlot({ eventId, slotId });
-                              dispatchDialog({ type: 'close' });
-                            }}
+                            onDeleteSlotConfirm={({ eventId, slotId }) =>
+                              handleDeleteSlot({ eventId, slotId })
+                            }
                           />
                         );
                       }}
@@ -482,6 +554,15 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         }}
         onSubmit={submitCreateSlot}
       />
+
+      {selectedCycleId ? (
+        <QuickCreateEventModal
+          open={addEventOpen}
+          onOpenChange={setAddEventOpen}
+          target={{ kind: 'planning-cycle', cycleId: selectedCycleId }}
+          onCreated={() => undefined}
+        />
+      ) : null}
     </Card>
   );
 }

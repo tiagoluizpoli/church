@@ -15,6 +15,7 @@ import { renderWithProviders } from '@/__tests__/setup/render';
 const listPlanningCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getPlanningCycle = vi.fn();
+const createPlanningEvent = vi.fn().mockResolvedValue({ id: 'event-new' });
 const updatePlanningEvent = vi.fn().mockResolvedValue({});
 const cancelPlanningEvent = vi.fn().mockResolvedValue(undefined);
 const createPlanningEventSlot = vi.fn().mockResolvedValue({});
@@ -26,6 +27,7 @@ vi.mock('@/utils/api-instances', () => ({
     listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
     getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+    createPlanningEvent: (...args: unknown[]) => createPlanningEvent(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
     cancelPlanningEvent: (...args: unknown[]) => cancelPlanningEvent(...args),
     createPlanningEventSlot: (...args: unknown[]) =>
@@ -493,6 +495,107 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
+  it('keeps the desktop delete-day confirm dialog open with a "Deleting…" label until the mutation settles', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue(
+      twoEventCycleResponse({ state: 'draft' }),
+    );
+    let resolveDelete: () => void = () => undefined;
+    cancelPlanningEvent.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        }),
+    );
+
+    render();
+    await selectTheOnlyCycle();
+    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+
+    const user = userEvent.setup();
+    await user.click(
+      within(table).getByRole('button', { name: 'Delete day Sunday Service' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete event' }),
+    );
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(
+      await within(dialog).findByRole('button', { name: 'Deleting…' }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: 'Cancel' }),
+    ).toBeDisabled();
+
+    resolveDelete();
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('keeps the desktop delete-slot confirm dialog open with a "Deleting…" label until the mutation settles', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue(
+      twoEventCycleResponse({ state: 'draft' }),
+    );
+    let resolveDelete: () => void = () => undefined;
+    deletePlanningEventSlot.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        }),
+    );
+
+    render();
+    await selectTheOnlyCycle();
+    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+
+    const user = userEvent.setup();
+    await user.click(
+      within(table).getByRole('button', { name: 'Expand Sunday Service' }),
+    );
+    await user.click(
+      within(table).getByRole('button', { name: 'Delete slot Worship' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete slot' }),
+    );
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(
+      await within(dialog).findByRole('button', { name: 'Deleting…' }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: 'Cancel' }),
+    ).toBeDisabled();
+
+    resolveDelete();
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
+    );
+  });
+
   it('renders Delete day/slot actions and the confirm-delete action with destructive styling, distinct from Edit', async () => {
     listPlanningCycles.mockResolvedValue({
       cycles: [
@@ -887,5 +990,138 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
       'type',
       'datetime-local',
     );
+  });
+});
+
+describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
+  it('opens QuickCreateEventModal, through its ResponsiveFormSurface shell, from the mobile list', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue(
+      twoEventCycleResponse({ state: 'draft' }),
+    );
+
+    render();
+    await selectTheOnlyCycle();
+    const mobileList = await screen.findByTestId('planning-events-list');
+
+    const user = userEvent.setup();
+    await user.click(
+      within(mobileList).getByRole('button', { name: 'Add day-event' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Event' });
+    await user.type(within(dialog).getByLabelText('Title'), 'Youth Night');
+    await user.type(within(dialog).getByLabelText('Date'), '2026-08-09');
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }));
+
+    await waitFor(() =>
+      expect(createPlanningEvent).toHaveBeenCalledWith(
+        'cycle-1',
+        expect.objectContaining({ title: 'Youth Night' }),
+      ),
+    );
+  });
+
+  it('does not render the mobile add day-event trigger when read-only', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'locked',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue(
+      twoEventCycleResponse({ state: 'locked' }),
+    );
+
+    render({ isReadOnly: true });
+    await selectTheOnlyCycle();
+    const mobileList = await screen.findByTestId('planning-events-list');
+
+    expect(
+      within(mobileList).queryByRole('button', { name: 'Add day-event' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
+  it('"Expand all" reveals every day row\'s slots; "Collapse all" hides them all', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue(
+      twoEventCycleResponse({ state: 'draft' }),
+    );
+
+    render();
+    await selectTheOnlyCycle();
+    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+    expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Slot')).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(within(table).getByText('Worship')).toBeInTheDocument();
+    expect(within(table).getByText('Message')).toBeInTheDocument();
+    expect(within(table).getByText('Slot')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Slot')).not.toBeInTheDocument();
+  });
+
+  it('is one-shot, not a synced toggle: re-collapsing one row after "Expand all" still lets "Collapse all" collapse everything', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue(
+      twoEventCycleResponse({ state: 'draft' }),
+    );
+
+    render();
+    await selectTheOnlyCycle();
+    const table = await screen.findByRole('grid', { name: 'Calendar review' });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await user.click(
+      within(table).getByRole('button', { name: 'Collapse Sunday Service' }),
+    );
+    expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
+    expect(within(table).getByText('Slot')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(within(table).queryByText('Worship')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Slot')).not.toBeInTheDocument();
   });
 });

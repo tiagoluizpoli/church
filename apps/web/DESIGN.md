@@ -190,7 +190,7 @@ Flat by default, ring-bordered instead of shadowed at rest. Cards, panels, and i
 - **Modal peak** (`shadow-xl`): the command palette — the single highest layer in the z-index scale.
 
 ### Named Rules
-**The Grounded-Until-Floating Rule.** A surface earns a shadow only when it has left the document flow (popover, dropdown, dialog, drawer, command palette). Anything still sitting in-line with the page — cards, panels, list rows — stays flat and uses a ring or border instead. Depth communicates "this is temporary and overlaid," not "this is important."
+**The Grounded-Until-Floating Rule.** Beyond the one named exception (the `shadow-sm` Ambient badge — icon badges in the sidebar/header, and the active sidebar nav row), a surface earns a shadow only when it has left the document flow (popover, dropdown, dialog, drawer, command palette). Cards, panels, and list rows stay flat and use a ring or border instead. Depth communicates "this is temporary and overlaid," not "this is important" — the Ambient badge is the deliberate carve-out, not a loophole to extend elsewhere.
 
 ## 5. Components
 

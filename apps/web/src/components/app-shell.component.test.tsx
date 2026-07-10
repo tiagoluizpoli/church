@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../__tests__/setup/render';
@@ -91,7 +92,7 @@ describe('AppShell role-scoped navigation', () => {
       'Dashboard',
       'Availability',
       'Scheduling',
-      'Planning',
+      'Cycles',
       'Tailoring',
       'Builder events',
     ]);
@@ -115,7 +116,7 @@ describe('AppShell role-scoped navigation', () => {
       'Dashboard',
       'Availability',
       'Scheduling',
-      'Planning',
+      'Cycles',
       'Tailoring',
       'Builder events',
     ]);
@@ -171,5 +172,69 @@ describe('AppShell role-scoped navigation', () => {
     const breadcrumbs = screen.getByTestId('breadcrumbs');
     expect(within(breadcrumbs).getByText('Planning cycles')).toBeVisible();
     expect(within(breadcrumbs).queryByText('cycle-1')).not.toBeInTheDocument();
+  });
+});
+
+describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    mockPathname = '/dashboard';
+  });
+
+  it('renders a connector element for each child nav item under its parent section', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: true,
+      isResolving: false,
+    });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('mobile-drawer-trigger'));
+
+    const drawerNav = (
+      await screen.findByTestId('mobile-drawer-content')
+    ).querySelector('nav') as HTMLElement;
+    const childLink = within(drawerNav).getByRole('link', { name: 'Cycles' });
+    const childRow = childLink.closest('[data-nav-child]');
+
+    expect(childRow).not.toBeNull();
+    expect(childRow?.querySelector('[data-nav-connector]')).not.toBeNull();
+  });
+
+  it('keeps every nav item navigating and highlighting exactly as before this change', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: true,
+      isResolving: false,
+    });
+    mockPathname = '/scheduling/tailoring';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('mobile-drawer-trigger'));
+
+    const drawerNav = (
+      await screen.findByTestId('mobile-drawer-content')
+    ).querySelector('nav') as HTMLElement;
+
+    expect(navLabels(drawerNav)).toEqual([
+      'Dashboard',
+      'Availability',
+      'Scheduling',
+      'Cycles',
+      'Tailoring',
+      'Builder events',
+    ]);
+
+    const tailoringLink = within(drawerNav).getByRole('link', {
+      name: 'Tailoring',
+    });
+    expect(tailoringLink).toHaveClass('font-semibold');
+    expect(tailoringLink).toHaveAttribute('href', '/scheduling/tailoring');
+
+    const cyclesLink = within(drawerNav).getByRole('link', {
+      name: 'Cycles',
+    });
+    expect(cyclesLink).not.toHaveClass('font-semibold');
+    expect(cyclesLink).toHaveAttribute('href', '/scheduling/planning-cycles');
   });
 });

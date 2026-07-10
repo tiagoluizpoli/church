@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
+import { MobileDrawer } from '@/components/mobile-drawer';
 import { Badge } from '@/components/ui/badge';
 import {
   Popover,
@@ -11,6 +12,7 @@ import { NotificationsInboxSection } from '@/features/volunteers/components/noti
 import type { NotificationInboxItem } from '@/features/volunteers/hooks/use-notification-inbox';
 import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';
 import { resolveNotificationTarget } from '@/features/volunteers/lib/notification-navigation';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 const BELL_MAX_ITEMS = 5;
 
@@ -44,6 +46,7 @@ function selectNotificationBellViewModel({
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const navigate = useNavigate();
   const inbox = useNotificationInbox(0);
   const bellViewModel = selectNotificationBellViewModel({
@@ -63,6 +66,44 @@ export function NotificationBell() {
     navigate(target);
   };
 
+  const inboxContent = (
+    <NotificationsInboxSection
+      variant="compact"
+      items={bellViewModel.recentItems}
+      onOpenNotification={handleOpenNotification}
+      onMarkRead={inbox.markRead}
+      onViewAll={() => setOpen(false)}
+    />
+  );
+
+  if (!isDesktop) {
+    return (
+      <>
+        <button
+          type="button"
+          aria-label="Notifications"
+          onClick={() => setOpen(true)}
+          className="radius-icon relative flex h-11 w-11 items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <Bell className="h-5 w-5" />
+          {bellViewModel.unreadCount > 0 ? (
+            <Badge className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center px-1 text-[10px]">
+              {bellViewModel.unreadCount}
+            </Badge>
+          ) : null}
+        </button>
+        <MobileDrawer
+          open={open}
+          onOpenChange={setOpen}
+          title="Notifications"
+          description="Recent updates and reminders."
+        >
+          {inboxContent}
+        </MobileDrawer>
+      </>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -77,13 +118,7 @@ export function NotificationBell() {
         ) : null}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
-        <NotificationsInboxSection
-          variant="compact"
-          items={bellViewModel.recentItems}
-          onOpenNotification={handleOpenNotification}
-          onMarkRead={inbox.markRead}
-          onViewAll={() => setOpen(false)}
-        />
+        {inboxContent}
       </PopoverContent>
     </Popover>
   );

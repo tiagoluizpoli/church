@@ -275,8 +275,6 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <NotificationBell />
-
           <button
             type="button"
             onClick={() => setIsPaletteOpen(true)}
@@ -285,6 +283,8 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
           >
             <Search className="h-5 w-5" />
           </button>
+
+          <NotificationBell />
 
           <button
             type="button"
@@ -621,7 +621,12 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
       </nav>
 
       {/* 5. Mobile Drawer Menu */}
-      <MobileDrawer open={isDrawerOpen} onOpenChange={handleDrawerOpenChange}>
+      <MobileDrawer
+        open={isDrawerOpen}
+        onOpenChange={handleDrawerOpenChange}
+        title="Navigation"
+        description="Move between your core workflows."
+      >
         <div className="flex flex-col space-y-4">
           <div className="flex items-center justify-between border-sidebar-border border-b pb-2">
             <div className="space-y-0.5">
@@ -667,7 +672,12 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
                   </Link>
 
                   {item.children ? (
-                    <div className="mt-1 space-y-1 pl-10">
+                    <div className="relative mt-0.5 space-y-0.5 pl-10">
+                      <div
+                        data-nav-connector-rail
+                        aria-hidden="true"
+                        className="absolute top-0 bottom-2 left-5 w-px bg-sidebar-foreground/20"
+                      />
                       {item.children.map((child) => {
                         const isChildActive = isActivePath({
                           pathname: location.pathname,
@@ -675,19 +685,29 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
                         });
                         const ChildIcon = child.icon;
                         return (
-                          <Link
+                          <div
                             key={child.to}
-                            to={child.to}
-                            onClick={() => setIsDrawerOpen(false)}
-                            className={`radius-surface flex h-11 items-center gap-2 border px-3 py-2 font-medium text-sm transition-colors ${
-                              isChildActive
-                                ? 'border-primary/15 bg-primary/11 font-semibold text-foreground'
-                                : 'border-sidebar-border/55 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                            }`}
+                            data-nav-child
+                            className="relative"
                           >
-                            <ChildIcon className="h-3.5 w-3.5 shrink-0" />
-                            <span>{child.label}</span>
-                          </Link>
+                            <div
+                              data-nav-connector
+                              aria-hidden="true"
+                              className="absolute top-1/2 -left-5 h-px w-3 -translate-y-1/2 bg-sidebar-foreground/20"
+                            />
+                            <Link
+                              to={child.to}
+                              onClick={() => setIsDrawerOpen(false)}
+                              className={`radius-surface flex h-11 items-center gap-2 border px-3 py-2 font-medium text-sm transition-colors ${
+                                isChildActive
+                                  ? 'border-primary/15 bg-primary/11 font-semibold text-foreground'
+                                  : 'border-sidebar-border/55 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                              }`}
+                            >
+                              <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                              <span>{child.label}</span>
+                            </Link>
+                          </div>
                         );
                       })}
                     </div>

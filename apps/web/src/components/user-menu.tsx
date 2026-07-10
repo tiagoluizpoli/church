@@ -1,5 +1,4 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { TimezoneToggle } from '../shared/components/timezone-toggle';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,14 +69,6 @@ export default function UserMenu() {
               {session.user.email}
             </span>
           </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            closeOnClick={false}
-            className="flex items-center justify-between gap-3"
-          >
-            <span>Church time</span>
-            <TimezoneToggle variant="ghost" size="xs" />
-          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"

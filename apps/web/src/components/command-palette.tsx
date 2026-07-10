@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import * as React from 'react';
 import { MobileDrawer } from './mobile-drawer';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
 export interface CommandPaletteProps {
@@ -34,22 +35,13 @@ const SCHEDULING_COMMAND: CommandItem = {
 };
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
-  const [isMobile, setIsMobile] = React.useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [query, setQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
   const { canSeeScheduling } = useCallerRoles();
   const commands: CommandItem[] = canSeeScheduling
     ? [...BASE_COMMANDS, SCHEDULING_COMMAND]
     : BASE_COMMANDS;
-
-  // Check viewport responsiveness
-  React.useEffect(() => {
-    const media = window.matchMedia('(max-width: 767px)');
-    setIsMobile(media.matches);
-    const listener = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    media.addEventListener('change', listener);
-    return () => media.removeEventListener('change', listener);
-  }, []);
 
   // Handle global escape key to close command palette
   React.useEffect(() => {
@@ -135,9 +127,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     </div>
   );
 
-  if (isMobile) {
+  if (!isDesktop) {
     return (
-      <MobileDrawer open={open} onOpenChange={onOpenChange}>
+      <MobileDrawer
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Search"
+        description="Find pages and commands."
+      >
         <div data-testid="command-palette" className="h-full">
           {content}
         </div>

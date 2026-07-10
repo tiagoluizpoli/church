@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from '@base-ui/react/button';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
@@ -24,10 +25,13 @@ const buttonVariants = cva(
         xs: "h-6 gap-1 px-2 text-xs has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-7 gap-1 px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: 'h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3',
+        touch:
+          'h-11 gap-2 px-4 text-sm has-data-[icon=inline-end]:pr-3.5 has-data-[icon=inline-start]:pl-3.5',
         icon: 'size-8',
         'icon-xs': "size-6 [&_svg:not([class*='size-'])]:size-3",
         'icon-sm': 'size-7',
         'icon-lg': 'size-9',
+        'icon-touch': 'size-11',
       },
     },
     defaultVariants: {
@@ -40,13 +44,16 @@ const buttonVariants = cva(
 function Button({
   className,
   variant = 'default',
-  size = 'default',
+  size,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  const contextSize = useFormControlSize();
+  const resolvedSize = size ?? (contextSize === 'touch' ? 'touch' : 'default');
+
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size: resolvedSize, className }))}
       {...props}
     />
   );

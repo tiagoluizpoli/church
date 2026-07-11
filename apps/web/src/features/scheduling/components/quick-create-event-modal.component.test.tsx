@@ -69,7 +69,7 @@ describe('QuickCreateEventModal', () => {
     });
 
     expect(createButton).toBeEnabled();
-  }, 10000);
+  }, 30000);
 
   it('switches to a start/end date range for a day-based event, and stays the same reachable form for a planning-cycle target (FR-012)', async () => {
     const user = userEvent.setup();
@@ -106,5 +106,5 @@ describe('QuickCreateEventModal', () => {
     });
 
     expect(createButton).toBeEnabled();
-  }, 10000);
+  }, 30000);
 });

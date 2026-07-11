@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { DatePickerField } from '@/components/date-picker-field';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -159,31 +160,28 @@ export function QuickCreateEventModal({
         {eventType === 'hourly' ? (
           <div className="space-y-1">
             <Label htmlFor="event-date">Date</Label>
-            <Input
+            <DatePickerField
               id="event-date"
-              type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={setStartDate}
             />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label htmlFor="event-start-date">Start date</Label>
-              <Input
+              <DatePickerField
                 id="event-start-date"
-                type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={setStartDate}
               />
             </div>
             <div className="space-y-1">
               <Label htmlFor="event-end-date">End date</Label>
-              <Input
+              <DatePickerField
                 id="event-end-date"
-                type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={setEndDate}
               />
             </div>
           </div>

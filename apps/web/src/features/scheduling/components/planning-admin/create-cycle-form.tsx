@@ -1,4 +1,5 @@
 import { useCreateCycleCard } from './planning-admin-context';
+import { DatePickerField } from '@/components/date-picker-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,26 +44,20 @@ export function CreateCycleForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor="cycle-start-date">Start date</Label>
-          <Input
+          <DatePickerField
             id="cycle-start-date"
             data-testid="cycle-start-date-input"
-            type="date"
             value={cycleForm.startDate}
-            onChange={(event) =>
-              handleCycleStartDateChange({ date: event.target.value })
-            }
+            onChange={(date) => handleCycleStartDateChange({ date })}
           />
         </div>
         <div className="space-y-1">
           <Label htmlFor="cycle-end-date">End date</Label>
-          <Input
+          <DatePickerField
             id="cycle-end-date"
             data-testid="cycle-end-date-input"
-            type="date"
             value={cycleForm.endDate}
-            onChange={(event) =>
-              handleCycleEndDateChange({ date: event.target.value })
-            }
+            onChange={(date) => handleCycleEndDateChange({ date })}
           />
         </div>
       </div>

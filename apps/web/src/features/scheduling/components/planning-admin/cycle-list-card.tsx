@@ -5,6 +5,7 @@ import {
 } from './planning-admin.utils';
 import { useCycleListCard } from './planning-admin-context';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -20,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 interface SelectCycleInput {
   cycleId: string;
@@ -61,23 +63,24 @@ export function CycleListCard({
           <>
             <div className="space-y-3 md:hidden" role="listbox">
               {cycles.map((cycle) => (
-                <button
+                <Button
                   key={cycle.id}
                   type="button"
+                  variant="ghost"
                   role="option"
                   data-testid="planning-cycle-option"
                   aria-selected={selectedCycleId === cycle.id}
-                  className={`surface-subtle workspace-panel w-full text-left transition-colors hover:bg-accent/60 ${
-                    selectedCycleId === cycle.id
-                      ? 'border-primary/30 bg-accent/45'
-                      : ''
-                  }`}
+                  className={cn(
+                    'surface-subtle workspace-panel h-auto w-full items-stretch justify-start whitespace-normal p-0 text-left font-normal',
+                    selectedCycleId === cycle.id &&
+                      'border-primary/30 bg-accent/45',
+                  )}
                   onClick={() => {
                     handleSelectCycle({ cycleId: cycle.id });
                     onSelectCycle?.({ cycleId: cycle.id });
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex w-full items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="font-medium">{cycle.name}</div>
                       <div className="text-muted-foreground text-xs">
@@ -89,7 +92,7 @@ export function CycleListCard({
                       {cycle.state}
                     </Badge>
                   </div>
-                </button>
+                </Button>
               ))}
             </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { describeTemplate } from './planning-admin.utils';
 import { useTemplateApplyDialog } from './planning-admin-context';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 interface ApplyTemplatesDialogProps {
   open: boolean;
@@ -65,20 +67,19 @@ export function ApplyTemplatesDialog({
         ) : (
           <div className="max-h-[22rem] space-y-3 overflow-y-auto pr-1">
             {templates.map((template) => (
-              <label
+              <Label
                 key={template.id}
-                className="surface-subtle workspace-panel flex cursor-pointer items-start gap-3"
+                className="surface-subtle workspace-panel cursor-pointer items-start gap-3"
                 data-testid="apply-template-option"
               >
-                <input
-                  type="checkbox"
-                  className="radius-control mt-0.5 size-4 shrink-0 cursor-pointer accent-primary"
+                <Checkbox
+                  className="mt-0.5 shrink-0"
                   data-testid="template-select-checkbox"
                   checked={selectedTemplateIds.includes(template.id)}
-                  onChange={(event) =>
+                  onCheckedChange={(checked) =>
                     handleToggleTemplateSelection({
                       templateId: template.id,
-                      checked: event.target.checked,
+                      checked,
                     })
                   }
                 />
@@ -88,7 +89,7 @@ export function ApplyTemplatesDialog({
                     {describeTemplate({ template })}
                   </div>
                 </div>
-              </label>
+              </Label>
             ))}
           </div>
         )}

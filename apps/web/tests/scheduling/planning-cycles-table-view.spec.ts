@@ -6,7 +6,20 @@ test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
 interface SeededCycle {
   cycleName: string;
   templateName: string;
+  cycleYear: number;
+  cycleMonth: number;
 }
+
+// A fixed time-bucketed year (`Date.now()` mod N) gives every cycle created
+// within the same run a high chance of landing on the same year: this file
+// alone seeds a cycle per test (11+ calls across ~90s), well inside a single
+// bucket, so cycles collided on the backend's overlap check ("Planning cycle
+// overlaps an existing cycle"). RUN_YEAR_OFFSET is randomized once per test
+// run (still keeps distinct runs from colliding with any leftover data), and
+// the counter guarantees every cycle created *within* this run gets its own
+// year deterministically, not probabilistically.
+const RUN_YEAR_OFFSET = Math.floor(Math.random() * 500);
+let cycleSequence = 0;
 
 async function createCycleWithSundayTemplateApplied({
   page,
@@ -16,9 +29,8 @@ async function createCycleWithSundayTemplateApplied({
   const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
   const cycleName = `Table View ${uniqueSuffix}`;
   const templateName = `Sunday ${uniqueSuffix}`;
-  const now = new Date();
-  const year = 2100 + (Math.floor(now.getTime() / 1000) % 50);
-  const month = now.getUTCMonth();
+  const year = 2100 + RUN_YEAR_OFFSET + cycleSequence++;
+  const month = new Date().getUTCMonth();
   const startDate = new Date(Date.UTC(year, month, 1))
     .toISOString()
     .slice(0, 10);
@@ -67,7 +79,24 @@ async function createCycleWithSundayTemplateApplied({
   await applyTemplatesDialog.getByTestId('apply-templates-button').click();
   await expect(page.getByTestId('planning-event-card').first()).toBeAttached();
 
-  return { cycleName, templateName };
+  return { cycleName, templateName, cycleYear: year, cycleMonth: month };
+}
+
+/** A date inside `[year, month]` that is never a Sunday, so it can't collide
+ * with the Sunday-template day-events `createCycleWithSundayTemplateApplied`
+ * already generated in that same window. */
+function nonSundayDateInMonth({
+  year,
+  month,
+  day,
+}: {
+  year: number;
+  month: number;
+  day: number;
+}): string {
+  const date = new Date(Date.UTC(year, month, day));
+  if (date.getUTCDay() === 0) date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 test.describe('Planning cycles table view — desktop (US1/US2)', () => {
@@ -224,7 +253,6 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
   test('draft cycle supports day/slot edit and delete with slot cascade; locked cycle shows no controls', async ({
     page,
   }) => {
-    page.on('console', (msg) => console.log('BROWSER LOG:', msg.text()));
     const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
     const cycleName = `US3 Edit ${uniqueSuffix}`;
     const templateName = `US3 Template ${uniqueSuffix}`;
@@ -386,9 +414,10 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
   test('draft cycle supports mobile add/edit/delete for day-events and slots; locked cycle shows no controls', async ({
     page,
   }) => {
-    const { templateName } = await createCycleWithSundayTemplateApplied({
-      page,
-    });
+    const { templateName, cycleYear, cycleMonth } =
+      await createCycleWithSundayTemplateApplied({
+        page,
+      });
 
     const mobileList = page.getByTestId('planning-events-list');
     await expect(mobileList).toBeVisible();
@@ -400,7 +429,15 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
     const newEventTitle = `Mobile Added ${uniqueSuffix}`;
     await addDialog.getByLabel('Title').fill(newEventTitle);
-    await addDialog.getByLabel('Date').fill('2026-08-09');
+    // Must land inside the seeded cycle's own window (its year is
+    // dynamically assigned per test run, see createCycleWithSundayTemplateApplied)
+    // and off any templated Sunday, or the create is rejected as out of
+    // range / colliding with an existing day.
+    await addDialog
+      .getByLabel('Date')
+      .fill(
+        nonSundayDateInMonth({ year: cycleYear, month: cycleMonth, day: 15 }),
+      );
     await addDialog.getByRole('button', { name: 'Create' }).click();
     await expect(addDialog).not.toBeAttached();
     await expect(mobileList.getByText(newEventTitle)).toBeVisible();
@@ -520,11 +557,23 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
 
     await editDayDialog.getByRole('button', { name: 'Save' }).click();
 
-    await expect(page.getByText(/fail|error|forbidden/i).first()).toBeVisible();
+    // Assert on the sonner error-toast's `data-type`, not its message text
+    // (matches the convention already used in cross-cutting.spec.ts) — the
+    // backend's rejection message is an IllegalStateTransitionError whose
+    // wording ("Cannot transition from scheduled to update") is a domain
+    // detail that shouldn't need to contain the word "error"/"fail" for
+    // FR-013's "fails with a visible error" contract to hold.
+    await expect(
+      page.locator('[data-sonner-toast][data-type="error"]'),
+    ).toBeVisible();
     await page.reload();
     await expect(page.getByText('Raced edit')).toHaveCount(0);
+    // Every week the Sunday template generated shares this exact title, so
+    // this locator legitimately matches all of them (not just the one that
+    // raced the lock) — asserting `.first()` is enough to confirm the
+    // original title survived, without over-claiming which specific day.
     await expect(
-      page.getByTestId('planning-events-list').getByText(templateName),
+      page.getByTestId('planning-events-list').getByText(templateName).first(),
     ).toBeVisible();
   });
 });

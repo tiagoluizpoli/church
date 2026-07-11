@@ -6,8 +6,8 @@ import { VOLUNTEER_STORAGE_STATE } from './global-setup';
 const VOLUNTEER_ALLOWED_HREFS = ['/dashboard', '/availability'];
 
 test.describe('Mobile Responsive Navigation', () => {
-  // Enforce mobile viewport
-  test.use({ viewport: { width: 390, height: 800 } });
+  // Viewport, touch, and UA come from the `mobile-chromium` project
+  // (devices['iPhone 12']) — see playwright.config.ts.
   test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
   test('should display mobile shell, check touch targets, and trigger drawer', async ({

@@ -54,6 +54,20 @@ function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** Mirrors `useTimezone().format(date, 'PP')` — the mobile card list (021
+ * US2) renders every day-row date through that call instead of a raw ISO
+ * string, so assertions against `planning-events-list` must match its
+ * human-readable output, not the `YYYY-MM-DD` the cycle was seeded with. */
+function toDisplayDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+    year: 'numeric',
+  });
+}
+
 function countMatchingWeekdays({
   start,
   end,
@@ -303,13 +317,13 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     month.expectedSlots,
   );
   await expect(page.getByTestId('planning-events-list')).toContainText(
-    month.firstSunday,
+    toDisplayDate(month.firstSunday),
   );
   await expect(page.getByTestId('planning-events-list')).toContainText(
-    month.firstWednesday,
+    toDisplayDate(month.firstWednesday),
   );
   await expect(page.getByTestId('planning-events-list')).toContainText(
-    month.lastSunday,
+    toDisplayDate(month.lastSunday),
   );
   await expect(page.getByTestId('planning-events-list')).toContainText(
     sundayGatheringName,

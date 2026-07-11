@@ -33,3 +33,37 @@ test.describe('Timezone Policy', () => {
     await expect(toggleButton).toContainText('Church Time');
   });
 });
+
+test.describe('Timezone toggle placement (021)', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+  test.use({ storageState: LEADER_STORAGE_STATE });
+
+  // The desktop user-menu dropdown's "Church time" item (021 FR) only
+  // renders at `md:` and up — below that it lives directly in the mobile
+  // nav drawer body as its own always-visible toggle (see
+  // planning-cycles-table-view.spec.ts's mobile timezone spec), separate
+  // from the user-menu dropdown. Guards the `isDesktop` branch in
+  // `user-menu.tsx` from silently reappearing on mobile. `UserMenu` is
+  // mounted twice in app-shell.tsx (desktop topbar, `hidden md:flex`;
+  // mobile nav drawer) so this opens the drawer and scopes to its
+  // `UserMenu` instance to avoid a strict-mode match on both — and the
+  // final assertion scopes to the opened dropdown menu itself (`role=
+  // "menu"`), not the page, since the drawer's own separate toggle button
+  // is still on the page underneath.
+  test('user-menu dropdown has no Church/Local Time toggle on mobile', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.getByTestId('mobile-drawer-trigger').click();
+    const drawerContent = page.getByTestId('mobile-drawer-content');
+    await expect(drawerContent).toBeVisible();
+    await drawerContent
+      .getByRole('button', { name: /Account menu for/ })
+      .click();
+    const accountMenu = page.getByRole('menu');
+    await expect(accountMenu).toBeVisible();
+    await expect(
+      accountMenu.getByRole('button', { name: /Church Time|Local Time/ }),
+    ).toHaveCount(0);
+  });
+});

@@ -65,7 +65,7 @@ test.describe('Desktop sidebar role-scoped navigation', () => {
   test.describe('Leader', () => {
     test.use({ storageState: LEADER_STORAGE_STATE });
 
-    test('additionally sees Scheduling with its Planning/Tailoring/Builder events children', async ({
+    test('additionally sees Scheduling with its Cycles/Tailoring/Builder events children', async ({
       page,
     }) => {
       await page.goto('/');
@@ -75,7 +75,7 @@ test.describe('Desktop sidebar role-scoped navigation', () => {
         'Dashboard',
         'Availability',
         'Scheduling',
-        'Planning',
+        'Cycles',
         'Tailoring',
         'Builder events',
       ]);

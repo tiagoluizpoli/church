@@ -385,14 +385,6 @@ export function toCycleCalendarTableRow({
   eventGroup,
 }: CycleCalendarTableRowInput): CycleCalendarTableRow {
   const isOnlySlotInEvent = eventGroup.slots.length === 1;
-  console.log(
-    'toCycleCalendarTableRow event:',
-    eventGroup.event.title,
-    'slots:',
-    eventGroup.slots.map((s) => s.label),
-    'isOnly:',
-    isOnlySlotInEvent,
-  );
 
   return {
     eventId: eventGroup.event.id,

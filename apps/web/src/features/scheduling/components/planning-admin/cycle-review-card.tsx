@@ -187,6 +187,48 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     prevDeleteSlotPendingRef.current = deleteSlotPending;
   }, [deleteSlotPending, dialogState]);
 
+  /** Same falling-edge-of-pending close as the delete dialogs above, applied
+   * to edit/create — closing synchronously in the submit handler let the
+   * dialog report success before the mutation (and its cache invalidation)
+   * had actually settled, so a locked-cycle rejection or a slow request left
+   * the table showing stale data with no visible link between the closed
+   * dialog and the eventual toast. */
+  const prevUpdateEventPendingRef = useRef(updateEventPending);
+  useEffect(() => {
+    if (
+      prevUpdateEventPendingRef.current &&
+      !updateEventPending &&
+      dialogState.kind === 'edit-event'
+    ) {
+      dispatchDialog({ type: 'close' });
+    }
+    prevUpdateEventPendingRef.current = updateEventPending;
+  }, [updateEventPending, dialogState]);
+
+  const prevUpdateSlotPendingRef = useRef(updateSlotPending);
+  useEffect(() => {
+    if (
+      prevUpdateSlotPendingRef.current &&
+      !updateSlotPending &&
+      dialogState.kind === 'edit-slot'
+    ) {
+      dispatchDialog({ type: 'close' });
+    }
+    prevUpdateSlotPendingRef.current = updateSlotPending;
+  }, [updateSlotPending, dialogState]);
+
+  const prevCreateSlotPendingRef = useRef(createSlotPending);
+  useEffect(() => {
+    if (
+      prevCreateSlotPendingRef.current &&
+      !createSlotPending &&
+      dialogState.kind === 'create-slot'
+    ) {
+      dispatchDialog({ type: 'close' });
+    }
+    prevCreateSlotPendingRef.current = createSlotPending;
+  }, [createSlotPending, dialogState]);
+
   const editingEvent =
     dialogState.kind === 'edit-event' ? dialogState.event : null;
   const editingSlot =
@@ -260,7 +302,6 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         originalEndDate: event.originalEndDate,
       }),
     });
-    dispatchDialog({ type: 'close' });
   }
 
   function startEditSlot({
@@ -303,7 +344,6 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
       startTime: fromDateTimeLocalValue({ value: slot.startTimeLocal }),
       endTime: fromDateTimeLocalValue({ value: slot.endTimeLocal }),
     });
-    dispatchDialog({ type: 'close' });
   }
 
   function startCreateSlot({ row }: StartCreateSlotInput): void {
@@ -340,7 +380,6 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
       startTime: fromDateTimeLocalValue({ value: slot.startTimeLocal }),
       endTime: fromDateTimeLocalValue({ value: slot.endTimeLocal }),
     });
-    dispatchDialog({ type: 'close' });
   }
 
   return (

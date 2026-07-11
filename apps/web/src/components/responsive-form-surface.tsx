@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   Dialog,
@@ -9,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
@@ -63,6 +65,12 @@ export function ResponsiveFormSurface({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
       <DrawerContent>
+        <DrawerClose
+          aria-label="Close"
+          className="radius-icon absolute top-2 right-2 flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <X className="h-5 w-5" />
+        </DrawerClose>
         <DrawerHeader className="text-left">
           <DrawerTitle>{title}</DrawerTitle>
           {description ? (

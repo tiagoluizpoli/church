@@ -9,13 +9,19 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = 'system' } = useTheme();
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   return (
     <Sonner
       theme={theme as ToasterProps['theme']}
+      position={isDesktop ? 'bottom-right' : 'top-center'}
+      // Clears the mobile `h-16` (64px) sticky top bar (`app-shell.tsx`) —
+      // sonner's own 16px mobile default sits under it.
+      mobileOffset={{ top: '80px' }}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

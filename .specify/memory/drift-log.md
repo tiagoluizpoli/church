@@ -52,3 +52,17 @@ This turn's request (merge review-body stats into the page header, church-timezo
 
 ### Notes
 This turn's request is new scope beyond 020 (020 was desktop-only editing/timezone/header work). New asks: (1) rename "Planning Cycle" -> "Cycle" in UI copy app-wide (i18n prep), (2) table-view expand-all/collapse-all for roles, (3) mobile parity for slot/event CRUD, (4) mobile timezone formatting/auto-update parity, (5) mobile drawer nested-hierarchy visual redesign, (6) bug: theme toggle non-functional on mobile, (7) bug: 401 on volunteer/notifications after LAN-IP same-origin env change, blocking sign-in on mobile testing. Item 7 handled as immediate hotfix (blocks testing items 3-6). Item 1 handled as a mechanical copy-only sweep. Items 2-6 opened as a new spec (021) rather than amending 020 (020 is closed/shipped).
+
+## [2026-07-11] Drift sync — develop
+
+**Phase**: pre-check before starting new feature (021-mobile-parity-cycles active pointer)
+
+### Artifact changes
+| Artifact | Divergence | Action taken |
+|---|---|---|
+| specs/021-mobile-parity-cycles/spec.md | none found | no change |
+| specs/021-mobile-parity-cycles/plan.md | none found (scope explicitly excludes new entities/routes; matches built code) | no change |
+| specs/021-mobile-parity-cycles/tasks.md | none found | no change |
+
+### Notes
+Explore agent confirmed 021 is unrelated to the incoming tailoring-redesign work (mobile parity for cycle/event/slot CRUD only) and has zero drift from what's built. New feature "tailoring redesign" has no prior spec at all (participation-tailoring.tsx built ad hoc, pre-speckit). Proceeding to Step 4a to branch a fresh feature (022) for the tailoring reorg.

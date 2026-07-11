@@ -2,6 +2,10 @@ import { expect, test } from '@playwright/test';
 import { LEADER_STORAGE_STATE, VOLUNTEER_STORAGE_STATE } from '../global-setup';
 
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+// Set by playwright.config.ts alongside VITE_SERVER_URL — the web port used
+// to be hardcoded as "SERVER_URL's port + 1", which broke once the e2e run
+// moved off the normal-dev 4000/4001 pair (see playwright.config.ts).
+const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4001';
 const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
 const CARE_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333332';
 const PLANNING_CYCLE_ID = 'e2e21111-1111-1111-1111-111111111111';
@@ -100,7 +104,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   ).toBe('availability_fired');
 
   const volunteerContext = await browser.newContext({
-    baseURL: 'http://localhost:4001',
+    baseURL: WEB_URL,
     storageState: VOLUNTEER_STORAGE_STATE,
   });
   const volunteerPage = await volunteerContext.newPage();

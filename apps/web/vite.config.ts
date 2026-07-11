@@ -34,6 +34,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 4001,
+    // Playwright's webServer overrides PORT so e2e can run on its own ports
+    // alongside a normal `bun run dev` — see apps/web/playwright.config.ts.
+    port: Number(process.env.PORT) || 4001,
   },
 });

@@ -104,6 +104,18 @@ components:
     rounded: "{rounded.md}"
     height: "2rem"
     padding: "0.25rem 0.625rem"
+  button-touch:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.primary-foreground}"
+    rounded: "{rounded.md}"
+    height: "2.75rem"
+    padding: "0 1rem"
+  input-touch:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.md}"
+    height: "2.75rem"
+    padding: "0.5rem 0.75rem"
   card-default:
     backgroundColor: "{colors.card}"
     textColor: "{colors.card-foreground}"
@@ -133,13 +145,14 @@ This is explicitly not a generic AI-SaaS-cream tool (no tinted-cream backgrounds
 - Surfaces are flat and ring-bordered at rest; shadow is reserved for anything that floats above the page.
 - Density flexes by device: compact on desktop admin screens, deliberately larger touch targets on mobile volunteer screens.
 - Status color (green/yellow/red) is a separate, literal vocabulary reserved strictly for staffing and confirmation state — never for brand decoration.
+- Forms don't get a mobile-specific redesign, they get a shell swap: `ResponsiveFormSurface` renders the identical form inside a desktop `Dialog` or a mobile `Drawer` and auto-promotes every descendant `Button`/`Input` to the 44px `touch` size through context — no per-screen sizing decisions.
 
 ## 2. Colors
 
 Restrained by default: tinted cool-blue neutrals carry almost the entire surface, with the primary blue-violet appearing only on primary actions, current selection, and the sidebar's active state. The page background is not perfectly flat: a faint radial wash of the `accent` hue sits in the top-left corner and fades into the base `background` by the bottom edge (`color-mix` in OKLCH, ≤56% strength). This is the one place a gradient is allowed system-wide — an ambient, whole-page atmosphere, never on text, buttons, or cards.
 
 ### Primary
-- **Deep Chapel Blue** (`oklch(0.378 0.09 255)`): primary buttons, active nav/sidebar state, focus accents, badges that need to read as "the main action." Never used decoratively or as a background fill beyond low-opacity tints (`/8`, `/11`, `/12`).
+- **Deep Chapel Blue** (`oklch(0.378 0.09 255)`): primary buttons, active nav/sidebar state, focus accents, badges that need to read as "the main action," and the selected day in `Calendar`/`DatePickerField`. Never used decoratively or as a background fill beyond low-opacity tints (`/8`, `/11`, `/12`).
 
 ### Neutral
 - **Cool Paper** (`oklch(0.978 0.004 236)`, `background`): page background. A true near-white with a faint cool tint toward the primary hue, not a warm cream.
@@ -181,27 +194,37 @@ Dark mode is a deliberate re-tuning, not a straight invert. `background` drops t
 
 ## 4. Elevation
 
-Flat by default, ring-bordered instead of shadowed at rest. Cards, panels, and inputs use a 1px `ring-foreground/10` or `border` to separate from the background — never a resting shadow. Shadow is reserved entirely for layers that detach from the page flow, and its strength scales with how far that layer floats: a small `shadow-sm` for icon badges and the active sidebar item, `shadow-md` for popovers/dropdowns/selects, `shadow-lg` for the mobile drawer sheet and dragged volunteer cards, up to `shadow-xl` for the command palette (the furthest, most modal-like layer in the app).
+Flat by default, ring-bordered instead of shadowed at rest. Cards, panels, and inputs use a 1px `ring-foreground/10` or `border` to separate from the background — never a resting shadow. Shadow is reserved entirely for layers that detach from the page flow, and its strength scales with how far that layer floats: a small `shadow-sm` for icon badges and the active sidebar item, `shadow-md` for popovers/dropdowns/selects, `shadow-lg` for dragged volunteer cards, up to `shadow-xl` for the command palette (the furthest, most modal-like layer in the app). Full-bleed sheets (`Drawer`, `MobileDrawer`) are the deliberate exception: they carry no shadow at all, only a `border-t`, because a bottom sheet is already flush with the viewport edge — there's no page beneath that edge for a shadow to fall onto.
 
 ### Shadow Vocabulary
 - **Ambient badge** (`shadow-sm`): icon badges in the sidebar/header, the active sidebar nav row.
-- **Floating panel** (`shadow-md`, paired with `ring-1 ring-foreground/10`): popovers, dropdown menus, select menus.
+- **Floating panel** (`shadow-md`, paired with `ring-1 ring-foreground/10`): popovers, dropdown menus, select menus, the `Calendar` popup inside `DatePickerField`.
 - **Floating panel, elevated** (`shadow-lg`): the deepest dropdown-menu submenu tier, a volunteer card while being dragged.
 - **Modal peak** (`shadow-xl`): the command palette — the single highest layer in the z-index scale.
+- **Flush sheet** (no shadow, `border-t` only): `Drawer` and `MobileDrawer` bottom sheets — edge treatment replaces elevation.
+
+### Stacking Order
+A four-tier z-index scale, lowest to highest: mobile top header / bottom tab bar (`z-40`) → dialogs, drawers, popovers, selects, tooltips, command palette (`z-50`) → dropdown menus (`z-60`). Dropdown menus sit one tier above everything else on purpose: a `DropdownMenu` (e.g. the user menu) can be triggered from inside an already-open `Drawer`, and the drawer library locks `pointer-events: none` onto `<body>` while open — a menu at the same `z-50` would inherit that lock and silently swallow clicks with no visual sign anything is wrong.
 
 ### Named Rules
-**The Grounded-Until-Floating Rule.** Beyond the one named exception (the `shadow-sm` Ambient badge — icon badges in the sidebar/header, and the active sidebar nav row), a surface earns a shadow only when it has left the document flow (popover, dropdown, dialog, drawer, command palette). Cards, panels, and list rows stay flat and use a ring or border instead. Depth communicates "this is temporary and overlaid," not "this is important" — the Ambient badge is the deliberate carve-out, not a loophole to extend elsewhere.
+**The Grounded-Until-Floating Rule.** Beyond the one named exception (the `shadow-sm` Ambient badge — icon badges in the sidebar/header, and the active sidebar nav row), a surface earns a shadow only when it has left the document flow (popover, dropdown, dialog, drawer, command palette). Cards, panels, and list rows stay flat and use a ring or border instead. Depth communicates "this is temporary and overlaid," not "this is important" — the Ambient badge is the deliberate carve-out, not a loophole to extend elsewhere. Flush sheets are a second, edge-driven carve-out: `border-t` does the job a shadow would do everywhere else.
+
+**The Escalation Rule.** A floating menu or popup must always out-rank any sheet it can be opened from. `DropdownMenu` is pinned to `z-60`, one tier above the `z-50` shared by dialogs/drawers/popovers/selects/tooltips, specifically so it stays interactive when triggered from within an open `Drawer`.
 
 ## 5. Components
 
-Built on base-ui/react primitives (not Radix) with `class-variance-authority` for variants, styled through Tailwind v4's CSS-first `@theme`. Every interactive primitive is local under `@/components/ui` and consumed identically across the volunteer and admin surfaces — the same button is the same button everywhere.
+Sourced from shadcn/ui, ported onto base-ui/react primitives (not Radix) with `class-variance-authority` for variants, styled through Tailwind v4's CSS-first `@theme`. Every interactive primitive is local under `@/components/ui` and consumed identically across the volunteer and admin surfaces — the same button is the same button everywhere. `Calendar` and `Drawer` (added this cycle) follow the same lineage: `Calendar` is shadcn's stock `date-picker`/`calendar` block re-pointed at `react-day-picker` + this system's tokens, `Drawer` is shadcn's `drawer` pattern re-pointed at `@base-ui/react/drawer` instead of `vaul`.
+
+### Named Rules
+**The Shadcn-First Rule.** No new UI primitive gets built from scratch if shadcn/ui already ships it. Pull the shadcn block or primitive, then re-skin it onto this system's tokens and (per the base-ui migration) its base-ui primitive — don't hand-roll a bespoke component that shadcn already solved.
 
 ### Buttons
 - **Shape:** `radius-control` (8px, `rounded.md`).
-- **Sizes:** `xs` (24px) / `sm` (28px) / `default` (32px) / `lg` (36px) / icon variants matching each height. Desktop-dense by default.
+- **Sizes:** `xs` (24px) / `sm` (28px) / `default` (32px) / `lg` (36px) / `touch` (44px) / icon variants matching each height (`icon-xs`…`icon-lg`, `icon-touch`). Desktop-dense by default; `touch`/`icon-touch` exist specifically for mobile sheets and volunteer-facing controls.
 - **Primary:** solid Deep Chapel Blue, white text, `hover:bg-primary/80`.
 - **Outline / Secondary / Ghost / Destructive / Link:** all share the same shape and sizing scale; only fill and text color change. Destructive uses a soft `destructive/10` tint at rest, not a solid red fill, so it doesn't read as an alarm until interacted with.
 - **Focus:** 1px ring in `ring/50`, border shifts to `ring` color — consistent across every variant.
+- **Context-driven sizing:** a `Button` with no explicit `size` reads `FormControlSizeProvider` context and resolves to `touch` automatically inside a mobile sheet, `default` everywhere else — call sites don't hand-size individual buttons for mobile.
 
 ### Badges
 - **Style:** 20px tall, `radius-control`, used for counts (unread tabs), staffing percentages, and conflict labels.
@@ -220,10 +243,20 @@ Built on base-ui/react primitives (not Radix) with `class-variance-authority` fo
 - Two purpose-built surface utilities extend the base card: `.surface-panel` (the gradient-lifted default) and `.surface-subtle` (a flatter, more recessed variant for nested/secondary content — used instead of nesting a second Card).
 
 ### Inputs / Fields
-- **Style:** `radius-control`, 32px tall, 1px `input`-color border, `text-xs`.
+- **Style:** `radius-control`, 32px tall, 1px `input`-color border, `text-xs`; 44px tall (`text-sm`) when `FormControlSizeProvider` is set to `touch` — same automatic promotion as `Button`, no per-field opt-in.
 - **Focus:** border shifts to `ring`, plus a 1px ring glow — no color-only focus indicator.
 - **Placeholder:** deliberately darker than the muted default to hit body-text contrast, not the washed-out gray that's the common accessibility failure.
 - **Error:** `destructive` border + ring, in both light and dark mode.
+
+### Date & Calendar
+- **Calendar:** flat `bg-background` panel, no card chrome of its own — it's always housed inside a `Popover` or a form surface, never presented bare. Day cells are 32px squares (`radius-control`), nav chevrons are ghost icon buttons, and the month/year dropdown (`captionLayout="dropdown"`) is a bordered `radius-control` control matching every other `Input`, not a bare native `<select>`.
+- **Selected state:** a selected single day fills solid Deep Chapel Blue with white text — the same "main action" treatment as a primary button, not a separate selection color.
+- **DatePickerField:** an outline `Button` trigger (calendar icon + formatted date or placeholder) that opens the `Calendar` in a `Popover`, replacing the native `<input type="date">` OS picker so the calendar surface matches the rest of the design system in both themes.
+
+### Sheets & Overlays
+- **Drawer (base-ui):** the mobile counterpart to `Dialog`, used directly and via `ResponsiveFormSurface`. Bottom sheet by default (`swipeDirection="down"`), `radius-sheet-top` corners, a 12px pill grab handle, and — unlike every other floating surface in the system — no shadow (see Elevation).
+- **ResponsiveFormSurface:** the standard shell for any form that must work on both a desktop admin screen and a mobile volunteer screen. Renders `Dialog` at `≥768px`, `Drawer` below it, for the identical `children`. The footer (Save/Cancel) renders outside the mobile scroll region so the primary action stays in thumb reach, and the mobile branch wraps its content in `FormControlSizeProvider size="touch"`. The drawer branch's close affordance is a dedicated 44px icon button, top-right, ghost-style — not the swipe handle alone.
+- **Toasts (Sonner):** position flips with viewport — `bottom-right` on desktop, `top-center` on mobile — and the mobile offset is pinned to clear the 64px sticky top header (`mobileOffset={{ top: '80px' }}`) so a toast never lands underneath the nav chrome.
 
 ### Navigation
 - **Desktop sidebar:** collapsible (240px ↔ 64px) via a spring transition, active item gets a `primary/11` tinted background with a solid `primary` icon chip; inactive items are `sidebar-foreground/78`.
@@ -242,8 +275,10 @@ A dedicated component with two renderings: a compact percentage `Badge` (per tim
 - **Do** keep the primary blue-violet (`primary`) to ≤10% of any screen; reach for opacity tints (`/8`–`/15`) before a solid fill.
 - **Do** keep cards, panels, and list rows flat with a `ring-1 ring-foreground/10` or `border`; reserve shadow for popovers, dropdowns, dialogs, the drawer, and the command palette.
 - **Do** use the green/amber/red status vocabulary only for staffing percentage and assignment confirmation state.
-- **Do** size touch targets at 44px+ on mobile/volunteer-facing controls even when the equivalent desktop control is 32px.
+- **Do** size touch targets at 44px+ on mobile/volunteer-facing controls even when the equivalent desktop control is 32px — use the `touch`/`icon-touch` size or wrap the region in `FormControlSizeProvider` rather than sizing controls ad hoc.
+- **Do** give `DropdownMenu` a higher z-index (`z-60`) than any dialog/drawer/popover/select/tooltip (`z-50`) it might be triggered from, per the Escalation Rule.
 - **Do** reuse local `@/components/ui` primitives (Button, Card, Badge, Input, Dialog, Tabs) rather than building one-off styled elements — the same control must look and behave identically on the volunteer dashboard and the admin planning screens.
+- **Do** build every new component on shadcn/ui — pull the shadcn block, re-skin it onto this system's tokens, and (per the project's base-ui migration) swap its primitive to `@base-ui/react`. Do not hand-roll a component shadcn already ships.
 - **Do** re-tune colors for dark mode rather than inverting them — `primary` lightens/desaturates instead of staying the same hex-equivalent value, so it keeps AA contrast against the dark `background`.
 
 ### Don't:
@@ -254,3 +289,5 @@ A dedicated component with two renderings: a compact percentage `Badge` (per tim
 - **Don't** use the status green/amber/red colors for anything decorative, branding, or unrelated to staffing/confirmation state.
 - **Don't** ship a component with only a default state — every interactive control needs hover, focus-visible, disabled, and (where relevant) loading/error states, matching what's already built for Button/Input.
 - **Don't** design admin-only density (32px controls, `text-xs` everywhere) into volunteer-facing mobile flows without deliberately upsizing touch targets first.
+- **Don't** apply a resting shadow to a full-bleed bottom sheet (`Drawer`, `MobileDrawer`) — it's flush with the viewport edge, so a `border-t` carries the separation, not `shadow-lg`.
+- **Don't** build a second bespoke mobile-vs-desktop form component — reuse `ResponsiveFormSurface` for the `Dialog`↔`Drawer` swap so every form gets the same footer placement and touch-sizing behavior for free.

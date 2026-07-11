@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from './cycle-list-card';
 import { CycleReviewCard } from './cycle-review-card';
 import { PlanningAdminProvider } from './planning-admin-context';
+import { pickCalendarDate } from '@/__tests__/setup/date-picker';
 import { renderWithProviders } from '@/__tests__/setup/render';
 
 const listPlanningCycles = vi.fn();
@@ -1021,7 +1022,11 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'New Event' });
     await user.type(within(dialog).getByLabelText('Title'), 'Youth Night');
-    await user.type(within(dialog).getByLabelText('Date'), '2026-08-09');
+    await pickCalendarDate({
+      user,
+      trigger: within(dialog).getByLabelText('Date'),
+      date: '2026-08-09',
+    });
     await user.click(within(dialog).getByRole('button', { name: 'Create' }));
 
     await waitFor(() =>

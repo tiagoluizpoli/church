@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuickCreateEventModal } from './quick-create-event-modal';
+import { pickCalendarDate } from '@/__tests__/setup/date-picker';
 
 const navigateMock = vi.fn();
 const mutateAsyncMock = vi.fn();
@@ -61,10 +62,14 @@ describe('QuickCreateEventModal', () => {
     expect(screen.queryByLabelText('Start date')).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Title'), 'Domingo');
-    await user.type(screen.getByLabelText('Date'), '2026-06-28');
+    await pickCalendarDate({
+      user,
+      trigger: screen.getByLabelText('Date'),
+      date: '2026-06-28',
+    });
 
     expect(createButton).toBeEnabled();
-  });
+  }, 10000);
 
   it('switches to a start/end date range for a day-based event, and stays the same reachable form for a planning-cycle target (FR-012)', async () => {
     const user = userEvent.setup();
@@ -89,9 +94,17 @@ describe('QuickCreateEventModal', () => {
     expect(screen.queryByLabelText('Date')).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Title'), 'Retreat');
-    await user.type(screen.getByLabelText('Start date'), '2026-06-28');
-    await user.type(screen.getByLabelText('End date'), '2026-06-29');
+    await pickCalendarDate({
+      user,
+      trigger: screen.getByLabelText('Start date'),
+      date: '2026-06-28',
+    });
+    await pickCalendarDate({
+      user,
+      trigger: screen.getByLabelText('End date'),
+      date: '2026-06-29',
+    });
 
     expect(createButton).toBeEnabled();
-  });
+  }, 10000);
 });

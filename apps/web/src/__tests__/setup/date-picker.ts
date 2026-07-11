@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
+import { expect } from 'vitest';
 
 const MONTH_SHORT_NAMES = [
   'Jan',

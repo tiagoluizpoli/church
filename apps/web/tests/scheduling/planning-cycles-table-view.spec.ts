@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
+import { fillDatePickerField } from './date-picker.helpers';
 
 test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
 
@@ -43,8 +44,16 @@ async function createCycleWithSundayTemplateApplied({
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
   await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
-  await createCycleDialog.getByTestId('cycle-start-date-input').fill(startDate);
-  await createCycleDialog.getByTestId('cycle-end-date-input').fill(endDate);
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-start-date-input'),
+    date: startDate,
+  });
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-end-date-input'),
+    date: endDate,
+  });
   await createCycleDialog.getByTestId('create-cycle-button').click();
 
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
@@ -272,10 +281,16 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
       name: 'Create cycle',
     });
     await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
-    await createCycleDialog
-      .getByTestId('cycle-start-date-input')
-      .fill(startDate);
-    await createCycleDialog.getByTestId('cycle-end-date-input').fill(endDate);
+    await fillDatePickerField({
+      page,
+      trigger: createCycleDialog.getByTestId('cycle-start-date-input'),
+      date: startDate,
+    });
+    await fillDatePickerField({
+      page,
+      trigger: createCycleDialog.getByTestId('cycle-end-date-input'),
+      date: endDate,
+    });
     await createCycleDialog.getByTestId('create-cycle-button').click();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
@@ -433,11 +448,15 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     // dynamically assigned per test run, see createCycleWithSundayTemplateApplied)
     // and off any templated Sunday, or the create is rejected as out of
     // range / colliding with an existing day.
-    await addDialog
-      .getByLabel('Date')
-      .fill(
-        nonSundayDateInMonth({ year: cycleYear, month: cycleMonth, day: 15 }),
-      );
+    await fillDatePickerField({
+      page,
+      trigger: addDialog.getByLabel('Date'),
+      date: nonSundayDateInMonth({
+        year: cycleYear,
+        month: cycleMonth,
+        day: 15,
+      }),
+    });
     await addDialog.getByRole('button', { name: 'Create' }).click();
     await expect(addDialog).not.toBeAttached();
     await expect(mobileList.getByText(newEventTitle)).toBeVisible();

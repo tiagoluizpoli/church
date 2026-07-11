@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { LEADER_STORAGE_STATE } from '../global-setup';
+import { fillDatePickerField } from './date-picker.helpers';
 
 test.use({ storageState: LEADER_STORAGE_STATE });
 
@@ -45,8 +46,16 @@ async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
   await page
     .getByTestId('cycle-name-input')
     .fill(`Single create-event UI check ${now.getTime()}`);
-  await page.getByTestId('cycle-start-date-input').fill(toDateString(start));
-  await page.getByTestId('cycle-end-date-input').fill(toDateString(end));
+  await fillDatePickerField({
+    page,
+    trigger: page.getByTestId('cycle-start-date-input'),
+    date: toDateString(start),
+  });
+  await fillDatePickerField({
+    page,
+    trigger: page.getByTestId('cycle-end-date-input'),
+    date: toDateString(end),
+  });
   await page.getByTestId('create-cycle-button').click();
   await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
 }

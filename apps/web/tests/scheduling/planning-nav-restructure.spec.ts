@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
+import { fillDatePickerField } from './date-picker.helpers';
 
 test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
 
@@ -25,12 +26,16 @@ test('planning-cycles, new, and $cycleId are distinct addressable URLs with work
   await expect(page).toHaveURL('/scheduling/planning-cycles/new');
   const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
   await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
-  await createCycleDialog
-    .getByTestId('cycle-start-date-input')
-    .fill(toDateString(start));
-  await createCycleDialog
-    .getByTestId('cycle-end-date-input')
-    .fill(toDateString(end));
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-start-date-input'),
+    date: toDateString(start),
+  });
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-end-date-input'),
+    date: toDateString(end),
+  });
   await createCycleDialog.getByTestId('create-cycle-button').click();
 
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);

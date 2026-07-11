@@ -4,6 +4,7 @@ import {
   LEADER_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
+import { fillDatePickerField } from './date-picker.helpers';
 
 interface PlanningMonth {
   cycleName: string;
@@ -168,12 +169,16 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
   await createCycleDialog.getByTestId('cycle-name-input').fill(month.cycleName);
-  await createCycleDialog
-    .getByTestId('cycle-start-date-input')
-    .fill(month.startDate);
-  await createCycleDialog
-    .getByTestId('cycle-end-date-input')
-    .fill(month.endDate);
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-start-date-input'),
+    date: month.startDate,
+  });
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-end-date-input'),
+    date: month.endDate,
+  });
   await createCycleDialog.getByTestId('create-cycle-button').click();
 
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(
@@ -335,8 +340,16 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   const createEventDialog = page.getByRole('dialog');
   await createEventDialog.getByLabel('Title').fill('Three-day retreat');
   await createEventDialog.getByRole('radio', { name: 'Day-based' }).click();
-  await createEventDialog.getByLabel('Start date').fill(month.dynamicStartDate);
-  await createEventDialog.getByLabel('End date').fill(month.dynamicEndDate);
+  await fillDatePickerField({
+    page,
+    trigger: createEventDialog.getByLabel('Start date'),
+    date: month.dynamicStartDate,
+  });
+  await fillDatePickerField({
+    page,
+    trigger: createEventDialog.getByLabel('End date'),
+    date: month.dynamicEndDate,
+  });
   await createEventDialog.getByRole('button', { name: 'Create' }).click();
 
   await expect(page.getByTestId('planning-event-card')).toHaveCount(
@@ -360,12 +373,16 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await overlapDialog
     .getByTestId('cycle-name-input')
     .fill(`${month.cycleName} overlap`);
-  await overlapDialog
-    .getByTestId('cycle-start-date-input')
-    .fill(month.overlapStartDate);
-  await overlapDialog
-    .getByTestId('cycle-end-date-input')
-    .fill(month.overlapEndDate);
+  await fillDatePickerField({
+    page,
+    trigger: overlapDialog.getByTestId('cycle-start-date-input'),
+    date: month.overlapStartDate,
+  });
+  await fillDatePickerField({
+    page,
+    trigger: overlapDialog.getByTestId('cycle-end-date-input'),
+    date: month.overlapEndDate,
+  });
   await overlapDialog.getByTestId('create-cycle-button').click();
 
   await expect(overlapDialog.getByTestId('cycle-create-error')).toContainText(

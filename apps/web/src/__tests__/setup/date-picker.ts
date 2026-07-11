@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 
 const MONTH_SHORT_NAMES = [
@@ -80,4 +80,9 @@ export async function pickCalendarDate({
   await user.click(
     screen.getByRole('button', { name: new RegExp(`${dayLabel}$`) }),
   );
+  await waitFor(() => {
+    expect(
+      screen.queryByRole('combobox', { name: 'Choose the Month' }),
+    ).not.toBeInTheDocument();
+  });
 }

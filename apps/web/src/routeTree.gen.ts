@@ -20,10 +20,14 @@ import { Route as VolunteerAvailabilityRouteImport } from './routes/volunteer/av
 import { Route as SchedulingTailoringRouteImport } from './routes/scheduling/tailoring'
 import { Route as SchedulingPlanningCyclesRouteImport } from './routes/scheduling/planning-cycles'
 import { Route as SchedulingBuilderEventsRouteImport } from './routes/scheduling/builder-events'
+import { Route as SchedulingTailoringIndexRouteImport } from './routes/scheduling/tailoring/index'
 import { Route as SchedulingPlanningCyclesIndexRouteImport } from './routes/scheduling/planning-cycles/index'
+import { Route as SchedulingTailoringMinistryIdRouteImport } from './routes/scheduling/tailoring/$ministryId'
 import { Route as SchedulingPlanningCyclesTemplatesRouteImport } from './routes/scheduling/planning-cycles/templates'
 import { Route as SchedulingPlanningCyclesNewRouteImport } from './routes/scheduling/planning-cycles/new'
 import { Route as SchedulingPlanningCyclesCycleIdRouteImport } from './routes/scheduling/planning-cycles/$cycleId'
+import { Route as SchedulingTailoringMinistryIdIndexRouteImport } from './routes/scheduling/tailoring/$ministryId/index'
+import { Route as SchedulingTailoringMinistryIdCycleIdRouteImport } from './routes/scheduling/tailoring/$ministryId/$cycleId'
 import { Route as SchedulingEventsEventIdBuilderRouteImport } from './routes/scheduling/events/$eventId/builder'
 import { Route as SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport } from './routes/scheduling/rostering/$cycleId/$ministryId/$participationId'
 
@@ -83,11 +87,23 @@ const SchedulingBuilderEventsRoute = SchedulingBuilderEventsRouteImport.update({
   path: '/builder-events',
   getParentRoute: () => SchedulingRoute,
 } as any)
+const SchedulingTailoringIndexRoute =
+  SchedulingTailoringIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => SchedulingTailoringRoute,
+  } as any)
 const SchedulingPlanningCyclesIndexRoute =
   SchedulingPlanningCyclesIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => SchedulingPlanningCyclesRoute,
+  } as any)
+const SchedulingTailoringMinistryIdRoute =
+  SchedulingTailoringMinistryIdRouteImport.update({
+    id: '/$ministryId',
+    path: '/$ministryId',
+    getParentRoute: () => SchedulingTailoringRoute,
   } as any)
 const SchedulingPlanningCyclesTemplatesRoute =
   SchedulingPlanningCyclesTemplatesRouteImport.update({
@@ -106,6 +122,18 @@ const SchedulingPlanningCyclesCycleIdRoute =
     id: '/$cycleId',
     path: '/$cycleId',
     getParentRoute: () => SchedulingPlanningCyclesRoute,
+  } as any)
+const SchedulingTailoringMinistryIdIndexRoute =
+  SchedulingTailoringMinistryIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => SchedulingTailoringMinistryIdRoute,
+  } as any)
+const SchedulingTailoringMinistryIdCycleIdRoute =
+  SchedulingTailoringMinistryIdCycleIdRouteImport.update({
+    id: '/$cycleId',
+    path: '/$cycleId',
+    getParentRoute: () => SchedulingTailoringMinistryIdRoute,
   } as any)
 const SchedulingEventsEventIdBuilderRoute =
   SchedulingEventsEventIdBuilderRouteImport.update({
@@ -129,14 +157,18 @@ export interface FileRoutesByFullPath {
   '/scheduling': typeof SchedulingRouteWithChildren
   '/scheduling/builder-events': typeof SchedulingBuilderEventsRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesRouteWithChildren
-  '/scheduling/tailoring': typeof SchedulingTailoringRoute
+  '/scheduling/tailoring': typeof SchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
+  '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdRouteWithChildren
   '/scheduling/planning-cycles/': typeof SchedulingPlanningCyclesIndexRoute
+  '/scheduling/tailoring/': typeof SchedulingTailoringIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/tailoring/$ministryId/$cycleId': typeof SchedulingTailoringMinistryIdCycleIdRoute
+  '/scheduling/tailoring/$ministryId/': typeof SchedulingTailoringMinistryIdIndexRoute
   '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRoutesByTo {
@@ -146,14 +178,16 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/scheduling/builder-events': typeof SchedulingBuilderEventsRoute
-  '/scheduling/tailoring': typeof SchedulingTailoringRoute
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling': typeof SchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesIndexRoute
+  '/scheduling/tailoring': typeof SchedulingTailoringIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/tailoring/$ministryId/$cycleId': typeof SchedulingTailoringMinistryIdCycleIdRoute
+  '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdIndexRoute
   '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRoutesById {
@@ -166,14 +200,18 @@ export interface FileRoutesById {
   '/scheduling': typeof SchedulingRouteWithChildren
   '/scheduling/builder-events': typeof SchedulingBuilderEventsRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesRouteWithChildren
-  '/scheduling/tailoring': typeof SchedulingTailoringRoute
+  '/scheduling/tailoring': typeof SchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling/': typeof SchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
+  '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdRouteWithChildren
   '/scheduling/planning-cycles/': typeof SchedulingPlanningCyclesIndexRoute
+  '/scheduling/tailoring/': typeof SchedulingTailoringIndexRoute
   '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/tailoring/$ministryId/$cycleId': typeof SchedulingTailoringMinistryIdCycleIdRoute
+  '/scheduling/tailoring/$ministryId/': typeof SchedulingTailoringMinistryIdIndexRoute
   '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRouteTypes {
@@ -193,8 +231,12 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
+    | '/scheduling/tailoring/$ministryId'
     | '/scheduling/planning-cycles/'
+    | '/scheduling/tailoring/'
     | '/scheduling/events/$eventId/builder'
+    | '/scheduling/tailoring/$ministryId/$cycleId'
+    | '/scheduling/tailoring/$ministryId/'
     | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -204,14 +246,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/scheduling/builder-events'
-    | '/scheduling/tailoring'
     | '/volunteer/availability'
     | '/scheduling'
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
     | '/scheduling/planning-cycles'
+    | '/scheduling/tailoring'
     | '/scheduling/events/$eventId/builder'
+    | '/scheduling/tailoring/$ministryId/$cycleId'
+    | '/scheduling/tailoring/$ministryId'
     | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   id:
     | '__root__'
@@ -229,8 +273,12 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
+    | '/scheduling/tailoring/$ministryId'
     | '/scheduling/planning-cycles/'
+    | '/scheduling/tailoring/'
     | '/scheduling/events/$eventId/builder'
+    | '/scheduling/tailoring/$ministryId/$cycleId'
+    | '/scheduling/tailoring/$ministryId/'
     | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   fileRoutesById: FileRoutesById
 }
@@ -323,12 +371,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulingBuilderEventsRouteImport
       parentRoute: typeof SchedulingRoute
     }
+    '/scheduling/tailoring/': {
+      id: '/scheduling/tailoring/'
+      path: '/'
+      fullPath: '/scheduling/tailoring/'
+      preLoaderRoute: typeof SchedulingTailoringIndexRouteImport
+      parentRoute: typeof SchedulingTailoringRoute
+    }
     '/scheduling/planning-cycles/': {
       id: '/scheduling/planning-cycles/'
       path: '/'
       fullPath: '/scheduling/planning-cycles/'
       preLoaderRoute: typeof SchedulingPlanningCyclesIndexRouteImport
       parentRoute: typeof SchedulingPlanningCyclesRoute
+    }
+    '/scheduling/tailoring/$ministryId': {
+      id: '/scheduling/tailoring/$ministryId'
+      path: '/$ministryId'
+      fullPath: '/scheduling/tailoring/$ministryId'
+      preLoaderRoute: typeof SchedulingTailoringMinistryIdRouteImport
+      parentRoute: typeof SchedulingTailoringRoute
     }
     '/scheduling/planning-cycles/templates': {
       id: '/scheduling/planning-cycles/templates'
@@ -350,6 +412,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/scheduling/planning-cycles/$cycleId'
       preLoaderRoute: typeof SchedulingPlanningCyclesCycleIdRouteImport
       parentRoute: typeof SchedulingPlanningCyclesRoute
+    }
+    '/scheduling/tailoring/$ministryId/': {
+      id: '/scheduling/tailoring/$ministryId/'
+      path: '/'
+      fullPath: '/scheduling/tailoring/$ministryId/'
+      preLoaderRoute: typeof SchedulingTailoringMinistryIdIndexRouteImport
+      parentRoute: typeof SchedulingTailoringMinistryIdRoute
+    }
+    '/scheduling/tailoring/$ministryId/$cycleId': {
+      id: '/scheduling/tailoring/$ministryId/$cycleId'
+      path: '/$cycleId'
+      fullPath: '/scheduling/tailoring/$ministryId/$cycleId'
+      preLoaderRoute: typeof SchedulingTailoringMinistryIdCycleIdRouteImport
+      parentRoute: typeof SchedulingTailoringMinistryIdRoute
     }
     '/scheduling/events/$eventId/builder': {
       id: '/scheduling/events/$eventId/builder'
@@ -389,10 +465,42 @@ const SchedulingPlanningCyclesRouteWithChildren =
     SchedulingPlanningCyclesRouteChildren,
   )
 
+interface SchedulingTailoringMinistryIdRouteChildren {
+  SchedulingTailoringMinistryIdCycleIdRoute: typeof SchedulingTailoringMinistryIdCycleIdRoute
+  SchedulingTailoringMinistryIdIndexRoute: typeof SchedulingTailoringMinistryIdIndexRoute
+}
+
+const SchedulingTailoringMinistryIdRouteChildren: SchedulingTailoringMinistryIdRouteChildren =
+  {
+    SchedulingTailoringMinistryIdCycleIdRoute:
+      SchedulingTailoringMinistryIdCycleIdRoute,
+    SchedulingTailoringMinistryIdIndexRoute:
+      SchedulingTailoringMinistryIdIndexRoute,
+  }
+
+const SchedulingTailoringMinistryIdRouteWithChildren =
+  SchedulingTailoringMinistryIdRoute._addFileChildren(
+    SchedulingTailoringMinistryIdRouteChildren,
+  )
+
+interface SchedulingTailoringRouteChildren {
+  SchedulingTailoringMinistryIdRoute: typeof SchedulingTailoringMinistryIdRouteWithChildren
+  SchedulingTailoringIndexRoute: typeof SchedulingTailoringIndexRoute
+}
+
+const SchedulingTailoringRouteChildren: SchedulingTailoringRouteChildren = {
+  SchedulingTailoringMinistryIdRoute:
+    SchedulingTailoringMinistryIdRouteWithChildren,
+  SchedulingTailoringIndexRoute: SchedulingTailoringIndexRoute,
+}
+
+const SchedulingTailoringRouteWithChildren =
+  SchedulingTailoringRoute._addFileChildren(SchedulingTailoringRouteChildren)
+
 interface SchedulingRouteChildren {
   SchedulingBuilderEventsRoute: typeof SchedulingBuilderEventsRoute
   SchedulingPlanningCyclesRoute: typeof SchedulingPlanningCyclesRouteWithChildren
-  SchedulingTailoringRoute: typeof SchedulingTailoringRoute
+  SchedulingTailoringRoute: typeof SchedulingTailoringRouteWithChildren
   SchedulingIndexRoute: typeof SchedulingIndexRoute
   SchedulingEventsEventIdBuilderRoute: typeof SchedulingEventsEventIdBuilderRoute
   SchedulingRosteringCycleIdMinistryIdParticipationIdRoute: typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
@@ -401,7 +509,7 @@ interface SchedulingRouteChildren {
 const SchedulingRouteChildren: SchedulingRouteChildren = {
   SchedulingBuilderEventsRoute: SchedulingBuilderEventsRoute,
   SchedulingPlanningCyclesRoute: SchedulingPlanningCyclesRouteWithChildren,
-  SchedulingTailoringRoute: SchedulingTailoringRoute,
+  SchedulingTailoringRoute: SchedulingTailoringRouteWithChildren,
   SchedulingIndexRoute: SchedulingIndexRoute,
   SchedulingEventsEventIdBuilderRoute: SchedulingEventsEventIdBuilderRoute,
   SchedulingRosteringCycleIdMinistryIdParticipationIdRoute:

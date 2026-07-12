@@ -1,9 +1,26 @@
+import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemSlotsItem,
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+
+export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
+
+/** Classifies a tailoring-route data-fetch failure into the two UI states
+ * the routes render (test-master Class 4/5): a 403 is a permission-denied
+ * state, everything else (network error, 5xx, unknown) is retryable. */
+export function classifyTailoringFetchError({
+  error,
+}: {
+  error: unknown;
+}): TailoringFetchErrorKind {
+  if (isAxiosError(error) && error.response?.status === 403) {
+    return 'forbidden';
+  }
+  return 'retryable';
+}
 
 export interface TailoringCycleOption {
   id: string;
@@ -115,7 +132,7 @@ export function createInitialSplitForms(
     for (const slotView of eventView.slots) {
       entries[slotView.slot.id] = {
         mode: 'equal',
-        equalCount: String(Math.max(2, slotView.shifts.length || 2)),
+        equalCount: String(Math.max(1, slotView.shifts.length)),
         manualSpans:
           slotView.shifts.length > 0
             ? slotView.shifts.map((shift) => ({
@@ -244,6 +261,29 @@ export function countIncludedSlots(
   );
 }
 
+const PARTICIPATION_STATE_LABELS: Record<
+  GetCycleParticipation200EventsItem['participation']['state'],
+  string
+> = {
+  tailoring: 'Tailoring',
+  // biome-ignore lint/style/useNamingConvention: matches the API's MinistryParticipation.state enum value verbatim
+  availability_fired: 'Availability requested',
+  rostering: 'Rostering',
+  published: 'Published',
+};
+
+/** Humanizes a raw `MinistryParticipation.state` enum for display. A
+ * lifecycle label, not a staffing signal — never uses the green/amber/red
+ * status vocabulary (DESIGN.md reserves that strictly for staffing %/
+ * confirmation state). */
+export function participationStateLabel({
+  state,
+}: {
+  state: GetCycleParticipation200EventsItem['participation']['state'];
+}): string {
+  return PARTICIPATION_STATE_LABELS[state];
+}
+
 export function countShifts(
   events: GetCycleParticipation200EventsItem[],
 ): number {
@@ -256,4 +296,204 @@ export function countShifts(
       ),
     0,
   );
+}
+
+export function toMinistryCycleKey({
+  ministryId,
+  cycleId,
+}: {
+  ministryId: string;
+  cycleId: string;
+}): string {
+  return `${ministryId}:${cycleId}`;
+}
+
+export interface MinistryTailoringSummaryRow {
+  ministryId: string;
+  ministryName: string;
+  eventCount: number;
+  slotCount: number;
+}
+
+/** Aggregates per-ministry event/slot counts for the ministry-list landing
+ * page. Pure function over already-fetched data — the fetch orchestration
+ * (listMinistries + listPlanningCycles({state:'locked'}) + per-ministry
+ * listEvents + per-(ministry, locked cycle) getCycleParticipation) lives in
+ * the route, per research.md R10. "Cycle set" = union of every cycle
+ * currently in `locked` state, not a single "most recent" cycle. */
+export function buildMinistryTailoringSummary({
+  ministries,
+  lockedCycleIds,
+  eventsByMinistryId,
+  slotCountByMinistryAndCycle,
+}: {
+  ministries: { id: string; name: string }[];
+  lockedCycleIds: string[];
+  eventsByMinistryId: Record<string, { planningCycleId: string }[] | undefined>;
+  slotCountByMinistryAndCycle: Record<string, number>;
+}): MinistryTailoringSummaryRow[] {
+  const lockedCycleIdSet = new Set(lockedCycleIds);
+
+  return ministries.map((ministry) => {
+    const relevantEvents = (eventsByMinistryId[ministry.id] ?? []).filter(
+      (event) => lockedCycleIdSet.has(event.planningCycleId),
+    );
+    const relevantCycleIds = new Set(
+      relevantEvents.map((event) => event.planningCycleId),
+    );
+
+    const slotCount = [...relevantCycleIds].reduce(
+      (total, cycleId) =>
+        total +
+        (slotCountByMinistryAndCycle[
+          toMinistryCycleKey({ ministryId: ministry.id, cycleId })
+        ] ?? 0),
+      0,
+    );
+
+    return {
+      ministryId: ministry.id,
+      ministryName: ministry.name,
+      eventCount: relevantEvents.length,
+      slotCount,
+    };
+  });
+}
+
+export type IsoDateString = string;
+
+export function toIsoDateString(date: Date): IsoDateString {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Derives the set of calendar days with at least one Event, spanning each
+ * event's full `[startDate, endDate]` range (not just its first day), per
+ * data-model.md's "any date with >=1 Event" definition. */
+export function buildEventDayMarkers({
+  events,
+}: {
+  events: { startDate: string; endDate: string }[];
+}): Set<IsoDateString> {
+  const markers = new Set<IsoDateString>();
+
+  for (const event of events) {
+    const start = new Date(event.startDate);
+    const end = new Date(event.endDate);
+    const cursor = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate(),
+    );
+    const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+    while (cursor <= lastDay) {
+      markers.add(toIsoDateString(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  return markers;
+}
+
+/** Client-side, already-fetched-data-only slot filters (FR-010) — never
+ * issue network requests. Both drop an event entirely once it has zero
+ * matching slots, so the day-grouped slot list only shows groups with
+ * visible content. */
+export function filterSlotsByName({
+  events,
+  query,
+}: {
+  events: GetCycleParticipation200EventsItem[];
+  query: string;
+}): GetCycleParticipation200EventsItem[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return events;
+
+  return events
+    .map((eventView) => ({
+      ...eventView,
+      slots: eventView.slots.filter((slotView) => {
+        const label = (slotView.slot.label ?? '').toLowerCase();
+        const eventTitle = eventView.event.title.toLowerCase();
+        return label.includes(needle) || eventTitle.includes(needle);
+      }),
+    }))
+    .filter((eventView) => eventView.slots.length > 0);
+}
+
+export type TimeWindowMode = 'starts' | 'ends' | 'within';
+
+/** A single [start, end] local-time-of-day window (`HH:mm` strings),
+ * applied per `mode`: `'starts'` keeps slots whose start time falls in the
+ * window, `'ends'` keeps slots whose end time falls in the window, and
+ * `'within'` keeps slots whose entire span (start AND end) falls inside the
+ * window. Either bound may be omitted to leave that side open-ended. */
+export interface TimeWindowFilter {
+  mode: TimeWindowMode;
+  start?: string;
+  end?: string;
+}
+
+function toMinutesSinceMidnight(hhmm: string): number {
+  const [hours, minutes] = hhmm.split(':').map(Number);
+  return (hours ?? 0) * 60 + (minutes ?? 0);
+}
+
+function localTimeOfDayInMinutes(isoValue: string): number {
+  const date = new Date(isoValue);
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+export function isTimeWindowFilterEmpty(filter: TimeWindowFilter): boolean {
+  return !filter.start && !filter.end;
+}
+
+function isWithinWindow({
+  minutes,
+  filter,
+}: {
+  minutes: number;
+  filter: TimeWindowFilter;
+}): boolean {
+  if (filter.start && minutes < toMinutesSinceMidnight(filter.start)) {
+    return false;
+  }
+  if (filter.end && minutes > toMinutesSinceMidnight(filter.end)) {
+    return false;
+  }
+  return true;
+}
+
+export function filterSlotsByTimeOfDay({
+  events,
+  filter,
+}: {
+  events: GetCycleParticipation200EventsItem[];
+  filter: TimeWindowFilter;
+}): GetCycleParticipation200EventsItem[] {
+  if (isTimeWindowFilterEmpty(filter)) return events;
+
+  return events
+    .map((eventView) => ({
+      ...eventView,
+      slots: eventView.slots.filter((slotView) => {
+        const startMinutes = localTimeOfDayInMinutes(slotView.slot.startTime);
+        const endMinutes = localTimeOfDayInMinutes(slotView.slot.endTime);
+
+        if (filter.mode === 'starts') {
+          return isWithinWindow({ minutes: startMinutes, filter });
+        }
+        if (filter.mode === 'ends') {
+          return isWithinWindow({ minutes: endMinutes, filter });
+        }
+        return (
+          isWithinWindow({ minutes: startMinutes, filter }) &&
+          isWithinWindow({ minutes: endMinutes, filter })
+        );
+      }),
+    }))
+    .filter((eventView) => eventView.slots.length > 0);
 }

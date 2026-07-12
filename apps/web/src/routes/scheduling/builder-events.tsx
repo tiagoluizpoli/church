@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { z } from 'zod';
 import { buttonVariants } from '@/components/ui/button';
 import {
   WorkspaceIntroPanel,
@@ -6,11 +7,18 @@ import {
 } from '@/components/workspace-page';
 import { EventList } from '@/features/scheduling/components/event-list';
 
+const builderEventsSearchSchema = z.object({
+  ministryId: z.string().optional(),
+});
+
 export const Route = createFileRoute('/scheduling/builder-events')({
+  validateSearch: (search) => builderEventsSearchSchema.parse(search),
   component: BuilderEventsRoute,
 });
 
 function BuilderEventsRoute() {
+  const search = Route.useSearch();
+
   return (
     <WorkspacePage>
       <WorkspaceIntroPanel
@@ -35,7 +43,7 @@ function BuilderEventsRoute() {
         }
       />
 
-      <EventList />
+      <EventList initialMinistryId={search.ministryId} />
     </WorkspacePage>
   );
 }

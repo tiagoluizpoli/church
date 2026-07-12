@@ -9,7 +9,7 @@ export default defineConfig({
   envDir: '../../',
   plugins: [
     tailwindcss(),
-    tanstackRouter({}),
+    tanstackRouter({ routeFileIgnorePattern: '\\.test\\.' }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

@@ -1,10 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { ParticipationTailoring } from '@/features/scheduling/components/participation-tailoring';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/scheduling/tailoring')({
-  component: SchedulingTailoringRoute,
+  component: SchedulingTailoringLayout,
 });
 
-function SchedulingTailoringRoute() {
-  return <ParticipationTailoring />;
+function SchedulingTailoringLayout() {
+  return <Outlet />;
 }

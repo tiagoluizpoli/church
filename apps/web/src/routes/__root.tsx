@@ -9,6 +9,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { AppShell } from '@/components/app-shell';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
 
 import '../index.css';
@@ -40,9 +41,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootComponent() {
   const planningCycleBreadcrumb = usePlanningCycleBreadcrumb();
-  const breadcrumbOverrides = planningCycleBreadcrumb
-    ? [planningCycleBreadcrumb]
-    : undefined;
+  const ministryBreadcrumb = useMinistryBreadcrumb();
+  const overrides = [planningCycleBreadcrumb, ministryBreadcrumb].filter(
+    (override) => override !== null,
+  );
+  const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;
 
   return (
     <>

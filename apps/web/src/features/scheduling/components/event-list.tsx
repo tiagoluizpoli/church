@@ -27,9 +27,17 @@ function getErrorMessage({
   return error instanceof Error ? error.message : fallback;
 }
 
-export function EventList() {
+export interface EventListProps {
+  /** Pre-selects a ministry (e.g. deep-linked from the tailoring workspace)
+   * instead of defaulting to the first ministry once fetched. */
+  initialMinistryId?: string;
+}
+
+export function EventList({ initialMinistryId }: EventListProps = {}) {
   const { format, effectiveTimezone, mode } = useTimezone();
-  const [ministryId, setMinistryId] = useState<string | null>(null);
+  const [ministryId, setMinistryId] = useState<string | null>(
+    initialMinistryId ?? null,
+  );
   const [createOpen, setCreateOpen] = useState(false);
 
   const ministries = useQuery({

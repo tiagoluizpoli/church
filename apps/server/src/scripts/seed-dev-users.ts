@@ -5,6 +5,7 @@ import {
   createDb,
   ministry,
   ministryVolunteer,
+  role,
   team,
   user,
   volunteer,
@@ -30,6 +31,8 @@ const DEV_MINISTRY = {
 const DEV_TEAM = {
   name: 'Local Team',
 } as const;
+
+const DEV_ROLES = ['Coordinator', 'Support'] as const;
 
 const DEV_USERS = [
   {
@@ -129,6 +132,32 @@ async function ensureTeam(churchId: string, ministryId: string) {
   }
 
   return createdTeam;
+}
+
+async function ensureRoles(churchId: string, ministryId: string) {
+  const existingRoles = await db.query.role.findMany({
+    where: eq(role.ministryId, ministryId),
+  });
+  const existingNames = new Set(existingRoles.map((r) => r.name));
+
+  const missingNames = DEV_ROLES.filter((name) => !existingNames.has(name));
+  if (missingNames.length === 0) {
+    return existingRoles;
+  }
+
+  const createdRoles = await db
+    .insert(role)
+    .values(
+      missingNames.map((name) => ({
+        churchId,
+        ministryId,
+        name,
+        isGlobal: false,
+      })),
+    )
+    .returning();
+
+  return [...existingRoles, ...createdRoles];
 }
 
 async function ensureAuthUser(
@@ -316,6 +345,7 @@ export async function seedDevUsers() {
   const localChurch = await ensureChurch();
   const localMinistry = await ensureMinistry(localChurch.id);
   const localTeam = await ensureTeam(localChurch.id, localMinistry.id);
+  const localRoles = await ensureRoles(localChurch.id, localMinistry.id);
   const results: Array<{
     email: string;
     name: string;
@@ -358,6 +388,7 @@ export async function seedDevUsers() {
     church: DEV_CHURCH,
     ministry: DEV_MINISTRY.name,
     team: DEV_TEAM.name,
+    roles: localRoles.map((r) => r.name),
     password: DEV_PASSWORD,
     users: results,
   };
@@ -370,6 +401,7 @@ if (import.meta.main) {
       console.log(`Church: ${result.church.name} (${result.church.slug})`);
       console.log(`Ministry: ${result.ministry}`);
       console.log(`Team: ${result.team}`);
+      console.log(`Roles: ${result.roles.join(', ')}`);
       console.log(`Password: ${result.password}`);
       for (const seededUser of result.users) {
         console.log(

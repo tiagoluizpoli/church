@@ -23,3 +23,9 @@ graph TD
     N --> O
     O --> P[published → volunteers see their slice<br>assignments flipped to pending]
 ```
+
+## Open question for a future assignment-screen feature: "claimed elsewhere" vs. self-reported unavailable
+
+Spec 022 (tailoring workspace) surfaced FR-019 — distinguishing "volunteer self-reported unavailable" from "unavailable because another ministry already claimed them for an overlapping `Shift`" — while building the assignment-suggestion UI's future successor. This distinction **does not exist in the domain today**: `Availability` (hanging off `AvailabilityCheck`) only records the volunteer's own mark, with no field for *why* a shift reads as unavailable.
+
+**Recommendation**: derive "claimed elsewhere" at query time — join the volunteer's `Assignment` rows across other `MinistryParticipation`s for overlapping `Shift` times — rather than persisting a stored `unavailability_reason` column. A stored flag would go stale the moment another ministry's assignment changes; a derived join stays correct by construction. See `specs/022-tailoring-workspace/research.md` R6 and `data-model.md` §10 for the full reasoning. No schema change ships with Spec 022 — this is a note for whoever builds the assignment screen next, so the question starts here instead of being rediscovered.

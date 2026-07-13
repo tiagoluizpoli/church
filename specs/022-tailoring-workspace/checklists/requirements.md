@@ -33,3 +33,4 @@
 
 - No clarification markers needed — reasonable defaults documented in Assumptions (ministry-list aggregation rule, filter minimum set, reuse of existing persistence semantics).
 - All items pass on first pass; spec ready for `/speckit-plan`.
+- **Iteration 2 (2026-07-12)**: This checklist validated `spec.md` as it stood before the day-strip/row-save amendment (US3a, FR-020–FR-026, SC-007–SC-009). It has not been re-run against the amended spec — do so (or run `speckit-checklist` fresh) before treating Phase 8 of `tasks.md` as plan-ready, rather than assuming this gate still covers the new sections.

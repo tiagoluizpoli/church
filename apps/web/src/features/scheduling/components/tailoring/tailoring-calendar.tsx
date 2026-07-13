@@ -4,7 +4,10 @@ import {
   ChevronRightIcon,
 } from 'lucide-react';
 import type { DayButtonProps } from 'react-day-picker';
-import { toIsoDateString } from '../participation-tailoring.utils';
+import {
+  parseCalendarDate,
+  toIsoDateString,
+} from '../participation-tailoring.utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -21,12 +24,6 @@ export interface TailoringCalendarProps {
   /** The active day-filter, or `null` when no filter is applied. */
   selectedDate: string | null;
   onSelectedDateChange: (date: string | null) => void;
-}
-
-function toLocalDate(value: string): Date {
-  const datePart = value.slice(0, 10);
-  const [year, month, day] = datePart.split('-').map(Number);
-  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
 }
 
 function startOfMonth(date: Date): Date {
@@ -46,10 +43,14 @@ export function TailoringCalendar({
   selectedDate,
   onSelectedDateChange,
 }: TailoringCalendarProps) {
-  const cycleStart = toLocalDate(cycleStartDate);
-  const cycleEnd = toLocalDate(cycleEndDate);
-  const eventDayDates = [...eventDayMarkers].map((iso) => toLocalDate(iso));
-  const selectedDateObj = selectedDate ? toLocalDate(selectedDate) : undefined;
+  const cycleStart = parseCalendarDate(cycleStartDate);
+  const cycleEnd = parseCalendarDate(cycleEndDate);
+  const eventDayDates = [...eventDayMarkers].map((iso) =>
+    parseCalendarDate(iso),
+  );
+  const selectedDateObj = selectedDate
+    ? parseCalendarDate(selectedDate)
+    : undefined;
 
   return (
     <div data-testid="tailoring-calendar">

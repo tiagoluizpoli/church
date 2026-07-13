@@ -1,5 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { ChevronDownIcon } from 'lucide-react';
+import { useState } from 'react';
 import {
   formatDate,
   formatTimeRange,
@@ -12,6 +14,11 @@ import {
 import { ManualSplitEditor } from './manual-split-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +28,7 @@ import type {
   GetCycleParticipation200EventsItemSlotsItem,
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { cn } from '@/lib/utils';
 import { adminApi } from '@/utils/api-instances';
 
 export interface HeadcountSave {
@@ -36,8 +44,8 @@ export interface TailoringSlotListProps {
   ministryId: string;
   splitForms: Record<string, SplitFormState>;
   headcountDrafts: Record<string, string>;
-  saveHeadcountsPending: boolean;
-  splitPending: boolean;
+  pendingHeadcountShiftId: string | null;
+  pendingSplitSlotId: string | null;
   onToggleInclusion: (input: {
     participationId: string;
     timeSlotId: string;
@@ -135,6 +143,24 @@ function parseValidHeadcounts({
   }, []);
 }
 
+function summarizeSlot(
+  slotView: GetCycleParticipation200EventsItemSlotsItem,
+): string {
+  if (slotView.shifts.length === 0) return 'Not split into shifts yet';
+
+  const shiftLabel = slotView.shifts.length === 1 ? 'shift' : 'shifts';
+  const totalHeadcount = slotView.requirements.reduce(
+    (sum, requirement) => sum + requirement.requiredCount,
+    0,
+  );
+  if (totalHeadcount === 0) {
+    return `${slotView.shifts.length} ${shiftLabel} · no headcounts set yet`;
+  }
+
+  const headcountLabel = totalHeadcount === 1 ? 'headcount' : 'headcounts';
+  return `${slotView.shifts.length} ${shiftLabel} · ${totalHeadcount} ${headcountLabel} requested`;
+}
+
 /** Flat, day-grouped slot list — fully supersedes `ParticipationEventCard`'s
  * old nested-card rendering role (research.md R2): a day header row, then
  * inset event/slot rows, no card-in-card. Inclusion checkbox persists
@@ -146,8 +172,8 @@ export function TailoringSlotList({
   ministryId,
   splitForms,
   headcountDrafts,
-  saveHeadcountsPending,
-  splitPending,
+  pendingHeadcountShiftId,
+  pendingSplitSlotId,
   onToggleInclusion,
   onSplitFormChange,
   onSplitShifts,
@@ -156,6 +182,24 @@ export function TailoringSlotList({
 }: TailoringSlotListProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const uniqueEventIds = [...new Set(events.map((e) => e.event.id))];
+
+  /** Collapsed by default (T-layout: wall-of-forms fix) — a slot only
+   * expands when the leader explicitly opens it, or the instant they check
+   * it in for the first time this session, since that's exactly when they
+   * mean to configure its split/headcount next. */
+  const [expandedSlotIds, setExpandedSlotIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const setSlotExpanded = (slotId: string, expanded: boolean) =>
+    setExpandedSlotIds((current) => {
+      const next = new Set(current);
+      if (expanded) {
+        next.add(slotId);
+      } else {
+        next.delete(slotId);
+      }
+      return next;
+    });
 
   const roleQueries = useQueries({
     queries: uniqueEventIds.map((eventId) => ({
@@ -198,13 +242,14 @@ export function TailoringSlotList({
     <FormControlSizeProvider size={isMobile ? 'touch' : 'default'}>
       <div className="space-y-4" data-testid="tailoring-slot-list">
         <div
-          className="hidden border-border/60 border-b pb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide lg:grid lg:grid-cols-[24px_minmax(0,1fr)_170px_130px] lg:gap-4"
+          className="hidden border-border/60 border-b pb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide lg:grid lg:grid-cols-[24px_minmax(0,1fr)_170px_130px_28px] lg:gap-4"
           data-testid="tailoring-slot-list-column-header"
         >
           <span aria-hidden="true" />
           <span>Slot</span>
           <span>Time</span>
           <span>State</span>
+          <span aria-hidden="true" />
         </div>
         {sortedDayKeys.map((dayKey) => {
           const rows = dayGroups.get(dayKey) ?? [];
@@ -236,9 +281,21 @@ export function TailoringSlotList({
                     }
                     splitForm={splitForms[slotView.slot.id]}
                     headcountDrafts={headcountDrafts}
-                    saveHeadcountsPending={saveHeadcountsPending}
-                    splitPending={splitPending}
-                    onToggleInclusion={onToggleInclusion}
+                    pendingHeadcountShiftId={pendingHeadcountShiftId}
+                    pendingSplitSlotId={pendingSplitSlotId}
+                    expanded={expandedSlotIds.has(slotView.slot.id)}
+                    onToggleExpanded={() =>
+                      setSlotExpanded(
+                        slotView.slot.id,
+                        !expandedSlotIds.has(slotView.slot.id),
+                      )
+                    }
+                    onToggleInclusion={(input) => {
+                      if (input.checked) {
+                        setSlotExpanded(input.timeSlotId, true);
+                      }
+                      onToggleInclusion(input);
+                    }}
                     onSplitFormChange={onSplitFormChange}
                     onSplitShifts={onSplitShifts}
                     onHeadcountChange={onHeadcountChange}
@@ -263,8 +320,10 @@ interface SlotRowProps {
   onRetryRoleCatalog: (() => void) | undefined;
   splitForm: SplitFormState | undefined;
   headcountDrafts: Record<string, string>;
-  saveHeadcountsPending: boolean;
-  splitPending: boolean;
+  pendingHeadcountShiftId: string | null;
+  pendingSplitSlotId: string | null;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   onToggleInclusion: TailoringSlotListProps['onToggleInclusion'];
   onSplitFormChange: TailoringSlotListProps['onSplitFormChange'];
   onSplitShifts: TailoringSlotListProps['onSplitShifts'];
@@ -280,8 +339,10 @@ function SlotRow({
   onRetryRoleCatalog,
   splitForm,
   headcountDrafts,
-  saveHeadcountsPending,
-  splitPending,
+  pendingHeadcountShiftId,
+  pendingSplitSlotId,
+  expanded,
+  onToggleExpanded,
   onToggleInclusion,
   onSplitFormChange,
   onSplitShifts,
@@ -289,200 +350,243 @@ function SlotRow({
   onSaveHeadcounts,
 }: SlotRowProps) {
   const included = slotView.included;
+  const isSavingSplit = pendingSplitSlotId === slotView.slot.id;
 
   return (
     <div
       className="surface-subtle workspace-panel space-y-3"
       data-testid={`tailoring-slot-row-${slotView.slot.id}`}
     >
-      <label className="flex items-start gap-3 lg:grid lg:grid-cols-[24px_minmax(0,1fr)_170px_130px] lg:items-center lg:gap-4">
-        <input
-          type="checkbox"
-          className="radius-control mt-0.5 size-4 shrink-0 cursor-pointer accent-primary lg:mt-0"
-          data-testid={`participation-slot-checkbox-${slotView.slot.id}`}
-          checked={included}
-          onChange={(event) =>
-            onToggleInclusion({
-              participationId: eventView.participation.id,
-              timeSlotId: slotView.slot.id,
-              checked: event.target.checked,
-            })
-          }
-        />
-        <div className="space-y-1 lg:contents">
-          <div className="font-medium">
-            {eventView.event.title}
-            {slotView.slot.label ? ` · ${slotView.slot.label}` : ''}
-          </div>
-          <div className="text-muted-foreground text-xs">
-            {formatTimeRange({
-              start: slotView.slot.startTime,
-              end: slotView.slot.endTime,
-            })}
-          </div>
-        </div>
-        <Badge
-          variant="secondary"
-          className="ml-auto lg:ml-0"
-          data-testid="participation-state-badge"
-        >
-          {participationStateLabel({ state: eventView.participation.state })}
-        </Badge>
-      </label>
-
-      {included ? (
-        <div className="grid gap-5 border-border/60 border-t pt-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-          <div className="space-y-3">
-            {splitForm ? (
-              <ManualSplitEditor
-                slotIndex={0}
-                slotId={slotView.slot.id}
-                splitForm={splitForm}
-                onSplitFormChange={(nextForm) =>
-                  onSplitFormChange({
-                    timeSlotId: slotView.slot.id,
-                    nextForm,
-                  })
-                }
-              />
-            ) : null}
-
-            <Button
-              type="button"
-              data-testid={`save-split-button-${slotView.slot.id}`}
-              disabled={splitPending}
-              onClick={() =>
-                onSplitShifts({
+      <Collapsible open={included && expanded} onOpenChange={onToggleExpanded}>
+        <div className="flex items-start gap-3 lg:grid lg:grid-cols-[24px_minmax(0,1fr)_170px_130px_28px] lg:items-center lg:gap-4">
+          <label className="contents">
+            <input
+              type="checkbox"
+              className="radius-control mt-0.5 size-4 shrink-0 cursor-pointer accent-primary lg:mt-0"
+              data-testid={`participation-slot-checkbox-${slotView.slot.id}`}
+              checked={included}
+              onChange={(event) =>
+                onToggleInclusion({
                   participationId: eventView.participation.id,
-                  slotView,
+                  timeSlotId: slotView.slot.id,
+                  checked: event.target.checked,
                 })
               }
-            >
-              {splitPending ? 'Saving…' : 'Save split'}
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-              Headcount
+            />
+            <div className="space-y-1 lg:contents">
+              <div className="font-medium">
+                {eventView.event.title}
+                {slotView.slot.label ? ` · ${slotView.slot.label}` : ''}
+              </div>
+              <div className="text-muted-foreground text-xs">
+                {formatTimeRange({
+                  start: slotView.slot.startTime,
+                  end: slotView.slot.endTime,
+                })}
+              </div>
             </div>
-            {slotView.shifts.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Save a split first so this slot has shifts to staff.
-              </p>
-            ) : (
-              slotView.shifts.map((shift, shiftIndex) => {
-                const validHeadcounts = parseValidHeadcounts({
-                  shiftId: shift.id,
-                  roleOptions,
-                  headcountDrafts,
-                  requirements: slotView.requirements,
-                });
+          </label>
+          <Badge
+            variant="secondary"
+            className="ml-auto lg:ml-0"
+            data-testid="participation-state-badge"
+          >
+            {participationStateLabel({ state: eventView.participation.state })}
+          </Badge>
+          {included ? (
+            <CollapsibleTrigger
+              className="radius-control relative inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:bg-muted hover:text-foreground lg:justify-self-end"
+              data-testid={`toggle-slot-expand-${slotView.slot.id}`}
+              aria-label={
+                expanded ? 'Collapse slot details' : 'Expand slot details'
+              }
+            >
+              <ChevronDownIcon
+                className={cn(
+                  'size-4 transition-transform duration-200 ease-out motion-reduce:transition-none',
+                  expanded && 'rotate-180',
+                )}
+              />
+            </CollapsibleTrigger>
+          ) : null}
+        </div>
 
-                return (
-                  <div
-                    key={shift.id}
-                    className="space-y-3 border-border/60 border-t pt-3 first:border-t-0 first:pt-0"
-                    data-testid={`participation-shift-row-${shift.id}`}
-                  >
-                    <div className="space-y-1">
-                      <div className="font-medium text-sm">
-                        {shift.label || `Shift ${shiftIndex + 1}`}
-                      </div>
-                      <div className="text-muted-foreground text-xs">
-                        {formatTimeRange({
-                          start: shift.startTime,
-                          end: shift.endTime,
-                        })}
-                      </div>
-                    </div>
+        {included && !expanded ? (
+          <p
+            className="pl-9 text-muted-foreground text-xs lg:pl-9"
+            data-testid={`tailoring-slot-summary-${slotView.slot.id}`}
+          >
+            {summarizeSlot(slotView)}
+          </p>
+        ) : null}
 
-                    {roleOptions.length === 0 &&
-                    roleCatalogStatus === 'loading' ? (
-                      <p
-                        className="text-muted-foreground text-sm"
-                        data-testid={`role-catalog-loading-${shift.id}`}
-                      >
-                        Loading roles…
-                      </p>
-                    ) : roleOptions.length === 0 &&
-                      roleCatalogStatus === 'error' ? (
+        {included ? (
+          <CollapsibleContent
+            data-testid={`tailoring-slot-editor-${slotView.slot.id}`}
+            className="overflow-hidden [transition:height_200ms_cubic-bezier(0.22,1,0.36,1)] data-ending-style:h-0 data-starting-style:h-0 motion-reduce:transition-none"
+            style={{ height: 'var(--collapsible-panel-height)' }}
+          >
+            <div className="grid gap-5 border-border/60 border-t pt-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+              <div className="space-y-3">
+                {splitForm ? (
+                  <ManualSplitEditor
+                    slotIndex={0}
+                    slotId={slotView.slot.id}
+                    splitForm={splitForm}
+                    onSplitFormChange={(nextForm) =>
+                      onSplitFormChange({
+                        timeSlotId: slotView.slot.id,
+                        nextForm,
+                      })
+                    }
+                  />
+                ) : null}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-testid={`save-split-button-${slotView.slot.id}`}
+                  disabled={isSavingSplit}
+                  onClick={() =>
+                    onSplitShifts({
+                      participationId: eventView.participation.id,
+                      slotView,
+                    })
+                  }
+                >
+                  {isSavingSplit ? 'Saving…' : 'Save split'}
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                  Headcount
+                </div>
+                {slotView.shifts.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    Save a split first so this slot has shifts to staff.
+                  </p>
+                ) : (
+                  slotView.shifts.map((shift, shiftIndex) => {
+                    const validHeadcounts = parseValidHeadcounts({
+                      shiftId: shift.id,
+                      roleOptions,
+                      headcountDrafts,
+                      requirements: slotView.requirements,
+                    });
+                    const isSavingHeadcounts =
+                      pendingHeadcountShiftId === shift.id;
+
+                    return (
                       <div
-                        className="flex items-center gap-3 text-destructive text-sm"
-                        data-testid={`role-catalog-error-${shift.id}`}
+                        key={shift.id}
+                        className="space-y-3 border-border/60 border-t pt-3 first:border-t-0 first:pt-0"
+                        data-testid={`participation-shift-row-${shift.id}`}
                       >
-                        <span>Couldn't load roles for this event.</span>
+                        <div className="space-y-1">
+                          <div className="font-medium text-sm">
+                            {shift.label || `Shift ${shiftIndex + 1}`}
+                          </div>
+                          <div className="text-muted-foreground text-xs">
+                            {formatTimeRange({
+                              start: shift.startTime,
+                              end: shift.endTime,
+                            })}
+                          </div>
+                        </div>
+
+                        {roleOptions.length === 0 &&
+                        roleCatalogStatus === 'loading' ? (
+                          <p
+                            className="text-muted-foreground text-sm"
+                            data-testid={`role-catalog-loading-${shift.id}`}
+                          >
+                            Loading roles…
+                          </p>
+                        ) : roleOptions.length === 0 &&
+                          roleCatalogStatus === 'error' ? (
+                          <div
+                            className="flex items-center gap-3 text-destructive text-sm"
+                            data-testid={`role-catalog-error-${shift.id}`}
+                          >
+                            <span>Couldn't load roles for this event.</span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onRetryRoleCatalog?.()}
+                            >
+                              Retry
+                            </Button>
+                          </div>
+                        ) : roleOptions.length === 0 ? (
+                          <p
+                            className="text-muted-foreground text-sm"
+                            data-testid={`role-catalog-empty-${shift.id}`}
+                          >
+                            This ministry has no roles configured yet — set up
+                            roles before assigning headcounts.
+                          </p>
+                        ) : (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {roleOptions.map((role) => (
+                              <div key={role.id} className="space-y-1">
+                                <Label
+                                  htmlFor={`headcount-${shift.id}-${role.id}`}
+                                >
+                                  {role.name}
+                                </Label>
+                                <Input
+                                  id={`headcount-${shift.id}-${role.id}`}
+                                  data-testid={`headcount-input-${shift.id}-${role.id}`}
+                                  type="number"
+                                  min="1"
+                                  step="1"
+                                  placeholder="0"
+                                  value={
+                                    headcountDrafts[
+                                      toHeadcountKey(shift.id, role.id)
+                                    ] ?? ''
+                                  }
+                                  onChange={(event) =>
+                                    onHeadcountChange({
+                                      shiftId: shift.id,
+                                      roleId: role.id,
+                                      value: event.target.value,
+                                    })
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <Button
                           type="button"
-                          size="sm"
                           variant="outline"
-                          onClick={() => onRetryRoleCatalog?.()}
+                          data-testid={`save-headcounts-button-${shift.id}`}
+                          disabled={
+                            isSavingHeadcounts || validHeadcounts.length === 0
+                          }
+                          onClick={() =>
+                            onSaveHeadcounts({
+                              participationId: eventView.participation.id,
+                              shiftId: shift.id,
+                              validHeadcounts,
+                            })
+                          }
                         >
-                          Retry
+                          {isSavingHeadcounts ? 'Saving…' : 'Save headcounts'}
                         </Button>
                       </div>
-                    ) : roleOptions.length === 0 ? (
-                      <p
-                        className="text-muted-foreground text-sm"
-                        data-testid={`role-catalog-empty-${shift.id}`}
-                      >
-                        This ministry has no roles configured yet — set up roles
-                        before assigning headcounts.
-                      </p>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {roleOptions.map((role) => (
-                          <div key={role.id} className="space-y-1">
-                            <Label htmlFor={`headcount-${shift.id}-${role.id}`}>
-                              {role.name}
-                            </Label>
-                            <Input
-                              id={`headcount-${shift.id}-${role.id}`}
-                              data-testid={`headcount-input-${shift.id}-${role.id}`}
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={
-                                headcountDrafts[
-                                  toHeadcountKey(shift.id, role.id)
-                                ] ?? ''
-                              }
-                              onChange={(event) =>
-                                onHeadcountChange({
-                                  shiftId: shift.id,
-                                  roleId: role.id,
-                                  value: event.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <Button
-                      type="button"
-                      data-testid={`save-headcounts-button-${shift.id}`}
-                      disabled={
-                        saveHeadcountsPending || validHeadcounts.length === 0
-                      }
-                      onClick={() =>
-                        onSaveHeadcounts({
-                          participationId: eventView.participation.id,
-                          shiftId: shift.id,
-                          validHeadcounts,
-                        })
-                      }
-                    >
-                      {saveHeadcountsPending ? 'Saving…' : 'Save headcounts'}
-                    </Button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      ) : null}
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </CollapsibleContent>
+        ) : null}
+      </Collapsible>
 
       {eventView.participation.state !== 'tailoring' ? (
         <Link

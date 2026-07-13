@@ -80,12 +80,21 @@ export function buildCycleOptions(
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
+/** Parses the `yyyy-MM-dd` portion of a date-only or full ISO date-time
+ * string as a local calendar date. `new Date(dateOnlyString)` parses at UTC
+ * midnight, which shifts the displayed day back one in timezones behind UTC
+ * — this treats the value as the calendar day it represents instead. */
+export function parseCalendarDate(value: string): Date {
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+}
+
 export function formatDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(new Date(value));
+  }).format(parseCalendarDate(value));
 }
 
 export function formatDateTime(value: string): string {

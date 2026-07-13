@@ -204,17 +204,7 @@ export function CalendarRow({
   onDeleteSlotConfirm,
 }: CalendarRowProps) {
   const id = visibleRowId({ visibleRow });
-  // The Collection model's memoization (see comment above) only re-renders a
-  // row's DOM when `rowKey` itself changes — so besides interaction state,
-  // this must also fold in every field the cell actually displays. Without
-  // this, editing a day's date/title or a slot's label/time updates
-  // react-query's cache correctly but the row silently keeps showing the old
-  // values, since none of the *interaction* flags changed.
-  const dataFingerprint =
-    visibleRow.kind === 'parent'
-      ? `${visibleRow.row.title}-${visibleRow.row.startDate}-${visibleRow.row.status}-${visibleRow.row.slots.length}`
-      : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlySlotInEvent}`;
-  const rowKey = `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteSlotPending ? 'slot-pending' : 'slot-idle'}`;
+  const rowKey = `${id}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteSlotPending ? 'slot-pending' : 'slot-idle'}`;
 
   return (
     <TableRow key={rowKey} id={id} columns={CALENDAR_TABLE_COLUMNS}>

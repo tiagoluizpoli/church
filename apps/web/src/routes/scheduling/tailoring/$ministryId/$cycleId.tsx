@@ -372,6 +372,7 @@ function TailoringWorkspaceRoute() {
               </Link>
               <Button
                 type="button"
+                className="disabled:opacity-40 dark:disabled:opacity-30"
                 data-testid="save-and-fire-availability-button"
                 disabled={!isDirty || saveAndFireAvailability.isPending}
                 onClick={() => {
@@ -381,7 +382,7 @@ function TailoringWorkspaceRoute() {
               >
                 {saveAndFireAvailability.isPending
                   ? 'Sending…'
-                  : 'Save & request availability'}
+                  : 'Request availability'}
               </Button>
             </div>
           ) : null
@@ -441,8 +442,16 @@ function TailoringWorkspaceRoute() {
             ministryId={ministryId}
             splitForms={splitForms}
             headcountDrafts={headcountDrafts}
-            saveHeadcountsPending={saveHeadcounts.isPending}
-            splitPending={splitShifts.isPending}
+            pendingHeadcountShiftId={
+              saveHeadcounts.isPending
+                ? (saveHeadcounts.variables?.shiftId ?? null)
+                : null
+            }
+            pendingSplitSlotId={
+              splitShifts.isPending
+                ? (splitShifts.variables?.slotView.slot.id ?? null)
+                : null
+            }
             onToggleInclusion={({ participationId, timeSlotId, checked }) => {
               const participationEvents = events.find(
                 (eventView) => eventView.participation.id === participationId,

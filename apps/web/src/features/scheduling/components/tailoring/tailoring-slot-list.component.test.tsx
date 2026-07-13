@@ -71,8 +71,8 @@ const NO_OP_PROPS = {
   ministryId: 'ministry-1',
   splitForms: {},
   headcountDrafts: {},
-  saveHeadcountsPending: false,
-  splitPending: false,
+  pendingHeadcountShiftId: null,
+  pendingSplitSlotId: null,
   onToggleInclusion: vi.fn(),
   onSplitFormChange: vi.fn(),
   onSplitShifts: vi.fn(),
@@ -138,7 +138,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
     });
   });
 
-  it('shows shift/headcount controls once a slot is included', async () => {
+  it('shows shift/headcount controls once a slot is included and expanded', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [{ id: 'role-1', name: 'Greeter' }],
       events: [],
@@ -146,6 +146,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
       volunteers: [],
       callerTeamId: null,
     });
+    const user = userEvent.setup();
 
     renderWithProviders(
       <TailoringSlotList
@@ -171,6 +172,9 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
         ]}
       />,
     );
+
+    expect(screen.queryByText('Headcount')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
 
     expect(await screen.findByText('Headcount')).toBeInTheDocument();
   });
@@ -185,6 +189,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
       volunteers: [],
       callerTeamId: null,
     });
+    const user = userEvent.setup();
 
     renderWithProviders(
       <TailoringSlotList
@@ -210,6 +215,8 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
         ]}
       />,
     );
+
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
 
     await screen.findByTestId('participation-shift-row-shift-1');
     expect(
@@ -255,6 +262,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
       />,
     );
 
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
     await screen.findByText('Greeter');
     await user.click(screen.getByTestId('save-headcounts-button-shift-1'));
 
@@ -301,6 +309,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
       callerTeamId: null,
     });
     const onSaveHeadcounts = vi.fn();
+    const user = userEvent.setup();
 
     renderWithProviders(
       <TailoringSlotList
@@ -314,6 +323,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
       />,
     );
 
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
     const saveButton = await screen.findByTestId(
       'save-headcounts-button-shift-1',
     );
@@ -346,6 +356,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
       />,
     );
 
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
     await screen.findByText('Greeter');
     const saveButton = screen.getByTestId('save-headcounts-button-shift-1');
     expect(saveButton).toBeEnabled();
@@ -394,6 +405,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
             });
         }),
     );
+    const user = userEvent.setup();
 
     renderWithProviders(
       <TailoringSlotList
@@ -405,6 +417,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
       />,
     );
 
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
     expect(
       await screen.findByTestId('role-catalog-loading-shift-1'),
     ).toBeInTheDocument();
@@ -417,6 +430,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
       response: { status: 403 },
       message: 'Forbidden',
     });
+    const user = userEvent.setup();
 
     renderWithProviders(
       <TailoringSlotList
@@ -428,6 +442,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
       />,
     );
 
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
     expect(
       await screen.findByTestId('role-catalog-error-shift-1'),
     ).toBeInTheDocument();
@@ -458,6 +473,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
       />,
     );
 
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
     await screen.findByTestId('role-catalog-error-shift-1');
     await user.click(screen.getByRole('button', { name: 'Retry' }));
 
@@ -472,6 +488,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
       volunteers: [],
       callerTeamId: null,
     });
+    const user = userEvent.setup();
 
     renderWithProviders(
       <TailoringSlotList
@@ -483,6 +500,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
       />,
     );
 
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
     expect(
       await screen.findByTestId('role-catalog-empty-shift-1'),
     ).toBeInTheDocument();

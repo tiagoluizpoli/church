@@ -1,0 +1,1 @@
+ALTER TABLE "ministry_participation" ADD COLUMN "touched_at" timestamp with time zone;

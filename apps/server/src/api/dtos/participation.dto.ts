@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   CycleParticipationView,
+  MinistryCycleSummaryView,
   ParticipationEventView,
   ParticipationSlotView,
 } from '../../domain/contracts/application/participation-manager';
@@ -110,6 +111,28 @@ export const fireAvailabilityResponseSchema = z.object({
   notifiedVolunteerCount: z.number(),
 });
 
+export const ministryCycleSummaryResponseSchema = z.object({
+  cycleId: z.string(),
+  name: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  isPartOf: z.boolean(),
+  eventCount: z.number(),
+  slotCount: z.number(),
+  status: z.enum(['not_started', 'in_progress', 'published']),
+  availabilityFiredForAll: z.boolean(),
+});
+export type MinistryCycleSummaryResponse = z.infer<
+  typeof ministryCycleSummaryResponseSchema
+>;
+
+export const ministryCycleSummaryListResponseSchema = z.object({
+  cycles: z.array(ministryCycleSummaryResponseSchema),
+});
+export type MinistryCycleSummaryListResponse = z.infer<
+  typeof ministryCycleSummaryListResponseSchema
+>;
+
 export const availabilityStatusResponseSchema = z.object({
   statuses: z.array(
     z.object({
@@ -167,6 +190,22 @@ function toSlotView(view: ParticipationSlotView) {
   };
 }
 
+function toMinistryCycleSummaryResponse(
+  view: MinistryCycleSummaryView,
+): MinistryCycleSummaryResponse {
+  return {
+    cycleId: view.cycleId as string,
+    name: view.name,
+    startDate: view.startDate.toISOString().slice(0, 10),
+    endDate: view.endDate.toISOString().slice(0, 10),
+    isPartOf: view.isPartOf,
+    eventCount: view.eventCount,
+    slotCount: view.slotCount,
+    status: view.status,
+    availabilityFiredForAll: view.availabilityFiredForAll,
+  };
+}
+
 function toEventView(view: ParticipationEventView) {
   return {
     participation: toParticipationResponse(view.participation),
@@ -186,5 +225,10 @@ export const participationMapper = {
     view: CycleParticipationView,
   ): CycleParticipationResponse {
     return { events: view.events.map(toEventView) };
+  },
+  ministryCycleSummaryListToResponse(
+    views: MinistryCycleSummaryView[],
+  ): MinistryCycleSummaryListResponse {
+    return { cycles: views.map(toMinistryCycleSummaryResponse) };
   },
 };

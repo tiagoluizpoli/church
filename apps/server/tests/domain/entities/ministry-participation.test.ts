@@ -5,6 +5,7 @@ import type {
   MinistryId,
 } from '../../../src/domain/branded-ids';
 import {
+  aggregateCycleTailoringStatus,
   calculateCompletionPercent,
   MinistryParticipation,
 } from '../../../src/domain/entities/ministry-participation';
@@ -115,5 +116,103 @@ describe('MinistryParticipation lifecycle (DL1-MP)', () => {
 
     expect(publishing.state).toBe('published');
     expect(sibling.state).toBe('tailoring');
+  });
+
+  it('DL1-MP-08 touch() sets touchedAt on first call and is a no-op afterward', () => {
+    const participation = buildParticipation();
+    expect(participation.touchedAt).toBeNull();
+
+    participation.touch();
+    const firstTouchedAt = participation.touchedAt;
+    expect(firstTouchedAt).not.toBeNull();
+
+    participation.touch();
+    expect(participation.touchedAt).toBe(firstTouchedAt);
+  });
+});
+
+describe('aggregateCycleTailoringStatus (R16)', () => {
+  it('reads "not started" when eventCount is 0, never vacuously "published"', () => {
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 0,
+        touchedCount: 0,
+        publishedCount: 0,
+        firedOrLaterCount: 0,
+      }),
+    ).toEqual({ status: 'not_started', availabilityFiredForAll: false });
+  });
+
+  it('reads "not started" when no participation has been touched', () => {
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 3,
+        touchedCount: 0,
+        publishedCount: 0,
+        firedOrLaterCount: 0,
+      }),
+    ).toEqual({ status: 'not_started', availabilityFiredForAll: false });
+  });
+
+  it('reads "in progress" when some but not all participations are touched/published', () => {
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 3,
+        touchedCount: 1,
+        publishedCount: 0,
+        firedOrLaterCount: 1,
+      }).status,
+    ).toBe('in_progress');
+
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 3,
+        touchedCount: 3,
+        publishedCount: 2,
+        firedOrLaterCount: 3,
+      }).status,
+    ).toBe('in_progress');
+  });
+
+  it('reads "published" only when every participation is published', () => {
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 3,
+        touchedCount: 3,
+        publishedCount: 3,
+        firedOrLaterCount: 3,
+      }).status,
+    ).toBe('published');
+  });
+
+  it('reads "published" even when touchedCount is 0 — a zero-requirement event can reach published via fireAvailability/startRostering/publish without ever calling touch()', () => {
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 2,
+        touchedCount: 0,
+        publishedCount: 2,
+        firedOrLaterCount: 2,
+      }).status,
+    ).toBe('published');
+  });
+
+  it('availabilityFiredForAll is true only when every participation has moved past tailoring, independent of the published status boundary', () => {
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 2,
+        touchedCount: 2,
+        publishedCount: 0,
+        firedOrLaterCount: 2,
+      }).availabilityFiredForAll,
+    ).toBe(true);
+
+    expect(
+      aggregateCycleTailoringStatus({
+        eventCount: 2,
+        touchedCount: 2,
+        publishedCount: 0,
+        firedOrLaterCount: 1,
+      }).availabilityFiredForAll,
+    ).toBe(false);
   });
 });

@@ -2704,6 +2704,81 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/leader/ministries/{ministryId}/cycles-summary:
+    get:
+      operationId: listMinistryCycleSummaries
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cycleId:
+                          type: string
+                        name:
+                          type: string
+                        startDate:
+                          type: string
+                        endDate:
+                          type: string
+                        isPartOf:
+                          type: boolean
+                        eventCount:
+                          type: number
+                        slotCount:
+                          type: number
+                        status:
+                          type: string
+                          enum:
+                            - not_started
+                            - in_progress
+                            - published
+                        availabilityFiredForAll:
+                          type: boolean
+                      required:
+                        - cycleId
+                        - name
+                        - startDate
+                        - endDate
+                        - isPartOf
+                        - eventCount
+                        - slotCount
+                        - status
+                        - availabilityFiredForAll
+                      additionalProperties: false
+                required:
+                  - cycles
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/leader/participations/{participationId}/inclusions:
     put:
       operationId: setParticipationInclusions

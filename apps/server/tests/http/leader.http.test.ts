@@ -40,6 +40,7 @@ const participationManager = {
   updateShift: vi.fn(),
   deleteShift: vi.fn(),
   upsertRequirement: vi.fn(),
+  listMinistryCycleSummaries: vi.fn(),
 };
 
 const availabilityCheckManager = {
@@ -274,5 +275,67 @@ describe('Leader participation routes', () => {
         },
       ],
     });
+  });
+
+  it('GET /api/v1/leader/ministries/:ministryId/cycles-summary returns 200 matching the DTO schema', async () => {
+    participationManager.listMinistryCycleSummaries.mockResolvedValue([
+      {
+        cycleId: '11111111-1111-1111-8111-111111111111',
+        name: 'August',
+        startDate: new Date('2026-08-01T00:00:00.000Z'),
+        endDate: new Date('2026-08-31T00:00:00.000Z'),
+        isPartOf: true,
+        eventCount: 2,
+        slotCount: 3,
+        status: 'in_progress',
+        availabilityFiredForAll: false,
+      },
+    ]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/leader/ministries/22222222-2222-2222-8222-222222222222/cycles-summary',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      cycles: [
+        {
+          cycleId: '11111111-1111-1111-8111-111111111111',
+          name: 'August',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          isPartOf: true,
+          eventCount: 2,
+          slotCount: 3,
+          status: 'in_progress',
+          availabilityFiredForAll: false,
+        },
+      ],
+    });
+    expect(
+      participationManager.listMinistryCycleSummaries,
+    ).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryId: '22222222-2222-2222-8222-222222222222',
+    });
+  });
+
+  it('GET /api/v1/leader/ministries/:ministryId/cycles-summary returns 403 for a non-leader of the ministry', async () => {
+    rbacGuard.canManageMinistry.mockResolvedValue(false);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/leader/ministries/22222222-2222-2222-8222-222222222222/cycles-summary',
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: 'Not a leader of this ministry',
+    });
+    expect(
+      participationManager.listMinistryCycleSummaries,
+    ).not.toHaveBeenCalled();
   });
 });

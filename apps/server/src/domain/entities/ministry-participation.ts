@@ -21,11 +21,14 @@ export interface MinistryParticipationProps {
   ministryId: MinistryId;
   eventId: EventId;
   state: ParticipationState;
+  touchedAt: Date | null;
 }
 
 export interface MinistryParticipationInput {
-  props: Omit<LooseProps<MinistryParticipationProps>, 'state'> &
-    Partial<Pick<LooseProps<MinistryParticipationProps>, 'state'>>;
+  props: Omit<LooseProps<MinistryParticipationProps>, 'state' | 'touchedAt'> &
+    Partial<
+      Pick<LooseProps<MinistryParticipationProps>, 'state' | 'touchedAt'>
+    >;
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -53,6 +56,50 @@ export function calculateCompletionPercent({
   return Math.min(100, Math.round((assignedCount / requiredCount) * 100));
 }
 
+export type CycleTailoringStatus = 'not_started' | 'in_progress' | 'published';
+
+export interface AggregateCycleTailoringStatusInput {
+  eventCount: number;
+  touchedCount: number;
+  publishedCount: number;
+  firedOrLaterCount: number;
+}
+
+export interface CycleTailoringStatusResult {
+  status: CycleTailoringStatus;
+  availabilityFiredForAll: boolean;
+}
+
+/** R16: rolls up a cycle's per-event `MinistryParticipation` rows into one
+ * leader-facing status using an "all participations must reach X" rule for
+ * both the "Not started" and "Published" boundaries. `eventCount === 0` is
+ * special-cased explicitly rather than left as an implicit vacuous-truth
+ * result of reducing over an empty set — `availabilityFiredForAll` in
+ * particular would otherwise be vacuously (and wrongly) `true` for a cycle
+ * the ministry has no events in (research.md R16's correction note). */
+export function aggregateCycleTailoringStatus({
+  eventCount,
+  touchedCount,
+  publishedCount,
+  firedOrLaterCount,
+}: AggregateCycleTailoringStatusInput): CycleTailoringStatusResult {
+  if (eventCount === 0) {
+    return { status: 'not_started', availabilityFiredForAll: false };
+  }
+
+  const status: CycleTailoringStatus =
+    publishedCount === eventCount
+      ? 'published'
+      : touchedCount === 0
+        ? 'not_started'
+        : 'in_progress';
+
+  return {
+    status,
+    availabilityFiredForAll: firedOrLaterCount === eventCount,
+  };
+}
+
 export class MinistryParticipation extends Entity<
   MinistryParticipationProps,
   MinistryParticipationId
@@ -62,6 +109,7 @@ export class MinistryParticipation extends Entity<
       {
         ...props,
         state: props.state ?? 'tailoring',
+        touchedAt: props.touchedAt ?? null,
       } as MinistryParticipationProps,
       id as MinistryParticipationId,
       createdAt,
@@ -83,6 +131,19 @@ export class MinistryParticipation extends Entity<
 
   get state(): ParticipationState {
     return this._props.state;
+  }
+
+  get touchedAt(): Date | null {
+    return this._props.touchedAt;
+  }
+
+  /** R16: records the first time this participation is edited (inclusion/
+   * split/headcount write). Guarded to set once — a no-op on every call
+   * after the first, so it never overwrites the original touch time. */
+  touch(): void {
+    if (this._props.touchedAt !== null) return;
+    this._props.touchedAt = new Date();
+    this._updatedAt = new Date();
   }
 
   fireAvailability(): void {

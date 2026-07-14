@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   assignment as assignmentTable,
+  ministryParticipation,
   ministryVolunteer,
   role,
   shift as shiftTable,
@@ -485,6 +486,79 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
         strategy: { kind: 'equal-n', n: 2 },
       }),
     ).rejects.toThrow(CrossMinistryScopeError);
+  });
+});
+
+describe('Phase 4 participation manager — Iteration 3 touch()/listMinistryCycleSummaries', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('setInclusions/splitShifts/upsertRequirement each touch the participation exactly once, guarded against re-touching', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participation, slot } = await seedCycleWithEvent({ seed });
+    const { participationManager } = createPhase4Managers();
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(participation.id);
+
+    const [beforeRow] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(and(eq(ministryParticipation.id, participation.id)));
+    expect(beforeRow?.touchedAt).toBeNull();
+
+    await participationManager.setInclusions({
+      churchId,
+      participationId,
+      timeSlotIds: [TimeSlotId.from(slot.id)],
+    });
+
+    const [afterFirstTouch] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(and(eq(ministryParticipation.id, participation.id)));
+    const firstTouchedAt = afterFirstTouch?.touchedAt;
+    expect(firstTouchedAt).not.toBeNull();
+
+    await participationManager.splitShifts({
+      churchId,
+      participationId,
+      timeSlotId: TimeSlotId.from(slot.id),
+      strategy: { kind: 'equal-n', n: 2 },
+    });
+
+    const [afterSecondTouch] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(and(eq(ministryParticipation.id, participation.id)));
+    expect(afterSecondTouch?.touchedAt).toEqual(firstTouchedAt);
+  });
+
+  it('listMinistryCycleSummaries delegates to the repository and includes zero-participation cycles', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Untouched Cycle',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const { participationManager } = createPhase4Managers();
+
+    const rows = await participationManager.listMinistryCycleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      name: 'Untouched Cycle',
+      isPartOf: false,
+      eventCount: 0,
+      slotCount: 0,
+      status: 'not_started',
+      availabilityFiredForAll: false,
+    });
   });
 });
 

@@ -120,6 +120,27 @@ export interface PublishParticipationInput {
   confirmBelowFull?: boolean;
 }
 
+export interface ListMinistryCycleSummariesInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+}
+
+/** Iteration 3 (research.md R15/R16): one row per locked `PlanningCycle`
+ * church-wide, annotated with this ministry's participation data. A cycle
+ * the ministry has zero events in still appears, with `isPartOf: false`,
+ * `status: 'not_started'`, and `availabilityFiredForAll: false`. */
+export interface MinistryCycleSummaryView {
+  cycleId: PlanningCycleId;
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  isPartOf: boolean;
+  eventCount: number;
+  slotCount: number;
+  status: 'not_started' | 'in_progress' | 'published';
+  availabilityFiredForAll: boolean;
+}
+
 export interface IParticipationManager {
   getCycleParticipation(
     input: GetCycleParticipationInput,
@@ -144,4 +165,7 @@ export interface IParticipationManager {
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView>;
   publish(input: PublishParticipationInput): Promise<void>;
+  listMinistryCycleSummaries(
+    input: ListMinistryCycleSummariesInput,
+  ): Promise<MinistryCycleSummaryView[]>;
 }

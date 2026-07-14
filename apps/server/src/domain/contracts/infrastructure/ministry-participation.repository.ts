@@ -78,6 +78,33 @@ export interface AddInclusionInput {
   tx?: TransactionContext;
 }
 
+export interface TouchParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  tx?: TransactionContext;
+}
+
+export interface ListMinistryCycleSummariesInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
+}
+
+/** Iteration 3 (research.md R15/R16): one row per locked `PlanningCycle`
+ * church-wide, annotated with this ministry's participation data. A cycle
+ * the ministry has zero events in still appears, with `isPartOf: false`. */
+export interface MinistryCycleSummaryRow {
+  cycleId: string;
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  isPartOf: boolean;
+  eventCount: number;
+  slotCount: number;
+  status: 'not_started' | 'in_progress' | 'published';
+  availabilityFiredForAll: boolean;
+}
+
 export interface MinistryParticipationRepository {
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
   findByMinistryEvent(
@@ -101,4 +128,8 @@ export interface MinistryParticipationRepository {
   ): Promise<ParticipationSlotInclusion[]>;
   replaceInclusions(input: ReplaceInclusionsInput): Promise<void>;
   addInclusion(input: AddInclusionInput): Promise<void>;
+  touch(input: TouchParticipationInput): Promise<void>;
+  listMinistryCycleSummaries(
+    input: ListMinistryCycleSummariesInput,
+  ): Promise<MinistryCycleSummaryRow[]>;
 }

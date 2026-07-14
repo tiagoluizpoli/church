@@ -25,6 +25,7 @@ import {
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
   fireAvailabilityResponseSchema,
+  ministryCycleSummaryListResponseSchema,
   participationMapper,
   setInclusionsBodySchema,
   shiftListResponseSchema,
@@ -38,6 +39,10 @@ import { headersFromRequest } from '../utils/headers';
 
 interface CycleParticipationRouteParams {
   cycleId: string;
+}
+
+interface MinistryCycleSummaryRouteParams {
+  ministryId: string;
 }
 
 interface CycleMinistryQuery {
@@ -156,6 +161,45 @@ export class LeaderController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         return reply.send(participationMapper.cycleViewToResponse(view));
+      },
+    );
+
+    app.get(
+      '/ministries/:ministryId/cycles-summary',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'listMinistryCycleSummaries',
+          response: {
+            200: ministryCycleSummaryListResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { ministryId } =
+          request.params as MinistryCycleSummaryRouteParams;
+
+        const allowed = await this.rbacGuard.canManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (!allowed) {
+          return reply.status(403).send({
+            error: 'FORBIDDEN',
+            message: 'Not a leader of this ministry',
+          });
+        }
+
+        const views =
+          await this.participationManager.listMinistryCycleSummaries({
+            churchId: ChurchId.from(request.churchId),
+            ministryId: MinistryId.from(ministryId),
+          });
+        return reply.send(
+          participationMapper.ministryCycleSummaryListToResponse(views),
+        );
       },
     );
 

@@ -29,6 +29,7 @@ export function mapMinistryParticipation(
     ministryId: row.ministryId as MinistryId,
     eventId: row.eventId as EventId,
     state: row.state as MinistryParticipationProps['state'],
+    touchedAt: row.touchedAt,
   };
 
   return new MinistryParticipation({

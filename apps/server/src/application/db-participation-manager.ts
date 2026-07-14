@@ -10,6 +10,8 @@ import type {
   GetServingProfileInput,
   IParticipationManager,
   ListEligibleVolunteersInput,
+  ListMinistryCycleSummariesInput,
+  MinistryCycleSummaryView,
   ParticipationCompletionView,
   ParticipationEventView,
   ParticipationSlotView,
@@ -238,6 +240,13 @@ export class DbParticipationManager implements IParticipationManager {
           });
         }
       }
+
+      participation.touch();
+      await this.participationRepository.touch({
+        churchId: input.churchId,
+        participationId: input.participationId,
+        tx,
+      });
     });
   }
 
@@ -283,6 +292,13 @@ export class DbParticipationManager implements IParticipationManager {
         churchId: input.churchId,
         participationId: input.participationId,
         timeSlotId: input.timeSlotId,
+        tx,
+      });
+
+      participation.touch();
+      await this.participationRepository.touch({
+        churchId: input.churchId,
+        participationId: input.participationId,
         tx,
       });
 
@@ -369,7 +385,7 @@ export class DbParticipationManager implements IParticipationManager {
       });
       ensureTailoring({ participation, action: 'upsert_requirement' });
 
-      return this.shiftRepository.upsertRequirement({
+      const requirement = await this.shiftRepository.upsertRequirement({
         churchId: input.churchId,
         shiftId: input.shiftId,
         participationId: shift.participationId,
@@ -379,6 +395,15 @@ export class DbParticipationManager implements IParticipationManager {
         notes: input.notes,
         tx,
       });
+
+      participation.touch();
+      await this.participationRepository.touch({
+        churchId: input.churchId,
+        participationId: participation.id,
+        tx,
+      });
+
+      return requirement;
     });
   }
 
@@ -631,6 +656,29 @@ export class DbParticipationManager implements IParticipationManager {
         });
       }
     });
+  }
+
+  async listMinistryCycleSummaries(
+    input: ListMinistryCycleSummariesInput,
+  ): Promise<MinistryCycleSummaryView[]> {
+    await this.ministryRepository.getById(input.churchId, input.ministryId);
+
+    const rows = await this.participationRepository.listMinistryCycleSummaries({
+      churchId: input.churchId,
+      ministryId: input.ministryId,
+    });
+
+    return rows.map((row) => ({
+      cycleId: row.cycleId as MinistryCycleSummaryView['cycleId'],
+      name: row.name,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      isPartOf: row.isPartOf,
+      eventCount: row.eventCount,
+      slotCount: row.slotCount,
+      status: row.status,
+      availabilityFiredForAll: row.availabilityFiredForAll,
+    }));
   }
 
   private async getOrCreateParticipation(

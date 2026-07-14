@@ -1,11 +1,29 @@
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area';
+import type { Ref } from 'react';
 import { cn } from '@/lib/utils';
+
+type ScrollbarOrientation = NonNullable<
+  ScrollAreaPrimitive.Scrollbar.Props['orientation']
+>;
+
+interface ScrollAreaProps extends ScrollAreaPrimitive.Root.Props {
+  viewportClassName?: string;
+  viewportRef?: Ref<HTMLDivElement>;
+  viewportTestId?: string;
+  scrollbarOrientation?: ScrollbarOrientation;
+  scrollbarClassName?: string;
+}
 
 function ScrollArea({
   className,
+  viewportClassName,
+  viewportRef,
+  viewportTestId,
+  scrollbarOrientation,
+  scrollbarClassName,
   children,
   ...props
-}: ScrollAreaPrimitive.Root.Props) {
+}: ScrollAreaProps) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -13,12 +31,20 @@ function ScrollArea({
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
+        ref={viewportRef}
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] outline-none transition-[color,box-shadow] focus-visible:outline-1 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        data-testid={viewportTestId}
+        className={cn(
+          'size-full rounded-[inherit] outline-none transition-[color,box-shadow] focus-visible:outline-1 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+          viewportClassName,
+        )}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
-      <ScrollBar />
+      <ScrollBar
+        orientation={scrollbarOrientation}
+        className={scrollbarClassName}
+      />
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   );

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -20,7 +20,7 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 import {
-  buildEventDayMarkers,
+  buildSlotDayMarkers,
   classifyTailoringFetchError,
   countIncludedSlots,
   countShifts,
@@ -31,8 +31,8 @@ import {
   formatDate,
   type SplitFormState,
   type TimeWindowFilter,
+  toCalendarDateString,
   toHeadcountKey,
-  toIsoDateString,
   toIsoString,
   validateManualSpans,
 } from '@/features/scheduling/components/participation-tailoring.utils';
@@ -40,9 +40,13 @@ import { TailoringCalendar } from '@/features/scheduling/components/tailoring/ta
 import { TailoringFilters } from '@/features/scheduling/components/tailoring/tailoring-filters';
 import {
   type HeadcountSave,
+  type HeadcountSavesForShift,
   TailoringSlotList,
 } from '@/features/scheduling/components/tailoring/tailoring-slot-list';
-import type { GetCycleParticipation200EventsItemSlotsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetCycleParticipation200EventsItem,
+  GetCycleParticipation200EventsItemSlotsItem,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -51,12 +55,32 @@ export const Route = createFileRoute(
   component: TailoringWorkspaceRoute,
 });
 
+interface StatChipProps {
+  label: string;
+  value: number;
+  testId: string;
+}
+
+function StatChip({ label, value, testId }: StatChipProps) {
+  return (
+    <div className="px-3 py-1.5">
+      <span className="text-muted-foreground text-xs">{label}</span>{' '}
+      <span className="font-medium" data-testid={testId}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.';
+  return error instanceof Error
+    ? error.message
+    : 'Something went wrong. Try again.';
 }
 
 interface SaveInclusionsParams {
   participationId: string;
+  timeSlotId: string;
   timeSlotIds: string[];
 }
 
@@ -67,8 +91,190 @@ interface SplitShiftsParams {
 
 interface SaveHeadcountsParams {
   participationId: string;
+  timeSlotId: string;
+  headcountSavesByShift: HeadcountSavesForShift[];
+}
+
+interface HeadcountSaveAttempt {
   shiftId: string;
-  validHeadcounts: HeadcountSave[];
+  headcount: HeadcountSave;
+}
+
+interface SplitDirtySlotIdsParams {
+  splitForms: Record<string, SplitFormState>;
+  savedSplitForms: Record<string, SplitFormState>;
+}
+
+interface HeadcountDirtySlotIdsParams {
+  events: GetCycleParticipation200EventsItem[];
+  headcountDrafts: Record<string, string>;
+  savedHeadcountDrafts: Record<string, string>;
+}
+
+function getSplitDirtySlotIds({
+  splitForms,
+  savedSplitForms,
+}: SplitDirtySlotIdsParams): Set<string> {
+  return new Set(
+    Object.keys(splitForms).filter(
+      (slotId) =>
+        JSON.stringify(splitForms[slotId]) !==
+        JSON.stringify(savedSplitForms[slotId]),
+    ),
+  );
+}
+
+function getHeadcountDirtySlotIds({
+  events,
+  headcountDrafts,
+  savedHeadcountDrafts,
+}: HeadcountDirtySlotIdsParams): Set<string> {
+  const dirtySlotIds = new Set<string>();
+
+  for (const eventView of events) {
+    for (const slotView of eventView.slots) {
+      const shiftIds = new Set(slotView.shifts.map((shift) => shift.id));
+      const keys = new Set([
+        ...Object.keys(headcountDrafts),
+        ...Object.keys(savedHeadcountDrafts),
+      ]);
+      const hasDirtyDraft = [...keys].some((key) => {
+        const [shiftId] = key.split(':');
+        return (
+          shiftIds.has(shiftId) &&
+          headcountDrafts[key] !== savedHeadcountDrafts[key]
+        );
+      });
+
+      if (hasDirtyDraft) dirtySlotIds.add(slotView.slot.id);
+    }
+  }
+
+  return dirtySlotIds;
+}
+
+interface EditSessionState {
+  splitForms: Record<string, SplitFormState>;
+  savedSplitForms: Record<string, SplitFormState>;
+  headcountDrafts: Record<string, string>;
+  savedHeadcountDrafts: Record<string, string>;
+  /** Session-scoped, not persisted — every `MinistryParticipation` touched
+   * by a successful inclusion/split/headcount edit since the workspace was
+   * opened. Drives both the unsaved-changes navigation blocker (R8) and the
+   * batched "Save & request availability" action (R4). */
+  touchedParticipationIds: Set<string>;
+}
+
+const initialEditSessionState: EditSessionState = {
+  splitForms: {},
+  savedSplitForms: {},
+  headcountDrafts: {},
+  savedHeadcountDrafts: {},
+  touchedParticipationIds: new Set(),
+};
+
+interface SavedHeadcountEntry {
+  key: string;
+  value: string;
+}
+
+type EditSessionAction =
+  | {
+      type: 'initialized';
+      splitForms: Record<string, SplitFormState>;
+      headcountDrafts: Record<string, string>;
+    }
+  | {
+      type: 'split-form-changed';
+      timeSlotId: string;
+      nextForm: SplitFormState;
+    }
+  | { type: 'headcount-draft-changed'; key: string; value: string }
+  | { type: 'inclusion-saved'; participationId: string }
+  | { type: 'split-saved'; participationId: string; slotId: string }
+  | {
+      type: 'headcounts-saved';
+      participationId: string;
+      savedHeadcounts: SavedHeadcountEntry[];
+    }
+  | { type: 'availability-sent' };
+
+/** These five pieces of state all change together across the same
+ * save/dirty lifecycle (draft edits → per-slot save → touched-for-batch),
+ * so they're modeled as one reducer instead of five independent `useState`
+ * calls whose updates would otherwise need to stay manually in sync across
+ * every mutation's `onSuccess`. `selectedDate`/`nameQuery`/`timeWindowFilter`/
+ * `confirmSendOpen` stay outside this reducer — they're genuinely
+ * independent UI state, not part of the edit session. */
+function editSessionReducer(
+  state: EditSessionState,
+  action: EditSessionAction,
+): EditSessionState {
+  switch (action.type) {
+    case 'initialized':
+      return {
+        ...state,
+        splitForms: action.splitForms,
+        savedSplitForms: action.splitForms,
+        headcountDrafts: action.headcountDrafts,
+        savedHeadcountDrafts: action.headcountDrafts,
+      };
+    case 'split-form-changed':
+      return {
+        ...state,
+        splitForms: {
+          ...state.splitForms,
+          [action.timeSlotId]: action.nextForm,
+        },
+      };
+    case 'headcount-draft-changed':
+      return {
+        ...state,
+        headcountDrafts: {
+          ...state.headcountDrafts,
+          [action.key]: action.value,
+        },
+      };
+    case 'inclusion-saved':
+      return {
+        ...state,
+        touchedParticipationIds: new Set([
+          ...state.touchedParticipationIds,
+          action.participationId,
+        ]),
+      };
+    case 'split-saved':
+      return {
+        ...state,
+        savedSplitForms: {
+          ...state.savedSplitForms,
+          [action.slotId]: state.splitForms[action.slotId],
+        },
+        touchedParticipationIds: new Set([
+          ...state.touchedParticipationIds,
+          action.participationId,
+        ]),
+      };
+    case 'headcounts-saved':
+      if (action.savedHeadcounts.length === 0) return state;
+      return {
+        ...state,
+        savedHeadcountDrafts: {
+          ...state.savedHeadcountDrafts,
+          ...Object.fromEntries(
+            action.savedHeadcounts.map(({ key, value }) => [key, value]),
+          ),
+        },
+        touchedParticipationIds: new Set([
+          ...state.touchedParticipationIds,
+          action.participationId,
+        ]),
+      };
+    case 'availability-sent':
+      return { ...state, touchedParticipationIds: new Set() };
+    default:
+      return state;
+  }
 }
 
 function TailoringWorkspaceRoute() {
@@ -76,27 +282,23 @@ function TailoringWorkspaceRoute() {
   const queryClient = useQueryClient();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [confirmSendOpen, setConfirmSendOpen] = useState(false);
   const [nameQuery, setNameQuery] = useState('');
   const [timeWindowFilter, setTimeWindowFilter] = useState<TimeWindowFilter>({
     mode: 'starts',
   });
-  const [splitForms, setSplitForms] = useState<Record<string, SplitFormState>>(
-    {},
+  const [editSession, dispatchEditSession] = useReducer(
+    editSessionReducer,
+    initialEditSessionState,
   );
-  const [headcountDrafts, setHeadcountDrafts] = useState<
-    Record<string, string>
-  >({});
-  /** Session-scoped, not persisted — every `MinistryParticipation` touched by
-   * a successful inclusion/split/headcount edit since the workspace was
-   * opened. Drives both the unsaved-changes navigation blocker (R8) and the
-   * batched "Save & request availability" action (R4). */
-  const [touchedParticipationIds, setTouchedParticipationIds] = useState<
-    Set<string>
-  >(new Set());
-  const markTouched = (participationId: string) =>
-    setTouchedParticipationIds(
-      (current) => new Set([...current, participationId]),
-    );
+  const {
+    splitForms,
+    savedSplitForms,
+    headcountDrafts,
+    savedHeadcountDrafts,
+    touchedParticipationIds,
+  } = editSession;
+  const initializedWorkspaceKey = useRef<string | null>(null);
 
   const cycleQuery = useQuery({
     queryKey: ['tailoring-cycle', cycleId],
@@ -122,11 +324,35 @@ function TailoringWorkspaceRoute() {
 
   useEffect(() => {
     if (!participationQuery.data) return;
-    setSplitForms(createInitialSplitForms(participationQuery.data.events));
-    setHeadcountDrafts(
-      createInitialHeadcountDrafts(participationQuery.data.events),
+    const workspaceKey = `${ministryId}:${cycleId}`;
+    if (initializedWorkspaceKey.current === workspaceKey) return;
+    initializedWorkspaceKey.current = workspaceKey;
+    const initialSplitForms = createInitialSplitForms(
+      participationQuery.data.events,
     );
-  }, [participationQuery.data]);
+    const initialHeadcountDrafts = createInitialHeadcountDrafts(
+      participationQuery.data.events,
+    );
+    dispatchEditSession({
+      type: 'initialized',
+      splitForms: initialSplitForms,
+      headcountDrafts: initialHeadcountDrafts,
+    });
+  }, [cycleId, ministryId, participationQuery.data]);
+
+  const splitDirtySlotIds = useMemo(
+    () => getSplitDirtySlotIds({ splitForms, savedSplitForms }),
+    [savedSplitForms, splitForms],
+  );
+  const headcountDirtySlotIds = useMemo(
+    () =>
+      getHeadcountDirtySlotIds({
+        events,
+        headcountDrafts,
+        savedHeadcountDrafts,
+      }),
+    [events, headcountDrafts, savedHeadcountDrafts],
+  );
 
   const refreshParticipation = async () => {
     await queryClient.invalidateQueries({
@@ -145,7 +371,7 @@ function TailoringWorkspaceRoute() {
       return { participationId };
     },
     onSuccess: async ({ participationId }) => {
-      markTouched(participationId);
+      dispatchEditSession({ type: 'inclusion-saved', participationId });
       await refreshParticipation();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -167,7 +393,7 @@ function TailoringWorkspaceRoute() {
           slotView.slot.id,
           { strategy: { kind: 'equal-n', n: count } },
         );
-        return { participationId };
+        return { participationId, slotId: slotView.slot.id };
       }
 
       const error = validateManualSpans({ slotView, spans: form.manualSpans });
@@ -187,11 +413,11 @@ function TailoringWorkspaceRoute() {
           },
         },
       );
-      return { participationId };
+      return { participationId, slotId: slotView.slot.id };
     },
-    onSuccess: async ({ participationId }) => {
+    onSuccess: async ({ participationId, slotId }) => {
       toast.success('Shifts updated.');
-      markTouched(participationId);
+      dispatchEditSession({ type: 'split-saved', participationId, slotId });
       await refreshParticipation();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -200,11 +426,15 @@ function TailoringWorkspaceRoute() {
   const saveHeadcounts = useMutation({
     mutationFn: async ({
       participationId,
-      shiftId,
-      validHeadcounts,
+      timeSlotId,
+      headcountSavesByShift,
     }: SaveHeadcountsParams) => {
-      await Promise.all(
-        validHeadcounts.map((headcount) =>
+      const attempts: HeadcountSaveAttempt[] = headcountSavesByShift.flatMap(
+        ({ shiftId, validHeadcounts }) =>
+          validHeadcounts.map((headcount) => ({ shiftId, headcount })),
+      );
+      const results = await Promise.allSettled(
+        attempts.map(({ shiftId, headcount }) =>
           adminApi.upsertShiftRequirement(shiftId, {
             roleId: headcount.roleId,
             teamId: headcount.teamId,
@@ -212,11 +442,30 @@ function TailoringWorkspaceRoute() {
           }),
         ),
       );
-      return { participationId };
+      const savedHeadcounts = attempts.filter(
+        (_attempt, index) => results[index]?.status === 'fulfilled',
+      );
+      return {
+        participationId,
+        timeSlotId,
+        savedHeadcounts,
+        failedCount: attempts.length - savedHeadcounts.length,
+      };
     },
-    onSuccess: async ({ participationId }) => {
-      toast.success('Headcounts saved.');
-      markTouched(participationId);
+    onSuccess: async ({ participationId, savedHeadcounts, failedCount }) => {
+      dispatchEditSession({
+        type: 'headcounts-saved',
+        participationId,
+        savedHeadcounts: savedHeadcounts.map(({ shiftId, headcount }) => ({
+          key: toHeadcountKey(shiftId, headcount.roleId),
+          value: String(headcount.requiredCount),
+        })),
+      });
+      if (failedCount > 0) {
+        toast.error('Some headcounts could not be saved. Try again.');
+      } else {
+        toast.success('Headcounts saved.');
+      }
       await refreshParticipation();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -244,22 +493,23 @@ function TailoringWorkspaceRoute() {
     },
     onSuccess: async () => {
       toast.success('Availability requests sent.');
-      setTouchedParticipationIds(new Set());
+      dispatchEditSession({ type: 'availability-sent' });
       await refreshParticipation();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
-  const isDirty = touchedParticipationIds.size > 0;
+  const hasUnsavedDraftEdits =
+    splitDirtySlotIds.size > 0 || headcountDirtySlotIds.size > 0;
+  const hasUnsentChanges = touchedParticipationIds.size > 0;
+  const isDirty = hasUnsentChanges || hasUnsavedDraftEdits;
   const blocker = useBlocker({
     shouldBlockFn: () => isDirty,
     enableBeforeUnload: () => isDirty,
     withResolver: true,
   });
 
-  const eventDayMarkers = buildEventDayMarkers({
-    events: events.map((eventView) => eventView.event),
-  });
+  const eventDayMarkers = buildSlotDayMarkers({ events });
 
   const dayFiltered = selectedDate
     ? events
@@ -267,8 +517,7 @@ function TailoringWorkspaceRoute() {
           ...eventView,
           slots: eventView.slots.filter(
             (slotView) =>
-              toIsoDateString(new Date(slotView.slot.startTime)) ===
-              selectedDate,
+              toCalendarDateString(slotView.slot.startTime) === selectedDate,
           ),
         }))
         .filter((eventView) => eventView.slots.length > 0)
@@ -303,6 +552,11 @@ function TailoringWorkspaceRoute() {
   const includedSlotCount = countIncludedSlots(events);
   const shiftCount = countShifts(events);
   const eventCount = events.length;
+  const touchedEventTitles = events
+    .filter((eventView) =>
+      touchedParticipationIds.has(eventView.participation.id),
+    )
+    .map((eventView) => eventView.event.title);
   const cycleDateSpan = cycleQuery.data
     ? `${formatDate(cycleQuery.data.cycle.startDate)} – ${formatDate(cycleQuery.data.cycle.endDate)}`
     : null;
@@ -313,7 +567,7 @@ function TailoringWorkspaceRoute() {
         title={
           ministryName && cycleQuery.data
             ? `${ministryName} · ${cycleQuery.data.cycle.name}`
-            : 'Tailoring workspace'
+            : 'Rostering workspace'
         }
         description={
           cycleDateSpan
@@ -323,67 +577,66 @@ function TailoringWorkspaceRoute() {
         autoFocusTitle
         aside={
           !isLoading && !errorKind ? (
-            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
-              <div className="radius-surface border border-border/70 bg-background/70 px-3 py-1.5 text-sm">
-                <span className="text-muted-foreground text-xs">Events</span>{' '}
-                <span
-                  className="font-medium"
-                  data-testid="tailoring-event-count"
-                >
-                  {eventCount}
-                </span>
+            <div className="flex w-full flex-wrap items-center gap-3 xl:w-auto xl:justify-end">
+              <div className="radius-surface flex divide-x divide-border/70 border border-border/70 bg-background/70 text-sm">
+                <StatChip
+                  label="Events"
+                  value={eventCount}
+                  testId="tailoring-event-count"
+                />
+                <StatChip
+                  label="Slots"
+                  value={includedSlotCount}
+                  testId="tailoring-included-count"
+                />
+                <StatChip
+                  label="Shifts"
+                  value={shiftCount}
+                  testId="tailoring-shift-count"
+                />
+                {hasUnsentChanges ? (
+                  <StatChip
+                    label="Unsent"
+                    value={touchedParticipationIds.size}
+                    testId="tailoring-touched-count"
+                  />
+                ) : null}
               </div>
-              <div className="radius-surface border border-border/70 bg-background/70 px-3 py-1.5 text-sm">
-                <span className="text-muted-foreground text-xs">Slots</span>{' '}
-                <span
-                  className="font-medium"
-                  data-testid="tailoring-included-count"
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/scheduling/tailoring/$ministryId"
+                  params={{ ministryId }}
+                  search={{ browse: true }}
+                  data-testid="browse-all-cycles-link"
+                  className={buttonVariants({ variant: 'ghost' })}
                 >
-                  {includedSlotCount}
-                </span>
+                  Browse cycles
+                </Link>
+                <Link
+                  to="/scheduling/builder-events"
+                  search={{ ministryId }}
+                  data-testid="open-builder-link"
+                  className={buttonVariants({ variant: 'outline' })}
+                >
+                  Open builder
+                </Link>
+                <Button
+                  type="button"
+                  className="disabled:opacity-40 dark:disabled:opacity-30"
+                  data-testid="save-and-fire-availability-button"
+                  disabled={
+                    !hasUnsentChanges || saveAndFireAvailability.isPending
+                  }
+                  onClick={() => {
+                    if (saveAndFireAvailability.isPending) return;
+                    setConfirmSendOpen(true);
+                  }}
+                >
+                  {saveAndFireAvailability.isPending
+                    ? 'Sending…'
+                    : 'Request availability'}
+                </Button>
               </div>
-              <div className="radius-surface border border-border/70 bg-background/70 px-3 py-1.5 text-sm">
-                <span className="text-muted-foreground text-xs">Shifts</span>{' '}
-                <span
-                  className="font-medium"
-                  data-testid="tailoring-shift-count"
-                >
-                  {shiftCount}
-                </span>
-              </div>
-              {isDirty ? (
-                <div
-                  className="radius-surface border border-border/70 bg-background/70 px-3 py-1.5 text-sm"
-                  data-testid="tailoring-touched-count"
-                >
-                  <span className="text-muted-foreground text-xs">Touched</span>{' '}
-                  <span className="font-medium">
-                    {touchedParticipationIds.size}
-                  </span>
-                </div>
-              ) : null}
-              <Link
-                to="/scheduling/builder-events"
-                search={{ ministryId }}
-                data-testid="open-builder-link"
-                className={buttonVariants({ variant: 'outline' })}
-              >
-                Open builder
-              </Link>
-              <Button
-                type="button"
-                className="disabled:opacity-40 dark:disabled:opacity-30"
-                data-testid="save-and-fire-availability-button"
-                disabled={!isDirty || saveAndFireAvailability.isPending}
-                onClick={() => {
-                  if (saveAndFireAvailability.isPending) return;
-                  saveAndFireAvailability.mutate();
-                }}
-              >
-                {saveAndFireAvailability.isPending
-                  ? 'Sending…'
-                  : 'Request availability'}
-              </Button>
             </div>
           ) : null
         }
@@ -420,8 +673,8 @@ function TailoringWorkspaceRoute() {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(320px,0.6fr)_minmax(0,1.4fr)] lg:items-start">
-          <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+        <div data-testid="tailoring-workspace-stack" className="space-y-4">
+          <div className="sticky top-4 z-10 space-y-4 bg-background pb-4">
             <TailoringCalendar
               cycleStartDate={cycleQuery.data.cycle.startDate}
               cycleEndDate={cycleQuery.data.cycle.endDate}
@@ -442,14 +695,22 @@ function TailoringWorkspaceRoute() {
             ministryId={ministryId}
             splitForms={splitForms}
             headcountDrafts={headcountDrafts}
-            pendingHeadcountShiftId={
+            savedHeadcountDrafts={savedHeadcountDrafts}
+            splitDirtySlotIds={splitDirtySlotIds}
+            headcountDirtySlotIds={headcountDirtySlotIds}
+            pendingHeadcountSlotId={
               saveHeadcounts.isPending
-                ? (saveHeadcounts.variables?.shiftId ?? null)
+                ? (saveHeadcounts.variables?.timeSlotId ?? null)
                 : null
             }
             pendingSplitSlotId={
               splitShifts.isPending
                 ? (splitShifts.variables?.slotView.slot.id ?? null)
+                : null
+            }
+            pendingInclusionSlotId={
+              saveInclusions.isPending
+                ? (saveInclusions.variables?.timeSlotId ?? null)
                 : null
             }
             onToggleInclusion={({ participationId, timeSlotId, checked }) => {
@@ -463,38 +724,38 @@ function TailoringWorkspaceRoute() {
                 ? [...new Set([...currentIncluded, timeSlotId])]
                 : currentIncluded.filter((id) => id !== timeSlotId);
 
-              if (!checked) {
-                setSplitForms((current) => {
-                  const { [timeSlotId]: _removed, ...rest } = current;
-                  return rest;
-                });
-              }
-
               saveInclusions.mutate({
                 participationId,
+                timeSlotId,
                 timeSlotIds: nextIncluded,
               });
             }}
             onSplitFormChange={({ timeSlotId, nextForm }) =>
-              setSplitForms((current) => ({
-                ...current,
-                [timeSlotId]: nextForm,
-              }))
+              dispatchEditSession({
+                type: 'split-form-changed',
+                timeSlotId,
+                nextForm,
+              })
             }
             onSplitShifts={({ participationId, slotView }) =>
               splitShifts.mutate({ participationId, slotView })
             }
             onHeadcountChange={({ shiftId, roleId, value }) =>
-              setHeadcountDrafts((current) => ({
-                ...current,
-                [toHeadcountKey(shiftId, roleId)]: value,
-              }))
+              dispatchEditSession({
+                type: 'headcount-draft-changed',
+                key: toHeadcountKey(shiftId, roleId),
+                value,
+              })
             }
-            onSaveHeadcounts={({ participationId, shiftId, validHeadcounts }) =>
+            onSaveHeadcounts={({
+              participationId,
+              timeSlotId,
+              headcountSavesByShift,
+            }) =>
               saveHeadcounts.mutate({
                 participationId,
-                shiftId,
-                validHeadcounts,
+                timeSlotId,
+                headcountSavesByShift,
               })
             }
           />
@@ -506,9 +767,9 @@ function TailoringWorkspaceRoute() {
           <AlertDialogHeader>
             <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
             <AlertDialogDescription>
-              You've touched slots or shifts in this session but haven't sent
-              availability requests yet. Leaving now won't notify volunteers of
-              these changes.
+              {hasUnsavedDraftEdits
+                ? 'You have unsaved shift-split or headcount changes. Leaving now will discard them.'
+                : "You've touched slots or shifts in this session but haven't sent availability requests yet. Leaving now won't notify volunteers of these changes."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -524,6 +785,50 @@ function TailoringWorkspaceRoute() {
               onClick={() => blocker.proceed?.()}
             >
               Leave anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmSendOpen}>
+        <AlertDialogContent data-testid="tailoring-send-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Send {touchedEventTitles.length}{' '}
+              {touchedEventTitles.length === 1
+                ? 'availability request'
+                : 'availability requests'}
+              ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Volunteers for the following{' '}
+              {touchedEventTitles.length === 1 ? 'event' : 'events'} will be
+              notified. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="max-h-40 list-inside list-disc overflow-y-auto text-foreground text-sm">
+            {touchedEventTitles.map((title, index) => (
+              <li key={`${title}-${index}`} className="wrap-break-word">
+                {title}
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              data-testid="tailoring-send-cancel"
+              onClick={() => setConfirmSendOpen(false)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="tailoring-send-confirm"
+              onClick={() => {
+                setConfirmSendOpen(false);
+                saveAndFireAvailability.mutate();
+              }}
+            >
+              Send {touchedEventTitles.length}{' '}
+              {touchedEventTitles.length === 1 ? 'request' : 'requests'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -66,7 +66,37 @@ describe('Tailoring ministry list route (US1/T013)', () => {
     expect(table).toHaveTextContent('2');
   });
 
-  it('navigates to the ministry route when a row is selected', async () => {
+  it('renders header stat pills for ministry/event/slot totals', async () => {
+    listMinistries.mockResolvedValue({
+      ministries: [
+        { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
+      ],
+    });
+    listPlanningCycles.mockResolvedValue({
+      cycles: [{ id: 'cycle-1', name: 'August', state: 'locked' }],
+    });
+    listEvents.mockResolvedValue({
+      events: [{ id: 'event-1', planningCycleId: 'cycle-1' }],
+    });
+    getCycleParticipation.mockResolvedValue({
+      events: [{ slots: [{}, {}] }],
+    });
+
+    renderTailoringIndex();
+
+    await screen.findByRole('grid', { name: 'Ministries' });
+    expect(screen.getByTestId('tailoring-ministry-count')).toHaveTextContent(
+      '1',
+    );
+    expect(
+      screen.getByTestId('tailoring-ministry-event-total'),
+    ).toHaveTextContent('1');
+    expect(
+      screen.getByTestId('tailoring-ministry-slot-total'),
+    ).toHaveTextContent('2');
+  });
+
+  it('navigates to the ministry route when the Tailoring button is activated', async () => {
     listMinistries.mockResolvedValue({
       ministries: [
         { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
@@ -78,8 +108,11 @@ describe('Tailoring ministry list route (US1/T013)', () => {
     const user = userEvent.setup();
     const { router } = renderTailoringIndex();
 
-    const row = await screen.findByRole('row', { name: /Greeters/ });
-    await user.click(row);
+    await screen.findByRole('grid', { name: 'Ministries' });
+    const buttons = screen.getAllByTestId(
+      'ministry-tailoring-button-ministry-1',
+    );
+    await user.click(buttons[0]);
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(

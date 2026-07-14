@@ -39,7 +39,34 @@ describe('MinistryTailoringList desktop table (US1/T010)', () => {
     expect(untouchedCells[1]).toHaveTextContent('0');
   });
 
-  it('calls onSelectMinistry when a row is activated', async () => {
+  it('renders inside the same card/panel surface as the cycle list', () => {
+    renderWithProviders(
+      <MinistryTailoringList rows={ROWS} onSelectMinistry={vi.fn()} />,
+    );
+
+    expect(
+      screen.getByTestId('ministry-tailoring-list-panel'),
+    ).toBeInTheDocument();
+  });
+
+  it('sorts by a column when its header is activated', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <MinistryTailoringList rows={ROWS} onSelectMinistry={vi.fn()} />,
+    );
+
+    const table = screen.getByRole('grid', { name: 'Ministries' });
+    await user.click(
+      within(table).getByRole('columnheader', { name: 'Events' }),
+    );
+
+    const rows = within(table).getAllByTestId(/^ministry-tailoring-row-/);
+    // Ascending by events: Untouched Ministry (0) before Greeters (3).
+    expect(rows[0]).toHaveTextContent('Untouched Ministry');
+    expect(rows[1]).toHaveTextContent('Greeters');
+  });
+
+  it('rows are inert — the explicit Tailoring button is the only navigation affordance', async () => {
     const onSelectMinistry = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
@@ -47,9 +74,17 @@ describe('MinistryTailoringList desktop table (US1/T010)', () => {
     );
 
     const table = screen.getByRole('grid', { name: 'Ministries' });
-    await user.click(within(table).getByRole('row', { name: /Greeters/ }));
+    const greetersRow = within(table).getByRole('row', { name: /Greeters/ });
+    await user.click(greetersRow);
+    expect(onSelectMinistry).not.toHaveBeenCalled();
 
-    expect(onSelectMinistry).toHaveBeenCalledWith({ ministryId: 'ministry-1' });
+    const buttons = screen.getAllByTestId(
+      'ministry-tailoring-button-ministry-1',
+    );
+    await user.click(buttons[0]);
+    expect(onSelectMinistry).toHaveBeenCalledWith({
+      ministryId: 'ministry-1',
+    });
   });
 
   it('shows an empty-state message instead of an empty table when there are no ministries', () => {
@@ -71,7 +106,7 @@ describe('MinistryTailoringList mobile card list (US1/T011)', () => {
     );
 
     const list = screen.getByRole('listbox');
-    const cards = within(list).getAllByRole('option');
+    const cards = within(list).getAllByTestId(/^ministry-tailoring-card-/);
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveTextContent('Greeters');
     expect(cards[0]).toHaveTextContent('3 events');
@@ -81,14 +116,18 @@ describe('MinistryTailoringList mobile card list (US1/T011)', () => {
     expect(cards[1]).toHaveTextContent('0 slots');
   });
 
-  it('calls onSelectMinistry when a card is activated', async () => {
+  it("calls onSelectMinistry when a card's Tailoring button is activated", async () => {
     const onSelectMinistry = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
       <MinistryTailoringList rows={ROWS} onSelectMinistry={onSelectMinistry} />,
     );
 
-    await user.click(screen.getByTestId('ministry-tailoring-card-ministry-2'));
+    const list = screen.getByRole('listbox');
+    const card = within(list).getByTestId('ministry-tailoring-card-ministry-2');
+    await user.click(
+      within(card).getByTestId('ministry-tailoring-button-ministry-2'),
+    );
 
     expect(onSelectMinistry).toHaveBeenCalledWith({ ministryId: 'ministry-2' });
   });

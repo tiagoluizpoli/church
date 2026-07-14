@@ -41,6 +41,7 @@ import type {
   ListEvents200,
   ListEventsParams,
   ListMinistries200,
+  ListMinistryCycleSummaries200,
   ListPlanningCycles200,
   ListPlanningCyclesParams,
   OverrideAssignment201,
@@ -415,6 +416,14 @@ const getMinistryServingProfile = (
     },
       );
     }
+  const listMinistryCycleSummaries = (
+    ministryId: string,
+ ) => {
+      return apiClient<ListMinistryCycleSummaries200>(
+      {url: `/api/v1/leader/ministries/${ministryId}/cycles-summary`, method: 'GET'
+    },
+      );
+    }
   const setParticipationInclusions = (
     participationId: string,
     setParticipationInclusionsBody: SetParticipationInclusionsBody,
@@ -559,7 +568,7 @@ const getMinistryServingProfile = (
     },
       );
     }
-  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventSlot,updatePlanningEventSlot,deletePlanningEventSlot,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
+  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventSlot,updatePlanningEventSlot,deletePlanningEventSlot,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,listMinistryCycleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistries']>>>
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEvents']>>>
@@ -594,6 +603,7 @@ export type GetMinistryServingProfileResult = NonNullable<Awaited<ReturnType<Ret
 export type UpsertMinistryServingProfileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['upsertMinistryServingProfile']>>>
 export type SetMinistryDefaultDirectionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['setMinistryDefaultDirection']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getCycleParticipation']>>>
+export type ListMinistryCycleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistryCycleSummaries']>>>
 export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['setParticipationInclusions']>>>
 export type SplitParticipationShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['splitParticipationShifts']>>>
 export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['updateShift']>>>

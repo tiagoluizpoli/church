@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildEventDayMarkers,
   buildMinistryTailoringSummary,
+  buildSlotDayMarkers,
   createInitialSplitForms,
   filterSlotsByName,
   filterSlotsByTimeOfDay,
   isTimeWindowFilterEmpty,
+  toCalendarDateString,
   toIsoDateString,
   toMinistryCycleKey,
   validateManualSpans,
@@ -233,47 +234,56 @@ describe('toIsoDateString', () => {
   });
 });
 
-describe('buildEventDayMarkers (T007/R3)', () => {
+describe('toCalendarDateString', () => {
+  it('preserves an API timestamp calendar date across browser timezones', () => {
+    expect(toCalendarDateString('2026-07-10T00:00:00.000Z')).toBe('2026-07-10');
+  });
+});
+
+describe('buildSlotDayMarkers', () => {
   describe('Happy Path', () => {
-    it('marks every day in a single-day event', () => {
-      const markers = buildEventDayMarkers({
-        events: [
-          { startDate: '2026-07-12T09:00:00', endDate: '2026-07-12T11:00:00' },
-        ],
+    it('marks the day of a single visible slot', () => {
+      const markers = buildSlotDayMarkers({
+        events: [makeEventView()],
       });
 
       expect([...markers]).toEqual(['2026-07-12']);
     });
 
-    it('marks every day across a multi-day event span', () => {
-      const markers = buildEventDayMarkers({
+    it('marks only the days that actually have slots', () => {
+      const markers = buildSlotDayMarkers({
         events: [
-          { startDate: '2026-07-12T09:00:00', endDate: '2026-07-14T11:00:00' },
+          makeEventView({
+            slotOverrides: [
+              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00' } },
+              { slot: { id: 'slot-2', startTime: '2026-07-14T09:00:00' } },
+            ],
+          }),
         ],
       });
 
-      expect([...markers].sort()).toEqual([
-        '2026-07-12',
-        '2026-07-13',
-        '2026-07-14',
-      ]);
+      expect([...markers].sort()).toEqual(['2026-07-12', '2026-07-14']);
     });
   });
 
   describe('Edge Cases', () => {
     it('returns an empty set for zero events', () => {
-      expect(buildEventDayMarkers({ events: [] }).size).toBe(0);
+      expect(buildSlotDayMarkers({ events: [] }).size).toBe(0);
     });
 
-    it('deduplicates overlapping event spans', () => {
-      const markers = buildEventDayMarkers({
+    it('deduplicates multiple slots on the same day', () => {
+      const markers = buildSlotDayMarkers({
         events: [
-          { startDate: '2026-07-12T09:00:00', endDate: '2026-07-13T09:00:00' },
-          { startDate: '2026-07-13T09:00:00', endDate: '2026-07-14T09:00:00' },
+          makeEventView({
+            slotOverrides: [
+              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00' } },
+              { slot: { id: 'slot-2', startTime: '2026-07-12T11:00:00' } },
+            ],
+          }),
         ],
       });
 
-      expect(markers.size).toBe(3);
+      expect(markers.size).toBe(1);
     });
   });
 });

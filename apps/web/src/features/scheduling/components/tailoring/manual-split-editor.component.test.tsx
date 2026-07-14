@@ -1,9 +1,13 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ManualSplitEditor } from './manual-split-editor';
+import {
+  createManualSplitSchema,
+  ManualSplitEditor,
+} from './manual-split-editor';
 import { renderWithProviders } from '@/__tests__/setup/render';
 import type { SplitFormState } from '@/features/scheduling/components/participation-tailoring.utils';
+import type { GetCycleParticipation200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
 
 const SINGLE_FORM: SplitFormState = {
   mode: 'equal',
@@ -181,5 +185,144 @@ describe('ManualSplitEditor manual spans (T001/T023)', () => {
     const lastCall =
       onSplitFormChange.mock.calls[onSplitFormChange.mock.calls.length - 1];
     expect(lastCall[0].manualSpans[1].label).toBe('second');
+  });
+});
+
+describe('createManualSplitSchema regression-equivalence with validateManualSpans (Iteration 2/T048a/FR-027)', () => {
+  const SLOT_VIEW: GetCycleParticipation200EventsItem['slots'][number] = {
+    slot: {
+      id: 'slot-1',
+      churchId: 'church-1',
+      eventId: 'event-1',
+      startTime: '2026-07-12T09:00:00',
+      endTime: '2026-07-12T11:00:00',
+      label: 'Greeter',
+      status: 'active',
+      requirements: [],
+    },
+    included: true,
+    shifts: [],
+    requirements: [],
+  };
+
+  function parseManual(spans: SplitFormState['manualSpans']) {
+    return createManualSplitSchema({ slotView: SLOT_VIEW }).safeParse({
+      mode: 'manual',
+      equalCount: '2',
+      manualSpans: spans,
+    });
+  }
+
+  it('accepts spans fully within slot bounds, in order, non-overlapping — same as validateManualSpans', () => {
+    expect(
+      parseManual([
+        {
+          startTime: '2026-07-12T09:00:00',
+          endTime: '2026-07-12T10:00:00',
+          label: '',
+        },
+        {
+          startTime: '2026-07-12T10:00:00',
+          endTime: '2026-07-12T11:00:00',
+          label: '',
+        },
+      ]).success,
+    ).toBe(true);
+  });
+
+  it('rejects a span with identical start and end (zero duration) — same as validateManualSpans', () => {
+    expect(
+      parseManual([
+        {
+          startTime: '2026-07-12T09:00:00',
+          endTime: '2026-07-12T09:00:00',
+          label: '',
+        },
+      ]).success,
+    ).toBe(false);
+  });
+
+  it('rejects a span that ends before it starts — same as validateManualSpans', () => {
+    expect(
+      parseManual([
+        {
+          startTime: '2026-07-12T10:00:00',
+          endTime: '2026-07-12T09:00:00',
+          label: '',
+        },
+      ]).success,
+    ).toBe(false);
+  });
+
+  it('rejects a span starting before the parent slot bounds — same as validateManualSpans', () => {
+    expect(
+      parseManual([
+        {
+          startTime: '2026-07-12T08:00:00',
+          endTime: '2026-07-12T10:00:00',
+          label: '',
+        },
+      ]).success,
+    ).toBe(false);
+  });
+
+  it('rejects a span ending after the parent slot bounds — same as validateManualSpans', () => {
+    expect(
+      parseManual([
+        {
+          startTime: '2026-07-12T09:00:00',
+          endTime: '2026-07-12T12:00:00',
+          label: '',
+        },
+      ]).success,
+    ).toBe(false);
+  });
+
+  it('rejects two overlapping spans, including identical start/end — same as validateManualSpans', () => {
+    expect(
+      parseManual([
+        {
+          startTime: '2026-07-12T09:00:00',
+          endTime: '2026-07-12T10:30:00',
+          label: '',
+        },
+        {
+          startTime: '2026-07-12T10:00:00',
+          endTime: '2026-07-12T11:00:00',
+          label: '',
+        },
+      ]).success,
+    ).toBe(false);
+
+    expect(
+      parseManual([
+        {
+          startTime: '2026-07-12T09:00:00',
+          endTime: '2026-07-12T10:00:00',
+          label: '',
+        },
+        {
+          startTime: '2026-07-12T09:00:00',
+          endTime: '2026-07-12T10:00:00',
+          label: '',
+        },
+      ]).success,
+    ).toBe(false);
+  });
+
+  it('is a no-op (never rejects) in equal-split mode, matching validateManualSpans only being consulted for manual mode', () => {
+    expect(
+      createManualSplitSchema({ slotView: SLOT_VIEW }).safeParse({
+        mode: 'equal',
+        equalCount: '3',
+        manualSpans: [
+          {
+            startTime: '2026-07-12T08:00:00',
+            endTime: '2026-07-12T07:00:00',
+            label: '',
+          },
+        ],
+      }).success,
+    ).toBe(true);
   });
 });

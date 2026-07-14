@@ -31,25 +31,20 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   browser,
   page,
 }) => {
-  await page.goto('/scheduling/tailoring');
-  await expect(page.getByTestId('tailoring-ministry-select')).toBeVisible();
-  await page.getByTestId('tailoring-ministry-select').click();
-  await page
-    .getByTestId(`tailoring-ministry-option-${WORSHIP_MINISTRY_ID}`)
-    .click();
-  await page.getByTestId('tailoring-cycle-select').click();
-  await page.getByTestId(`tailoring-cycle-option-${PLANNING_CYCLE_ID}`).click();
-
-  const eventCard = page
-    .getByTestId('participation-event-card')
-    .filter({ hasText: EVENT_TITLE })
-    .first();
-  await expect(eventCard).toBeVisible();
-  await expect(eventCard.getByTestId('participation-state-badge')).toHaveText(
-    'availability_fired',
+  await page.goto(
+    `/scheduling/tailoring/${WORSHIP_MINISTRY_ID}/${PLANNING_CYCLE_ID}`,
   );
 
-  await eventCard
+  const eventRow = page
+    .locator('[data-testid^="tailoring-slot-row-"]')
+    .filter({ hasText: EVENT_TITLE })
+    .first();
+  await expect(eventRow).toBeVisible();
+  await expect(eventRow.getByTestId('participation-state-badge')).toHaveText(
+    'Availability requested',
+  );
+
+  await eventRow
     .getByTestId(`open-roster-link-${WORSHIP_PARTICIPATION_ID}`)
     .click();
 

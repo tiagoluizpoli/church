@@ -8,24 +8,20 @@ import type {
 
 export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
 
+export interface ClassifyTailoringFetchErrorInput {
+  error: unknown;
+}
+
 /** Classifies a tailoring-route data-fetch failure into the two UI states
  * the routes render (test-master Class 4/5): a 403 is a permission-denied
  * state, everything else (network error, 5xx, unknown) is retryable. */
 export function classifyTailoringFetchError({
   error,
-}: {
-  error: unknown;
-}): TailoringFetchErrorKind {
+}: ClassifyTailoringFetchErrorInput): TailoringFetchErrorKind {
   if (isAxiosError(error) && error.response?.status === 403) {
     return 'forbidden';
   }
   return 'retryable';
-}
-
-export interface TailoringCycleOption {
-  id: string;
-  label: string;
-  eventCount: number;
 }
 
 export interface SplitFormState {
@@ -40,46 +36,6 @@ export interface ManualSpanDraft {
   label: string;
 }
 
-export function buildCycleOptions(
-  events: {
-    planningCycleId: string;
-    title: string;
-    startDate: string;
-    endDate: string;
-  }[],
-): TailoringCycleOption[] {
-  const grouped = new Map<
-    string,
-    { title: string; startDate: string; endDate: string; eventCount: number }
-  >();
-
-  for (const event of events) {
-    const current = grouped.get(event.planningCycleId);
-    if (current) {
-      current.eventCount += 1;
-      if (event.startDate < current.startDate)
-        current.startDate = event.startDate;
-      if (event.endDate > current.endDate) current.endDate = event.endDate;
-      continue;
-    }
-
-    grouped.set(event.planningCycleId, {
-      title: event.title,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      eventCount: 1,
-    });
-  }
-
-  return [...grouped.entries()]
-    .map(([id, value]) => ({
-      id,
-      label: `${formatDate(value.startDate)} - ${formatDate(value.endDate)} · ${value.title}`,
-      eventCount: value.eventCount,
-    }))
-    .sort((left, right) => left.label.localeCompare(right.label));
-}
-
 /** Parses the `yyyy-MM-dd` portion of a date-only or full ISO date-time
  * string as a local calendar date. `new Date(dateOnlyString)` parses at UTC
  * midnight, which shifts the displayed day back one in timezones behind UTC
@@ -87,6 +43,14 @@ export function buildCycleOptions(
 export function parseCalendarDate(value: string): Date {
   const [year, month, day] = value.slice(0, 10).split('-').map(Number);
   return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+}
+
+/** Extracts API timestamp's calendar-date portion without browser-local
+ * conversion. Cycle bounds and server-provided slot timestamps share this
+ * calendar representation; converting with `Date#getDate()` can move a UTC
+ * midnight slot into its previous local day. */
+export function toCalendarDateString(value: string): IsoDateString {
+  return value.slice(0, 10);
 }
 
 export function formatDate(value: string): string {
@@ -378,29 +342,19 @@ export function toIsoDateString(date: Date): IsoDateString {
   return `${year}-${month}-${day}`;
 }
 
-/** Derives the set of calendar days with at least one Event, spanning each
- * event's full `[startDate, endDate]` range (not just its first day), per
- * data-model.md's "any date with >=1 Event" definition. */
-export function buildEventDayMarkers({
+/** Derives the set of calendar days with at least one visible tailoring slot.
+ * The strip dot is a "there is something to work on this day" marker, so it
+ * should come from actual slot timestamps, not a parent event's full span. */
+export function buildSlotDayMarkers({
   events,
 }: {
-  events: { startDate: string; endDate: string }[];
+  events: GetCycleParticipation200EventsItem[];
 }): Set<IsoDateString> {
   const markers = new Set<IsoDateString>();
 
-  for (const event of events) {
-    const start = new Date(event.startDate);
-    const end = new Date(event.endDate);
-    const cursor = new Date(
-      start.getFullYear(),
-      start.getMonth(),
-      start.getDate(),
-    );
-    const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-
-    while (cursor <= lastDay) {
-      markers.add(toIsoDateString(cursor));
-      cursor.setDate(cursor.getDate() + 1);
+  for (const eventView of events) {
+    for (const slotView of eventView.slots) {
+      markers.add(toCalendarDateString(slotView.slot.startTime));
     }
   }
 

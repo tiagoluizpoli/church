@@ -93,7 +93,7 @@ describe('AppShell role-scoped navigation', () => {
       'Availability',
       'Scheduling',
       'Cycles',
-      'Tailoring',
+      'Rostering',
       'Builder events',
     ]);
     expect(navLabels(screen.getByTestId('mobile-bottom-nav'))).toEqual([
@@ -117,7 +117,7 @@ describe('AppShell role-scoped navigation', () => {
       'Availability',
       'Scheduling',
       'Cycles',
-      'Tailoring',
+      'Rostering',
       'Builder events',
     ]);
   });
@@ -221,12 +221,12 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
       'Availability',
       'Scheduling',
       'Cycles',
-      'Tailoring',
+      'Rostering',
       'Builder events',
     ]);
 
     const tailoringLink = within(drawerNav).getByRole('link', {
-      name: 'Tailoring',
+      name: 'Rostering',
     });
     expect(tailoringLink).toHaveClass('font-semibold');
     expect(tailoringLink).toHaveAttribute('href', '/scheduling/tailoring');

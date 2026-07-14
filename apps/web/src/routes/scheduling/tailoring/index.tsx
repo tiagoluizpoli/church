@@ -13,6 +13,7 @@ import {
   toMinistryCycleKey,
 } from '@/features/scheduling/components/participation-tailoring.utils';
 import { MinistryTailoringList } from '@/features/scheduling/components/tailoring/ministry-tailoring-list';
+import { StatPill } from '@/features/scheduling/components/tailoring/stat-pill';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/scheduling/tailoring/')({
@@ -120,13 +121,37 @@ function TailoringMinistryListRoute() {
     eventsByMinistryId,
     slotCountByMinistryAndCycle,
   });
+  const eventTotal = rows.reduce((total, row) => total + row.eventCount, 0);
+  const slotTotal = rows.reduce((total, row) => total + row.slotCount, 0);
+  const showList = !isLoading && !errorKind;
 
   return (
     <WorkspacePage data-testid="tailoring-ministry-list-page">
       <WorkspaceIntroPanel
-        title="Tailoring"
-        description="Pick a ministry to confirm which slots it serves, split them into shifts, and set headcounts."
+        title="Pick a ministry"
+        description="Choose a ministry to start rostering. Next you'll pick a cycle to work in."
         autoFocusTitle
+        aside={
+          showList ? (
+            <div className="flex flex-wrap gap-2">
+              <StatPill
+                label="Ministries"
+                value={rows.length}
+                testId="tailoring-ministry-count"
+              />
+              <StatPill
+                label="Events"
+                value={eventTotal}
+                testId="tailoring-ministry-event-total"
+              />
+              <StatPill
+                label="Slots"
+                value={slotTotal}
+                testId="tailoring-ministry-slot-total"
+              />
+            </div>
+          ) : null
+        }
       />
 
       {errorKind === 'forbidden' ? (

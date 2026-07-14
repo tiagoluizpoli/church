@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,8 @@ const listMinistries = vi.fn();
 const getCycleParticipation = vi.fn();
 const getScheduleBuilderData = vi.fn();
 const setParticipationInclusions = vi.fn();
+const splitParticipationShifts = vi.fn();
+const upsertShiftRequirement = vi.fn();
 const fireAvailability = vi.fn();
 const resendAvailabilityReminder = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
@@ -27,6 +29,10 @@ vi.mock('@/utils/api-instances', () => ({
       getScheduleBuilderData(...args),
     setParticipationInclusions: (...args: unknown[]) =>
       setParticipationInclusions(...args),
+    splitParticipationShifts: (...args: unknown[]) =>
+      splitParticipationShifts(...args),
+    upsertShiftRequirement: (...args: unknown[]) =>
+      upsertShiftRequirement(...args),
     fireAvailability: (...args: unknown[]) => fireAvailability(...args),
     resendAvailabilityReminder: (...args: unknown[]) =>
       resendAvailabilityReminder(...args),
@@ -167,6 +173,94 @@ const PARTICIPATION_RESPONSE = {
 };
 
 describe('Tailoring workspace route composition (US3/T028)', () => {
+  it('enables Save split only after split configuration changes, independent of headcounts (T044)', async () => {
+    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockResolvedValue({
+      events: [
+        {
+          ...PARTICIPATION_RESPONSE.events[0],
+          slots: [
+            {
+              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              included: true,
+              shifts: [
+                {
+                  id: 'shift-1',
+                  participationId: 'participation-1',
+                  timeSlotId: 'slot-1',
+                  startTime: '2026-07-11T09:00:00',
+                  endTime: '2026-07-11T11:00:00',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamId: null,
+    });
+    splitParticipationShifts.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderWorkspace();
+
+    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
+    const saveSplitButton = screen.getByTestId('save-split-button-slot-1');
+    expect(saveSplitButton).toBeDisabled();
+
+    await user.click(screen.getByTestId('shift-mode-select-0'));
+    await user.click(await screen.findByText('Equal split'));
+
+    expect(saveSplitButton).toBeEnabled();
+    await user.click(saveSplitButton);
+
+    expect(splitParticipationShifts).toHaveBeenCalledWith(
+      'participation-1',
+      'slot-1',
+      { strategy: { kind: 'equal-n', n: 2 } },
+    );
+  });
+
+  it('stacks day strip, horizontal filters, then slot list in workspace order (T042)', async () => {
+    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamId: null,
+    });
+
+    renderWorkspace();
+
+    const workspaceStack = await screen.findByTestId(
+      'tailoring-workspace-stack',
+    );
+    const dayStrip = screen.getByTestId('tailoring-calendar-strip');
+    const nameFilter = screen.getByTestId('tailoring-name-filter');
+    const slotList = screen.getByTestId('tailoring-slot-list');
+
+    expect(workspaceStack).toContainElement(dayStrip);
+    expect(workspaceStack).toContainElement(nameFilter);
+    expect(workspaceStack).toContainElement(slotList);
+    expect(
+      dayStrip.compareDocumentPosition(nameFilter) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      nameFilter.compareDocumentPosition(slotList) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('renders the ministry+cycle header, calendar, filters, and slot list together', async () => {
     getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
@@ -187,6 +281,16 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
     expect(screen.getByTestId('tailoring-calendar')).toBeInTheDocument();
     expect(screen.getByTestId('tailoring-name-filter')).toBeInTheDocument();
     expect(screen.getByTestId('tailoring-slot-row-slot-1')).toBeInTheDocument();
+
+    const browseLink = screen.getByTestId('browse-all-cycles-link');
+    expect(browseLink).toHaveAttribute(
+      'href',
+      expect.stringContaining('/scheduling/tailoring/ministry-1'),
+    );
+    expect(browseLink).toHaveAttribute(
+      'href',
+      expect.stringContaining('browse=true'),
+    );
   });
 
   it('operates fully at a mobile viewport width — calendar, filters, and slot list all reachable (T023a)', async () => {
@@ -208,7 +312,13 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
     await screen.findByTestId('tailoring-slot-row-slot-1');
     expect(screen.getByTestId('tailoring-calendar')).toBeInTheDocument();
     expect(
+      screen.getByTestId('tailoring-calendar-day-2026-07-10'),
+    ).toBeInTheDocument();
+    expect(
       screen.getByTestId('tailoring-calendar-day-2026-07-11'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('tailoring-calendar-day-2026-07-12'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('tailoring-name-filter')).toBeInTheDocument();
     expect(
@@ -219,7 +329,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
     ).toBeInTheDocument();
 
     setParticipationInclusions.mockResolvedValue(undefined);
-    await user.click(screen.getByTestId('participation-slot-checkbox-slot-1'));
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
     expect(setParticipationInclusions).toHaveBeenCalledWith('participation-1', {
       timeSlotIds: ['slot-1'],
     });
@@ -251,6 +361,168 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('tailoring-slot-row-slot-2')).toBeInTheDocument();
     expect(getCycleParticipation.mock.calls.length).toBe(callCountBeforeFilter);
+  });
+});
+
+describe('Tailoring workspace headcount save partial-failure isolation (Iteration 2/T045b/FR-022b)', () => {
+  it('lets a succeeded role headcount stay saved when a sibling role in the same batch fails, and only retries the failed one', async () => {
+    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockResolvedValue({
+      events: [
+        {
+          ...PARTICIPATION_RESPONSE.events[0],
+          slots: [
+            {
+              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              included: true,
+              shifts: [
+                {
+                  id: 'shift-1',
+                  participationId: 'participation-1',
+                  timeSlotId: 'slot-1',
+                  startTime: '2026-07-11T09:00:00',
+                  endTime: '2026-07-11T11:00:00',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [
+        { id: 'role-1', name: 'Greeter' },
+        { id: 'role-2', name: 'Usher' },
+      ],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamId: null,
+    });
+    upsertShiftRequirement.mockImplementation(
+      (_shiftId: string, body: { roleId: string }) =>
+        body.roleId === 'role-1'
+          ? Promise.reject(new Error('network error'))
+          : Promise.resolve({}),
+    );
+    const user = userEvent.setup();
+
+    renderWorkspace();
+
+    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
+    await user.type(screen.getByTestId('headcount-input-shift-1-role-1'), '3');
+    await user.type(screen.getByTestId('headcount-input-shift-1-role-2'), '4');
+
+    const saveButton = screen.getByTestId('save-headcounts-button-slot-1');
+    expect(saveButton).toBeEnabled();
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(upsertShiftRequirement).toHaveBeenCalledTimes(2);
+    });
+    expect(upsertShiftRequirement).toHaveBeenCalledWith(
+      'shift-1',
+      expect.objectContaining({ roleId: 'role-1', requiredCount: 3 }),
+    );
+    expect(upsertShiftRequirement).toHaveBeenCalledWith(
+      'shift-1',
+      expect.objectContaining({ roleId: 'role-2', requiredCount: 4 }),
+    );
+
+    // The succeeded role-2 value must not remain flagged unsaved; the failed
+    // role-1 value must — so the slot's single per-slot indicator stays on.
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('headcount-unsaved-indicator-slot-1'),
+      ).toBeInTheDocument();
+    });
+
+    // Retry: only the still-failed role-1 value should be resent — the
+    // already-succeeded role-2 value must not be re-sent or re-flagged.
+    await user.click(screen.getByTestId('save-headcounts-button-slot-1'));
+
+    await waitFor(() => {
+      expect(upsertShiftRequirement).toHaveBeenCalledTimes(3);
+    });
+    expect(upsertShiftRequirement).toHaveBeenNthCalledWith(
+      3,
+      'shift-1',
+      expect.objectContaining({ roleId: 'role-1' }),
+    );
+  });
+});
+
+describe('Tailoring workspace re-serving retains prior edits (Iteration 2/T046/FR-025)', () => {
+  it('keeps a pending headcount draft in memory across a Serving -> Not serving -> Serving round trip within the same visit', async () => {
+    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [{ id: 'role-1', name: 'Greeter' }],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamId: null,
+    });
+    setParticipationInclusions.mockResolvedValue(undefined);
+
+    let includedSlotIds = ['slot-1'];
+    getCycleParticipation.mockImplementation(() =>
+      Promise.resolve({
+        events: [
+          {
+            ...PARTICIPATION_RESPONSE.events[0],
+            slots: [
+              {
+                ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+                included: includedSlotIds.includes('slot-1'),
+                shifts: includedSlotIds.includes('slot-1')
+                  ? [
+                      {
+                        id: 'shift-1',
+                        participationId: 'participation-1',
+                        timeSlotId: 'slot-1',
+                        startTime: '2026-07-11T09:00:00',
+                        endTime: '2026-07-11T11:00:00',
+                      },
+                    ]
+                  : [],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderWorkspace();
+
+    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
+    await user.type(
+      await screen.findByTestId('headcount-input-shift-1-role-1'),
+      '5',
+    );
+    expect(screen.getByTestId('headcount-input-shift-1-role-1')).toHaveValue(5);
+
+    // Flip Serving off — server round-trips to included:false, shifts drop.
+    includedSlotIds = [];
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('headcount-input-shift-1-role-1'),
+      ).not.toBeInTheDocument();
+    });
+
+    // Flip Serving back on within the same visit — the prior draft must
+    // still be there, not reset to blank/default (FR-025).
+    includedSlotIds = ['slot-1'];
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('headcount-input-shift-1-role-1')).toHaveValue(
+        5,
+      );
+    });
   });
 });
 
@@ -311,17 +583,88 @@ describe('Tailoring workspace batched save (US4/T029)', () => {
     renderWorkspace();
 
     await screen.findByTestId('tailoring-slot-row-slot-1');
-    await user.click(screen.getByTestId('participation-slot-checkbox-slot-1'));
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
     await screen.findByTestId('tailoring-touched-count');
-    await user.click(screen.getByTestId('participation-slot-checkbox-slot-2'));
+    await user.click(screen.getByTestId('serving-toggle-slot-2'));
 
     const saveButton = screen.getByTestId('save-and-fire-availability-button');
     await user.click(saveButton);
+    await user.click(await screen.findByTestId('tailoring-send-confirm'));
 
     expect(fireAvailability).toHaveBeenCalledTimes(2);
     expect(fireAvailability).toHaveBeenCalledWith('participation-1');
     expect(fireAvailability).toHaveBeenCalledWith('participation-2');
     expect(resendAvailabilityReminder).not.toHaveBeenCalled();
+  });
+});
+
+describe('Tailoring workspace send-availability confirmation (P0 hardening)', () => {
+  it('does not send anything until the confirmation dialog is accepted', async () => {
+    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamId: null,
+    });
+    setParticipationInclusions.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderWorkspace();
+
+    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId('tailoring-touched-count');
+    await user.click(screen.getByTestId('save-and-fire-availability-button'));
+
+    const dialog = await screen.findByTestId('tailoring-send-confirm-dialog');
+    expect(dialog).toHaveTextContent('Sunday Service');
+    expect(fireAvailability).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('tailoring-send-cancel'));
+
+    expect(
+      screen.queryByTestId('tailoring-send-confirm-dialog'),
+    ).not.toBeInTheDocument();
+    expect(fireAvailability).not.toHaveBeenCalled();
+  });
+
+  it('sends only the touched events named in the confirmation dialog', async () => {
+    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamId: null,
+    });
+    setParticipationInclusions.mockResolvedValue(undefined);
+    fireAvailability.mockResolvedValue({
+      createdCheckCount: 1,
+      notifiedVolunteerCount: 1,
+    });
+    const user = userEvent.setup();
+
+    renderWorkspace();
+
+    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
+    await screen.findByTestId('tailoring-touched-count');
+    await user.click(screen.getByTestId('save-and-fire-availability-button'));
+
+    const dialog = await screen.findByTestId('tailoring-send-confirm-dialog');
+    expect(dialog).toHaveTextContent('Sunday Service');
+    expect(dialog).not.toHaveTextContent('Saturday Setup');
+
+    await user.click(screen.getByTestId('tailoring-send-confirm'));
+
+    expect(fireAvailability).toHaveBeenCalledTimes(1);
+    expect(fireAvailability).toHaveBeenCalledWith('participation-1');
   });
 });
 
@@ -354,12 +697,13 @@ describe('Tailoring workspace remains editable post-release (US4/T030/FR-017)', 
     renderWorkspace();
 
     await screen.findByTestId('tailoring-slot-row-slot-1');
-    await user.click(screen.getByTestId('participation-slot-checkbox-slot-1'));
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
     await screen.findByTestId('tailoring-touched-count');
 
     const saveButton = screen.getByTestId('save-and-fire-availability-button');
     expect(saveButton).toBeEnabled();
     await user.click(saveButton);
+    await user.click(await screen.findByTestId('tailoring-send-confirm'));
 
     expect(resendAvailabilityReminder).toHaveBeenCalledWith('participation-1');
     expect(fireAvailability).not.toHaveBeenCalled();
@@ -367,6 +711,53 @@ describe('Tailoring workspace remains editable post-release (US4/T030/FR-017)', 
 });
 
 describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
+  it('blocks navigation for a never-saved split change even with no touched participation (T048)', async () => {
+    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
+    getCycleParticipation.mockResolvedValue({
+      events: [
+        {
+          ...PARTICIPATION_RESPONSE.events[0],
+          slots: [
+            {
+              ...PARTICIPATION_RESPONSE.events[0]?.slots[0],
+              included: true,
+              shifts: [
+                {
+                  id: 'shift-1',
+                  participationId: 'participation-1',
+                  timeSlotId: 'slot-1',
+                  startTime: '2026-07-11T09:00:00',
+                  endTime: '2026-07-11T11:00:00',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamId: null,
+    });
+    const user = userEvent.setup();
+
+    const { router } = renderWorkspace();
+
+    await user.click(await screen.findByTestId('toggle-slot-expand-slot-1'));
+    await user.click(screen.getByTestId('shift-mode-select-0'));
+    await user.click(await screen.findByText('Equal split'));
+
+    router.navigate({ to: '/scheduling/tailoring' });
+
+    expect(
+      await screen.findByTestId('tailoring-leave-confirm'),
+    ).toBeInTheDocument();
+  });
+
   it('blocks navigation away when there are touched, unsaved edits', async () => {
     getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
@@ -384,7 +775,7 @@ describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
     const { router } = renderWorkspace();
 
     await screen.findByTestId('tailoring-slot-row-slot-1');
-    await user.click(screen.getByTestId('participation-slot-checkbox-slot-1'));
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
     await screen.findByTestId('tailoring-touched-count');
 
     router.navigate({ to: '/scheduling/tailoring' });
@@ -449,11 +840,12 @@ describe('Tailoring workspace double-submit guard (US4/T030b)', () => {
     renderWorkspace();
 
     await screen.findByTestId('tailoring-slot-row-slot-1');
-    await user.click(screen.getByTestId('participation-slot-checkbox-slot-1'));
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
     await screen.findByTestId('tailoring-touched-count');
 
     const saveButton = screen.getByTestId('save-and-fire-availability-button');
     await user.click(saveButton);
+    await user.click(await screen.findByTestId('tailoring-send-confirm'));
     expect(saveButton).toBeDisabled();
     await user.click(saveButton);
 
@@ -491,9 +883,10 @@ describe('Tailoring workspace mid-flight save unmount (US4/T030c)', () => {
     const { router, unmount } = renderWorkspace();
 
     await screen.findByTestId('tailoring-slot-row-slot-1');
-    await user.click(screen.getByTestId('participation-slot-checkbox-slot-1'));
+    await user.click(screen.getByTestId('serving-toggle-slot-1'));
     await screen.findByTestId('tailoring-touched-count');
     await user.click(screen.getByTestId('save-and-fire-availability-button'));
+    await user.click(await screen.findByTestId('tailoring-send-confirm'));
 
     expect(() => {
       router.navigate({ to: '/scheduling/tailoring' });

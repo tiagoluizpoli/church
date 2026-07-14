@@ -159,51 +159,101 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   );
   expect(lockResponse.ok()).toBeTruthy();
 
-  await page.goto('/scheduling/tailoring');
-  await page.getByTestId('tailoring-ministry-select').click();
-  await page
-    .getByTestId(`tailoring-ministry-option-${ministryId || ''}`)
-    .click();
-  await page.getByTestId('tailoring-cycle-select').click();
-  await page.getByTestId(`tailoring-cycle-option-${cycleBody.id}`).click();
+  await page.goto(`/scheduling/tailoring/${ministryId}/${cycleBody.id}`);
 
-  const eventCard = page.getByTestId('participation-event-card').first();
-  const firstSlotCard = eventCard.getByTestId('participation-slot-card').nth(0);
+  // The workspace groups slots by day and keys every control off real
+  // slot/participation ids, not event/shift array positions — fetch the
+  // same data the page renders from so locators match real ids instead of
+  // guessing at row order or display text.
+  const participationResponse = await page.request.get(
+    `${SERVER_URL}/api/v1/leader/cycles/${cycleBody.id}/participation`,
+    { params: { ministryId } },
+  );
+  expect(participationResponse.ok()).toBeTruthy();
+  const participationBody = (await participationResponse.json()) as {
+    events: Array<{
+      participation: { id: string; state: string };
+      slots: Array<{ slot: { id: string; label?: string } }>;
+    }>;
+  };
+  const firstEvent = participationBody.events[0];
+  if (!firstEvent) throw new Error('No events found for cycle participation');
+  const welcomeSlot = firstEvent.slots.find((s) => s.slot.label === 'Welcome');
+  const messageSlot = firstEvent.slots.find((s) => s.slot.label === 'Message');
+  const prayerSlot = firstEvent.slots.find((s) => s.slot.label === 'Prayer');
+  if (!welcomeSlot || !messageSlot || !prayerSlot) {
+    throw new Error('Expected Welcome/Message/Prayer slots not found');
+  }
+
+  const welcomeRow = page.getByTestId(
+    `tailoring-slot-row-${welcomeSlot.slot.id}`,
+  );
+  const messageRow = page.getByTestId(
+    `tailoring-slot-row-${messageSlot.slot.id}`,
+  );
+  const prayerRow = page.getByTestId(
+    `tailoring-slot-row-${prayerSlot.slot.id}`,
+  );
 
   await expect(
-    eventCard.getByTestId('participation-slot-checkbox-0'),
+    welcomeRow.getByTestId(`serving-toggle-${welcomeSlot.slot.id}`),
   ).toBeChecked();
   await expect(
-    eventCard.getByTestId('participation-slot-checkbox-1'),
+    messageRow.getByTestId(`serving-toggle-${messageSlot.slot.id}`),
   ).toBeChecked();
   await expect(
-    eventCard.getByTestId('participation-slot-checkbox-2'),
+    prayerRow.getByTestId(`serving-toggle-${prayerSlot.slot.id}`),
   ).not.toBeChecked();
 
-  await firstSlotCard.getByTestId('equal-split-count-0').fill('2');
-  await firstSlotCard.getByTestId('save-split-button-0').click();
-
-  await expect(
-    firstSlotCard.getByTestId('participation-shift-card'),
-  ).toHaveCount(2);
-
-  await firstSlotCard
-    .locator('[data-testid^="headcount-input-0-0-"]')
-    .first()
-    .fill('2');
-  await firstSlotCard
-    .locator('[data-testid^="headcount-input-0-1-"]')
-    .first()
-    .fill('1');
-  await firstSlotCard.getByTestId('save-headcounts-button-0-0').click();
-  await firstSlotCard.getByTestId('save-headcounts-button-0-1').click();
-
-  await eventCard.locator('[data-testid^="fire-availability-button-"]').click();
-
-  await expect(eventCard.getByTestId('participation-state-badge')).toHaveText(
-    'availability_fired',
+  await welcomeRow
+    .getByTestId(`toggle-slot-expand-${welcomeSlot.slot.id}`)
+    .click();
+  const welcomeEditor = welcomeRow.getByTestId(
+    `tailoring-slot-editor-${welcomeSlot.slot.id}`,
   );
-  await expect(
-    eventCard.getByTestId('fire-availability-summary'),
-  ).toContainText('checks created');
+  // `equal-split-count`/`shift-mode-select` are keyed by a constant local
+  // index (one editor per row, always index 0), not the slot id — scoping
+  // to `welcomeEditor` disambiguates them from every other expanded row's
+  // editor on the page. A slot starts in "single shift" mode regardless of
+  // the serving profile's suggested split — the leader must explicitly
+  // switch to "Equal split" before the count field appears.
+  await welcomeEditor.getByTestId('shift-mode-select-0').click();
+  await page.getByRole('option', { name: 'Equal split' }).click();
+  await welcomeEditor.getByTestId('equal-split-count-0').fill('2');
+  await welcomeRow
+    .getByTestId(`save-split-button-${welcomeSlot.slot.id}`)
+    .click();
+
+  const shiftRows = welcomeEditor.locator(
+    '[data-testid^="participation-shift-row-"]',
+  );
+  await expect(shiftRows).toHaveCount(2);
+
+  // The role catalog can list more roles than the serving profile set a
+  // headcount for — the editor requires a value for every listed role
+  // before "Save headcounts" enables, so fill all of them per shift.
+  const firstShiftInputs = shiftRows
+    .nth(0)
+    .locator('[data-testid^="headcount-input-"]');
+  const secondShiftInputs = shiftRows
+    .nth(1)
+    .locator('[data-testid^="headcount-input-"]');
+  const firstShiftInputCount = await firstShiftInputs.count();
+  for (let i = 0; i < firstShiftInputCount; i++) {
+    await firstShiftInputs.nth(i).fill('2');
+  }
+  const secondShiftInputCount = await secondShiftInputs.count();
+  for (let i = 0; i < secondShiftInputCount; i++) {
+    await secondShiftInputs.nth(i).fill('1');
+  }
+  await welcomeRow
+    .getByTestId(`save-headcounts-button-${welcomeSlot.slot.id}`)
+    .click();
+
+  await page.getByTestId('save-and-fire-availability-button').click();
+  await page.getByTestId('tailoring-send-confirm').click();
+
+  await expect(welcomeRow.getByTestId('participation-state-badge')).toHaveText(
+    'Availability requested',
+  );
 });

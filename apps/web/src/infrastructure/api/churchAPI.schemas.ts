@@ -1201,6 +1201,36 @@ export type GetCycleParticipation403 = {
   message: string;
 };
 
+export type ListMinistryCycleSummaries200CyclesItemStatus = typeof ListMinistryCycleSummaries200CyclesItemStatus[keyof typeof ListMinistryCycleSummaries200CyclesItemStatus];
+
+
+export const ListMinistryCycleSummaries200CyclesItemStatus = {
+  not_started: 'not_started',
+  in_progress: 'in_progress',
+  published: 'published',
+} as const;
+
+export type ListMinistryCycleSummaries200CyclesItem = {
+  cycleId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isPartOf: boolean;
+  eventCount: number;
+  slotCount: number;
+  status: ListMinistryCycleSummaries200CyclesItemStatus;
+  availabilityFiredForAll: boolean;
+};
+
+export type ListMinistryCycleSummaries200 = {
+  cycles: ListMinistryCycleSummaries200CyclesItem[];
+};
+
+export type ListMinistryCycleSummaries403 = {
+  error: string;
+  message: string;
+};
+
 export type SetParticipationInclusionsBody = {
   timeSlotIds: string[];
 };

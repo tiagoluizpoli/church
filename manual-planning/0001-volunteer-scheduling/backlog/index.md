@@ -25,3 +25,4 @@ For instructions on how to add new backlog items or edit existing ones, see the 
 | [BL-016](./items/BL-016.md) | Day/event-level forced-override editing on locked planning cycles | Scheduling / Planning | Backlog (ready for spec) |
 | [BL-017](./items/BL-017.md) | `sub_leader` cannot be detected by any existing lightweight endpoint | Backend Architecture / Auth | Backlog |
 | [BL-018](./items/BL-018.md) | Native `<input type="date">` instead of a shadcn date-picker component | Frontend UX/IA | Backlog |
+| [BL-019](./items/BL-019.md) | Volunteer response health report for leaders | Volunteer Scheduling / Leader Operations | Backlog |

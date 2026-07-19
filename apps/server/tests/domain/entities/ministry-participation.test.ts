@@ -140,7 +140,11 @@ describe('aggregateCycleTailoringStatus (R16)', () => {
         publishedCount: 0,
         firedOrLaterCount: 0,
       }),
-    ).toEqual({ status: 'not_started', availabilityFiredForAll: false });
+    ).toEqual({
+      status: 'not_started',
+      availabilityFiredForAll: false,
+      availabilityFiredForAny: false,
+    });
   });
 
   it('reads "not started" when no participation has been touched', () => {
@@ -151,7 +155,11 @@ describe('aggregateCycleTailoringStatus (R16)', () => {
         publishedCount: 0,
         firedOrLaterCount: 0,
       }),
-    ).toEqual({ status: 'not_started', availabilityFiredForAll: false });
+    ).toEqual({
+      status: 'not_started',
+      availabilityFiredForAll: false,
+      availabilityFiredForAny: false,
+    });
   });
 
   it('reads "in progress" when some but not all participations are touched/published', () => {

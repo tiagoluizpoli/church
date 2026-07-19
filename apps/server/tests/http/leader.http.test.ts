@@ -289,6 +289,7 @@ describe('Leader participation routes', () => {
         slotCount: 3,
         status: 'in_progress',
         availabilityFiredForAll: false,
+        availabilityFiredForAny: false,
       },
     ]);
 
@@ -310,6 +311,7 @@ describe('Leader participation routes', () => {
           slotCount: 3,
           status: 'in_progress',
           availabilityFiredForAll: false,
+          availabilityFiredForAny: false,
         },
       ],
     });

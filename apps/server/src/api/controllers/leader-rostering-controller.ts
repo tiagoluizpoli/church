@@ -6,7 +6,9 @@ import { z } from 'zod';
 import {
   AssignmentId,
   ChurchId,
+  MinistryId,
   MinistryParticipationId,
+  PlanningCycleId,
   RoleId,
   ShiftId,
   UserId,
@@ -22,7 +24,15 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   assignmentMapper,
   assignmentResponseSchema,
+  auditListResponseSchema,
 } from '../dtos/assignment.dto';
+import {
+  cycleBuilderMapper,
+  cycleBuilderResponseSchema,
+  publishCycleBodySchema,
+  publishCycleMapper,
+  publishCycleResponseSchema,
+} from '../dtos/cycle-builder.dto';
 import {
   createParticipationAssignmentBodySchema,
   createParticipationAssignmentResponseSchema,
@@ -37,6 +47,18 @@ import { headersFromRequest } from '../utils/headers';
 interface ParticipationRouteParams {
   participationId: string;
 }
+
+interface CycleRouteParams {
+  cycleId: string;
+}
+
+interface CycleMinistryQuery {
+  ministryId: string;
+}
+
+const cycleMinistryQuerySchema = z.object({
+  ministryId: z.string(),
+});
 
 interface ShiftRouteParams {
   shiftId: string;
@@ -55,6 +77,7 @@ type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
 type PublishParticipationBody = z.infer<typeof publishParticipationBodySchema>;
+type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
 type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
 
 interface ResolveOwnedAssignmentInput {
@@ -117,6 +140,125 @@ export class LeaderRosteringController implements FastifyController {
       request.volunteerId = ctx.volunteerId;
       request.churchId = ctx.churchId;
     });
+
+    app.get(
+      '/cycles/:cycleId/builder',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'getCycleBuilderData',
+          querystring: cycleMinistryQuerySchema,
+          response: {
+            200: cycleBuilderResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        const allowed = await this.rbacGuard.canManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (!allowed) {
+          return reply.status(403).send({
+            error: 'FORBIDDEN',
+            message: 'Not a leader of this ministry',
+          });
+        }
+
+        const view = await this.participationManager.getCycleBuilderData({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: PlanningCycleId.from(cycleId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        return reply.send(cycleBuilderMapper.toResponse(view));
+      },
+    );
+
+    app.get(
+      '/cycles/:cycleId/audit',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'getCycleAuditLog',
+          querystring: cycleMinistryQuerySchema,
+          response: {
+            200: auditListResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        const allowed = await this.rbacGuard.canManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (!allowed) {
+          return reply.status(403).send({
+            error: 'FORBIDDEN',
+            message: 'Not a leader of this ministry',
+          });
+        }
+
+        const items = await this.assignmentManager.listAuditLogForCycle({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: PlanningCycleId.from(cycleId),
+          ministryId: MinistryId.from(ministryId),
+        });
+        return reply.send(assignmentMapper.auditListToResponse(items));
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/publish',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'publishCycle',
+          querystring: cycleMinistryQuerySchema,
+          body: publishCycleBodySchema,
+          response: {
+            200: publishCycleResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        const allowed = await this.rbacGuard.canManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (!allowed) {
+          return reply.status(403).send({
+            error: 'FORBIDDEN',
+            message: 'Not a leader of this ministry',
+          });
+        }
+
+        const body = request.body as PublishCycleBody;
+        const view = await this.participationManager.publishCycle({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: PlanningCycleId.from(cycleId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+          confirmBelowFull: body.confirmBelowFull,
+        });
+        return reply.send(publishCycleMapper.toResponse(view));
+      },
+    );
 
     app.get(
       '/shifts/:shiftId/eligible-volunteers',

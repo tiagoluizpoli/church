@@ -19,17 +19,17 @@ import { Route as SchedulingIndexRouteImport } from './routes/scheduling/index'
 import { Route as VolunteerAvailabilityRouteImport } from './routes/volunteer/availability'
 import { Route as SchedulingTailoringRouteImport } from './routes/scheduling/tailoring'
 import { Route as SchedulingPlanningCyclesRouteImport } from './routes/scheduling/planning-cycles'
-import { Route as SchedulingBuilderEventsRouteImport } from './routes/scheduling/builder-events'
 import { Route as SchedulingTailoringIndexRouteImport } from './routes/scheduling/tailoring/index'
 import { Route as SchedulingPlanningCyclesIndexRouteImport } from './routes/scheduling/planning-cycles/index'
 import { Route as SchedulingTailoringMinistryIdRouteImport } from './routes/scheduling/tailoring/$ministryId'
+import { Route as SchedulingRosteringPrototypeDateCardIconsRouteImport } from './routes/scheduling/rostering/prototype-date-card-icons'
+import { Route as SchedulingRosteringPrototypeRouteImport } from './routes/scheduling/rostering/prototype'
 import { Route as SchedulingPlanningCyclesTemplatesRouteImport } from './routes/scheduling/planning-cycles/templates'
 import { Route as SchedulingPlanningCyclesNewRouteImport } from './routes/scheduling/planning-cycles/new'
 import { Route as SchedulingPlanningCyclesCycleIdRouteImport } from './routes/scheduling/planning-cycles/$cycleId'
 import { Route as SchedulingTailoringMinistryIdIndexRouteImport } from './routes/scheduling/tailoring/$ministryId/index'
 import { Route as SchedulingTailoringMinistryIdCycleIdRouteImport } from './routes/scheduling/tailoring/$ministryId/$cycleId'
-import { Route as SchedulingEventsEventIdBuilderRouteImport } from './routes/scheduling/events/$eventId/builder'
-import { Route as SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport } from './routes/scheduling/rostering/$cycleId/$ministryId/$participationId'
+import { Route as SchedulingRosteringMinistryIdCycleIdRouteImport } from './routes/scheduling/rostering/$ministryId/$cycleId'
 
 const SchedulingRoute = SchedulingRouteImport.update({
   id: '/scheduling',
@@ -82,11 +82,6 @@ const SchedulingPlanningCyclesRoute =
     path: '/planning-cycles',
     getParentRoute: () => SchedulingRoute,
   } as any)
-const SchedulingBuilderEventsRoute = SchedulingBuilderEventsRouteImport.update({
-  id: '/builder-events',
-  path: '/builder-events',
-  getParentRoute: () => SchedulingRoute,
-} as any)
 const SchedulingTailoringIndexRoute =
   SchedulingTailoringIndexRouteImport.update({
     id: '/',
@@ -104,6 +99,18 @@ const SchedulingTailoringMinistryIdRoute =
     id: '/$ministryId',
     path: '/$ministryId',
     getParentRoute: () => SchedulingTailoringRoute,
+  } as any)
+const SchedulingRosteringPrototypeDateCardIconsRoute =
+  SchedulingRosteringPrototypeDateCardIconsRouteImport.update({
+    id: '/rostering/prototype-date-card-icons',
+    path: '/rostering/prototype-date-card-icons',
+    getParentRoute: () => SchedulingRoute,
+  } as any)
+const SchedulingRosteringPrototypeRoute =
+  SchedulingRosteringPrototypeRouteImport.update({
+    id: '/rostering/prototype',
+    path: '/rostering/prototype',
+    getParentRoute: () => SchedulingRoute,
   } as any)
 const SchedulingPlanningCyclesTemplatesRoute =
   SchedulingPlanningCyclesTemplatesRouteImport.update({
@@ -135,16 +142,10 @@ const SchedulingTailoringMinistryIdCycleIdRoute =
     path: '/$cycleId',
     getParentRoute: () => SchedulingTailoringMinistryIdRoute,
   } as any)
-const SchedulingEventsEventIdBuilderRoute =
-  SchedulingEventsEventIdBuilderRouteImport.update({
-    id: '/events/$eventId/builder',
-    path: '/events/$eventId/builder',
-    getParentRoute: () => SchedulingRoute,
-  } as any)
-const SchedulingRosteringCycleIdMinistryIdParticipationIdRoute =
-  SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport.update({
-    id: '/rostering/$cycleId/$ministryId/$participationId',
-    path: '/rostering/$cycleId/$ministryId/$participationId',
+const SchedulingRosteringMinistryIdCycleIdRoute =
+  SchedulingRosteringMinistryIdCycleIdRouteImport.update({
+    id: '/rostering/$ministryId/$cycleId',
+    path: '/rostering/$ministryId/$cycleId',
     getParentRoute: () => SchedulingRoute,
   } as any)
 
@@ -155,7 +156,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/scheduling': typeof SchedulingRouteWithChildren
-  '/scheduling/builder-events': typeof SchedulingBuilderEventsRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesRouteWithChildren
   '/scheduling/tailoring': typeof SchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -163,13 +163,14 @@ export interface FileRoutesByFullPath {
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
+  '/scheduling/rostering/prototype': typeof SchedulingRosteringPrototypeRoute
+  '/scheduling/rostering/prototype-date-card-icons': typeof SchedulingRosteringPrototypeDateCardIconsRoute
   '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdRouteWithChildren
   '/scheduling/planning-cycles/': typeof SchedulingPlanningCyclesIndexRoute
   '/scheduling/tailoring/': typeof SchedulingTailoringIndexRoute
-  '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/rostering/$ministryId/$cycleId': typeof SchedulingRosteringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId/$cycleId': typeof SchedulingTailoringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId/': typeof SchedulingTailoringMinistryIdIndexRoute
-  '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -177,18 +178,18 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
-  '/scheduling/builder-events': typeof SchedulingBuilderEventsRoute
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling': typeof SchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
+  '/scheduling/rostering/prototype': typeof SchedulingRosteringPrototypeRoute
+  '/scheduling/rostering/prototype-date-card-icons': typeof SchedulingRosteringPrototypeDateCardIconsRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesIndexRoute
   '/scheduling/tailoring': typeof SchedulingTailoringIndexRoute
-  '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/rostering/$ministryId/$cycleId': typeof SchedulingRosteringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId/$cycleId': typeof SchedulingTailoringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdIndexRoute
-  '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -198,7 +199,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/scheduling': typeof SchedulingRouteWithChildren
-  '/scheduling/builder-events': typeof SchedulingBuilderEventsRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesRouteWithChildren
   '/scheduling/tailoring': typeof SchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -206,13 +206,14 @@ export interface FileRoutesById {
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
+  '/scheduling/rostering/prototype': typeof SchedulingRosteringPrototypeRoute
+  '/scheduling/rostering/prototype-date-card-icons': typeof SchedulingRosteringPrototypeDateCardIconsRoute
   '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdRouteWithChildren
   '/scheduling/planning-cycles/': typeof SchedulingPlanningCyclesIndexRoute
   '/scheduling/tailoring/': typeof SchedulingTailoringIndexRoute
-  '/scheduling/events/$eventId/builder': typeof SchedulingEventsEventIdBuilderRoute
+  '/scheduling/rostering/$ministryId/$cycleId': typeof SchedulingRosteringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId/$cycleId': typeof SchedulingTailoringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId/': typeof SchedulingTailoringMinistryIdIndexRoute
-  '/scheduling/rostering/$cycleId/$ministryId/$participationId': typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -223,7 +224,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/scheduling'
-    | '/scheduling/builder-events'
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -231,13 +231,14 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
+    | '/scheduling/rostering/prototype'
+    | '/scheduling/rostering/prototype-date-card-icons'
     | '/scheduling/tailoring/$ministryId'
     | '/scheduling/planning-cycles/'
     | '/scheduling/tailoring/'
-    | '/scheduling/events/$eventId/builder'
+    | '/scheduling/rostering/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId/'
-    | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -245,18 +246,18 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/notifications'
-    | '/scheduling/builder-events'
     | '/volunteer/availability'
     | '/scheduling'
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
+    | '/scheduling/rostering/prototype'
+    | '/scheduling/rostering/prototype-date-card-icons'
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
-    | '/scheduling/events/$eventId/builder'
+    | '/scheduling/rostering/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId'
-    | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   id:
     | '__root__'
     | '/'
@@ -265,7 +266,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/scheduling'
-    | '/scheduling/builder-events'
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -273,13 +273,14 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
+    | '/scheduling/rostering/prototype'
+    | '/scheduling/rostering/prototype-date-card-icons'
     | '/scheduling/tailoring/$ministryId'
     | '/scheduling/planning-cycles/'
     | '/scheduling/tailoring/'
-    | '/scheduling/events/$eventId/builder'
+    | '/scheduling/rostering/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId/'
-    | '/scheduling/rostering/$cycleId/$ministryId/$participationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -364,13 +365,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulingPlanningCyclesRouteImport
       parentRoute: typeof SchedulingRoute
     }
-    '/scheduling/builder-events': {
-      id: '/scheduling/builder-events'
-      path: '/builder-events'
-      fullPath: '/scheduling/builder-events'
-      preLoaderRoute: typeof SchedulingBuilderEventsRouteImport
-      parentRoute: typeof SchedulingRoute
-    }
     '/scheduling/tailoring/': {
       id: '/scheduling/tailoring/'
       path: '/'
@@ -391,6 +385,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/scheduling/tailoring/$ministryId'
       preLoaderRoute: typeof SchedulingTailoringMinistryIdRouteImport
       parentRoute: typeof SchedulingTailoringRoute
+    }
+    '/scheduling/rostering/prototype-date-card-icons': {
+      id: '/scheduling/rostering/prototype-date-card-icons'
+      path: '/rostering/prototype-date-card-icons'
+      fullPath: '/scheduling/rostering/prototype-date-card-icons'
+      preLoaderRoute: typeof SchedulingRosteringPrototypeDateCardIconsRouteImport
+      parentRoute: typeof SchedulingRoute
+    }
+    '/scheduling/rostering/prototype': {
+      id: '/scheduling/rostering/prototype'
+      path: '/rostering/prototype'
+      fullPath: '/scheduling/rostering/prototype'
+      preLoaderRoute: typeof SchedulingRosteringPrototypeRouteImport
+      parentRoute: typeof SchedulingRoute
     }
     '/scheduling/planning-cycles/templates': {
       id: '/scheduling/planning-cycles/templates'
@@ -427,18 +435,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulingTailoringMinistryIdCycleIdRouteImport
       parentRoute: typeof SchedulingTailoringMinistryIdRoute
     }
-    '/scheduling/events/$eventId/builder': {
-      id: '/scheduling/events/$eventId/builder'
-      path: '/events/$eventId/builder'
-      fullPath: '/scheduling/events/$eventId/builder'
-      preLoaderRoute: typeof SchedulingEventsEventIdBuilderRouteImport
-      parentRoute: typeof SchedulingRoute
-    }
-    '/scheduling/rostering/$cycleId/$ministryId/$participationId': {
-      id: '/scheduling/rostering/$cycleId/$ministryId/$participationId'
-      path: '/rostering/$cycleId/$ministryId/$participationId'
-      fullPath: '/scheduling/rostering/$cycleId/$ministryId/$participationId'
-      preLoaderRoute: typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRouteImport
+    '/scheduling/rostering/$ministryId/$cycleId': {
+      id: '/scheduling/rostering/$ministryId/$cycleId'
+      path: '/rostering/$ministryId/$cycleId'
+      fullPath: '/scheduling/rostering/$ministryId/$cycleId'
+      preLoaderRoute: typeof SchedulingRosteringMinistryIdCycleIdRouteImport
       parentRoute: typeof SchedulingRoute
     }
   }
@@ -498,22 +499,23 @@ const SchedulingTailoringRouteWithChildren =
   SchedulingTailoringRoute._addFileChildren(SchedulingTailoringRouteChildren)
 
 interface SchedulingRouteChildren {
-  SchedulingBuilderEventsRoute: typeof SchedulingBuilderEventsRoute
   SchedulingPlanningCyclesRoute: typeof SchedulingPlanningCyclesRouteWithChildren
   SchedulingTailoringRoute: typeof SchedulingTailoringRouteWithChildren
   SchedulingIndexRoute: typeof SchedulingIndexRoute
-  SchedulingEventsEventIdBuilderRoute: typeof SchedulingEventsEventIdBuilderRoute
-  SchedulingRosteringCycleIdMinistryIdParticipationIdRoute: typeof SchedulingRosteringCycleIdMinistryIdParticipationIdRoute
+  SchedulingRosteringPrototypeRoute: typeof SchedulingRosteringPrototypeRoute
+  SchedulingRosteringPrototypeDateCardIconsRoute: typeof SchedulingRosteringPrototypeDateCardIconsRoute
+  SchedulingRosteringMinistryIdCycleIdRoute: typeof SchedulingRosteringMinistryIdCycleIdRoute
 }
 
 const SchedulingRouteChildren: SchedulingRouteChildren = {
-  SchedulingBuilderEventsRoute: SchedulingBuilderEventsRoute,
   SchedulingPlanningCyclesRoute: SchedulingPlanningCyclesRouteWithChildren,
   SchedulingTailoringRoute: SchedulingTailoringRouteWithChildren,
   SchedulingIndexRoute: SchedulingIndexRoute,
-  SchedulingEventsEventIdBuilderRoute: SchedulingEventsEventIdBuilderRoute,
-  SchedulingRosteringCycleIdMinistryIdParticipationIdRoute:
-    SchedulingRosteringCycleIdMinistryIdParticipationIdRoute,
+  SchedulingRosteringPrototypeRoute: SchedulingRosteringPrototypeRoute,
+  SchedulingRosteringPrototypeDateCardIconsRoute:
+    SchedulingRosteringPrototypeDateCardIconsRoute,
+  SchedulingRosteringMinistryIdCycleIdRoute:
+    SchedulingRosteringMinistryIdCycleIdRoute,
 }
 
 const SchedulingRouteWithChildren = SchedulingRoute._addFileChildren(

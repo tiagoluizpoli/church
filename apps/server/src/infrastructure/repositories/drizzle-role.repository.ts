@@ -47,6 +47,24 @@ export class DrizzleRoleRepository implements RoleRepository {
     return rows.map(mapRole);
   }
 
+  async listGlobalAndMinistry(
+    churchId: ChurchId,
+    ministryId: MinistryId,
+    tx?: TransactionContext,
+  ): Promise<Role[]> {
+    const rows = await getClient(this.db, tx)
+      .select()
+      .from(role)
+      .where(
+        and(
+          withChurchIsolation(role, churchId),
+          or(eq(role.isGlobal, true), eq(role.ministryId, ministryId)),
+        ),
+      )
+      .orderBy(asc(role.name));
+    return rows.map(mapRole);
+  }
+
   async listGlobalAndMinistryRoleIds(
     churchId: ChurchId,
     ministryIds: MinistryId[],

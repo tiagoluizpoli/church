@@ -10,7 +10,6 @@ import {
   getSlotRoleOptions,
   participationStateLabel,
   type SplitFormState,
-  toCalendarDateString,
   toHeadcountKey,
 } from '../participation-tailoring.utils';
 import { ManualSplitEditor } from './manual-split-editor';
@@ -35,6 +34,7 @@ import type {
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
+import { toLocalDayKey } from '@/shared/utils/date';
 import { adminApi } from '@/utils/api-instances';
 
 export interface HeadcountSave {
@@ -104,7 +104,7 @@ function buildFlatDayGroups(
   for (const eventView of events) {
     for (const slotView of eventView.slots) {
       rows.push({
-        dayKey: toCalendarDateString(slotView.slot.startTime),
+        dayKey: toLocalDayKey(slotView.slot.startTime),
         eventView,
         slotView,
       });
@@ -579,11 +579,10 @@ function SlotRow({
 
       {eventView.participation.state !== 'tailoring' ? (
         <Link
-          to="/scheduling/rostering/$cycleId/$ministryId/$participationId"
+          to="/scheduling/rostering/$ministryId/$cycleId"
           params={{
             cycleId: eventView.event.planningCycleId,
             ministryId: eventView.participation.ministryId,
-            participationId: eventView.participation.id,
           }}
           className={buttonVariants({
             variant: 'outline',

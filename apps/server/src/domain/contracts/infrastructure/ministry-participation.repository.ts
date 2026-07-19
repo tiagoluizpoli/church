@@ -103,6 +103,7 @@ export interface MinistryCycleSummaryRow {
   slotCount: number;
   status: 'not_started' | 'in_progress' | 'published';
   availabilityFiredForAll: boolean;
+  availabilityFiredForAny: boolean;
 }
 
 export interface MinistryParticipationRepository {

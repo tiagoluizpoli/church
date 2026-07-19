@@ -1,6 +1,8 @@
 import {
   assignment,
   assignmentAudit,
+  event,
+  ministryParticipation,
   role,
   shift,
   timeSlot,
@@ -18,6 +20,7 @@ import type {
   AssignmentAuditLogEntry,
   AssignmentAuditRepository,
   CreateAssignmentAuditInput,
+  ListAuditByCycleInput,
 } from '../../domain/contracts/infrastructure/assignment-audit.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
@@ -69,6 +72,38 @@ export class DrizzleAssignmentAuditRepository
         and(
           withChurchIsolation(assignmentAudit, churchId),
           eq(assignmentAudit.assignmentId, assignmentId),
+        ),
+      )
+      .orderBy(desc(assignmentAudit.timestamp));
+    return rows.map(mapAssignmentAudit);
+  }
+
+  async listByCycle(
+    input: ListAuditByCycleInput,
+    tx?: TransactionContext,
+  ): Promise<AssignmentAudit[]> {
+    const rows = await getClient(this.db, tx)
+      .select({
+        id: assignmentAudit.id,
+        churchId: assignmentAudit.churchId,
+        assignmentId: assignmentAudit.assignmentId,
+        actorId: assignmentAudit.actorId,
+        action: assignmentAudit.action,
+        reason: assignmentAudit.reason,
+        timestamp: assignmentAudit.timestamp,
+      })
+      .from(assignmentAudit)
+      .innerJoin(assignment, eq(assignmentAudit.assignmentId, assignment.id))
+      .innerJoin(
+        ministryParticipation,
+        eq(assignment.participationId, ministryParticipation.id),
+      )
+      .innerJoin(event, eq(ministryParticipation.eventId, event.id))
+      .where(
+        and(
+          withChurchIsolation(assignmentAudit, input.churchId),
+          eq(event.planningCycleId, input.cycleId),
+          eq(ministryParticipation.ministryId, input.ministryId),
         ),
       )
       .orderBy(desc(assignmentAudit.timestamp));

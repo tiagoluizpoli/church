@@ -33,7 +33,7 @@ Single batched read that replaces the three legacy builder load calls.
               "shift": { /* shiftResponseSchema */ },
               "requirements": [ /* shiftRequirementResponseSchema[] */ ],
               "assignments": [ /* assignmentResponseSchema[] — [] when none */ ],
-              "eligibleVolunteers": [ /* eligibleVolunteerResponseSchema[] — [] when published */ ]
+              "eligibleVolunteers": [ /* eligibleVolunteerResponseSchema[] */ ]
             }
           ]
         }
@@ -43,7 +43,7 @@ Single batched read that replaces the three legacy builder load calls.
 }
 ```
 
-**Notes**: uniform shape for every shift (no special-casing zero-assignment shifts); `eligibleVolunteers` is `[]` for published participations (Query B skips their availability join). `eligibleVolunteerResponseSchema` already carries `isAvailable`/`hasConflict`/`lastServedAt` used by the ranking (R4).
+**Notes**: uniform shape for every shift (no special-casing zero-assignment shifts); published participations retain eligible volunteers so reassignments remain available. `eligibleVolunteerResponseSchema` already carries `isAvailable`/`hasConflict`/`lastServedAt` used by the ranking (R4).
 
 **Errors**: `403` (RBAC), `404` (`NotFoundError` — cycle/ministry not in caller's church).
 

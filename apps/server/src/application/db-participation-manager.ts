@@ -1,10 +1,17 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
+import type { ChurchId } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
 import type {
+  CycleBuilderEventView,
+  CycleBuilderRoleOption,
+  CycleBuilderShiftView,
+  CycleBuilderSlotView,
+  CycleBuilderView,
   CycleParticipationView,
   DeleteShiftManagerInput,
   EligibleVolunteerView,
+  GetCycleBuilderDataInput,
   GetCycleParticipationInput,
   GetParticipationCompletionInput,
   GetServingProfileInput,
@@ -15,6 +22,9 @@ import type {
   ParticipationCompletionView,
   ParticipationEventView,
   ParticipationSlotView,
+  PublishCycleInput,
+  PublishCycleParticipationOutcome,
+  PublishCycleView,
   PublishParticipationInput,
   SetInclusionsInput,
   SplitShiftsManagerInput,
@@ -24,16 +34,22 @@ import type {
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
+import {
+  EVENT_BUILDER_MINISTRY_ONLY_FAIRNESS_FLAG,
+  type IFeatureFlagService,
+} from '../domain/contracts/infrastructure/feature-flag-service';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { MinistryServingProfileRepository } from '../domain/contracts/infrastructure/ministry-serving-profile.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
+import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
+import type { Assignment } from '../domain/entities/assignment';
 import type { EventWithSlots } from '../domain/entities/event';
 import {
   calculateCompletionPercent,
@@ -84,6 +100,49 @@ interface BuildEligibleVolunteerViewInput {
   lastServedAt?: Date;
 }
 
+interface QualifiedVolunteerRef {
+  id: EligibleVolunteerView['volunteerId'];
+  name?: string | null;
+}
+
+interface BuildEligibleForVolunteerInput {
+  volunteer: QualifiedVolunteerRef;
+  shift: Shift;
+  activeAssignments: Assignment[];
+  fairnessAssignments: Assignment[];
+  assignmentShiftsById: Map<string, Shift>;
+  unavailableMarkKeys: Set<string>;
+}
+
+interface ListEligibleForShiftsInput {
+  churchId: ChurchId;
+  participation: MinistryParticipation;
+  shifts: Shift[];
+  requirements: SlotRequirement[];
+  tx?: TransactionContext;
+}
+
+interface BuildBuilderEventViewInput {
+  eventGroup: EventWithSlots;
+  participation: MinistryParticipation;
+  includedSlotIds: Set<string>;
+  shifts: Shift[];
+  requirements: SlotRequirement[];
+  assignments: Assignment[];
+  eligibleByShift: Map<string, EligibleVolunteerView[]>;
+}
+
+interface PublishCandidate {
+  participation: MinistryParticipation;
+  completion: ParticipationCompletionView;
+}
+
+interface NotifyParticipationPublishedInput {
+  churchId: ChurchId;
+  participation: MinistryParticipation;
+  tx?: TransactionContext;
+}
+
 @injectable()
 export class DbParticipationManager implements IParticipationManager {
   private readonly splitter = new ShiftSplitter();
@@ -107,10 +166,14 @@ export class DbParticipationManager implements IParticipationManager {
     private readonly ministryRepository: MinistryRepository,
     @inject('IMinistryServingProfileRepository')
     private readonly servingProfileRepository: MinistryServingProfileRepository,
+    @inject('IRoleRepository')
+    private readonly roleRepository: RoleRepository,
     @inject('INotificationService')
     private readonly notificationService: NotificationService,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
+    @inject('IFeatureFlagService')
+    private readonly featureFlagService?: IFeatureFlagService,
   ) {}
 
   async getCycleParticipation(
@@ -124,7 +187,6 @@ export class DbParticipationManager implements IParticipationManager {
         cycleId: input.cycleId,
         tx,
       });
-
       const events: ParticipationEventView[] = [];
 
       for (const eventGroup of eventGroups) {
@@ -165,6 +227,92 @@ export class DbParticipationManager implements IParticipationManager {
       }
 
       return { events };
+    });
+  }
+
+  async getCycleBuilderData(
+    input: GetCycleBuilderDataInput,
+  ): Promise<CycleBuilderView> {
+    await this.ministryRepository.getById(input.churchId, input.ministryId);
+
+    return this.unitOfWork.run(async (tx) => {
+      const eventGroups = await this.eventRepository.listCycleEvents({
+        churchId: input.churchId,
+        cycleId: input.cycleId,
+        tx,
+      });
+      const roles = await this.roleRepository.listGlobalAndMinistry(
+        input.churchId,
+        input.ministryId,
+        tx,
+      );
+
+      const events: CycleBuilderEventView[] = [];
+
+      for (const eventGroup of eventGroups) {
+        const participation = await this.getOrCreateParticipation({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          ministryId: input.ministryId,
+          eventId: eventGroup.event.id,
+          tx,
+        });
+        const [inclusions, shifts, requirements, assignments] =
+          await Promise.all([
+            this.participationRepository.listInclusions({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.shiftRepository.listByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.shiftRepository.listRequirementsByParticipation({
+              churchId: input.churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.assignmentRepository.listByParticipation(
+              input.churchId,
+              participation.id,
+              tx,
+            ),
+          ]);
+
+        // Query B — eligible volunteers batched over all this participation's
+        // shifts at once (never N+1). Published participations still include
+        // candidates because leaders may reassign after publication.
+        const eligibleByShift = await this.listEligibleVolunteersForShifts({
+          churchId: input.churchId,
+          participation,
+          shifts,
+          requirements,
+          tx,
+        });
+
+        events.push(
+          buildBuilderEventView({
+            eventGroup,
+            participation,
+            includedSlotIds: new Set(
+              inclusions.map((inclusion) => inclusion.timeSlotId as string),
+            ),
+            shifts,
+            requirements,
+            assignments,
+            eligibleByShift,
+          }),
+        );
+      }
+
+      const roleOptions: CycleBuilderRoleOption[] = roles.map((role) => ({
+        id: role.id,
+        name: role.name,
+      }));
+
+      return { events, roles: roleOptions };
     });
   }
 
@@ -513,71 +661,18 @@ export class DbParticipationManager implements IParticipationManager {
         ),
       );
 
-      const eligible = qualifiedVolunteers.map((volunteer) => {
-        const volunteerAssignments = activeAssignments.filter(
-          (assignment) => assignment.volunteerId === volunteer.id,
-        );
-        const warnings = volunteerAssignments
-          .filter((assignment) => assignment.shiftId !== shift.id)
-          .flatMap((assignment) => {
-            const assignmentShift = assignmentShiftsById.get(
-              assignment.shiftId as string,
-            );
-            if (
-              !assignmentShift ||
-              !rangesOverlap({
-                startTime: shift.startTime,
-                endTime: shift.endTime,
-                otherStartTime: assignmentShift.startTime,
-                otherEndTime: assignmentShift.endTime,
-              })
-            ) {
-              return [];
-            }
+      const eligible = qualifiedVolunteers.map((volunteer) =>
+        buildEligibleForVolunteer({
+          volunteer,
+          shift,
+          activeAssignments,
+          fairnessAssignments: activeAssignments,
+          assignmentShiftsById,
+          unavailableMarkKeys,
+        }),
+      );
 
-            return [
-              buildDoubleBookedWarning({
-                assignmentId: assignment.id as string,
-              }),
-            ];
-          });
-        const lastServedAt = volunteerAssignments
-          .map(
-            (assignment) =>
-              assignmentShiftsById.get(assignment.shiftId as string)?.startTime,
-          )
-          .filter(
-            (servedAt): servedAt is Date =>
-              servedAt instanceof Date && servedAt < shift.startTime,
-          )
-          .sort((left, right) => right.getTime() - left.getTime())[0];
-
-        return buildEligibleVolunteerView({
-          volunteerId: volunteer.id as string,
-          volunteerName: volunteer.name ?? 'Unknown volunteer',
-          isUnavailable: unavailableMarkKeys.has(
-            `${volunteer.id as string}:${shift.id as string}`,
-          ),
-          activeAssignmentWarnings: warnings,
-          lastServedAt,
-        });
-      });
-
-      return eligible.sort((left, right) => {
-        if (left.isAvailable !== right.isAvailable) {
-          return left.isAvailable ? -1 : 1;
-        }
-
-        const leftServedAt =
-          left.lastServedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
-        const rightServedAt =
-          right.lastServedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
-        if (leftServedAt !== rightServedAt) {
-          return leftServedAt - rightServedAt;
-        }
-
-        return left.volunteerName.localeCompare(right.volunteerName);
-      });
+      return sortEligibleVolunteers(eligible);
     });
   }
 
@@ -620,42 +715,139 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
 
-      const planningEvent = await this.eventRepository.getEvent({
+      await this.notifyParticipationPublished({
         churchId: input.churchId,
-        eventId: participation.eventId,
+        participation,
         tx,
       });
-      const assignments = await this.assignmentRepository.listByParticipation(
-        input.churchId,
-        participation.id,
-        tx,
-      );
-      const volunteerIds = [
-        ...new Set(
-          assignments
-            .filter((assignment) => isActiveAssignmentStatus(assignment.status))
-            .map((assignment) => assignment.volunteerId),
-        ),
-      ];
+    });
+  }
 
-      for (const volunteerId of volunteerIds) {
-        await this.notificationService.notifyVolunteer({
-          churchId: input.churchId as string,
-          volunteerId: volunteerId as string,
-          planningCycleId: planningEvent.planningCycleId,
-          ministryId: participation.ministryId,
-          eventId: planningEvent.id,
-          type: 'schedule_published',
-          title: 'Schedule published',
-          body: `${planningEvent.title} is now published for your ministry.`,
-          payload: {
-            eventId: planningEvent.id as string,
-            ministryId: participation.ministryId as string,
-            section: 'assignments',
-          },
+  async publishCycle(input: PublishCycleInput): Promise<PublishCycleView> {
+    await this.ministryRepository.getById(input.churchId, input.ministryId);
+
+    return this.unitOfWork.run(async (tx) => {
+      const eventGroups = await this.eventRepository.listCycleEvents({
+        churchId: input.churchId,
+        cycleId: input.cycleId,
+        tx,
+      });
+
+      // Only availability-fired / rostering participations are publishable;
+      // tailoring ones are not yet rostered and already-published ones are
+      // reported unchanged.
+      const publishable: PublishCandidate[] = [];
+      const alreadyPublished: PublishCandidate[] = [];
+
+      for (const eventGroup of eventGroups) {
+        const participation = await this.getOrCreateParticipation({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          ministryId: input.ministryId,
+          eventId: eventGroup.event.id,
+          tx,
+        });
+        const completion = await this.getCompletionInternal({
+          churchId: input.churchId,
+          participationId: participation.id,
+          tx,
+        });
+        if (participation.state === 'published') {
+          alreadyPublished.push({ participation, completion });
+        } else if (
+          participation.state === 'availability_fired' ||
+          participation.state === 'rostering'
+        ) {
+          publishable.push({ participation, completion });
+        }
+      }
+
+      const anyBelowFull = publishable.some(
+        (candidate) => candidate.completion.completionPercent < 100,
+      );
+
+      // Below-full without confirmation: reject the whole batch, no writes.
+      if (anyBelowFull && input.confirmBelowFull !== true) {
+        return {
+          published: false,
+          belowFull: true,
+          participations: [...publishable, ...alreadyPublished].map(
+            toPublishCycleOutcome,
+          ),
+        };
+      }
+
+      for (const { participation, completion } of publishable) {
+        if (participation.state === 'availability_fired') {
+          participation.startRostering();
+        }
+        participation.publish({
+          completionPercent: completion.completionPercent,
+          confirmBelowFull: true,
+        });
+        await this.participationRepository.updateState({
+          churchId: input.churchId,
+          participationId: participation.id,
+          state: participation.state,
+          tx,
+        });
+        await this.notifyParticipationPublished({
+          churchId: input.churchId,
+          participation,
+          tx,
         });
       }
+
+      return {
+        published: true,
+        belowFull: anyBelowFull,
+        participations: [...publishable, ...alreadyPublished].map(
+          toPublishCycleOutcome,
+        ),
+      };
     });
+  }
+
+  private async notifyParticipationPublished({
+    churchId,
+    participation,
+    tx,
+  }: NotifyParticipationPublishedInput): Promise<void> {
+    const planningEvent = await this.eventRepository.getEvent({
+      churchId,
+      eventId: participation.eventId,
+      tx,
+    });
+    const assignments = await this.assignmentRepository.listByParticipation(
+      churchId,
+      participation.id,
+      tx,
+    );
+    const volunteerIds = [
+      ...new Set(
+        assignments
+          .filter((assignment) => isActiveAssignmentStatus(assignment.status))
+          .map((assignment) => assignment.volunteerId),
+      ),
+    ];
+
+    for (const volunteerId of volunteerIds) {
+      await this.notificationService.notifyVolunteer({
+        churchId: churchId as string,
+        volunteerId: volunteerId as string,
+        planningCycleId: planningEvent.planningCycleId,
+        ministryId: participation.ministryId,
+        eventId: planningEvent.id,
+        type: 'schedule_published',
+        title: 'Schedule published',
+        body: `${planningEvent.title} is now published for your ministry.`,
+        payload: {
+          eventId: planningEvent.id as string,
+          ministryId: participation.ministryId as string,
+          section: 'assignments',
+        },
+      });
+    }
   }
 
   async listMinistryCycleSummaries(
@@ -678,6 +870,7 @@ export class DbParticipationManager implements IParticipationManager {
       slotCount: row.slotCount,
       status: row.status,
       availabilityFiredForAll: row.availabilityFiredForAll,
+      availabilityFiredForAny: row.availabilityFiredForAny,
     }));
   }
 
@@ -791,6 +984,324 @@ export class DbParticipationManager implements IParticipationManager {
 
     return [...volunteersById.values()];
   }
+
+  private async listEligibleVolunteersForShifts({
+    churchId,
+    participation,
+    shifts,
+    requirements,
+    tx,
+  }: ListEligibleForShiftsInput): Promise<
+    Map<string, EligibleVolunteerView[]>
+  > {
+    const eligibleByShift = new Map<string, EligibleVolunteerView[]>();
+    if (shifts.length === 0) {
+      return eligibleByShift;
+    }
+
+    const requirementsByShift = new Map<string, SlotRequirement[]>();
+    for (const requirement of requirements) {
+      const key = (requirement.shiftId ?? '') as string;
+      const shiftRequirements = requirementsByShift.get(key) ?? [];
+      shiftRequirements.push(requirement);
+      requirementsByShift.set(key, shiftRequirements);
+    }
+
+    // Qualified volunteers per distinct role, fetched once and reused across
+    // every shift that requires that role (batched — never per-shift N+1).
+    const volunteersByRole = new Map<string, QualifiedVolunteerRef[]>();
+    for (const requirement of requirements) {
+      const roleKey = requirement.roleId as string;
+      if (volunteersByRole.has(roleKey)) {
+        continue;
+      }
+      const volunteers = await this.volunteerRepository.listQualifiedForRole(
+        churchId,
+        participation.ministryId,
+        requirement.roleId,
+        tx,
+      );
+      volunteersByRole.set(roleKey, volunteers);
+    }
+
+    // A shift with no requirements falls back to the whole ministry.
+    const needsMinistryWide = shifts.some(
+      (shift) =>
+        (requirementsByShift.get(shift.id as string) ?? []).length === 0,
+    );
+    const ministryVolunteers = needsMinistryWide
+      ? await this.volunteerRepository.listByMinistry(
+          churchId,
+          participation.ministryId,
+          tx,
+        )
+      : [];
+
+    // Union of everyone who could appear so marks/assignments load once.
+    const volunteersById = new Map<string, QualifiedVolunteerRef>();
+    for (const volunteers of volunteersByRole.values()) {
+      for (const volunteer of volunteers) {
+        volunteersById.set(volunteer.id as string, volunteer);
+      }
+    }
+    for (const volunteer of ministryVolunteers) {
+      volunteersById.set(volunteer.id as string, volunteer);
+    }
+    const volunteerIds = [...volunteersById.values()].map(
+      (volunteer) => volunteer.id,
+    );
+
+    const [marks, assignments] = await Promise.all([
+      this.availabilityRepository.listByVolunteers(churchId, volunteerIds, tx),
+      this.assignmentRepository.listByVolunteers(churchId, volunteerIds, tx),
+    ]);
+    const activeAssignments = assignments.filter((assignment) =>
+      isActiveAssignmentStatus(assignment.status),
+    );
+    const ministryOnlyFairness =
+      (await this.featureFlagService?.isEnabled(
+        EVENT_BUILDER_MINISTRY_ONLY_FAIRNESS_FLAG,
+        { churchId: churchId as string },
+      )) ?? false;
+    const participationIds = [
+      ...new Set(
+        activeAssignments
+          .map((assignment) => assignment.participationId)
+          .filter(
+            (participationId): participationId is MinistryParticipation['id'] =>
+              participationId != null,
+          ),
+      ),
+    ];
+    const assignmentParticipations =
+      ministryOnlyFairness && participationIds.length > 0
+        ? await this.participationRepository.listByIds({
+            churchId,
+            participationIds,
+            tx,
+          })
+        : [];
+    const ministryParticipationIds = new Set(
+      assignmentParticipations
+        .filter(
+          (assignmentParticipation) =>
+            assignmentParticipation.ministryId === participation.ministryId,
+        )
+        .map((assignmentParticipation) => assignmentParticipation.id),
+    );
+    const fairnessAssignments = ministryOnlyFairness
+      ? activeAssignments.filter(
+          (assignment) =>
+            assignment.participationId != null &&
+            ministryParticipationIds.has(assignment.participationId),
+        )
+      : activeAssignments;
+    const assignmentShiftIds = [
+      ...new Set(
+        activeAssignments
+          .map((assignment) => assignment.shiftId)
+          .filter((shiftId): shiftId is Shift['id'] => shiftId != null),
+      ),
+    ];
+    const assignmentShifts = await Promise.all(
+      assignmentShiftIds.map((shiftId) =>
+        this.shiftRepository.getById({ churchId, shiftId, tx }),
+      ),
+    );
+    const assignmentShiftsById = new Map(
+      assignmentShifts.map((assignmentShift) => [
+        assignmentShift.id as string,
+        assignmentShift,
+      ]),
+    );
+    const unavailableMarkKeys = new Set(
+      marks.map(
+        (mark) => `${mark.volunteerId as string}:${mark.shiftId as string}`,
+      ),
+    );
+
+    for (const shift of shifts) {
+      const shiftRequirements =
+        requirementsByShift.get(shift.id as string) ?? [];
+      const qualified: QualifiedVolunteerRef[] =
+        shiftRequirements.length === 0
+          ? ministryVolunteers
+          : dedupeVolunteersById(
+              shiftRequirements.flatMap(
+                (requirement) =>
+                  volunteersByRole.get(requirement.roleId as string) ?? [],
+              ),
+            );
+      const eligible = qualified.map((volunteer) =>
+        buildEligibleForVolunteer({
+          volunteer,
+          shift,
+          activeAssignments,
+          fairnessAssignments,
+          assignmentShiftsById,
+          unavailableMarkKeys,
+        }),
+      );
+      eligibleByShift.set(shift.id as string, sortEligibleVolunteers(eligible));
+    }
+
+    return eligibleByShift;
+  }
+}
+
+function dedupeVolunteersById(
+  volunteers: QualifiedVolunteerRef[],
+): QualifiedVolunteerRef[] {
+  const byId = new Map<string, QualifiedVolunteerRef>();
+  for (const volunteer of volunteers) {
+    byId.set(volunteer.id as string, volunteer);
+  }
+  return [...byId.values()];
+}
+
+function buildBuilderEventView({
+  eventGroup,
+  participation,
+  includedSlotIds,
+  shifts,
+  requirements,
+  assignments,
+  eligibleByShift,
+}: BuildBuilderEventViewInput): CycleBuilderEventView {
+  const shiftsBySlot = new Map<string, Shift[]>();
+  for (const shift of shifts) {
+    const slotShifts = shiftsBySlot.get(shift.timeSlotId as string) ?? [];
+    slotShifts.push(shift);
+    shiftsBySlot.set(shift.timeSlotId as string, slotShifts);
+  }
+
+  const requirementsByShift = new Map<string, SlotRequirement[]>();
+  for (const requirement of requirements) {
+    const key = (requirement.shiftId ?? '') as string;
+    const shiftRequirements = requirementsByShift.get(key) ?? [];
+    shiftRequirements.push(requirement);
+    requirementsByShift.set(key, shiftRequirements);
+  }
+
+  const assignmentsByShift = new Map<string, Assignment[]>();
+  for (const assignment of assignments) {
+    if (assignment.shiftId == null) {
+      continue;
+    }
+    const key = assignment.shiftId as string;
+    const shiftAssignments = assignmentsByShift.get(key) ?? [];
+    shiftAssignments.push(assignment);
+    assignmentsByShift.set(key, shiftAssignments);
+  }
+
+  const slots: CycleBuilderSlotView[] = eventGroup.slots.map((slot) => {
+    const slotShifts = shiftsBySlot.get(slot.id as string) ?? [];
+    const shiftViews: CycleBuilderShiftView[] = slotShifts.map((shift) => ({
+      shift,
+      requirements: requirementsByShift.get(shift.id as string) ?? [],
+      assignments: assignmentsByShift.get(shift.id as string) ?? [],
+      eligibleVolunteers: eligibleByShift.get(shift.id as string) ?? [],
+    }));
+
+    return {
+      slot,
+      included: includedSlotIds.has(slot.id as string),
+      shifts: shiftViews,
+    };
+  });
+
+  return {
+    participation,
+    event: eventGroup.event,
+    slots,
+  };
+}
+
+function buildEligibleForVolunteer({
+  volunteer,
+  shift,
+  activeAssignments,
+  fairnessAssignments,
+  assignmentShiftsById,
+  unavailableMarkKeys,
+}: BuildEligibleForVolunteerInput): EligibleVolunteerView {
+  const volunteerAssignments = activeAssignments.filter(
+    (assignment) => assignment.volunteerId === volunteer.id,
+  );
+  const warnings = volunteerAssignments
+    .filter((assignment) => assignment.shiftId !== shift.id)
+    .flatMap((assignment) => {
+      const assignmentShift = assignmentShiftsById.get(
+        assignment.shiftId as string,
+      );
+      if (
+        !assignmentShift ||
+        !rangesOverlap({
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          otherStartTime: assignmentShift.startTime,
+          otherEndTime: assignmentShift.endTime,
+        })
+      ) {
+        return [];
+      }
+
+      return [
+        buildDoubleBookedWarning({ assignmentId: assignment.id as string }),
+      ];
+    });
+  const lastServedAt = fairnessAssignments
+    .filter((assignment) => assignment.volunteerId === volunteer.id)
+    .map(
+      (assignment) =>
+        assignmentShiftsById.get(assignment.shiftId as string)?.startTime,
+    )
+    .filter(
+      (servedAt): servedAt is Date =>
+        servedAt instanceof Date && servedAt < shift.startTime,
+    )
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+
+  return buildEligibleVolunteerView({
+    volunteerId: volunteer.id as string,
+    volunteerName: volunteer.name ?? 'Unknown volunteer',
+    isUnavailable: unavailableMarkKeys.has(
+      `${volunteer.id as string}:${shift.id as string}`,
+    ),
+    activeAssignmentWarnings: warnings,
+    lastServedAt,
+  });
+}
+
+function toPublishCycleOutcome(
+  candidate: PublishCandidate,
+): PublishCycleParticipationOutcome {
+  return {
+    participationId: candidate.participation.id,
+    state: candidate.participation.state,
+    requiredCount: candidate.completion.requiredCount,
+    assignedCount: candidate.completion.assignedCount,
+  };
+}
+
+function sortEligibleVolunteers(
+  eligible: EligibleVolunteerView[],
+): EligibleVolunteerView[] {
+  return [...eligible].sort((left, right) => {
+    if (left.isAvailable !== right.isAvailable) {
+      return left.isAvailable ? -1 : 1;
+    }
+
+    const leftServedAt =
+      left.lastServedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+    const rightServedAt =
+      right.lastServedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+    if (leftServedAt !== rightServedAt) {
+      return leftServedAt - rightServedAt;
+    }
+
+    return left.volunteerName.localeCompare(right.volunteerName);
+  });
 }
 
 function ensureTailoring({

@@ -5,6 +5,7 @@ import type {
   GetCycleParticipation200EventsItemSlotsItem,
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { toCycleDayKey, toLocalDayKey } from '@/shared/utils/date';
 
 export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
 
@@ -45,12 +46,15 @@ export function parseCalendarDate(value: string): Date {
   return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
 }
 
-/** Extracts API timestamp's calendar-date portion without browser-local
- * conversion. Cycle bounds and server-provided slot timestamps share this
- * calendar representation; converting with `Date#getDate()` can move a UTC
- * midnight slot into its previous local day. */
+/** Calendar day of a date-only value, such as a planning-cycle bound.
+ *
+ * Only for values that name a day rather than a moment. Slot and shift
+ * timestamps are real church-local wall-clock instants (a 9am slot is stored as
+ * `12:00Z` in UTC-3), so slicing their UTC prefix reports the wrong day for
+ * anything served late enough to cross UTC midnight — use `toLocalDayKey` for
+ * those. */
 export function toCalendarDateString(value: string): IsoDateString {
-  return value.slice(0, 10);
+  return toCycleDayKey(value);
 }
 
 export function formatDate(value: string): string {
@@ -354,7 +358,7 @@ export function buildSlotDayMarkers({
 
   for (const eventView of events) {
     for (const slotView of eventView.slots) {
-      markers.add(toCalendarDateString(slotView.slot.startTime));
+      markers.add(toLocalDayKey(slotView.slot.startTime));
     }
   }
 

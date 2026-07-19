@@ -62,6 +62,7 @@ function makeCycle(
     slotCount: 2,
     status: 'in_progress',
     availabilityFiredForAll: false,
+    availabilityFiredForAny: false,
     ...overrides,
   };
 }

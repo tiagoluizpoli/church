@@ -3,6 +3,8 @@ import {
   useVolunteerPool,
 } from '../../hooks/use-volunteer-pool';
 import { VolunteerCard } from './volunteer-card';
+import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -30,6 +32,9 @@ interface VolunteerPoolSidebarProps {
   roles: RoleOption[];
   selectedVolunteerId?: string;
   onSelectVolunteer?: (volunteerId: string) => void;
+  focusedVolunteerIds?: Set<string>;
+  focusLabel?: string;
+  onClearFocus?: () => void;
 }
 
 export function VolunteerPoolSidebar({
@@ -38,7 +43,11 @@ export function VolunteerPoolSidebar({
   roles,
   selectedVolunteerId,
   onSelectVolunteer,
+  focusedVolunteerIds,
+  focusLabel,
+  onClearFocus,
 }: VolunteerPoolSidebarProps) {
+  const isTouch = useFormControlSize() === 'touch';
   const {
     nameFilter,
     roleFilter,
@@ -46,46 +55,85 @@ export function VolunteerPoolSidebar({
     setRoleFilter,
     sortedFilteredVolunteers,
   } = useVolunteerPool(volunteers, assignments);
+  const displayedVolunteers = focusedVolunteerIds
+    ? sortedFilteredVolunteers.filter((volunteer) =>
+        focusedVolunteerIds.has(volunteer.volunteerId),
+      )
+    : sortedFilteredVolunteers;
 
   return (
     <aside
-      className="flex w-64 flex-col gap-2 border-r pr-3"
+      className="surface-panel flex h-full w-full flex-col gap-3 p-4 xl:w-80"
       data-testid="volunteer-pool"
     >
-      <h2 className="font-semibold text-sm">Volunteers</h2>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="font-semibold text-sm">
+            {focusLabel ? 'Candidates' : 'Volunteers'}
+          </h2>
+          {focusLabel ? (
+            <p className="text-muted-foreground text-xs">{focusLabel}</p>
+          ) : null}
+        </div>
+        {onClearFocus ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={onClearFocus}
+          >
+            All volunteers
+          </Button>
+        ) : null}
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Select or drag a person onto a role. Ordered by current availability and
+        cycle workload.
+      </p>
 
       <Input
         value={nameFilter}
         onChange={(e) => setNameFilter(e.target.value)}
         placeholder="Search by name…"
-        className="h-8 text-xs"
+        aria-label="Search volunteers by name"
+        className={isTouch ? 'text-sm' : 'h-8 text-xs'}
       />
 
-      <Select
-        value={roleFilter}
-        onValueChange={(v) => setRoleFilter(v ?? 'all')}
-      >
-        <SelectTrigger size="sm" aria-label="Filter by role">
-          <SelectValue placeholder="All roles" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All roles</SelectItem>
-          {roles.map((r) => (
-            <SelectItem key={r.id} value={r.id}>
-              {r.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {!focusedVolunteerIds ? (
+        <Select
+          value={roleFilter}
+          onValueChange={(v) => setRoleFilter(v ?? 'all')}
+        >
+          <SelectTrigger
+            size={isTouch ? 'default' : 'sm'}
+            aria-label="Filter by role"
+            className={
+              isTouch ? 'w-full px-3 text-sm data-[size=default]:h-11' : ''
+            }
+          >
+            <SelectValue placeholder="All roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All roles</SelectItem>
+            {roles.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
 
-      <ScrollArea className="h-[calc(100vh-16rem)]">
+      <ScrollArea className="h-80 xl:h-[calc(100vh-16rem)]">
         <div className="flex flex-col gap-1.5 pr-2">
-          {sortedFilteredVolunteers.length === 0 ? (
+          {displayedVolunteers.length === 0 ? (
             <p className="px-1 py-4 text-muted-foreground text-xs">
-              No volunteers match
+              {focusedVolunteerIds
+                ? 'No candidates match'
+                : 'No volunteers match'}
             </p>
           ) : (
-            sortedFilteredVolunteers.map((v) => (
+            displayedVolunteers.map((v) => (
               <VolunteerCard
                 key={v.volunteerId}
                 volunteer={v}

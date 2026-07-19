@@ -362,6 +362,7 @@ export class ChurchAdminController implements FastifyController {
           startDate: new Date(body.startDate),
           endDate: new Date(body.endDate),
           eventType: body.eventType,
+          datesRepresentChurchCalendarDays: true,
         });
         return reply.status(201).send(eventMapper.toResponse(event));
       },

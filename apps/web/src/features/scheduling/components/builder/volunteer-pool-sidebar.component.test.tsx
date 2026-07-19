@@ -84,4 +84,28 @@ describe('VolunteerPoolSidebar (T102)', () => {
     await user.click(firstSelectButton);
     expect(onSelectVolunteer).toHaveBeenCalledWith('1');
   });
+
+  it('scopes the rail to a focused requirement and can restore the full pool', async () => {
+    const user = userEvent.setup();
+    const onClearFocus = vi.fn();
+
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={new Set(['1'])}
+        focusLabel="Greeter · 9:00 AM - 11:00 AM"
+        onClearFocus={onClearFocus}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Candidates' })).toBeVisible();
+    expect(screen.getByText('Greeter · 9:00 AM - 11:00 AM')).toBeVisible();
+    expect(screen.getByText('Alice S.')).toBeVisible();
+    expect(screen.queryByText('Bob J.')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'All volunteers' }));
+    expect(onClearFocus).toHaveBeenCalledOnce();
+  });
 });

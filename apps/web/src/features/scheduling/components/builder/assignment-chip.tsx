@@ -1,12 +1,12 @@
 import { Check, Clock, X } from 'lucide-react';
 import { AssigneeIdentityBadge } from './assignee-identity-badge';
 import { Badge } from '@/components/ui/badge';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { cn } from '@/lib/utils';
 import {
   type AssigneeSystemRole,
   formatAssigneeRoleLabel,
 } from '@/utils/format-assignee-role-label';
-import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 export type ConflictStatus = 'double_booked' | 'unavailable';
 export type ConfirmationStatus = 'pending' | 'confirmed' | 'declined';
@@ -28,12 +28,14 @@ export function AssignmentChip({
   isPublished,
   onClick,
 }: AssignmentChipProps) {
+  const isTouch = useFormControlSize() === 'touch';
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'radius-control flex w-full items-center justify-between gap-1 border px-2 py-1 text-left text-xs transition-colors hover:bg-muted/50',
+        'radius-control inline-flex max-w-full items-center justify-between gap-1 border px-2 py-1 text-left text-xs transition-colors hover:bg-muted/50',
+        isTouch && 'min-h-11 px-3 py-2 text-sm',
         conflictStatus === 'unavailable' &&
           'border-destructive/40 bg-destructive/10',
         conflictStatus === 'double_booked' && 'border-primary/35 bg-primary/8',
@@ -41,7 +43,7 @@ export function AssignmentChip({
       data-testid="assignment-chip"
     >
       <span className="flex items-center gap-1 truncate">
-        {formatVolunteerName(volunteerName)}
+        {volunteerName}
         <AssigneeIdentityBadge
           roleLabel={formatAssigneeRoleLabel(volunteerSystemRole)}
           fullNameOnExpand={volunteerName}

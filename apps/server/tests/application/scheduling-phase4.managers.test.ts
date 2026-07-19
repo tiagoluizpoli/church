@@ -40,6 +40,7 @@ import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories
 import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
@@ -92,6 +93,7 @@ function createPhase4Managers(
       new DrizzleVolunteerRepository(schedulingTestDb),
       new DrizzleMinistryRepository(schedulingTestDb),
       servingProfileRepository,
+      new DrizzleRoleRepository(schedulingTestDb),
       notificationService ?? notificationSpy,
       unitOfWork,
     ),

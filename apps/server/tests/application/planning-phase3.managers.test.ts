@@ -9,6 +9,7 @@ import {
   slotRequirement,
   timeSlot,
 } from '@church/db';
+import { formatInTimeZone } from 'date-fns-tz';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
@@ -283,6 +284,34 @@ describe('Phase 3 planning managers', () => {
         endDate: new Date('2026-10-05T14:00:00.000Z'),
       }),
     ).rejects.toThrow(EventOutsidePlanningCycleError);
+  });
+
+  it('creates a manual event on the selected church calendar date', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+    const cycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'November cycle',
+      startDate: new Date('2026-11-01T00:00:00.000Z'),
+      endDate: new Date('2026-12-01T00:00:00.000Z'),
+    });
+
+    const created = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      title: 'November first',
+      startDate: new Date('2026-11-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T23:59:59.999Z'),
+      datesRepresentChurchCalendarDays: true,
+    });
+
+    expect(
+      formatInTimeZone(created.startDate, seed.churchATimezone, 'yyyy-MM-dd'),
+    ).toBe('2026-11-01');
+    expect(
+      formatInTimeZone(created.endDate, seed.churchATimezone, 'yyyy-MM-dd'),
+    ).toBe('2026-11-01');
   });
 
   it('applies templates idempotently and requires reopen before editing a locked event', async () => {

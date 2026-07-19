@@ -19,7 +19,7 @@ export const Route = createFileRoute('/scheduling/planning-cycles')({
       });
     } catch (error) {
       if (isForbiddenError({ error })) {
-        redirect({ to: '/scheduling/builder-events', throw: true });
+        redirect({ to: '/dashboard', throw: true });
       }
       throw error;
     }

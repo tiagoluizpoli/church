@@ -121,6 +121,7 @@ export const ministryCycleSummaryResponseSchema = z.object({
   slotCount: z.number(),
   status: z.enum(['not_started', 'in_progress', 'published']),
   availabilityFiredForAll: z.boolean(),
+  availabilityFiredForAny: z.boolean(),
 });
 export type MinistryCycleSummaryResponse = z.infer<
   typeof ministryCycleSummaryResponseSchema
@@ -203,6 +204,7 @@ function toMinistryCycleSummaryResponse(
     slotCount: view.slotCount,
     status: view.status,
     availabilityFiredForAll: view.availabilityFiredForAll,
+    availabilityFiredForAny: view.availabilityFiredForAny,
   };
 }
 

@@ -119,11 +119,6 @@ const SCHEDULING_NAV_ITEM: NavItem = {
       icon: CalendarRange,
     },
     { label: 'Rostering', to: '/scheduling/tailoring', icon: UsersRound },
-    {
-      label: 'Builder events',
-      to: '/scheduling/builder-events',
-      icon: CalendarClock,
-    },
   ],
 };
 

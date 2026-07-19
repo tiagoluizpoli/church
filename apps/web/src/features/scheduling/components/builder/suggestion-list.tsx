@@ -1,27 +1,85 @@
 import { AssigneeIdentityBadge } from './assignee-identity-badge';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   type AssigneeSystemRole,
   formatAssigneeRoleLabel,
 } from '@/utils/format-assignee-role-label';
-import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 export interface SuggestedVolunteer {
   id: string;
   name: string;
   systemRole?: AssigneeSystemRole;
-  status: 'available' | 'partial';
+  status: 'available' | 'partial' | 'needs_response' | 'conflict';
   workloadCount: number;
+  conflictType?: 'double_booked' | 'unavailable';
+}
+
+type SuggestedVolunteerStatus = SuggestedVolunteer['status'];
+
+interface SuggestionStatusPresentation {
+  label: string;
+  className: string;
+}
+
+const MAX_VISIBLE_RECOMMENDATIONS = 5;
+
+const AVAILABLE_STATUS: SuggestionStatusPresentation = {
+  label: 'Available',
+  className:
+    'border border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400',
+};
+
+const PARTIAL_STATUS: SuggestionStatusPresentation = {
+  label: 'Partial availability',
+  className:
+    'border border-yellow-500/35 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300',
+};
+
+const NEEDS_RESPONSE_STATUS: SuggestionStatusPresentation = {
+  label: 'Needs response',
+  className:
+    'border border-yellow-500/35 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300',
+};
+
+const CONFLICT_STATUS: SuggestionStatusPresentation = {
+  label: 'Override required',
+  className: 'border border-destructive/35 bg-destructive/10 text-destructive',
+};
+
+function getSuggestionStatus(
+  status: SuggestedVolunteerStatus,
+): SuggestionStatusPresentation {
+  if (status === 'available') {
+    return AVAILABLE_STATUS;
+  }
+
+  if (status === 'partial') {
+    return PARTIAL_STATUS;
+  }
+
+  if (status === 'needs_response') {
+    return NEEDS_RESPONSE_STATUS;
+  }
+
+  return CONFLICT_STATUS;
 }
 
 interface SuggestionListProps {
   suggestions: SuggestedVolunteer[];
-  onAssign: (volunteerId: string) => void;
+  onAssign: (suggestion: SuggestedVolunteer) => void;
+  title?: string;
+  highlightTop?: boolean;
+  collapsible?: boolean;
 }
 
-export function SuggestionList({ suggestions, onAssign }: SuggestionListProps) {
+export function SuggestionList({
+  suggestions,
+  onAssign,
+  title,
+  highlightTop = false,
+  collapsible = false,
+}: SuggestionListProps) {
   if (suggestions.length === 0) {
     return (
       <span className="text-muted-foreground text-xs italic">
@@ -30,43 +88,79 @@ export function SuggestionList({ suggestions, onAssign }: SuggestionListProps) {
     );
   }
 
-  return (
+  const visibleSuggestions = suggestions.slice(0, MAX_VISIBLE_RECOMMENDATIONS);
+  const additionalSuggestions = highlightTop
+    ? suggestions.slice(MAX_VISIBLE_RECOMMENDATIONS)
+    : [];
+
+  const list = (items: SuggestedVolunteer[]) => (
     <ul className="space-y-1" data-testid="suggestion-list">
-      {suggestions.slice(0, 3).map((s) => (
-        <li
-          key={s.id}
-          className={cn(
-            'flex items-center justify-between gap-1 text-xs',
-            s.status === 'partial' && 'italic opacity-60',
-          )}
-        >
-          <span className="flex items-center gap-1 truncate">
-            {formatVolunteerName(s.name)}
-            <AssigneeIdentityBadge
-              roleLabel={formatAssigneeRoleLabel(s.systemRole)}
-              fullNameOnExpand={s.name}
-            />
-            <Badge
-              className={
-                s.status === 'available'
-                  ? 'bg-green-700 text-white'
-                  : 'bg-yellow-500 text-black'
-              }
+      {items.map((suggestion, index) => {
+        const status = getSuggestionStatus(suggestion.status);
+        return (
+          <li key={suggestion.id}>
+            <button
+              type="button"
+              data-testid="suggestion-option"
+              className={cn(
+                'flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/60',
+                highlightTop && index === 0 && 'bg-primary/5',
+              )}
+              onClick={() => onAssign(suggestion)}
             >
-              {s.workloadCount}
-            </Badge>
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-5 px-1 text-xs"
-            onClick={() => onAssign(s.id)}
-          >
-            Accept
-          </Button>
-        </li>
-      ))}
+              <span className="flex min-w-0 flex-col items-start">
+                <span className="flex min-w-0 items-center gap-1">
+                  <span className="truncate font-medium">
+                    {suggestion.name}
+                  </span>
+                  <AssigneeIdentityBadge
+                    roleLabel={formatAssigneeRoleLabel(suggestion.systemRole)}
+                    fullNameOnExpand={suggestion.name}
+                  />
+                </span>
+                <span className="mt-0.5 text-[11px] text-muted-foreground">
+                  Serving {suggestion.workloadCount} time
+                  {suggestion.workloadCount === 1 ? '' : 's'} this cycle
+                </span>
+              </span>
+              <Badge
+                className={cn('shrink-0', status.className)}
+                data-testid={`suggestion-status-${suggestion.status}`}
+              >
+                {status.label}
+              </Badge>
+            </button>
+          </li>
+        );
+      })}
     </ul>
+  );
+
+  if (collapsible) {
+    return (
+      <details className="group border-t pt-1">
+        <summary className="cursor-pointer list-none text-[11px] text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+          {title} ({suggestions.length})
+        </summary>
+        <div className="pt-2">{list(visibleSuggestions)}</div>
+      </details>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {title ? (
+        <p className="text-[11px] text-muted-foreground">{title}</p>
+      ) : null}
+      {list(visibleSuggestions)}
+      {additionalSuggestions.length > 0 ? (
+        <details className="group">
+          <summary className="cursor-pointer list-none text-[11px] text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+            More candidates ({additionalSuggestions.length})
+          </summary>
+          <div className="pt-2">{list(additionalSuggestions)}</div>
+        </details>
+      ) : null}
+    </div>
   );
 }

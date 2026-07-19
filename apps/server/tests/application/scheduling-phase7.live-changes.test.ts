@@ -107,6 +107,7 @@ function createPhase7Managers({
       volunteerRepo,
       ministryRepo,
       new DrizzleMinistryServingProfileRepository(schedulingTestDb),
+      new DrizzleRoleRepository(schedulingTestDb),
       notificationSpy,
       unitOfWork,
     ),

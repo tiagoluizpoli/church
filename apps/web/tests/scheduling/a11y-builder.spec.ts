@@ -7,13 +7,13 @@ import { LEADER_STORAGE_STATE } from '../global-setup';
 test.use({ storageState: LEADER_STORAGE_STATE });
 
 const BUILDER_URL =
-  '/scheduling/events/e2e66666-6666-6666-6666-666666666661/builder';
+  '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111';
 
 test('schedule builder has no critical or serious WCAG violations', async ({
   page,
 }) => {
   await page.goto(BUILDER_URL);
-  await expect(page.getByTestId('builder-grid')).toBeVisible({
+  await expect(page.getByTestId('cycle-builder-board')).toBeVisible({
     timeout: 15_000,
   });
 
@@ -28,32 +28,4 @@ test('schedule builder has no critical or serious WCAG violations', async ({
     blocking,
     `a11y violations: ${blocking.map((v) => v.id).join(', ')}`,
   ).toEqual([]);
-});
-
-// FR-013: the ministry's Leader and Sub-leader are two distinct volunteers
-// who both truncate near-identically ("E2E L." / "E2E S." are close, and the
-// underlying draggable's accessible name used to be *only* that truncated
-// text). Each draggable pool card must expose an accessible name that
-// includes the role, so a screen reader never announces two different
-// people identically (the confirmed /impeccable a11y bug).
-test('Leader and Sub-leader volunteers are not screen-reader-identical', async ({
-  page,
-}) => {
-  await page.goto(BUILDER_URL);
-  await expect(page.getByTestId('builder-grid')).toBeVisible({
-    timeout: 15_000,
-  });
-
-  const pool = page.getByTestId('volunteer-pool');
-  const leaderCard = pool
-    .getByTestId('volunteer-card')
-    .filter({ hasText: /^E2E L\.$/ });
-  const subLeaderCard = pool
-    .getByTestId('volunteer-card')
-    .filter({ hasText: /^E2E S\.$/ });
-
-  await expect(leaderCard).toHaveAccessibleName('E2E Leader, Leader');
-  await expect(subLeaderCard).toHaveAccessibleName(
-    'E2E Sub-Leader, Sub-leader',
-  );
 });

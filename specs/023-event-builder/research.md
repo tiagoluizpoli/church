@@ -8,7 +8,7 @@ Unlike a greenfield feature, every open decision for this build was already reso
 
 ## R1 — Cycle-wide builder read endpoint
 
-**Decision**: One new batched read `GET /api/v1/leader/cycles/:cycleId/builder?ministryId=` (`operationId: getCycleBuilderData`) on `LeaderRosteringController`, replacing all three of today's builder load calls (`getCycleParticipation`, legacy event-scoped `getScheduleBuilderData`, and the N+1 `listEligibleVolunteers`) for initial paint. Response is a uniform, event→slot→shift-nested shape; every shift returns `assignments` (`[]` when none) and `eligibleVolunteers` (`[]` when the participation is published). Eligible volunteers are computed in a **separate batched internal query** over all shifts at once (never N+1), skipped for published participations.
+**Decision**: One new batched read `GET /api/v1/leader/cycles/:cycleId/builder?ministryId=` (`operationId: getCycleBuilderData`) on `LeaderRosteringController`, replacing all three of today's builder load calls (`getCycleParticipation`, legacy event-scoped `getScheduleBuilderData`, and the N+1 `listEligibleVolunteers`) for initial paint. Response is a uniform, event→slot→shift-nested shape; every shift returns `assignments` (`[]` when none) and `eligibleVolunteers`. Eligible volunteers are computed in a **separate batched internal query** over all shifts at once (never N+1), including published participations so reassignment remains possible.
 
 **Rationale**: Keeps builder concerns off the tailoring contract (`getCycleParticipation` untouched); one HTTP round-trip; isolates the expensive availability join from the structural aggregation; uniform shape avoids per-shift special-casing.
 

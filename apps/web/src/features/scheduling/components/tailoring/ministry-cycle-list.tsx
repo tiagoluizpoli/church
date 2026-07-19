@@ -57,14 +57,6 @@ const DEFAULT_SORT_DESCRIPTOR: SortDescriptor = {
   direction: 'ascending',
 };
 
-/** Compact explanation for the disabled Builder Events control — carried
- * via `title` (native hover tooltip, sighted mouse users) and `aria-label`
- * (always announced on focus, not hover-gated) instead of a persistent
- * visible line, so the row doesn't grow to fit copy every leader hits
- * repeatedly once they've seen it once. */
-const BUILDER_EVENTS_LOCKED_REASON =
-  'Unlocks once every event confirms availability';
-
 interface CompareCyclesInput {
   left: TailoringCycleSummary;
   right: TailoringCycleSummary;
@@ -102,7 +94,7 @@ function compareCycles({
  * renders for the 0/2+ case. FR-036: `Card` padding uses the same
  * `workspace-panel-lg` token as the page header instead of shadcn's default
  * `px-4 py-4`. Rows are inert (no click-to-navigate) — the explicit
- * Tailoring/Builder Events buttons in the Actions column are the sole
+ * Tailoring/Assign buttons in the Actions column are the sole
  * navigation affordance, per design-critique follow-up: a redundant
  * row-click doing the same thing as the button added a spurious decision
  * point and gave screen readers a run-on accessible name per row. */
@@ -273,10 +265,8 @@ interface CycleRowActionsProps {
 }
 
 /** FR-035: Roster is always enabled and formalizes what row-click already
- * does; Builder Events is ministry-scoped (not cycle-scoped, matching the
- * single link already shipped in `$cycleId.tsx`'s header) and stays
- * disabled until `availabilityFiredForAll` — a distinct, earlier boundary
- * than the Status column's "Published" — is true for this row. */
+ * does; Assign links to the cycle-centric builder and stays enabled once
+ * any availability has fired for this cycle. */
 function CycleRowActions({
   ministryId,
   cycle,
@@ -296,14 +286,14 @@ function CycleRowActions({
       >
         Roster
       </Button>
-      {cycle.availabilityFiredForAll ? (
+      {cycle.availabilityFiredForAny ? (
         <Link
-          to="/scheduling/builder-events"
-          search={{ ministryId }}
-          data-testid={`ministry-cycle-builder-events-link-${cycle.id}`}
+          to="/scheduling/rostering/$ministryId/$cycleId"
+          params={{ ministryId, cycleId: cycle.id }}
+          data-testid={`ministry-cycle-assign-link-${cycle.id}`}
           className={buttonVariants({ variant: 'outline', size })}
         >
-          Builder Events
+          Assign
         </Link>
       ) : (
         <Button
@@ -311,11 +301,11 @@ function CycleRowActions({
           size={size}
           variant="outline"
           disabled
-          title={BUILDER_EVENTS_LOCKED_REASON}
-          aria-label={`Builder Events — ${BUILDER_EVENTS_LOCKED_REASON}`}
-          data-testid={`ministry-cycle-builder-events-button-${cycle.id}`}
+          title="Unlocks once availability has fired for this cycle"
+          aria-label="Unlocks once availability has fired for this cycle"
+          data-testid={`ministry-cycle-assign-button-${cycle.id}`}
         >
-          Builder Events
+          Assign
         </Button>
       )}
     </div>

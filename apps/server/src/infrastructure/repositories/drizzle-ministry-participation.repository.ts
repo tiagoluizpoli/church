@@ -387,9 +387,13 @@ export class DrizzleMinistryParticipationRepository
         (participation) => participation.state !== 'tailoring',
       ).length;
 
-      const { status, availabilityFiredForAll } = aggregateCycleTailoringStatus(
-        { eventCount, touchedCount, publishedCount, firedOrLaterCount },
-      );
+      const { status, availabilityFiredForAll, availabilityFiredForAny } =
+        aggregateCycleTailoringStatus({
+          eventCount,
+          touchedCount,
+          publishedCount,
+          firedOrLaterCount,
+        });
 
       return {
         cycleId: cycle.id,
@@ -401,6 +405,7 @@ export class DrizzleMinistryParticipationRepository
         slotCount,
         status,
         availabilityFiredForAll,
+        availabilityFiredForAny,
       };
     });
   }

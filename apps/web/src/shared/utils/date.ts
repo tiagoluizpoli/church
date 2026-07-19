@@ -37,6 +37,47 @@ export function getBrowserTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+/** A calendar day, `yyyy-MM-dd`, carrying no time and no offset. */
+export type CalendarDayKey = string;
+
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function pad(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+/**
+ * Calendar day an instant falls on, read in the viewer's timezone.
+ *
+ * Use this for values that carry a real wall-clock time — event bounds, slot and
+ * shift times. They are stored as church-local wall clock in `timestamptz`, so a
+ * one-day event runs local midnight → local 23:59 and a 9pm slot sits near the
+ * following UTC date. Slicing the UTC prefix off such a value reports the wrong
+ * day at any non-zero offset: west of UTC it reads a day late, east of UTC a day
+ * early.
+ *
+ * Values already in `yyyy-MM-dd` form pass through untouched — they are days,
+ * not instants, and `new Date('2027-01-04')` would parse them at UTC midnight
+ * and shift them a day west of UTC.
+ */
+export function toLocalDayKey(value: string): CalendarDayKey {
+  if (DATE_ONLY_PATTERN.test(value)) return value;
+  const instant = new Date(value);
+  return `${instant.getFullYear()}-${pad(instant.getMonth() + 1)}-${pad(instant.getDate())}`;
+}
+
+/**
+ * Calendar day of a date-only value.
+ *
+ * Use this for values that name a day rather than a moment — planning-cycle
+ * bounds, which are anchored at UTC midnight (`2027-01-01T00:00:00.000Z` means
+ * "January 1"). Reading those in the viewer's timezone would drag them back a
+ * day west of UTC.
+ */
+export function toCycleDayKey(value: string): CalendarDayKey {
+  return value.slice(0, 10);
+}
+
 /**
  * Formats a date in the user's local timezone.
  */

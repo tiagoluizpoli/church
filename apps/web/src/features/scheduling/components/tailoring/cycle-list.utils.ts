@@ -21,6 +21,7 @@ export interface TailoringCycleSummary {
   status: CycleTailoringStatus;
   isPartOf: boolean;
   availabilityFiredForAll: boolean;
+  availabilityFiredForAny: boolean;
 }
 
 export type MinistryInvolvementFilter = 'all' | 'part_of' | 'not_part_of';
@@ -93,6 +94,7 @@ export function buildMinistryCycleSummaries({
       status: cycle.status,
       isPartOf: cycle.isPartOf,
       availabilityFiredForAll: cycle.availabilityFiredForAll,
+      availabilityFiredForAny: cycle.availabilityFiredForAny,
     }));
 }
 

@@ -11,7 +11,7 @@ import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 test.describe('Volunteer-only denial across all 3 scheduling routes', () => {
   test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
-  test('a Volunteer is denied at /scheduling/planning-cycles, /scheduling/tailoring, and /scheduling/builder-events', async ({
+  test('a Volunteer is denied at /scheduling/planning-cycles, /scheduling/tailoring, and the cycle builder', async ({
     page,
   }) => {
     await page.goto('/scheduling/planning-cycles');
@@ -25,11 +25,12 @@ test.describe('Volunteer-only denial across all 3 scheduling routes', () => {
       page.getByRole('heading', { name: 'No ministries yet' }),
     ).toHaveCount(0);
 
-    await page.goto('/scheduling/builder-events');
-    await expect(page).toHaveURL('/scheduling/builder-events');
+    await page.goto(
+      '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111',
+    );
+    await expect(page.getByTestId('cycle-builder-board')).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: 'New Event' }),
-    ).toBeDisabled();
-    await expect(page.getByTestId('planning-events-list')).toHaveCount(0);
+      page.getByRole('button', { name: /publish cycle/i }),
+    ).toHaveCount(0);
   });
 });

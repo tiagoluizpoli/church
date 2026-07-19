@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NotFoundError } from '@church/core';
+import { fromZonedTime } from 'date-fns-tz';
 import { inject, injectable } from 'tsyringe';
 import type {
   ChurchId,
@@ -412,6 +413,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
   async createEvent(input: CreatePlanningEventManagerInput): Promise<Event> {
     const church = await this.churchRepository.getById(input.churchId);
+    const eventDates = input.datesRepresentChurchCalendarDays
+      ? toChurchCalendarEventDates({
+          startDate: input.startDate,
+          endDate: input.endDate,
+          timeZone: church.timezone,
+        })
+      : input;
 
     return this.unitOfWork.run(async (tx) => {
       const cycle = await this.ensurePlanningCycleWritable({
@@ -421,7 +429,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
       assertEventStartsWithinCycle({
         cycle,
-        eventStartDate: input.startDate,
+        eventStartDate: eventDates.startDate,
         churchTimeZone: church.timezone,
       });
 
@@ -431,8 +439,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         title: input.title,
         description: input.description,
         location: input.location,
-        startDate: input.startDate,
-        endDate: input.endDate,
+        startDate: eventDates.startDate,
+        endDate: eventDates.endDate,
         status: cycle.state === 'locked' ? 'scheduled' : 'draft',
         eventType: input.eventType ?? 'hourly',
         tx,
@@ -688,6 +696,32 @@ interface AssertEventStartsWithinCycleInput {
   cycle: PlanningCycle;
   eventStartDate: Date;
   churchTimeZone: string;
+}
+
+interface ToChurchCalendarEventDatesInput {
+  startDate: Date;
+  endDate: Date;
+  timeZone: string;
+}
+
+function toChurchCalendarEventDates({
+  startDate,
+  endDate,
+  timeZone,
+}: ToChurchCalendarEventDatesInput): Pick<
+  CreatePlanningEventManagerInput,
+  'startDate' | 'endDate'
+> {
+  return {
+    startDate: fromZonedTime(
+      `${startDate.toISOString().slice(0, 10)}T00:00:00.000`,
+      timeZone,
+    ),
+    endDate: fromZonedTime(
+      `${endDate.toISOString().slice(0, 10)}T23:59:59.999`,
+      timeZone,
+    ),
+  };
 }
 
 function assertEventStartsWithinCycle({

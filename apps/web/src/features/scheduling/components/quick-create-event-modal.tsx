@@ -84,7 +84,7 @@ export function QuickCreateEventModal({
   const handleSubmit = async () => {
     if (!startDate || !effectiveEndDate) return;
     try {
-      const result = await create.mutateAsync({
+      await create.mutateAsync({
         title,
         startDate: toDayStartIso({ date: startDate }),
         endDate: toDayEndIso({ date: effectiveEndDate }),
@@ -95,8 +95,7 @@ export function QuickCreateEventModal({
       resetForm();
       if (target.kind === 'ministry') {
         navigate({
-          to: '/scheduling/events/$eventId/builder',
-          params: { eventId: result.id },
+          to: '/scheduling/tailoring',
         });
         return;
       }

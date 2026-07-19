@@ -1220,6 +1220,7 @@ export type ListMinistryCycleSummaries200CyclesItem = {
   slotCount: number;
   status: ListMinistryCycleSummaries200CyclesItemStatus;
   availabilityFiredForAll: boolean;
+  availabilityFiredForAny: boolean;
 };
 
 export type ListMinistryCycleSummaries200 = {
@@ -1359,6 +1360,246 @@ export type GetAvailabilityStatus200StatusesItem = {
 
 export type GetAvailabilityStatus200 = {
   statuses: GetAvailabilityStatus200StatusesItem[];
+};
+
+export type GetCycleBuilderDataParams = {
+ministryId: string;
+};
+
+export type GetCycleBuilderData200EventsItemParticipationState = typeof GetCycleBuilderData200EventsItemParticipationState[keyof typeof GetCycleBuilderData200EventsItemParticipationState];
+
+
+export const GetCycleBuilderData200EventsItemParticipationState = {
+  tailoring: 'tailoring',
+  availability_fired: 'availability_fired',
+  rostering: 'rostering',
+  published: 'published',
+} as const;
+
+export type GetCycleBuilderData200EventsItemParticipation = {
+  id: string;
+  churchId: string;
+  ministryId: string;
+  eventId: string;
+  state: GetCycleBuilderData200EventsItemParticipationState;
+};
+
+export type GetCycleBuilderData200EventsItemEventStatus = typeof GetCycleBuilderData200EventsItemEventStatus[keyof typeof GetCycleBuilderData200EventsItemEventStatus];
+
+
+export const GetCycleBuilderData200EventsItemEventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type GetCycleBuilderData200EventsItemEventEventType = typeof GetCycleBuilderData200EventsItemEventEventType[keyof typeof GetCycleBuilderData200EventsItemEventEventType];
+
+
+export const GetCycleBuilderData200EventsItemEventEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type GetCycleBuilderData200EventsItemEvent = {
+  id: string;
+  churchId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  status: GetCycleBuilderData200EventsItemEventStatus;
+  eventType: GetCycleBuilderData200EventsItemEventEventType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItemSlotStatus = typeof GetCycleBuilderData200EventsItemSlotsItemSlotStatus[keyof typeof GetCycleBuilderData200EventsItemSlotsItemSlotStatus];
+
+
+export const GetCycleBuilderData200EventsItemSlotsItemSlotStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetCycleBuilderData200EventsItemSlotsItemSlotRequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItemSlot = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: GetCycleBuilderData200EventsItemSlotsItemSlotStatus;
+  requirements: GetCycleBuilderData200EventsItemSlotsItemSlotRequirementsItem[];
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemShift = {
+  id: string;
+  participationId: string;
+  timeSlotId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemRequirementsItem = {
+  id: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus = typeof GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus[keyof typeof GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus];
+
+
+export const GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus = {
+  draft: 'draft',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem = {
+  id: string;
+  churchId: string;
+  slotId: string;
+  participationId?: string;
+  shiftId?: string;
+  volunteerId: string;
+  roleId: string;
+  status: GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus;
+  reason?: string;
+  assignedAt: string;
+  assignedBy?: string;
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItem = {
+  volunteerId: string;
+  volunteerName: string;
+  isAvailable: boolean;
+  hasConflict: boolean;
+  lastServedAt?: string;
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItemShiftsItem = {
+  shift: GetCycleBuilderData200EventsItemSlotsItemShiftsItemShift;
+  requirements: GetCycleBuilderData200EventsItemSlotsItemShiftsItemRequirementsItem[];
+  assignments: GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem[];
+  eligibleVolunteers: GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItem[];
+};
+
+export type GetCycleBuilderData200EventsItemSlotsItem = {
+  slot: GetCycleBuilderData200EventsItemSlotsItemSlot;
+  included: boolean;
+  shifts: GetCycleBuilderData200EventsItemSlotsItemShiftsItem[];
+};
+
+export type GetCycleBuilderData200EventsItem = {
+  participation: GetCycleBuilderData200EventsItemParticipation;
+  event: GetCycleBuilderData200EventsItemEvent;
+  slots: GetCycleBuilderData200EventsItemSlotsItem[];
+};
+
+export type GetCycleBuilderData200RolesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetCycleBuilderData200 = {
+  events: GetCycleBuilderData200EventsItem[];
+  roles: GetCycleBuilderData200RolesItem[];
+};
+
+export type GetCycleBuilderData403 = {
+  error: string;
+  message: string;
+};
+
+export type GetCycleAuditLogParams = {
+ministryId: string;
+};
+
+export type GetCycleAuditLog200ItemsItemAction = typeof GetCycleAuditLog200ItemsItemAction[keyof typeof GetCycleAuditLog200ItemsItemAction];
+
+
+export const GetCycleAuditLog200ItemsItemAction = {
+  created: 'created',
+  updated: 'updated',
+  deleted: 'deleted',
+  status_change: 'status_change',
+  event_published: 'event_published',
+  event_cancelled: 'event_cancelled',
+} as const;
+
+export type GetCycleAuditLog200ItemsItem = {
+  id: string;
+  assignmentId: string;
+  actorId: string;
+  action: GetCycleAuditLog200ItemsItemAction;
+  reason?: string;
+  timestamp: string;
+};
+
+export type GetCycleAuditLog200 = {
+  items: GetCycleAuditLog200ItemsItem[];
+};
+
+export type GetCycleAuditLog403 = {
+  error: string;
+  message: string;
+};
+
+export type PublishCycleParams = {
+ministryId: string;
+};
+
+export type PublishCycleBody = {
+  confirmBelowFull?: boolean;
+};
+
+export type PublishCycle200ParticipationsItemState = typeof PublishCycle200ParticipationsItemState[keyof typeof PublishCycle200ParticipationsItemState];
+
+
+export const PublishCycle200ParticipationsItemState = {
+  tailoring: 'tailoring',
+  availability_fired: 'availability_fired',
+  rostering: 'rostering',
+  published: 'published',
+} as const;
+
+export type PublishCycle200ParticipationsItem = {
+  participationId: string;
+  state: PublishCycle200ParticipationsItemState;
+  requiredCount: number;
+  assignedCount: number;
+};
+
+export type PublishCycle200 = {
+  published: boolean;
+  belowFull: boolean;
+  participations: PublishCycle200ParticipationsItem[];
+};
+
+export type PublishCycle403 = {
+  error: string;
+  message: string;
 };
 
 export type ListEligibleVolunteers200VolunteersItem = {

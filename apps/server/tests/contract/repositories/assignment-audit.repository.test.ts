@@ -90,6 +90,10 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
+  async listByCycle(): Promise<AssignmentAudit[]> {
+    return [];
+  }
+
   async listByEvent(
     _churchId: ChurchId,
     _eventId: EventId,

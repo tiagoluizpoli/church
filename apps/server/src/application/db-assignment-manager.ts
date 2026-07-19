@@ -15,6 +15,7 @@ import type {
   GetAssignmentInput,
   IAssignmentManager,
   ListAssignmentAuditLogInput,
+  ListCycleAuditLogInput,
   OverrideAssignmentInput,
   ReassignParticipationAssignmentInput,
 } from '../domain/contracts/application/assignment-manager';
@@ -191,6 +192,16 @@ export class DbAssignmentManager implements IAssignmentManager {
     input: ListAssignmentAuditLogInput,
   ): Promise<AssignmentAudit[]> {
     return this.auditRepo.listByAssignment(input.churchId, input.assignmentId);
+  }
+
+  async listAuditLogForCycle(
+    input: ListCycleAuditLogInput,
+  ): Promise<AssignmentAudit[]> {
+    return this.auditRepo.listByCycle({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
+      ministryId: input.ministryId,
+    });
   }
 
   private async createParticipationAssignmentInTransaction(

@@ -18,7 +18,7 @@ describe('SuggestionList (T118)', () => {
     expect(screen.queryByTestId('suggestion-list')).not.toBeInTheDocument();
   });
 
-  it('renders at most 3 suggestions', () => {
+  it('renders up to 5 suggestions', () => {
     const suggestions = [
       make('1', 'A A', 'available'),
       make('2', 'B B', 'available'),
@@ -26,10 +26,10 @@ describe('SuggestionList (T118)', () => {
       make('4', 'D D', 'available'),
     ];
     render(<SuggestionList suggestions={suggestions} onAssign={vi.fn()} />);
-    expect(screen.getAllByRole('button', { name: /accept/i })).toHaveLength(3);
+    expect(screen.getAllByTestId('suggestion-option')).toHaveLength(4);
   });
 
-  it('calls onAssign with the volunteer id when Accept is clicked', async () => {
+  it('calls onAssign when a candidate row is clicked', async () => {
     const user = userEvent.setup();
     const onAssign = vi.fn();
     render(
@@ -38,19 +38,83 @@ describe('SuggestionList (T118)', () => {
         onAssign={onAssign}
       />,
     );
-    await user.click(screen.getByRole('button', { name: /accept/i }));
-    expect(onAssign).toHaveBeenCalledWith('vol-1');
+    await user.click(screen.getByTestId('suggestion-option'));
+    expect(onAssign).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'vol-1' }),
+    );
   });
 
-  it('de-prioritizes partial-status suggestions with muted styling', () => {
+  it('shows More candidates only beyond the five directly visible recommendations', () => {
+    const fiveSuggestions = Array.from({ length: 5 }, (_, index) =>
+      make(`${index}`, `Volunteer ${index}`, 'available'),
+    );
+    const { rerender } = render(
+      <SuggestionList
+        suggestions={fiveSuggestions}
+        highlightTop
+        onAssign={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen
+        .getAllByTestId('suggestion-option')
+        .filter((option) => option.closest('details') === null),
+    ).toHaveLength(5);
+    expect(screen.queryByText(/More candidates/i)).not.toBeInTheDocument();
+
+    rerender(
+      <SuggestionList
+        suggestions={[
+          ...fiveSuggestions,
+          make('5', 'Volunteer 5', 'available'),
+        ]}
+        highlightTop
+        onAssign={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen
+        .getAllByTestId('suggestion-option')
+        .filter((option) => option.closest('details') === null),
+    ).toHaveLength(5);
+    expect(screen.getByText('More candidates (1)')).toBeVisible();
+  });
+
+  it('uses a semantic availability treatment with a visible label', () => {
+    render(
+      <SuggestionList
+        suggestions={[
+          make('available', 'Available Person', 'available'),
+          make('response', 'Waiting Person', 'needs_response'),
+          make('conflict', 'Conflict Person', 'conflict'),
+        ]}
+        onAssign={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('suggestion-status-available')).toHaveTextContent(
+      'Available',
+    );
+    expect(
+      screen.getByTestId('suggestion-status-needs_response'),
+    ).toHaveTextContent('Needs response');
+    expect(screen.getByTestId('suggestion-status-conflict')).toHaveTextContent(
+      'Override required',
+    );
+  });
+
+  it('uses an amber availability treatment for partial suggestions', () => {
     render(
       <SuggestionList
         suggestions={[make('1', 'Partial P', 'partial')]}
         onAssign={vi.fn()}
       />,
     );
-    const item = screen.getByText('Partial P.').closest('li');
-    expect(item?.className).toContain('opacity-60');
+    const status = screen.getByTestId('suggestion-status-partial');
+    expect(status).toHaveTextContent('Partial availability');
+    expect(status).toHaveClass('bg-yellow-500/10');
   });
 
   it('renders a role badge disambiguating a Leader and a Sub-leader suggestion (FR-013)', () => {

@@ -2,6 +2,8 @@ import type {
   AssignmentId,
   ChurchId,
   EventId,
+  MinistryId,
+  PlanningCycleId,
   UserId,
 } from '../../branded-ids';
 import type { SoftConflictType } from '../../conflict/types';
@@ -36,6 +38,12 @@ export interface AssignmentAuditLogEntry {
   timestamp: Date;
 }
 
+export interface ListAuditByCycleInput {
+  churchId: ChurchId;
+  cycleId: PlanningCycleId;
+  ministryId: MinistryId;
+}
+
 export interface AssignmentAuditRepository {
   create(
     churchId: ChurchId,
@@ -46,6 +54,12 @@ export interface AssignmentAuditRepository {
   listByAssignment(
     churchId: ChurchId,
     assignmentId: AssignmentId,
+    tx?: TransactionContext,
+  ): Promise<AssignmentAudit[]>;
+
+  /** Cycle-wide audit entries for one ministry's participations, church-isolated. */
+  listByCycle(
+    input: ListAuditByCycleInput,
     tx?: TransactionContext,
   ): Promise<AssignmentAudit[]>;
 

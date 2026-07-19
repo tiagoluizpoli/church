@@ -11,6 +11,7 @@ import {
   ministry,
   ministryParticipation,
   ministryVolunteer,
+  participationSlotInclusion,
   planningCycle,
   role,
   shift,
@@ -106,6 +107,14 @@ const PARTICIPATION_IDS = {
   [E2E_IDS.declineEvent]: 'e2e61111-1111-1111-1111-111111111113',
   [E2E_IDS.us6Event]: 'e2e61111-1111-1111-1111-111111111114',
   [E2E_IDS.careEvent]: 'e2e61111-1111-1111-1111-111111111115',
+} as const;
+
+const EVENT_SLOT_IDS = {
+  [E2E_IDS.event]: E2E_IDS.slot,
+  [E2E_IDS.eventOverride]: E2E_IDS.slotOverride,
+  [E2E_IDS.declineEvent]: E2E_IDS.declineSlot,
+  [E2E_IDS.us6Event]: E2E_IDS.us6Slot,
+  [E2E_IDS.careEvent]: E2E_IDS.careSlot,
 } as const;
 
 const SHIFT_IDS = {
@@ -579,6 +588,24 @@ export async function seedE2e({
           startTime: new Date('2026-12-24T09:00:00Z'),
           endTime: new Date('2026-12-24T11:00:00Z'),
           label: 'Care Check-In',
+        },
+      ])
+      .onConflictDoNothing();
+
+    await db
+      .insert(participationSlotInclusion)
+      .values([
+        ...Object.entries(PARTICIPATION_IDS).map(
+          ([eventId, participationId]) => ({
+            churchId: E2E_IDS.church,
+            participationId,
+            timeSlotId: EVENT_SLOT_IDS[eventId as keyof typeof EVENT_SLOT_IDS],
+          }),
+        ),
+        {
+          churchId: E2E_IDS.church,
+          participationId: US4_SHARED_CARE_PARTICIPATION_ID,
+          timeSlotId: E2E_IDS.us6Slot,
         },
       ])
       .onConflictDoNothing();

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   buildMinistryTailoringSummary,
   buildSlotDayMarkers,
@@ -235,7 +235,10 @@ describe('toIsoDateString', () => {
 });
 
 describe('toCalendarDateString', () => {
-  it('preserves an API timestamp calendar date across browser timezones', () => {
+  it('keeps a UTC-midnight cycle bound on the day it names', () => {
+    // Cycle bounds name a day rather than a moment, so the UTC prefix is the
+    // intended value. Slot timestamps are real wall-clock instants and must go
+    // through `toLocalDayKey` instead.
     expect(toCalendarDateString('2026-07-10T00:00:00.000Z')).toBe('2026-07-10');
   });
 });
@@ -263,6 +266,49 @@ describe('buildSlotDayMarkers', () => {
       });
 
       expect([...markers].sort()).toEqual(['2026-07-12', '2026-07-14']);
+    });
+  });
+
+  describe('Timezone', () => {
+    // The fixtures above use naive local timestamps, but the API returns
+    // UTC-suffixed instants — which is how an evening slot went unnoticed.
+    const ORIGINAL_TZ = process.env.TZ;
+
+    beforeAll(() => {
+      process.env.TZ = 'America/Sao_Paulo';
+    });
+
+    afterAll(() => {
+      process.env.TZ = ORIGINAL_TZ;
+    });
+
+    it('marks an evening slot on the day it is served, not the next UTC day', () => {
+      // A 21:00 local Monday slot is stored as 00:00Z Tuesday.
+      const markers = buildSlotDayMarkers({
+        events: [
+          makeEventView({
+            slotOverrides: [
+              { slot: { id: 'slot-1', startTime: '2027-01-05T00:00:00.000Z' } },
+            ],
+          }),
+        ],
+      });
+
+      expect([...markers]).toEqual(['2027-01-04']);
+    });
+
+    it('marks a morning slot on its own day', () => {
+      const markers = buildSlotDayMarkers({
+        events: [
+          makeEventView({
+            slotOverrides: [
+              { slot: { id: 'slot-1', startTime: '2027-01-04T12:00:00.000Z' } },
+            ],
+          }),
+        ],
+      });
+
+      expect([...markers]).toEqual(['2027-01-04']);
     });
   });
 

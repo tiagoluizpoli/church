@@ -18,6 +18,7 @@ function makeCycleSummary(
     slotCount: 2,
     status: 'in_progress',
     availabilityFiredForAll: false,
+    availabilityFiredForAny: false,
     ...overrides,
   };
 }
@@ -40,6 +41,7 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
         status: 'in_progress',
         isPartOf: true,
         availabilityFiredForAll: false,
+        availabilityFiredForAny: false,
       },
     ]);
   });

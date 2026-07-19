@@ -1,6 +1,8 @@
 import type {
   AssignmentId,
   ChurchId,
+  MinistryId,
+  PlanningCycleId,
   RoleId,
   ShiftId,
   TimeSlotId,
@@ -70,6 +72,12 @@ export interface ListAssignmentAuditLogInput {
   churchId: ChurchId;
 }
 
+export interface ListCycleAuditLogInput {
+  churchId: ChurchId;
+  cycleId: PlanningCycleId;
+  ministryId: MinistryId;
+}
+
 export interface IAssignmentManager {
   createAssignment(input: CreateAssignmentInput): Promise<Assignment>;
   getAssignment(input: GetAssignmentInput): Promise<Assignment>;
@@ -82,4 +90,7 @@ export interface IAssignmentManager {
   ): Promise<Assignment>;
   deleteAssignment(input: DeleteAssignmentInput): Promise<void>;
   listAuditLog(input: ListAssignmentAuditLogInput): Promise<AssignmentAudit[]>;
+  listAuditLogForCycle(
+    input: ListCycleAuditLogInput,
+  ): Promise<AssignmentAudit[]>;
 }

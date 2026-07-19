@@ -25,6 +25,12 @@ export interface DatePickerFieldProps {
    * field alone — independent of any surrounding form's own save/apply
    * step. Omit for date fields that don't need an individual reset. */
   onClear?: () => void;
+  /** Same `yyyy-MM-dd` shape as `value`. When set, days outside
+   * `[minDate, maxDate]` are disabled in the calendar grid — an invalid
+   * pick is never clickable, so there's nothing to validate after the
+   * fact. Either bound may be omitted to leave that side open-ended. */
+  minDate?: string;
+  maxDate?: string;
   'data-testid'?: string;
 }
 
@@ -39,6 +45,8 @@ export function DatePickerField({
   placeholder = 'Pick a date',
   disabled = false,
   onClear,
+  minDate,
+  maxDate,
   'data-testid': dataTestId,
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
@@ -47,6 +55,10 @@ export function DatePickerField({
     ? parse(value, DATE_VALUE_FORMAT, new Date())
     : undefined;
   const showClear = Boolean(onClear && value && !disabled);
+  const disabledMatchers = [
+    minDate ? { before: parse(minDate, DATE_VALUE_FORMAT, new Date()) } : null,
+    maxDate ? { after: parse(maxDate, DATE_VALUE_FORMAT, new Date()) } : null,
+  ].filter((matcher) => matcher !== null);
 
   return (
     // Explicit height on a wrapper around the *whole* Popover, not just the
@@ -89,7 +101,7 @@ export function DatePickerField({
             }
           >
             <CalendarIcon className="opacity-60" />
-            {selected ? format(selected, 'PPP') : placeholder}
+            {selected ? format(selected, 'dd/MM/yyyy') : placeholder}
           </PopoverTrigger>
           {showClear ? (
             <Button
@@ -116,6 +128,9 @@ export function DatePickerField({
             endMonth={CALENDAR_END_MONTH}
             selected={selected}
             defaultMonth={selected}
+            disabled={
+              disabledMatchers.length > 0 ? disabledMatchers : undefined
+            }
             onSelect={(date) => {
               if (date) {
                 onChange(format(date, DATE_VALUE_FORMAT));

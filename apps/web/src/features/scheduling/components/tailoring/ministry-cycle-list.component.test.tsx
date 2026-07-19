@@ -13,7 +13,7 @@ import { MinistryCycleList } from './ministry-cycle-list';
 import { routeTree } from '@/routeTree.gen';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 
-/** `MinistryCycleList` renders a real `<Link>` (Builder Events, once
+/** `MinistryCycleList` renders a real `<Link>` (Assign, once
  * enabled), which needs router context to resolve `to`/`search` even
  * outside a mounted route — `renderWithProviders` alone isn't enough here,
  * unlike components whose `Link` only renders behind a condition none of
@@ -44,6 +44,7 @@ const CYCLES: TailoringCycleSummary[] = [
     status: 'in_progress',
     isPartOf: true,
     availabilityFiredForAll: false,
+    availabilityFiredForAny: false,
   },
   {
     id: 'cycle-2',
@@ -56,6 +57,7 @@ const CYCLES: TailoringCycleSummary[] = [
     status: 'published',
     isPartOf: true,
     availabilityFiredForAll: true,
+    availabilityFiredForAny: true,
   },
 ];
 
@@ -221,7 +223,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       expect(onSelectCycle).toHaveBeenCalledWith({ cycleId: 'cycle-1' });
     });
 
-    it('the Builder Events control is disabled when availabilityFiredForAll is false', () => {
+    it('the Assign control is disabled when availabilityFiredForAny is false', () => {
       renderCycleList(
         <MinistryCycleList
           ministryId="ministry-1"
@@ -231,14 +233,14 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       );
 
       const buttons = screen.getAllByTestId(
-        'ministry-cycle-builder-events-button-cycle-1',
+        'ministry-cycle-assign-button-cycle-1',
       );
       expect(buttons).toHaveLength(2);
       for (const button of buttons) {
         expect(button).toBeDisabled();
       }
       expect(
-        screen.queryByTestId('ministry-cycle-builder-events-link-cycle-1'),
+        screen.queryByTestId('ministry-cycle-assign-link-cycle-1'),
       ).not.toBeInTheDocument();
 
       // Compact by design (design-critique follow-up): the explanation
@@ -247,13 +249,13 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       for (const button of buttons) {
         expect(button).toHaveAccessibleName(
           expect.stringContaining(
-            'Unlocks once every event confirms availability',
+            'Unlocks once availability has fired for this cycle',
           ),
         );
       }
     });
 
-    it('the Builder Events control is disabled for a cycle the ministry is not part of, never vacuously enabled from a zero-participation check (FR-035)', () => {
+    it('the Assign control is disabled for a cycle the ministry is not part of, never vacuously enabled from a zero-participation check (FR-035)', () => {
       const notPartOfCycle: TailoringCycleSummary = {
         id: 'cycle-3',
         name: 'October',
@@ -265,6 +267,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
         status: 'not_started',
         isPartOf: false,
         availabilityFiredForAll: false,
+        availabilityFiredForAny: false,
       };
       renderCycleList(
         <MinistryCycleList
@@ -275,18 +278,18 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       );
 
       const buttons = screen.getAllByTestId(
-        'ministry-cycle-builder-events-button-cycle-3',
+        'ministry-cycle-assign-button-cycle-3',
       );
       expect(buttons.length).toBeGreaterThan(0);
       for (const button of buttons) {
         expect(button).toBeDisabled();
       }
       expect(
-        screen.queryByTestId('ministry-cycle-builder-events-link-cycle-3'),
+        screen.queryByTestId('ministry-cycle-assign-link-cycle-3'),
       ).not.toBeInTheDocument();
     });
 
-    it('the Builder Events control is an enabled, ministry-scoped link when availabilityFiredForAll is true, and does not also trigger row selection', async () => {
+    it('the Assign control is an enabled, cycle-scoped link when availabilityFiredForAny is true, and does not also trigger row selection', async () => {
       const onSelectCycle = vi.fn();
       const user = userEvent.setup();
       renderCycleList(
@@ -297,18 +300,12 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
         />,
       );
 
-      const links = screen.getAllByTestId(
-        'ministry-cycle-builder-events-link-cycle-2',
-      );
+      const links = screen.getAllByTestId('ministry-cycle-assign-link-cycle-2');
       expect(links).toHaveLength(2);
       for (const link of links) {
         expect(link).toHaveAttribute(
           'href',
-          expect.stringContaining('/scheduling/builder-events'),
-        );
-        expect(link).toHaveAttribute(
-          'href',
-          expect.stringContaining('ministryId=ministry-1'),
+          expect.stringContaining('/scheduling/rostering/ministry-1/cycle-2'),
         );
       }
 

@@ -51,7 +51,7 @@ cycleBuilderShiftViewSchema = z.object({
   shift: shiftResponseSchema,                                   // participation.dto.ts
   requirements: z.array(shiftRequirementResponseSchema),        // participation.dto.ts
   assignments: z.array(assignmentResponseSchema),               // assignment.dto.ts — [] when none
-  eligibleVolunteers: z.array(eligibleVolunteerResponseSchema), // rostering.dto.ts:14 — [] when published
+  eligibleVolunteers: z.array(eligibleVolunteerResponseSchema), // rostering.dto.ts:14
 });
 
 cycleBuilderSlotViewSchema = z.object({
@@ -75,7 +75,7 @@ cycleBuilderResponseSchema = z.object({
 
 **Repository**: two internal reads stitched in the handler/manager —
 - **Query A** — church-isolated aggregation events → slots → shifts → requirements → existing assignments for `(ministryId, cycleId)`. Drizzle relational query API where it fits (R2).
-- **Query B** — a **single batched** eligible-volunteers read over **all shifts at once** (not N+1), reusing the eligibility/availability logic behind `listEligibleVolunteers`; **skipped for published participations' shifts** (their `eligibleVolunteers: []`).
+- **Query B** — a **single batched** eligible-volunteers read over **all shifts at once** (not N+1), reusing the eligibility/availability logic behind `listEligibleVolunteers`; published shifts retain candidates so leaders can reassign after publication.
 
 Both church-isolated per R2.
 

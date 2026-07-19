@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { AssignmentChip } from './assignment-chip';
 
 describe('AssignmentChip (T100)', () => {
-  it('renders the volunteer name as "First L."', () => {
+  it('renders the volunteer full name', () => {
     render(<AssignmentChip volunteerName="John Doe" isPublished={false} />);
-    expect(screen.getByText('John D.')).toBeVisible();
+    expect(screen.getByText('John Doe')).toBeVisible();
   });
 
   describe('conflict badge', () => {

@@ -329,6 +329,68 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     });
   });
 
+  it('availabilityFiredForAny is true once any participation has fired even while availabilityFiredForAll stays false, and false for a zero-event cycle (R6 vacuous-truth guard)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Partially Fired Cycle',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const firedGraph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Fired Event',
+      startDate: new Date('2026-08-02T12:00:00.000Z'),
+      endDate: new Date('2026-08-02T15:00:00.000Z'),
+    });
+    await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Untouched Event',
+      startDate: new Date('2026-08-03T12:00:00.000Z'),
+      endDate: new Date('2026-08-03T15:00:00.000Z'),
+    });
+    // Fire exactly one of the two participations.
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ touchedAt: new Date(), state: 'availability_fired' })
+      .where(eq(ministryParticipation.id, firedGraph.participation.id));
+    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+
+    const rows = await repo.listMinistryCycleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+    const row = rows.find((r) => r.cycleId === cycle.id);
+    expect(row).toMatchObject({
+      eventCount: 2,
+      availabilityFiredForAll: false,
+      availabilityFiredForAny: true,
+    });
+
+    // A cycle the ministry has zero events in must never be vacuously true.
+    await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Empty Cycle',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const rowsAfter = await repo.listMinistryCycleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+    const emptyRow = rowsAfter.find((r) => r.name === 'Empty Cycle');
+    expect(emptyRow).toMatchObject({
+      eventCount: 0,
+      availabilityFiredForAny: false,
+    });
+  });
+
   it('church isolation: a query for church B never sees church A cycles/participations (Spec R2 §4)', async () => {
     const seed = await seedSchedulingPhase3Base();
     await seedCycleAndEvent({ seed, state: 'locked' });

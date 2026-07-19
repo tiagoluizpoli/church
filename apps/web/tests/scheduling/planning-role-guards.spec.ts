@@ -34,13 +34,15 @@ test.describe('non-ChurchAdmin denial at /scheduling/planning-cycles', () => {
 test.describe('Leader direct access to the other scheduling routes', () => {
   test.use({ storageState: LEADER_STORAGE_STATE });
 
-  test('a Leader can load /scheduling/tailoring and /scheduling/builder-events directly', async ({
+  test('a Leader can load /scheduling/tailoring and the cycle builder directly', async ({
     page,
   }) => {
     await page.goto('/scheduling/tailoring');
     await expect(page).toHaveURL('/scheduling/tailoring');
 
-    await page.goto('/scheduling/builder-events');
-    await expect(page).toHaveURL('/scheduling/builder-events');
+    await page.goto(
+      '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111',
+    );
+    await expect(page.getByTestId('cycle-builder-board')).toBeVisible();
   });
 });

@@ -6,6 +6,7 @@ import type {
 import { AssigneeIdentityBadge } from './assignee-identity-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import {
   Tooltip,
   TooltipContent,
@@ -16,11 +17,11 @@ import { formatAssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 const STATUS_STYLE: Record<AvailabilityStatus, string> = {
-  available: 'bg-green-700 text-white',
-  partial: 'bg-yellow-500 text-black',
-  unavailable: 'bg-red-600 text-white',
+  available: 'bg-primary/10 text-primary',
+  partial: 'bg-muted text-muted-foreground',
+  unavailable: 'bg-muted text-muted-foreground',
   // biome-ignore lint/style/useNamingConvention: AvailabilityStatus snake_case from domain/DB
-  no_response: 'bg-gray-600 text-white',
+  no_response: 'bg-muted text-muted-foreground',
 };
 
 const STATUS_LABEL: Record<AvailabilityStatus, string> = {
@@ -44,6 +45,7 @@ export function VolunteerCard({
   isOverlay = false,
   onSelect,
 }: VolunteerCardProps) {
+  const isTouch = useFormControlSize() === 'touch';
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `volunteer-${volunteer.volunteerId}`,
@@ -67,6 +69,7 @@ export function VolunteerCard({
     <div
       className={cn(
         'radius-control flex items-center justify-between gap-2 border bg-card px-2 py-1.5 text-xs',
+        isTouch && 'min-h-11 px-3 py-2 text-sm',
         isSelected && 'border-primary bg-primary/5 ring-1 ring-primary',
         isDragging && 'opacity-50',
         isOverlay && 'shadow-lg',
@@ -101,9 +104,9 @@ export function VolunteerCard({
         {onSelect ? (
           <Button
             type="button"
-            size="sm"
+            size={isTouch ? 'touch' : 'sm'}
             variant="ghost"
-            className="h-5 px-1 text-xs"
+            className={isTouch ? 'px-3 text-sm' : 'h-5 px-1 text-xs'}
             onClick={() => onSelect(volunteer.volunteerId)}
           >
             Select slot
@@ -126,7 +129,7 @@ export function VolunteerCard({
         </Tooltip>
         {volunteer.workloadCount > 0 && (
           <Badge
-            className="bg-blue-100 text-blue-800"
+            className="bg-primary/10 text-primary"
             title="Already serving in this event"
           >
             Serving ({volunteer.workloadCount})

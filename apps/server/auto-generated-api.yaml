@@ -2750,6 +2750,8 @@ paths:
                             - published
                         availabilityFiredForAll:
                           type: boolean
+                        availabilityFiredForAny:
+                          type: boolean
                       required:
                         - cycleId
                         - name
@@ -2760,6 +2762,7 @@ paths:
                         - slotCount
                         - status
                         - availabilityFiredForAll
+                        - availabilityFiredForAny
                       additionalProperties: false
                 required:
                   - cycles
@@ -3182,6 +3185,486 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/v1/leader/cycles/{cycleId}/builder:
+    get:
+      operationId: getCycleBuilderData
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        participation:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            churchId:
+                              type: string
+                            ministryId:
+                              type: string
+                            eventId:
+                              type: string
+                            state:
+                              type: string
+                              enum:
+                                - tailoring
+                                - availability_fired
+                                - rostering
+                                - published
+                          required:
+                            - id
+                            - churchId
+                            - ministryId
+                            - eventId
+                            - state
+                          additionalProperties: false
+                        event:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            churchId:
+                              type: string
+                            planningCycleId:
+                              type: string
+                            sourceTemplateId:
+                              type: string
+                            title:
+                              type: string
+                            description:
+                              type: string
+                            location:
+                              type: string
+                            startDate:
+                              type: string
+                            endDate:
+                              type: string
+                            status:
+                              type: string
+                              enum:
+                                - draft
+                                - scheduled
+                                - cancelled
+                                - past
+                            eventType:
+                              type: string
+                              enum:
+                                - hourly
+                                - day_based
+                            createdAt:
+                              type: string
+                            updatedAt:
+                              type: string
+                          required:
+                            - id
+                            - churchId
+                            - planningCycleId
+                            - title
+                            - startDate
+                            - endDate
+                            - status
+                            - eventType
+                            - createdAt
+                            - updatedAt
+                          additionalProperties: false
+                        slots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              slot:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  churchId:
+                                    type: string
+                                  eventId:
+                                    type: string
+                                  startTime:
+                                    type: string
+                                  endTime:
+                                    type: string
+                                  label:
+                                    type: string
+                                  status:
+                                    type: string
+                                    enum:
+                                      - active
+                                      - cancelled
+                                  requirements:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        id:
+                                          type: string
+                                        slotId:
+                                          type: string
+                                        roleId:
+                                          type: string
+                                        teamId:
+                                          type: string
+                                        requiredCount:
+                                          type: number
+                                        notes:
+                                          type: string
+                                      required:
+                                        - id
+                                        - slotId
+                                        - roleId
+                                        - requiredCount
+                                      additionalProperties: false
+                                required:
+                                  - id
+                                  - churchId
+                                  - eventId
+                                  - startTime
+                                  - endTime
+                                  - status
+                                  - requirements
+                                additionalProperties: false
+                              included:
+                                type: boolean
+                              shifts:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    shift:
+                                      type: object
+                                      properties:
+                                        id:
+                                          type: string
+                                        participationId:
+                                          type: string
+                                        timeSlotId:
+                                          type: string
+                                        startTime:
+                                          type: string
+                                        endTime:
+                                          type: string
+                                        label:
+                                          type: string
+                                      required:
+                                        - id
+                                        - participationId
+                                        - timeSlotId
+                                        - startTime
+                                        - endTime
+                                      additionalProperties: false
+                                    requirements:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: string
+                                          shiftId:
+                                            type: string
+                                          participationId:
+                                            type: string
+                                          roleId:
+                                            type: string
+                                          teamId:
+                                            type: string
+                                          requiredCount:
+                                            type: number
+                                          notes:
+                                            type: string
+                                        required:
+                                          - id
+                                          - shiftId
+                                          - participationId
+                                          - roleId
+                                          - requiredCount
+                                        additionalProperties: false
+                                    assignments:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: string
+                                          churchId:
+                                            type: string
+                                          slotId:
+                                            type: string
+                                          participationId:
+                                            type: string
+                                          shiftId:
+                                            type: string
+                                          volunteerId:
+                                            type: string
+                                          roleId:
+                                            type: string
+                                          status:
+                                            type: string
+                                            enum:
+                                              - draft
+                                              - pending
+                                              - confirmed
+                                              - declined
+                                              - cancelled
+                                          reason:
+                                            type: string
+                                          assignedAt:
+                                            type: string
+                                          assignedBy:
+                                            type: string
+                                        required:
+                                          - id
+                                          - churchId
+                                          - slotId
+                                          - volunteerId
+                                          - roleId
+                                          - status
+                                          - assignedAt
+                                        additionalProperties: false
+                                    eligibleVolunteers:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          volunteerId:
+                                            type: string
+                                          volunteerName:
+                                            type: string
+                                          isAvailable:
+                                            type: boolean
+                                          hasConflict:
+                                            type: boolean
+                                          lastServedAt:
+                                            type: string
+                                        required:
+                                          - volunteerId
+                                          - volunteerName
+                                          - isAvailable
+                                          - hasConflict
+                                        additionalProperties: false
+                                  required:
+                                    - shift
+                                    - requirements
+                                    - assignments
+                                    - eligibleVolunteers
+                                  additionalProperties: false
+                            required:
+                              - slot
+                              - included
+                              - shifts
+                            additionalProperties: false
+                      required:
+                        - participation
+                        - event
+                        - slots
+                      additionalProperties: false
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - events
+                  - roles
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/cycles/{cycleId}/audit:
+    get:
+      operationId: getCycleAuditLog
+      tags:
+        - admin
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        assignmentId:
+                          type: string
+                        actorId:
+                          type: string
+                        action:
+                          type: string
+                          enum:
+                            - created
+                            - updated
+                            - deleted
+                            - status_change
+                            - event_published
+                            - event_cancelled
+                        reason:
+                          type: string
+                        timestamp:
+                          type: string
+                      required:
+                        - id
+                        - assignmentId
+                        - actorId
+                        - action
+                        - timestamp
+                      additionalProperties: false
+                required:
+                  - items
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/leader/cycles/{cycleId}/publish:
+    post:
+      operationId: publishCycle
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmBelowFull:
+                  type: boolean
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  published:
+                    type: boolean
+                  belowFull:
+                    type: boolean
+                  participations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        participationId:
+                          type: string
+                        state:
+                          type: string
+                          enum:
+                            - tailoring
+                            - availability_fired
+                            - rostering
+                            - published
+                        requiredCount:
+                          type: number
+                        assignedCount:
+                          type: number
+                      required:
+                        - participationId
+                        - state
+                        - requiredCount
+                        - assignedCount
+                      additionalProperties: false
+                required:
+                  - published
+                  - belowFull
+                  - participations
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/leader/shifts/{shiftId}/eligible-volunteers:
     get:
       operationId: listEligibleVolunteers

@@ -68,6 +68,7 @@ export interface AggregateCycleTailoringStatusInput {
 export interface CycleTailoringStatusResult {
   status: CycleTailoringStatus;
   availabilityFiredForAll: boolean;
+  availabilityFiredForAny: boolean;
 }
 
 /** R16: rolls up a cycle's per-event `MinistryParticipation` rows into one
@@ -84,7 +85,11 @@ export function aggregateCycleTailoringStatus({
   firedOrLaterCount,
 }: AggregateCycleTailoringStatusInput): CycleTailoringStatusResult {
   if (eventCount === 0) {
-    return { status: 'not_started', availabilityFiredForAll: false };
+    return {
+      status: 'not_started',
+      availabilityFiredForAll: false,
+      availabilityFiredForAny: false,
+    };
   }
 
   const status: CycleTailoringStatus =
@@ -97,6 +102,7 @@ export function aggregateCycleTailoringStatus({
   return {
     status,
     availabilityFiredForAll: firedOrLaterCount === eventCount,
+    availabilityFiredForAny: firedOrLaterCount > 0,
   };
 }
 

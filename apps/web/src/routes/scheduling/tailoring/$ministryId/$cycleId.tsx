@@ -31,7 +31,6 @@ import {
   formatDate,
   type SplitFormState,
   type TimeWindowFilter,
-  toCalendarDateString,
   toHeadcountKey,
   toIsoString,
   validateManualSpans,
@@ -47,6 +46,7 @@ import type {
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemSlotsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { toLocalDayKey } from '@/shared/utils/date';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -517,7 +517,7 @@ function TailoringWorkspaceRoute() {
           ...eventView,
           slots: eventView.slots.filter(
             (slotView) =>
-              toCalendarDateString(slotView.slot.startTime) === selectedDate,
+              toLocalDayKey(slotView.slot.startTime) === selectedDate,
           ),
         }))
         .filter((eventView) => eventView.slots.length > 0)
@@ -613,9 +613,9 @@ function TailoringWorkspaceRoute() {
                   Browse cycles
                 </Link>
                 <Link
-                  to="/scheduling/builder-events"
-                  search={{ ministryId }}
-                  data-testid="open-builder-link"
+                  to="/scheduling/rostering/$ministryId/$cycleId"
+                  params={{ ministryId, cycleId }}
+                  data-testid="open-assign-link"
                   className={buttonVariants({ variant: 'outline' })}
                 >
                   Open builder

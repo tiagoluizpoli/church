@@ -28,9 +28,9 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 **Purpose**: Confirm environment and references before code
 
-- [ ] T001 Verify branch `023-event-builder`, run `bun install`, bring up Dockerized Postgres (`docker compose up -d`) for integration tests
-- [ ] T002 [P] Read [legacy-builder-retirement-inventory](../../manual-planning/0001-volunteer-scheduling/research/legacy-builder-retirement-inventory.md) for the file-by-file reuse/rebuild/delete classification used throughout Phases US1/US4
-- [ ] T003 [P] Confirm the approved layout reference (prototype variant G) and existing atomic schemas (`assignmentResponseSchema`, `eligibleVolunteerResponseSchema` `apps/server/src/api/dtos/rostering.dto.ts:14`, `shiftResponseSchema`/`shiftRequirementResponseSchema`/`participationResponseSchema` in `participation.dto.ts`) plus the `rbacGuard.canManageMinistry` guard exist and are unchanged
+- [X] T001 Verify branch `023-event-builder`, run `bun install`, bring up Dockerized Postgres (`docker compose up -d`) for integration tests
+- [X] T002 [P] Read [legacy-builder-retirement-inventory](../../manual-planning/0001-volunteer-scheduling/research/legacy-builder-retirement-inventory.md) for the file-by-file reuse/rebuild/delete classification used throughout Phases US1/US4
+- [X] T003 [P] Confirm the approved layout reference (prototype variant G) and existing atomic schemas (`assignmentResponseSchema`, `eligibleVolunteerResponseSchema` `apps/server/src/api/dtos/rostering.dto.ts:14`, `shiftResponseSchema`/`shiftRequirementResponseSchema`/`participationResponseSchema` in `participation.dto.ts`) plus the `rbacGuard.canManageMinistry` guard exist and are unchanged
 
 ---
 
@@ -40,9 +40,9 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 **⚠️ CRITICAL**: Complete before any user-story phase
 
-- [ ] T004 Create shared DTO file `apps/server/src/api/dtos/cycle-builder.dto.ts` composing existing atomic schemas: `cycleBuilderShiftViewSchema` / `cycleBuilderSlotViewSchema` / `cycleBuilderEventViewSchema` / `cycleBuilderResponseSchema`, plus `publishCycleBodySchema` (mirrors `publishParticipationBodySchema`) and `publishCycleResponseSchema` (per contracts/ §1 & §3) — no new leaf shapes, all named types (constitution VII)
-- [ ] T005 Scaffold the canvas host route `apps/web/src/routes/scheduling/rostering/$ministryId/$cycleId.tsx` (ministry-first) as a shell with a loader stub — shared render host for US1/US2/US3/US6
-- [ ] T006 [P] Set up the LeaderRosteringController integration-test harness against Dockerized Postgres with a two-church (A/B) fixture (R8) reused by every new-endpoint test below
+- [X] T004 Create shared DTO file `apps/server/src/api/dtos/cycle-builder.dto.ts` composing existing atomic schemas: `cycleBuilderShiftViewSchema` / `cycleBuilderSlotViewSchema` / `cycleBuilderEventViewSchema` / `cycleBuilderResponseSchema`, plus `publishCycleBodySchema` (mirrors `publishParticipationBodySchema`) and `publishCycleResponseSchema` (per contracts/ §1 & §3) — no new leaf shapes, all named types (constitution VII)
+- [X] T005 Scaffold the canvas host route `apps/web/src/routes/scheduling/rostering/$ministryId/$cycleId.tsx` (ministry-first) as a shell with a loader stub — shared render host for US1/US2/US3/US6
+- [X] T006 [P] Set up the LeaderRosteringController integration-test harness against Dockerized Postgres with a two-church (A/B) fixture (R8) reused by every new-endpoint test below
 
 **Checkpoint**: Shared DTO + route shell + test harness ready
 
@@ -56,28 +56,28 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Integration test `getCycleBuilderData` in `apps/server/…/leader-rostering-controller.integration.test.ts`: uniform shape, `assignments: []` for zero-assignment shifts, `eligibleVolunteers: []` for published participations, plus two-church A/B isolation (R8). **SC-002 guard**: assert the whole cycle loads in a **single** batched request and that eligible-volunteers are fetched **without N+1** (query-count spy / PG statement-log assertion via the T006 harness) — one batched read replaces the three legacy loads
-- [ ] T009a [P] [US1] **FR-006 guard** test in `apps/web/…/builder/*.component.test.tsx` + `apps/server/…`: assert the builder route/canvas wires **no** slot/shift/requirement mutation (structure is read-only) — no create/edit/delete-structure call exists on the builder path, and no such server endpoint is added by this feature
-- [ ] T008 [P] [US1] Component test: cycle board renders event lanes → slots → shifts with staffed-vs-required progress, in `apps/web/…/builder/*.component.test.tsx`
-- [ ] T009 [P] [US1] E2E in `apps/web/e2e/…`: open builder, assign across 2 events, reassign one, reload → draft persists
+- [X] T007 [P] [US1] Integration test `getCycleBuilderData` in `apps/server/…/leader-rostering-controller.integration.test.ts`: uniform shape, `assignments: []` for zero-assignment shifts, `eligibleVolunteers: []` for published participations, plus two-church A/B isolation (R8). **SC-002 guard**: assert the whole cycle loads in a **single** batched request and that eligible-volunteers are fetched **without N+1** (query-count spy / PG statement-log assertion via the T006 harness) — one batched read replaces the three legacy loads
+- [X] T009a [P] [US1] **FR-006 guard** test in `apps/web/…/builder/*.component.test.tsx` + `apps/server/…`: assert the builder route/canvas wires **no** slot/shift/requirement mutation (structure is read-only) — no create/edit/delete-structure call exists on the builder path, and no such server endpoint is added by this feature
+- [X] T008 [P] [US1] Component test: cycle board renders event lanes → slots → shifts with staffed-vs-required progress, in `apps/web/…/builder/*.component.test.tsx`
+- [X] T009 [P] [US1] E2E in `apps/web/e2e/…`: open builder, assign across 2 events, reassign one, reload → draft persists
 
 ### Implementation — backend read (R1)
 
-- [ ] T010 [US1] Repository **Query A** (church-isolated events→slots→shifts→requirements→assignments aggregation for `(ministryId, cycleId)`) in `apps/server/src/infrastructure/repositories/drizzle-ministry-participation.repository.ts`; add its input/output contract types to `apps/server/src/domain/contracts/infrastructure/ministry-participation.repository.ts`
-- [ ] T011 [US1] Repository **Query B** (single batched eligible-volunteers read over all shifts at once, skipped for published participations) in the same repository, reusing the eligibility/availability logic behind `listEligibleVolunteers`
-- [ ] T012 [US1] Manager `getCycleBuilderData({ churchId, cycleId, ministryId, userId })` stitching Query A+B in `apps/server/src/application/db-participation-manager.ts`; add the signature/view types to `apps/server/src/domain/contracts/application/participation-manager.ts`
-- [ ] T013 [US1] Controller route `GET /leader/cycles/:cycleId/builder` (`operationId: getCycleBuilderData`, `canManageMinistry` guard, `cycleBuilderResponseSchema`) in `apps/server/src/api/controllers/leader-rostering-controller.ts`
-- [ ] T014 [US1] Regenerate the orval client (`apps/web/src/infrastructure/api/`) — do not hand-edit generated files
+- [X] T010 [US1] Repository **Query A** (church-isolated events→slots→shifts→requirements→assignments aggregation for `(ministryId, cycleId)`) in `apps/server/src/infrastructure/repositories/drizzle-ministry-participation.repository.ts`; add its input/output contract types to `apps/server/src/domain/contracts/infrastructure/ministry-participation.repository.ts`
+- [X] T011 [US1] Repository **Query B** (single batched eligible-volunteers read over all shifts at once, skipped for published participations) in the same repository, reusing the eligibility/availability logic behind `listEligibleVolunteers`
+- [X] T012 [US1] Manager `getCycleBuilderData({ churchId, cycleId, ministryId, userId })` stitching Query A+B in `apps/server/src/application/db-participation-manager.ts`; add the signature/view types to `apps/server/src/domain/contracts/application/participation-manager.ts`
+- [X] T013 [US1] Controller route `GET /leader/cycles/:cycleId/builder` (`operationId: getCycleBuilderData`, `canManageMinistry` guard, `cycleBuilderResponseSchema`) in `apps/server/src/api/controllers/leader-rostering-controller.ts`
+- [X] T014 [US1] Regenerate the orval client (`apps/web/src/infrastructure/api/`) — do not hand-edit generated files
 
 ### Implementation — frontend canvas (R2/R3)
 
-- [ ] T015 [P] [US1] Verify the 7 reuse-as-is presentational components drop into the canvas unchanged (`assignee-identity-badge`, `assignment-chip`, `override-dialog`, `staffing-meter`, `suggestion-list`, `volunteer-card`; `audit-log-panel` shell only) in `apps/web/src/features/scheduling/components/builder/`
-- [ ] T016 [US1] Rebuild the 10 grid-structural components for the cycle board (`schedule-builder.tsx` root → `ministryId`+`cycleId`, `schedule-builder-ready.tsx`, `builder-grid.tsx` → cycle lanes, `slot-row.tsx` (assignment-only, inline-edit dropped), `builder-header.tsx`, `empty-builder-state.tsx` → cycle-empty, `requirement-cell.tsx`, `builder-types.ts`, `use-schedule-builder-controller.ts`(+`.types.ts`) dropping `useSlotManagement`, `use-schedule-builder-derived-data.ts`, `volunteer-pool-sidebar.tsx` → cycle-wide rail) in `apps/web/src/features/scheduling/components/builder/`
-- [ ] T017 [US1] Rewire the 3 pool-dependent components (`assignment-picker.tsx`, `substitution-picker.tsx`, `role-count-control.tsx`) to the cycle-wide eligible-per-shift pool from `getCycleBuilderData`
-- [ ] T018 [US1] Wire the `$ministryId/$cycleId.tsx` route to `getCycleBuilderData`; render date filters + cycle-level staffing orientation (FR-002)
-- [ ] T019 [US1] Implement assign / remove / reassign against the existing single-assignment endpoints (`createParticipationAssignment`, `deleteParticipationAssignment`, `reassignParticipationAssignment`), incl. the explicit swap-vs-assign-both choice when the volunteer is already assigned (FR-007)
-- [ ] T020 [US1] Searchable volunteer rail with click-to-select and drag-to-assign onto shifts (FR-008)
-- [ ] T021 [US1] Run the `agents.local.md` gate loop + `/review` on modified files; fix all findings before proceeding
+- [X] T015 [P] [US1] Verify the 7 reuse-as-is presentational components drop into the canvas unchanged (`assignee-identity-badge`, `assignment-chip`, `override-dialog`, `staffing-meter`, `suggestion-list`, `volunteer-card`; `audit-log-panel` shell only) in `apps/web/src/features/scheduling/components/builder/`
+- [X] T016 [US1] Rebuild the 10 grid-structural components for the cycle board (`schedule-builder.tsx` root → `ministryId`+`cycleId`, `schedule-builder-ready.tsx`, `builder-grid.tsx` → cycle lanes, `slot-row.tsx` (assignment-only, inline-edit dropped), `builder-header.tsx`, `empty-builder-state.tsx` → cycle-empty, `requirement-cell.tsx`, `builder-types.ts`, `use-schedule-builder-controller.ts`(+`.types.ts`) dropping `useSlotManagement`, `use-schedule-builder-derived-data.ts`, `volunteer-pool-sidebar.tsx` → cycle-wide rail) in `apps/web/src/features/scheduling/components/builder/`
+- [X] T017 [US1] Rewire the 3 pool-dependent components (`assignment-picker.tsx`, `substitution-picker.tsx`, `role-count-control.tsx`) to the cycle-wide eligible-per-shift pool from `getCycleBuilderData`
+- [X] T018 [US1] Wire the `$ministryId/$cycleId.tsx` route to `getCycleBuilderData`; render date filters + cycle-level staffing orientation (FR-002)
+- [X] T019 [US1] Implement assign / remove / reassign against the existing single-assignment endpoints (`createParticipationAssignment`, `deleteParticipationAssignment`, `reassignParticipationAssignment`), incl. the explicit swap-vs-assign-both choice when the volunteer is already assigned (FR-007)
+- [X] T020 [US1] Searchable volunteer rail with click-to-select and drag-to-assign onto shifts (FR-008)
+- [X] T021 [US1] Run the `agents.local.md` gate loop + `/review` on modified files; fix all findings before proceeding
 
 **Checkpoint**: US1 fully functional — cycle-wide assignment works end to end (MVP).
 
@@ -91,16 +91,16 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Integration test `publishCycle`: all-or-nothing transaction, below-full-without-confirm returns `belowFull: true` with no state change, confirm path publishes all, two-church isolation (R8)
-- [ ] T023 [P] [US2] E2E: below-full → confirm → all participations published; reassign after publish permitted
+- [X] T022 [P] [US2] Integration test `publishCycle`: all-or-nothing transaction, below-full-without-confirm returns `belowFull: true` with no state change, confirm path publishes all, two-church isolation (R8)
+- [X] T023 [P] [US2] E2E: below-full → confirm → all participations published; reassign after publish permitted
 
 ### Implementation (R7)
 
-- [ ] T024 [US2] Repository batched publish inside a single `db.transaction()` over all `(cycleId, ministryId)` participations in `drizzle-ministry-participation.repository.ts` (all-or-nothing)
-- [ ] T025 [US2] Manager `publishCycle({ churchId, cycleId, ministryId, userId, confirmBelowFull })` reusing the existing per-participation publish rule + below-full signal, in `db-participation-manager.ts` (+ contract types)
-- [ ] T026 [US2] Controller route `POST /leader/cycles/:cycleId/publish` (`canManageMinistry`, `publishCycleBodySchema`/`publishCycleResponseSchema`) in `leader-rostering-controller.ts`; regenerate orval client
-- [ ] T027 [US2] Publish UI in the canvas route: single Publish action + below-full confirmation dialog (shadcn), re-calling with `confirmBelowFull: true` (FR-021/FR-022)
-- [ ] T028 [US2] Gate loop + `/review`
+- [X] T024 [US2] Repository batched publish inside a single `db.transaction()` over all `(cycleId, ministryId)` participations in `drizzle-ministry-participation.repository.ts` (all-or-nothing)
+- [X] T025 [US2] Manager `publishCycle({ churchId, cycleId, ministryId, userId, confirmBelowFull })` reusing the existing per-participation publish rule + below-full signal, in `db-participation-manager.ts` (+ contract types)
+- [X] T026 [US2] Controller route `POST /leader/cycles/:cycleId/publish` (`canManageMinistry`, `publishCycleBodySchema`/`publishCycleResponseSchema`) in `leader-rostering-controller.ts`; regenerate orval client
+- [X] T027 [US2] Publish UI in the canvas route: single Publish action + below-full confirmation dialog (shadcn), re-calling with `confirmBelowFull: true` (FR-021/FR-022)
+- [X] T028 [US2] Gate loop + `/review`
 
 **Checkpoint**: US1 + US2 = a leader can staff and ship a whole cycle.
 
@@ -116,16 +116,16 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Component test: safe-candidate ordering (longest-since-last → fewest-in-cycle → alpha), "Needs response" vs "Conflict options" grouping, Accept assigns top only
+- [X] T029 [P] [US3] Component test: safe-candidate ordering (longest-since-last → fewest-in-cycle → alpha), "Needs response" vs "Conflict options" grouping, Accept assigns top only
 
 ### Implementation (R4)
 
-- [ ] T030 [US3] Ranking on already-fetched builder data: hard eligibility filter + exact-shift availability evaluation; safe ordering (longest time since last active assignment → fewest active cycle assignments → stable alphabetical), same-day non-overlapping ranks lower with workload note — in `apps/web/src/features/scheduling/components/builder/` (recommendation derivation)
-- [ ] T031 [US3] Group pending → "Needs response", unavailability/overlap → "Conflict options"; assigning a conflict option requires the existing override-reason flow (`override-dialog.tsx`)
-- [ ] T032 [US3] Render up to 5 recommendations, top highlighted with explicit Accept, no auto-assign, plain language (no numeric scores)
-- [ ] T033 [US3] Fairness scope default = whole cycle; add the Unleash flag path for temporary ministry-only history (active = draft/pending/confirmed only)
-- [ ] T034 [US3] Recompute from current draft after each mutation; revalidate backend data after mutations, on window focus, and on ~30s HTTP refresh while open
-- [ ] T035 [US3] Gate loop + `/review`
+- [X] T030 [US3] Ranking on already-fetched builder data: hard eligibility filter + exact-shift availability evaluation; safe ordering (longest time since last active assignment → fewest active cycle assignments → stable alphabetical), same-day non-overlapping ranks lower with workload note — in `apps/web/src/features/scheduling/components/builder/` (recommendation derivation)
+- [X] T031 [US3] Group pending → "Needs response", unavailability/overlap → "Conflict options"; assigning a conflict option requires the existing override-reason flow (`override-dialog.tsx`)
+- [X] T032 [US3] Render up to 5 recommendations, top highlighted with explicit Accept, no auto-assign, plain language (no numeric scores)
+- [X] T033 [US3] Fairness scope default = whole cycle; add the Unleash flag path for temporary ministry-only history (active = draft/pending/confirmed only)
+- [X] T034 [US3] Recompute from current draft after each mutation; revalidate backend data after mutations, on window focus, and on ~30s HTTP refresh while open
+- [X] T035 [US3] Gate loop + `/review`
 
 **Checkpoint**: Assignment is assisted and fair.
 
@@ -139,22 +139,22 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 ### Tests for User Story 4
 
-- [ ] T036 [P] [US4] Integration test `availabilityFiredForAny`: `firedOrLaterCount > 0`, and `eventCount === 0 ⇒ false` (vacuous-truth guard), in the participation cycle-summary test
-- [ ] T037 [P] [US4] E2E: **Assign** enabled on any-fired, disabled copy "Unlocks once availability has fired for this cycle" otherwise, enabled on fully-published; legacy entries/routes unreachable
+- [X] T036 [P] [US4] Integration test `availabilityFiredForAny`: `firedOrLaterCount > 0`, and `eventCount === 0 ⇒ false` (vacuous-truth guard), in the participation cycle-summary test
+- [X] T037 [P] [US4] E2E: **Assign** enabled on any-fired, disabled copy "Unlocks once availability has fired for this cycle" otherwise, enabled on fully-published; legacy entries/routes unreachable
 
 ### Implementation — derived field (R6)
 
-- [ ] T038 [US4] Domain: `aggregateCycleTailoringStatus` emits `availabilityFiredForAny` in `apps/server/src/domain/entities/ministry-participation.ts` (added to `CycleTailoringStatusResult`)
-- [ ] T039 [US4] Propagate the field: repository cycle-summary view (`ministry-participation.repository.ts`) → manager view (`participation-manager.ts`) → `participation.dto.ts` schema (`:123`) + mapper (`:205`)
-- [ ] T040 [US4] Regenerate orval client; surface `availabilityFiredForAny` in `apps/web/src/features/scheduling/components/tailoring/cycle-list.utils.ts` view-model
+- [X] T038 [US4] Domain: `aggregateCycleTailoringStatus` emits `availabilityFiredForAny` in `apps/server/src/domain/entities/ministry-participation.ts` (added to `CycleTailoringStatusResult`)
+- [X] T039 [US4] Propagate the field: repository cycle-summary view (`ministry-participation.repository.ts`) → manager view (`participation-manager.ts`) → `participation.dto.ts` schema (`:123`) + mapper (`:205`)
+- [X] T040 [US4] Regenerate orval client; surface `availabilityFiredForAny` in `apps/web/src/features/scheduling/components/tailoring/cycle-list.utils.ts` view-model
 
 ### Implementation — entry + retirement (R3/R6)
 
-- [ ] T041 [US4] `ministry-cycle-list.tsx`: replace "Builder Events" with **Assign** → `/scheduling/rostering/$ministryId/$cycleId`, gate on `availabilityFiredForAny`, disabled copy + `ministry-cycle-assign-{link,button}-${id}` testids, keep enabled when published
-- [ ] T042 [US4] Repoint the other 3 entry points off `/scheduling/builder-events` per the R3 inventory
-- [ ] T043 [US4] Migrate the 5 legacy builder e2e specs to the new route + testids
-- [ ] T044 [US4] Delete the legacy routes: `scheduling/builder-events.tsx` + `EventList`, `scheduling/events/$eventId/builder.tsx`, and the **entire cycle-first legacy subtree** `scheduling/rostering/$cycleId/**` (the orphaned `$cycleId/$ministryId/$participationId.tsx` route + `RosterBuilderPage` and its now-empty intermediate `$cycleId/` / `$cycleId/$ministryId/` directories) — leaving only the new ministry-first `rostering/$ministryId/$cycleId.tsx`. Also delete the 4 slot-management `builder/` files and `mobile-interstitial.tsx`
-- [ ] T045 [US4] Gate loop + `/review`
+- [X] T041 [US4] `ministry-cycle-list.tsx`: replace "Builder Events" with **Assign** → `/scheduling/rostering/$ministryId/$cycleId`, gate on `availabilityFiredForAny`, disabled copy + `ministry-cycle-assign-{link,button}-${id}` testids, keep enabled when published
+- [X] T042 [US4] Repoint the other 3 entry points off `/scheduling/builder-events` per the R3 inventory
+- [X] T043 [US4] Migrate the 5 legacy builder e2e specs to the new route + testids
+- [X] T044 [US4] Delete the legacy routes: `scheduling/builder-events.tsx` + `EventList`, `scheduling/events/$eventId/builder.tsx`, and the **entire cycle-first legacy subtree** `scheduling/rostering/$cycleId/**` (the orphaned `$cycleId/$ministryId/$participationId.tsx` route + `RosterBuilderPage` and its now-empty intermediate `$cycleId/` / `$cycleId/$ministryId/` directories) — leaving only the new ministry-first `rostering/$ministryId/$cycleId.tsx`. Also delete the 4 slot-management `builder/` files and `mobile-interstitial.tsx`
+- [X] T045 [US4] Gate loop + `/review`
 
 **Checkpoint**: The builder is discoverable and the legacy flow is gone.
 
@@ -168,15 +168,15 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 ### Tests for User Story 5
 
-- [ ] T046 [P] [US5] Integration test `getCycleAuditLog`: cycle-wide items for `(cycleId, ministryId)`, two-church isolation (R8)
+- [X] T046 [P] [US5] Integration test `getCycleAuditLog`: cycle-wide items for `(cycleId, ministryId)`, two-church isolation (R8)
 
 ### Implementation (R5)
 
-- [ ] T047 [US5] Repository `listByCycle(churchId, cycleId, ministryId)` (church-isolated) in `apps/server/src/infrastructure/repositories/drizzle-assignment-audit.repository.ts`; add the method to `apps/server/src/domain/contracts/infrastructure/assignment-audit.repository.ts`
-- [ ] T048 [US5] Manager `listAuditLogForCycle({ churchId, cycleId, ministryId })` in `apps/server/src/application/db-assignment-manager.ts` (+ contract type in `assignment-manager.ts`)
-- [ ] T049 [US5] Controller route `GET /leader/cycles/:cycleId/audit` reusing `auditListResponseSchema` (no new DTO) in `leader-rostering-controller.ts`; regenerate orval client
-- [ ] T050 [US5] Rewire `audit-log-panel.tsx`: replace the `Promise.all(getAssignmentAudit)` N+1 with one `getCycleAuditLog` call (query key `['cycle-audit', cycleId, ministryId]`, `enabled: open`); resolve `volunteerName` by joining `assignmentId` against already-loaded builder assignments
-- [ ] T051 [US5] Gate loop + `/review`
+- [X] T047 [US5] Repository `listByCycle(churchId, cycleId, ministryId)` (church-isolated) in `apps/server/src/infrastructure/repositories/drizzle-assignment-audit.repository.ts`; add the method to `apps/server/src/domain/contracts/infrastructure/assignment-audit.repository.ts`
+- [X] T048 [US5] Manager `listAuditLogForCycle({ churchId, cycleId, ministryId })` in `apps/server/src/application/db-assignment-manager.ts` (+ contract type in `assignment-manager.ts`)
+- [X] T049 [US5] Controller route `GET /leader/cycles/:cycleId/audit` reusing `auditListResponseSchema` (no new DTO) in `leader-rostering-controller.ts`; regenerate orval client
+- [X] T050 [US5] Rewire `audit-log-panel.tsx`: replace the `Promise.all(getAssignmentAudit)` N+1 with one `getCycleAuditLog` call (query key `['cycle-audit', cycleId, ministryId]`, `enabled: open`); resolve `volunteerName` by joining `assignmentId` against already-loaded builder assignments
+- [X] T051 [US5] Gate loop + `/review`
 
 **Checkpoint**: Accountability view works without N+1.
 
@@ -190,13 +190,13 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 ### Tests for User Story 6
 
-- [ ] T052 [P] [US6] E2E on a narrow viewport: view + assign + publish succeed; board scrolls horizontally; rail stacks below; no interstitial present
+- [X] T052 [P] [US6] E2E on a narrow viewport: view + assign + publish succeed; board scrolls horizontally; rail stacks below; no interstitial present
 
 ### Implementation (R2/R6)
 
-- [ ] T053 [US6] Responsive cycle board: horizontal scroll when wider than viewport; volunteer rail stacks below the board (FR-031/FR-032) in the canvas components
-- [ ] T054 [US6] Confirm `mobile-interstitial.tsx` is deleted (T044) and no code path renders it; ensure touch-sized controls on the canvas
-- [ ] T055 [US6] Gate loop + `/review`
+- [X] T053 [US6] Responsive cycle board: horizontal scroll when wider than viewport; volunteer rail stacks below the board (FR-031/FR-032) in the canvas components
+- [X] T054 [US6] Confirm `mobile-interstitial.tsx` is deleted (T044) and no code path renders it; ensure touch-sized controls on the canvas
+- [X] T055 [US6] Gate loop + `/review`
 
 **Checkpoint**: All six stories independently functional.
 
@@ -204,8 +204,8 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T056 [P] Run [quickstart.md](./quickstart.md) validation end to end (build order + per-story smoke)
-- [ ] T057 [P] Update any docs/legacy references pointing at the retired `/scheduling/builder-events` flow
+- [X] T056 [P] Run [quickstart.md](./quickstart.md) validation end to end (build order + per-story smoke)
+- [X] T057 [P] Update any docs/legacy references pointing at the retired `/scheduling/builder-events` flow
 - [ ] T058 Full safeguard suite (`bun run check` / `check-types` / `test` / `test:e2e`) green + final `/review` across the whole diff
 
 ---

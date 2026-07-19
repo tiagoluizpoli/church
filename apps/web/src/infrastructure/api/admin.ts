@@ -27,8 +27,12 @@ import type {
   GenerateSlotsBody,
   GetAssignmentAudit200,
   GetAvailabilityStatus200,
+  GetCycleAuditLog200,
+  GetCycleAuditLogParams,
   GetCycleAvailabilityStatus200,
   GetCycleAvailabilityStatusParams,
+  GetCycleBuilderData200,
+  GetCycleBuilderDataParams,
   GetCycleParticipation200,
   GetCycleParticipationParams,
   GetMinistryServingProfile200,
@@ -46,6 +50,9 @@ import type {
   ListPlanningCyclesParams,
   OverrideAssignment201,
   OverrideAssignmentBody,
+  PublishCycle200,
+  PublishCycleBody,
+  PublishCycleParams,
   PublishParticipation204,
   PublishParticipationBody,
   ReassignParticipationAssignment200,
@@ -511,6 +518,39 @@ const getMinistryServingProfile = (
     },
       );
     }
+  const getCycleBuilderData = (
+    cycleId: string,
+    params: GetCycleBuilderDataParams,
+ ) => {
+      return apiClient<GetCycleBuilderData200>(
+      {url: `/api/v1/leader/cycles/${cycleId}/builder`, method: 'GET',
+        params
+    },
+      );
+    }
+  const getCycleAuditLog = (
+    cycleId: string,
+    params: GetCycleAuditLogParams,
+ ) => {
+      return apiClient<GetCycleAuditLog200>(
+      {url: `/api/v1/leader/cycles/${cycleId}/audit`, method: 'GET',
+        params
+    },
+      );
+    }
+  const publishCycle = (
+    cycleId: string,
+    publishCycleBody: PublishCycleBody,
+    params: PublishCycleParams,
+ ) => {
+      return apiClient<PublishCycle200>(
+      {url: `/api/v1/leader/cycles/${cycleId}/publish`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: publishCycleBody,
+        params
+    },
+      );
+    }
   const listEligibleVolunteers = (
     shiftId: string,
  ) => {
@@ -568,7 +608,7 @@ const getMinistryServingProfile = (
     },
       );
     }
-  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventSlot,updatePlanningEventSlot,deletePlanningEventSlot,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,listMinistryCycleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
+  return {listMinistries,getScheduleBuilderData,listEvents,cancelEvent,sendReminders,createSlot,updateSlot,deleteSlot,overrideAssignment,generateSlots,upsertSlotRequirement,createAssignment,deleteAssignment,getAssignmentAudit,createPlanningCycle,listPlanningCycles,getPlanningCycle,lockPlanningCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,updateEventTemplate,deleteEventTemplate,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,cancelPlanningEvent,createPlanningEventSlot,updatePlanningEventSlot,deletePlanningEventSlot,getMinistryServingProfile,upsertMinistryServingProfile,setMinistryDefaultDirection,getCycleParticipation,listMinistryCycleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder,getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listMinistries']>>>
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEvents']>>>
@@ -613,6 +653,9 @@ export type FireAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<t
 export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getCycleAvailabilityStatus']>>>
 export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getAvailabilityStatus']>>>
 export type ResendAvailabilityReminderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['resendAvailabilityReminder']>>>
+export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getCycleBuilderData']>>>
+export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['getCycleAuditLog']>>>
+export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['publishCycle']>>>
 export type ListEligibleVolunteersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['listEligibleVolunteers']>>>
 export type CreateParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['createParticipationAssignment']>>>
 export type DeleteParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAdmin>['deleteParticipationAssignment']>>>

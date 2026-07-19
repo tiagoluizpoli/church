@@ -100,6 +100,7 @@ function createPhase6Managers(): Phase6Managers {
       volunteerRepo,
       ministryRepo,
       new DrizzleMinistryServingProfileRepository(schedulingTestDb),
+      new DrizzleRoleRepository(schedulingTestDb),
       notificationSpy,
       unitOfWork,
     ),

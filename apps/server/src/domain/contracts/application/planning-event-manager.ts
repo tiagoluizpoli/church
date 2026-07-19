@@ -28,6 +28,11 @@ export interface CreatePlanningEventManagerInput {
   startDate: Date;
   endDate: Date;
   eventType?: 'hourly' | 'day_based';
+  /**
+   * The supplied ISO date parts came from a calendar-date picker. They must
+   * be interpreted in the church timezone rather than as UTC instants.
+   */
+  datesRepresentChurchCalendarDays?: boolean;
 }
 
 export interface UpdatePlanningEventManagerInput {

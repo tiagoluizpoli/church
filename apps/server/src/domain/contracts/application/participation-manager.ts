@@ -7,8 +7,10 @@ import type {
   ShiftId,
   TeamId,
   TimeSlotId,
+  UserId,
   VolunteerId,
 } from '../../branded-ids';
+import type { Assignment } from '../../entities/assignment';
 import type { Event } from '../../entities/event';
 import type { MinistryParticipation } from '../../entities/ministry-participation';
 import type {
@@ -41,6 +43,63 @@ export interface ParticipationEventView {
 
 export interface CycleParticipationView {
   events: ParticipationEventView[];
+}
+
+export interface GetCycleBuilderDataInput {
+  churchId: ChurchId;
+  cycleId: PlanningCycleId;
+  ministryId: MinistryId;
+  userId: UserId;
+}
+
+export interface CycleBuilderShiftView {
+  shift: Shift;
+  requirements: SlotRequirement[];
+  assignments: Assignment[];
+  eligibleVolunteers: EligibleVolunteerView[];
+}
+
+export interface CycleBuilderSlotView {
+  slot: TimeSlot;
+  included: boolean;
+  shifts: CycleBuilderShiftView[];
+}
+
+export interface CycleBuilderEventView {
+  participation: MinistryParticipation;
+  event: Event;
+  slots: CycleBuilderSlotView[];
+}
+
+export interface CycleBuilderRoleOption {
+  id: RoleId;
+  name: string;
+}
+
+export interface CycleBuilderView {
+  events: CycleBuilderEventView[];
+  roles: CycleBuilderRoleOption[];
+}
+
+export interface PublishCycleInput {
+  churchId: ChurchId;
+  cycleId: PlanningCycleId;
+  ministryId: MinistryId;
+  userId: UserId;
+  confirmBelowFull?: boolean;
+}
+
+export interface PublishCycleParticipationOutcome {
+  participationId: MinistryParticipationId;
+  state: MinistryParticipation['state'];
+  requiredCount: number;
+  assignedCount: number;
+}
+
+export interface PublishCycleView {
+  published: boolean;
+  belowFull: boolean;
+  participations: PublishCycleParticipationOutcome[];
 }
 
 export interface SetInclusionsInput {
@@ -139,12 +198,16 @@ export interface MinistryCycleSummaryView {
   slotCount: number;
   status: 'not_started' | 'in_progress' | 'published';
   availabilityFiredForAll: boolean;
+  availabilityFiredForAny: boolean;
 }
 
 export interface IParticipationManager {
   getCycleParticipation(
     input: GetCycleParticipationInput,
   ): Promise<CycleParticipationView>;
+  getCycleBuilderData(
+    input: GetCycleBuilderDataInput,
+  ): Promise<CycleBuilderView>;
   setInclusions(input: SetInclusionsInput): Promise<void>;
   splitShifts(input: SplitShiftsManagerInput): Promise<Shift[]>;
   updateShift(input: UpdateShiftManagerInput): Promise<Shift>;
@@ -165,6 +228,7 @@ export interface IParticipationManager {
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView>;
   publish(input: PublishParticipationInput): Promise<void>;
+  publishCycle(input: PublishCycleInput): Promise<PublishCycleView>;
   listMinistryCycleSummaries(
     input: ListMinistryCycleSummariesInput,
   ): Promise<MinistryCycleSummaryView[]>;

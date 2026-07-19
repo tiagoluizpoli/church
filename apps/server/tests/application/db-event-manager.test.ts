@@ -157,6 +157,7 @@ function createRepos(): Repos {
   const roleRepo: RoleRepository = {
     getById: vi.fn(),
     listByMinistry: vi.fn(async () => []),
+    listGlobalAndMinistry: vi.fn(async () => []),
     listGlobalAndMinistryRoleIds: vi.fn(),
   };
 

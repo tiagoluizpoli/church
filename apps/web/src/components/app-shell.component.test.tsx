@@ -94,7 +94,6 @@ describe('AppShell role-scoped navigation', () => {
       'Scheduling',
       'Cycles',
       'Rostering',
-      'Builder events',
     ]);
     expect(navLabels(screen.getByTestId('mobile-bottom-nav'))).toEqual([
       'Dashboard',
@@ -118,7 +117,6 @@ describe('AppShell role-scoped navigation', () => {
       'Scheduling',
       'Cycles',
       'Rostering',
-      'Builder events',
     ]);
   });
 
@@ -201,7 +199,7 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
     expect(childRow?.querySelector('[data-nav-connector]')).not.toBeNull();
   });
 
-  it('keeps every nav item navigating and highlighting exactly as before this change', async () => {
+  it('keeps the remaining scheduling navigation items navigable and highlighted', async () => {
     mockedUseCallerRoles.mockReturnValue({
       canSeeScheduling: true,
       isResolving: false,
@@ -222,7 +220,6 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
       'Scheduling',
       'Cycles',
       'Rostering',
-      'Builder events',
     ]);
 
     const tailoringLink = within(drawerNav).getByRole('link', {

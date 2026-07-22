@@ -114,6 +114,74 @@ export const role = pgTable('role', {
   isGlobal: boolean('is_global').default(false).notNull(),
 });
 
+/**
+ * Qualification: which roles a ministry member is able to fill.
+ *
+ * Hung off the **membership**, not the volunteer, because roles are
+ * ministry-scoped and one person can serve in several ministries. A row may
+ * point at a global role (`role.is_global`, `role.ministry_id IS NULL`); the
+ * qualification still applies only within this membership's ministry.
+ *
+ * Team is a separate axis — eligibility composes at query time as
+ * "qualified for the role AND (requirement has no team OR the volunteer
+ * belongs to that team)". There are deliberately no `(role, team)` rows.
+ */
+export const ministryVolunteerRole = pgTable(
+  'ministry_volunteer_role',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    ministryVolunteerId: uuid('ministry_volunteer_id')
+      .notNull()
+      .references(() => ministryVolunteer.id, { onDelete: 'cascade' }),
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => role.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('ministry_volunteer_role_membership_role_idx').on(
+      table.ministryVolunteerId,
+      table.roleId,
+    ),
+  ],
+);
+
+/**
+ * Team membership for a ministry member — flat many-to-many, no primary team.
+ *
+ * Replaces the single `ministry_volunteer.team_id` column: a member of Kids can
+ * belong to both "2-4 yrs" and "5-14 yrs".
+ */
+export const ministryVolunteerTeam = pgTable(
+  'ministry_volunteer_team',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    ministryVolunteerId: uuid('ministry_volunteer_id')
+      .notNull()
+      .references(() => ministryVolunteer.id, { onDelete: 'cascade' }),
+    teamId: uuid('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('ministry_volunteer_team_membership_team_idx').on(
+      table.ministryVolunteerId,
+      table.teamId,
+    ),
+  ],
+);
+
 export const churchAdmin = pgTable(
   'church_admin',
   {

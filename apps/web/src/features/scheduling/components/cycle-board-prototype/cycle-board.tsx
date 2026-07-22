@@ -17,15 +17,18 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
+  buildSlotContext,
   DATE_FILTERS,
   type DateFilter,
   PROTOTYPE_DAYS,
   PROTOTYPE_VOLUNTEERS,
+  type PrototypeDay,
   type PrototypeRole,
   type PrototypeShift,
+  type PrototypeSlotContext,
   type PrototypeVolunteer,
 } from './prototype-data';
-import { DroppableRole } from './prototype-dnd';
+import { DroppableRole, roleDroppableId } from './prototype-dnd';
 import { PrototypeSwitcher } from './prototype-switcher';
 import { RAIL_VARIANTS, railVariant } from './rail-variants';
 import { Badge } from '@/components/ui/badge';
@@ -77,6 +80,9 @@ export function CycleBoardPrototype({
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<string | null>(
     null,
   );
+  const [selectedSlot, setSelectedSlot] = useState<PrototypeSlotContext | null>(
+    null,
+  );
   const [pendingAssignment, setPendingAssignment] =
     useState<PendingAssignment | null>(null);
   const visibleDays = useMemo(
@@ -104,6 +110,26 @@ export function CycleBoardPrototype({
     volunteer: PrototypeVolunteer | undefined = selectedVolunteer,
   ) => {
     if (volunteer) setPendingAssignment({ role, shift, volunteer });
+  };
+  // Forward axis: clicking a cell background focuses that slot so the rail can
+  // recompute for it. Clicking the focused slot again clears it. Orthogonal to
+  // volunteer selection — the two coexist.
+  const selectSlot = (
+    day: PrototypeDay,
+    role: PrototypeRole,
+    shift: PrototypeShift,
+  ) => {
+    const slotId = roleDroppableId(shift, role);
+    setSelectedSlot((current) =>
+      current?.slotId === slotId
+        ? null
+        : buildSlotContext({
+            slotId,
+            roleName: role.name,
+            label: `${day.weekday} ${day.date} · ${role.name}`,
+            volunteers: PROTOTYPE_VOLUNTEERS,
+          }),
+    );
   };
 
   const onDragStart = (event: DragStartEvent) => {
@@ -211,7 +237,7 @@ export function CycleBoardPrototype({
           })}
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <main className="min-w-0 overflow-x-auto pb-3">
             <div className="min-w-[960px]">
               <div
@@ -264,7 +290,23 @@ export function CycleBoardPrototype({
                                       role={role}
                                       shift={shift}
                                       activeVolunteer={activeVolunteer}
+                                      selectedVolunteer={
+                                        selectedVolunteer ?? null
+                                      }
+                                      selectedSlotId={
+                                        selectedSlot?.slotId ?? null
+                                      }
                                       onAssign={chooseRole}
+                                      onSelectSlot={(
+                                        clickedRole,
+                                        clickedShift,
+                                      ) =>
+                                        selectSlot(
+                                          day,
+                                          clickedRole,
+                                          clickedShift,
+                                        )
+                                      }
                                     />
                                   ))}
                                 </div>
@@ -288,9 +330,14 @@ export function CycleBoardPrototype({
             volunteers={visibleVolunteers}
             selectedVolunteerId={selectedVolunteerId}
             activeVolunteerId={activeVolunteer?.id ?? null}
+            selectedSlot={selectedSlot}
             search={search}
             onSearchChange={setSearch}
-            onSelect={setSelectedVolunteerId}
+            onSelect={(volunteerId) =>
+              setSelectedVolunteerId((current) =>
+                current === volunteerId ? null : volunteerId,
+              )
+            }
           />
         </div>
 

@@ -35,6 +35,26 @@ export interface PrototypeVolunteer {
   assignments: number;
   availability: 'confirmed' | 'needs-response' | 'conflict';
   lastServed: string;
+  // Roles this person can fill — mirrors the real eligibleVolunteers by-role
+  // shape. Used by the AE–AI rails to gate the "Ideal" pick and group-by-role.
+  roles: string[];
+}
+
+// Per-slot availability for one volunteer, fabricated so that selecting a
+// different slot changes the rail. Mirrors the real per-shift eligibleVolunteers
+// carrying isAvailable / hasConflict.
+export interface PrototypeSlotEligibility {
+  isAvailable: boolean;
+  hasConflict: boolean;
+}
+
+// The slot a rail is helping fill (date + slot + role). Selecting a board cell
+// builds one of these; a null context means the general fairness list.
+export interface PrototypeSlotContext {
+  slotId: string;
+  roleName: string;
+  label: string;
+  eligibility: Record<string, PrototypeSlotEligibility>;
 }
 
 export const PROTOTYPE_DAYS: PrototypeDay[] = [
@@ -224,6 +244,7 @@ export const PROTOTYPE_VOLUNTEERS: PrototypeVolunteer[] = [
     assignments: 0,
     availability: 'confirmed',
     lastServed: '5 weeks ago',
+    roles: ['Check-in', 'Slides'],
   },
   {
     id: 'ana',
@@ -232,6 +253,7 @@ export const PROTOTYPE_VOLUNTEERS: PrototypeVolunteer[] = [
     assignments: 1,
     availability: 'confirmed',
     lastServed: '3 weeks ago',
+    roles: ['Slides', 'Camera', 'Room lead'],
   },
   {
     id: 'diego',
@@ -240,6 +262,7 @@ export const PROTOTYPE_VOLUNTEERS: PrototypeVolunteer[] = [
     assignments: 1,
     availability: 'confirmed',
     lastServed: '4 weeks ago',
+    roles: ['Camera', 'Sound'],
   },
   {
     id: 'bruno',
@@ -248,6 +271,7 @@ export const PROTOTYPE_VOLUNTEERS: PrototypeVolunteer[] = [
     assignments: 2,
     availability: 'confirmed',
     lastServed: '2 weeks ago',
+    roles: ['Sound', 'Slides'],
   },
   {
     id: 'elisa',
@@ -256,6 +280,7 @@ export const PROTOTYPE_VOLUNTEERS: PrototypeVolunteer[] = [
     assignments: 0,
     availability: 'needs-response',
     lastServed: '6 weeks ago',
+    roles: ['Check-in', 'Room lead'],
   },
 ];
 
@@ -266,4 +291,104 @@ export function statusTone(percent: number): string {
   if (percent === 100) return 'text-emerald-700';
   if (percent >= 50) return 'text-amber-700';
   return 'text-red-700';
+}
+
+// --- slot context (per-slot availability + "Ideal" pick) ---------------------
+
+export function lastServedWeeks(volunteer: PrototypeVolunteer): number {
+  const match = volunteer.lastServed.match(/\d+/);
+  return match ? Number(match[0]) : 0;
+}
+
+// Deterministic per-(slot, volunteer) seed so a slot's availability is stable
+// across renders but differs slot-to-slot — selecting another slot reshuffles
+// the rail exactly like real per-shift eligibility would.
+function slotSeed(slotId: string, volunteerId: string): number {
+  const key = `${slotId}:${volunteerId}`;
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+// Fit of one volunteer for one slot: null when not eligible by role, otherwise
+// the fabricated per-slot availability/conflict. Used both to build a slot's
+// full context and to drive the reverse highlight (volunteer → fitting cells).
+export function slotFitFor({
+  slotId,
+  roleName,
+  volunteer,
+}: {
+  slotId: string;
+  roleName: string;
+  volunteer: PrototypeVolunteer;
+}): PrototypeSlotEligibility | null {
+  if (!volunteer.roles.includes(roleName)) return null;
+  const seed = slotSeed(slotId, volunteer.id);
+  return { isAvailable: seed % 3 !== 0, hasConflict: seed % 7 === 0 };
+}
+
+// Build the context for a selected slot: only volunteers eligible by role get an
+// eligibility entry; their per-slot availability/conflict is fabricated.
+export function buildSlotContext({
+  slotId,
+  roleName,
+  label,
+  volunteers,
+}: {
+  slotId: string;
+  roleName: string;
+  label: string;
+  volunteers: PrototypeVolunteer[];
+}): PrototypeSlotContext {
+  const eligibility: Record<string, PrototypeSlotEligibility> = {};
+  for (const volunteer of volunteers) {
+    const fit = slotFitFor({ slotId, roleName, volunteer });
+    if (fit) eligibility[volunteer.id] = fit;
+  }
+  return { slotId, roleName, label, eligibility };
+}
+
+function isSlotAvailable(
+  context: PrototypeSlotContext,
+  volunteerId: string,
+): boolean {
+  const entry = context.eligibility[volunteerId];
+  return entry ? entry.isAvailable && !entry.hasConflict : false;
+}
+
+// Ordering for a selected slot: available-and-eligible first, then longest since
+// served, then lightest cycle load, then name. Mirrors the real
+// recommendations() ranking; the first available row is the "Ideal" pick.
+export function orderVolunteersForSlot(
+  volunteers: PrototypeVolunteer[],
+  context: PrototypeSlotContext,
+): PrototypeVolunteer[] {
+  return [...volunteers].sort((a, b) => {
+    const availableA = isSlotAvailable(context, a.id) ? 0 : 1;
+    const availableB = isSlotAvailable(context, b.id) ? 0 : 1;
+    if (availableA !== availableB) return availableA - availableB;
+    const weeksA = lastServedWeeks(a);
+    const weeksB = lastServedWeeks(b);
+    if (weeksA !== weeksB) return weeksB - weeksA;
+    if (a.assignments !== b.assignments) return a.assignments - b.assignments;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+// The single "Ideal" recommendation for a slot: the top-ranked volunteer that is
+// actually available for it. Unavailable/conflict people are never Ideal.
+export function idealVolunteerId(
+  context: PrototypeSlotContext,
+  volunteers: PrototypeVolunteer[],
+): string | null {
+  const eligible = volunteers.filter(
+    (volunteer) => context.eligibility[volunteer.id],
+  );
+  const ranked = orderVolunteersForSlot(eligible, context);
+  const top = ranked.find((volunteer) =>
+    isSlotAvailable(context, volunteer.id),
+  );
+  return top?.id ?? null;
 }

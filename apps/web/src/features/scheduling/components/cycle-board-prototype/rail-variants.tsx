@@ -8,15 +8,33 @@ import {
   GripVerticalIcon,
   LayersIcon,
   SearchIcon,
+  SlidersHorizontalIcon,
+  StarIcon,
   TrophyIcon,
   UsersRoundIcon,
 } from 'lucide-react';
-import { type ReactElement, type ReactNode, useState } from 'react';
-import type { PrototypeVolunteer } from './prototype-data';
+import {
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  idealVolunteerId,
+  orderVolunteersForSlot,
+  type PrototypeSlotContext,
+  type PrototypeVolunteer,
+} from './prototype-data';
 import { useVolunteerDraggable } from './prototype-dnd';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // --- variant contract --------------------------------------------------------
 
@@ -24,6 +42,9 @@ export interface RailVariantProps {
   volunteers: PrototypeVolunteer[];
   selectedVolunteerId: string | null;
   activeVolunteerId: string | null;
+  // The board slot currently in focus (date+slot+role), or null for the general
+  // fairness list. Only the AE–AI rails consume it; A–AD ignore it.
+  selectedSlot: PrototypeSlotContext | null;
   search: string;
   onSearchChange: (value: string) => void;
   onSelect: (volunteerId: string) => void;
@@ -117,6 +138,7 @@ function RailFrame({
   search,
   onSearchChange,
   showSearch = true,
+  action,
   children,
 }: {
   count: number;
@@ -124,6 +146,7 @@ function RailFrame({
   search: string;
   onSearchChange: (value: string) => void;
   showSearch?: boolean;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -134,6 +157,7 @@ function RailFrame({
         <Badge variant="secondary" className="ml-auto">
           {count}
         </Badge>
+        {action}
       </div>
       <p className="mt-1 text-muted-foreground text-xs">{subtitle}</p>
       {showSearch ? (
@@ -161,6 +185,7 @@ function DragBox({
   className,
   activeClassName = 'border-primary bg-primary/8',
   idleClassName = 'border-border hover:border-primary/50',
+  muted = false,
   children,
 }: {
   volunteer: PrototypeVolunteer;
@@ -170,6 +195,9 @@ function DragBox({
   className: string;
   activeClassName?: string;
   idleClassName?: string;
+  // Slot-aware dimming: unavailable-for-the-selected-slot people stay visible
+  // and draggable (override path) but read as de-emphasised.
+  muted?: boolean;
   children: ReactNode;
 }) {
   const { setNodeRef, listeners, attributes, isDragging } =
@@ -183,7 +211,7 @@ function DragBox({
       {...listeners}
       {...attributes}
       onClick={() => onSelect(volunteer.id)}
-      className={`${className} ${selected ? activeClassName : idleClassName} ${dimmed ? 'opacity-40' : ''} cursor-grab text-left active:cursor-grabbing`}
+      className={`${className} ${selected ? activeClassName : idleClassName} ${dimmed ? 'opacity-40' : muted ? 'opacity-55' : ''} cursor-grab text-left active:cursor-grabbing`}
     >
       {children}
     </button>
@@ -1449,6 +1477,690 @@ function RailAD(props: RailVariantProps) {
   );
 }
 
+// =============================================================================
+// AE..AI — availability-aware bidirectional helper rails.
+// Same spine for all five: each row = ⋮⋮ drag handle · avatar · "last served N
+// weeks ago" recency · this-cycle count · availability · at most one "Ideal"
+// badge. A selected slot (props.selectedSlot) reorders by availability and lights
+// the Ideal pick; no slot → general fairness list, no badge. A filter/group
+// control switches show-all vs group-by-role. The 5 differ only in layout.
+// Real-builder seams to port back: recommendations().safe[0] → Ideal;
+// eligibleVolunteers(isAvailable/hasConflict) → per-slot availability;
+// onFocus/setFocused → selectedSlot.
+// =============================================================================
+
+type SlotState = 'available' | 'unavailable' | 'off';
+
+function slotStateOf(
+  volunteer: PrototypeVolunteer,
+  slot: PrototypeSlotContext | null,
+): SlotState {
+  if (!slot) return 'off';
+  const entry = slot.eligibility[volunteer.id];
+  if (entry?.isAvailable && !entry.hasConflict) return 'available';
+  return 'unavailable';
+}
+
+function orderRail(
+  volunteers: PrototypeVolunteer[],
+  slot: PrototypeSlotContext | null,
+): PrototypeVolunteer[] {
+  return slot ? orderVolunteersForSlot(volunteers, slot) : volunteers;
+}
+
+function idealFor(props: RailVariantProps): string | null {
+  return props.selectedSlot
+    ? idealVolunteerId(props.selectedSlot, props.volunteers)
+    : null;
+}
+
+function roleGroups(
+  volunteers: PrototypeVolunteer[],
+): Array<[string, PrototypeVolunteer[]]> {
+  const map = new Map<string, PrototypeVolunteer[]>();
+  for (const volunteer of volunteers) {
+    for (const role of volunteer.roles) {
+      const bucket = map.get(role);
+      if (bucket) bucket.push(volunteer);
+      else map.set(role, [volunteer]);
+    }
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function IdealBadge() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 font-medium text-[10px] text-primary">
+      <StarIcon className="size-3" /> Ideal
+    </span>
+  );
+}
+
+// Availability read-out: cycle status when no slot is selected, slot-specific
+// availability once a slot is in focus.
+function AvailabilityTag({
+  volunteer,
+  slot,
+}: {
+  volunteer: PrototypeVolunteer;
+  slot: PrototypeSlotContext | null;
+}) {
+  const state = slotStateOf(volunteer, slot);
+  if (state === 'off')
+    return <StatusPill availability={volunteer.availability} />;
+  return (
+    <span
+      className={`shrink-0 text-[11px] ${state === 'available' ? 'text-emerald-700' : 'text-muted-foreground'}`}
+    >
+      {state === 'available' ? 'Available' : 'Unavailable'}
+    </span>
+  );
+}
+
+// Two separate facts. They sit on one line when they fit and break to a line
+// each when they don't — never mid-phrase — and the clock stays pinned to the
+// first line rather than floating in the middle of wrapped text.
+function RecencyMeta({ volunteer }: { volunteer: PrototypeVolunteer }) {
+  return (
+    <span className="mt-auto flex items-start gap-1.5 pt-1.5 text-[11px] text-muted-foreground">
+      <ClockIcon className="mt-0.5 size-3 shrink-0" />
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate">last served {volunteer.lastServed}</span>
+        <span className="truncate">{volunteer.assignments} this cycle</span>
+      </span>
+    </span>
+  );
+}
+
+// True only when the element's text is actually clipped. Measured, not guessed,
+// so the roles tooltip appears for someone like Ana Costa (3 roles, "Room lead"
+// clipped) and stays out of the way for people whose roles already fit.
+function useIsTruncated<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [truncated, setTruncated] = useState(false);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const check = () => setTruncated(element.scrollWidth > element.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, truncated };
+}
+
+// Roles line. The card is no longer clickable or draggable, so when the list
+// overflows, hovering reveals the full set — the leader can read someone's roles
+// without opening the volunteer or leaving the page.
+function RolesLine({ volunteer }: { volunteer: PrototypeVolunteer }) {
+  const { ref, truncated } = useIsTruncated<HTMLSpanElement>();
+  const label = volunteer.roles.join(' · ');
+  const line = (
+    <span
+      ref={ref}
+      className="block truncate text-[11px] text-muted-foreground"
+    >
+      {label}
+    </span>
+  );
+  if (!truncated) return line;
+  return (
+    <Tooltip>
+      <TooltipTrigger render={line} />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+// Filter icon → show-all vs group-by-role. Local disclosure, extensible to more
+// options. All AE–AI mount it; AG defaults to grouped.
+function GroupControl({
+  grouped,
+  onChange,
+}: {
+  grouped: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const options: Array<{ value: boolean; label: string }> = [
+    { value: false, label: 'Show all' },
+    { value: true, label: 'Group by role' },
+  ];
+  return (
+    <div className="relative">
+      <Button
+        type="button"
+        size="icon-sm"
+        variant={grouped ? 'secondary' : 'ghost'}
+        aria-label="Filter and group"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <SlidersHorizontalIcon className="size-4" />
+      </Button>
+      {open ? (
+        <div className="absolute right-0 z-20 mt-1 w-40 rounded-md border border-border bg-popover p-1 shadow-md">
+          {options.map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              data-active={option.value === grouped}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-xs hover:bg-muted data-[active=true]:font-medium data-[active=true]:text-primary"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Select-slot toggle — the ONLY select trigger (the card body is drag-only, per
+// the real builder's volunteer-card.tsx). Click selects the volunteer (lights
+// the board cells they fit); click again deselects. Sized for comfortable
+// targets (older-adult audience), never a cramped micro-button.
+function SelectSlotButton({
+  props,
+  volunteer,
+  className = '',
+}: {
+  props: RailVariantProps;
+  volunteer: PrototypeVolunteer;
+  className?: string;
+}) {
+  const selected = props.selectedVolunteerId === volunteer.id;
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant={selected ? 'secondary' : 'ghost'}
+      aria-pressed={selected}
+      className={`h-6 shrink-0 px-2 text-[11px] ${className}`}
+      onClick={() => props.onSelect(volunteer.id)}
+    >
+      {selected ? 'Selected' : 'Select slot'}
+    </Button>
+  );
+}
+
+// Compact "Ideal" marker for dense rows — the labelled IdealBadge is used in the
+// roomy rails; this star carries the same meaning where space is tight.
+function IdealStar() {
+  return (
+    <StarIcon
+      className="size-4 shrink-0 fill-primary text-primary"
+      aria-label="Ideal pick"
+    />
+  );
+}
+
+// Compact availability marker: a status dot with an accessible label. Reflects
+// the selected slot when one is focused, else the cycle availability.
+function AvailabilityDot({
+  volunteer,
+  slot,
+}: {
+  volunteer: PrototypeVolunteer;
+  slot: PrototypeSlotContext | null;
+}) {
+  const state = slotStateOf(volunteer, slot);
+  let tone = 'bg-muted-foreground/40';
+  let label = 'Unavailable';
+  if (state === 'off') {
+    label = AVAILABILITY_LABELS[volunteer.availability];
+    tone =
+      volunteer.availability === 'confirmed'
+        ? 'bg-emerald-500'
+        : volunteer.availability === 'conflict'
+          ? 'bg-red-500'
+          : 'bg-amber-500';
+  } else if (state === 'available') {
+    tone = 'bg-emerald-500';
+    label = 'Available';
+  }
+  return (
+    <span
+      role="img"
+      className={`size-2.5 shrink-0 rounded-full ${tone}`}
+      title={label}
+      aria-label={label}
+    />
+  );
+}
+
+function railRowState(props: RailVariantProps, volunteer: PrototypeVolunteer) {
+  const selected = props.selectedVolunteerId === volunteer.id;
+  const muted = slotStateOf(volunteer, props.selectedSlot) === 'unavailable';
+  return { selected, muted };
+}
+
+function railRowClass(
+  state: { selected: boolean; muted: boolean },
+  dimmed: boolean,
+  tone: 'default' | 'leader',
+) {
+  const base =
+    tone === 'leader' && !state.selected
+      ? 'border-primary/60 bg-primary/[0.06]'
+      : state.selected
+        ? 'border-primary bg-primary/8'
+        : 'border-border';
+  const opacity = dimmed ? 'opacity-40' : state.muted ? 'opacity-55' : '';
+  return `${base} ${opacity}`;
+}
+
+// Roomy row: avatar + name/meta draggable on the left; a right rail stacks the
+// availability tag above the Select-slot button so nothing fights for the same
+// horizontal band in a ~320px sidebar. Used by AE and AH.
+function RailRow({
+  props,
+  volunteer,
+  tone = 'default',
+  avatar,
+  aside,
+  children,
+}: {
+  props: RailVariantProps;
+  volunteer: PrototypeVolunteer;
+  tone?: 'default' | 'leader';
+  avatar?: ReactNode;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  const { setNodeRef, listeners, attributes, isDragging } =
+    useVolunteerDraggable(volunteer);
+  const state = railRowState(props, volunteer);
+  const dimmed = isDragging || props.activeVolunteerId === volunteer.id;
+  return (
+    <div
+      className={`flex items-stretch gap-3 rounded-lg border p-3 ${railRowClass(state, dimmed, tone)}`}
+    >
+      {/* Avatar top-left, grip bottom-left — the grip fills the dead space
+          under the avatar instead of pushing every column to the right. */}
+      <div className="flex shrink-0 flex-col items-start justify-between gap-2">
+        {avatar}
+        {/* The grip is the ONLY drag affordance — the card body is inert. */}
+        <button
+          ref={setNodeRef}
+          type="button"
+          {...listeners}
+          {...attributes}
+          aria-label={`Drag ${volunteer.name}`}
+          className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        >
+          <GripVerticalIcon className="size-4" />
+        </button>
+      </div>
+      <div className="flex min-w-0 flex-1 items-stretch">{children}</div>
+      {/* Status top, action bottom — the column spans the card height, so the
+          button lands on the last content line instead of adding a row. */}
+      <div className="flex shrink-0 flex-col items-end justify-between gap-2">
+        {/* Flush to the card's top padding, matching its side padding — the
+            11px status and 14px name carry near-identical half-leading, so
+            flush already reads as aligned. No nudge. */}
+        {aside}
+        {/* -mr-2 cancels the button's px-2 so its label shares the status's
+            right edge; -mb-1 cancels the h-6 box's leftover space below the
+            label so it sits on the last text line, not above it. */}
+        <SelectSlotButton
+          props={props}
+          volunteer={volunteer}
+          className="-mr-2 -mb-1"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Dense single-line row: name + status dot + Select-slot button. Used by the
+// grouped (AG) and leader-bench (AI) rails where vertical compactness wins.
+function CompactRow({
+  props,
+  volunteer,
+  isIdeal,
+}: {
+  props: RailVariantProps;
+  volunteer: PrototypeVolunteer;
+  isIdeal: boolean;
+}) {
+  const { setNodeRef, listeners, attributes, isDragging } =
+    useVolunteerDraggable(volunteer);
+  const state = railRowState(props, volunteer);
+  const dimmed = isDragging || props.activeVolunteerId === volunteer.id;
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-lg border p-2 ${railRowClass(state, dimmed, 'default')}`}
+    >
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        className="flex min-w-0 flex-1 cursor-grab items-center gap-2 text-left active:cursor-grabbing"
+      >
+        <InitialsCircle name={volunteer.name} className="size-8" />
+        <span className="min-w-0 flex-1 truncate font-medium text-sm">
+          {volunteer.name}
+        </span>
+        {isIdeal ? <IdealStar /> : null}
+      </div>
+      <AvailabilityDot volunteer={volunteer} slot={props.selectedSlot} />
+      <SelectSlotButton props={props} volunteer={volunteer} />
+    </div>
+  );
+}
+
+function RoleGroupHeader({ role, count }: { role: string; count: number }) {
+  return (
+    <div className="mb-1.5 flex items-center gap-1.5 text-muted-foreground text-xs uppercase tracking-wide">
+      <LayersIcon className="size-3.5" />
+      {role}
+      <span className="ml-auto normal-case">{count}</span>
+    </div>
+  );
+}
+
+// AE — rich rows. Canonical bidirectional helper: avatar + name + recency meta,
+// with availability and the Select-slot toggle stacked on the right.
+function RailAE(props: RailVariantProps) {
+  const [grouped, setGrouped] = useState(false);
+  const ideal = idealFor(props);
+  const row = (volunteer: PrototypeVolunteer) => (
+    <RailRow
+      key={volunteer.id}
+      props={props}
+      volunteer={volunteer}
+      avatar={<InitialsCircle name={volunteer.name} className="size-10" />}
+      aside={
+        <AvailabilityTag volunteer={volunteer} slot={props.selectedSlot} />
+      }
+    >
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex items-center gap-1.5">
+          <span className="min-w-0 truncate font-medium text-sm">
+            {volunteer.name}
+          </span>
+          {volunteer.id === ideal ? <IdealBadge /> : null}
+        </span>
+        <RolesLine volunteer={volunteer} />
+        <RecencyMeta volunteer={volunteer} />
+      </span>
+    </RailRow>
+  );
+  return (
+    <RailFrame
+      count={props.volunteers.length}
+      subtitle={
+        props.selectedSlot
+          ? `Filling ${props.selectedSlot.label} — available people first.`
+          : 'Select a slot to rank people for it, or drag anyone onto a role.'
+      }
+      action={<GroupControl grouped={grouped} onChange={setGrouped} />}
+      {...pick(props)}
+    >
+      {grouped ? (
+        <div className="space-y-4">
+          {roleGroups(props.volunteers).map(([role, members]) => (
+            <div key={role}>
+              <RoleGroupHeader role={role} count={members.length} />
+              <div className="space-y-2">
+                {orderRail(members, props.selectedSlot).map(row)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {orderRail(props.volunteers, props.selectedSlot).map(row)}
+        </div>
+      )}
+    </RailFrame>
+  );
+}
+
+// AF — avatar cards. Column card: draggable header, a recency line, then a
+// footer that pairs availability with the Select-slot toggle.
+function AvatarRailCard({
+  props,
+  volunteer,
+  isIdeal,
+}: {
+  props: RailVariantProps;
+  volunteer: PrototypeVolunteer;
+  isIdeal: boolean;
+}) {
+  const { setNodeRef, listeners, attributes, isDragging } =
+    useVolunteerDraggable(volunteer);
+  const state = railRowState(props, volunteer);
+  const dimmed = isDragging || props.activeVolunteerId === volunteer.id;
+  return (
+    <div
+      className={`flex w-full flex-col gap-2.5 rounded-xl border p-3 ${railRowClass(state, dimmed, 'default')}`}
+    >
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        className="flex cursor-grab items-center gap-3 active:cursor-grabbing"
+      >
+        <InitialsCircle name={volunteer.name} className="size-11" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium text-sm">
+            {volunteer.name}
+          </span>
+          <RolesLine volunteer={volunteer} />
+        </span>
+        {isIdeal ? <IdealBadge /> : null}
+      </div>
+      <RecencyMeta volunteer={volunteer} />
+      <div className="flex items-center justify-between gap-2 border-border/70 border-t pt-2.5">
+        <AvailabilityTag volunteer={volunteer} slot={props.selectedSlot} />
+        <SelectSlotButton props={props} volunteer={volunteer} />
+      </div>
+    </div>
+  );
+}
+
+function RailAF(props: RailVariantProps) {
+  const [grouped, setGrouped] = useState(false);
+  const ideal = idealFor(props);
+  const card = (volunteer: PrototypeVolunteer) => (
+    <AvatarRailCard
+      key={volunteer.id}
+      props={props}
+      volunteer={volunteer}
+      isIdeal={volunteer.id === ideal}
+    />
+  );
+  return (
+    <RailFrame
+      count={props.volunteers.length}
+      subtitle="Avatar cards — role coverage, recency, and availability at a glance."
+      action={<GroupControl grouped={grouped} onChange={setGrouped} />}
+      {...pick(props)}
+    >
+      {grouped ? (
+        <div className="space-y-4">
+          {roleGroups(props.volunteers).map(([role, members]) => (
+            <div key={role}>
+              <RoleGroupHeader role={role} count={members.length} />
+              <div className="space-y-2">
+                {orderRail(members, props.selectedSlot).map(card)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {orderRail(props.volunteers, props.selectedSlot).map(card)}
+        </div>
+      )}
+    </RailFrame>
+  );
+}
+
+// AG — grouped-by-role by default. One global Ideal across all groups; dense
+// single-line rows so multiple groups stay scannable.
+function RailAG(props: RailVariantProps) {
+  const [grouped, setGrouped] = useState(true);
+  const ideal = idealFor(props);
+  const row = (volunteer: PrototypeVolunteer) => (
+    <CompactRow
+      key={volunteer.id}
+      props={props}
+      volunteer={volunteer}
+      isIdeal={volunteer.id === ideal}
+    />
+  );
+  return (
+    <RailFrame
+      count={props.volunteers.length}
+      subtitle="Grouped by role — one Ideal pick highlighted across groups."
+      action={<GroupControl grouped={grouped} onChange={setGrouped} />}
+      {...pick(props)}
+    >
+      {grouped ? (
+        <div className="space-y-4">
+          {roleGroups(props.volunteers).map(([role, members]) => (
+            <div key={role}>
+              <RoleGroupHeader role={role} count={members.length} />
+              <div className="space-y-1.5">
+                {orderRail(members, props.selectedSlot).map(row)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {orderRail(props.volunteers, props.selectedSlot).map(row)}
+        </div>
+      )}
+    </RailFrame>
+  );
+}
+
+// AH — availability split. Two sections keyed to the selected slot; falls back
+// to cycle-availability buckets when no slot is in focus. The section header
+// carries availability, so rows drop the per-row tag.
+function RailAH(props: RailVariantProps) {
+  const [grouped, setGrouped] = useState(false);
+  const ideal = idealFor(props);
+  const ordered = orderRail(props.volunteers, props.selectedSlot);
+  const isReady = (volunteer: PrototypeVolunteer) =>
+    props.selectedSlot
+      ? slotStateOf(volunteer, props.selectedSlot) === 'available'
+      : volunteer.availability === 'confirmed';
+  const ready = ordered.filter(isReady);
+  const rest = ordered.filter((volunteer) => !isReady(volunteer));
+  const row = (volunteer: PrototypeVolunteer) => (
+    <RailRow
+      key={volunteer.id}
+      props={props}
+      volunteer={volunteer}
+      avatar={<InitialsCircle name={volunteer.name} className="size-10" />}
+    >
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex items-center gap-1.5">
+          <span className="min-w-0 truncate font-medium text-sm">
+            {volunteer.name}
+          </span>
+          {volunteer.id === ideal ? <IdealBadge /> : null}
+        </span>
+        <RecencyMeta volunteer={volunteer} />
+      </span>
+    </RailRow>
+  );
+  const section = (
+    label: string,
+    tone: string,
+    members: PrototypeVolunteer[],
+  ) =>
+    members.length ? (
+      <div>
+        <div className={`mb-1.5 font-medium text-xs ${tone}`}>
+          {label} · {members.length}
+        </div>
+        <div className="space-y-2">{members.map(row)}</div>
+      </div>
+    ) : null;
+  return (
+    <RailFrame
+      count={props.volunteers.length}
+      subtitle={
+        props.selectedSlot
+          ? `Split by availability for ${props.selectedSlot.label}.`
+          : 'Split by availability — pick a slot to split for it.'
+      }
+      action={<GroupControl grouped={grouped} onChange={setGrouped} />}
+      {...pick(props)}
+    >
+      <div className="space-y-4">
+        {section(
+          props.selectedSlot ? 'Available for this slot' : 'Ready to place',
+          'text-emerald-700',
+          ready,
+        )}
+        {section(
+          props.selectedSlot ? 'Not available' : 'Awaiting response',
+          'text-muted-foreground',
+          rest,
+        )}
+      </div>
+    </RailFrame>
+  );
+}
+
+// AI — leader focus. The Ideal pick is promoted to a hero row; everyone else is
+// a compact bench below.
+function RailAI(props: RailVariantProps) {
+  const [grouped, setGrouped] = useState(false);
+  const ideal = idealFor(props);
+  const ordered = orderRail(props.volunteers, props.selectedSlot);
+  const leader = ordered.find((volunteer) => volunteer.id === ideal) ?? null;
+  const rest = ordered.filter((volunteer) => volunteer.id !== leader?.id);
+  const compact = (volunteer: PrototypeVolunteer) => (
+    <CompactRow
+      key={volunteer.id}
+      props={props}
+      volunteer={volunteer}
+      isIdeal={false}
+    />
+  );
+  return (
+    <RailFrame
+      count={props.volunteers.length}
+      subtitle="Leader focus — the Ideal pick up top, the bench below."
+      action={<GroupControl grouped={grouped} onChange={setGrouped} />}
+      {...pick(props)}
+    >
+      {leader ? (
+        <div className="mb-3">
+          <RailRow
+            props={props}
+            volunteer={leader}
+            tone="leader"
+            avatar={<InitialsCircle name={leader.name} className="size-12" />}
+            aside={<IdealBadge />}
+          >
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="block truncate font-semibold text-sm">
+                {leader.name}
+              </span>
+              <RecencyMeta volunteer={leader} />
+            </span>
+          </RailRow>
+        </div>
+      ) : null}
+      <div className="space-y-1.5">{rest.map(compact)}</div>
+    </RailFrame>
+  );
+}
+
 // --- small helpers -----------------------------------------------------------
 
 function pick(props: RailVariantProps) {
@@ -1516,6 +2228,31 @@ export const RAIL_VARIANTS: RailVariant[] = [
   },
   { key: 'AC', name: 'Tiles + rank + tags', Rail: RailAC, Ghost: TileGhost },
   { key: 'AD', name: 'Chips + leaderboard', Rail: RailAD, Ghost: RowGhost },
+  { key: 'AE', name: 'Helper · rich rows', Rail: RailAE, Ghost: AvatarGhost },
+  {
+    key: 'AF',
+    name: 'Helper · avatar cards',
+    Rail: RailAF,
+    Ghost: AvatarGhost,
+  },
+  {
+    key: 'AG',
+    name: 'Helper · grouped by role',
+    Rail: RailAG,
+    Ghost: AvatarGhost,
+  },
+  {
+    key: 'AH',
+    name: 'Helper · availability split',
+    Rail: RailAH,
+    Ghost: AvatarGhost,
+  },
+  {
+    key: 'AI',
+    name: 'Helper · leader focus',
+    Rail: RailAI,
+    Ghost: AvatarGhost,
+  },
 ];
 
 export function railVariant(key: string): RailVariant {

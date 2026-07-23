@@ -3,15 +3,27 @@ import { db } from '../../client';
 import * as schema from '../../schema';
 import { SEED_CONFIG } from '../constants';
 import { logStep, logSuccess } from '../utils';
+import type { SeededQualifications } from './volunteer.factory';
 
-export async function generateAssignmentsAndAvailability(
-  volunteers: (typeof schema.volunteer.$inferSelect)[],
-  requirements: (typeof schema.slotRequirement.$inferSelect)[],
-  links: (typeof schema.ministryVolunteer.$inferSelect)[],
-  roles: (typeof schema.role.$inferSelect)[],
-  events: (typeof schema.event.$inferSelect)[],
-  participations: (typeof schema.ministryParticipation.$inferSelect)[],
-) {
+interface GenerateAssignmentsAndAvailabilityInput {
+  volunteers: (typeof schema.volunteer.$inferSelect)[];
+  requirements: (typeof schema.slotRequirement.$inferSelect)[];
+  links: (typeof schema.ministryVolunteer.$inferSelect)[];
+  roles: (typeof schema.role.$inferSelect)[];
+  events: (typeof schema.event.$inferSelect)[];
+  participations: (typeof schema.ministryParticipation.$inferSelect)[];
+  qualifications: SeededQualifications;
+}
+
+export async function generateAssignmentsAndAvailability({
+  volunteers,
+  requirements,
+  links,
+  roles,
+  events,
+  participations,
+  qualifications,
+}: GenerateAssignmentsAndAvailabilityInput) {
   logStep('Generating assignments and availability...');
   faker.seed(SEED_CONFIG.GLOBAL_SEED + 7);
 
@@ -23,8 +35,14 @@ export async function generateAssignmentsAndAvailability(
     const role = roles.find((r) => r.id === req.roleId);
     if (!role?.ministryId) continue;
 
-    // Find volunteers linked to this ministry
-    const eligibleLinks = links.filter((l) => l.ministryId === role.ministryId);
+    // Members of this ministry who are actually qualified for the required
+    // role. Assigning an unqualified member would seed data the builder itself
+    // would reject, so every seeded assignment stays conflict-free.
+    const eligibleLinks = links.filter(
+      (l) =>
+        l.ministryId === role.ministryId &&
+        (qualifications.get(l.id) ?? []).includes(req.roleId),
+    );
     if (eligibleLinks.length === 0) continue;
 
     // Determine how many to assign (0 to requiredCount)

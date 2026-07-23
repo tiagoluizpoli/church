@@ -261,15 +261,32 @@ async function ensureVolunteerContext(
     ),
   });
 
+  let membershipId = membership?.id;
+
   if (!membership) {
-    await db.insert(schema.ministryVolunteer).values({
+    const [insertedMembership] = await db
+      .insert(schema.ministryVolunteer)
+      .values({
+        churchId: church.id,
+        ministryId: ministry.id,
+        volunteerId: volunteer.id,
+        systemRole: 'volunteer',
+        status: 'active',
+      })
+      .returning();
+    if (!insertedMembership) {
+      throw new Error('Unable to create demo ministry membership.');
+    }
+    membershipId = insertedMembership.id;
+    await db.insert(schema.ministryVolunteerTeam).values({
       churchId: church.id,
-      ministryId: ministry.id,
-      volunteerId: volunteer.id,
+      ministryVolunteerId: insertedMembership.id,
       teamId: team.id,
-      systemRole: 'volunteer',
-      status: 'active',
     });
+  }
+
+  if (!membershipId) {
+    throw new Error('Unable to resolve demo ministry membership.');
   }
 
   const hostRole =
@@ -315,6 +332,27 @@ async function ensureVolunteerContext(
   if (!hostRole || !greeterRole) {
     throw new Error('Unable to resolve demo roles.');
   }
+
+  await db
+    .insert(schema.ministryVolunteerRole)
+    .values([
+      {
+        churchId: church.id,
+        ministryVolunteerId: membershipId,
+        roleId: hostRole.id,
+      },
+      {
+        churchId: church.id,
+        ministryVolunteerId: membershipId,
+        roleId: greeterRole.id,
+      },
+    ])
+    .onConflictDoNothing({
+      target: [
+        schema.ministryVolunteerRole.ministryVolunteerId,
+        schema.ministryVolunteerRole.roleId,
+      ],
+    });
 
   return {
     user,

@@ -22,11 +22,12 @@ export async function seedDatabase() {
   const churches = await generateChurches();
   const { ministries, teams } = await generateMinistriesAndTeams(churches);
   const roles = await generateRoles(ministries);
-  const { volunteers, links } = await generateVolunteers(
+  const { volunteers, links, qualifications } = await generateVolunteers({
     churches,
     ministries,
     teams,
-  );
+    roles,
+  });
   const { events, participations, blocks } = await generateEvents(
     ministries,
     roles,
@@ -38,14 +39,15 @@ export async function seedDatabase() {
     roles,
   );
 
-  await generateAssignmentsAndAvailability(
+  await generateAssignmentsAndAvailability({
     volunteers,
     requirements,
     links,
     roles,
     events,
     participations,
-  );
+    qualifications,
+  });
 
   logSuccess('Database seeding complete.');
 }

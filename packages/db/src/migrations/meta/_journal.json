@@ -78,6 +78,13 @@
       "when": 1784704058396,
       "tag": "0010_old_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784705095365,
+      "tag": "0011_aromatic_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

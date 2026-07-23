@@ -5,6 +5,7 @@ import {
   ministry,
   ministryInvitation,
   ministryVolunteer,
+  ministryVolunteerTeam,
   role,
   team,
   user,
@@ -162,23 +163,29 @@ describe('Core Schema Integration', () => {
         .returning();
       if (!insertedVolunteer) throw new Error('Volunteer insert failed');
 
-      await testDb.insert(ministryVolunteer).values({
+      const [insertedMembership] = await testDb
+        .insert(ministryVolunteer)
+        .values({
+          churchId,
+          ministryId: insertedMinistry.id,
+          volunteerId: insertedVolunteer.id,
+          systemRole: 'sub_leader',
+        })
+        .returning();
+      if (!insertedMembership) throw new Error('Membership insert failed');
+
+      await testDb.insert(ministryVolunteerTeam).values({
         churchId,
-        ministryId: insertedMinistry.id,
+        ministryVolunteerId: insertedMembership.id,
         teamId: insertedTeam.id,
-        volunteerId: insertedVolunteer.id,
-        systemRole: 'sub_leader',
       });
 
-      const subLeaderLink = await testDb.query.ministryVolunteer.findFirst({
-        where: and(
-          eq(ministryVolunteer.teamId, insertedTeam.id),
-          eq(ministryVolunteer.systemRole, 'sub_leader'),
-        ),
+      const subLeaderLink = await testDb.query.ministryVolunteerTeam.findFirst({
+        where: eq(ministryVolunteerTeam.teamId, insertedTeam.id),
       });
 
       expect(subLeaderLink).toBeDefined();
-      expect(subLeaderLink?.volunteerId).toBe(insertedVolunteer.id);
+      expect(subLeaderLink?.ministryVolunteerId).toBe(insertedMembership.id);
     });
 
     it('should verify team table does not have leaderId column', async () => {

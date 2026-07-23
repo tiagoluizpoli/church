@@ -15,6 +15,33 @@ const volunteers: PoolVolunteer[] = [
   { volunteerId: '2', volunteerName: 'Bob Jones', status: 'available' },
 ];
 
+const groupableVolunteers: PoolVolunteer[] = [
+  {
+    volunteerId: '1',
+    volunteerName: 'Alice Smith',
+    status: 'available',
+    qualifiedRoleNames: ['Greeter'],
+  },
+  {
+    volunteerId: '2',
+    volunteerName: 'Bob Jones',
+    status: 'partial',
+    qualifiedRoleNames: ['Greeter', 'Usher'],
+  },
+  {
+    volunteerId: '3',
+    volunteerName: 'Carol White',
+    status: 'unavailable',
+    qualifiedRoleNames: ['Usher'],
+  },
+  {
+    volunteerId: '4',
+    volunteerName: 'Dana Brown',
+    status: 'no_response',
+    qualifiedRoleNames: ['Greeter'],
+  },
+];
+
 const roles = [
   { id: 'usher', name: 'Usher' },
   { id: 'greeter', name: 'Greeter' },
@@ -85,7 +112,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(onSelectVolunteer).toHaveBeenCalledWith('1');
   });
 
-  it('scopes the rail to a focused requirement and can restore the full pool', async () => {
+  it('promotes a focused requirement’s candidates without hiding the rest of the pool', async () => {
     const user = userEvent.setup();
     const onClearFocus = vi.fn();
 
@@ -94,19 +121,122 @@ describe('VolunteerPoolSidebar (T102)', () => {
         volunteers={volunteers}
         assignments={[]}
         roles={roles}
-        focusedVolunteerIds={new Set(['1'])}
+        focusedVolunteerIds={['2']}
         focusLabel="Greeter · 9:00 AM - 11:00 AM"
         onClearFocus={onClearFocus}
       />,
     );
 
-    expect(screen.getByRole('heading', { name: 'Candidates' })).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Volunteer list' }),
+    ).toBeVisible();
     expect(screen.getByText('Greeter · 9:00 AM - 11:00 AM')).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: /^Best for this role/ }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: /^Everyone else/ }),
+    ).toBeVisible();
+
+    // Bob is ranked for the focused shift×role, so he is promoted over the
+    // pool's own alphabetical order instead of Alice being filtered out.
+    const [firstCard] = screen.getAllByTestId('volunteer-card');
+    expect(firstCard).toHaveTextContent('Bob J.');
     expect(screen.getByText('Alice S.')).toBeVisible();
-    expect(screen.queryByText('Bob J.')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'All volunteers' }));
     expect(onClearFocus).toHaveBeenCalledOnce();
+  });
+
+  it('still lists the pool when nobody is qualified for the focused role', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={[]}
+        focusLabel="Greeter · 9:00 AM - 11:00 AM"
+      />,
+    );
+
+    expect(screen.getByText('No candidates for this role')).toBeVisible();
+    expect(screen.getByText('Alice S.')).toBeVisible();
+    expect(screen.getByText('Bob J.')).toBeVisible();
+  });
+
+  it('keeps the focus ranking inside a grouped rail', async () => {
+    const user = userEvent.setup();
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={groupableVolunteers}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={['4', '2']}
+        focusLabel="Greeter · 9:00 AM - 11:00 AM"
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Filter and group volunteers' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: 'By status' }),
+    );
+
+    // Ready first (Alice), then Awaiting — where the focus ranking puts Dana
+    // ahead of Bob even though the pool sorts partial above no_response.
+    const cards = screen.getAllByTestId('volunteer-card');
+    expect(cards[0]).toHaveTextContent('Alice S.');
+    expect(cards[1]).toHaveTextContent('Dana B.');
+    expect(cards[2]).toHaveTextContent('Bob J.');
+  });
+
+  it('groups volunteers by status and keeps unavailable volunteers expandable', async () => {
+    const user = userEvent.setup();
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={groupableVolunteers}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Filter and group volunteers' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: 'By status' }),
+    );
+
+    expect(screen.getByText('Ready')).toBeVisible();
+    expect(screen.getByText('Awaiting')).toBeVisible();
+    expect(screen.getByText('Dana B.')).toBeVisible();
+    expect(screen.queryByText('Carol W.')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Unavailable (1)' }));
+    expect(screen.getByText('Carol W.')).toBeVisible();
+  });
+
+  it('groups volunteers by their qualified roles', async () => {
+    const user = userEvent.setup();
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={groupableVolunteers}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Filter and group volunteers' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: 'By role' }),
+    );
+
+    expect(screen.getByRole('heading', { name: /^Greeter/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /^Usher/ })).toBeVisible();
+    expect(screen.getAllByText('Bob J.')).toHaveLength(2);
   });
 });
 

@@ -82,6 +82,29 @@ export type CycleBuilderAssignment =
   GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem &
     CycleBuilderAssignmentDetails;
 
+/**
+ * The only assignment statuses that count toward fairness and workload
+ * (FR-017). Stated as an allowlist rather than "everything except cancelled and
+ * declined": the two are equivalent only while the domain enum has exactly
+ * these five members, and a status added later must not silently start
+ * counting.
+ */
+const ACTIVE_ASSIGNMENT_STATUSES: ReadonlySet<string> = new Set([
+  'draft',
+  'pending',
+  'confirmed',
+]);
+
+interface IsActiveAssignmentInput {
+  status: string;
+}
+
+export function isActiveAssignment({
+  status,
+}: IsActiveAssignmentInput): boolean {
+  return ACTIVE_ASSIGNMENT_STATUSES.has(status);
+}
+
 export interface CycleBuilderSlotSummary {
   slotId: string;
   label?: string;

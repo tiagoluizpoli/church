@@ -95,6 +95,7 @@ function renderCell(
         slotLabel="Morning service"
         isPublished={false}
         onFocus={vi.fn()}
+        onToggleFocus={vi.fn()}
         onSelect={vi.fn()}
         onRemove={vi.fn()}
         {...overrides}
@@ -157,6 +158,154 @@ describe('CycleBuilderCell', () => {
       expect(screen.getByLabelText('Search volunteers')).toHaveFocus(),
     );
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
+  it('offers a strong assign affordance where the selected volunteer fits', () => {
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], qualifiedRoleIds: ['role-1'] },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+    ).toHaveAttribute('data-selected-fit', 'ready');
+    expect(
+      screen.getByRole('button', { name: 'Assign Grace Hopper' }),
+    ).toHaveClass('border-primary/60');
+  });
+
+  it('faints the affordance for a qualified but unavailable volunteer, keeping the override open', () => {
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          {
+            ...shift.eligibleVolunteers[0],
+            hasConflict: true,
+            qualifiedRoleIds: ['role-1'],
+          },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+    ).toHaveAttribute('data-selected-fit', 'override');
+    const assign = screen.getByRole('button', { name: 'Assign Grace Hopper' });
+    expect(assign).toHaveClass('text-muted-foreground');
+    expect(assign).toHaveAttribute(
+      'title',
+      'Not available for this shift — assigning is an override',
+    );
+  });
+
+  it('offers nothing but the ordinary picker where the selected volunteer is unqualified', () => {
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], qualifiedRoleIds: ['role-2'] },
+          { ...shift.eligibleVolunteers[1], qualifiedRoleIds: ['role-1'] },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+    ).toHaveAttribute('data-selected-fit', 'none');
+    expect(
+      screen.queryByRole('button', { name: 'Assign Grace Hopper' }),
+    ).not.toBeInTheDocument();
+    // The cell must not go dead: the picker is still the way in.
+    expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
+  });
+
+  it('sends the conflict with an override assignment so a reason is captured (FR-016)', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          {
+            ...shift.eligibleVolunteers[0],
+            hasConflict: true,
+            qualifiedRoleIds: ['role-1'],
+          },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+      onSelect,
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Assign Grace Hopper' }),
+    );
+
+    // `CycleBuilder` opens the override dialog on `conflictType` alone —
+    // without it the assignment is applied with no reason and no audit.
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        volunteerId: 'volunteer-1',
+        conflictType: 'double_booked',
+      }),
+    );
+  });
+
+  it('sends no conflict for a volunteer who is genuinely free', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], qualifiedRoleIds: ['role-1'] },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+      onSelect,
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Assign Grace Hopper' }),
+    );
+
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ conflictType: undefined }),
+    );
+  });
+
+  it('focuses the rail on its own shift×role without opening the picker', async () => {
+    const user = userEvent.setup();
+    const onToggleFocus = vi.fn();
+    renderCell({ onToggleFocus });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Show volunteers for Greeter first' }),
+    );
+
+    expect(onToggleFocus).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId('assignment-picker')).not.toBeInTheDocument();
+  });
+
+  it('marks the focus control as pressed while its own cell is focused', () => {
+    renderCell({ isFocused: true });
+
+    expect(
+      screen.getByTestId('cycle-requirement-focus-shift-1-role-1'),
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('uses a full volunteer name and an explicit unassign action for an existing assignment', async () => {

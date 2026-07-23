@@ -1,12 +1,18 @@
-import { useDroppable } from '@dnd-kit/core';
-import { PlusIcon } from 'lucide-react';
+import { useDndContext, useDroppable } from '@dnd-kit/core';
+import { PlusIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
-import type {
-  CycleBuilderAssignment,
-  CycleBuilderShiftSummary,
+import {
+  type CycleBuilderAssignment,
+  type CycleBuilderShiftSummary,
+  isActiveAssignment,
 } from '../../hooks/use-cycle-builder';
-import { AssignmentChip } from './assignment-chip';
 import { AssignmentPicker, type PickerVolunteer } from './assignment-picker';
+import { AssignmentButton, RoleFocusButton } from './cycle-builder-cell-parts';
+import {
+  draggedVolunteerId,
+  type ShiftRoleFit,
+  volunteerFitForShiftRole,
+} from './cycle-builder-matrix.utils';
 import type { SuggestedVolunteer } from './suggestion-list';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
@@ -26,7 +32,10 @@ interface CycleBuilderCellProps {
   selectedVolunteerId?: string;
   selectedVolunteerName?: string;
   isPublished: boolean;
+  /** True while the rail is ranking people for this shift×role. */
+  isFocused?: boolean;
   onFocus: () => void;
+  onToggleFocus: () => void;
   onSelect: (input: CycleBuilderCellSelectInput) => void;
   onRemove: (assignmentId: string) => void;
 }
@@ -39,71 +48,6 @@ export interface CycleBuilderCellSelectInput {
   assignmentId?: string;
   slotLabel?: string;
   conflictType?: 'double_booked' | 'unavailable';
-}
-
-interface AssignmentButtonProps {
-  assignment: CycleBuilderAssignment;
-  shiftId: string;
-  roleId: string;
-  isPublished: boolean;
-  onRemove: () => void;
-  onSelect: (volunteerId: string) => void;
-  pickerVolunteers: PickerVolunteer[];
-  onFocus: () => void;
-}
-
-function AssignmentButton({
-  assignment,
-  shiftId,
-  roleId,
-  isPublished,
-  onRemove,
-  onSelect,
-  pickerVolunteers,
-  onFocus,
-}: AssignmentButtonProps) {
-  const [open, setOpen] = useState(false);
-  const replacementTarget = useDroppable({
-    id: `cycle-assignment:${assignment.id}`,
-    data: { shiftId, roleId, assignmentId: assignment.id },
-  });
-
-  return (
-    <span
-      ref={replacementTarget.setNodeRef}
-      className={cn(
-        'inline-flex max-w-full rounded-full',
-        replacementTarget.isOver && 'ring-1 ring-primary ring-offset-1',
-      )}
-      data-drop-target="replace"
-      data-testid={`cycle-assignment-${assignment.id}`}
-    >
-      <AssignmentPicker
-        open={open}
-        onOpenChange={(nextOpen) => {
-          setOpen(nextOpen);
-          if (nextOpen) onFocus();
-        }}
-        trigger={
-          <AssignmentChip
-            volunteerName={assignment.volunteerName ?? assignment.volunteerId}
-            confirmationStatus={
-              assignment.status === 'pending' ||
-              assignment.status === 'confirmed' ||
-              assignment.status === 'declined'
-                ? assignment.status
-                : undefined
-            }
-            isPublished={isPublished}
-          />
-        }
-        volunteers={pickerVolunteers}
-        hasAssignment
-        onSelect={onSelect}
-        onRemove={onRemove}
-      />
-    </span>
-  );
 }
 
 export function CycleBuilderCell({
@@ -120,7 +64,9 @@ export function CycleBuilderCell({
   selectedVolunteerId,
   selectedVolunteerName,
   isPublished,
+  isFocused,
   onFocus,
+  onToggleFocus,
   onSelect,
   onRemove,
 }: CycleBuilderCellProps) {
@@ -130,14 +76,33 @@ export function CycleBuilderCell({
   const selectedVolunteerIsAssignedToShift = shift.assignments.some(
     (assignment) =>
       assignment.volunteerId === selectedVolunteerId &&
-      assignment.status !== 'cancelled' &&
-      assignment.status !== 'declined',
+      isActiveAssignment({ status: assignment.status }),
   );
+  // A drag in flight is tiered exactly like a selection: a cell that would
+  // offer nothing to this person must not accept them by drop either, or the
+  // board's highlight and its drop targets tell the leader different stories.
+  const { active } = useDndContext();
+  const draggedId = draggedVolunteerId({ active });
+  const draggedFit = draggedId
+    ? volunteerFitForShiftRole({ shift, roleId, volunteerId: draggedId })
+    : null;
   const roleDropTarget = useDroppable({
     id: `cycle-role:${shift.shiftId}:${roleId}`,
     data: { shiftId: shift.shiftId, roleId },
-    disabled: !canAdd,
+    disabled: !canAdd || draggedFit?.tier === 'none',
   });
+  // Reverse highlight: selecting someone in the rail paints the board with
+  // where they actually fit. Before this every under-filled cell offered an
+  // identical "Assign X", which said nothing — the board looked the same for a
+  // qualified, available volunteer and for one who fits nowhere.
+  const selectedFit: ShiftRoleFit =
+    canAdd && selectedVolunteerId && !selectedVolunteerIsAssignedToShift
+      ? volunteerFitForShiftRole({
+          shift,
+          roleId,
+          volunteerId: selectedVolunteerId,
+        })
+      : { tier: 'none' };
   const selectSuggestion = (suggestion: SuggestedVolunteer) => {
     onFocus();
     onSelect({
@@ -155,13 +120,25 @@ export function CycleBuilderCell({
       ref={roleDropTarget.setNodeRef}
       className={cn(
         'min-w-0 rounded-md border border-border/70 bg-background/40 p-2 transition-colors',
+        // Ring rather than border, so the selection tier and the focus tint
+        // below can both be legible on the same cell.
+        selectedFit.tier === 'ready' && 'ring-1 ring-primary/50',
+        selectedFit.tier === 'override' && 'ring-1 ring-muted-foreground/30',
+        isFocused && 'border-primary/70 bg-primary/5',
         roleDropTarget.isOver && 'border-primary bg-primary/5',
       )}
+      data-selected-fit={selectedFit.tier}
       data-drop-target={canAdd ? 'append' : undefined}
       data-testid={`cycle-requirement-${shift.shiftId}-${roleId}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate font-medium text-xs">{roleLabel}</span>
+        <RoleFocusButton
+          roleLabel={roleLabel}
+          shiftId={shift.shiftId}
+          roleId={roleId}
+          isFocused={isFocused ?? false}
+          onToggleFocus={onToggleFocus}
+        />
         <span className="shrink-0 text-muted-foreground text-xs">
           {assignments.length}/{requiredCount}
         </span>
@@ -189,32 +166,48 @@ export function CycleBuilderCell({
           />
         ))}
 
-        {canAdd &&
-        selectedVolunteerId &&
-        !selectedVolunteerIsAssignedToShift ? (
+        {selectedVolunteerId && selectedFit.tier !== 'none' ? (
           <Button
             type="button"
             size={isTouch ? 'touch' : 'sm'}
             variant="ghost"
             className={cn(
-              'h-7 rounded-full border border-primary/60 border-dashed bg-primary/5 px-2 text-foreground text-xs',
+              'h-7 rounded-full border border-dashed px-2 text-xs',
+              selectedFit.tier === 'ready'
+                ? 'border-primary/60 bg-primary/5 text-foreground'
+                : 'border-muted-foreground/40 text-muted-foreground',
               isTouch && 'h-11 px-3 text-sm',
             )}
+            title={
+              selectedFit.tier === 'override'
+                ? 'Not available for this shift — assigning is an override'
+                : undefined
+            }
             onClick={() => {
               onFocus();
               onSelect({
                 shiftId: shift.shiftId,
                 roleId,
                 volunteerId: selectedVolunteerId,
+                slotLabel,
+                // FR-016: an override must reach the reason dialog. The
+                // conflict rides on the tier precisely so this cannot be
+                // forgotten — `CycleBuilder` opens `OverrideDialog` on it.
+                conflictType:
+                  selectedFit.tier === 'override'
+                    ? selectedFit.conflictType
+                    : undefined,
               });
             }}
           >
+            {selectedFit.tier === 'override' ? (
+              <TriangleAlertIcon className="size-3 shrink-0" />
+            ) : null}
             Assign {selectedVolunteerName ?? 'selected volunteer'}
           </Button>
         ) : null}
 
-        {canAdd &&
-        (!selectedVolunteerId || selectedVolunteerIsAssignedToShift) ? (
+        {canAdd && selectedFit.tier === 'none' ? (
           <AssignmentPicker
             open={addPickerOpen}
             onOpenChange={(open) => {

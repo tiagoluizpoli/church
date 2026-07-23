@@ -15,6 +15,11 @@ function buildVolunteer(
   };
 }
 
+function noop() {
+  // Presence of onSelect is what mounts the Select-slot button; the click
+  // target itself is exercised by the sidebar tests.
+}
+
 describe('VolunteerCard (T048)', () => {
   it('renders a role badge distinguishing a Leader from a Sub-leader who truncate identically', () => {
     render(
@@ -58,7 +63,7 @@ describe('VolunteerCard (T048)', () => {
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 
-  it('gives the draggable card an accessible name that includes the role, not just the truncated visible text (FR-013)', () => {
+  it('gives the drag grip an accessible name that includes the role, not just the truncated visible text (FR-013)', () => {
     render(
       <div>
         <VolunteerCard
@@ -78,9 +83,9 @@ describe('VolunteerCard (T048)', () => {
       </div>,
     );
 
-    const cards = screen.getAllByTestId('volunteer-card');
-    expect(cards[0]).toHaveAccessibleName('Local Leader, Leader');
-    expect(cards[1]).toHaveAccessibleName('Local Sub Leader, Sub-leader');
+    const grips = screen.getAllByTestId('volunteer-card-grip');
+    expect(grips[0]).toHaveAccessibleName('Local Leader, Leader');
+    expect(grips[1]).toHaveAccessibleName('Local Sub Leader, Sub-leader');
   });
 
   it('leaves the accessible name as the visible truncated text for a plain volunteer (no role to disambiguate)', () => {
@@ -93,8 +98,62 @@ describe('VolunteerCard (T048)', () => {
       />,
     );
 
-    expect(screen.getByTestId('volunteer-card')).toHaveAccessibleName(
+    expect(screen.getByTestId('volunteer-card-grip')).toHaveAccessibleName(
       'John D.',
     );
+  });
+
+  it('renders the recency block as two separate facts, with a never-served fallback', () => {
+    render(<VolunteerCard volunteer={buildVolunteer({ workloadCount: 2 })} />);
+
+    expect(screen.getByText('never served')).toBeInTheDocument();
+    expect(screen.getByText('2 this cycle')).toBeInTheDocument();
+  });
+
+  it('reports how long ago the volunteer last served', () => {
+    const fiveWeeksAgo = new Date(
+      Date.now() - 35 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    render(
+      <VolunteerCard
+        volunteer={buildVolunteer({ lastServedAt: fiveWeeksAgo })}
+      />,
+    );
+
+    expect(screen.getByText('last served 5 weeks ago')).toBeInTheDocument();
+  });
+
+  it('badges only the ideal pick', () => {
+    render(
+      <div>
+        <VolunteerCard
+          volunteer={buildVolunteer({ volunteerId: 'ideal-1' })}
+          isIdeal
+        />
+        <VolunteerCard volunteer={buildVolunteer({ volunteerId: 'other-1' })} />
+      </div>,
+    );
+
+    expect(screen.getAllByTestId('volunteer-ideal-badge')).toHaveLength(1);
+  });
+
+  it('exposes the Select-slot button as a pressed toggle when selected', () => {
+    render(
+      <VolunteerCard
+        volunteer={buildVolunteer({})}
+        isSelected
+        onSelect={noop}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: 'Selected' });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('drops the grip in overlay mode so the drag ghost carries no second drag target', () => {
+    render(<VolunteerCard volunteer={buildVolunteer({})} isOverlay />);
+
+    expect(screen.queryByTestId('volunteer-card-grip')).not.toBeInTheDocument();
   });
 });

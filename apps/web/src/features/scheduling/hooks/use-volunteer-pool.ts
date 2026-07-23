@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { isActiveAssignment } from './use-cycle-builder';
 import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
 
 export type AvailabilityStatus =
@@ -18,6 +19,11 @@ export interface PoolVolunteer {
    * the card stays presentational. Empty when the member has no qualifications.
    */
   qualifiedRoleNames?: string[];
+  /**
+   * ISO instant of this volunteer's most recent serving assignment, carried
+   * straight off the wire. Absent when they have never served.
+   */
+  lastServedAt?: string;
 }
 
 interface PoolAssignment {
@@ -54,7 +60,7 @@ export function useVolunteerPool(
   const workload = useMemo(() => {
     const map = new Map<string, number>();
     for (const a of assignments) {
-      if (a.status === 'cancelled' || a.status === 'declined') continue;
+      if (!isActiveAssignment({ status: a.status })) continue;
       map.set(a.volunteerId, (map.get(a.volunteerId) ?? 0) + 1);
     }
     return map;

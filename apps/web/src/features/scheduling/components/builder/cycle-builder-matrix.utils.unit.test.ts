@@ -1,12 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  countWorkload,
   deriveEventDates,
   enumerateDates,
   eventMatchesDateSpan,
   eventOccursOnDay,
   eventSlotsOnDay,
+  focusKey,
+  rankVolunteersForShiftRole,
+  volunteerFitForShiftRole,
 } from './cycle-builder-matrix.utils';
 import type {
+  CycleBuilderAssignment,
+  CycleBuilderEligibleVolunteerSummary,
   CycleBuilderEventSummary,
   CycleBuilderShiftSummary,
   CycleBuilderSlotSummary,
@@ -242,5 +248,349 @@ describe('enumerateDates', () => {
     expect(dates).toHaveLength(31);
     expect(dates[0]).toBe('2027-01-01');
     expect(dates.at(-1)).toBe('2027-01-31');
+  });
+});
+
+function makeEligible(
+  overrides: Partial<CycleBuilderEligibleVolunteerSummary> &
+    Pick<CycleBuilderEligibleVolunteerSummary, 'volunteerId' | 'volunteerName'>,
+): CycleBuilderEligibleVolunteerSummary {
+  return {
+    isAvailable: true,
+    hasConflict: false,
+    qualifiedRoleIds: ['role-1'],
+    ...overrides,
+  };
+}
+
+function makeAssignment(
+  overrides: Partial<CycleBuilderAssignment> &
+    Pick<CycleBuilderAssignment, 'id' | 'volunteerId'>,
+): CycleBuilderAssignment {
+  return {
+    churchId: 'church-1',
+    slotId: 'slot-1',
+    shiftId: 'shift-1',
+    roleId: 'role-1',
+    status: 'confirmed',
+    assignedAt: '2027-01-01T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
+describe('rankVolunteersForShiftRole', () => {
+  it('ranks availability, then longest since served, then cycle load, then name', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'conflicted',
+          volunteerName: 'Ana',
+          hasConflict: true,
+        }),
+        makeEligible({
+          volunteerId: 'silent',
+          volunteerName: 'Bruno',
+          isAvailable: false,
+        }),
+        makeEligible({
+          volunteerId: 'recent',
+          volunteerName: 'Carla',
+          lastServedAt: '2027-01-01T12:00:00.000Z',
+        }),
+        makeEligible({ volunteerId: 'never', volunteerName: 'Diego' }),
+      ],
+    });
+
+    const ranking = rankVolunteersForShiftRole({
+      shift,
+      roleId: 'role-1',
+      assignments: [],
+    });
+
+    expect(ranking.ids).toEqual(['never', 'recent', 'silent', 'conflicted']);
+    expect(ranking.idealVolunteerId).toBe('never');
+  });
+
+  it('breaks a tie on cycle workload before name', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({ volunteerId: 'busy', volunteerName: 'Ana' }),
+        makeEligible({ volunteerId: 'free', volunteerName: 'Bruno' }),
+      ],
+    });
+
+    const ranking = rankVolunteersForShiftRole({
+      shift,
+      roleId: 'role-1',
+      assignments: [
+        makeAssignment({ id: 'a-1', volunteerId: 'busy', shiftId: 'other' }),
+      ],
+    });
+
+    expect(ranking.ids).toEqual(['free', 'busy']);
+  });
+
+  it('does not badge someone already serving elsewhere in the cycle as ideal', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({ volunteerId: 'busy', volunteerName: 'Ana' }),
+        makeEligible({ volunteerId: 'free', volunteerName: 'Bruno' }),
+      ],
+    });
+
+    const ranking = rankVolunteersForShiftRole({
+      shift,
+      roleId: 'role-1',
+      assignments: [
+        makeAssignment({
+          id: 'a-1',
+          volunteerId: 'busy',
+          shiftId: 'other-shift',
+        }),
+      ],
+    });
+
+    // The picker's Recommended list drops people with another cycle
+    // assignment, so the rail's badge must apply the same bar.
+    expect(ranking.ids).toContain('busy');
+    expect(ranking.idealVolunteerId).toBe('free');
+  });
+
+  it('drops people already serving the shift and ignores their cancelled rows', () => {
+    const shift = makeShift({
+      assignments: [
+        makeAssignment({ id: 'a-1', volunteerId: 'serving' }),
+        makeAssignment({
+          id: 'a-2',
+          volunteerId: 'released',
+          status: 'cancelled',
+        }),
+      ],
+      eligibleVolunteers: [
+        makeEligible({ volunteerId: 'serving', volunteerName: 'Ana' }),
+        makeEligible({ volunteerId: 'released', volunteerName: 'Bruno' }),
+      ],
+    });
+
+    const ranking = rankVolunteersForShiftRole({
+      shift,
+      roleId: 'role-1',
+      assignments: [],
+    });
+
+    expect(ranking.ids).toEqual(['released']);
+  });
+
+  it('keeps only the volunteers qualified for the focused role', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'greeter',
+          volunteerName: 'Ana',
+          qualifiedRoleIds: ['role-2'],
+        }),
+        makeEligible({ volunteerId: 'usher', volunteerName: 'Bruno' }),
+      ],
+    });
+
+    expect(
+      rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
+        .ids,
+    ).toEqual(['usher']);
+  });
+
+  it('ranks nobody when the ministry has configured no qualifications', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'ana',
+          volunteerName: 'Ana',
+          qualifiedRoleIds: [],
+        }),
+        makeEligible({
+          volunteerId: 'bruno',
+          volunteerName: 'Bruno',
+          qualifiedRoleIds: [],
+        }),
+      ],
+    });
+
+    // FR-011 makes qualification a hard filter, so "qualified for nothing"
+    // means "candidate for nothing" — not "candidate for everything".
+    expect(
+      rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
+        .ids,
+    ).toEqual([]);
+  });
+
+  it('never badges an unavailable volunteer as the ideal pick', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'conflicted',
+          volunteerName: 'Ana',
+          hasConflict: true,
+        }),
+      ],
+    });
+
+    const ranking = rankVolunteersForShiftRole({
+      shift,
+      roleId: 'role-1',
+      assignments: [],
+    });
+
+    expect(ranking.ids).toEqual(['conflicted']);
+    expect(ranking.idealVolunteerId).toBeUndefined();
+  });
+});
+
+describe('focusKey', () => {
+  it('separates two roles inside the same shift', () => {
+    expect(focusKey({ shiftId: 'shift-1', roleId: 'role-1' })).not.toBe(
+      focusKey({ shiftId: 'shift-1', roleId: 'role-2' }),
+    );
+  });
+});
+
+describe('volunteerFitForShiftRole', () => {
+  const shift = makeShift({
+    eligibleVolunteers: [
+      makeEligible({ volunteerId: 'ready', volunteerName: 'Ana' }),
+      makeEligible({
+        volunteerId: 'silent',
+        volunteerName: 'Bruno',
+        isAvailable: false,
+      }),
+      makeEligible({
+        volunteerId: 'conflicted',
+        volunteerName: 'Carla',
+        hasConflict: true,
+      }),
+      makeEligible({
+        volunteerId: 'other-role',
+        volunteerName: 'Diego',
+        qualifiedRoleIds: ['role-2'],
+      }),
+    ],
+  });
+
+  it('reads a qualified, free volunteer as ready', () => {
+    expect(
+      volunteerFitForShiftRole({
+        shift,
+        roleId: 'role-1',
+        volunteerId: 'ready',
+      }),
+    ).toEqual({ tier: 'ready' });
+  });
+
+  it('reads a qualified but unavailable or double-booked volunteer as an override', () => {
+    expect(
+      volunteerFitForShiftRole({
+        shift,
+        roleId: 'role-1',
+        volunteerId: 'silent',
+      }),
+    ).toEqual({ tier: 'override', conflictType: 'unavailable' });
+    expect(
+      volunteerFitForShiftRole({
+        shift,
+        roleId: 'role-1',
+        volunteerId: 'conflicted',
+      }),
+    ).toEqual({ tier: 'override', conflictType: 'double_booked' });
+  });
+
+  it('offers nothing for another role’s qualification or a non-candidate', () => {
+    expect(
+      volunteerFitForShiftRole({
+        shift,
+        roleId: 'role-1',
+        volunteerId: 'other-role',
+      }),
+    ).toEqual({ tier: 'none' });
+    expect(
+      volunteerFitForShiftRole({
+        shift,
+        roleId: 'role-1',
+        volunteerId: 'stranger',
+      }),
+    ).toEqual({ tier: 'none' });
+  });
+
+  it('offers nothing where the ministry configured no qualifications', () => {
+    const unconfigured = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'ana',
+          volunteerName: 'Ana',
+          qualifiedRoleIds: [],
+        }),
+      ],
+    });
+
+    expect(
+      volunteerFitForShiftRole({
+        shift: unconfigured,
+        roleId: 'role-1',
+        volunteerId: 'ana',
+      }),
+    ).toEqual({ tier: 'none' });
+  });
+});
+
+describe('volunteerFitForShiftRole conflict cause', () => {
+  it('names the conflict so an override can reach the reason dialog (FR-016)', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'double-booked',
+          volunteerName: 'Ana',
+          hasConflict: true,
+        }),
+        makeEligible({
+          volunteerId: 'unavailable',
+          volunteerName: 'Bruno',
+          isAvailable: false,
+        }),
+      ],
+    });
+
+    const doubleBooked = volunteerFitForShiftRole({
+      shift,
+      roleId: 'role-1',
+      volunteerId: 'double-booked',
+    });
+    const unavailable = volunteerFitForShiftRole({
+      shift,
+      roleId: 'role-1',
+      volunteerId: 'unavailable',
+    });
+
+    expect(doubleBooked).toEqual({
+      tier: 'override',
+      conflictType: 'double_booked',
+    });
+    expect(unavailable).toEqual({
+      tier: 'override',
+      conflictType: 'unavailable',
+    });
+  });
+});
+
+describe('countWorkload', () => {
+  it('counts only draft, pending and confirmed assignments (FR-017)', () => {
+    const workload = countWorkload({
+      assignments: [
+        makeAssignment({ id: 'a-1', volunteerId: 'ana', status: 'draft' }),
+        makeAssignment({ id: 'a-2', volunteerId: 'ana', status: 'pending' }),
+        makeAssignment({ id: 'a-3', volunteerId: 'ana', status: 'confirmed' }),
+        makeAssignment({ id: 'a-4', volunteerId: 'ana', status: 'declined' }),
+        makeAssignment({ id: 'a-5', volunteerId: 'ana', status: 'cancelled' }),
+      ],
+    });
+
+    expect(workload.get('ana')).toBe(3);
   });
 });

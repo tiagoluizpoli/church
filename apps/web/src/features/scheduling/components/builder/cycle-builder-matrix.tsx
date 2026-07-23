@@ -6,9 +6,10 @@ import {
 } from '@dnd-kit/core';
 import { CalendarDays, FilterIcon, LocateFixed, XIcon } from 'lucide-react';
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
-import type {
-  CycleBuilderData,
-  CycleBuilderShiftSummary,
+import {
+  type CycleBuilderData,
+  type CycleBuilderShiftSummary,
+  isActiveAssignment,
 } from '../../hooks/use-cycle-builder';
 import type { PoolVolunteer } from '../../hooks/use-volunteer-pool';
 import type {
@@ -20,13 +21,19 @@ import {
   type CycleBuilderCellSelectInput,
 } from './cycle-builder-cell';
 import {
+  countWorkload,
   type DateSpanMode,
   deriveEventDates,
+  draggedVolunteerId,
+  dropTargetData,
   enumerateDates,
   eventMatchesDateSpan,
   eventOccursOnDay,
   eventSlotsOnDay,
+  focusKey,
   isDateWithinRange,
+  rankVolunteersForShiftRole,
+  volunteerFitForShiftRole,
   weekdayForDayKey,
 } from './cycle-builder-matrix.utils';
 import type { SuggestedVolunteer } from './suggestion-list';
@@ -117,6 +124,22 @@ interface BoardDragState {
 
 type DateMode = 'event_dates' | 'all_cycle_dates';
 
+/**
+ * The shift×role the rail is currently ranking people for. A slot can hold
+ * several shifts and every shift×role pair is its own assignable place, so
+ * `key` carries both — focusing one cell must not light up its siblings.
+ * `ids` is ranked best-first rather than a plain set, and `idealVolunteerId`
+ * is the top of that ranking who is actually free to take the slot — the same
+ * order the picker's recommendations use, so the rail and the picker never
+ * disagree about who the obvious pick is.
+ */
+interface FocusedShift {
+  key: string;
+  label: string;
+  ids: string[];
+  idealVolunteerId?: string;
+}
+
 function pool(data: CycleBuilderData): PoolVolunteer[] {
   const result = new Map<string, PoolVolunteer>();
   const roleNameById = new Map(data.roles.map((role) => [role.id, role.name]));
@@ -138,6 +161,7 @@ function pool(data: CycleBuilderData): PoolVolunteer[] {
               .map((roleId) => roleNameById.get(roleId))
               .filter((name): name is string => name != null)
               .sort((left, right) => left.localeCompare(right)),
+            lastServedAt: volunteer.lastServedAt,
           });
         }
   for (const assignment of data.assignments)
@@ -155,13 +179,7 @@ function candidates(
   data: CycleBuilderData,
 ): PickerVolunteer[] {
   const assignmentContext = getShiftAssignmentContext({ shift, data });
-  const workload = new Map<string, number>();
-  for (const assignment of data.assignments)
-    if (assignment.status !== 'cancelled' && assignment.status !== 'declined')
-      workload.set(
-        assignment.volunteerId,
-        (workload.get(assignment.volunteerId) ?? 0) + 1,
-      );
+  const workload = countWorkload({ assignments: data.assignments });
   return shift.eligibleVolunteers
     .filter(
       (volunteer) =>
@@ -188,13 +206,7 @@ function recommendations(
   data: CycleBuilderData,
 ) {
   const assignmentContext = getShiftAssignmentContext({ shift, data });
-  const workload = new Map<string, number>();
-  for (const assignment of data.assignments)
-    if (assignment.status !== 'cancelled' && assignment.status !== 'declined')
-      workload.set(
-        assignment.volunteerId,
-        (workload.get(assignment.volunteerId) ?? 0) + 1,
-      );
+  const workload = countWorkload({ assignments: data.assignments });
   const toSuggestion = (
     volunteer: (typeof shift.eligibleVolunteers)[number],
     status: SuggestedVolunteer['status'],
@@ -275,7 +287,7 @@ function getShiftAssignmentContext({
     ServingAssignmentContext[]
   >();
   for (const assignment of data.assignments) {
-    if (assignment.status === 'cancelled' || assignment.status === 'declined') {
+    if (!isActiveAssignment({ status: assignment.status })) {
       continue;
     }
     if (!assignment.shiftId) {
@@ -322,10 +334,7 @@ export function CycleBuilderMatrix(props: Props) {
   const [rangeEnd, setRangeEnd] = useState('');
   const [eventQuery, setEventQuery] = useState('');
   const [weekday, setWeekday] = useState<number | null>(null);
-  const [focused, setFocused] = useState<{
-    label: string;
-    ids: Set<string>;
-  } | null>(null);
+  const [focused, setFocused] = useState<FocusedShift | null>(null);
   const eventDates = useMemo(
     () => deriveEventDates({ events: props.data.events }),
     [props.data.events],
@@ -433,9 +442,8 @@ export function CycleBuilderMatrix(props: Props) {
     setWeekday(null);
   };
   const volunteers = useMemo(() => pool(props.data), [props.data]);
-  const activeAssignments = props.data.assignments.filter(
-    (assignment) =>
-      assignment.status !== 'cancelled' && assignment.status !== 'declined',
+  const activeAssignments = props.data.assignments.filter((assignment) =>
+    isActiveAssignment({ status: assignment.status }),
   );
   const selectedName = volunteers.find(
     (volunteer) => volunteer.volunteerId === props.selectedVolunteerId,
@@ -773,12 +781,8 @@ export function CycleBuilderMatrix(props: Props) {
         <DndContext
           sensors={sensors}
           onDragEnd={(event) => {
-            const volunteerId = event.active.data.current?.volunteerId as
-              | string
-              | undefined;
-            const target = event.over?.data.current as
-              | { shiftId?: string; roleId?: string; assignmentId?: string }
-              | undefined;
+            const volunteerId = draggedVolunteerId({ active: event.active });
+            const target = dropTargetData({ over: event.over ?? null });
             if (volunteerId && target?.shiftId && target.roleId) {
               const shift = props.data.events
                 .flatMap((builderEvent) => builderEvent.slots)
@@ -789,23 +793,44 @@ export function CycleBuilderMatrix(props: Props) {
               )?.name;
               if (shift && roleLabel)
                 setFocused({
+                  key: focusKey({
+                    shiftId: target.shiftId,
+                    roleId: target.roleId,
+                  }),
                   label: `${roleLabel} · ${shift.label ?? 'Shift'}`,
-                  ids: new Set(
-                    shift.eligibleVolunteers.map(
-                      (candidate) => candidate.volunteerId,
-                    ),
-                  ),
+                  ...rankVolunteersForShiftRole({
+                    shift,
+                    roleId: target.roleId,
+                    assignments: props.data.assignments,
+                  }),
                 });
+              // Dropping onto a conflicted slot is an override like any other,
+              // and FR-016 does not care which gesture started it — the reason
+              // dialog is gated on this field.
+              const droppedFit = shift
+                ? volunteerFitForShiftRole({
+                    shift,
+                    roleId: target.roleId,
+                    volunteerId,
+                  })
+                : undefined;
               props.onSelectAssignment({
                 volunteerId,
                 shiftId: target.shiftId,
                 roleId: target.roleId,
                 assignmentId: target.assignmentId,
+                conflictType:
+                  droppedFit?.tier === 'override'
+                    ? droppedFit.conflictType
+                    : undefined,
               });
             }
           }}
         >
-          <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          {/* 23.75rem = 380px. Widened from 320px so the AE card's three
+              columns each keep their own band instead of the roles line and
+              the recency block fighting for the same width. */}
+          <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
             <Card
               className={cn(
                 'min-w-0 touch-pan-y border-0 bg-transparent py-0 shadow-none',
@@ -894,10 +919,10 @@ export function CycleBuilderMatrix(props: Props) {
                                                       (assignment) =>
                                                         assignment.roleId ===
                                                           requirement.roleId &&
-                                                        assignment.status !==
-                                                          'cancelled' &&
-                                                        assignment.status !==
-                                                          'declined',
+                                                        isActiveAssignment({
+                                                          status:
+                                                            assignment.status,
+                                                        }),
                                                     );
                                                   const roleLabel =
                                                     props.data.roles.find(
@@ -910,6 +935,28 @@ export function CycleBuilderMatrix(props: Props) {
                                                       shift,
                                                       props.data,
                                                     );
+                                                  const requirementFocusKey =
+                                                    focusKey({
+                                                      shiftId: shift.shiftId,
+                                                      roleId:
+                                                        requirement.roleId,
+                                                    });
+                                                  const focusOnRequirement =
+                                                    () =>
+                                                      setFocused({
+                                                        key: requirementFocusKey,
+                                                        label: `${roleLabel} · ${slot.label ?? 'Shift'}`,
+                                                        ...rankVolunteersForShiftRole(
+                                                          {
+                                                            shift,
+                                                            roleId:
+                                                              requirement.roleId,
+                                                            assignments:
+                                                              props.data
+                                                                .assignments,
+                                                          },
+                                                        ),
+                                                      });
                                                   return (
                                                     <CycleBuilderCell
                                                       key={requirement.roleId}
@@ -949,17 +996,22 @@ export function CycleBuilderMatrix(props: Props) {
                                                         event.state ===
                                                         'published'
                                                       }
-                                                      onFocus={() =>
-                                                        setFocused({
-                                                          label: `${roleLabel} · ${slot.label ?? 'Shift'}`,
-                                                          ids: new Set(
-                                                            shift.eligibleVolunteers.map(
-                                                              (volunteer) =>
-                                                                volunteer.volunteerId,
-                                                            ),
-                                                          ),
-                                                        })
+                                                      isFocused={
+                                                        focused?.key ===
+                                                        requirementFocusKey
                                                       }
+                                                      onFocus={
+                                                        focusOnRequirement
+                                                      }
+                                                      onToggleFocus={() => {
+                                                        if (
+                                                          focused?.key ===
+                                                          requirementFocusKey
+                                                        )
+                                                          setFocused(null);
+                                                        else
+                                                          focusOnRequirement();
+                                                      }}
                                                       onSelect={
                                                         props.onSelectAssignment
                                                       }
@@ -999,6 +1051,7 @@ export function CycleBuilderMatrix(props: Props) {
               onSelectVolunteer={props.onSelectVolunteer}
               focusedVolunteerIds={focused?.ids}
               focusLabel={focused?.label}
+              idealVolunteerId={focused?.idealVolunteerId}
               onClearFocus={focused ? () => setFocused(null) : undefined}
             />
           </div>

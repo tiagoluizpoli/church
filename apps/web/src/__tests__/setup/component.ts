@@ -3,6 +3,11 @@ import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { mswServer } from './msw';
 
+declare global {
+  /** base-ui's opt-out for awaiting exit animations. See the stub below. */
+  var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined;
+}
+
 // Component-project setup: jest-dom matchers, RTL cleanup, and MSW lifecycle.
 beforeAll(() => mswServer.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
@@ -41,4 +46,31 @@ if (!Element.prototype.setPointerCapture) {
 }
 if (!Element.prototype.releasePointerCapture) {
   Element.prototype.releasePointerCapture = () => {};
+}
+
+// jsdom has no layout engine, so it never implements `ResizeObserver`.
+// Components that measure themselves (e.g. `VolunteerCard`'s clipped-roles
+// tooltip) only need the constructor to exist — with no layout there is
+// nothing to observe, and every measured width stays 0.
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
+// jsdom implements no Web Animations API. base-ui's `ScrollArea` viewport asks
+// its element for in-flight animations once a resize is observed, which only
+// became reachable in tests when `ResizeObserver` above started existing.
+//
+// The stub has to come with base-ui's own opt-out: `useAnimationsFinished`
+// treats a missing `getAnimations` as "nothing to wait for" and runs
+// synchronously, but a present one as "await these animations" — so merely
+// defining it would push every dialog/dropdown/tab close a microtask later and
+// break the tests that assert they are already gone. The flag restores the
+// synchronous path that jsdom had before the stub existed.
+if (!Element.prototype.getAnimations) {
+  Element.prototype.getAnimations = () => [];
+  globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 }

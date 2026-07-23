@@ -23,7 +23,11 @@
   --muted-foreground: oklch(0.53 0.024 250);
   --accent: oklch(0.948 0.018 247);
   --accent-foreground: oklch(0.324 0.037 252);
-  --destructive: oklch(0.614 0.207 26);
+  /* Lightness lowered from 0.614: at 0.614 this red measures 4.05:1 on the
+     card surface, so every use as small text failed WCAG AA (4.5:1). 0.58
+     measures 4.66:1. Hue and chroma are unchanged, and destructive-as-a-
+     background only gains contrast against its white foreground. */
+  --destructive: oklch(0.58 0.207 26);
   --border: oklch(0.885 0.012 242);
   --input: oklch(0.902 0.012 242);
   --ring: oklch(0.532 0.082 254);

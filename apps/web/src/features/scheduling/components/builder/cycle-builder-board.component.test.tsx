@@ -53,6 +53,7 @@ const boardData: CycleBuilderData = {
                   volunteerName: 'Grace Hopper',
                   isAvailable: true,
                   hasConflict: false,
+                  qualifiedRoleIds: [],
                 },
               ],
             },
@@ -90,12 +91,14 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
       volunteerName: 'Local Volunteer',
       isAvailable: true,
       hasConflict: false,
+      qualifiedRoleIds: [],
     },
     {
       volunteerId: 'volunteer-2',
       volunteerName: 'Available Volunteer',
       isAvailable: true,
       hasConflict: false,
+      qualifiedRoleIds: [],
     },
   ];
 

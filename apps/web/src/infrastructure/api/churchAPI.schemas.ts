@@ -162,6 +162,8 @@ export type GetScheduleBuilderData200VolunteersItem = {
   id: string;
   name: string;
   systemRole: GetScheduleBuilderData200VolunteersItemSystemRole;
+  qualifiedRoleIds: string[];
+  teamIds: string[];
 };
 
 export type GetScheduleBuilderData200RolesItem = {
@@ -176,7 +178,7 @@ export type GetScheduleBuilderData200 = {
   volunteers: GetScheduleBuilderData200VolunteersItem[];
   roles: GetScheduleBuilderData200RolesItem[];
   /** @nullable */
-  callerTeamId: string | null;
+  callerTeamIds: string[] | null;
 };
 
 export type ListEventsParams = {
@@ -1496,6 +1498,7 @@ export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteer
   isAvailable: boolean;
   hasConflict: boolean;
   lastServedAt?: string;
+  qualifiedRoleIds: string[];
 };
 
 export type GetCycleBuilderData200EventsItemSlotsItemShiftsItem = {
@@ -1608,6 +1611,7 @@ export type ListEligibleVolunteers200VolunteersItem = {
   isAvailable: boolean;
   hasConflict: boolean;
   lastServedAt?: string;
+  qualifiedRoleIds: string[];
 };
 
 export type ListEligibleVolunteers200 = {
@@ -1663,6 +1667,7 @@ export const CreateParticipationAssignment201WarningsItemType = {
   UNAVAILABLE: 'UNAVAILABLE',
   DOUBLE_BOOKED: 'DOUBLE_BOOKED',
   FAIRNESS_EXCEEDED: 'FAIRNESS_EXCEEDED',
+  NOT_QUALIFIED: 'NOT_QUALIFIED',
 } as const;
 
 export type CreateParticipationAssignment201WarningsItem = {

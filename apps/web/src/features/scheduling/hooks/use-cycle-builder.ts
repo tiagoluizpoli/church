@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { toast } from 'sonner';
 import type {
   CreateParticipationAssignmentBody,
   GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem,
@@ -34,6 +35,7 @@ export interface CycleBuilderEligibleVolunteerSummary {
   isAvailable: boolean;
   hasConflict: boolean;
   lastServedAt?: string;
+  qualifiedRoleIds: string[];
 }
 
 interface CycleBuilderAssignmentDetails {
@@ -273,10 +275,22 @@ export function useCycleBuilder({
   const publish = useMutation({
     mutationFn: (confirmBelowFull: boolean) =>
       adminApi.publishCycle(cycleId, { confirmBelowFull }, { ministryId }),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await queryClient.invalidateQueries({
         queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
       });
+      // Publishing is the most consequential action in the builder and was the
+      // only mutation here that reported nothing back. `published` is false
+      // when the cycle is below its staffing target and the leader has not
+      // confirmed, so the two outcomes must read differently.
+      if (result.published) {
+        toast.success('Cycle published');
+        return;
+      }
+      toast.warning('Cycle not published — confirm to publish below target.');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Publish failed');
     },
   });
 

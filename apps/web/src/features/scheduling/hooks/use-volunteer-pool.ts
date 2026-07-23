@@ -13,6 +13,11 @@ export interface PoolVolunteer {
   status: AvailabilityStatus;
   conflictReason?: string;
   systemRole?: AssigneeSystemRole;
+  /**
+   * Role names this volunteer is qualified for, already resolved from ids so
+   * the card stays presentational. Empty when the member has no qualifications.
+   */
+  qualifiedRoleNames?: string[];
 }
 
 interface PoolAssignment {

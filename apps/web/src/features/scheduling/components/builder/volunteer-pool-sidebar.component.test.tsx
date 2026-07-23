@@ -109,3 +109,47 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(onClearFocus).toHaveBeenCalledOnce();
   });
 });
+
+describe('VolunteerPoolSidebar qualified roles line (023 phase 6)', () => {
+  it('shows a volunteer’s qualified roles under their name, dot-separated', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={[
+          {
+            volunteerId: '1',
+            volunteerName: 'Ana Costa',
+            status: 'available',
+            qualifiedRoleNames: ['Slides', 'Camera'],
+          },
+        ]}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+
+    expect(screen.getByTestId('volunteer-qualified-roles')).toHaveTextContent(
+      'Slides · Camera',
+    );
+  });
+
+  it('renders no roles line for a volunteer qualified for nothing', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={[
+          {
+            volunteerId: '1',
+            volunteerName: 'Ana Costa',
+            status: 'available',
+            qualifiedRoleNames: [],
+          },
+        ]}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+
+    expect(
+      screen.queryByTestId('volunteer-qualified-roles'),
+    ).not.toBeInTheDocument();
+  });
+});

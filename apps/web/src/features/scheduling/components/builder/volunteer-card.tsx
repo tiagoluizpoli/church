@@ -95,6 +95,14 @@ export function VolunteerCard({
         }
       >
         {formatVolunteerName(volunteer.volunteerName)}
+        {volunteer.qualifiedRoleNames?.length ? (
+          <p
+            className="truncate text-[0.6875rem] text-muted-foreground leading-tight"
+            data-testid="volunteer-qualified-roles"
+          >
+            {volunteer.qualifiedRoleNames.join(' · ')}
+          </p>
+        ) : null}
       </div>
       <span className="flex items-center gap-1">
         <AssigneeIdentityBadge

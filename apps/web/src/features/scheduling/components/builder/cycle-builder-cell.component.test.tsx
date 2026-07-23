@@ -26,12 +26,14 @@ const shift: CycleBuilderShiftSummary = {
       volunteerName: 'Grace Hopper',
       isAvailable: true,
       hasConflict: false,
+      qualifiedRoleIds: [],
     },
     {
       volunteerId: 'volunteer-2',
       volunteerName: 'Ada Lovelace',
       isAvailable: true,
       hasConflict: false,
+      qualifiedRoleIds: [],
     },
   ],
 };

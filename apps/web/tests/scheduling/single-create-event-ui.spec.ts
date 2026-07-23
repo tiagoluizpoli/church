@@ -63,16 +63,15 @@ async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
 test('exactly one create-event UI is reachable from every entry point (FR-012, SC-004)', async ({
   page,
 }) => {
-  // Entry point 1: /scheduling index — ministry ad hoc "New Event".
+  // Entry point 1: /scheduling. The nav restructure (FR-015/FR-016) turned this
+  // into a redirect, which is itself how FR-012 is now satisfied — there is no
+  // separate ministry ad-hoc create-event surface to diverge from the canonical
+  // one. Asserting the redirect keeps that guarantee under test: the day
+  // someone reintroduces a second surface here, this fails.
   await page.goto('/scheduling');
-  await page.getByRole('button', { name: 'New Event' }).click();
-  const ministryDialog = page.getByRole('dialog');
-  await assertCanonicalCreateEventForm(ministryDialog);
-  await ministryDialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(ministryDialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/scheduling\/planning-cycles/);
 
-  // Entry point 2: /scheduling/planning — cycle manual event, same UI.
-  await page.goto('/scheduling/planning-cycles');
+  // Entry point 2: the planning cycle itself — the one canonical form.
   await ensureUnlockedCycleSelected(page);
   await page.getByRole('button', { name: 'Add event' }).click();
   const planningDialog = page.getByRole('dialog');

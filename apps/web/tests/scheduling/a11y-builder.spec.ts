@@ -13,7 +13,7 @@ test('schedule builder has no critical or serious WCAG violations', async ({
   page,
 }) => {
   await page.goto(BUILDER_URL);
-  await expect(page.getByTestId('cycle-builder-board')).toBeVisible({
+  await expect(page.getByTestId('cycle-builder')).toBeVisible({
     timeout: 15_000,
   });
 

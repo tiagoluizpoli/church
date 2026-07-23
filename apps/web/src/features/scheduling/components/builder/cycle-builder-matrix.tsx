@@ -119,6 +119,7 @@ type DateMode = 'event_dates' | 'all_cycle_dates';
 
 function pool(data: CycleBuilderData): PoolVolunteer[] {
   const result = new Map<string, PoolVolunteer>();
+  const roleNameById = new Map(data.roles.map((role) => [role.id, role.name]));
   for (const event of data.events)
     for (const slot of event.slots)
       for (const shift of slot.shifts)
@@ -131,6 +132,12 @@ function pool(data: CycleBuilderData): PoolVolunteer[] {
               : volunteer.isAvailable
                 ? 'available'
                 : 'no_response',
+            // Ids with no matching role are dropped rather than shown raw: a
+            // uuid on the card would read as a skill name.
+            qualifiedRoleNames: volunteer.qualifiedRoleIds
+              .map((roleId) => roleNameById.get(roleId))
+              .filter((name): name is string => name != null)
+              .sort((left, right) => left.localeCompare(right)),
           });
         }
   for (const assignment of data.assignments)
@@ -740,7 +747,10 @@ export function CycleBuilderMatrix(props: Props) {
                         {dateLabel(date)}
                         <LocateFixed className="size-3.5 text-muted-foreground" />
                       </button>
-                      <span className={cn('text-xs', staffing.text)}>
+                      <span
+                        className={cn('text-xs', staffing.text)}
+                        data-testid="cycle-date-staffing-percent"
+                      >
                         {percent}%
                       </span>
                     </span>

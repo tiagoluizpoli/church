@@ -91,7 +91,7 @@ describe('TailoringSlotList day-grouping (US3/T026)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
 
     renderWithProviders(
@@ -148,7 +148,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const onSplitShifts = vi.fn();
     const onSaveHeadcounts = vi.fn();
@@ -199,7 +199,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -242,7 +242,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -285,7 +285,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -343,7 +343,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -445,7 +445,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -481,7 +481,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -538,7 +538,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
               events: [],
               availability: [],
               volunteers: [],
-              callerTeamId: null,
+              callerTeamIds: null,
             });
         }),
     );
@@ -596,7 +596,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
         events: [],
         availability: [],
         volunteers: [],
-        callerTeamId: null,
+        callerTeamIds: null,
       });
     const user = userEvent.setup();
 
@@ -623,7 +623,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -668,7 +668,7 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -696,7 +696,7 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 

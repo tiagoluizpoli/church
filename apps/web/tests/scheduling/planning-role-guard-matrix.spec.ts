@@ -28,7 +28,7 @@ test.describe('Volunteer-only denial across all 3 scheduling routes', () => {
     await page.goto(
       '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111',
     );
-    await expect(page.getByTestId('cycle-builder-board')).toHaveCount(0);
+    await expect(page.getByTestId('cycle-builder')).toHaveCount(0);
     await expect(
       page.getByRole('button', { name: /publish cycle/i }),
     ).toHaveCount(0);

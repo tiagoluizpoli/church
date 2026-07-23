@@ -203,7 +203,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     splitParticipationShifts.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -236,7 +236,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
 
     renderWorkspace();
@@ -270,7 +270,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
 
     renderWorkspace();
@@ -303,7 +303,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -344,7 +344,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -398,7 +398,7 @@ describe('Tailoring workspace headcount save partial-failure isolation (Iteratio
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     upsertShiftRequirement.mockImplementation(
       (_shiftId: string, body: { roleId: string }) =>
@@ -462,7 +462,7 @@ describe('Tailoring workspace re-serving retains prior edits (Iteration 2/T046/F
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
 
@@ -571,7 +571,7 @@ describe('Tailoring workspace batched save (US4/T029)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     fireAvailability.mockResolvedValue({
@@ -608,7 +608,7 @@ describe('Tailoring workspace send-availability confirmation (P0 hardening)', ()
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -641,7 +641,7 @@ describe('Tailoring workspace send-availability confirmation (P0 hardening)', ()
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     fireAvailability.mockResolvedValue({
@@ -688,7 +688,7 @@ describe('Tailoring workspace remains editable post-release (US4/T030/FR-017)', 
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     resendAvailabilityReminder.mockResolvedValue(undefined);
@@ -741,7 +741,7 @@ describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -767,7 +767,7 @@ describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -800,7 +800,7 @@ describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
 
     const { router } = renderWorkspace();
@@ -824,7 +824,7 @@ describe('Tailoring workspace double-submit guard (US4/T030b)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     let resolveFire: (() => void) | undefined;
@@ -866,7 +866,7 @@ describe('Tailoring workspace mid-flight save unmount (US4/T030c)', () => {
       events: [],
       availability: [],
       volunteers: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     fireAvailability.mockImplementation(

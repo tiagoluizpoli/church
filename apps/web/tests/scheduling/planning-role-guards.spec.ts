@@ -43,6 +43,6 @@ test.describe('Leader direct access to the other scheduling routes', () => {
     await page.goto(
       '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111',
     );
-    await expect(page.getByTestId('cycle-builder-board')).toBeVisible();
+    await expect(page.getByTestId('cycle-builder')).toBeVisible();
   });
 });

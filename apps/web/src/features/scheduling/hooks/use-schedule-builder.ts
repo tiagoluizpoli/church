@@ -64,7 +64,7 @@ export function useScheduleBuilder(eventId: string) {
       availability,
       volunteers,
       roles,
-      callerTeamId,
+      callerTeamIds,
     } = query.data;
     const eventEntry = events.find((e) => e.event.id === eventId);
     if (!eventEntry) return undefined;
@@ -106,7 +106,7 @@ export function useScheduleBuilder(eventId: string) {
       assignments: assignmentsWithName,
       volunteerAvailability,
       roles,
-      callerTeamId,
+      callerTeamIds,
     };
   }, [query.data, eventId]);
 
@@ -161,7 +161,7 @@ export function useScheduleBuilder(eventId: string) {
     publishEvent,
     eventFillRatio,
     hasHardViolations,
-    callerTeamId: data?.callerTeamId ?? null,
+    callerTeamIds: data?.callerTeamIds ?? null,
   };
 }
 

@@ -262,7 +262,12 @@ export function AssignmentPicker({
                 }}
               >
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">{v.name}</span>
+                  <span
+                    className="block truncate font-medium"
+                    data-testid="picker-option-name"
+                  >
+                    {v.name}
+                  </span>
                   {v.alreadyServingAssignments?.length ? (
                     v.alreadyServingAssignments.length === 1 ? (
                       <span className="mt-0.5 flex items-center gap-1 text-[11px] text-yellow-700 dark:text-yellow-300">

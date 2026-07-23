@@ -8,12 +8,19 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4001';
 const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
 const CARE_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333332';
-const PLANNING_CYCLE_ID = 'e2e21111-1111-1111-1111-111111111111';
-const WORSHIP_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111114';
-const CARE_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111116';
-const USHER_REQUIREMENT_ID = 'e2e88888-8888-8888-8888-888888888885';
-const SCHEDULING_VOLUNTEER_ID = 'e2e44444-4444-4444-4444-444444444442';
-const EVENT_TITLE = 'E2E Sub-Leader Service';
+// Publish is cycle-wide, so this spec owns a cycle no other spec touches
+// (`us4PlanningCycle` in `e2e-seed.ts`). Sharing December let run-order decide
+// the start state.
+const PLANNING_CYCLE_ID = 'e2e21111-2222-2222-2222-222222222222';
+const WORSHIP_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111117';
+const CARE_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111118';
+const WORSHIP_SHIFT_ID = 'e2e71111-1111-1111-1111-111111111117';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
+const EVENT_TITLE = 'E2E US4 Publish Service';
+const VOLUNTEER_NAME = 'E2E Volunteer';
+// Rail + dashboard abbreviate via formatVolunteerName (FR-013); the chip shows
+// the full name — both forms asserted where each appears.
+const VOLUNTEER_SHORT_NAME = 'E2E V.';
 const REQUIRED_COUNT = 2;
 
 interface ParticipationResponse {
@@ -48,26 +55,39 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
     .getByTestId(`open-roster-link-${WORSHIP_PARTICIPATION_ID}`)
     .click();
 
-  await expect(page.getByTestId('roster-page')).toBeVisible();
-  await expect(page.getByTestId('roster-completion-summary')).toContainText(
-    `0 assigned across ${REQUIRED_COUNT} required positions.`,
-  );
+  await expect(page.getByTestId('cycle-builder')).toBeVisible({
+    timeout: 15_000,
+  });
 
-  await page
-    .getByTestId(`assign-${USHER_REQUIREMENT_ID}-${SCHEDULING_VOLUNTEER_ID}`)
-    .click();
-
-  await expect(page.getByTestId('roster-completion-summary')).toContainText(
-    `1 assigned across ${REQUIRED_COUNT} required positions.`,
+  const requirement = page.getByTestId(
+    `cycle-requirement-${WORSHIP_SHIFT_ID}-${USHER_ROLE_ID}`,
   );
+  await expect(requirement).toContainText(`0/${REQUIRED_COUNT}`);
 
-  page.once('dialog', (dialog) => dialog.accept());
-  const publishPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/publish') && response.status() === 204,
+  // Pick by name, not the first picker option — the dashboard asserts this
+  // exact person, and picker order is availability/workload-driven.
+  const volunteerPool = page.getByTestId('volunteer-pool');
+  await volunteerPool
+    .getByLabel('Search volunteers by name')
+    .fill(VOLUNTEER_NAME);
+  await volunteerPool.getByRole('button', { name: 'Select slot' }).click();
+
+  await requirement.getByRole('button', { name: /^Assign / }).click();
+  await expect(requirement.getByTestId('assignment-chip')).toContainText(
+    VOLUNTEER_NAME,
   );
-  await page.getByTestId('publish-participation-button').click();
-  await publishPromise;
+  await expect(requirement).toContainText(`1/${REQUIRED_COUNT}`);
+
+  await page.getByRole('button', { name: 'Publish cycle' }).first().click();
+  const publishDialog = page.getByRole('dialog', {
+    name: 'Publish this cycle?',
+  });
+  // One seat still open — the below-full publish; the confirm authorises it.
+  await expect(publishDialog).toContainText(
+    'shifts are below their staffing target',
+  );
+  await publishDialog.getByRole('button', { name: 'Publish cycle' }).click();
+  await expect(page.getByText('Cycle published')).toBeVisible();
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(
@@ -119,7 +139,9 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
     }),
   ).toBeVisible();
   await expect(
-    volunteerPage.getByText('Volunteer: E2E V.', { exact: true }),
+    volunteerPage.getByText(`Volunteer: ${VOLUNTEER_SHORT_NAME}`, {
+      exact: true,
+    }),
   ).toBeVisible();
 
   await volunteerContext.close();

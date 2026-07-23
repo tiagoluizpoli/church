@@ -22,8 +22,6 @@ import { Route as SchedulingPlanningCyclesRouteImport } from './routes/schedulin
 import { Route as SchedulingTailoringIndexRouteImport } from './routes/scheduling/tailoring/index'
 import { Route as SchedulingPlanningCyclesIndexRouteImport } from './routes/scheduling/planning-cycles/index'
 import { Route as SchedulingTailoringMinistryIdRouteImport } from './routes/scheduling/tailoring/$ministryId'
-import { Route as SchedulingRosteringPrototypeDateCardIconsRouteImport } from './routes/scheduling/rostering/prototype-date-card-icons'
-import { Route as SchedulingRosteringPrototypeRouteImport } from './routes/scheduling/rostering/prototype'
 import { Route as SchedulingPlanningCyclesTemplatesRouteImport } from './routes/scheduling/planning-cycles/templates'
 import { Route as SchedulingPlanningCyclesNewRouteImport } from './routes/scheduling/planning-cycles/new'
 import { Route as SchedulingPlanningCyclesCycleIdRouteImport } from './routes/scheduling/planning-cycles/$cycleId'
@@ -100,18 +98,6 @@ const SchedulingTailoringMinistryIdRoute =
     path: '/$ministryId',
     getParentRoute: () => SchedulingTailoringRoute,
   } as any)
-const SchedulingRosteringPrototypeDateCardIconsRoute =
-  SchedulingRosteringPrototypeDateCardIconsRouteImport.update({
-    id: '/rostering/prototype-date-card-icons',
-    path: '/rostering/prototype-date-card-icons',
-    getParentRoute: () => SchedulingRoute,
-  } as any)
-const SchedulingRosteringPrototypeRoute =
-  SchedulingRosteringPrototypeRouteImport.update({
-    id: '/rostering/prototype',
-    path: '/rostering/prototype',
-    getParentRoute: () => SchedulingRoute,
-  } as any)
 const SchedulingPlanningCyclesTemplatesRoute =
   SchedulingPlanningCyclesTemplatesRouteImport.update({
     id: '/templates',
@@ -163,8 +149,6 @@ export interface FileRoutesByFullPath {
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
-  '/scheduling/rostering/prototype': typeof SchedulingRosteringPrototypeRoute
-  '/scheduling/rostering/prototype-date-card-icons': typeof SchedulingRosteringPrototypeDateCardIconsRoute
   '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdRouteWithChildren
   '/scheduling/planning-cycles/': typeof SchedulingPlanningCyclesIndexRoute
   '/scheduling/tailoring/': typeof SchedulingTailoringIndexRoute
@@ -183,8 +167,6 @@ export interface FileRoutesByTo {
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
-  '/scheduling/rostering/prototype': typeof SchedulingRosteringPrototypeRoute
-  '/scheduling/rostering/prototype-date-card-icons': typeof SchedulingRosteringPrototypeDateCardIconsRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesIndexRoute
   '/scheduling/tailoring': typeof SchedulingTailoringIndexRoute
   '/scheduling/rostering/$ministryId/$cycleId': typeof SchedulingRosteringMinistryIdCycleIdRoute
@@ -206,8 +188,6 @@ export interface FileRoutesById {
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof SchedulingPlanningCyclesNewRoute
   '/scheduling/planning-cycles/templates': typeof SchedulingPlanningCyclesTemplatesRoute
-  '/scheduling/rostering/prototype': typeof SchedulingRosteringPrototypeRoute
-  '/scheduling/rostering/prototype-date-card-icons': typeof SchedulingRosteringPrototypeDateCardIconsRoute
   '/scheduling/tailoring/$ministryId': typeof SchedulingTailoringMinistryIdRouteWithChildren
   '/scheduling/planning-cycles/': typeof SchedulingPlanningCyclesIndexRoute
   '/scheduling/tailoring/': typeof SchedulingTailoringIndexRoute
@@ -231,8 +211,6 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
-    | '/scheduling/rostering/prototype'
-    | '/scheduling/rostering/prototype-date-card-icons'
     | '/scheduling/tailoring/$ministryId'
     | '/scheduling/planning-cycles/'
     | '/scheduling/tailoring/'
@@ -251,8 +229,6 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
-    | '/scheduling/rostering/prototype'
-    | '/scheduling/rostering/prototype-date-card-icons'
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
     | '/scheduling/rostering/$ministryId/$cycleId'
@@ -273,8 +249,6 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
     | '/scheduling/planning-cycles/templates'
-    | '/scheduling/rostering/prototype'
-    | '/scheduling/rostering/prototype-date-card-icons'
     | '/scheduling/tailoring/$ministryId'
     | '/scheduling/planning-cycles/'
     | '/scheduling/tailoring/'
@@ -386,20 +360,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulingTailoringMinistryIdRouteImport
       parentRoute: typeof SchedulingTailoringRoute
     }
-    '/scheduling/rostering/prototype-date-card-icons': {
-      id: '/scheduling/rostering/prototype-date-card-icons'
-      path: '/rostering/prototype-date-card-icons'
-      fullPath: '/scheduling/rostering/prototype-date-card-icons'
-      preLoaderRoute: typeof SchedulingRosteringPrototypeDateCardIconsRouteImport
-      parentRoute: typeof SchedulingRoute
-    }
-    '/scheduling/rostering/prototype': {
-      id: '/scheduling/rostering/prototype'
-      path: '/rostering/prototype'
-      fullPath: '/scheduling/rostering/prototype'
-      preLoaderRoute: typeof SchedulingRosteringPrototypeRouteImport
-      parentRoute: typeof SchedulingRoute
-    }
     '/scheduling/planning-cycles/templates': {
       id: '/scheduling/planning-cycles/templates'
       path: '/templates'
@@ -502,8 +462,6 @@ interface SchedulingRouteChildren {
   SchedulingPlanningCyclesRoute: typeof SchedulingPlanningCyclesRouteWithChildren
   SchedulingTailoringRoute: typeof SchedulingTailoringRouteWithChildren
   SchedulingIndexRoute: typeof SchedulingIndexRoute
-  SchedulingRosteringPrototypeRoute: typeof SchedulingRosteringPrototypeRoute
-  SchedulingRosteringPrototypeDateCardIconsRoute: typeof SchedulingRosteringPrototypeDateCardIconsRoute
   SchedulingRosteringMinistryIdCycleIdRoute: typeof SchedulingRosteringMinistryIdCycleIdRoute
 }
 
@@ -511,9 +469,6 @@ const SchedulingRouteChildren: SchedulingRouteChildren = {
   SchedulingPlanningCyclesRoute: SchedulingPlanningCyclesRouteWithChildren,
   SchedulingTailoringRoute: SchedulingTailoringRouteWithChildren,
   SchedulingIndexRoute: SchedulingIndexRoute,
-  SchedulingRosteringPrototypeRoute: SchedulingRosteringPrototypeRoute,
-  SchedulingRosteringPrototypeDateCardIconsRoute:
-    SchedulingRosteringPrototypeDateCardIconsRoute,
   SchedulingRosteringMinistryIdCycleIdRoute:
     SchedulingRosteringMinistryIdCycleIdRoute,
 }

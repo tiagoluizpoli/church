@@ -23,6 +23,7 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
       hasRoleQualification: async (
         _churchId: ChurchId,
         volunteerId: VolunteerId,
+        _ministryId: MinistryId,
         roleId: RoleId,
       ) => {
         return volunteerId === 'volunteer-1' && roleId === 'role-1';
@@ -76,6 +77,7 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
     const isQualified = await mockVolunteerRepo.hasRoleQualification(
       churchId,
       volunteerId,
+      ministryId,
       roleId,
     );
     const isMember = await mockVolunteerRepo.hasMembershipInMinistry(

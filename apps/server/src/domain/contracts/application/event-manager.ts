@@ -84,6 +84,10 @@ export interface ScheduleBuilderVolunteerOption {
   id: VolunteerId;
   name: string;
   systemRole: SystemRole;
+  /** Roles this member is qualified to fill, including global roles. */
+  qualifiedRoleIds: string[];
+  /** Every team this member belongs to within the ministry. Flat, no primary. */
+  teamIds: string[];
 }
 
 export interface ScheduleBuilderRoleOption {
@@ -97,7 +101,12 @@ export interface ScheduleBuilderData {
   availability: Availability[];
   volunteers: ScheduleBuilderVolunteerOption[];
   roles: ScheduleBuilderRoleOption[];
-  callerTeamId: string | null;
+  /**
+   * Teams the calling sub-leader may schedule for, or `null` when the caller is
+   * a ministry leader and therefore unrestricted. A sub-leader can lead more
+   * than one team, so this is a list.
+   */
+  callerTeamIds: string[] | null;
 }
 
 export interface GetScheduleBuilderDataInput {

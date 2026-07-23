@@ -16,6 +16,7 @@
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "node --env-file=../../.env --import tsx/esm --watch src/main/server.ts",
     "start": "bun run dist/index.mjs",
+    "export:openapi": "bun --env-file=../../.env run src/scripts/export-openapi.ts",
     "seed:dev-users": "bun --env-file=../../.env run src/scripts/seed-dev-users.ts",
     "seed:e2e": "bun --env-file=../../.env run src/test-support/e2e-seed.ts",
     "test": "bun --env-file=../../.env run vitest run"

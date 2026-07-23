@@ -11,7 +11,8 @@ export type HardConstraintReason =
 export type SoftConflictType =
   | 'UNAVAILABLE'
   | 'DOUBLE_BOOKED'
-  | 'FAIRNESS_EXCEEDED';
+  | 'FAIRNESS_EXCEEDED'
+  | 'NOT_QUALIFIED';
 
 // --- Conflict Issue (single detected soft conflict) ---
 export type ConflictIssue = {

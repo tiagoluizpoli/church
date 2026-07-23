@@ -71,9 +71,13 @@ export class DbEventManager implements IEventManager {
         'Volunteer does not have leader or sub-leader privileges',
       );
     }
-    const callerTeamId =
+    /**
+     * Sub-leaders only see members of the teams they lead; leaders see the whole
+     * ministry. A sub-leader may lead several teams, so this is a set.
+     */
+    const callerTeamIds =
       callerMembership.systemRole === 'sub_leader'
-        ? callerMembership.teamId
+        ? new Set(callerMembership.teamIds)
         : null;
 
     const [slots, rawAssignments, ministryVolunteers, roles] =
@@ -87,18 +91,16 @@ export class DbEventManager implements IEventManager {
       memberships
         .filter(
           (membership) =>
-            callerTeamId == null || membership.teamId === callerTeamId,
+            callerTeamIds == null ||
+            membership.teamIds.some((teamId) => callerTeamIds.has(teamId)),
         )
         .map((membership) => membership.volunteerId),
     );
     const rawVolunteers = ministryVolunteers.filter((volunteer) =>
       allowedVolunteerIds.has(volunteer.id),
     );
-    const systemRoleByVolunteerId = new Map(
-      memberships.map((membership) => [
-        membership.volunteerId,
-        membership.systemRole,
-      ]),
+    const membershipByVolunteerId = new Map(
+      memberships.map((membership) => [membership.volunteerId, membership]),
     );
 
     const allVolunteerIds = rawVolunteers.map((v) => v.id);
@@ -114,13 +116,26 @@ export class DbEventManager implements IEventManager {
       events: [{ event, slots }],
       assignments: rawAssignments,
       availability: rawAvailability,
-      volunteers: rawVolunteers.map((v) => ({
-        id: v.id,
-        name: (v.name ?? v.id) as string,
-        systemRole: systemRoleByVolunteerId.get(v.id) ?? 'volunteer',
-      })),
+      volunteers: rawVolunteers.map((v) => {
+        const membership = membershipByVolunteerId.get(v.id);
+        return {
+          id: v.id,
+          name: (v.name ?? v.id) as string,
+          systemRole: membership?.systemRole ?? 'volunteer',
+          qualifiedRoleIds: membership?.qualifiedRoleIds ?? [],
+          /**
+           * Narrowed to the caller's own teams. A sub-leader already only sees
+           * members who share a team with them, but a member may also belong to
+           * teams the sub-leader does not lead — those memberships are outside
+           * the caller's scope and must not travel in the payload.
+           */
+          teamIds: (membership?.teamIds ?? []).filter(
+            (teamId) => callerTeamIds == null || callerTeamIds.has(teamId),
+          ),
+        };
+      }),
       roles: roles.map((role) => ({ id: role.id, name: role.name })),
-      callerTeamId,
+      callerTeamIds: callerTeamIds == null ? null : [...callerTeamIds],
     };
   }
 

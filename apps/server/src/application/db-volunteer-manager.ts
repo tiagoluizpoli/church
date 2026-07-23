@@ -57,6 +57,7 @@ import type {
   AssignmentStatus,
 } from '../domain/entities/assignment';
 import type { Availability } from '../domain/entities/availability';
+import type { SlotRequirement } from '../domain/entities/slot-requirement';
 import type { TimeSlot } from '../domain/entities/time-slot';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { AvailabilityOverlapError } from '../domain/errors/availability-overlap';
@@ -94,6 +95,73 @@ interface DashboardAssignmentGroupDraft {
   ministryName: string;
   eventStart: string;
   items: DashboardAssignmentItem[];
+}
+
+interface ClaimShiftCoverageInput {
+  shiftRequirements: SlotRequirement[];
+  shiftAssignments: Assignment[];
+  coversRequirementTeam: (
+    volunteerId: string,
+    requirementTeamId: string | null,
+  ) => boolean;
+}
+
+interface ShiftCoverageClaims {
+  /** Assignment id -> the single team its assignment was claimed against (or null for a team-less requirement). */
+  assignmentTeamId: Map<string, string | null>;
+  /** Requirement id -> how many of its requiredCount slots this shift's assignments actually filled. */
+  requirementFilledCount: Map<string, number>;
+}
+
+/**
+ * Resolves, per shift, which single requirement each assignment fills.
+ *
+ * With multi-team membership a volunteer's one assignment can satisfy more
+ * than one team-scoped requirement for the same role — e.g. a volunteer who
+ * belongs to both Team A and Team B could naively "cover" both an
+ * A-scoped and a B-scoped requirement for the same role even though only
+ * one physical assignment exists. This performs a deterministic greedy
+ * claim so each assignment is consumed by at most one requirement: more
+ * specific (team-scoped) requirements claim eligible assignments before
+ * team-less ones, and once an assignment is claimed it is removed from the
+ * pool for every other requirement.
+ */
+function claimShiftCoverage(
+  input: ClaimShiftCoverageInput,
+): ShiftCoverageClaims {
+  const { shiftRequirements, shiftAssignments, coversRequirementTeam } = input;
+  const claimedAssignmentIds = new Set<string>();
+  const assignmentTeamId = new Map<string, string | null>();
+  const requirementFilledCount = new Map<string, number>();
+
+  const orderedRequirements = [...shiftRequirements].sort((a, b) => {
+    const aIsTeamScoped = a.teamId != null ? 1 : 0;
+    const bIsTeamScoped = b.teamId != null ? 1 : 0;
+    if (aIsTeamScoped !== bIsTeamScoped) return bIsTeamScoped - aIsTeamScoped;
+    return (a.id as string).localeCompare(b.id as string);
+  });
+
+  for (const requirement of orderedRequirements) {
+    const requirementTeamId =
+      (requirement.teamId as string | undefined) ?? null;
+    const eligibleAssignments = shiftAssignments.filter(
+      (assignment) =>
+        assignment.roleId === requirement.roleId &&
+        !claimedAssignmentIds.has(assignment.id as string) &&
+        coversRequirementTeam(
+          assignment.volunteerId as string,
+          requirementTeamId,
+        ),
+    );
+    const claimed = eligibleAssignments.slice(0, requirement.requiredCount);
+    for (const assignment of claimed) {
+      claimedAssignmentIds.add(assignment.id as string);
+      assignmentTeamId.set(assignment.id as string, requirementTeamId);
+    }
+    requirementFilledCount.set(requirement.id as string, claimed.length);
+  }
+
+  return { assignmentTeamId, requirementFilledCount };
 }
 
 function slotKey(startTime: Date, endTime: Date): string {
@@ -538,9 +606,20 @@ export class DbVolunteerManager implements IVolunteerManager {
     const membershipTeams = new Map(
       memberships.map((membership) => [
         membership.volunteerId as string,
-        membership.teamId,
+        new Set(membership.teamIds),
       ]),
     );
+    /**
+     * A volunteer covers a requirement when they can fill its role and — only
+     * when the requirement names a team — belong to that team. Team-less
+     * requirements are open to every member.
+     */
+    const coversRequirementTeam = (
+      volunteerId: string,
+      requirementTeamId: string | null,
+    ): boolean =>
+      requirementTeamId == null ||
+      (membershipTeams.get(volunteerId)?.has(requirementTeamId) ?? false);
 
     return {
       ministryId: ministry.id as string,
@@ -557,9 +636,24 @@ export class DbVolunteerManager implements IVolunteerManager {
             const shiftRequirements = requirements.filter(
               (requirement) => requirement.shiftId === shift.id,
             );
+            /**
+             * With multi-team membership one assignment can satisfy more than
+             * one team-scoped requirement's coverage check, so requirements
+             * are matched to assignments via a single deterministic claim
+             * pass instead of independent per-requirement lookups — this is
+             * what keeps a single assignment from being displayed as
+             * fulfilling (and being counted against) two requirements at
+             * once.
+             */
+            const { assignmentTeamId, requirementFilledCount } =
+              claimShiftCoverage({
+                shiftRequirements,
+                shiftAssignments,
+                coversRequirementTeam,
+              });
             const assignmentRows = shiftAssignments.map((assignment) => {
               const teamId =
-                membershipTeams.get(assignment.volunteerId as string) ?? null;
+                assignmentTeamId.get(assignment.id as string) ?? null;
               return {
                 slotId: shift.timeSlotId as string,
                 slotLabel: scheduleShiftLabel(shift),
@@ -575,18 +669,11 @@ export class DbVolunteerManager implements IVolunteerManager {
               };
             });
             const openRows = shiftRequirements.flatMap((requirement) => {
-              const assignedCount = shiftAssignments.filter(
-                (assignment) =>
-                  assignment.roleId === requirement.roleId &&
-                  (membershipTeams.get(assignment.volunteerId as string) ??
-                    null) === (requirement.teamId ?? null),
-              ).length;
+              const filledCount =
+                requirementFilledCount.get(requirement.id as string) ?? 0;
               return Array.from(
                 {
-                  length: Math.max(
-                    0,
-                    requirement.requiredCount - assignedCount,
-                  ),
+                  length: Math.max(0, requirement.requiredCount - filledCount),
                 },
                 () => ({
                   slotId: shift.timeSlotId as string,

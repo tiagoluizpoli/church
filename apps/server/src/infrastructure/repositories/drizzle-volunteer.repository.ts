@@ -3,11 +3,12 @@ import {
   churchAdmin,
   ministry,
   ministryVolunteer,
-  role,
+  ministryVolunteerRole,
+  ministryVolunteerTeam,
   user,
   volunteer,
 } from '@church/db';
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryId,
@@ -128,29 +129,46 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     return row != null;
   }
 
+  /**
+   * True when the volunteer holds an explicit qualification for the role in at
+   * least one of their active memberships. Ministry membership alone is not
+   * qualification.
+   */
   async hasRoleQualification(
     churchId: ChurchId,
     volunteerId: VolunteerId,
+    ministryId: MinistryId,
     roleId: RoleId,
     tx?: TransactionContext,
   ): Promise<boolean> {
-    // A volunteer qualifies for a role if they are an active member of the ministry that owns that role.
     const db = getClient(this.db, tx);
     const [row] = await db
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
-      .innerJoin(role, eq(role.ministryId, ministryVolunteer.ministryId))
+      .select({ id: ministryVolunteerRole.id })
+      .from(ministryVolunteerRole)
+      .innerJoin(
+        ministryVolunteer,
+        and(
+          eq(ministryVolunteer.id, ministryVolunteerRole.ministryVolunteerId),
+          eq(ministryVolunteer.volunteerId, volunteerId),
+          eq(ministryVolunteer.ministryId, ministryId),
+          eq(ministryVolunteer.status, 'active'),
+        ),
+      )
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
-          eq(role.id, roleId),
+          eq(ministryVolunteerRole.roleId, roleId),
+          withChurchIsolation(ministryVolunteerRole, churchId),
         ),
-      );
+      )
+      .limit(1);
     return row != null;
   }
 
+  /**
+   * Members of the ministry explicitly qualified for the role. Leaders and
+   * sub-leaders are included: `systemRole` governs who may edit a cycle, not who
+   * may serve in it.
+   */
   async listQualifiedForRole(
     churchId: ChurchId,
     ministryId: MinistryId,
@@ -167,12 +185,14 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryVolunteer.volunteerId, volunteer.id),
           eq(ministryVolunteer.ministryId, ministryId),
           eq(ministryVolunteer.status, 'active'),
-          ne(ministryVolunteer.systemRole, 'leader'),
         ),
       )
       .innerJoin(
-        role,
-        and(eq(role.id, roleId), eq(role.ministryId, ministryId)),
+        ministryVolunteerRole,
+        and(
+          eq(ministryVolunteerRole.ministryVolunteerId, ministryVolunteer.id),
+          eq(ministryVolunteerRole.roleId, roleId),
+        ),
       )
       .innerJoin(user, eq(user.id, volunteer.userId))
       .where(withChurchIsolation(volunteer, churchId));
@@ -306,24 +326,74 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     tx?: TransactionContext,
   ): Promise<MinistryMembership[]> {
     const db = getClient(this.db, tx);
-    const rows = await db
-      .select({
-        volunteerId: ministryVolunteer.volunteerId,
-        teamId: ministryVolunteer.teamId,
-        systemRole: ministryVolunteer.systemRole,
-      })
-      .from(ministryVolunteer)
-      .where(
-        and(
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
-        ),
-      );
+    const membershipScope = and(
+      eq(ministryVolunteer.ministryId, ministryId),
+      eq(ministryVolunteer.churchId, churchId),
+      eq(ministryVolunteer.status, 'active'),
+    );
+
+    const [rows, teamRows, roleRows] = await Promise.all([
+      db
+        .select({
+          id: ministryVolunteer.id,
+          volunteerId: ministryVolunteer.volunteerId,
+          systemRole: ministryVolunteer.systemRole,
+        })
+        .from(ministryVolunteer)
+        .where(membershipScope),
+      db
+        .select({
+          membershipId: ministryVolunteerTeam.ministryVolunteerId,
+          teamId: ministryVolunteerTeam.teamId,
+        })
+        .from(ministryVolunteerTeam)
+        .innerJoin(
+          ministryVolunteer,
+          eq(ministryVolunteer.id, ministryVolunteerTeam.ministryVolunteerId),
+        )
+        .where(membershipScope),
+      db
+        .select({
+          membershipId: ministryVolunteerRole.ministryVolunteerId,
+          roleId: ministryVolunteerRole.roleId,
+        })
+        .from(ministryVolunteerRole)
+        .innerJoin(
+          ministryVolunteer,
+          eq(ministryVolunteer.id, ministryVolunteerRole.ministryVolunteerId),
+        )
+        .where(membershipScope),
+    ]);
+
+    const teamIdsByMembership = groupByMembership(teamRows, (r) => r.teamId);
+    const roleIdsByMembership = groupByMembership(roleRows, (r) => r.roleId);
+
     return rows.map((r) => ({
       volunteerId: r.volunteerId as VolunteerId,
-      teamId: r.teamId,
+      teamIds: teamIdsByMembership.get(r.id) ?? [],
+      qualifiedRoleIds: roleIdsByMembership.get(r.id) ?? [],
       systemRole: r.systemRole as MinistrySystemRole,
     }));
   }
+}
+
+interface MembershipScopedRow {
+  membershipId: string;
+}
+
+/** Collect junction-table rows into a `membershipId -> values` lookup. */
+function groupByMembership<TRow extends MembershipScopedRow>(
+  rows: TRow[],
+  select: (row: TRow) => string,
+): Map<string, string[]> {
+  const grouped = new Map<string, string[]>();
+  for (const row of rows) {
+    const existing = grouped.get(row.membershipId);
+    if (existing) {
+      existing.push(select(row));
+      continue;
+    }
+    grouped.set(row.membershipId, [select(row)]);
+  }
+  return grouped;
 }

@@ -11,6 +11,8 @@ import {
   ministry,
   ministryParticipation,
   ministryVolunteer,
+  ministryVolunteerRole,
+  ministryVolunteerTeam,
   participationSlotInclusion,
   planningCycle,
   role,
@@ -92,6 +94,17 @@ export const E2E_IDS = {
   careEvent: 'e2e66666-6666-6666-6666-666666666665',
   careSlot: 'e2e77777-7777-7777-7777-777777777775',
   careAssignment: 'e2e99999-9999-9999-9999-999999999992',
+  // US4 owns its own cycle: publish is cycle-wide, so a publishing spec can't
+  // share one without other specs moving its participation states.
+  us4PlanningCycle: 'e2e21111-2222-2222-2222-222222222222',
+  us4Event: 'e2e66666-6666-6666-6666-666666666666',
+  us4Slot: 'e2e77777-7777-7777-7777-777777777776',
+  us4Participation: 'e2e61111-1111-1111-1111-111111111117',
+  us4CareParticipation: 'e2e61111-1111-1111-1111-111111111118',
+  us4Shift: 'e2e71111-1111-1111-1111-111111111117',
+  us4CareShift: 'e2e71111-1111-1111-1111-111111111118',
+  us4UsherRequirement: 'e2e88888-8888-8888-8888-888888888888',
+  us4CareRequirement: 'e2e88888-8888-8888-8888-888888888889',
   // Second tenant — used only by the cross-cutting church-isolation spec
   // (DL4-X1). Deliberately minimal: one church, one admin, one locked cycle.
   churchB: 'e2ebbbbb-1111-1111-1111-111111111111',
@@ -166,6 +179,32 @@ const POOL_VOLUNTEERS = [
   },
 ] as const;
 
+/** Stable membership id for the i-th pool volunteer, shared by both inserts. */
+function poolMembershipId(index: number): string {
+  return `e2eccccc-cccc-cccc-cccc-cccccccccc0${index + 2}`;
+}
+
+/**
+ * A ministry member qualified for no role at all. Exists so a spec can prove
+ * that membership alone never makes someone a candidate — with every other
+ * member fully qualified, an eligibility bug would be invisible.
+ */
+export const UNQUALIFIED_VOLUNTEER = {
+  id: 'e2e44444-4444-4444-4444-4444444444a8',
+  userId: 'e2e-unqualified-user',
+  name: 'Ursula Unqualified',
+  email: 'ursula@e2e.test',
+  membershipId: 'e2eccccc-cccc-cccc-cccc-cccccccccca8',
+} as const;
+
+/** Every membership in `E2E_IDS.ministry`: the three named ones plus the pool. */
+const MINISTRY_MEMBERSHIP_IDS = [
+  'e2eccccc-cccc-cccc-cccc-ccccccccccc1',
+  'e2eccccc-cccc-cccc-cccc-cccccccccca6',
+  'e2eccccc-cccc-cccc-cccc-cccccccccca7',
+  ...POOL_VOLUNTEERS.map((_, i) => poolMembershipId(i)),
+] as const;
+
 function makeDb() {
   const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
   return { pool, db: drizzle(pool, { schema }) };
@@ -190,7 +229,7 @@ export async function seedE2e({
     await db
       .insert(user)
       .values(
-        POOL_VOLUNTEERS.map((poolVolunteer) => ({
+        [...POOL_VOLUNTEERS, UNQUALIFIED_VOLUNTEER].map((poolVolunteer) => ({
           id: poolVolunteer.userId,
           name: poolVolunteer.name,
           email: poolVolunteer.email,
@@ -216,14 +255,26 @@ export async function seedE2e({
 
     await db
       .insert(planningCycle)
-      .values({
-        id: E2E_IDS.planningCycle,
-        churchId: E2E_IDS.church,
-        name: 'E2E December cycle',
-        startDate: new Date('2026-12-01T00:00:00Z'),
-        endDate: new Date('2027-01-01T00:00:00Z'),
-        state: 'locked',
-      })
+      .values([
+        {
+          id: E2E_IDS.planningCycle,
+          churchId: E2E_IDS.church,
+          name: 'E2E December cycle',
+          startDate: new Date('2026-12-01T00:00:00Z'),
+          endDate: new Date('2027-01-01T00:00:00Z'),
+          state: 'locked',
+        },
+        {
+          // US4 only. Range avoids the December cycle (no overlap) and the
+          // year-2400 cycles the create-cycle specs generate.
+          id: E2E_IDS.us4PlanningCycle,
+          churchId: E2E_IDS.church,
+          name: 'E2E US4 publish cycle',
+          startDate: new Date('2027-02-01T00:00:00Z'),
+          endDate: new Date('2027-03-01T00:00:00Z'),
+          state: 'locked',
+        },
+      ])
       .onConflictDoNothing();
 
     // Second tenant (DL4-X1 church isolation, cross-cutting spec only).
@@ -402,7 +453,7 @@ export async function seedE2e({
     await db
       .insert(volunteer)
       .values(
-        POOL_VOLUNTEERS.map((v) => ({
+        [...POOL_VOLUNTEERS, UNQUALIFIED_VOLUNTEER].map((v) => ({
           id: v.id,
           churchId: E2E_IDS.church,
           userId: v.userId,
@@ -427,18 +478,16 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           volunteerId: leaderVolunteerId,
           ministryId: E2E_IDS.ministryCare,
-          teamId: E2E_IDS.careTeam,
           systemRole: 'volunteer',
           status: 'active',
         },
         {
-          // Sub-leader is scoped to team1.
+          // Sub-leader is scoped to team1 (see ministryVolunteerTeam below).
           id: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
           churchId: E2E_IDS.church,
           volunteerId: subLeaderVolunteerId,
           ministryId: E2E_IDS.ministry,
           systemRole: 'sub_leader',
-          teamId: E2E_IDS.team1,
           status: 'active',
         },
         {
@@ -450,19 +499,85 @@ export async function seedE2e({
           status: 'active',
         },
         ...POOL_VOLUNTEERS.map((v, i) => ({
-          id: `e2eccccc-cccc-cccc-cccc-cccccccccc0${i + 2}`,
+          id: poolMembershipId(i),
           churchId: E2E_IDS.church,
           volunteerId: v.id,
           ministryId: E2E_IDS.ministry,
           systemRole: 'volunteer' as const,
-          teamId: v.teamId ?? null,
           status: 'active' as const,
         })),
+        {
+          id: UNQUALIFIED_VOLUNTEER.membershipId,
+          churchId: E2E_IDS.church,
+          volunteerId: UNQUALIFIED_VOLUNTEER.id,
+          ministryId: E2E_IDS.ministry,
+          systemRole: 'volunteer' as const,
+          status: 'active' as const,
+        },
       ])
       .onConflictDoUpdate({
         target: [ministryVolunteer.id],
-        set: { teamId: ministryVolunteer.teamId },
+        set: { systemRole: ministryVolunteer.systemRole },
       });
+
+    await db
+      .insert(ministryVolunteerTeam)
+      .values([
+        {
+          churchId: E2E_IDS.church,
+          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          teamId: E2E_IDS.careTeam,
+        },
+        {
+          churchId: E2E_IDS.church,
+          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
+          teamId: E2E_IDS.team1,
+        },
+        ...POOL_VOLUNTEERS.flatMap((v, i) =>
+          v.teamId
+            ? [
+                {
+                  churchId: E2E_IDS.church,
+                  ministryVolunteerId: poolMembershipId(i),
+                  teamId: v.teamId,
+                },
+              ]
+            : [],
+        ),
+        // In team1, so she is inside the sub-leader's scope: her absence from
+        // the candidate list can only be qualification, never team scoping.
+        {
+          churchId: E2E_IDS.church,
+          ministryVolunteerId: UNQUALIFIED_VOLUNTEER.membershipId,
+          teamId: E2E_IDS.team1,
+        },
+      ])
+      .onConflictDoNothing();
+
+    /**
+     * Every membership is qualified for every role in its own ministry.
+     * Unlike the dev seed, coverage here is deliberately total: these specs
+     * assert availability conflicts, sub-leader scoping and the override flow,
+     * none of which are about qualification. A partial spread would fail them
+     * for a reason they are not testing.
+     */
+    await db
+      .insert(ministryVolunteerRole)
+      .values([
+        ...MINISTRY_MEMBERSHIP_IDS.flatMap((membershipId) =>
+          [E2E_IDS.roleUsher, E2E_IDS.roleGreeter].map((roleId) => ({
+            churchId: E2E_IDS.church,
+            ministryVolunteerId: membershipId,
+            roleId,
+          })),
+        ),
+        {
+          churchId: E2E_IDS.church,
+          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          roleId: E2E_IDS.roleCareHost,
+        },
+      ])
+      .onConflictDoNothing();
 
     await db
       .insert(event)
@@ -517,6 +632,16 @@ export async function seedE2e({
           status: 'scheduled',
           eventType: 'hourly',
         },
+        {
+          id: E2E_IDS.us4Event,
+          churchId: E2E_IDS.church,
+          planningCycleId: E2E_IDS.us4PlanningCycle,
+          title: 'E2E US4 Publish Service',
+          startDate: new Date('2027-02-07T09:00:00Z'),
+          endDate: new Date('2027-02-07T11:00:00Z'),
+          status: 'draft',
+          eventType: 'hourly',
+        },
       ])
       .onConflictDoNothing();
 
@@ -540,6 +665,22 @@ export async function seedE2e({
           id: US4_SHARED_CARE_PARTICIPATION_ID,
           churchId: E2E_IDS.church,
           eventId: E2E_IDS.us6Event,
+          ministryId: E2E_IDS.ministryCare,
+          state: 'availability_fired' as const,
+        },
+        // Both ministries start equal on the US4 event — the isolation
+        // assertion then turns on the publish alone.
+        {
+          id: E2E_IDS.us4Participation,
+          churchId: E2E_IDS.church,
+          eventId: E2E_IDS.us4Event,
+          ministryId: E2E_IDS.ministry,
+          state: 'availability_fired' as const,
+        },
+        {
+          id: E2E_IDS.us4CareParticipation,
+          churchId: E2E_IDS.church,
+          eventId: E2E_IDS.us4Event,
           ministryId: E2E_IDS.ministryCare,
           state: 'availability_fired' as const,
         },
@@ -589,6 +730,14 @@ export async function seedE2e({
           endTime: new Date('2026-12-24T11:00:00Z'),
           label: 'Care Check-In',
         },
+        {
+          id: E2E_IDS.us4Slot,
+          churchId: E2E_IDS.church,
+          eventId: E2E_IDS.us4Event,
+          startTime: new Date('2027-02-07T09:00:00Z'),
+          endTime: new Date('2027-02-07T11:00:00Z'),
+          label: 'US4 Publish Service',
+        },
       ])
       .onConflictDoNothing();
 
@@ -606,6 +755,16 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           participationId: US4_SHARED_CARE_PARTICIPATION_ID,
           timeSlotId: E2E_IDS.us6Slot,
+        },
+        {
+          churchId: E2E_IDS.church,
+          participationId: E2E_IDS.us4Participation,
+          timeSlotId: E2E_IDS.us4Slot,
+        },
+        {
+          churchId: E2E_IDS.church,
+          participationId: E2E_IDS.us4CareParticipation,
+          timeSlotId: E2E_IDS.us4Slot,
         },
       ])
       .onConflictDoNothing();
@@ -660,6 +819,22 @@ export async function seedE2e({
           timeSlotId: E2E_IDS.us6Slot,
           startTime: new Date('2026-12-28T09:00:00Z'),
           endTime: new Date('2026-12-28T11:00:00Z'),
+        },
+        {
+          id: E2E_IDS.us4Shift,
+          churchId: E2E_IDS.church,
+          participationId: E2E_IDS.us4Participation,
+          timeSlotId: E2E_IDS.us4Slot,
+          startTime: new Date('2027-02-07T09:00:00Z'),
+          endTime: new Date('2027-02-07T11:00:00Z'),
+        },
+        {
+          id: E2E_IDS.us4CareShift,
+          churchId: E2E_IDS.church,
+          participationId: E2E_IDS.us4CareParticipation,
+          timeSlotId: E2E_IDS.us4Slot,
+          startTime: new Date('2027-02-07T09:00:00Z'),
+          endTime: new Date('2027-02-07T11:00:00Z'),
         },
       ])
       .onConflictDoNothing();
@@ -727,6 +902,24 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           participationId: US4_SHARED_CARE_PARTICIPATION_ID,
           shiftId: US4_SHARED_CARE_SHIFT_ID,
+          roleId: E2E_IDS.roleCareHost,
+          requiredCount: 1,
+          teamId: E2E_IDS.careTeam,
+        },
+        // 2 Ushers so the spec publishes with one seat open (the below-full path).
+        {
+          id: E2E_IDS.us4UsherRequirement,
+          churchId: E2E_IDS.church,
+          participationId: E2E_IDS.us4Participation,
+          shiftId: E2E_IDS.us4Shift,
+          roleId: E2E_IDS.roleUsher,
+          requiredCount: 2,
+        },
+        {
+          id: E2E_IDS.us4CareRequirement,
+          churchId: E2E_IDS.church,
+          participationId: E2E_IDS.us4CareParticipation,
+          shiftId: E2E_IDS.us4CareShift,
           roleId: E2E_IDS.roleCareHost,
           requiredCount: 1,
           teamId: E2E_IDS.careTeam,
@@ -830,6 +1023,7 @@ export async function cleanupE2e({
     // cascade — remove them too.
     const cleanupUserIds = [
       ...POOL_VOLUNTEERS.map((v) => v.userId),
+      UNQUALIFIED_VOLUNTEER.userId,
       leaderUserId,
       subLeaderUserId,
       volunteerUserId,

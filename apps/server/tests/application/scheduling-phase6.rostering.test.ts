@@ -6,6 +6,8 @@ import {
   ministry,
   ministryParticipation,
   ministryVolunteer,
+  ministryVolunteerRole,
+  ministryVolunteerTeam,
   role,
   shift as shiftTable,
   slotRequirement,
@@ -61,6 +63,12 @@ interface Phase6Managers {
   assignmentRepo: DrizzleAssignmentRepository;
   participationRepo: DrizzleMinistryParticipationRepository;
   notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
+}
+
+interface SeedRoleQualificationInput {
+  churchId: string;
+  membershipId: string;
+  roleId: string;
 }
 
 function createPhase6Managers(): Phase6Managers {
@@ -210,17 +218,34 @@ async function seedVolunteerMembership(input: {
       churchId: input.churchId,
       ministryId: input.ministryId,
       volunteerId,
-      teamId: input.teamId,
       systemRole: input.systemRole ?? 'volunteer',
       status: 'active',
     })
     .returning();
+
+  if (membership && input.teamId) {
+    await schedulingTestDb.insert(ministryVolunteerTeam).values({
+      churchId: input.churchId,
+      ministryVolunteerId: membership.id,
+      teamId: input.teamId,
+    });
+  }
 
   if (!volunteerRow || !membership) {
     throw new Error('Phase 6 volunteer membership seed failed');
   }
 
   return { volunteer: volunteerRow, membership };
+}
+
+async function seedRoleQualification(
+  input: SeedRoleQualificationInput,
+): Promise<void> {
+  await schedulingTestDb.insert(ministryVolunteerRole).values({
+    churchId: input.churchId,
+    ministryVolunteerId: input.membershipId,
+    roleId: input.roleId,
+  });
 }
 
 async function seedShift(input: {
@@ -423,6 +448,21 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       name: 'Alan Turing',
       email: 'alan-phase6@test.com',
     });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: ada.membership.id,
+      roleId: roleRow.id,
+    });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: grace.membership.id,
+      roleId: roleRow.id,
+    });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: alan.membership.id,
+      roleId: roleRow.id,
+    });
 
     await seedAssignment({
       churchId: seed.churchAId,
@@ -533,6 +573,16 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       name: 'Overlap Volunteer',
       email: 'overlap-phase6@test.com',
     });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: firstVolunteer.membership.id,
+      roleId: roleRow.id,
+    });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: overlapVolunteer.membership.id,
+      roleId: roleRow.id,
+    });
 
     const managers = createPhase6Managers();
     await managers.participationRepo.updateState({
@@ -606,6 +656,11 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       ministryId: seed.ministryAId,
       name: 'Hard Override',
       email: 'hard-phase6@test.com',
+    });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: hardCandidate.membership.id,
+      roleId: roleRow.id,
     });
     await seedAssignment({
       churchId: seed.churchAId,
@@ -966,5 +1021,136 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
         }),
       ]),
     );
+  });
+
+  it('DL2-DS-02 counts a single assignment once when the volunteer belongs to multiple teams sharing a role slot', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'December 2026',
+      startDate: new Date('2026-12-01T00:00:00.000Z'),
+      endDate: new Date('2027-01-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Multi-team-attributed service',
+      startDate: new Date('2026-12-06T09:00:00.000Z'),
+      endDate: new Date('2026-12-06T11:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const hostRole = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Host',
+    });
+    const alphaTeam = await seedTeam({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Alpha Team',
+    });
+    const betaTeam = await seedTeam({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Beta Team',
+    });
+    const viewer = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Viewer Volunteer',
+      email: 'viewer2-phase6@test.com',
+    });
+    const dualVolunteer = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Dual Volunteer',
+      email: 'dual-phase6@test.com',
+      teamId: alphaTeam.id,
+    });
+    // Second team membership for the same ministry membership row — this is
+    // the multi-team scenario introduced by ministry_volunteer_team.
+    await schedulingTestDb.insert(ministryVolunteerTeam).values({
+      churchId: seed.churchAId,
+      ministryVolunteerId: dualVolunteer.membership.id,
+      teamId: betaTeam.id,
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: new Date('2026-12-06T09:00:00.000Z'),
+      endTime: new Date('2026-12-06T10:00:00.000Z'),
+      label: 'Front doors',
+    });
+    await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: hostRole.id,
+      teamId: alphaTeam.id,
+      requiredCount: 1,
+    });
+    await seedRequirement({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      roleId: hostRole.id,
+      teamId: betaTeam.id,
+      requiredCount: 1,
+    });
+    await seedAssignment({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shift.id,
+      volunteerId: dualVolunteer.volunteer.id,
+      roleId: hostRole.id,
+      status: 'confirmed',
+    });
+
+    const managers = createPhase6Managers();
+    await managers.participationRepo.updateState({
+      churchId: ChurchId.from(seed.churchAId),
+      participationId: MinistryParticipationId.from(graph.participation.id),
+      state: 'published',
+    });
+
+    const schedule = await managers.volunteerManager.getMinistrySchedule({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+      volunteerId: VolunteerId.from(viewer.volunteer.id),
+    });
+    const rows = schedule.events[0]?.rows ?? [];
+
+    // One physical assignment can only satisfy ONE of the two team-scoped
+    // requirements. It must count once (one confirmed row, one still-open
+    // row for the other team) — never zero open rows (double counted) and
+    // never two confirmed rows (duplicated).
+    expect(rows).toHaveLength(2);
+
+    const confirmedRow = rows.find(
+      (row) => row.confirmationState === 'confirmed',
+    );
+    const openRow = rows.find((row) => row.confirmationState === 'open');
+
+    expect(confirmedRow).toEqual(
+      expect.objectContaining({
+        roleName: 'Host',
+        volunteerDisplayName: 'Dual V.',
+      }),
+    );
+    expect(openRow).toEqual(
+      expect.objectContaining({
+        roleName: 'Host',
+      }),
+    );
+    // The assignment is attributed to exactly one team, and the still-open
+    // slot is the *other* team — never the same team twice, never both
+    // filled, never both open.
+    expect([confirmedRow?.teamName, openRow?.teamName].sort()).toEqual([
+      'Alpha Team',
+      'Beta Team',
+    ]);
   });
 });

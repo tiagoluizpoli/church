@@ -1,5 +1,5 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
-import type { ChurchId, MinistryId, TeamId, VolunteerId } from '../branded-ids';
+import type { ChurchId, MinistryId, VolunteerId } from '../branded-ids';
 
 export type MinistryVolunteerId = BrandedId<'MinistryVolunteerId'>;
 
@@ -17,11 +17,15 @@ export const MINISTRY_VOLUNTEER_STATUS_OPTIONS = [
 export type MinistryVolunteerStatus =
   (typeof MINISTRY_VOLUNTEER_STATUS_OPTIONS)[number];
 
+/**
+ * Team membership lives in `ministry_volunteer_team` and role qualification in
+ * `ministry_volunteer_role` — both many-to-many, both read through the
+ * volunteer repository rather than carried on this entity.
+ */
 export interface MinistryVolunteerProps {
   churchId: ChurchId;
   volunteerId: VolunteerId;
   ministryId: MinistryId;
-  teamId?: TeamId;
   systemRole: SystemRole;
   status: MinistryVolunteerStatus;
   joinedAt: Date;
@@ -71,10 +75,6 @@ export class MinistryVolunteer extends Entity<
     return this._props.ministryId;
   }
 
-  get teamId(): TeamId | undefined {
-    return this._props.teamId;
-  }
-
   get systemRole(): SystemRole {
     return this._props.systemRole;
   }
@@ -89,16 +89,6 @@ export class MinistryVolunteer extends Entity<
 
   public promote(role: SystemRole): void {
     this._props.systemRole = role;
-    this._updatedAt = new Date();
-  }
-
-  public assignTeam(teamId: TeamId): void {
-    this._props.teamId = teamId;
-    this._updatedAt = new Date();
-  }
-
-  public removeTeam(): void {
-    this._props.teamId = undefined;
     this._updatedAt = new Date();
   }
 }

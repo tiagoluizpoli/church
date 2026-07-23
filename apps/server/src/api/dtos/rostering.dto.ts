@@ -5,8 +5,24 @@ import type {
 } from '../../domain/contracts/application/participation-manager';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 
+interface AssignmentWarningResponseInput {
+  type: 'UNAVAILABLE' | 'DOUBLE_BOOKED' | 'FAIRNESS_EXCEEDED' | 'NOT_QUALIFIED';
+  details: string;
+  conflictingId?: string;
+}
+
+interface AssignmentResultResponseInput {
+  assignment: Parameters<typeof assignmentMapper.toResponse>[0];
+  warnings: AssignmentWarningResponseInput[];
+}
+
 const assignmentWarningSchema = z.object({
-  type: z.enum(['UNAVAILABLE', 'DOUBLE_BOOKED', 'FAIRNESS_EXCEEDED']),
+  type: z.enum([
+    'UNAVAILABLE',
+    'DOUBLE_BOOKED',
+    'FAIRNESS_EXCEEDED',
+    'NOT_QUALIFIED',
+  ]),
   details: z.string(),
   conflictingId: z.string().optional(),
 });
@@ -17,6 +33,7 @@ export const eligibleVolunteerResponseSchema = z.object({
   isAvailable: z.boolean(),
   hasConflict: z.boolean(),
   lastServedAt: z.string().optional(),
+  qualifiedRoleIds: z.array(z.string()),
 });
 
 export const eligibleVolunteerListResponseSchema = z.object({
@@ -63,6 +80,7 @@ export const rosteringMapper = {
       isAvailable: volunteer.isAvailable,
       hasConflict: volunteer.hasConflict,
       lastServedAt: volunteer.lastServedAt?.toISOString(),
+      qualifiedRoleIds: volunteer.qualifiedRoleIds,
     };
   },
   eligibleVolunteerListToResponse(volunteers: EligibleVolunteerView[]) {
@@ -72,14 +90,7 @@ export const rosteringMapper = {
       ),
     };
   },
-  assignmentResultToResponse(result: {
-    assignment: Parameters<typeof assignmentMapper.toResponse>[0];
-    warnings: Array<{
-      type: 'UNAVAILABLE' | 'DOUBLE_BOOKED' | 'FAIRNESS_EXCEEDED';
-      details: string;
-      conflictingId?: string;
-    }>;
-  }) {
+  assignmentResultToResponse(result: AssignmentResultResponseInput) {
     return {
       assignment: assignmentMapper.toResponse(result.assignment),
       warnings: result.warnings,

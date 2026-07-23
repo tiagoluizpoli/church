@@ -3,19 +3,27 @@ import {
   assignmentAudit as assignmentAuditTable,
   assignment as assignmentTable,
   ministryParticipation,
+  ministryVolunteerRole as ministryVolunteerRoleTable,
+  ministryVolunteer as ministryVolunteerTable,
   role as roleTable,
   shift as shiftTable,
   slotRequirement as slotRequirementTable,
+  user as userTable,
+  volunteer as volunteerTable,
 } from '@church/db';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
 import {
   ChurchId,
   MinistryId,
   MinistryParticipationId,
   PlanningCycleId,
+  RoleId,
+  ShiftId,
   UserId,
+  VolunteerId,
 } from '../../src/domain/branded-ids';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
@@ -56,6 +64,22 @@ function createParticipationManager(): DbParticipationManager {
   );
 }
 
+function createAssignmentManager(): DbAssignmentManager {
+  const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
+  return new DbAssignmentManager(
+    new DrizzleAssignmentRepository(schedulingTestDb),
+    new DrizzleAssignmentAuditRepository(schedulingTestDb),
+    new DrizzleShiftRepository(schedulingTestDb),
+    new DrizzleMinistryParticipationRepository(schedulingTestDb),
+    new DrizzleMinistryRepository(schedulingTestDb),
+    new DrizzleVolunteerRepository(schedulingTestDb),
+    new DrizzleAvailabilityRepository(schedulingTestDb),
+    new DrizzlePlanningEventRepository(schedulingTestDb),
+    createNotificationServiceSpy(),
+    unitOfWork,
+  );
+}
+
 interface SeedShiftInput {
   churchId: string;
   participationId: string;
@@ -84,7 +108,9 @@ interface SeedRequirementInput {
   shiftId: string;
 }
 
-async function seedRoleRequirement(input: SeedRequirementInput): Promise<void> {
+async function seedRoleRequirement(
+  input: SeedRequirementInput,
+): Promise<string> {
   const roleId = randomUUID();
   await schedulingTestDb.insert(roleTable).values({
     id: roleId,
@@ -101,6 +127,86 @@ async function seedRoleRequirement(input: SeedRequirementInput): Promise<void> {
     roleId,
     requiredCount: 2,
   });
+  return roleId;
+}
+
+interface SeedQualificationInput {
+  churchId: string;
+  ministryId: string;
+  volunteerId: string;
+  roleId: string;
+}
+
+/** Grants a real `ministry_volunteer_role` row for the member's membership. */
+async function seedRoleQualification(
+  input: SeedQualificationInput,
+): Promise<void> {
+  const membership = await schedulingTestDb
+    .select({ id: ministryVolunteerTable.id })
+    .from(ministryVolunteerTable)
+    .where(
+      and(
+        eq(ministryVolunteerTable.churchId, input.churchId),
+        eq(ministryVolunteerTable.ministryId, input.ministryId),
+        eq(ministryVolunteerTable.volunteerId, input.volunteerId),
+      ),
+    );
+  const membershipId = membership[0]?.id;
+  if (!membershipId) {
+    throw new Error('No membership to qualify');
+  }
+  await schedulingTestDb.insert(ministryVolunteerRoleTable).values({
+    churchId: input.churchId,
+    ministryVolunteerId: membershipId,
+    roleId: input.roleId,
+  });
+}
+
+interface SeedUnqualifiedMemberInput {
+  churchId: string;
+  ministryId: string;
+  name: string;
+  email: string;
+}
+
+interface SeedUnqualifiedMemberResult {
+  volunteerId: string;
+}
+
+/**
+ * Seeds an active ministry member who holds no `ministry_volunteer_role`
+ * row at all — membership alone must not confer qualification for any role.
+ */
+async function seedUnqualifiedMember(
+  input: SeedUnqualifiedMemberInput,
+): Promise<SeedUnqualifiedMemberResult> {
+  const userId = randomUUID();
+  const volunteerId = randomUUID();
+
+  await schedulingTestDb.insert(userTable).values({
+    id: userId,
+    name: input.name,
+    email: input.email,
+    emailVerified: true,
+  });
+
+  await schedulingTestDb.insert(volunteerTable).values({
+    id: volunteerId,
+    churchId: input.churchId,
+    userId,
+    status: 'active',
+  });
+
+  await schedulingTestDb.insert(ministryVolunteerTable).values({
+    id: randomUUID(),
+    churchId: input.churchId,
+    ministryId: input.ministryId,
+    volunteerId,
+    systemRole: 'volunteer',
+    status: 'active',
+  });
+
+  return { volunteerId };
 }
 
 const CYCLE_START = new Date('2026-08-01T00:00:00.000Z');
@@ -165,6 +271,66 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     expect(view.roles).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Greeter' })]),
     );
+  });
+
+  it('carries each eligible volunteer\u2019s qualified role ids (023 phase 6)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Qualification Cycle',
+      startDate: CYCLE_START,
+      endDate: CYCLE_END,
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Sunday Service',
+      startDate: EVENT_START,
+      endDate: EVENT_END,
+    });
+    const shiftId = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: EVENT_START,
+      endTime: EVENT_END,
+    });
+    const roleId = await seedRoleRequirement({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      participationId: graph.participation.id,
+      shiftId,
+    });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      volunteerId: seed.adminVolunteerId,
+      roleId,
+    });
+
+    const manager = createParticipationManager();
+    const view = await manager.getCycleBuilderData({
+      churchId: ChurchId.from(seed.churchAId),
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+      userId: UserId.from(seed.adminUserId),
+    });
+
+    const shiftView = view.events
+      .flatMap((eventView) => eventView.slots)
+      .flatMap((slot) => slot.shifts)
+      .find((shift) => (shift.shift.id as string) === shiftId);
+    const eligible = shiftView?.eligibleVolunteers.find(
+      (volunteer) =>
+        (volunteer.volunteerId as string) === seed.adminVolunteerId,
+    );
+
+    // The member is only a candidate because of the qualification row, so the
+    // payload must also say which role earned them the place.
+    expect(eligible).toBeDefined();
+    expect(eligible?.qualifiedRoleIds).toEqual([roleId]);
   });
 
   it('returns the same builder shape for a published participation shift', async () => {
@@ -241,6 +407,91 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     });
 
     expect(view.events).toEqual([]);
+  });
+});
+
+describe('Ministry-scoped role qualification gating (H4 regression)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('excludes an unqualified ministry member from shift eligibility and flags their assignment as NOT_QUALIFIED', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Qualification Gate Cycle',
+      startDate: CYCLE_START,
+      endDate: CYCLE_END,
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Sunday Service',
+      startDate: EVENT_START,
+      endDate: EVENT_END,
+    });
+    const shiftId = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: EVENT_START,
+      endTime: EVENT_END,
+    });
+    const roleId = await seedRoleRequirement({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      participationId: graph.participation.id,
+      shiftId,
+    });
+
+    // Active ministry member with no `ministry_volunteer_role` row for
+    // `roleId` — membership alone must not confer candidacy.
+    const unqualified = await seedUnqualifiedMember({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Unqualified Member',
+      email: 'unqualified-h4@test.com',
+    });
+
+    const participationManager = createParticipationManager();
+    const view = await participationManager.getCycleBuilderData({
+      churchId: ChurchId.from(seed.churchAId),
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+      userId: UserId.from(seed.adminUserId),
+    });
+
+    const shiftView = view.events
+      .flatMap((eventView) => eventView.slots)
+      .flatMap((slot) => slot.shifts)
+      .find((shift) => (shift.shift.id as string) === shiftId);
+    expect(shiftView).toBeDefined();
+    expect(
+      shiftView?.eligibleVolunteers.some(
+        (volunteer) =>
+          (volunteer.volunteerId as string) === unqualified.volunteerId,
+      ),
+    ).toBe(false);
+
+    const assignmentManager = createAssignmentManager();
+    const result = await assignmentManager.createParticipationAssignment({
+      churchId: ChurchId.from(seed.churchAId),
+      shiftId: ShiftId.from(shiftId),
+      volunteerId: VolunteerId.from(unqualified.volunteerId),
+      roleId: RoleId.from(roleId),
+      actorId: UserId.from(seed.adminUserId),
+    });
+
+    // The gate is `hasRoleQualification`, ministry-scoped since the
+    // qualification-check bug fix — membership without an explicit role
+    // grant surfaces as a NOT_QUALIFIED warning on the assignment attempt.
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'NOT_QUALIFIED' }),
+      ]),
+    );
   });
 });
 

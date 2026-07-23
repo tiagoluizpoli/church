@@ -101,10 +101,12 @@ export const scheduleBuilderDataResponseSchema = z.object({
       id: z.string(),
       name: z.string(),
       systemRole: z.enum(['leader', 'sub_leader', 'volunteer']),
+      qualifiedRoleIds: z.array(z.string()),
+      teamIds: z.array(z.string()),
     }),
   ),
   roles: z.array(z.object({ id: z.string(), name: z.string() })),
-  callerTeamId: z.string().nullable(),
+  callerTeamIds: z.array(z.string()).nullable(),
 });
 
 function eventToResponse(ev: Event): EventResponse {
@@ -179,7 +181,7 @@ export const eventMapper = {
         id: role.id as string,
         name: role.name,
       })),
-      callerTeamId: data.callerTeamId,
+      callerTeamIds: data.callerTeamIds,
     };
   },
 };

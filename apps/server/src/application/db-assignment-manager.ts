@@ -235,6 +235,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         this.volunteerRepository.hasRoleQualification(
           input.churchId,
           input.volunteerId,
+          participation.ministryId,
           input.roleId,
           tx,
         ),
@@ -248,11 +249,18 @@ export class DbAssignmentManager implements IAssignmentManager {
       );
     }
 
+    const warnings: CreateParticipationAssignmentResult['warnings'] = [];
     if (!hasQualification) {
-      throw new HardConstraintError(
-        'NOT_QUALIFIED',
-        'Volunteer is not qualified for the requested role',
-      );
+      warnings.push({
+        type: 'NOT_QUALIFIED',
+        details: 'Volunteer is not qualified for the requested role',
+      });
+      if (ministry.enforcementType === 'hard' && !input.override?.reason) {
+        throw new HardConstraintError(
+          'NOT_QUALIFIED',
+          'Volunteer is not qualified for the requested role',
+        );
+      }
     }
 
     if (
@@ -283,7 +291,6 @@ export class DbAssignmentManager implements IAssignmentManager {
       ),
     ]);
 
-    const warnings = [];
     if (
       availabilityMarks.some(
         (mark) => (mark.shiftId as string) === (shift.id as string),

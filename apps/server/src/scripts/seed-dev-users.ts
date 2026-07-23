@@ -5,6 +5,8 @@ import {
   createDb,
   ministry,
   ministryVolunteer,
+  ministryVolunteerRole,
+  ministryVolunteerTeam,
   role,
   team,
   user,
@@ -34,30 +36,40 @@ const DEV_TEAM = {
 
 const DEV_ROLES = ['Coordinator', 'Support'] as const;
 
+/**
+ * Qualifications are spread deliberately rather than granted to everyone: the
+ * builder's candidate filtering is only observable when the qualified set is a
+ * strict subset of the roster. Local Volunteer is qualified for nothing, which
+ * is the only way to reach the empty-candidate and hard-block states by hand.
+ */
 const DEV_USERS = [
   {
     email: 'admin@local-dev.test',
     name: 'Local Admin',
     systemRole: 'leader' as const,
     isChurchAdmin: true,
+    qualifiedRoleNames: ['Coordinator', 'Support'],
   },
   {
     email: 'leader@local-dev.test',
     name: 'Local Leader',
     systemRole: 'leader' as const,
     isChurchAdmin: false,
+    qualifiedRoleNames: ['Coordinator'],
   },
   {
     email: 'subleader@local-dev.test',
     name: 'Local Sub Leader',
     systemRole: 'sub_leader' as const,
     isChurchAdmin: false,
+    qualifiedRoleNames: ['Support'],
   },
   {
     email: 'volunteer@local-dev.test',
     name: 'Local Volunteer',
     systemRole: 'volunteer' as const,
     isChurchAdmin: false,
+    qualifiedRoleNames: [],
   },
 ] as const;
 
@@ -285,13 +297,16 @@ async function ensureVolunteer(userId: string, churchId: string) {
   return createdVolunteer;
 }
 
-async function ensureMembership(input: {
+interface EnsureMembershipInput {
   churchId: string;
   volunteerId: string;
   ministryId: string;
-  teamId: string | null;
+  teamIds: string[];
+  roleIds: string[];
   systemRole: 'leader' | 'sub_leader' | 'volunteer';
-}) {
+}
+
+async function ensureMembership(input: EnsureMembershipInput) {
   const existingMembership = await db.query.ministryVolunteer.findFirst({
     where: and(
       eq(ministryVolunteer.churchId, input.churchId),
@@ -300,26 +315,91 @@ async function ensureMembership(input: {
     ),
   });
 
-  if (!existingMembership) {
-    await db.insert(ministryVolunteer).values({
+  const membershipId = existingMembership
+    ? existingMembership.id
+    : await insertMembership(input);
+
+  if (existingMembership) {
+    await db
+      .update(ministryVolunteer)
+      .set({ systemRole: input.systemRole, status: 'active' })
+      .where(eq(ministryVolunteer.id, membershipId));
+  }
+
+  await ensureMembershipTeams({
+    churchId: input.churchId,
+    membershipId,
+    teamIds: input.teamIds,
+  });
+
+  await ensureMembershipRoles({
+    churchId: input.churchId,
+    membershipId,
+    roleIds: input.roleIds,
+  });
+}
+
+async function insertMembership(input: EnsureMembershipInput) {
+  const [inserted] = await db
+    .insert(ministryVolunteer)
+    .values({
       churchId: input.churchId,
       volunteerId: input.volunteerId,
       ministryId: input.ministryId,
-      teamId: input.teamId,
-      systemRole: input.systemRole,
-      status: 'active',
-    });
-    return;
-  }
-
-  await db
-    .update(ministryVolunteer)
-    .set({
-      teamId: input.teamId,
       systemRole: input.systemRole,
       status: 'active',
     })
-    .where(eq(ministryVolunteer.id, existingMembership.id));
+    .returning();
+  if (!inserted) {
+    throw new Error('Failed to create ministry membership');
+  }
+  return inserted.id;
+}
+
+interface EnsureMembershipTeamsInput {
+  churchId: string;
+  membershipId: string;
+  teamIds: string[];
+}
+
+/** Replaces the membership's team rows so re-running the seed stays idempotent. */
+async function ensureMembershipTeams(input: EnsureMembershipTeamsInput) {
+  await db
+    .delete(ministryVolunteerTeam)
+    .where(eq(ministryVolunteerTeam.ministryVolunteerId, input.membershipId));
+
+  if (input.teamIds.length === 0) return;
+
+  await db.insert(ministryVolunteerTeam).values(
+    input.teamIds.map((teamId) => ({
+      churchId: input.churchId,
+      ministryVolunteerId: input.membershipId,
+      teamId,
+    })),
+  );
+}
+
+interface EnsureMembershipRolesInput {
+  churchId: string;
+  membershipId: string;
+  roleIds: string[];
+}
+
+/** Same delete-then-insert shape as the team rows, for the same reason. */
+async function ensureMembershipRoles(input: EnsureMembershipRolesInput) {
+  await db
+    .delete(ministryVolunteerRole)
+    .where(eq(ministryVolunteerRole.ministryVolunteerId, input.membershipId));
+
+  if (input.roleIds.length === 0) return;
+
+  await db.insert(ministryVolunteerRole).values(
+    input.roleIds.map((roleId) => ({
+      churchId: input.churchId,
+      ministryVolunteerId: input.membershipId,
+      roleId,
+    })),
+  );
 }
 
 async function ensureChurchAdmin(input: { churchId: string; userId: string }) {
@@ -364,7 +444,12 @@ export async function seedDevUsers() {
       churchId: localChurch.id,
       volunteerId: localVolunteer.id,
       ministryId: localMinistry.id,
-      teamId: devUser.systemRole === 'leader' ? null : localTeam.id,
+      teamIds: devUser.systemRole === 'leader' ? [] : [localTeam.id],
+      roleIds: localRoles
+        .filter((r) =>
+          (devUser.qualifiedRoleNames as readonly string[]).includes(r.name),
+        )
+        .map((r) => r.id),
       systemRole: devUser.systemRole,
     });
 

@@ -15,10 +15,20 @@ export interface VolunteerLeadership {
 
 export type MinistrySystemRole = 'leader' | 'sub_leader' | 'volunteer';
 
-/** A volunteer's membership within a single ministry (role + optional team). */
+/**
+ * A volunteer's membership within a single ministry.
+ *
+ * Teams and qualified roles are independent axes: a member may belong to
+ * several teams and be qualified for several roles, and eligibility for a slot
+ * composes the two ("qualified for the role AND — when the requirement names a
+ * team — a member of that team").
+ */
 export interface MinistryMembership {
   volunteerId: VolunteerId;
-  teamId: string | null;
+  /** Every team this member belongs to within the ministry. Flat, no primary. */
+  teamIds: string[];
+  /** Roles this member is qualified to fill, including global roles. */
+  qualifiedRoleIds: string[];
   systemRole: MinistrySystemRole;
 }
 
@@ -57,6 +67,7 @@ export interface VolunteerRepository {
   hasRoleQualification(
     churchId: ChurchId,
     volunteerId: VolunteerId,
+    ministryId: MinistryId,
     roleId: RoleId,
     tx?: TransactionContext,
   ): Promise<boolean>;
@@ -111,8 +122,8 @@ export interface VolunteerRepository {
   ): Promise<MinistryId[]>;
 
   /**
-   * List active memberships (volunteer id, team, system role) for a ministry.
-   * Used for sub-leader team scoping in the schedule builder.
+   * List active memberships (teams, qualified roles, system role) for a ministry.
+   * Used for sub-leader team scoping and candidate eligibility in the builder.
    */
   listMinistryMemberships(
     churchId: ChurchId,

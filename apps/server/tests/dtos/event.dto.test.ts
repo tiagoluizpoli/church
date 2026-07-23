@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { eventMapper } from '../../src/api/dtos/event.dto';
+import {
+  eventMapper,
+  scheduleBuilderDataResponseSchema,
+} from '../../src/api/dtos/event.dto';
 import { RoleId, VolunteerId } from '../../src/domain/branded-ids';
 import type { ScheduleBuilderData } from '../../src/domain/contracts/application/event-manager';
 import { Assignment } from '../../src/domain/entities/assignment';
@@ -183,18 +186,22 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
           id: VolunteerId.from('volunteer-1'),
           name: 'Alice',
           systemRole: 'leader',
+          qualifiedRoleIds: ['role-1', 'role-2'],
+          teamIds: ['team-1'],
         },
         {
           id: VolunteerId.from('volunteer-2'),
           name: 'Bob',
           systemRole: 'volunteer',
+          qualifiedRoleIds: [],
+          teamIds: [],
         },
       ],
       roles: [
         { id: RoleId.from('role-1'), name: 'Vocalist' },
         { id: RoleId.from('role-2'), name: 'Sound Tech' },
       ],
-      callerTeamId: 'team-1',
+      callerTeamIds: ['team-1'],
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);
@@ -273,26 +280,44 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     ]);
 
     expect(response.volunteers).toEqual([
-      { id: 'volunteer-1', name: 'Alice', systemRole: 'leader' },
-      { id: 'volunteer-2', name: 'Bob', systemRole: 'volunteer' },
+      {
+        id: 'volunteer-1',
+        name: 'Alice',
+        systemRole: 'leader',
+        qualifiedRoleIds: ['role-1', 'role-2'],
+        teamIds: ['team-1'],
+      },
+      {
+        id: 'volunteer-2',
+        name: 'Bob',
+        systemRole: 'volunteer',
+        qualifiedRoleIds: [],
+        teamIds: [],
+      },
     ]);
+
+    // The response must satisfy the published contract, not just the mapper's
+    // inferred shape — the generated client schema is derived from it.
+    expect(() =>
+      scheduleBuilderDataResponseSchema.parse(response),
+    ).not.toThrow();
 
     expect(response.roles).toEqual([
       { id: 'role-1', name: 'Vocalist' },
       { id: 'role-2', name: 'Sound Tech' },
     ]);
 
-    expect(response.callerTeamId).toBe('team-1');
+    expect(response.callerTeamIds).toEqual(['team-1']);
   });
 
-  it('maps an all-empty schedule builder payload with a null callerTeamId', () => {
+  it('maps an all-empty schedule builder payload with a null callerTeamIds', () => {
     const data: ScheduleBuilderData = {
       events: [],
       assignments: [],
       availability: [],
       volunteers: [],
       roles: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);
@@ -303,7 +328,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       availability: [],
       volunteers: [],
       roles: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     });
   });
 
@@ -325,7 +350,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       availability: [],
       volunteers: [],
       roles: [],
-      callerTeamId: null,
+      callerTeamIds: null,
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);

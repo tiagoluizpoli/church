@@ -79,6 +79,7 @@ export function runVolunteerRepositoryContractTests(
       const isQualified = await repo.hasRoleQualification(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '44444444-4444-4444-4444-444444444441' as VolunteerId,
+        '33333333-3333-3333-3333-333333333331' as MinistryId,
         '55555555-5555-5555-5555-555555555551' as RoleId,
       );
       expect(isQualified).toBe(true);
@@ -86,9 +87,34 @@ export function runVolunteerRepositoryContractTests(
       const isQualified2 = await repo.hasRoleQualification(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '44444444-4444-4444-4444-444444444442' as VolunteerId,
+        '33333333-3333-3333-3333-333333333331' as MinistryId,
         '55555555-5555-5555-5555-555555555551' as RoleId,
       );
       expect(isQualified2).toBe(false);
+    });
+
+    it('should not let a qualification granted in one ministry satisfy the same role id checked against a different ministry', async () => {
+      // volunteer-1 is qualified for role-1 through their ministry-1 (Adult
+      // Ministry) membership only — they hold no membership at all in
+      // ministry-2 (Youth Ministry). A role id shared across ministries (a
+      // global role) must not let that ministry-1 grant leak into a
+      // ministry-2 qualification check; the join has to be scoped by
+      // ministryId, not just volunteerId + status.
+      const isQualifiedInOwnMinistry = await repo.hasRoleQualification(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '44444444-4444-4444-4444-444444444441' as VolunteerId,
+        '33333333-3333-3333-3333-333333333331' as MinistryId,
+        '55555555-5555-5555-5555-555555555551' as RoleId,
+      );
+      expect(isQualifiedInOwnMinistry).toBe(true);
+
+      const isQualifiedInOtherMinistry = await repo.hasRoleQualification(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '44444444-4444-4444-4444-444444444441' as VolunteerId,
+        '33333333-3333-3333-3333-333333333332' as MinistryId,
+        '55555555-5555-5555-5555-555555555551' as RoleId,
+      );
+      expect(isQualifiedInOtherMinistry).toBe(false);
     });
 
     it('should list volunteers by ministry', async () => {

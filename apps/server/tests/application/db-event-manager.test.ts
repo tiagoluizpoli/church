@@ -57,7 +57,8 @@ function buildMembership(
 ): MinistryMembership {
   return {
     volunteerId: leaderId,
-    teamId: null,
+    teamIds: [],
+    qualifiedRoleIds: [],
     systemRole: 'leader',
     ...overrides,
   } as MinistryMembership;
@@ -270,17 +271,18 @@ describe('DbEventManager', () => {
         buildMembership({
           volunteerId: leaderId,
           systemRole: 'leader',
-          teamId: 'team-a',
+          teamIds: ['team-a'],
         }),
         buildMembership({
           volunteerId: teamAVolunteerId,
           systemRole: 'volunteer',
-          teamId: 'team-a',
+          teamIds: ['team-a'],
+          qualifiedRoleIds: [roleId as string],
         }),
         buildMembership({
           volunteerId: teamBVolunteerId,
           systemRole: 'volunteer',
-          teamId: 'team-b',
+          teamIds: ['team-b'],
         }),
       ]);
       const volunteers = [
@@ -325,16 +327,34 @@ describe('DbEventManager', () => {
         volunteerId: leaderId,
       });
 
-      expect(result.callerTeamId).toBeNull();
+      expect(result.callerTeamIds).toBeNull();
       expect(result.volunteers.map((v) => v.id)).toEqual(
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
       expect(result.volunteers).toHaveLength(3);
       expect(result.volunteers).toEqual(
         expect.arrayContaining([
-          { id: leaderId, name: 'Leader', systemRole: 'leader' },
-          { id: teamAVolunteerId, name: 'Team A Vol', systemRole: 'volunteer' },
-          { id: teamBVolunteerId, name: 'Team B Vol', systemRole: 'volunteer' },
+          {
+            id: leaderId,
+            name: 'Leader',
+            systemRole: 'leader',
+            qualifiedRoleIds: [],
+            teamIds: ['team-a'],
+          },
+          {
+            id: teamAVolunteerId,
+            name: 'Team A Vol',
+            systemRole: 'volunteer',
+            qualifiedRoleIds: [roleId as string],
+            teamIds: ['team-a'],
+          },
+          {
+            id: teamBVolunteerId,
+            name: 'Team B Vol',
+            systemRole: 'volunteer',
+            qualifiedRoleIds: [],
+            teamIds: ['team-b'],
+          },
         ]),
       );
       expect(result.roles).toEqual([{ id: roleId, name: 'Usher' }]);
@@ -352,17 +372,18 @@ describe('DbEventManager', () => {
         buildMembership({
           volunteerId: subLeaderId,
           systemRole: 'sub_leader',
-          teamId: 'team-a',
+          teamIds: ['team-a'],
         }),
         buildMembership({
           volunteerId: teamAVolunteerId,
           systemRole: 'volunteer',
-          teamId: 'team-a',
+          // Also in a team the sub-leader does not lead.
+          teamIds: ['team-a', 'team-c'],
         }),
         buildMembership({
           volunteerId: teamBVolunteerId,
           systemRole: 'volunteer',
-          teamId: 'team-b',
+          teamIds: ['team-b'],
         }),
       ]);
       const volunteers = [
@@ -390,7 +411,7 @@ describe('DbEventManager', () => {
         volunteerId: subLeaderId,
       });
 
-      expect(result.callerTeamId).toBe('team-a');
+      expect(result.callerTeamIds).toEqual(['team-a']);
       expect(result.volunteers.map((v) => v.id)).toEqual(
         expect.arrayContaining([subLeaderId, teamAVolunteerId]),
       );
@@ -398,6 +419,10 @@ describe('DbEventManager', () => {
       expect(result.volunteers.map((v) => v.id)).not.toContain(
         teamBVolunteerId,
       );
+      // Team memberships outside the sub-leader's scope must not travel.
+      expect(
+        result.volunteers.find((v) => v.id === teamAVolunteerId)?.teamIds,
+      ).toEqual(['team-a']);
       expect(
         result.volunteers.find((v) => v.id === subLeaderId)?.systemRole,
       ).toBe('sub_leader');
@@ -420,7 +445,13 @@ describe('DbEventManager', () => {
       });
 
       expect(result.volunteers).toEqual([
-        { id: leaderId, name: leaderId, systemRole: 'leader' },
+        {
+          id: leaderId,
+          name: leaderId,
+          systemRole: 'leader',
+          qualifiedRoleIds: [],
+          teamIds: [],
+        },
       ]);
     });
 

@@ -2,13 +2,16 @@ import { randomUUID } from 'node:crypto';
 import { NotFoundError } from '@church/core';
 import {
   assignment as assignmentTable,
+  ministry,
   ministryVolunteer,
+  ministryVolunteerRole,
   role,
   shift as shiftTable,
   slotRequirement,
   user,
   volunteer,
 } from '@church/db';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
@@ -62,6 +65,12 @@ interface Phase7Managers {
 
 interface CreatePhase7ManagersInput {
   cancelLeadTimeDays?: number;
+}
+
+interface SeedRoleQualificationInput {
+  churchId: string;
+  membershipId: string;
+  roleId: string;
 }
 
 function createPhase7Managers({
@@ -204,6 +213,16 @@ async function seedVolunteerMembership(input: {
   }
 
   return { volunteer: volunteerRow, membership };
+}
+
+async function seedRoleQualification(
+  input: SeedRoleQualificationInput,
+): Promise<void> {
+  await schedulingTestDb.insert(ministryVolunteerRole).values({
+    churchId: input.churchId,
+    ministryVolunteerId: input.membershipId,
+    roleId: input.roleId,
+  });
 }
 
 async function seedShift(input: {
@@ -534,6 +553,11 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       ministryId: seed.ministryAId,
       name: 'Incoming Volunteer',
       email: 'incoming-phase7@test.com',
+    });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: incoming.membership.id,
+      roleId: roleRow.id,
     });
 
     const assignment = await seedAssignment({
@@ -962,7 +986,7 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
     ).rejects.toMatchObject({ reason: 'NOT_IN_MINISTRY' });
   });
 
-  it('createParticipationAssignment rejects a volunteer without qualification for the role (NOT_QUALIFIED), and warns when marked unavailable', async () => {
+  it('createParticipationAssignment enforces qualification by ministry policy and warns when marked unavailable', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -994,43 +1018,90 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       label: 'Qualification shift',
     });
 
-    const [otherMinistry] = await schedulingTestDb
-      .insert((await import('@church/db')).ministry)
-      .values({ churchId: seed.churchAId, name: 'Other role-owning ministry' })
-      .returning();
-    if (!otherMinistry) throw new Error('other ministry seed failed');
-    const foreignRole = await seedRole({
-      churchId: seed.churchAId,
-      ministryId: otherMinistry.id,
-      name: 'Foreign role',
-    });
-
-    const member = await seedVolunteerMembership({
+    const softMember = await seedVolunteerMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
-      name: 'Ministry A Member',
-      email: 'ministrya-member-phase7@test.com',
+      name: 'Soft Qualification Member',
+      email: 'soft-qualification-phase7@test.com',
+    });
+    const hardMember = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Hard Qualification Member',
+      email: 'hard-qualification-phase7@test.com',
+    });
+    const overrideMember = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Override Qualification Member',
+      email: 'override-qualification-phase7@test.com',
+    });
+    const qualifiedMember = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Qualified Ministry Member',
+      email: 'qualified-member-phase7@test.com',
     });
 
     const managers = createPhase7Managers();
 
-    // Member of ministry A, but the role belongs to a different ministry.
+    const softResult =
+      await managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shift.id),
+        volunteerId: VolunteerId.from(softMember.volunteer.id),
+        roleId: RoleId.from(ownRole.id),
+        actorId: UserId.from(seed.adminUserId),
+      });
+    expect(softResult.warnings).toEqual([
+      expect.objectContaining({ type: 'NOT_QUALIFIED' }),
+    ]);
+
+    await schedulingTestDb
+      .update(ministry)
+      .set({ enforcementType: 'hard' })
+      .where(eq(ministry.id, seed.ministryAId));
+
     await expect(
       managers.assignmentManager.createParticipationAssignment({
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
-        volunteerId: VolunteerId.from(member.volunteer.id),
-        roleId: RoleId.from(foreignRole.id),
+        volunteerId: VolunteerId.from(hardMember.volunteer.id),
+        roleId: RoleId.from(ownRole.id),
         actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({ reason: 'NOT_QUALIFIED' });
 
-    // Now mark the member unavailable for this exact shift, then assign them
-    // to their own ministry's role — should succeed with an UNAVAILABLE warning.
+    const overrideReason = 'Leader approved qualification override';
+    const overridden =
+      await managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shift.id),
+        volunteerId: VolunteerId.from(overrideMember.volunteer.id),
+        roleId: RoleId.from(ownRole.id),
+        actorId: UserId.from(seed.adminUserId),
+        override: { reason: overrideReason },
+      });
+    expect(overridden.warnings).toEqual([
+      expect.objectContaining({ type: 'NOT_QUALIFIED' }),
+    ]);
+    const overrideAudit = await managers.assignmentManager.listAuditLog({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: overridden.assignment.id,
+    });
+    expect(overrideAudit).toEqual([
+      expect.objectContaining({ reason: overrideReason }),
+    ]);
+
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      membershipId: qualifiedMember.membership.id,
+      roleId: ownRole.id,
+    });
     await seedAvailabilityMark({
       churchId: seed.churchAId,
       planningCycleId: cycle.id,
-      membershipId: member.membership.id,
+      membershipId: qualifiedMember.membership.id,
       shiftId: shift.id,
     });
 
@@ -1038,12 +1109,12 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       await managers.assignmentManager.createParticipationAssignment({
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shift.id),
-        volunteerId: VolunteerId.from(member.volunteer.id),
+        volunteerId: VolunteerId.from(qualifiedMember.volunteer.id),
         roleId: RoleId.from(ownRole.id),
         actorId: UserId.from(seed.adminUserId),
       });
 
-    expect(result.assignment.volunteerId).toBe(member.volunteer.id);
+    expect(result.assignment.volunteerId).toBe(qualifiedMember.volunteer.id);
     expect(result.warnings).toEqual([
       expect.objectContaining({ type: 'UNAVAILABLE' }),
     ]);

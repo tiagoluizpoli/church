@@ -99,6 +99,7 @@ describe('Leader rostering routes', () => {
         isAvailable: true,
         hasConflict: false,
         lastServedAt: new Date('2026-08-01T10:00:00.000Z'),
+        qualifiedRoleIds: ['role-1'],
       },
     ]);
 
@@ -116,6 +117,7 @@ describe('Leader rostering routes', () => {
           isAvailable: true,
           hasConflict: false,
           lastServedAt: '2026-08-01T10:00:00.000Z',
+          qualifiedRoleIds: ['role-1'],
         },
       ],
     });

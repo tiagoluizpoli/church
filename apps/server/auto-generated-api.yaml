@@ -290,10 +290,20 @@ paths:
                             - leader
                             - sub_leader
                             - volunteer
+                        qualifiedRoleIds:
+                          type: array
+                          items:
+                            type: string
+                        teamIds:
+                          type: array
+                          items:
+                            type: string
                       required:
                         - id
                         - name
                         - systemRole
+                        - qualifiedRoleIds
+                        - teamIds
                       additionalProperties: false
                   roles:
                     type: array
@@ -308,16 +318,18 @@ paths:
                         - id
                         - name
                       additionalProperties: false
-                  callerTeamId:
+                  callerTeamIds:
                     nullable: true
-                    type: string
+                    type: array
+                    items:
+                      type: string
                 required:
                   - events
                   - assignments
                   - availability
                   - volunteers
                   - roles
-                  - callerTeamId
+                  - callerTeamIds
                 additionalProperties: false
   /api/v1/admin/events:
     get:
@@ -3457,11 +3469,16 @@ paths:
                                             type: boolean
                                           lastServedAt:
                                             type: string
+                                          qualifiedRoleIds:
+                                            type: array
+                                            items:
+                                              type: string
                                         required:
                                           - volunteerId
                                           - volunteerName
                                           - isAvailable
                                           - hasConflict
+                                          - qualifiedRoleIds
                                         additionalProperties: false
                                   required:
                                     - shift
@@ -3699,11 +3716,16 @@ paths:
                           type: boolean
                         lastServedAt:
                           type: string
+                        qualifiedRoleIds:
+                          type: array
+                          items:
+                            type: string
                       required:
                         - volunteerId
                         - volunteerName
                         - isAvailable
                         - hasConflict
+                        - qualifiedRoleIds
                       additionalProperties: false
                 required:
                   - volunteers
@@ -3817,6 +3839,7 @@ paths:
                             - UNAVAILABLE
                             - DOUBLE_BOOKED
                             - FAIRNESS_EXCEEDED
+                            - NOT_QUALIFIED
                         details:
                           type: string
                         conflictingId:

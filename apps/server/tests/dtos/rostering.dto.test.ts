@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { rosteringMapper } from '../../src/api/dtos/rostering.dto';
+import {
+  createParticipationAssignmentResponseSchema,
+  rosteringMapper,
+} from '../../src/api/dtos/rostering.dto';
 import {
   MinistryParticipationId,
   VolunteerId,
@@ -17,6 +20,7 @@ describe('rosteringMapper', () => {
         isAvailable: true,
         hasConflict: false,
         lastServedAt,
+        qualifiedRoleIds: ['role-1', 'role-2'],
       });
 
       expect(response).toEqual({
@@ -25,6 +29,7 @@ describe('rosteringMapper', () => {
         isAvailable: true,
         hasConflict: false,
         lastServedAt: lastServedAt.toISOString(),
+        qualifiedRoleIds: ['role-1', 'role-2'],
       });
     });
 
@@ -34,9 +39,11 @@ describe('rosteringMapper', () => {
         volunteerName: 'John',
         isAvailable: false,
         hasConflict: true,
+        qualifiedRoleIds: [],
       });
 
       expect(response.lastServedAt).toBeUndefined();
+      expect(response.qualifiedRoleIds).toEqual([]);
     });
   });
 
@@ -48,12 +55,14 @@ describe('rosteringMapper', () => {
           volunteerName: 'Jane',
           isAvailable: true,
           hasConflict: false,
+          qualifiedRoleIds: ['role-1'],
         },
         {
           volunteerId: VolunteerId.from('v2'),
           volunteerName: 'John',
           isAvailable: false,
           hasConflict: true,
+          qualifiedRoleIds: [],
           lastServedAt: new Date('2026-01-05T00:00:00.000Z'),
         },
       ]);
@@ -113,12 +122,19 @@ describe('rosteringMapper', () => {
             type: 'FAIRNESS_EXCEEDED',
             details: 'volunteer over fairness limit',
           },
+          {
+            type: 'NOT_QUALIFIED',
+            details: 'volunteer is not qualified for this role',
+          },
         ],
       });
 
-      expect(response.warnings).toHaveLength(3);
+      expect(response.warnings).toHaveLength(4);
       expect(response.warnings[0]?.conflictingId).toBeUndefined();
       expect(response.warnings[1]?.conflictingId).toBe('a2');
+      expect(
+        createParticipationAssignmentResponseSchema.safeParse(response).success,
+      ).toBe(true);
     });
   });
 

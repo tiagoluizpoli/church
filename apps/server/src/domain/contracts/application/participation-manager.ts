@@ -154,6 +154,13 @@ export interface EligibleVolunteerView {
   isAvailable: boolean;
   hasConflict: boolean;
   lastServedAt?: Date;
+  /**
+   * Every role this volunteer is qualified for in the ministry — not only the
+   * roles the current shift requires. The builder shows it as the member's
+   * standing skill set, so narrowing it to the shift would make the same person
+   * read differently from one slot to the next.
+   */
+  qualifiedRoleIds: string[];
 }
 
 export interface ListEligibleVolunteersInput {

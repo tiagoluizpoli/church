@@ -97,9 +97,13 @@ class MockVolunteerRepository implements VolunteerRepository {
   async hasRoleQualification(
     _churchId: ChurchId,
     volunteerId: VolunteerId,
+    ministryId: MinistryId,
     roleId: RoleId,
   ): Promise<boolean> {
-    return this.qualifications.has(`${volunteerId}:${roleId}`);
+    return (
+      this.memberships.has(`${volunteerId}:${ministryId}`) &&
+      this.qualifications.has(`${volunteerId}:${roleId}`)
+    );
   }
 
   async listQualifiedForRole(

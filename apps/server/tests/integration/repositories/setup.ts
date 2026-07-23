@@ -7,6 +7,7 @@ import {
   ministry,
   ministryParticipation,
   ministryVolunteer,
+  ministryVolunteerRole,
   planningCycle,
   role,
   shift,
@@ -137,6 +138,17 @@ export async function seed(): Promise<void> {
       ministryId: '33333333-3333-3333-3333-333333333331',
       systemRole: 'volunteer',
       status: 'active',
+    },
+  ]);
+
+  // Role qualifications. Qualification hangs off the membership and is an
+  // explicit grant — membership alone no longer implies it, so volunteer-1 is
+  // qualified for Usher (role-1) and for nothing else.
+  await testDb.insert(ministryVolunteerRole).values([
+    {
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryVolunteerId: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      roleId: '55555555-5555-5555-5555-555555555551',
     },
   ]);
 

@@ -56,10 +56,45 @@ export default defineConfig({
     },
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
     fileParallelism: false,
     testTimeout: 30000,
     hookTimeout: 30000,
     env: { NODE_ENV: 'test' },
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          include: [
+            'src/**/*.test.ts',
+            'tests/application/db-event-manager.test.ts',
+            'tests/application/db-event-template-manager.test.ts',
+            'tests/application/db-feature-flag-manager.test.ts',
+            'tests/application/db-scheduling-rbac-manager.test.ts',
+            'tests/contract/**/*.test.ts',
+            'tests/domain/**/*.test.ts',
+            'tests/dtos/**/*.test.ts',
+            'tests/test-support/**/*.test.ts',
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'integration',
+          include: [
+            'tests/application/event-builder.rostering.integration.test.ts',
+            'tests/application/planning-phase3.managers.test.ts',
+            'tests/application/scheduling-phase4.managers.test.ts',
+            'tests/application/scheduling-phase5.volunteer-availability.test.ts',
+            'tests/application/scheduling-phase6.rostering.test.ts',
+            'tests/application/scheduling-phase7.live-changes.test.ts',
+            'tests/behavior/**/*.test.ts',
+            'tests/http/**/*.test.ts',
+            'tests/integration/**/*.test.ts',
+          ],
+        },
+      },
+    ],
   },
 });

@@ -58,7 +58,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Type check
-        run: bun run check-types
+        run: bun run typecheck
 
       - name: Lint (Biome + boundary enforcement)
         run: bun run lint
@@ -73,7 +73,7 @@ jobs:
         run: bun run db:migrate
 
       - name: Run tests with coverage
-        run: bunx turbo test --filter=server --only -- --coverage
+        run: bunx turbo test:unit test:integration --filter=server --only -- --coverage
 
   e2e:
     name: E2E

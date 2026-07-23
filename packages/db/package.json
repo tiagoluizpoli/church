@@ -31,8 +31,9 @@
     "db:init-system": "bun --env-file=../../.env src/scripts/init-system.ts",
     "db:setup-test": "bun --env-file=../../.env src/setup-test-db.ts",
     "db:clean": "bun --env-file=../../.env src/scripts/clean-db.ts",
-    "check-types": "tsc --noEmit",
-    "test": "bun --env-file=../../.env vitest run"
+    "typecheck": "tsc --noEmit",
+    "test:integration": "bun --env-file=../../.env vitest run",
+    "test": "bun run test:integration"
   },
   "dependencies": {
     "@church/env": "workspace:*",

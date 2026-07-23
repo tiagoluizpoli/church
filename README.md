@@ -78,7 +78,8 @@ If you want to add app-specific blocks instead of shared primitives, run the sha
 
 ## Git Hooks and Formatting
 
-- Format and lint fix: `bun run check`
+- Check formatting and lint: `bun run lint`
+- Apply formatting and lint fixes: `bun run lint:fix`
 
 ## Project Structure
 
@@ -99,14 +100,19 @@ church/
 - `bun run build`: Build all applications
 - `bun run dev:web`: Start only the web application
 - `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
+- `bun run typecheck`: Check TypeScript types across all apps
+- `bun run test:unit`: Run unit and component tests
+- `bun run test:integration`: Run integration tests
+- `bun run test:e2e -- tests/[path].spec.ts`: Run an affected end-to-end journey
+- `bun run test`: Run the complete test suite
+- `bun run validate:affected`: Validate the changed files and their affected workspaces
+- `bun run validate`: Run the full final validation gate
 - `bun run db:push`: Push schema changes to database
 - `bun run db:generate`: Generate database client/types
 - `bun run db:migrate`: Run database migrations
 - `bun run db:studio`: Open database studio UI
 - `bun run db:init`: Initialize system with church, admin, and administration ministry
 - `bun run db:clean`: Wipe all tables (truncate) for a fresh state
-- `bun run check`: Run Biome formatting and linting
 - `cd apps/web && bun run generate-pwa-assets`: Generate PWA assets
 - `bun run dev:desktop`: Start the Electrobun desktop app with HMR
 - `bun run build:desktop`: Build the stable Electrobun desktop app

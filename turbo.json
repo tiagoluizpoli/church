@@ -11,12 +11,16 @@
       "dependsOn": ["^lint"],
       "cache": false
     },
-    "check-types": {
-      "dependsOn": ["^check-types"],
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
       "cache": false
     },
-    "test": {
-      "dependsOn": ["^test"],
+    "test:unit": {
+      "dependsOn": ["^test:unit"],
+      "cache": false
+    },
+    "test:integration": {
+      "dependsOn": ["^test:integration"],
       "cache": false
     },
     "test:e2e": {

@@ -12,8 +12,9 @@
     }
   },
   "scripts": {
-    "check-types": "tsc --noEmit",
-    "test": "bun --env-file=../../.env vitest run"
+    "typecheck": "tsc --noEmit",
+    "test:integration": "bun --env-file=../../.env vitest run",
+    "test": "bun run test:integration"
   },
   "dependencies": {
     "@church/db": "workspace:*",

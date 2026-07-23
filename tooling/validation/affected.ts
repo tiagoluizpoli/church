@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import {
   classifyChanges,
   type TestLayer,
@@ -83,8 +84,12 @@ function runCommand({ args, command }: CommandInput): string[] {
 }
 
 function runValidation({ plan }: RunValidationInput): void {
-  if (plan.lintPaths.length > 0) {
-    execFileSync('bun', ['run', 'lint:files', '--', ...plan.lintPaths], {
+  // A deleted file is still a changed path — it must keep its package in
+  // scope for typecheck and tests — but Biome cannot read it, and reports
+  // each one as an internal error. Drop them at the lint step only.
+  const lintPaths = plan.lintPaths.filter((lintPath) => existsSync(lintPath));
+  if (lintPaths.length > 0) {
+    execFileSync('bun', ['run', 'lint:files', '--', ...lintPaths], {
       stdio: 'inherit',
     });
   }

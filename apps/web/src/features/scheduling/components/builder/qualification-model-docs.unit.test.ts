@@ -17,13 +17,15 @@ const DIR = dirname(fileURLToPath(import.meta.url));
  * certainly needs the same correction, not an exemption from the list below.
  */
 const FILES_THAT_MUST_NOT_CLAIM_A_HARD_FILTER = [
-  'cycle-builder-matrix.tsx',
-  'cycle-builder-matrix.utils.ts',
-  'cycle-builder-cell.tsx',
-  'cycle-builder-cell-parts.tsx',
-  'volunteer-card.tsx',
-  'assignment-picker.tsx',
-  'override-dialog.tsx',
+  'board/cycle-builder-matrix.tsx',
+  '../../utils/builder/cycle-builder-fit.utils.ts',
+  '../../utils/builder/cycle-builder-ranking.utils.ts',
+  '../../utils/builder/cycle-builder-assignment-index.utils.ts',
+  'board/cycle-builder-cell.tsx',
+  'board/cycle-builder-cell-parts.tsx',
+  'volunteer-rail/volunteer-card.tsx',
+  'assignment/assignment-picker.tsx',
+  'assignment/override-dialog.tsx',
 ];
 
 const BANNED_PHRASES = [

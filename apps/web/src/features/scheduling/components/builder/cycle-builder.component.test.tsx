@@ -105,6 +105,19 @@ describe('CycleBuilder header (B-4)', () => {
     // builder data, so it tracks every write the board applies.
     expect(header).toHaveTextContent('0 of 1 assignments filled');
     expect(header).toHaveTextContent('1 shift is below target');
+    // The plain inventory counters Planning and Tailoring also carry.
+    expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
+      '1',
+    );
+    expect(screen.getByTestId('cycle-builder-slot-count')).toHaveTextContent(
+      '1',
+    );
+    expect(screen.getByTestId('cycle-builder-shift-count')).toHaveTextContent(
+      '1',
+    );
+    expect(
+      screen.getByTestId('cycle-builder-assigned-count'),
+    ).toHaveTextContent('0');
     expect(
       screen.queryByText(/Map the cycle, then place with confidence/),
     ).not.toBeInTheDocument();

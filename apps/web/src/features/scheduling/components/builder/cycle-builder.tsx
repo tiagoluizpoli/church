@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
-import { AuditLogPanel } from './audit-log-panel';
-import { CycleBuilderBoard } from './cycle-builder-board';
-import type { CycleBuilderCellSelectInput } from './cycle-builder-cell';
-import { CycleBuilderHeader } from './cycle-builder-header';
-import { summarizeCycleStaffing } from './cycle-builder-matrix.utils';
-import { OverrideDialog } from './override-dialog';
 import {
   type CycleBuilderMutations,
   useCycleBuilderActions,
-} from './use-cycle-builder-actions';
+} from '../../hooks/use-cycle-builder-actions';
+import {
+  summarizeCycleCounts,
+  summarizeCycleStaffing,
+} from '../../utils/builder/cycle-builder-staffing.utils';
+import { OverrideDialog } from './assignment/override-dialog';
+import { AuditLogPanel } from './audit-log-panel';
+import type { CycleBuilderCellSelectInput } from './board/cycle-builder-cell';
+import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
+import { CycleBuilderHeader } from './cycle-builder-header';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 interface CycleBuilderProps {
@@ -72,6 +76,7 @@ export function CycleBuilder({
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
   const staffing = summarizeCycleStaffing({ data });
+  const counts = summarizeCycleCounts({ data, assignedCount: staffing.filled });
   const belowFullCount = staffing.shiftsBelowTarget;
   const actions = useCycleBuilderActions({
     data,
@@ -87,8 +92,32 @@ export function CycleBuilder({
   const removedVolunteerName =
     removedAssignment?.volunteerName ?? 'the volunteer';
 
+  // Rendered on the filter toolbar's own row (B-4 header pass) rather than
+  // the header — audit/publish sit with the rest of this screen's controls
+  // instead of stretching a panel that otherwise only carries title + stats.
+  const toolbarActions = (
+    <>
+      <Button
+        type="button"
+        size={isMobile ? 'touch' : 'sm'}
+        variant="outline"
+        onClick={() => setAuditOpen(true)}
+      >
+        Audit log
+      </Button>
+      <Button
+        type="button"
+        size={isMobile ? 'touch' : 'sm'}
+        disabled={isPublishing || actions.isSaving}
+        onClick={() => setPublishDialogOpen(true)}
+      >
+        {isPublishing ? 'Publishing…' : 'Publish cycle'}
+      </Button>
+    </>
+  );
+
   return (
-    <div className="space-y-4" data-testid="cycle-builder">
+    <WorkspacePage data-testid="cycle-builder">
       <p
         aria-live="polite"
         className="sr-only"
@@ -101,31 +130,12 @@ export function CycleBuilder({
         cycleStartDate={cycleStartDate}
         cycleEndDate={cycleEndDate}
         staffing={staffing}
+        counts={counts}
         syncedAt={syncedAt}
         isRefreshing={isRefreshing}
-        actions={
-          <>
-            <Button
-              type="button"
-              size={isMobile ? 'touch' : 'sm'}
-              variant="outline"
-              onClick={() => setAuditOpen(true)}
-            >
-              Audit log
-            </Button>
-            <Button
-              type="button"
-              size={isMobile ? 'touch' : 'sm'}
-              disabled={isPublishing || actions.isSaving}
-              onClick={() => setPublishDialogOpen(true)}
-            >
-              {isPublishing ? 'Publishing…' : 'Publish cycle'}
-            </Button>
-          </>
-        }
       />
 
-      <CycleBuilderBoard
+      <CycleBuilderMatrix
         data={data}
         cycleStartDate={cycleStartDate}
         cycleEndDate={cycleEndDate}
@@ -139,6 +149,7 @@ export function CycleBuilder({
         }
         onSelectAssignment={actions.handleSelectAssignment}
         onRemoveAssignment={setPendingRemovalId}
+        actions={toolbarActions}
         failedWrites={actions.boardFailedWrites}
         onRetryFailedWrite={actions.retryFailedWrite}
         onDismissFailedWrite={actions.dismissFailedWrite}
@@ -283,6 +294,6 @@ export function CycleBuilder({
         isPending={actions.isSaving}
         onConfirm={actions.confirmOverride}
       />
-    </div>
+    </WorkspacePage>
   );
 }

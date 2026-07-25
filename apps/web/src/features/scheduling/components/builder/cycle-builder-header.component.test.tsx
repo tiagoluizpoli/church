@@ -1,16 +1,26 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import type {
+  CycleCountsSummary,
+  CycleStaffingSummary,
+} from '../../utils/builder/cycle-builder-staffing.utils';
 import {
   CycleBuilderHeader,
   formatCycleDateRange,
 } from './cycle-builder-header';
-import type { CycleStaffingSummary } from './cycle-builder-matrix.utils';
 
 const staffing: CycleStaffingSummary = {
   filled: 42,
   required: 48,
   percent: 88,
   shiftsBelowTarget: 6,
+};
+
+const counts: CycleCountsSummary = {
+  eventCount: 5,
+  slotCount: 5,
+  shiftCount: 8,
+  assignedCount: 42,
 };
 
 describe('formatCycleDateRange (B-4)', () => {
@@ -37,7 +47,7 @@ describe('CycleBuilderHeader (B-4)', () => {
         cycleStartDate="2026-07-01"
         cycleEndDate="2026-07-31"
         staffing={staffing}
-        actions={null}
+        counts={counts}
       />,
     );
 
@@ -52,12 +62,24 @@ describe('CycleBuilderHeader (B-4)', () => {
     expect(screen.queryByText('Cycle board')).not.toBeInTheDocument();
   });
 
+  it('falls back to a plain description when the cycle has no dates set', () => {
+    render(
+      <CycleBuilderHeader
+        cycleName="Julho 2026"
+        staffing={staffing}
+        counts={counts}
+      />,
+    );
+
+    expect(screen.getByText('No dates set for this cycle yet.')).toBeVisible();
+  });
+
   it('carries the session progress signal and what is still open', () => {
     render(
       <CycleBuilderHeader
         cycleName="Julho 2026"
         staffing={staffing}
-        actions={null}
+        counts={counts}
       />,
     );
 
@@ -71,7 +93,7 @@ describe('CycleBuilderHeader (B-4)', () => {
     const { rerender } = render(
       <CycleBuilderHeader
         staffing={{ ...staffing, shiftsBelowTarget: 1 }}
-        actions={null}
+        counts={counts}
       />,
     );
 
@@ -87,7 +109,7 @@ describe('CycleBuilderHeader (B-4)', () => {
           percent: 100,
           shiftsBelowTarget: 0,
         }}
-        actions={null}
+        counts={counts}
       />,
     );
 
@@ -100,7 +122,12 @@ describe('CycleBuilderHeader (B-4)', () => {
     render(
       <CycleBuilderHeader
         staffing={{ filled: 0, required: 0, percent: 0, shiftsBelowTarget: 0 }}
-        actions={null}
+        counts={{
+          eventCount: 0,
+          slotCount: 0,
+          shiftCount: 0,
+          assignedCount: 0,
+        }}
       />,
     );
 
@@ -113,14 +140,36 @@ describe('CycleBuilderHeader (B-4)', () => {
     render(
       <CycleBuilderHeader
         staffing={staffing}
+        counts={counts}
         syncedAt={Date.now()}
-        actions={<button type="button">Publish cycle</button>}
       />,
     );
 
     expect(screen.getByTestId('cycle-builder-synced-at')).toHaveTextContent(
       'Synced just now',
     );
-    expect(screen.getByRole('button', { name: 'Publish cycle' })).toBeVisible();
+  });
+
+  it('surfaces the cycle inventory counters alongside the staffing signal', () => {
+    render(
+      <CycleBuilderHeader
+        cycleName="Julho 2026"
+        staffing={staffing}
+        counts={counts}
+      />,
+    );
+
+    expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
+      '5',
+    );
+    expect(screen.getByTestId('cycle-builder-slot-count')).toHaveTextContent(
+      '5',
+    );
+    expect(screen.getByTestId('cycle-builder-shift-count')).toHaveTextContent(
+      '8',
+    );
+    expect(
+      screen.getByTestId('cycle-builder-assigned-count'),
+    ).toHaveTextContent('42');
   });
 });

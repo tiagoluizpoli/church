@@ -488,6 +488,184 @@ overwritten.
 pre-existing god file, and `cycle-builder-matrix.utils.ts` has grown to 354.
 Neither was an action item; both are worth a dedicated pass.
 
+## 5c. Phase 6 — "Assign here" from the focused rail (2026-07-23, uncommitted)
+
+The focused rail was informational only — it promoted the best candidates but
+the leader still had to select a person and click the board. Now, while a
+shift×role is focused, each **assignable** candidate card's "Select slot"
+button becomes **"Assign here"** (`data-testid="volunteer-assign-here"`), which
+commits that volunteer straight to the focused shift×role. The button reverts
+to "Select slot" when focus clears.
+
+Design (user decisions, verbatim intent):
+- **Immediate assign**, reusing the board's own `onSelectAssignment` →
+  `handleSelectAssignment` path — so an override-tier person still hits
+  `OverrideDialog` (FR-016) and one already assigned elsewhere still hits the
+  move/both collision dialog (FR-007). No conflict → straight assign.
+- **Every card is actionable, not just the ranked ones** (corrected after the
+  first pass gated it to the ranked set — the user explicitly wants to overrule
+  the recommendation and pick anyone, including someone the ranking left out).
+  The assignable set is now the **whole pool minus this shift's current
+  assignees**, computed in the matrix (`assignableFocusedVolunteerIds`) and
+  passed to the sidebar, since the rail can't see board assignment state. The
+  one hard exclusion is someone already serving this shift: the server rejects
+  a duplicate outright with **no** override (`DUPLICATE_ASSIGNMENT` in
+  `db-assignment-manager.ts`), so offering it would only ever error.
+  - **FR-011 note:** this deliberately lets the leader pick an *unqualified*
+    volunteer from the rail. The server still governs it — under
+    `enforcementType==='hard'` an unqualified assign needs an override reason or
+    it throws `NOT_QUALIFIED`; under soft enforcement it lands with a warning.
+    The rail sends no `conflictType` for the unqualified case (the current
+    `OverrideDialog` only models double-booked/unavailable), so under hard
+    enforcement an unqualified Pick me currently surfaces the server's
+    `NOT_QUALIFIED` error as a toast rather than prompting for a reason.
+    **Open follow-up:** add a "not qualified — reason" variant to the override
+    flow if leaders should be able to force it under hard enforcement.
+- **Button swaps in place** — selection is redundant while a slot is up, so the
+  same corner is reused. Labelled **"Pick me"** (user's choice;
+  `data-testid="volunteer-pick-me"`), was the interim "Assign here".
+
+Wiring:
+- `FocusedShift` gained `shiftId`, `roleId`, `slotLabel` (both set sites
+  updated) so the rail can resolve the assign target.
+- `assignFocusedVolunteer` in `cycle-builder-matrix.tsx` resolves the shift,
+  computes `volunteerFitForShiftRole`, guards `tier === 'none'`, forwards
+  `conflictType`, then `setFocused(null)`.
+- **Capacity guard** `focusedRoleHasRoom` — a full role can still be focused, so
+  the affordance hides and the handler no-ops at capacity, mirroring the
+  board's `canAdd`. (Caught in self-review, not by a test yet — see below.)
+- `assignableVolunteerIds` (= `focusedVolunteerIds` as a Set) + `onAssignVolunteer`
+  thread matrix → sidebar → `VolunteerPoolList` → `VolunteerRows` →
+  `VolunteerCard`, same shape the existing `selectedVolunteerId` threading uses.
+
+Known caveat: `setFocused(null)` runs immediately on click, so if the leader
+**cancels** the override/collision dialog, focus is already gone and they must
+re-focus. Matches the user's "once we apply it, buttons revert" for the happy
+path; the cancel edge is a deliberate small tradeoff — revisit if it annoys.
+
+Tests: 2 card component (swap + fires; non-candidate keeps Select slot), 2
+sidebar (Assign here only for ranked candidate + calls handler; none when
+unwired), 1 e2e (focus → Assign here → count rises or confirm dialog opens, no
+picker). Gaps not yet covered: the capacity guard and the FR-016 override path
+*from the rail specifically* have no dedicated test.
+
+Two-axis `/code-review` ran; findings folded in. **Spec axis: no blockers** —
+FR-011 (double-gated: assignable set is the qualified ranking, plus a
+`fit.tier==='none'` re-guard), FR-007 (collision move/both still fires), and
+FR-016 (override reason on the direct path) all hold, and the
+`setFocused(null)`-before-dialog cancel path was traced to make **zero**
+assignments (the dialog payload is snapshotted in the parent, independent of
+focus). **Standards axis: no hard violations**; the three judgement-call fixes
+applied:
+- Card's two near-identical buttons now share a hoisted `cornerActionClassName`.
+- The capacity/headcount rule and the `flatMap` shift lookup moved into named
+  utils `roleHasRoom` and `findShiftById` (the latter also dedupes the
+  drag-end handler's identical walk), out of the 1.1k-line matrix body.
+- `roleHasRoom` (4) and `findShiftById` (2) got unit tests — the capacity guard
+  is now covered.
+
+**Pre-existing gap the review surfaced (NOT this diff, ticket-worthy):** the
+collision "Move here"/"Swap" branch in `cycle-builder.tsx` (`applyCollision`)
+calls `applyAssignment` with no `overrideReason`, so a candidate who is *both*
+assigned-elsewhere *and* a conflict option skips FR-016 on that branch. Equally
+reachable from the board cell; predates this work.
+
+Gates (post-fix): `bun run validate:affected` exit 0 · builder unit suite
+**139** pass · story E2E (slot-focus ×3) pass.
+
+## 5d. Rail drag/grip/padding polish (2026-07-23, uncommitted)
+
+Three fixes, the last one measured live against the running dev app:
+
+1. **Drag ghost clipping.** The dragged card used to `translate3d` in place inside
+   the rail's `ScrollArea`, so it was clipped "behind the pane". Now a
+   `<DragOverlay>` portal in `cycle-builder-matrix.tsx` renders a
+   `<VolunteerCard isOverlay>` (built from the pool row + live workload) that
+   floats above the whole board. The source card no longer transforms — it only
+   dims. Wired via `onDragStart`/`onDragCancel`/`onDragEnd` + a
+   `draggingVolunteerId` state. **Not e2e-tested (drag is hard to script);
+   verify by dragging in the app.**
+2. **Grip icon.** Swapped lucide's 2×3 `GripVertical` for a local 2×2-dot
+   `SquareGripIcon` (inline SVG, named-prop interface per the Parameter Contract
+   Rule). Keeps `data-testid="volunteer-card-grip"`.
+3. **Card padding / bottom alignment.** Measured every corner live with
+   `getBoundingClientRect` (per this doc's standing rule — do not eyeball). Found
+   avatar/status/grip-icon/recency all at **13px** insets, but the
+   Select-slot/Pick-me **label sat at 15.3px** — 2.3px high. Fixed by
+   `-mb-1` → `-mb-1.5` on `cornerActionClassName`; re-measured at 13.3px. All
+   four corners now share the 13px inset. (The **ghost button boxes** still
+   overshoot the 13px line for hit-area — grip box ~7px, action box ~9px — but
+   their glyphs are on-grid; only relevant if a hover highlight ever looks
+   off.)
+
+Live verification (dev app, Local Ops / Julho 2026 cycle,
+`192.168.0.200:4001` — NOT localhost, CORS): square grip renders; focusing a
+role shows **Pick me on all 3 cards** (confirms §5c "every card" on the real
+build); Pick-me label also at 13.3px. Gates: `validate:affected` exit 0 ·
+builder unit 140 pass · story E2E (slot-focus ×3, a11y-builder) 4 pass.
+
+## 5e. Rail role-filter bug + filter chip (2026-07-23, uncommitted)
+
+- **Bug fixed:** "Filter by role" filtered by **assignment** (who is assigned to
+  the role) instead of **qualification**, so a Support-only volunteer leaked
+  through a Coordinator filter. `useVolunteerPool` now filters on
+  `qualifiedRoleNames.includes(roleFilter)` — same basis as "group by role" —
+  and the sidebar dropdown items now carry `value={role.name}` (was `role.id`)
+  so the filter value matches the name list. The assignment-based
+  `roleVolunteerIds` set is gone; `assignments` is still used for workload only.
+- **Visual feedback added:** when a role filter is active, a removable chip
+  ("Filtered by role: <name>  ✕", `data-testid="volunteer-role-filter-chip"`)
+  shows under the header; its ✕ resets to 'all'. Previously the only cue was the
+  shorter list + the sliders button going `secondary`.
+- Tests: `use-volunteer-pool.component.test.ts` filter cases rewritten to
+  qualification semantics (+ an explicit "excludes non-qualified" case); sidebar
+  gets a chip appear/filter/clear test. Gate: `validate:affected` exit 0 · web
+  scheduling unit suite **359 pass**. E2E not re-run for this change (unit-level
+  logic); run the builder story specs before commit.
+
+## 5f. Optimistic assignment mutations (2026-07-24, uncommitted)
+
+The board no longer waits for a round trip to show a placement. All three
+assignment mutations in `use-cycle-builder.ts` now write the cache first.
+
+- **New module** `use-cycle-builder.optimistic.ts` — pure transforms over the
+  **raw** query payload (`GetCycleBuilderData200`), not the mapped view model,
+  because that is what React Query stores and what `mapCycleBuilderData` derives
+  from. Counts, fill ratios, `volunteerName` (resolved from the shift's
+  `eligibleVolunteers`) and the rail therefore all follow for free:
+  - `addOptimisticAssignment` — appends a `pending` row to the target shift,
+    filling `churchId` from the slot and `slotId`/`participationId` from the
+    shift, carrying `override.reason`.
+  - `removeOptimisticAssignment` / `replaceOptimisticAssignmentVolunteer`.
+  - `createOptimisticAssignmentId()` mints `optimistic:<uuid>`;
+    `isOptimisticAssignmentId` exists so a future guard can refuse to send a
+    client-invented id back to the API (see the known gap below).
+- **Hook wiring:** `onMutate` = `cancelQueries` → snapshot → cache write;
+  `onError` = restore the snapshot; `onSettled` = invalidate. `invalidate` is now
+  **fire-and-forget** (`void`) — previously `onSettled: invalidate` returned the
+  refetch promise, so `mutateAsync` (and the "Assignment saved" toast after it)
+  only resolved after a *second* round trip. That was the visible lag.
+- **Toasts unchanged and still honest:** `cycle-builder.tsx` awaits `mutateAsync`
+  before `toast.success`, so success still means the server agreed; a rejection
+  rolls the board back and toasts the error.
+- **Reassign is approximate by design:** the server implements it as delete +
+  create, so the row comes back with a new id. The client swaps `volunteerId` in
+  place and lets the reconcile refetch replace the row.
+- **Known gap (not introduced here, widened by it):** during the optimistic
+  window a row carries a client id. Removing/dragging it in that ~1 round trip
+  hits the API with `optimistic:<uuid>` → 404 → error toast + rollback, then the
+  refetch cleans up. Non-corrupting; guard with `isOptimisticAssignmentId` in
+  `cycle-builder.tsx` if it is ever seen in practice.
+- Tests: `use-cycle-builder.optimistic.unit.test.ts` (8, pure transforms incl.
+  "leaves the previous cache untouched so a rollback can restore it") and
+  `use-cycle-builder.component.test.tsx` (4, `adminApi` mocked with deferred
+  promises: create/delete/reassign all visible **before** the server answers, and
+  create rolls back on rejection).
+- Gate: `bun run lint:fix` clean · `bun run validate:affected` exit 0 (web unit +
+  component **78 pass**) · `bun run test:e2e -- tests/scheduling/builder-slot-focus.spec.ts`
+  **3 pass** · `tests/scheduling/us4-roster-publish.spec.ts` **1 pass** (the real
+  assign-then-publish journey). Code review not yet run for this change.
+
 ## 6. Environment — corrections
 
 - Dev app: **`http://192.168.0.200:4001`**, not `localhost` (CORS).

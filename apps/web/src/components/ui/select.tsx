@@ -1,6 +1,7 @@
 import { Select as SelectPrimitive } from '@base-ui/react/select';
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import type * as React from 'react';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { cn } from '@/lib/utils';
 
 const Select = SelectPrimitive.Root;
@@ -33,12 +34,17 @@ function SelectTrigger({
 }: SelectPrimitive.Trigger.Props & {
   size?: 'sm' | 'default';
 }) {
+  // Honour the surrounding `FormControlSizeProvider` the way `Input`/`Button`
+  // do, so a Select inside a touch surface reaches 44px without each call site
+  // hand-forcing a wrapper div.
+  const contextSize = useFormControlSize();
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
       className={cn(
         "radius-control flex w-fit select-none items-center justify-between gap-1.5 whitespace-nowrap border border-input bg-transparent py-2 pr-2 pl-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 data-[size=default]:h-8 data-[size=sm]:h-7 data-placeholder:text-muted-foreground *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 dark:hover:bg-input/50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        contextSize === 'touch' && 'h-11 px-3 text-sm data-[size=default]:h-11',
         className,
       )}
       {...props}

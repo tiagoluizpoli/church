@@ -23,8 +23,7 @@ test('builder renders the cycle board, volunteer rail, and publish control', asy
   });
   await expect(page.getByTestId('volunteer-pool')).toBeVisible();
   await expect(page.getByTestId('cycle-board-scroll')).toBeVisible();
-  // The board's per-date staffing readout replaced the old StaffingMeter
-  // component, which the redesign left unmounted.
+  // The board's per-date staffing readout is the production status indicator.
   await expect(
     page.getByTestId('cycle-date-staffing-percent').first(),
   ).toBeVisible();

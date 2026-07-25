@@ -85,20 +85,23 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
     throw new Error('Board fixture is incomplete');
   }
 
+  // Both are qualified for both roles: this fixture is about *where someone is
+  // already serving*, and since B-2 an unqualified volunteer is no longer
+  // recommended at all — which would hide the very distinction under test.
   const eligibleVolunteers = [
     {
       volunteerId: 'volunteer-1',
       volunteerName: 'Local Volunteer',
       isAvailable: true,
       hasConflict: false,
-      qualifiedRoleIds: [],
+      qualifiedRoleIds: ['role-support', 'role-coordinator'],
     },
     {
       volunteerId: 'volunteer-2',
       volunteerName: 'Available Volunteer',
       isAvailable: true,
       hasConflict: false,
-      qualifiedRoleIds: [],
+      qualifiedRoleIds: ['role-support', 'role-coordinator'],
     },
   ];
 
@@ -190,7 +193,7 @@ describe('CycleBuilderBoard', () => {
       within(eveningPicker)
         .getAllByTestId('suggestion-option')
         .some((option) => option.textContent?.includes('Local Volunteer')),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('renders each date as a compact event, slot, shift, and role column', () => {
@@ -208,6 +211,9 @@ describe('CycleBuilderBoard', () => {
     expect(
       screen.getByRole('heading', { name: 'Sunday Gathering' }),
     ).toBeVisible();
+    expect(
+      screen.getByTestId('cycle-event-staffing-percent-event-1'),
+    ).toHaveClass('text-destructive');
     expect(screen.getByText(/Morning service/)).toBeVisible();
     expect(screen.getByText('Greeter')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
@@ -371,7 +377,13 @@ describe('CycleBuilderBoard', () => {
   });
 
   describe('filter row', () => {
-    it('groups the date-mode, range, search, and weekday-repeat controls under distinct labels', () => {
+    /** Opens the "Date filters" disclosure that holds the range + weekday controls. */
+    const openDateFilters = async () => {
+      const user = userEvent.setup();
+      await user.click(screen.getByTestId('cycle-builder-date-filters'));
+    };
+
+    it('groups the date-mode, range, search, and weekday-repeat controls under distinct labels', async () => {
       const secondSunday: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
         eventId: 'event-2',
@@ -397,9 +409,14 @@ describe('CycleBuilderBoard', () => {
       expect(
         screen.getByRole('button', { name: 'All cycle dates' }),
       ).toBeVisible();
+      expect(screen.getByLabelText('Search events')).toBeVisible();
+
+      // The date-shaped filters live behind one disclosure (B-4) — eight
+      // controls in a single wrapping row was over the working-memory limit.
+      await openDateFilters();
+
       expect(screen.getByLabelText('From')).toBeVisible();
       expect(screen.getByLabelText('To')).toBeVisible();
-      expect(screen.getByLabelText('Search events')).toBeVisible();
       // base-ui's Select mirrors the matching item's label into the trigger
       // only after the popup registers it (on first open in jsdom), so at
       // rest the trigger shows the raw value — assert case-insensitively.
@@ -412,7 +429,7 @@ describe('CycleBuilderBoard', () => {
       expect(screen.getByRole('button', { name: 'Sundays' })).toBeVisible();
     });
 
-    it('orders the clusters as Search, Date range, Show, then Repeats on', () => {
+    it('keeps the always-on row to search plus Show, and folds the date filters behind one disclosure (B-4)', async () => {
       const secondSunday: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
         eventId: 'event-2',
@@ -433,19 +450,30 @@ describe('CycleBuilderBoard', () => {
         />,
       );
 
+      // Collapsed: the row carries two filter clusters and the disclosure, so
+      // the leader reads three decisions, not eight.
+      expect(
+        screen.getAllByText(/^(Search events|Date range|Show|Repeats on)$/),
+      ).toHaveLength(2);
+      expect(screen.queryByLabelText('From')).not.toBeInTheDocument();
+      expect(screen.queryByText('Repeats on')).not.toBeInTheDocument();
+
+      await openDateFilters();
+
       const labelTexts = screen
         .getAllByText(/^(Search events|Date range|Show|Repeats on)$/)
         .map((node) => node.textContent);
 
       expect(labelTexts).toEqual([
         'Search events',
-        'Date range',
         'Show',
+        'Date range',
         'Repeats on',
       ]);
     });
 
-    it('does not render the repeated-weekday cluster when no weekday repeats', () => {
+    it('counts the date filters that are on, so a folded-away filter still announces itself (B-4)', async () => {
+      const user = userEvent.setup();
       renderWithProviders(
         <CycleBuilderBoard
           data={boardData}
@@ -456,6 +484,67 @@ describe('CycleBuilderBoard', () => {
           onRemoveAssignment={vi.fn()}
         />,
       );
+
+      const trigger = screen.getByTestId('cycle-builder-date-filters');
+      expect(trigger).toHaveTextContent(/^Date filters$/);
+
+      await user.click(trigger);
+      await user.click(screen.getByTestId('cycle-builder-date-span-mode'));
+      await user.click(await screen.findByRole('option', { name: 'Ends' }));
+
+      expect(trigger).toHaveTextContent('1');
+    });
+
+    it('names the toggle clusters as groups rather than orphan labels (B-3)', async () => {
+      const secondSunday: CycleBuilderData['events'][number] = {
+        ...boardData.events[0],
+        eventId: 'event-2',
+        participationId: 'participation-2',
+        title: 'Second Sunday Gathering',
+        startDate: '2026-08-09T09:00:00.000Z',
+        endDate: '2026-08-09T11:00:00.000Z',
+      };
+
+      renderWithProviders(
+        <CycleBuilderBoard
+          data={{ ...boardData, events: [boardData.events[0], secondSunday] }}
+          selectedDate={null}
+          onSelectedDateChange={vi.fn()}
+          onSelectVolunteer={vi.fn()}
+          onSelectAssignment={vi.fn()}
+          onRemoveAssignment={vi.fn()}
+        />,
+      );
+
+      await openDateFilters();
+
+      // "Show" and "Repeats on" were <label>s owning no control — announced
+      // with nothing attached to them. They name a group of toggles.
+      expect(screen.getByText('Show').tagName).toBe('LEGEND');
+      expect(screen.getByText('Repeats on').tagName).toBe('LEGEND');
+      expect(screen.getByRole('group', { name: 'Show' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Event dates' }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Sundays' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+    });
+
+    it('does not render the repeated-weekday cluster when no weekday repeats', async () => {
+      renderWithProviders(
+        <CycleBuilderBoard
+          data={boardData}
+          selectedDate={null}
+          onSelectedDateChange={vi.fn()}
+          onSelectVolunteer={vi.fn()}
+          onSelectAssignment={vi.fn()}
+          onRemoveAssignment={vi.fn()}
+        />,
+      );
+
+      await openDateFilters();
 
       expect(screen.queryByText('Repeats on')).not.toBeInTheDocument();
     });
@@ -497,11 +586,14 @@ describe('CycleBuilderBoard', () => {
       );
 
       const allDatesButton = screen.getByTestId('cycle-date-strip-focus');
-      // Informational (not clickable) while nothing is focused — it tells
-      // the leader they're seeing every date and can tap a day to focus.
-      expect(allDatesButton).toBeDisabled();
+      // Informational while nothing is focused — and not a control at all.
+      // It used to be a `disabled` button with `disabled:opacity-100`, which
+      // looks live, cannot be reached, and carried an `aria-pressed` state it
+      // had no way to change (B-3).
+      expect(allDatesButton.tagName).toBe('DIV');
+      expect(allDatesButton).not.toHaveAttribute('aria-pressed');
       expect(allDatesButton).toHaveTextContent('All dates');
-      expect(allDatesButton).toHaveTextContent('Tap a day to focus it');
+      expect(allDatesButton).toHaveTextContent('Select a day');
       // The date strip's pointer-drag handlers live on the
       // `aria-label="Cycle dates"` section — the pinned control must sit
       // outside it so it can never be swallowed by the pan gesture.
@@ -521,8 +613,9 @@ describe('CycleBuilderBoard', () => {
       // Once a date is focused it names that date and becomes an active
       // clear control.
       const focusedButton = screen.getByTestId('cycle-date-strip-focus');
+      expect(focusedButton.tagName).toBe('BUTTON');
       expect(focusedButton).not.toBeDisabled();
-      expect(focusedButton).toHaveTextContent('Tap to show all dates');
+      expect(focusedButton).toHaveTextContent('Show all dates');
     });
 
     it('no longer renders "All dates" inside the filter row itself', () => {
@@ -611,6 +704,7 @@ describe('CycleBuilderBoard', () => {
         screen.getAllByRole('heading', { name: 'Late Retreat' }).length,
       ).toBeGreaterThan(0);
 
+      await user.click(screen.getByTestId('cycle-builder-date-filters'));
       await user.click(screen.getByTestId('cycle-builder-date-span-mode'));
       await user.click(await screen.findByRole('option', { name: 'Ends' }));
 
@@ -773,10 +867,10 @@ describe('CycleBuilderBoard', () => {
       const dateStrip = within(
         screen.getByRole('region', { name: 'Cycle dates' }),
       );
-      // The staffing-progress text is part of the card body, not the focus
+      // The event-count text is part of the card body, not the focus
       // button — pressing and dragging from there must still pan, since
       // almost the entire card is now plain drag surface.
-      const cardBody = dateStrip.getByText(/staffing progress/);
+      const cardBody = dateStrip.getByText('1 event');
       const viewport = screen.getByTestId('cycle-date-strip-viewport');
 
       fireEvent.pointerDown(cardBody, {

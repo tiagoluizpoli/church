@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AssigneeIdentityBadge } from './assignee-identity-badge';
-import type { ConflictStatus } from './assignment-chip';
+import type { AssignmentOverrideKind } from './cycle-builder-matrix.utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,10 +20,12 @@ import { formatVolunteerName } from '@/utils/format-volunteer-name';
 interface OverrideDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  conflictType: ConflictStatus;
+  conflictType: AssignmentOverrideKind;
   volunteerName: string;
   volunteerSystemRole?: AssigneeSystemRole;
   slotLabel: string;
+  /** The role being filled — named in the `not_qualified` variant's copy. */
+  roleLabel?: string;
   isPending: boolean;
   onConfirm: (reason: string) => void;
 }
@@ -37,23 +39,30 @@ export function OverrideDialog({
   volunteerName,
   volunteerSystemRole,
   slotLabel,
+  roleLabel,
   isPending,
   onConfirm,
 }: OverrideDialogProps) {
   const [reason, setReason] = useState('');
   const tooShort = reason.trim().length < MIN_REASON;
 
-  const conflictText =
-    conflictType === 'double_booked'
-      ? `${formatVolunteerName(volunteerName)} is double-booked`
-      : `${formatVolunteerName(volunteerName)} is unavailable`;
+  // Qualification is its own override, not a flavour of "unavailable": the
+  // server treats it as a separate `NOT_QUALIFIED` warning that only a reason
+  // clears, and a leader forcing it is answering a different question.
+  const isNotQualified = conflictType === 'not_qualified';
+  const name = formatVolunteerName(volunteerName);
+  const conflictText = isNotQualified
+    ? `${name} isn't qualified for ${roleLabel ?? 'this role'}`
+    : conflictType === 'double_booked'
+      ? `${name} is double-booked`
+      : `${name} is unavailable`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-1">
-            Override conflict
+            {isNotQualified ? 'Assign anyway?' : 'Override conflict'}
             <AssigneeIdentityBadge
               roleLabel={formatAssigneeRoleLabel(volunteerSystemRole)}
               fullNameOnExpand={volunteerName}
@@ -90,7 +99,11 @@ export function OverrideDialog({
               onConfirm(reason.trim());
             }}
           >
-            {isPending ? 'Saving…' : 'Confirm Override'}
+            {isPending
+              ? 'Saving…'
+              : isNotQualified
+                ? 'Assign anyway'
+                : 'Confirm Override'}
           </Button>
         </DialogFooter>
       </DialogContent>

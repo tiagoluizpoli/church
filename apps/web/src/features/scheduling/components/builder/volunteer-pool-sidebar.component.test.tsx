@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { PoolVolunteer } from '../../hooks/use-volunteer-pool';
+import type { AssignableFitTier } from './cycle-builder-matrix.utils';
 import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
 
 function renderSidebar(ui: ReactElement) {
@@ -100,9 +101,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
       />,
     );
 
-    const [firstSelectButton] = screen.getAllByRole('button', {
-      name: 'Select slot',
-    });
+    const [firstSelectButton] = screen.getAllByTestId('volunteer-select-slot');
     expect(firstSelectButton).toBeDefined();
     if (!firstSelectButton) {
       throw new Error('Expected a Select slot button in volunteer pool');
@@ -146,6 +145,82 @@ describe('VolunteerPoolSidebar (T102)', () => {
 
     await user.click(screen.getByRole('button', { name: 'All volunteers' }));
     expect(onClearFocus).toHaveBeenCalledOnce();
+  });
+
+  it('offers Pick me on every assignable card, not only the ranked ones', async () => {
+    const user = userEvent.setup();
+    const onAssignFocusedVolunteer = vi.fn();
+
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={['2']}
+        // Both are assignable — the leader may overrule the ranking and pick
+        // Alice even though only Bob was ranked for the role.
+        assignableVolunteerFits={
+          new Map<string, AssignableFitTier>([
+            ['1', 'ready'],
+            ['2', 'ready'],
+          ])
+        }
+        focusLabel="Greeter · 9:00 AM - 11:00 AM"
+        onSelectVolunteer={vi.fn()}
+        onAssignFocusedVolunteer={onAssignFocusedVolunteer}
+      />,
+    );
+
+    const pickButtons = screen.getAllByTestId('volunteer-pick-me');
+    expect(pickButtons).toHaveLength(2);
+    expect(
+      screen.queryByTestId('volunteer-select-slot'),
+    ).not.toBeInTheDocument();
+
+    // Alice (id 1) is under "Everyone else" yet still committable.
+    await user.click(pickButtons[pickButtons.length - 1]);
+    expect(onAssignFocusedVolunteer).toHaveBeenCalledWith('1');
+  });
+
+  it('keeps Select slot on a card excluded from the assignable set', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={['2']}
+        // Only Bob is assignable; Alice (already serving this shift, say) is not.
+        assignableVolunteerFits={
+          new Map<string, AssignableFitTier>([['2', 'ready']])
+        }
+        focusLabel="Greeter · 9:00 AM - 11:00 AM"
+        onSelectVolunteer={vi.fn()}
+        onAssignFocusedVolunteer={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByTestId('volunteer-pick-me')).toHaveLength(1);
+    expect(screen.getByTestId('volunteer-select-slot')).toBeVisible();
+  });
+
+  it('offers no Pick me action when focus assignment is not wired', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={volunteers}
+        assignments={[]}
+        roles={roles}
+        focusedVolunteerIds={['2']}
+        assignableVolunteerFits={
+          new Map<string, AssignableFitTier>([
+            ['1', 'ready'],
+            ['2', 'ready'],
+          ])
+        }
+        focusLabel="Greeter · 9:00 AM - 11:00 AM"
+      />,
+    );
+
+    expect(screen.queryByTestId('volunteer-pick-me')).not.toBeInTheDocument();
   });
 
   it('still lists the pool when nobody is qualified for the focused role', () => {
@@ -217,6 +292,44 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(screen.getByText('Carol W.')).toBeVisible();
   });
 
+  it('filters by qualification and shows a removable filter chip', async () => {
+    const user = userEvent.setup();
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={groupableVolunteers}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+
+    // No chip until a role filter is applied.
+    expect(
+      screen.queryByTestId('volunteer-role-filter-chip'),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Filter and group volunteers' }),
+    );
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: 'Usher' }),
+    );
+
+    // Carol + Bob are Usher-qualified; Alice + Dana (Greeter only) drop out.
+    const chip = screen.getByTestId('volunteer-role-filter-chip');
+    expect(chip).toHaveTextContent('Usher');
+    expect(screen.getByText('Carol W.')).toBeVisible();
+    expect(screen.getByText('Bob J.')).toBeVisible();
+    expect(screen.queryByText('Alice S.')).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Clear Usher filter' }),
+    );
+    expect(
+      screen.queryByTestId('volunteer-role-filter-chip'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Alice S.')).toBeVisible();
+  });
+
   it('groups volunteers by their qualified roles', async () => {
     const user = userEvent.setup();
     renderSidebar(
@@ -281,5 +394,42 @@ describe('VolunteerPoolSidebar qualified roles line (023 phase 6)', () => {
     expect(
       screen.queryByTestId('volunteer-qualified-roles'),
     ).not.toBeInTheDocument();
+  });
+
+  describe('empty states (B-1)', () => {
+    it('says the pool is structurally empty when there is nothing to filter', () => {
+      renderSidebar(
+        <VolunteerPoolSidebar volunteers={[]} assignments={[]} roles={roles} />,
+      );
+
+      expect(screen.getByTestId('volunteer-pool-empty')).toHaveTextContent(
+        'No volunteers are eligible for this cycle yet.',
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Clear filters' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('names the search term and offers a way back when a filter empties the rail', async () => {
+      const user = userEvent.setup();
+      renderSidebar(
+        <VolunteerPoolSidebar
+          volunteers={volunteers}
+          assignments={[]}
+          roles={roles}
+        />,
+      );
+
+      await user.type(
+        screen.getByLabelText('Search volunteers by name'),
+        'zzz',
+      );
+      expect(screen.getByTestId('volunteer-pool-empty')).toHaveTextContent(
+        'No volunteers match “zzz”.',
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+      expect(screen.getByText('Alice S.')).toBeVisible();
+    });
   });
 });

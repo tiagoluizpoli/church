@@ -1,61 +1,56 @@
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { CalendarDays, FilterIcon, LocateFixed, XIcon } from 'lucide-react';
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   type CycleBuilderData,
-  type CycleBuilderShiftSummary,
   isActiveAssignment,
 } from '../../hooks/use-cycle-builder';
-import type { PoolVolunteer } from '../../hooks/use-volunteer-pool';
-import type {
-  PickerVolunteer,
-  ServingAssignmentContext,
-} from './assignment-picker';
+import { CycleBuilderBoardGrid } from './cycle-builder-board-grid';
+import type { CycleBuilderCellSelectInput } from './cycle-builder-cell';
+import type { FailedAssignmentWrite } from './cycle-builder-cell-parts';
+import { CycleBuilderDateFilters } from './cycle-builder-date-filters';
+import { CycleBuilderDateStrip } from './cycle-builder-date-strip';
 import {
-  CycleBuilderCell,
-  type CycleBuilderCellSelectInput,
-} from './cycle-builder-cell';
-import {
+  assignableFits,
+  buildCellDerivedIndex,
+  buildFocusLabel,
+  buildShiftAssignmentIndex,
   countWorkload,
+  type DateMode,
   type DateSpanMode,
+  dateLabel,
   deriveEventDates,
   draggedVolunteerId,
   dropTargetData,
   enumerateDates,
   eventMatchesDateSpan,
   eventOccursOnDay,
-  eventSlotsOnDay,
+  type FocusedShift,
+  findShiftById,
+  findShiftContextById,
   focusKey,
   isDateWithinRange,
+  overrideKindForFit,
+  pool,
   rankVolunteersForShiftRole,
+  roleHasRoom,
   volunteerFitForShiftRole,
   weekdayForDayKey,
 } from './cycle-builder-matrix.utils';
-import type { SuggestedVolunteer } from './suggestion-list';
-import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
-import { DatePickerField } from '@/components/date-picker-field';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { FormControlSizeProvider } from '@/components/ui/form-control-size';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  useBoardDragScroll,
+  useDateStripDragScroll,
+} from './use-cycle-board-drag-scroll';
+import { VolunteerCard } from './volunteer-card';
+import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
+import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { cn } from '@/lib/utils';
-import { toCycleDayKey, toLocalDayKey } from '@/shared/utils/date';
+import { toCycleDayKey } from '@/shared/utils/date';
 
 interface Props {
   data: CycleBuilderData;
@@ -67,255 +62,10 @@ interface Props {
   onSelectVolunteer: (id: string | undefined) => void;
   onSelectAssignment: (input: CycleBuilderCellSelectInput) => void;
   onRemoveAssignment: (id: string) => void;
-}
-
-const dateLabel = (date: string) =>
-  new Date(`${toLocalDayKey(date)}T12:00:00`).toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-const timeLabel = (date: string) =>
-  new Date(date).toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-/** Same green/amber/destructive semantic palette used for volunteer
- * availability elsewhere in the builder (assignment-picker.tsx,
- * suggestion-list.tsx) — reused here so a date's staffing status reads at a
- * glance instead of requiring the leader to read every percentage. A date
- * with no requirements yet (no events, or events with none included) stays
- * neutral rather than flashing red — there's nothing to be missing. */
-function staffingStatusClasses(
-  percent: number,
-  hasRequirement: boolean,
-): { text: string; bar: string } {
-  if (!hasRequirement) {
-    return { text: 'text-muted-foreground', bar: 'bg-muted-foreground/30' };
-  }
-  if (percent >= 100) {
-    return { text: 'text-green-700 dark:text-green-400', bar: 'bg-green-600' };
-  }
-  if (percent >= 50) {
-    return {
-      text: 'text-yellow-700 dark:text-yellow-300',
-      bar: 'bg-yellow-500',
-    };
-  }
-  return { text: 'text-destructive', bar: 'bg-destructive' };
-}
-
-const BOARD_DRAG_THRESHOLD_PX = 4;
-// The date strip's cards sit edge-to-edge with almost no gap between them
-// (unlike the board's spacious cells), so drag has to be armable by
-// pressing directly on a card, not just in the sliver between them. A
-// slightly higher threshold than the board's absorbs ordinary click jitter
-// without needing to exclude buttons from arming the drag at all.
-const DATE_DRAG_THRESHOLD_PX = 10;
-
-interface BoardDragState {
-  pointerId: number;
-  startClientX: number;
-  startScrollLeft: number;
-  hasDragged: boolean;
-  captureElement: HTMLDivElement;
-}
-
-type DateMode = 'event_dates' | 'all_cycle_dates';
-
-/**
- * The shift×role the rail is currently ranking people for. A slot can hold
- * several shifts and every shift×role pair is its own assignable place, so
- * `key` carries both — focusing one cell must not light up its siblings.
- * `ids` is ranked best-first rather than a plain set, and `idealVolunteerId`
- * is the top of that ranking who is actually free to take the slot — the same
- * order the picker's recommendations use, so the rail and the picker never
- * disagree about who the obvious pick is.
- */
-interface FocusedShift {
-  key: string;
-  label: string;
-  ids: string[];
-  idealVolunteerId?: string;
-}
-
-function pool(data: CycleBuilderData): PoolVolunteer[] {
-  const result = new Map<string, PoolVolunteer>();
-  const roleNameById = new Map(data.roles.map((role) => [role.id, role.name]));
-  for (const event of data.events)
-    for (const slot of event.slots)
-      for (const shift of slot.shifts)
-        for (const volunteer of shift.eligibleVolunteers) {
-          result.set(volunteer.volunteerId, {
-            volunteerId: volunteer.volunteerId,
-            volunteerName: volunteer.volunteerName,
-            status: volunteer.hasConflict
-              ? 'unavailable'
-              : volunteer.isAvailable
-                ? 'available'
-                : 'no_response',
-            // Ids with no matching role are dropped rather than shown raw: a
-            // uuid on the card would read as a skill name.
-            qualifiedRoleNames: volunteer.qualifiedRoleIds
-              .map((roleId) => roleNameById.get(roleId))
-              .filter((name): name is string => name != null)
-              .sort((left, right) => left.localeCompare(right)),
-            lastServedAt: volunteer.lastServedAt,
-          });
-        }
-  for (const assignment of data.assignments)
-    if (!result.has(assignment.volunteerId))
-      result.set(assignment.volunteerId, {
-        volunteerId: assignment.volunteerId,
-        volunteerName: assignment.volunteerName ?? assignment.volunteerId,
-        status: 'no_response',
-      });
-  return [...result.values()];
-}
-
-function candidates(
-  shift: CycleBuilderShiftSummary,
-  data: CycleBuilderData,
-): PickerVolunteer[] {
-  const assignmentContext = getShiftAssignmentContext({ shift, data });
-  const workload = countWorkload({ assignments: data.assignments });
-  return shift.eligibleVolunteers
-    .filter(
-      (volunteer) =>
-        !assignmentContext.assignedVolunteerIds.has(volunteer.volunteerId),
-    )
-    .map((volunteer) => ({
-      id: volunteer.volunteerId,
-      name: volunteer.volunteerName,
-      availabilityStatus: volunteer.hasConflict
-        ? 'unavailable'
-        : volunteer.isAvailable
-          ? 'available'
-          : 'no_response',
-      alreadyAssignedCount: workload.get(volunteer.volunteerId) ?? 0,
-      alreadyServingAssignments:
-        assignmentContext.otherAssignmentsByVolunteerId.get(
-          volunteer.volunteerId,
-        ),
-    }));
-}
-
-function recommendations(
-  shift: CycleBuilderShiftSummary,
-  data: CycleBuilderData,
-) {
-  const assignmentContext = getShiftAssignmentContext({ shift, data });
-  const workload = countWorkload({ assignments: data.assignments });
-  const toSuggestion = (
-    volunteer: (typeof shift.eligibleVolunteers)[number],
-    status: SuggestedVolunteer['status'],
-  ): SuggestedVolunteer => ({
-    id: volunteer.volunteerId,
-    name: volunteer.volunteerName,
-    status,
-    workloadCount: workload.get(volunteer.volunteerId) ?? 0,
-    conflictType: volunteer.hasConflict ? 'double_booked' : 'unavailable',
-  });
-  const eligible = shift.eligibleVolunteers.filter(
-    (volunteer) =>
-      !assignmentContext.assignedVolunteerIds.has(volunteer.volunteerId) &&
-      !assignmentContext.otherAssignmentsByVolunteerId.has(
-        volunteer.volunteerId,
-      ),
-  );
-  return {
-    safe: eligible
-      .filter((volunteer) => volunteer.isAvailable && !volunteer.hasConflict)
-      .sort((left, right) => {
-        const served =
-          (left.lastServedAt ? new Date(left.lastServedAt).getTime() : 0) -
-          (right.lastServedAt ? new Date(right.lastServedAt).getTime() : 0);
-        return (
-          served ||
-          (workload.get(left.volunteerId) ?? 0) -
-            (workload.get(right.volunteerId) ?? 0) ||
-          left.volunteerName.localeCompare(right.volunteerName)
-        );
-      })
-      .slice(0, 5)
-      .map((volunteer) => toSuggestion(volunteer, 'available')),
-    needsResponse: eligible
-      .filter((volunteer) => !volunteer.isAvailable && !volunteer.hasConflict)
-      .slice(0, 5)
-      .map((volunteer) => toSuggestion(volunteer, 'needs_response')),
-    conflicts: eligible
-      .filter((volunteer) => volunteer.hasConflict)
-      .slice(0, 5)
-      .map((volunteer) => toSuggestion(volunteer, 'conflict')),
-  };
-}
-
-interface ShiftAssignmentContext {
-  assignedVolunteerIds: Set<string>;
-  otherAssignmentsByVolunteerId: Map<string, ServingAssignmentContext[]>;
-}
-
-function getShiftAssignmentContext({
-  shift,
-  data,
-}: {
-  shift: CycleBuilderShiftSummary;
-  data: CycleBuilderData;
-}): ShiftAssignmentContext {
-  const shiftContextById = new Map<string, ServingAssignmentContext>();
-  const roleNameById = new Map(data.roles.map((role) => [role.id, role.name]));
-  for (const event of data.events) {
-    for (const slot of event.slots) {
-      for (const candidateShift of slot.shifts) {
-        const timeRange = `${timeLabel(candidateShift.startTime)}–${timeLabel(candidateShift.endTime)}`;
-        const shiftLabel =
-          candidateShift.label != null
-            ? `${candidateShift.label} · ${timeRange}`
-            : timeRange;
-        shiftContextById.set(candidateShift.shiftId, {
-          summary: `${dateLabel(event.startDate)} · ${shiftLabel}`,
-          detail: `${event.title} · ${dateLabel(event.startDate)} · ${shiftLabel}`,
-        });
-      }
-    }
-  }
-
-  const assignedVolunteerIds = new Set<string>();
-  const otherAssignmentsByVolunteerId = new Map<
-    string,
-    ServingAssignmentContext[]
-  >();
-  for (const assignment of data.assignments) {
-    if (!isActiveAssignment({ status: assignment.status })) {
-      continue;
-    }
-    if (!assignment.shiftId) {
-      continue;
-    }
-
-    if (assignment.shiftId === shift.shiftId) {
-      assignedVolunteerIds.add(assignment.volunteerId);
-      continue;
-    }
-
-    const shiftContext = shiftContextById.get(assignment.shiftId);
-    if (!shiftContext) {
-      continue;
-    }
-    const roleLabel = roleNameById.get(assignment.roleId) ?? 'Role';
-    const context = {
-      summary: `${shiftContext.summary} · ${roleLabel}`,
-      detail: `${shiftContext.detail} · ${roleLabel}`,
-    };
-    const existing = otherAssignmentsByVolunteerId.get(assignment.volunteerId);
-    otherAssignmentsByVolunteerId.set(assignment.volunteerId, [
-      ...(existing ?? []),
-      context,
-    ]);
-  }
-
-  return { assignedVolunteerIds, otherAssignmentsByVolunteerId };
+  /** Writes the server rejected, still shown in the cell they were made in. */
+  failedWrites?: FailedAssignmentWrite[];
+  onRetryFailedWrite?: (failedWriteId: string) => void;
+  onDismissFailedWrite?: (failedWriteId: string) => void;
 }
 
 export function CycleBuilderMatrix(props: Props) {
@@ -323,21 +73,41 @@ export function CycleBuilderMatrix(props: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
-  const boardViewportRef = useRef<HTMLDivElement>(null);
-  const boardDragState = useRef<BoardDragState | null>(null);
-  const suppressNextBoardClick = useRef(false);
-  const dateViewportRef = useRef<HTMLDivElement>(null);
-  const dateDragState = useRef<BoardDragState | null>(null);
+  const boardDragScroll = useBoardDragScroll();
+  const dateStripDragScroll = useDateStripDragScroll();
   const [dateMode, setDateMode] = useState<DateMode>('event_dates');
   const [dateSpanMode, setDateSpanMode] = useState<DateSpanMode>('starts');
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
   const [eventQuery, setEventQuery] = useState('');
   const [weekday, setWeekday] = useState<number | null>(null);
+  const [dateFiltersOpen, setDateFiltersOpen] = useState(false);
   const [focused, setFocused] = useState<FocusedShift | null>(null);
+  // The volunteer under an in-flight drag. It drives a DragOverlay portal so the
+  // dragged card floats above the whole board instead of translating in place
+  // inside the rail's ScrollArea, which clipped it "behind the pane".
+  const [draggingVolunteerId, setDraggingVolunteerId] = useState<string | null>(
+    null,
+  );
   const eventDates = useMemo(
     () => deriveEventDates({ events: props.data.events }),
     [props.data.events],
+  );
+  // Built once per query payload and read by every cell's picker; see
+  // `buildShiftAssignmentIndex` for why this used to run per role per column.
+  const shiftAssignmentIndex = useMemo(
+    () => buildShiftAssignmentIndex({ data: props.data }),
+    [props.data],
+  );
+  // `candidates()`/`recommendations()` are pure functions of a shift×role plus
+  // this index, so — like the index itself — they only need recomputing when
+  // the query payload changes, not on every render (a rail selection, a date
+  // filter, or opening the filter Collapsible used to re-run them for every
+  // visible cell for no reason).
+  const cellDerivedByKey = useMemo(
+    () =>
+      buildCellDerivedIndex({ data: props.data, index: shiftAssignmentIndex }),
+    [props.data, shiftAssignmentIndex],
   );
   const cycleStartDate = props.cycleStartDate
     ? toCycleDayKey(props.cycleStartDate)
@@ -433,6 +203,13 @@ export function CycleBuilderMatrix(props: Props) {
     rangeEnd === cycleEndDate &&
     eventQuery === '' &&
     weekday === null;
+  // A filter folded out of sight still has to announce itself, or the board
+  // silently hides dates with nothing on screen saying why (B-4).
+  const activeDateFilterCount =
+    (dateSpanMode === 'starts' ? 0 : 1) +
+    (rangeStart === cycleStartDate ? 0 : 1) +
+    (rangeEnd === cycleEndDate ? 0 : 1) +
+    (weekday === null ? 0 : 1);
   const clearFilters = () => {
     setDateMode('event_dates');
     setDateSpanMode('starts');
@@ -441,6 +218,21 @@ export function CycleBuilderMatrix(props: Props) {
     setEventQuery('');
     setWeekday(null);
   };
+  // A failed write belongs to the cell the leader made it in, so it is indexed
+  // by shift×role once rather than rescanned per cell per render.
+  const failedWritesByCell = useMemo(() => {
+    const byCell = new Map<string, FailedAssignmentWrite[]>();
+    for (const failedWrite of props.failedWrites ?? []) {
+      const key = focusKey({
+        shiftId: failedWrite.shiftId,
+        roleId: failedWrite.roleId,
+      });
+      const existing = byCell.get(key);
+      if (existing) existing.push(failedWrite);
+      else byCell.set(key, [failedWrite]);
+    }
+    return byCell;
+  }, [props.failedWrites]);
   const volunteers = useMemo(() => pool(props.data), [props.data]);
   const activeAssignments = props.data.assignments.filter((assignment) =>
     isActiveAssignment({ status: assignment.status }),
@@ -448,365 +240,167 @@ export function CycleBuilderMatrix(props: Props) {
   const selectedName = volunteers.find(
     (volunteer) => volunteer.volunteerId === props.selectedVolunteerId,
   )?.volunteerName;
-  const gridStyle = {
-    gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(320px, 1fr))`,
-  };
-  const clearBoardDrag = (pointerId: number) => {
-    const captureElement = boardDragState.current?.captureElement;
-    boardDragState.current = null;
-    captureElement?.classList.remove('select-none');
-    if (captureElement?.hasPointerCapture?.(pointerId))
-      captureElement.releasePointerCapture(pointerId);
-  };
-  const onBoardPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    if (
-      (event.target as HTMLElement).closest(
-        'button, input, select, textarea, a, [role="button"], [data-slot="scroll-area-scrollbar"]',
+  // The full card model for the drag ghost — the pool row plus its live cycle
+  // workload, so the floating overlay reads identically to its source card.
+  const draggingVolunteer = useMemo(() => {
+    if (!draggingVolunteerId) return null;
+    const poolVolunteer = volunteers.find(
+      (volunteer) => volunteer.volunteerId === draggingVolunteerId,
+    );
+    if (!poolVolunteer) return null;
+    const workload = countWorkload({ assignments: activeAssignments });
+    return {
+      ...poolVolunteer,
+      workloadCount: workload.get(poolVolunteer.volunteerId) ?? 0,
+    };
+  }, [draggingVolunteerId, volunteers, activeAssignments]);
+  // Assign a rail person straight to the focused shift×role, through the very
+  // same path the board's own assign uses — so conflict overrides and
+  // already-assigned-elsewhere collisions are captured identically no matter
+  // which surface started the assignment. Clearing focus afterwards returns the
+  // cards to their plain "Select slot" state.
+  const focusedShift =
+    focused && findShiftById({ data: props.data, shiftId: focused.shiftId });
+  // A full role can still be focused, so the rail honours the same headcount
+  // ceiling the board enforces cell-side as `canAdd`.
+  const focusedRoleHasRoom = Boolean(
+    focused &&
+      focusedShift &&
+      roleHasRoom({ shift: focusedShift, roleId: focused.roleId }),
+  );
+  // Everyone the leader may commit to the focused slot, each carrying the tier
+  // that pick would land in — so the rail's own button can say what the pick
+  // costs instead of presenting a conflict commit as frictionless (B-2).
+  // Qualification, like availability and double-booking, is an override path,
+  // not a hard filter — `assignableFits()` below includes `unqualified`. Two
+  // hard "no"s stay out: someone already serving this shift and anyone whose
+  // fit is `none`.
+  const focusedShiftAssigneeIds = focusedShift
+    ? new Set(
+        focusedShift.assignments
+          .filter((assignment) =>
+            isActiveAssignment({ status: assignment.status }),
+          )
+          .map((assignment) => assignment.volunteerId),
       )
-    )
-      return;
-    const viewport = boardViewportRef.current;
-    if (!viewport) return;
-    boardDragState.current = {
-      pointerId: event.pointerId,
-      startClientX: event.clientX,
-      startScrollLeft: viewport.scrollLeft,
-      hasDragged: false,
-      captureElement: event.currentTarget,
-    };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-  const onBoardPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const viewport = boardViewportRef.current;
-    const drag = boardDragState.current;
-    if (!viewport || !drag || drag.pointerId !== event.pointerId) return;
-    if (event.buttons === 0) {
-      clearBoardDrag(event.pointerId);
-      return;
-    }
-    const distance = event.clientX - drag.startClientX;
-    if (Math.abs(distance) > BOARD_DRAG_THRESHOLD_PX) {
-      if (!drag.hasDragged) {
-        drag.hasDragged = true;
-        event.currentTarget.classList.add('select-none');
-      }
-      event.preventDefault();
-      viewport.scrollLeft = drag.startScrollLeft - distance;
-    }
-  };
-  const onDatePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    const viewport = dateViewportRef.current;
-    if (!viewport || event.button !== 0) return;
-    // Only the small per-card focus button is an interactive element here
-    // now — everything else on a card is plain drag surface with no click
-    // handler of its own, so excluding buttons from arming the drag no
-    // longer costs almost all the grabbable area the way it did when the
-    // whole card was one giant button.
-    if ((event.target as HTMLElement).closest('button, [role="button"]'))
-      return;
-    dateDragState.current = {
-      pointerId: event.pointerId,
-      startClientX: event.clientX,
-      startScrollLeft: viewport.scrollLeft,
-      hasDragged: false,
-      captureElement: event.currentTarget,
-    };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-  const onDatePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const viewport = dateViewportRef.current;
-    const drag = dateDragState.current;
-    if (!viewport || !drag || drag.pointerId !== event.pointerId) return;
-    const distance = event.clientX - drag.startClientX;
-    if (Math.abs(distance) > DATE_DRAG_THRESHOLD_PX) {
-      drag.hasDragged = true;
-      event.preventDefault();
-      viewport.scrollLeft = drag.startScrollLeft - distance;
-    }
-  };
-  const endDateDrag = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = dateDragState.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    dateDragState.current = null;
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId))
-      event.currentTarget.releasePointerCapture(event.pointerId);
-  };
-  const endBoardDrag = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = boardDragState.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    suppressNextBoardClick.current = drag.hasDragged;
-    clearBoardDrag(event.pointerId);
+    : null;
+  const assignableFocusedVolunteerFits =
+    focused && focusedShift && focusedRoleHasRoom
+      ? assignableFits({
+          shift: focusedShift,
+          roleId: focused.roleId,
+          excludedVolunteerIds: focusedShiftAssigneeIds,
+        })
+      : undefined;
+  const assignFocusedVolunteer = (volunteerId: string) => {
+    if (!focused || !focusedShift || !focusedRoleHasRoom) return;
+    if (focusedShiftAssigneeIds?.has(volunteerId)) return;
+    const fit = volunteerFitForShiftRole({
+      shift: focusedShift,
+      roleId: focused.roleId,
+      volunteerId,
+    });
+    if (fit.tier === 'none') return;
+    props.onSelectAssignment({
+      volunteerId,
+      shiftId: focused.shiftId,
+      roleId: focused.roleId,
+      volunteerName: volunteers.find(
+        (volunteer) => volunteer.volunteerId === volunteerId,
+      )?.volunteerName,
+      slotLabel: focused.slotLabel,
+      roleLabel: focused.roleLabel,
+      // Whatever this pick has to justify — unavailable, double-booked, or
+      // not qualified — comes from the shared predicate, never from this call
+      // site's own reading of the tier (FR-016).
+      conflictType: overrideKindForFit({ fit }),
+    });
+    setFocused(null);
   };
   return (
     <FormControlSizeProvider size={isMobile ? 'touch' : 'default'}>
       <div className="surface-panel space-y-4 p-4">
-        <section className="flex flex-wrap items-end gap-x-4 gap-y-3 border-b pb-3">
-          <div className="space-y-1">
-            <Label htmlFor="cycle-builder-event-search">
-              <FilterIcon className="size-3.5 text-muted-foreground" />
-              Search events
-            </Label>
-            <Input
-              id="cycle-builder-event-search"
-              value={eventQuery}
-              onChange={(event) => setEventQuery(event.target.value)}
-              placeholder="Search events…"
-              aria-label="Search events"
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-end gap-2 border-l pl-4">
-            <div className="space-y-1">
-              <Label htmlFor="cycle-builder-date-span-mode">Date range</Label>
-              <div className={isMobile ? 'h-11' : 'h-8'}>
-                <Select
-                  value={dateSpanMode}
-                  onValueChange={(value) =>
-                    setDateSpanMode(value as DateSpanMode)
-                  }
-                >
-                  <SelectTrigger
-                    id="cycle-builder-date-span-mode"
-                    data-testid="cycle-builder-date-span-mode"
-                    className={cn(
-                      'w-32',
-                      isMobile && 'px-3 text-sm data-[size=default]:h-11',
-                    )}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="starts">Starts</SelectItem>
-                    <SelectItem value="ends">Ends</SelectItem>
-                    <SelectItem value="within">Within</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="cycle-builder-date-start-filter">From</Label>
-              <DatePickerField
-                id="cycle-builder-date-start-filter"
-                value={rangeStart}
-                onChange={setRangeStart}
-                placeholder="From"
-                minDate={cycleStartDate}
-                maxDate={cycleEndDate}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="cycle-builder-date-end-filter">To</Label>
-              <DatePickerField
-                id="cycle-builder-date-end-filter"
-                value={rangeEnd}
-                onChange={setRangeEnd}
-                placeholder="To"
-                minDate={cycleStartDate}
-                maxDate={cycleEndDate}
-              />
-            </div>
-          </div>
-          <div className="space-y-1 border-l pl-4">
-            <Label>Show</Label>
-            <div className="flex gap-1">
-              <Button
-                type="button"
-                variant={dateMode === 'event_dates' ? 'secondary' : 'ghost'}
-                onClick={() => setDateMode('event_dates')}
-              >
-                Event dates
-              </Button>
-              <Button
-                type="button"
-                variant={dateMode === 'all_cycle_dates' ? 'secondary' : 'ghost'}
-                onClick={() => setDateMode('all_cycle_dates')}
-              >
-                All cycle dates
-              </Button>
-            </div>
-          </div>
-          {weekdayFilters.length > 0 ? (
-            <div className="space-y-1 border-l pl-4">
-              <Label>Repeats on</Label>
-              <div className="flex gap-1">
-                {weekdayFilters.map((day) => (
-                  <Button
-                    key={day}
-                    type="button"
-                    variant={weekday === day ? 'secondary' : 'ghost'}
-                    onClick={() => setWeekday(weekday === day ? null : day)}
-                  >
-                    {new Intl.DateTimeFormat(undefined, {
-                      weekday: 'long',
-                    }).format(new Date(2026, 7, 2 + day))}
-                    s
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <div className="ml-auto flex items-end gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={filtersAreDefault}
-              onClick={clearFilters}
-            >
-              Clear filters
-            </Button>
-            <span className="pb-1.5 text-muted-foreground text-xs">
-              {columns.length} of {dates.length} dates visible
-            </span>
-          </div>
-        </section>
-        <div className="flex items-stretch gap-2">
-          {/* pb-3 matches the date strip's own scrollbar clearance so this
-           * button stretches to the CARD height, not the card+scrollbar-gap
-           * height — `items-stretch` above pins it to the row's tallest
-           * child (the scroll area). */}
-          <div className="shrink-0 pb-3">
-            <button
-              type="button"
-              data-testid="cycle-date-strip-focus"
-              aria-pressed={props.selectedDate !== null}
-              aria-label={
-                props.selectedDate
-                  ? `Showing ${dateLabel(props.selectedDate)} only — clear to show all dates`
-                  : 'Showing all dates'
-              }
-              disabled={props.selectedDate === null}
-              onClick={() => props.onSelectedDateChange(null)}
-              className="flex h-full min-w-32 flex-col items-center justify-center gap-1 rounded-lg border border-border border-dashed bg-card px-3 py-2 text-center text-muted-foreground text-sm disabled:opacity-100 aria-pressed:border-primary aria-pressed:border-solid aria-pressed:text-primary"
-            >
-              {props.selectedDate ? (
-                <>
-                  <XIcon className="size-4" />
-                  <span className="font-semibold text-foreground">
-                    {dateLabel(props.selectedDate)}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground leading-tight">
-                    Tap to show all dates
-                  </span>
-                </>
-              ) : (
-                <>
-                  <CalendarDays className="size-4" />
-                  <span className="font-semibold text-foreground">
-                    All dates
-                  </span>
-                  <span className="text-[11px] text-muted-foreground leading-tight">
-                    Tap a day to focus it
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
-          <ScrollArea
-            className="min-w-0 pb-3"
-            data-testid="cycle-date-strip-scroll"
-            viewportRef={dateViewportRef}
-            viewportTestId="cycle-date-strip-viewport"
-            scrollbarOrientation="horizontal"
-          >
-            <section
-              className="flex min-h-10 touch-pan-y gap-2 pb-1"
-              aria-label="Cycle dates"
-              onPointerDown={onDatePointerDown}
-              onPointerMove={onDatePointerMove}
-              onPointerUp={endDateDrag}
-              onPointerCancel={endDateDrag}
-            >
-              {dates.map((date) => {
-                const dayEvents = eventsForDate.get(date) ?? [];
-                const assigned = dayEvents.reduce(
-                  (total, event) => total + event.assignedCount,
-                  0,
-                );
-                const required = dayEvents.reduce(
-                  (total, event) => total + event.requiredCount,
-                  0,
-                );
-                const percent = required
-                  ? Math.round((assigned / required) * 100)
-                  : 0;
-                const selected = props.selectedDate === date;
-                const staffing = staffingStatusClasses(percent, required > 0);
-                return (
-                  <div
-                    key={date}
-                    data-selected={selected}
-                    className="relative min-w-48 flex-1 rounded-lg border border-border bg-card p-3 text-left data-[selected=true]:border-primary data-[selected=true]:bg-primary/5"
-                  >
-                    <span className="flex items-center justify-between font-semibold text-sm">
-                      <button
-                        type="button"
-                        aria-pressed={selected}
-                        aria-label={
-                          selected
-                            ? 'Show all dates'
-                            : `Show only ${dateLabel(date)}`
-                        }
-                        onClick={() =>
-                          props.onSelectedDateChange(selected ? null : date)
-                        }
-                        className="-my-1 -ml-1 flex items-center gap-1.5 rounded-md p-1 text-foreground hover:bg-muted aria-pressed:text-primary"
-                      >
-                        {dateLabel(date)}
-                        <LocateFixed className="size-3.5 text-muted-foreground" />
-                      </button>
-                      <span
-                        className={cn('text-xs', staffing.text)}
-                        data-testid="cycle-date-staffing-percent"
-                      >
-                        {percent}%
-                      </span>
-                    </span>
-                    <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-muted">
-                      <span
-                        className={cn('block h-full', staffing.bar)}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </span>
-                    <span className="mt-2 block text-muted-foreground text-xs">
-                      {dayEvents.length} event
-                      {dayEvents.length === 1 ? '' : 's'} · staffing progress
-                    </span>
-                  </div>
-                );
-              })}
-            </section>
-          </ScrollArea>
-        </div>
+        <CycleBuilderDateFilters
+          open={dateFiltersOpen}
+          onOpenChange={setDateFiltersOpen}
+          eventQuery={eventQuery}
+          onEventQueryChange={setEventQuery}
+          dateMode={dateMode}
+          onDateModeChange={setDateMode}
+          dateSpanMode={dateSpanMode}
+          onDateSpanModeChange={setDateSpanMode}
+          rangeStart={rangeStart}
+          onRangeStartChange={setRangeStart}
+          rangeEnd={rangeEnd}
+          onRangeEndChange={setRangeEnd}
+          cycleStartDate={cycleStartDate}
+          cycleEndDate={cycleEndDate}
+          weekdayFilters={weekdayFilters}
+          weekday={weekday}
+          onWeekdayChange={setWeekday}
+          activeDateFilterCount={activeDateFilterCount}
+          filtersAreDefault={filtersAreDefault}
+          onClearFilters={clearFilters}
+          visibleDateCount={columns.length}
+          totalDateCount={dates.length}
+        />
+        <CycleBuilderDateStrip
+          selectedDate={props.selectedDate}
+          onSelectedDateChange={props.onSelectedDateChange}
+          dates={dates}
+          eventsForDate={eventsForDate}
+          dragScroll={dateStripDragScroll}
+        />
         <DndContext
           sensors={sensors}
+          onDragStart={(event) =>
+            setDraggingVolunteerId(
+              draggedVolunteerId({ active: event.active }) ?? null,
+            )
+          }
+          onDragCancel={() => setDraggingVolunteerId(null)}
           onDragEnd={(event) => {
+            setDraggingVolunteerId(null);
             const volunteerId = draggedVolunteerId({ active: event.active });
             const target = dropTargetData({ over: event.over ?? null });
             if (volunteerId && target?.shiftId && target.roleId) {
-              const shift = props.data.events
-                .flatMap((builderEvent) => builderEvent.slots)
-                .flatMap((slot) => slot.shifts)
-                .find((candidate) => candidate.shiftId === target.shiftId);
+              const shiftContext = findShiftContextById({
+                data: props.data,
+                shiftId: target.shiftId,
+              });
+              const shift = shiftContext?.shift;
               const roleLabel = props.data.roles.find(
                 (role) => role.id === target.roleId,
               )?.name;
-              if (shift && roleLabel)
+              if (shiftContext && shift && roleLabel) {
+                const slotLabel = shiftContext.slot.label ?? 'this shift';
                 setFocused({
                   key: focusKey({
                     shiftId: target.shiftId,
                     roleId: target.roleId,
                   }),
-                  label: `${roleLabel} · ${shift.label ?? 'Shift'}`,
+                  label: buildFocusLabel({
+                    roleLabel,
+                    slotLabel,
+                    eventTitle: shiftContext.event.title,
+                    dateText: dateLabel(shiftContext.event.startDate),
+                  }),
+                  shiftId: target.shiftId,
+                  roleId: target.roleId,
+                  roleLabel,
+                  slotLabel,
                   ...rankVolunteersForShiftRole({
                     shift,
                     roleId: target.roleId,
                     assignments: props.data.assignments,
                   }),
                 });
-              // Dropping onto a conflicted slot is an override like any other,
-              // and FR-016 does not care which gesture started it — the reason
-              // dialog is gated on this field.
+              }
+              // Dropping onto a slot that needs an override is an override like
+              // any other, and FR-016 does not care which gesture started it —
+              // the reason dialog is gated on this field. The drop target is
+              // disabled for tier `none`, so a drop that lands here is one the
+              // predicate already accepted.
               const droppedFit = shift
                 ? volunteerFitForShiftRole({
                     shift,
@@ -818,11 +412,11 @@ export function CycleBuilderMatrix(props: Props) {
                 volunteerId,
                 shiftId: target.shiftId,
                 roleId: target.roleId,
+                roleLabel,
                 assignmentId: target.assignmentId,
-                conflictType:
-                  droppedFit?.tier === 'override'
-                    ? droppedFit.conflictType
-                    : undefined,
+                conflictType: droppedFit
+                  ? overrideKindForFit({ fit: droppedFit })
+                  : undefined,
               });
             }
           }}
@@ -831,218 +425,25 @@ export function CycleBuilderMatrix(props: Props) {
               columns each keep their own band instead of the roles line and
               the recency block fighting for the same width. */}
           <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
-            <Card
-              className={cn(
-                'min-w-0 touch-pan-y border-0 bg-transparent py-0 shadow-none',
-              )}
-              data-testid="cycle-board-drag-surface"
-              onPointerDown={onBoardPointerDown}
-              onPointerMove={onBoardPointerMove}
-              onPointerUp={endBoardDrag}
-              onPointerCancel={endBoardDrag}
-              onLostPointerCapture={(event) => clearBoardDrag(event.pointerId)}
-              onClickCapture={(event) => {
-                if (!suppressNextBoardClick.current) return;
-                suppressNextBoardClick.current = false;
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-            >
-              <CardContent className="workspace-panel">
-                <ScrollArea
-                  className="min-w-0 pb-3"
-                  data-testid="cycle-board-scroll"
-                  viewportRef={boardViewportRef}
-                  viewportTestId="cycle-board-viewport"
-                  scrollbarOrientation="horizontal"
-                >
-                  <div className="min-w-[960px]">
-                    <div
-                      className="grid items-start gap-3 text-xs"
-                      style={gridStyle}
-                    >
-                      {columns.map((date) => (
-                        <section
-                          key={date}
-                          className="min-w-0 self-start rounded-md border bg-card"
-                        >
-                          <header className="border-b px-3 py-2">
-                            <p className="font-semibold text-foreground text-sm">
-                              {dateLabel(date)}
-                            </p>
-                            <p className="mt-0.5 text-muted-foreground text-xs">
-                              {(eventsForDate.get(date) ?? []).length} event
-                              {(eventsForDate.get(date) ?? []).length === 1
-                                ? ''
-                                : 's'}
-                            </p>
-                          </header>
-                          <div className="space-y-3 p-2">
-                            {(eventsForDate.get(date) ?? []).map((event) => (
-                              <section
-                                key={event.eventId}
-                                className="space-y-2"
-                              >
-                                <div className="flex items-center justify-between gap-2 px-1">
-                                  <h2 className="truncate font-semibold text-foreground text-sm">
-                                    {event.title}
-                                  </h2>
-                                  <Badge variant="outline" className="shrink-0">
-                                    {Math.round(event.fillRatio * 100)}%
-                                  </Badge>
-                                </div>
-                                {eventSlotsOnDay({ event, day: date })
-                                  .filter((slot) => slot.included)
-                                  .map((slot) => (
-                                    <section
-                                      key={slot.slotId}
-                                      className="space-y-2 rounded-md border border-dashed p-2"
-                                    >
-                                      <h3 className="font-medium text-foreground text-xs">
-                                        {slot.label ?? 'Slot'}
-                                      </h3>
-                                      <div className="space-y-2">
-                                        {slot.shifts.map((shift) => (
-                                          <section
-                                            key={shift.shiftId}
-                                            className="space-y-2 border-t pt-2 first:border-t-0 first:pt-0"
-                                          >
-                                            <p className="text-muted-foreground text-xs">
-                                              {shift.label ??
-                                                `${timeLabel(shift.startTime)} – ${timeLabel(shift.endTime)}`}
-                                            </p>
-                                            <div className="space-y-2">
-                                              {shift.requirements.map(
-                                                (requirement) => {
-                                                  const assignments =
-                                                    shift.assignments.filter(
-                                                      (assignment) =>
-                                                        assignment.roleId ===
-                                                          requirement.roleId &&
-                                                        isActiveAssignment({
-                                                          status:
-                                                            assignment.status,
-                                                        }),
-                                                    );
-                                                  const roleLabel =
-                                                    props.data.roles.find(
-                                                      (role) =>
-                                                        role.id ===
-                                                        requirement.roleId,
-                                                    )?.name ?? 'Role';
-                                                  const suggestionGroups =
-                                                    recommendations(
-                                                      shift,
-                                                      props.data,
-                                                    );
-                                                  const requirementFocusKey =
-                                                    focusKey({
-                                                      shiftId: shift.shiftId,
-                                                      roleId:
-                                                        requirement.roleId,
-                                                    });
-                                                  const focusOnRequirement =
-                                                    () =>
-                                                      setFocused({
-                                                        key: requirementFocusKey,
-                                                        label: `${roleLabel} · ${slot.label ?? 'Shift'}`,
-                                                        ...rankVolunteersForShiftRole(
-                                                          {
-                                                            shift,
-                                                            roleId:
-                                                              requirement.roleId,
-                                                            assignments:
-                                                              props.data
-                                                                .assignments,
-                                                          },
-                                                        ),
-                                                      });
-                                                  return (
-                                                    <CycleBuilderCell
-                                                      key={requirement.roleId}
-                                                      shift={shift}
-                                                      roleId={
-                                                        requirement.roleId
-                                                      }
-                                                      roleLabel={roleLabel}
-                                                      requiredCount={
-                                                        requirement.requiredCount
-                                                      }
-                                                      assignments={assignments}
-                                                      pickerVolunteers={candidates(
-                                                        shift,
-                                                        props.data,
-                                                      )}
-                                                      suggestions={
-                                                        suggestionGroups.safe
-                                                      }
-                                                      needsResponseSuggestions={
-                                                        suggestionGroups.needsResponse
-                                                      }
-                                                      conflictSuggestions={
-                                                        suggestionGroups.conflicts
-                                                      }
-                                                      slotLabel={
-                                                        slot.label ??
-                                                        'this shift'
-                                                      }
-                                                      selectedVolunteerId={
-                                                        props.selectedVolunteerId
-                                                      }
-                                                      selectedVolunteerName={
-                                                        selectedName
-                                                      }
-                                                      isPublished={
-                                                        event.state ===
-                                                        'published'
-                                                      }
-                                                      isFocused={
-                                                        focused?.key ===
-                                                        requirementFocusKey
-                                                      }
-                                                      onFocus={
-                                                        focusOnRequirement
-                                                      }
-                                                      onToggleFocus={() => {
-                                                        if (
-                                                          focused?.key ===
-                                                          requirementFocusKey
-                                                        )
-                                                          setFocused(null);
-                                                        else
-                                                          focusOnRequirement();
-                                                      }}
-                                                      onSelect={
-                                                        props.onSelectAssignment
-                                                      }
-                                                      onRemove={
-                                                        props.onRemoveAssignment
-                                                      }
-                                                    />
-                                                  );
-                                                },
-                                              )}
-                                            </div>
-                                          </section>
-                                        ))}
-                                      </div>
-                                    </section>
-                                  ))}
-                              </section>
-                            ))}
-                            {(eventsForDate.get(date) ?? []).length === 0 ? (
-                              <p className="px-1 py-4 text-muted-foreground text-xs">
-                                No events
-                              </p>
-                            ) : null}
-                          </div>
-                        </section>
-                      ))}
-                    </div>
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+            <CycleBuilderBoardGrid
+              data={props.data}
+              columns={columns}
+              eventsForDate={eventsForDate}
+              cellDerivedByKey={cellDerivedByKey}
+              failedWritesByCell={failedWritesByCell}
+              selectedVolunteerId={props.selectedVolunteerId}
+              selectedVolunteerName={selectedName}
+              focusedKey={focused?.key}
+              onFocusRequirement={setFocused}
+              onClearFocus={() => setFocused(null)}
+              onSelectAssignment={props.onSelectAssignment}
+              onRemoveAssignment={props.onRemoveAssignment}
+              onRetryFailedWrite={props.onRetryFailedWrite}
+              onDismissFailedWrite={props.onDismissFailedWrite}
+              filtersAreDefault={filtersAreDefault}
+              onClearFilters={clearFilters}
+              dragScroll={boardDragScroll}
+            />
             <VolunteerPoolSidebar
               volunteers={volunteers}
               assignments={activeAssignments}
@@ -1052,9 +453,23 @@ export function CycleBuilderMatrix(props: Props) {
               focusedVolunteerIds={focused?.ids}
               focusLabel={focused?.label}
               idealVolunteerId={focused?.idealVolunteerId}
+              assignableVolunteerFits={assignableFocusedVolunteerFits}
+              onAssignFocusedVolunteer={
+                focused && focusedRoleHasRoom
+                  ? assignFocusedVolunteer
+                  : undefined
+              }
               onClearFocus={focused ? () => setFocused(null) : undefined}
             />
           </div>
+          {/* The drag ghost lives in a portal above the whole layout, so it
+              floats over the board instead of being clipped by the rail's
+              scroll container. */}
+          <DragOverlay>
+            {draggingVolunteer ? (
+              <VolunteerCard volunteer={draggingVolunteer} isOverlay />
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
     </FormControlSizeProvider>

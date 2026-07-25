@@ -56,6 +56,7 @@ function EventBuilderRoute() {
         data={data}
         cycleId={cycleId}
         ministryId={ministryId}
+        cycleName={cycleQuery.data.cycle.name}
         cycleStartDate={cycleQuery.data.cycle.startDate}
         cycleEndDate={cycleQuery.data.cycle.endDate}
         isPublishing={publish.isPending}
@@ -63,6 +64,8 @@ function EventBuilderRoute() {
         createAssignment={createAssignment}
         deleteAssignment={deleteAssignment}
         reassignAssignment={reassignAssignment}
+        syncedAt={query.dataUpdatedAt}
+        isRefreshing={query.isFetching}
       />
     </div>
   );

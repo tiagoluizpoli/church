@@ -107,6 +107,45 @@ describe('AssignmentChip (T100)', () => {
     });
   });
 
+  describe('sync state (B-1)', () => {
+    it('reads as saved by default', () => {
+      render(<AssignmentChip volunteerName="John Doe" isPublished={false} />);
+      expect(screen.getByTestId('assignment-chip')).toHaveAttribute(
+        'data-sync-state',
+        'saved',
+      );
+    });
+
+    it('marks an in-flight write as pending with a dotted, faded chip', () => {
+      render(
+        <AssignmentChip
+          volunteerName="John Doe"
+          isPublished={false}
+          syncState="pending"
+        />,
+      );
+      const chip = screen.getByTestId('assignment-chip');
+      expect(chip).toHaveAttribute('data-sync-state', 'pending');
+      expect(chip.className).toContain('border-dotted');
+      expect(chip.className).toContain('opacity-60');
+      expect(chip).toHaveTextContent('Saving…');
+    });
+
+    it('marks a rejected write as failed', () => {
+      render(
+        <AssignmentChip
+          volunteerName="John Doe"
+          isPublished={false}
+          syncState="failed"
+        />,
+      );
+      const chip = screen.getByTestId('assignment-chip');
+      expect(chip).toHaveAttribute('data-sync-state', 'failed');
+      expect(chip.className).toContain('border-destructive');
+      expect(chip).toHaveTextContent('Not saved');
+    });
+  });
+
   it('calls onClick when the chip is clicked', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();

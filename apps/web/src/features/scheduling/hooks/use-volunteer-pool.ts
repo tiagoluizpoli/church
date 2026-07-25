@@ -49,6 +49,10 @@ export interface VolunteerPoolItem extends PoolVolunteer {
  *   availability tier (available → partial → unavailable → no_response)
  *   → least-assigned (workloadCount asc) → alphabetical.
  * Name + role filters are both active simultaneously (AND logic).
+ *
+ * The role filter keys on **qualification** (a role name from
+ * `qualifiedRoleNames`), the same basis "group by role" uses — not on who is
+ * currently assigned to the role. `'all'` is the no-filter sentinel.
  */
 export function useVolunteerPool(
   volunteers: PoolVolunteer[],
@@ -69,19 +73,10 @@ export function useVolunteerPool(
   const sortedFilteredVolunteers = useMemo<VolunteerPoolItem[]>(() => {
     const name = nameFilter.trim().toLowerCase();
 
-    const roleVolunteerIds =
-      roleFilter === 'all'
-        ? null
-        : new Set(
-            assignments
-              .filter((a) => a.roleId === roleFilter)
-              .map((a) => a.volunteerId),
-          );
-
     return volunteers
       .filter((v) => {
         if (name && !v.volunteerName.toLowerCase().includes(name)) return false;
-        if (roleVolunteerIds && !roleVolunteerIds.has(v.volunteerId))
+        if (roleFilter !== 'all' && !v.qualifiedRoleNames?.includes(roleFilter))
           return false;
         return true;
       })
@@ -93,7 +88,7 @@ export function useVolunteerPool(
           return a.workloadCount - b.workloadCount;
         return a.volunteerName.localeCompare(b.volunteerName);
       });
-  }, [volunteers, assignments, workload, nameFilter, roleFilter]);
+  }, [volunteers, workload, nameFilter, roleFilter]);
 
   return {
     nameFilter,

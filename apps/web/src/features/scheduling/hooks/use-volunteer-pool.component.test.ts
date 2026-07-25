@@ -58,20 +58,24 @@ describe('useVolunteerPool (T098)', () => {
   });
 
   describe('Filters (AND logic)', () => {
+    const qualified = (
+      id: string,
+      name: string,
+      roles: string[],
+    ): PoolVolunteer => ({
+      volunteerId: id,
+      volunteerName: name,
+      status: 'available',
+      qualifiedRoleNames: roles,
+    });
     const volunteers = [
-      vol('1', 'Alice Smith', 'available'),
-      vol('2', 'Bob Jones', 'available'),
-      vol('3', 'Alice Brown', 'available'),
-    ];
-    const assignments = [
-      { volunteerId: '1', roleId: 'usher', status: 'confirmed' },
-      { volunteerId: '2', roleId: 'greeter', status: 'confirmed' },
+      qualified('1', 'Alice Smith', ['Usher']),
+      qualified('2', 'Bob Jones', ['Greeter']),
+      qualified('3', 'Alice Brown', ['Usher', 'Greeter']),
     ];
 
     it('filters by name (case-insensitive substring)', () => {
-      const { result } = renderHook(() =>
-        useVolunteerPool(volunteers, assignments),
-      );
+      const { result } = renderHook(() => useVolunteerPool(volunteers, []));
       act(() => result.current.setNameFilter('alice'));
       expect(
         result.current.sortedFilteredVolunteers
@@ -80,34 +84,39 @@ describe('useVolunteerPool (T098)', () => {
       ).toEqual(['1', '3']);
     });
 
-    it('filters by role (volunteers assigned to that role)', () => {
-      const { result } = renderHook(() =>
-        useVolunteerPool(volunteers, assignments),
-      );
-      act(() => result.current.setRoleFilter('usher'));
+    it('filters by role on qualification, not on who is assigned to it', () => {
+      const { result } = renderHook(() => useVolunteerPool(volunteers, []));
+      act(() => result.current.setRoleFilter('Usher'));
+      // Alice Smith + Alice Brown are Usher-qualified; Bob (Greeter only) is out.
+      expect(
+        result.current.sortedFilteredVolunteers
+          .map((v) => v.volunteerId)
+          .sort(),
+      ).toEqual(['1', '3']);
+    });
+
+    it('excludes a volunteer not qualified for the filtered role', () => {
+      const { result } = renderHook(() => useVolunteerPool(volunteers, []));
+      act(() => result.current.setRoleFilter('Greeter'));
       expect(
         result.current.sortedFilteredVolunteers.map((v) => v.volunteerId),
-      ).toEqual(['1']);
+      ).not.toContain('1');
     });
 
     it('applies name AND role filters simultaneously', () => {
-      const { result } = renderHook(() =>
-        useVolunteerPool(volunteers, assignments),
-      );
+      const { result } = renderHook(() => useVolunteerPool(volunteers, []));
       act(() => {
         result.current.setNameFilter('alice');
-        result.current.setRoleFilter('usher');
+        result.current.setRoleFilter('Greeter');
       });
-      // Alice Smith matches name; only id 1 is an usher → id 1 only.
+      // Alice Brown matches name AND is Greeter-qualified → id 3 only.
       expect(
         result.current.sortedFilteredVolunteers.map((v) => v.volunteerId),
-      ).toEqual(['1']);
+      ).toEqual(['3']);
     });
 
     it('returns empty when filters match nobody', () => {
-      const { result } = renderHook(() =>
-        useVolunteerPool(volunteers, assignments),
-      );
+      const { result } = renderHook(() => useVolunteerPool(volunteers, []));
       act(() => result.current.setNameFilter('zzz'));
       expect(result.current.sortedFilteredVolunteers).toHaveLength(0);
     });

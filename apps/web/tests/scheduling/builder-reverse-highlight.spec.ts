@@ -8,9 +8,9 @@ import { LEADER_STORAGE_STATE } from '../global-setup';
  * fit. The seed qualifies every candidate for their ministry's roles, so what
  * this spec can prove end-to-end is the plumbing: the selection reaches the
  * cells and resolves to a real tier, and clearing it puts the board back.
- * The `override` and `none` tiers are covered by the unit and component tests,
- * where an unqualified or unavailable candidate can actually be constructed —
- * the server never sends one to the rail.
+ * The `override`, `unqualified`, and `none` tiers are covered by the unit and
+ * component tests, where a conflicted, unqualified, or ineligible candidate
+ * can actually be constructed.
  */
 
 const BUILDER_URL =
@@ -30,13 +30,13 @@ test.describe('selecting a volunteer highlights where they fit', () => {
     const fitting = page.locator('[data-selected-fit="ready"]');
     await expect(fitting).toHaveCount(0);
 
-    // The control relabels to "Selected", so it has to be found through its
-    // card rather than by the unselected name.
+    // The control relabels to "Selected" and its accessible name names the
+    // volunteer (B-3), so it is found through its card by test id.
     const selectSlot = page
       .getByTestId('volunteer-pool')
       .getByTestId('volunteer-card')
       .first()
-      .getByRole('button', { name: /^(Select slot|Selected)$/ });
+      .getByTestId('volunteer-select-slot');
     await selectSlot.click();
 
     await expect(fitting.first()).toBeVisible();

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { VolunteerCard } from './volunteer-card';
 import type { VolunteerPoolItem } from '@/features/scheduling/hooks/use-volunteer-pool';
 
@@ -63,7 +64,20 @@ describe('VolunteerCard (T048)', () => {
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 
-  it('gives the drag grip an accessible name that includes the role, not just the truncated visible text (FR-013)', () => {
+  it('hides the pointer-only drag grip from assistive tech instead of announcing a keyboard drag that does not exist (B-3)', () => {
+    render(<VolunteerCard volunteer={buildVolunteer({})} onSelect={noop} />);
+
+    // dnd-kit registers no KeyboardSensor, and its `{...attributes}` announce
+    // "to pick up a draggable item, press the space bar". Spreading them here
+    // made the accessibility layer promise a gesture that never fires.
+    const grip = screen.getByTestId('volunteer-card-grip');
+    expect(grip).toHaveAttribute('aria-hidden', 'true');
+    expect(grip).toHaveAttribute('tabindex', '-1');
+    expect(grip).not.toHaveAttribute('aria-roledescription');
+    expect(grip).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('names the keyboard action after the volunteer, with the role, not just the truncated visible text (FR-013)', () => {
     render(
       <div>
         <VolunteerCard
@@ -72,6 +86,7 @@ describe('VolunteerCard (T048)', () => {
             volunteerName: 'Local Leader',
             systemRole: 'leader',
           })}
+          onSelect={noop}
         />
         <VolunteerCard
           volunteer={buildVolunteer({
@@ -79,27 +94,33 @@ describe('VolunteerCard (T048)', () => {
             volunteerName: 'Local Sub Leader',
             systemRole: 'sub_leader',
           })}
+          onSelect={noop}
         />
       </div>,
     );
 
-    const grips = screen.getAllByTestId('volunteer-card-grip');
-    expect(grips[0]).toHaveAccessibleName('Local Leader, Leader');
-    expect(grips[1]).toHaveAccessibleName('Local Sub Leader, Sub-leader');
+    const actions = screen.getAllByTestId('volunteer-select-slot');
+    expect(actions[0]).toHaveAccessibleName(
+      'Select Local Leader, Leader to place on a slot',
+    );
+    expect(actions[1]).toHaveAccessibleName(
+      'Select Local Sub Leader, Sub-leader to place on a slot',
+    );
   });
 
-  it('leaves the accessible name as the visible truncated text for a plain volunteer (no role to disambiguate)', () => {
+  it('falls back to the full name when there is no role to disambiguate', () => {
     render(
       <VolunteerCard
         volunteer={buildVolunteer({
           volunteerName: 'John Doe',
           systemRole: 'volunteer',
         })}
+        onSelect={noop}
       />,
     );
 
-    expect(screen.getByTestId('volunteer-card-grip')).toHaveAccessibleName(
-      'John D.',
+    expect(screen.getByTestId('volunteer-select-slot')).toHaveAccessibleName(
+      'Select John Doe to place on a slot',
     );
   });
 
@@ -147,7 +168,8 @@ describe('VolunteerCard (T048)', () => {
       />,
     );
 
-    const button = screen.getByRole('button', { name: 'Selected' });
+    const button = screen.getByTestId('volunteer-select-slot');
+    expect(button).toHaveTextContent('Selected');
     expect(button).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -155,5 +177,60 @@ describe('VolunteerCard (T048)', () => {
     render(<VolunteerCard volunteer={buildVolunteer({})} isOverlay />);
 
     expect(screen.queryByTestId('volunteer-card-grip')).not.toBeInTheDocument();
+  });
+
+  it('swaps Select slot for Pick me while a slot is focused and this card is assignable', async () => {
+    const onAssignToFocused = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <VolunteerCard
+        volunteer={buildVolunteer({})}
+        onSelect={onSelect}
+        assignFit="ready"
+        onAssignToFocused={onAssignToFocused}
+      />,
+    );
+
+    expect(
+      screen.queryByTestId('volunteer-select-slot'),
+    ).not.toBeInTheDocument();
+    const pickMe = screen.getByTestId('volunteer-pick-me');
+    expect(pickMe).toHaveTextContent('Pick me');
+    await userEvent.click(pickMe);
+
+    expect(onAssignToFocused).toHaveBeenCalledWith('volunteer-1');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('warns on Pick me when availability will demand a reason', () => {
+    render(
+      <VolunteerCard
+        volunteer={buildVolunteer({})}
+        onSelect={noop}
+        assignFit="override"
+        onAssignToFocused={vi.fn()}
+      />,
+    );
+
+    // The rail must not present the riskiest pick as the frictionless one:
+    // the reason is coming either way, so the button says so beforehand.
+    const pickMe = screen.getByTestId('volunteer-pick-me');
+    expect(pickMe).toHaveAttribute('data-assign-fit', 'override');
+    expect(pickMe).toHaveAccessibleName(
+      'Assign Local Leader to this role — not available for this shift, needs an override reason',
+    );
+  });
+
+  it('keeps Select slot when the card is not assignable to the focused slot', () => {
+    render(
+      <VolunteerCard
+        volunteer={buildVolunteer({})}
+        onSelect={noop}
+        onAssignToFocused={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('volunteer-select-slot')).toBeVisible();
+    expect(screen.queryByTestId('volunteer-pick-me')).not.toBeInTheDocument();
   });
 });

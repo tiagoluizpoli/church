@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
+import {
+  addOptimisticAssignment,
+  type CycleBuilderQueryData,
+  createOptimisticAssignmentId,
+  removeOptimisticAssignment,
+  replaceOptimisticAssignmentVolunteer,
+} from './use-cycle-builder.optimistic';
 import type {
   CreateParticipationAssignmentBody,
   GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem,
@@ -21,6 +28,22 @@ interface CreateCycleAssignmentParams {
 interface ReassignCycleAssignmentParams {
   assignmentId: string;
   body: ReassignParticipationAssignmentBody;
+}
+
+interface OptimisticUpdateInput {
+  data: CycleBuilderQueryData;
+}
+
+interface CycleBuilderOptimisticContext {
+  previous?: CycleBuilderQueryData;
+}
+
+interface ApplyOptimisticInput {
+  update: (input: OptimisticUpdateInput) => CycleBuilderQueryData;
+}
+
+interface RollbackOptimisticInput {
+  context?: CycleBuilderOptimisticContext;
 }
 
 export interface CycleBuilderRequirementSummary {
@@ -317,26 +340,79 @@ export function useCycleBuilder({
     },
   });
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({
-      queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
-    });
+  const queryKey = [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId];
+
+  // Fire-and-forget on purpose: the cache already holds the optimistic result,
+  // so awaiting the refetch would only keep `mutateAsync` — and the toast that
+  // follows it — pending for a second round trip.
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey });
+  };
+
+  const applyOptimistic = async ({
+    update,
+  }: ApplyOptimisticInput): Promise<CycleBuilderOptimisticContext> => {
+    // An in-flight refetch would land after this write and undo it.
+    await queryClient.cancelQueries({ queryKey });
+    const previous = queryClient.getQueryData<CycleBuilderQueryData>(queryKey);
+    if (previous) {
+      queryClient.setQueryData<CycleBuilderQueryData>(
+        queryKey,
+        update({ data: previous }),
+      );
+    }
+    return { previous };
+  };
+
+  const rollbackOptimistic = ({ context }: RollbackOptimisticInput): void => {
+    if (!context?.previous) return;
+    queryClient.setQueryData<CycleBuilderQueryData>(queryKey, context.previous);
+  };
 
   const createAssignment = useMutation({
     mutationFn: ({ shiftId, body }: CreateCycleAssignmentParams) =>
       adminApi.createParticipationAssignment(shiftId, body),
+    onMutate: ({ shiftId, body }) =>
+      applyOptimistic({
+        update: ({ data }) =>
+          addOptimisticAssignment({
+            data,
+            assignmentId: createOptimisticAssignmentId(),
+            shiftId,
+            body,
+            assignedAt: new Date().toISOString(),
+          }),
+      }),
+    onError: (_error, _variables, context) => rollbackOptimistic({ context }),
     onSettled: invalidate,
   });
 
   const deleteAssignment = useMutation({
     mutationFn: (assignmentId: string) =>
       adminApi.deleteParticipationAssignment(assignmentId),
+    onMutate: (assignmentId) =>
+      applyOptimistic({
+        update: ({ data }) =>
+          removeOptimisticAssignment({ data, assignmentId }),
+      }),
+    onError: (_error, _variables, context) => rollbackOptimistic({ context }),
     onSettled: invalidate,
   });
 
   const reassignAssignment = useMutation({
     mutationFn: ({ assignmentId, body }: ReassignCycleAssignmentParams) =>
       adminApi.reassignParticipationAssignment(assignmentId, body),
+    onMutate: ({ assignmentId, body }) =>
+      applyOptimistic({
+        update: ({ data }) =>
+          replaceOptimisticAssignmentVolunteer({
+            data,
+            assignmentId,
+            volunteerId: body.volunteerId,
+            reason: body.reason,
+          }),
+      }),
+    onError: (_error, _variables, context) => rollbackOptimistic({ context }),
     onSettled: invalidate,
   });
 

@@ -70,7 +70,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   await volunteerPool
     .getByLabel('Search volunteers by name')
     .fill(VOLUNTEER_NAME);
-  await volunteerPool.getByRole('button', { name: 'Select slot' }).click();
+  await volunteerPool.getByTestId('volunteer-select-slot').click();
 
   await requirement.getByRole('button', { name: /^Assign / }).click();
   await expect(requirement.getByTestId('assignment-chip')).toContainText(

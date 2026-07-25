@@ -11,12 +11,28 @@ import {
 export type ConflictStatus = 'double_booked' | 'unavailable';
 export type ConfirmationStatus = 'pending' | 'confirmed' | 'declined';
 
+/**
+ * Where this row stands with the *server*, which is a different question from
+ * `confirmationStatus` (where the volunteer stands with the assignment). A
+ * pre-publish board never renders a confirmation icon, so without this a write
+ * still in flight, one that saved a moment ago and one that saved last week are
+ * the same pixels.
+ */
+export type AssignmentSyncState = 'pending' | 'saved' | 'failed';
+
+const SYNC_STATE_LABELS: Record<AssignmentSyncState, string> = {
+  pending: 'Saving…',
+  saved: 'Saved',
+  failed: 'Not saved',
+};
+
 interface AssignmentChipProps {
   volunteerName: string;
   volunteerSystemRole?: AssigneeSystemRole;
   conflictStatus?: ConflictStatus;
   confirmationStatus?: ConfirmationStatus;
   isPublished: boolean;
+  syncState?: AssignmentSyncState;
   onClick?: () => void;
 }
 
@@ -26,6 +42,7 @@ export function AssignmentChip({
   conflictStatus,
   confirmationStatus,
   isPublished,
+  syncState = 'saved',
   onClick,
 }: AssignmentChipProps) {
   const isTouch = useFormControlSize() === 'touch';
@@ -39,10 +56,22 @@ export function AssignmentChip({
         conflictStatus === 'unavailable' &&
           'border-destructive/40 bg-destructive/10',
         conflictStatus === 'double_booked' && 'border-primary/35 bg-primary/8',
+        // Dotted rather than dashed: dashed is already the board's vocabulary
+        // for "not committed yet" (the Add and Assign pills), and this row IS
+        // committed — it is only the round trip that is outstanding. No
+        // spinner; a chip that twitches on every write is worse than a chip
+        // that reads as provisional.
+        syncState === 'pending' && 'border-dotted opacity-60',
+        syncState === 'failed' &&
+          'border-destructive bg-destructive/10 text-destructive',
       )}
+      data-sync-state={syncState}
       data-testid="assignment-chip"
     >
       <span className="flex items-center gap-1 truncate">
+        {syncState !== 'saved' ? (
+          <span className="sr-only">{SYNC_STATE_LABELS[syncState]} — </span>
+        ) : null}
         {volunteerName}
         <AssigneeIdentityBadge
           roleLabel={formatAssigneeRoleLabel(volunteerSystemRole)}
@@ -70,7 +99,7 @@ export function AssignmentChip({
               <Check className="size-3 text-green-600" aria-label="confirmed" />
             )}
             {confirmationStatus === 'declined' && (
-              <X className="size-3 text-red-600" aria-label="declined" />
+              <X className="size-3 text-destructive" aria-label="declined" />
             )}
             {confirmationStatus === 'pending' && (
               <Clock

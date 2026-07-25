@@ -28,8 +28,14 @@ export function AssigneeIdentityBadge({
   return (
     <Tooltip>
       <TooltipTrigger
+        // Badge defaults to a <span>, which base-ui's TooltipTrigger never
+        // makes keyboard-focusable — render it as a real <button> instead.
         render={
-          <Badge variant="outline" data-testid="assignee-role-badge">
+          <Badge
+            variant="outline"
+            data-testid="assignee-role-badge"
+            render={<button type="button" />}
+          >
             {roleLabel}
           </Badge>
         }

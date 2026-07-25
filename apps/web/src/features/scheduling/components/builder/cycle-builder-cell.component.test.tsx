@@ -175,9 +175,16 @@ describe('CycleBuilderCell', () => {
     expect(
       screen.getByTestId('cycle-requirement-shift-1-role-1'),
     ).toHaveAttribute('data-selected-fit', 'ready');
+    // The fit ring is the only way to find where a selected person fits on a
+    // horizontally-scrolling board, so it is full-opacity and 2px (B-3).
+    expect(screen.getByTestId('cycle-requirement-shift-1-role-1')).toHaveClass(
+      'ring-2',
+      'ring-primary',
+    );
     expect(
       screen.getByRole('button', { name: 'Assign Grace Hopper' }),
-    ).toHaveClass('border-primary/60');
+    ).toHaveClass('border-primary');
+    expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
   });
 
   it('faints the affordance for a qualified but unavailable volunteer, keeping the override open', () => {
@@ -199,15 +206,24 @@ describe('CycleBuilderCell', () => {
     expect(
       screen.getByTestId('cycle-requirement-shift-1-role-1'),
     ).toHaveAttribute('data-selected-fit', 'override');
-    const assign = screen.getByRole('button', { name: 'Assign Grace Hopper' });
-    expect(assign).toHaveClass('text-muted-foreground');
-    expect(assign).toHaveAttribute(
-      'title',
-      'Not available for this shift — assigning is an override',
+    // Dashed amber outline, not a fainter ring than the safe tier: the
+    // dangerous one used to be the harder of the two to see (B-3).
+    expect(screen.getByTestId('cycle-requirement-shift-1-role-1')).toHaveClass(
+      'outline-2',
+      'outline-dashed',
     );
+    const assign = screen.getByRole('button', {
+      name: 'Assign Grace Hopper — Not available for this shift — assigning is an override',
+    });
+    expect(assign).toHaveClass('text-yellow-700');
+    // The explanation used to live in a native `title`, reachable by neither
+    // keyboard nor screen reader.
+    expect(assign).not.toHaveAttribute('title');
   });
 
-  it('offers nothing but the ordinary picker where the selected volunteer is unqualified', () => {
+  it('offers an unqualified selection with a warning instead of hiding it (B-2)', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
     renderCell({
       shift: {
         ...shift,
@@ -218,16 +234,41 @@ describe('CycleBuilderCell', () => {
       },
       selectedVolunteerId: 'volunteer-1',
       selectedVolunteerName: 'Grace Hopper',
+      onSelect,
     });
 
+    // Qualification is a soft constraint with friction, not a hard filter:
+    // the fit still surfaces as an assignable tier the cell renders...
     expect(
       screen.getByTestId('cycle-requirement-shift-1-role-1'),
-    ).toHaveAttribute('data-selected-fit', 'none');
-    expect(
-      screen.queryByRole('button', { name: 'Assign Grace Hopper' }),
-    ).not.toBeInTheDocument();
-    // The cell must not go dead: the picker is still the way in.
+    ).toHaveAttribute('data-selected-fit', 'unqualified');
+    // Dotted, not dashed: `unqualified` reads apart from `override` at a
+    // glance, without hovering, even though both share the amber "needs a
+    // reason" color (B-9).
+    expect(screen.getByTestId('cycle-requirement-shift-1-role-1')).toHaveClass(
+      'outline-2',
+      'outline-dotted',
+    );
+    // ...and Add stays available beside it — selecting someone must not take
+    // away the picker from the cells where they don't qualify (B-7).
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
+
+    const assign = screen.getByRole('button', {
+      name: 'Assign Grace Hopper — Not qualified for this role — assigning needs a reason',
+    });
+    expect(assign).toHaveClass('text-yellow-700');
+
+    await user.click(assign);
+
+    // `overrideKindForFit()` translates the tier to `not_qualified`, which
+    // opens `OverrideDialog`'s not-qualified variant (FR-016) — the same path
+    // every other override reaches, never a silent commit.
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        volunteerId: 'volunteer-1',
+        conflictType: 'not_qualified',
+      }),
+    );
   });
 
   it('sends the conflict with an override assignment so a reason is captured (FR-016)', async () => {
@@ -250,7 +291,7 @@ describe('CycleBuilderCell', () => {
     });
 
     await user.click(
-      screen.getByRole('button', { name: 'Assign Grace Hopper' }),
+      screen.getByRole('button', { name: /^Assign Grace Hopper/ }),
     );
 
     // `CycleBuilder` opens the override dialog on `conflictType` alone —
@@ -320,5 +361,53 @@ describe('CycleBuilderCell', () => {
     const unassign = screen.getByRole('button', { name: 'Unassign' });
     expect(unassign).toHaveClass('border-destructive/40');
     expect(unassign).not.toHaveClass('w-full');
+  });
+
+  describe('write state (B-1)', () => {
+    it('renders an in-flight row as pending and refuses to edit or replace it', async () => {
+      const user = userEvent.setup();
+      renderCell({
+        assignments: [{ ...assignments[0], id: 'optimistic:abc' }],
+      });
+
+      const chip = screen.getByTestId('assignment-chip');
+      expect(chip).toHaveAttribute('data-sync-state', 'pending');
+      expect(
+        screen.getByTestId('cycle-assignment-optimistic:abc'),
+      ).not.toHaveAttribute('data-drop-target');
+
+      await user.click(chip);
+      expect(screen.queryByTestId('assignment-picker')).not.toBeInTheDocument();
+    });
+
+    it('keeps a rejected write on the board with a retry and a dismiss', async () => {
+      const user = userEvent.setup();
+      const onRetryFailedWrite = vi.fn();
+      const onDismissFailedWrite = vi.fn();
+      renderCell({
+        failedWrites: [
+          {
+            failedWriteId: 'failed-1',
+            shiftId: 'shift-1',
+            roleId: 'role-1',
+            volunteerId: 'volunteer-2',
+            volunteerName: 'Ada Lovelace',
+            message: 'Volunteer is unavailable',
+          },
+        ],
+        onRetryFailedWrite,
+        onDismissFailedWrite,
+      });
+
+      const chip = screen.getByTestId('assignment-chip');
+      expect(chip).toHaveAttribute('data-sync-state', 'failed');
+      expect(chip).toHaveTextContent('Ada Lovelace');
+
+      await user.click(screen.getByTestId('cycle-failed-assignment-retry'));
+      expect(onRetryFailedWrite).toHaveBeenCalledWith('failed-1');
+
+      await user.click(screen.getByTestId('cycle-failed-assignment-dismiss'));
+      expect(onDismissFailedWrite).toHaveBeenCalledWith('failed-1');
+    });
   });
 });

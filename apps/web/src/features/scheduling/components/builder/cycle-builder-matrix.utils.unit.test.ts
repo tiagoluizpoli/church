@@ -6,8 +6,13 @@ import {
   eventMatchesDateSpan,
   eventOccursOnDay,
   eventSlotsOnDay,
+  findShiftById,
   focusKey,
+  overrideKindForFit,
   rankVolunteersForShiftRole,
+  roleHasRoom,
+  staffingStatusClasses,
+  summarizeCycleStaffing,
   volunteerFitForShiftRole,
 } from './cycle-builder-matrix.utils';
 import type {
@@ -381,7 +386,7 @@ describe('rankVolunteersForShiftRole', () => {
     expect(ranking.ids).toEqual(['released']);
   });
 
-  it('keeps only the volunteers qualified for the focused role', () => {
+  it('ranks unqualified volunteers last instead of dropping them (B-2)', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({
@@ -393,13 +398,39 @@ describe('rankVolunteersForShiftRole', () => {
       ],
     });
 
+    // Qualification is a soft constraint with friction, not a hard filter
+    // (B-2): the unqualified candidate is still ranked, just last.
     expect(
       rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
         .ids,
-    ).toEqual(['usher']);
+    ).toEqual(['usher', 'greeter']);
   });
 
-  it('ranks nobody when the ministry has configured no qualifications', () => {
+  it('ranks a conflicted qualified volunteer ahead of an unqualified one', () => {
+    const shift = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'unqualified',
+          volunteerName: 'Ana',
+          qualifiedRoleIds: ['role-2'],
+        }),
+        makeEligible({
+          volunteerId: 'conflicted',
+          volunteerName: 'Bruno',
+          hasConflict: true,
+        }),
+      ],
+    });
+
+    // Fit tier order is ready → override → unqualified: a qualified person
+    // who needs an availability override still outranks an unqualified one.
+    expect(
+      rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
+        .ids,
+    ).toEqual(['conflicted', 'unqualified']);
+  });
+
+  it('badges nobody as ideal when the ministry has configured no qualifications', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({
@@ -415,12 +446,15 @@ describe('rankVolunteersForShiftRole', () => {
       ],
     });
 
-    // FR-011 makes qualification a hard filter, so "qualified for nothing"
-    // means "candidate for nothing" — not "candidate for everything".
-    expect(
-      rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
-        .ids,
-    ).toEqual([]);
+    // They are all assignable — with a reason each, mirroring the server's
+    // NOT_QUALIFIED warning — but none of them is the obvious pick.
+    const ranking = rankVolunteersForShiftRole({
+      shift,
+      roleId: 'role-1',
+      assignments: [],
+    });
+    expect(ranking.ids).toEqual(['ana', 'bruno']);
+    expect(ranking.idealVolunteerId).toBeUndefined();
   });
 
   it('never badges an unavailable volunteer as the ideal pick', () => {
@@ -502,14 +536,42 @@ describe('volunteerFitForShiftRole', () => {
     ).toEqual({ tier: 'override', conflictType: 'double_booked' });
   });
 
-  it('offers nothing for another role’s qualification or a non-candidate', () => {
+  it('reads another role’s qualification as unqualified, not as a non-candidate', () => {
+    // Assignable with a reason: the server warns NOT_QUALIFIED and only
+    // refuses under hard enforcement when no override reason came with it.
     expect(
       volunteerFitForShiftRole({
         shift,
         roleId: 'role-1',
         volunteerId: 'other-role',
       }),
-    ).toEqual({ tier: 'none' });
+    ).toEqual({ tier: 'unqualified', conflictType: undefined });
+  });
+
+  it('carries the availability conflict on an unqualified fit so one dialog covers both', () => {
+    const doubleTrouble = makeShift({
+      eligibleVolunteers: [
+        makeEligible({
+          volunteerId: 'ana',
+          volunteerName: 'Ana',
+          qualifiedRoleIds: ['role-2'],
+          hasConflict: true,
+        }),
+      ],
+    });
+
+    expect(
+      volunteerFitForShiftRole({
+        shift: doubleTrouble,
+        roleId: 'role-1',
+        volunteerId: 'ana',
+      }),
+    ).toEqual({ tier: 'unqualified', conflictType: 'double_booked' });
+  });
+
+  it('offers nothing for someone who is not a candidate for this shift at all', () => {
+    // `none` now means exactly one thing — not in this shift's eligible pool,
+    // which the server rejects hard as NOT_IN_MINISTRY. No gesture offers it.
     expect(
       volunteerFitForShiftRole({
         shift,
@@ -519,7 +581,7 @@ describe('volunteerFitForShiftRole', () => {
     ).toEqual({ tier: 'none' });
   });
 
-  it('offers nothing where the ministry configured no qualifications', () => {
+  it('reads an unconfigured ministry as unqualified rather than as an empty board', () => {
     const unconfigured = makeShift({
       eligibleVolunteers: [
         makeEligible({
@@ -536,7 +598,30 @@ describe('volunteerFitForShiftRole', () => {
         roleId: 'role-1',
         volunteerId: 'ana',
       }),
-    ).toEqual({ tier: 'none' });
+    ).toEqual({ tier: 'unqualified', conflictType: undefined });
+  });
+});
+
+describe('overrideKindForFit', () => {
+  it('asks for no reason when the fit is ready', () => {
+    expect(overrideKindForFit({ fit: { tier: 'ready' } })).toBeUndefined();
+    expect(overrideKindForFit({ fit: { tier: 'none' } })).toBeUndefined();
+  });
+
+  it('forwards the availability conflict of an override fit', () => {
+    expect(
+      overrideKindForFit({
+        fit: { tier: 'override', conflictType: 'double_booked' },
+      }),
+    ).toBe('double_booked');
+  });
+
+  it('reports qualification ahead of availability, so one reason covers both', () => {
+    expect(
+      overrideKindForFit({
+        fit: { tier: 'unqualified', conflictType: 'unavailable' },
+      }),
+    ).toBe('not_qualified');
   });
 });
 
@@ -592,5 +677,165 @@ describe('countWorkload', () => {
     });
 
     expect(workload.get('ana')).toBe(3);
+  });
+});
+
+describe('roleHasRoom', () => {
+  it('has room while active assignments sit below the required headcount', () => {
+    const shift = makeShift({
+      requirements: [{ roleId: 'role-1', requiredCount: 2 }],
+      assignments: [makeAssignment({ id: 'a-1', volunteerId: 'ana' })],
+    });
+
+    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(true);
+  });
+
+  it('is full once active assignments reach the headcount', () => {
+    const shift = makeShift({
+      requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+      assignments: [makeAssignment({ id: 'a-1', volunteerId: 'ana' })],
+    });
+
+    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(false);
+  });
+
+  it('ignores cancelled and declined assignments against the ceiling', () => {
+    const shift = makeShift({
+      requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+      assignments: [
+        makeAssignment({ id: 'a-1', volunteerId: 'ana', status: 'cancelled' }),
+        makeAssignment({ id: 'a-2', volunteerId: 'bruno', status: 'declined' }),
+      ],
+    });
+
+    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(true);
+  });
+
+  it('has no room for a role with no requirement at all', () => {
+    const shift = makeShift({ requirements: [], assignments: [] });
+
+    expect(roleHasRoom({ shift, roleId: 'role-1' })).toBe(false);
+  });
+});
+
+describe('findShiftById', () => {
+  it('finds a shift nested in any event slot, or returns undefined', () => {
+    const data = {
+      events: [makeEvent({ slots: [makeSlot({ shifts: [makeShift()] })] })],
+      assignments: [],
+      roles: [],
+    };
+
+    expect(findShiftById({ data, shiftId: 'shift-1' })?.shiftId).toBe(
+      'shift-1',
+    );
+    expect(findShiftById({ data, shiftId: 'nope' })).toBeUndefined();
+  });
+});
+
+describe('summarizeCycleStaffing (B-4)', () => {
+  it('counts filled, required and shifts below target across included slots', () => {
+    const data = {
+      events: [
+        makeEvent({
+          slots: [
+            makeSlot({
+              shifts: [
+                makeShift({
+                  shiftId: 'shift-1',
+                  requiredCount: 2,
+                  assignedCount: 2,
+                }),
+                makeShift({
+                  shiftId: 'shift-2',
+                  requiredCount: 3,
+                  assignedCount: 1,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+      assignments: [],
+      roles: [],
+    };
+
+    expect(summarizeCycleStaffing({ data })).toEqual({
+      filled: 3,
+      required: 5,
+      percent: 60,
+      shiftsBelowTarget: 1,
+    });
+  });
+
+  it('ignores slots this ministry is not serving, so the denominator cannot lie', () => {
+    const data = {
+      events: [
+        makeEvent({
+          slots: [
+            makeSlot({
+              slotId: 'slot-included',
+              shifts: [makeShift({ requiredCount: 2, assignedCount: 1 })],
+            }),
+            makeSlot({
+              slotId: 'slot-excluded',
+              included: false,
+              shifts: [
+                makeShift({
+                  shiftId: 'shift-x',
+                  requiredCount: 9,
+                  assignedCount: 0,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+      assignments: [],
+      roles: [],
+    };
+
+    expect(summarizeCycleStaffing({ data })).toEqual({
+      filled: 1,
+      required: 2,
+      percent: 50,
+      shiftsBelowTarget: 1,
+    });
+  });
+
+  it('reports 0% rather than dividing by zero when nothing is required yet', () => {
+    const data = {
+      events: [
+        makeEvent({
+          slots: [makeSlot({ shifts: [makeShift({ requiredCount: 0 })] })],
+        }),
+      ],
+      assignments: [],
+      roles: [],
+    };
+
+    expect(summarizeCycleStaffing({ data })).toEqual({
+      filled: 0,
+      required: 0,
+      percent: 0,
+      shiftsBelowTarget: 0,
+    });
+  });
+});
+
+describe('staffingStatusClasses', () => {
+  it('stays neutral with no requirement, and grades green / amber / red above it', () => {
+    expect(
+      staffingStatusClasses({ percent: 0, hasRequirement: false }).text,
+    ).toBe('text-muted-foreground');
+    expect(
+      staffingStatusClasses({ percent: 100, hasRequirement: true }).bar,
+    ).toBe('bg-green-600');
+    expect(
+      staffingStatusClasses({ percent: 50, hasRequirement: true }).bar,
+    ).toBe('bg-yellow-500');
+    expect(
+      staffingStatusClasses({ percent: 49, hasRequirement: true }).bar,
+    ).toBe('bg-destructive');
   });
 });

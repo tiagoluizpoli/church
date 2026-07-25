@@ -1,6 +1,6 @@
 import { TriangleAlertIcon, UnlinkIcon } from 'lucide-react';
 import {
-  type ReactNode,
+  type ReactElement,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -25,6 +25,12 @@ export interface PickerVolunteer {
   name: string;
   systemRole?: AssigneeSystemRole;
   availabilityStatus: AvailabilityStatus;
+  /**
+   * Qualified for the role this picker is filling. `false` still lists the
+   * candidate — qualification is overridable with a reason, not a hard filter
+   * (B-2) — it only badges the pick as needing one and sorts it last.
+   */
+  isQualified?: boolean;
   alreadyAssignedCount: number;
   alreadyServingAssignments?: ServingAssignmentContext[];
 }
@@ -74,7 +80,7 @@ const STATUS_LABEL: Record<AvailabilityStatus, string> = {
 interface AssignmentPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trigger: ReactNode;
+  trigger: ReactElement;
   mode?: 'assign' | 'substitution';
   declinedVolunteerName?: string;
   volunteers: PickerVolunteer[];
@@ -149,6 +155,9 @@ export function AssignmentPicker({
       )
       .sort(
         (a, b) =>
+          // Unqualified last: the list keeps offering them, but it never puts
+          // the pick that needs the most justification at the top.
+          Number(a.isQualified === false) - Number(b.isQualified === false) ||
           STATUS_RANK[a.availabilityStatus] - STATUS_RANK[b.availabilityStatus],
       );
   }, [
@@ -160,7 +169,7 @@ export function AssignmentPicker({
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger render={trigger as React.ReactElement} />
+      <PopoverTrigger render={trigger} />
       <PopoverContent
         className="w-80 max-w-[calc(100vw-2rem)] p-3"
         data-testid="assignment-picker"
@@ -268,14 +277,23 @@ export function AssignmentPicker({
                   >
                     {v.name}
                   </span>
+                  {v.isQualified === false ? (
+                    <span
+                      className="mt-0.5 flex items-center gap-1 text-destructive text-xs"
+                      data-testid="picker-option-unqualified"
+                    >
+                      <TriangleAlertIcon className="size-3 shrink-0" />
+                      Not qualified — needs a reason
+                    </span>
+                  ) : null}
                   {v.alreadyServingAssignments?.length ? (
                     v.alreadyServingAssignments.length === 1 ? (
-                      <span className="mt-0.5 flex items-center gap-1 text-[11px] text-yellow-700 dark:text-yellow-300">
+                      <span className="mt-0.5 flex items-center gap-1 text-xs text-yellow-700 dark:text-yellow-300">
                         <TriangleAlertIcon className="size-3 shrink-0" />
                         Serving {v.alreadyServingAssignments[0]?.summary}
                       </span>
                     ) : (
-                      <details className="mt-0.5 text-[11px] text-yellow-700 dark:text-yellow-300">
+                      <details className="mt-0.5 text-xs text-yellow-700 dark:text-yellow-300">
                         <summary className="flex cursor-pointer items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                           <TriangleAlertIcon className="size-3 shrink-0" />
                           Serving in {v.alreadyServingAssignments.length} other
@@ -289,7 +307,7 @@ export function AssignmentPicker({
                       </details>
                     )
                   ) : v.alreadyAssignedCount > 0 ? (
-                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    <span className="mt-0.5 block text-muted-foreground text-xs">
                       Already assigned {v.alreadyAssignedCount} time
                       {v.alreadyAssignedCount === 1 ? '' : 's'} this cycle
                     </span>

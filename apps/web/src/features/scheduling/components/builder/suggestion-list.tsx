@@ -13,6 +13,7 @@ export interface SuggestedVolunteer {
   status: 'available' | 'partial' | 'needs_response' | 'conflict';
   workloadCount: number;
   conflictType?: 'double_booked' | 'unavailable';
+  alreadyServingAssignments?: Array<{ summary: string; detail: string }>;
 }
 
 type SuggestedVolunteerStatus = SuggestedVolunteer['status'];
@@ -118,9 +119,12 @@ export function SuggestionList({
                     fullNameOnExpand={suggestion.name}
                   />
                 </span>
-                <span className="mt-0.5 text-[11px] text-muted-foreground">
+                <span className="mt-0.5 text-muted-foreground text-xs">
                   Serving {suggestion.workloadCount} time
                   {suggestion.workloadCount === 1 ? '' : 's'} this cycle
+                  {suggestion.alreadyServingAssignments?.[0]
+                    ? ` · ${suggestion.alreadyServingAssignments[0].detail}`
+                    : ''}
                 </span>
               </span>
               <Badge
@@ -139,7 +143,7 @@ export function SuggestionList({
   if (collapsible) {
     return (
       <details className="group border-t pt-1">
-        <summary className="cursor-pointer list-none text-[11px] text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        <summary className="cursor-pointer list-none text-muted-foreground text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
           {title} ({suggestions.length})
         </summary>
         <div className="pt-2">{list(visibleSuggestions)}</div>
@@ -149,13 +153,11 @@ export function SuggestionList({
 
   return (
     <div className="space-y-1">
-      {title ? (
-        <p className="text-[11px] text-muted-foreground">{title}</p>
-      ) : null}
+      {title ? <p className="text-muted-foreground text-xs">{title}</p> : null}
       {list(visibleSuggestions)}
       {additionalSuggestions.length > 0 ? (
         <details className="group">
-          <summary className="cursor-pointer list-none text-[11px] text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+          <summary className="cursor-pointer list-none text-muted-foreground text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
             More candidates ({additionalSuggestions.length})
           </summary>
           <div className="pt-2">{list(additionalSuggestions)}</div>

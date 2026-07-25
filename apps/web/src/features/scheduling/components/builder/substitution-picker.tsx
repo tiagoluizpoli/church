@@ -58,7 +58,7 @@ export function SubstitutionPicker({
         </DialogHeader>
 
         <div
-          className="flex items-center justify-between rounded border border-red-300 bg-red-50 px-2 py-1 text-xs"
+          className="flex items-center justify-between rounded border border-destructive/35 bg-destructive/10 px-2 py-1 text-xs"
           data-testid="declined-pinned"
         >
           <span className="flex items-center gap-1">
@@ -68,9 +68,7 @@ export function SubstitutionPicker({
               fullNameOnExpand={declinedVolunteerName}
             />
           </span>
-          <Badge className="bg-red-600 text-white">
-            Declined — find replacement
-          </Badge>
+          <Badge variant="destructive">Declined — find replacement</Badge>
         </div>
 
         <Input
@@ -103,7 +101,12 @@ export function SubstitutionPicker({
                     fullNameOnExpand={v.name}
                   />
                 </span>
-                <Badge className="bg-green-700 text-white">available</Badge>
+                <Badge
+                  variant="outline"
+                  className="border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400"
+                >
+                  available
+                </Badge>
               </button>
             </li>
           ))}

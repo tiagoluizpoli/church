@@ -27,3 +27,6 @@ For instructions on how to add new backlog items or edit existing ones, see the 
 | [BL-018](./items/BL-018.md) | Native `<input type="date">` instead of a shadcn date-picker component | Frontend UX/IA | Backlog |
 | [BL-019](./items/BL-019.md) | Volunteer response health report for leaders | Volunteer Scheduling / Leader Operations | Backlog |
 | [BL-020](./items/BL-020.md) | Re-applying a template after deleting cycle events generates nothing | Scheduling / Planning (Bug) | Backlog |
+| [BL-021](./items/BL-021.md) | Auth Route Protection & Sign Up Suppression (Invite-Only Flow) | Authentication & Routing | Backlog |
+| [BL-022](./items/BL-022.md) | Cycles & Rostering Behavioral & Feature Parity | Frontend UX/IA & Feature Parity | Backlog |
+| [BL-023](./items/BL-023.md) | Centralized UI Component Abstractions (`DataTable`, `WorkspaceHeader`, & Shared Primitives) | Frontend Architecture & Component Library | Backlog |

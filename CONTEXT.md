@@ -4,24 +4,64 @@ This context handles the scheduling, availability, and assignment of volunteers 
 
 ## Language
 
+**User**:
+The authentication identity. A User may administer multiple Churches but may be a Volunteer in only one Church.
+_Avoid_: Account, member
+
 **Church**:
 The root tenant representing a distinct congregation or local church body.
 _Avoid_: Organization, tenant, customer
+
+**Church Membership**:
+The Scoped Membership that grants a User access to a Church. Its Access Level is `member` or `admin`, and it is independent of whether the User is a Volunteer.
+_Avoid_: Organization membership, tenant membership
+
+**Church Member**:
+A User associated with a Church through Church Membership. Volunteer participation and authority are additive to this base relationship.
+_Avoid_: Organization member, tenant member
+
+**Active Church**:
+The Church selected as the current scope of an authenticated session. Every protected operation is evaluated within it, and a User may switch only among Churches where they hold Church Membership.
+_Avoid_: Active organization, current tenant
+
+**Scoped Membership**:
+An association granting a User access within one domain scope, such as a Church, Ministry, or Team. Each Scoped Membership carries an Access Level defined by that scope.
+_Avoid_: Global role, system role
+
+**Access Level**:
+A named level of permitted actions within one Scoped Membership. Access Levels are scope-specific and do not describe the functions a Volunteer performs.
+_Avoid_: Role, permission flag
 
 **Ministry**:
 A high-level department or service area within a Church (e.g., "Kids Ministry", "Worship Ministry"). Carries a ministry-wide `defaultDirection` (all-in / all-out) that decides whether it starts opted into every slot of a cycle; this overrides a church-wide global default (an Unleash flag today, a church setting later) and is in turn overridden by the leader's manual per-slot choices. `defaultDirection` is not a template concept.
 _Avoid_: Department, group
 
+**Ministry Membership**:
+The Scoped Membership that grants a Volunteer access to one Ministry. It carries the Volunteer’s Ministry Access Level and Ministry Roles.
+_Avoid_: Organization team membership
+
+**Ministry Access Level**:
+The permission level attached to one Ministry Membership: `volunteer` or `leader`. It applies only within that Ministry; Team leadership is granted separately per Team.
+_Avoid_: System role, global role
+
 **Team**:
-A specific group of volunteers within a Ministry (e.g., "Acoustic Team", "Media Team").
+A specific group of Volunteers within a Ministry (e.g., "Acoustic Team", "Media Team").
 _Avoid_: Sub-group, crew
 
+**Team Membership**:
+The Scoped Membership that associates a Ministry Volunteer with one Team. Its Access Level is `member` or `leader`.
+_Avoid_: Organization team membership
+
+**TeamLeader**:
+A Volunteer whose Team Membership has the `leader` Access Level. A Volunteer may lead multiple Teams without gaining authority over the rest of the Ministry.
+_Avoid_: Sub-leader, deputy
+
 **Role**:
-A specific function or position required during an event (e.g., "Vocalist", "Sound Tech").
-_Avoid_: Position, job
+A function a Volunteer performs within one Ministry (e.g., "Vocalist", "Guitarist", "Teacher", or "Sound Technician"). Each Role belongs to exactly one Ministry and may support scheduling, communication, training, and other Ministry workflows.
+_Avoid_: Permission, access level, system role, job
 
 **Volunteer**:
-A person associated with a Church who can be scheduled to serve in one or more Roles.
+A Church Member who participates in one or more Ministries and may serve in one or more Roles. A User may have only one Volunteer profile, even when that User administers multiple Churches.
 _Avoid_: User, member, worker
 
 **Event**:
@@ -71,7 +111,7 @@ The person who performed an audited action in the scheduling system. An Actor ma
 _Avoid_: Leader (when the action may also be performed by volunteers or admins)
 
 **ChurchAdmin**:
-A church-level role, above all Ministries, that drafts and locks PlanningCycles and owns the church calendar. Distinct from the ministry-scoped `leader` role, though one person may hold both.
+A User whose Church Membership grants management authority across every subordinate scope in that Church. Participation still requires the relevant Scoped Membership.
 _Avoid_: Owner, superadmin, manager
 
 **AvailabilityCheck**:

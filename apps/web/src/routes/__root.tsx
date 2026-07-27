@@ -4,6 +4,7 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
+  useLocation,
 } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { AppShell } from '@/components/app-shell';
@@ -40,6 +41,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 });
 
 function RootComponent() {
+  const location = useLocation();
+  const isPrototypeRoute = location.pathname.startsWith('/prototype/');
   const planningCycleBreadcrumb = usePlanningCycleBreadcrumb();
   const ministryBreadcrumb = useMinistryBreadcrumb();
   const overrides = [planningCycleBreadcrumb, ministryBreadcrumb].filter(
@@ -56,13 +59,21 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <AppShell breadcrumbOverrides={breadcrumbOverrides}>
+        {isPrototypeRoute ? (
           <Outlet />
-        </AppShell>
+        ) : (
+          <AppShell breadcrumbOverrides={breadcrumbOverrides}>
+            <Outlet />
+          </AppShell>
+        )}
         <Toaster richColors />
       </ThemeProvider>
-      <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+      {isPrototypeRoute ? null : (
+        <>
+          <TanStackRouterDevtools position="bottom-left" />
+          <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+        </>
+      )}
     </>
   );
 }

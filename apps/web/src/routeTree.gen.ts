@@ -19,6 +19,7 @@ import { Route as SchedulingIndexRouteImport } from './routes/scheduling/index'
 import { Route as VolunteerAvailabilityRouteImport } from './routes/volunteer/availability'
 import { Route as SchedulingTailoringRouteImport } from './routes/scheduling/tailoring'
 import { Route as SchedulingPlanningCyclesRouteImport } from './routes/scheduling/planning-cycles'
+import { Route as PrototypeActiveChurchRouteImport } from './routes/prototype/active-church'
 import { Route as SchedulingTailoringIndexRouteImport } from './routes/scheduling/tailoring/index'
 import { Route as SchedulingPlanningCyclesIndexRouteImport } from './routes/scheduling/planning-cycles/index'
 import { Route as SchedulingTailoringMinistryIdRouteImport } from './routes/scheduling/tailoring/$ministryId'
@@ -80,6 +81,11 @@ const SchedulingPlanningCyclesRoute =
     path: '/planning-cycles',
     getParentRoute: () => SchedulingRoute,
   } as any)
+const PrototypeActiveChurchRoute = PrototypeActiveChurchRouteImport.update({
+  id: '/prototype/active-church',
+  path: '/prototype/active-church',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SchedulingTailoringIndexRoute =
   SchedulingTailoringIndexRouteImport.update({
     id: '/',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/scheduling': typeof SchedulingRouteWithChildren
+  '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesRouteWithChildren
   '/scheduling/tailoring': typeof SchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
+  '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
   '/scheduling': typeof SchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof SchedulingPlanningCyclesCycleIdRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/scheduling': typeof SchedulingRouteWithChildren
+  '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/scheduling/planning-cycles': typeof SchedulingPlanningCyclesRouteWithChildren
   '/scheduling/tailoring': typeof SchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof VolunteerAvailabilityRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/scheduling'
+    | '/prototype/active-church'
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/notifications'
+    | '/prototype/active-church'
     | '/volunteer/availability'
     | '/scheduling'
     | '/scheduling/planning-cycles/$cycleId'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/scheduling'
+    | '/prototype/active-church'
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -264,6 +276,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   SchedulingRoute: typeof SchedulingRouteWithChildren
+  PrototypeActiveChurchRoute: typeof PrototypeActiveChurchRoute
   VolunteerAvailabilityRoute: typeof VolunteerAvailabilityRoute
 }
 
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/scheduling/planning-cycles'
       preLoaderRoute: typeof SchedulingPlanningCyclesRouteImport
       parentRoute: typeof SchedulingRoute
+    }
+    '/prototype/active-church': {
+      id: '/prototype/active-church'
+      path: '/prototype/active-church'
+      fullPath: '/prototype/active-church'
+      preLoaderRoute: typeof PrototypeActiveChurchRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/scheduling/tailoring/': {
       id: '/scheduling/tailoring/'
@@ -484,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   SchedulingRoute: SchedulingRouteWithChildren,
+  PrototypeActiveChurchRoute: PrototypeActiveChurchRoute,
   VolunteerAvailabilityRoute: VolunteerAvailabilityRoute,
 }
 export const routeTree = rootRouteImport

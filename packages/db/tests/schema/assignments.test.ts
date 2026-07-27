@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   assignment,
   assignmentAudit,
-  church,
   event,
   ministry,
   ministryParticipation,
@@ -14,6 +13,7 @@ import {
   user,
   volunteer,
 } from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
 describe('Assignments and Audit Schema', () => {
@@ -31,14 +31,11 @@ describe('Assignments and Audit Schema', () => {
     await clearDatabase();
 
     // Create a church
-    const [newChurch] = await testDb
-      .insert(church)
-      .values({
-        name: 'Test Church',
-        slug: 'test-church-assignments',
-      })
-      .returning();
-    if (!newChurch) throw new Error('Failed to create church');
+    const newChurch = await createChurch({
+      db: testDb,
+      name: 'Test Church',
+      slug: 'test-church-assignments',
+    });
     churchId = newChurch.id;
 
     // Create a user

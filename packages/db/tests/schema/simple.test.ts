@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { church, user } from '../../src/schema';
+import { user } from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
 describe('Simple Test', () => {
@@ -7,14 +8,11 @@ describe('Simple Test', () => {
     await clearDatabase();
   });
   it('should insert a church', async () => {
-    const [inserted] = await testDb
-      .insert(church)
-      .values({
-        name: 'Simple Church',
-        slug: 'simple-church',
-      })
-      .returning();
-    if (!inserted) throw new Error('Insert failed');
+    const inserted = await createChurch({
+      db: testDb,
+      name: 'Simple Church',
+      slug: 'simple-church',
+    });
     expect(inserted).toBeDefined();
   });
 

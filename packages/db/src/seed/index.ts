@@ -20,7 +20,7 @@ export async function seedDatabase() {
   faker.seed(SEED_CONFIG.GLOBAL_SEED);
 
   const churches = await generateChurches();
-  const { ministries, teams } = await generateMinistriesAndTeams(churches);
+  const { ministries, teams } = await generateMinistriesAndTeams({ churches });
   const roles = await generateRoles(ministries);
   const { volunteers, links, qualifications } = await generateVolunteers({
     churches,

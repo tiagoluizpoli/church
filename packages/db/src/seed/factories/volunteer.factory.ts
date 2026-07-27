@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { hashPassword } from 'better-auth/crypto';
 import { db } from '../../client';
 import * as schema from '../../schema';
+import type { ChurchRecord } from '../../tenancy';
 import { SEED_CONFIG } from '../constants';
 import { logStep, logSuccess } from '../utils';
 
@@ -41,7 +42,7 @@ function pickQualifiedRoleIds({
 }
 
 interface GenerateVolunteersInput {
-  churches: (typeof schema.church.$inferSelect)[];
+  churches: ChurchRecord[];
   ministries: (typeof schema.ministry.$inferSelect)[];
   teams: (typeof schema.team.$inferSelect)[];
   roles: (typeof schema.role.$inferSelect)[];
@@ -58,6 +59,10 @@ export async function generateVolunteers({
 
   const usersData: (typeof schema.user.$inferInsert)[] = [];
   const volunteersData: (typeof schema.volunteer.$inferInsert)[] = [];
+  // Church Membership is what grants access to a Church; volunteering is
+  // additive to it. A seeded volunteer with no `member` row would be a person
+  // with assignments and no way into the tenant.
+  const membersData: (typeof schema.member.$inferInsert)[] = [];
 
   for (const church of churches) {
     for (let i = 0; i < SEED_CONFIG.VOLUNTEERS_PER_CHURCH; i++) {
@@ -73,6 +78,12 @@ export async function generateVolunteers({
         emailVerified: true,
       });
 
+      membersData.push({
+        id: faker.string.uuid(),
+        organizationId: church.id,
+        userId,
+      });
+
       volunteersData.push({
         id: volunteerId,
         userId: userId,
@@ -86,6 +97,8 @@ export async function generateVolunteers({
     .insert(schema.user)
     .values(usersData)
     .returning();
+
+  await db.insert(schema.member).values(membersData);
 
   const passwordHash = await hashPassword(SEED_PASSWORD);
   const accountsData: (typeof schema.account.$inferInsert)[] =

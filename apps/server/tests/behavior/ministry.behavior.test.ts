@@ -1,8 +1,9 @@
 import {
-  church,
+  createChurch,
   db,
   ministry,
   ministryVolunteer,
+  organization,
   user,
   volunteer,
 } from '@church/db';
@@ -29,14 +30,17 @@ async function truncate() {
   await db.delete(ministryVolunteer);
   await db.delete(volunteer);
   await db.delete(ministry);
-  await db.delete(church).where(sql`id = ${CHURCH}`);
+  // Delete the organization, not the church extension row: cascading from the
+  // extension leaves the organization and its members behind.
+  await db.delete(organization).where(sql`id = ${CHURCH}`);
   await db.delete(user).where(sql`id IN ('user-leader-1', 'user-member-2')`);
 }
 
 beforeAll(async () => {
   await truncate();
 
-  await db.insert(church).values({
+  await createChurch({
+    db,
     id: CHURCH,
     name: 'Behavior Test Church',
     slug: 'behavior-test-church',

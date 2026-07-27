@@ -1,7 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  church,
   ministry,
   ministryInvitation,
   ministryVolunteer,
@@ -11,6 +10,7 @@ import {
   user,
   volunteer,
 } from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
 describe('Core Schema Integration', () => {
@@ -18,14 +18,11 @@ describe('Core Schema Integration', () => {
 
   beforeEach(async () => {
     await clearDatabase();
-    const [insertedChurch] = await testDb
-      .insert(church)
-      .values({
-        name: 'Test Church',
-        slug: 'test-church',
-      })
-      .returning();
-    if (!insertedChurch) throw new Error('Church insert failed');
+    const insertedChurch = await createChurch({
+      db: testDb,
+      name: 'Test Church',
+      slug: 'test-church',
+    });
     churchId = insertedChurch.id;
   });
 

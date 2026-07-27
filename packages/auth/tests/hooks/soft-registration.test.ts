@@ -1,4 +1,5 @@
 import * as schema from '@church/db/schema';
+import { createChurch } from '@church/db/tenancy';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { handleSoftRegistration } from '../../src/hooks/soft-registration';
@@ -11,14 +12,11 @@ describe('handleSoftRegistration', () => {
 
   it('BT-002: Happy Path - first login onboarding', async () => {
     // 1. Setup Church and User
-    const [church] = await testDb
-      .insert(schema.church)
-      .values({
-        name: 'System Church',
-        slug: 'system-church',
-      })
-      .returning();
-    if (!church) throw new Error('Church setup failed');
+    const church = await createChurch({
+      db: testDb,
+      name: 'System Church',
+      slug: 'system-church',
+    });
 
     const [user] = await testDb
       .insert(schema.user)
@@ -50,14 +48,11 @@ describe('handleSoftRegistration', () => {
 
   it('BT-003: Edge - skip for existing volunteer', async () => {
     // 1. Setup Church, User, and existing Volunteer
-    const [church] = await testDb
-      .insert(schema.church)
-      .values({
-        name: 'System Church',
-        slug: 'system-church',
-      })
-      .returning();
-    if (!church) throw new Error('Church setup failed');
+    const church = await createChurch({
+      db: testDb,
+      name: 'System Church',
+      slug: 'system-church',
+    });
 
     const [user] = await testDb
       .insert(schema.user)
@@ -94,7 +89,8 @@ describe('handleSoftRegistration', () => {
 
   it('BT-007: Edge - concurrent login idempotency', async () => {
     // 1. Setup Church and User
-    await testDb.insert(schema.church).values({
+    await createChurch({
+      db: testDb,
       name: 'System Church',
       slug: 'system-church',
     });

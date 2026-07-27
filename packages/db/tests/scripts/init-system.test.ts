@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '../../src/schema';
 import { runInitSystem } from '../../src/scripts/init-system';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from '../schema/setup';
 
 describe('runInitSystem', () => {
@@ -44,7 +45,16 @@ describe('runInitSystem', () => {
     // Verify in DB
     const churches = await testDb.select().from(schema.church);
     expect(churches).toHaveLength(1);
-    expect(churches[0]?.slug).toBe('test-church');
+    const organizations = await testDb.select().from(schema.organization);
+    expect(organizations).toHaveLength(1);
+    expect(organizations[0]?.slug).toBe('test-church');
+    expect(organizations[0]?.id).toBe(churches[0]?.id);
+
+    // Church Membership, not just a Volunteer profile.
+    const members = await testDb.select().from(schema.member);
+    expect(members).toHaveLength(1);
+    expect(members[0]?.organizationId).toBe(organizations[0]?.id);
+    expect(members[0]?.role).toBe('admin');
 
     const links = await testDb.select().from(schema.ministryVolunteer);
     expect(links).toHaveLength(1);
@@ -76,7 +86,8 @@ describe('runInitSystem', () => {
 
   it('BT-006: Edge - church slug already exists (Idempotency)', async () => {
     // Pre-create church
-    await testDb.insert(schema.church).values({
+    await createChurch({
+      db: testDb,
       name: 'Existing Church',
       slug: 'test-church',
     });
@@ -96,10 +107,29 @@ describe('runInitSystem', () => {
   });
 
   it('BT-008: Catastrophic - rollback on failure', async () => {
-    // Scenario: Admin user lookup fails AFTER Church is potentially created
+    // Scenario: the Church is created first, then the Volunteer step fails
+    // because the admin already holds the one active Volunteer profile a User
+    // is allowed — in another Church. The whole transaction must unwind.
+    const otherChurch = await createChurch({
+      db: testDb,
+      name: 'Other Church',
+      slug: 'other-church',
+    });
+    await testDb.insert(schema.user).values({
+      id: 'rollback-admin-id',
+      email: 'admin@rollback.com',
+      name: 'Rollback Admin',
+      emailVerified: true,
+    });
+    await testDb.insert(schema.volunteer).values({
+      userId: 'rollback-admin-id',
+      churchId: otherChurch.id,
+      status: 'active',
+    });
+
     const seedData = {
       churchName: 'Rollback Church',
-      churchSlug: 'a'.repeat(300), // Exceeds varchar(255) limit
+      churchSlug: 'rollback-church',
       adminEmail: 'admin@rollback.com',
     };
     writeFileSync(seedPath, JSON.stringify(seedData));
@@ -108,10 +138,13 @@ describe('runInitSystem', () => {
     await expect(runInitSystem(seedPath)).rejects.toThrow();
 
     // Verify Church was NOT created (rollback worked)
-    const churches = await testDb
+    const organizations = await testDb
       .select()
-      .from(schema.church)
-      .where(eq(schema.church.slug, 'rollback-church'));
-    expect(churches).toHaveLength(0);
+      .from(schema.organization)
+      .where(eq(schema.organization.slug, 'rollback-church'));
+    expect(organizations).toHaveLength(0);
+
+    const churches = await testDb.select().from(schema.church);
+    expect(churches.map((row) => row.id)).toEqual([otherChurch.id]);
   });
 });

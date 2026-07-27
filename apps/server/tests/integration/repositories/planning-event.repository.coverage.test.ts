@@ -166,15 +166,12 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
 
   it('seedParticipations is a no-op when the church has no ministries', async () => {
     await seedSchedulingPhase3Base();
-    const [emptyChurch] = await schedulingTestDb
-      .insert((await import('@church/db')).church)
-      .values({
-        name: 'Ministry-less Church',
-        slug: 'ministry-less-church',
-        timezone: 'UTC',
-      })
-      .returning();
-    if (!emptyChurch) throw new Error('church seed failed');
+    const emptyChurch = await (await import('@church/db')).createChurch({
+      db: schedulingTestDb,
+      name: 'Ministry-less Church',
+      slug: 'ministry-less-church',
+      timezone: 'UTC',
+    });
 
     const repo = new DrizzlePlanningEventRepository(schedulingTestDb);
 

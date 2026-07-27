@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { user } from './auth';
 
 // Better Auth's `organization` plugin owns these three tables. Their shape is
@@ -8,9 +8,16 @@ import { user } from './auth';
 // including the absence of an `updated_at` on all three. Teams are disabled, so
 // the plugin's `team`/`team_member` tables and the `invitation.team_id` column
 // are deliberately absent.
+//
+// One exception: every organization identifier is a `uuid` rather than the
+// plugin's generic `text`. An organization row *is* a Church, and `church` and
+// every `church_id` foreign key beneath it are `uuid` — a text primary key
+// could not be referenced by them. `packages/auth` therefore configures
+// `advanced.database.generateId` with a UUID *function*, so the values Better
+// Auth mints fit. Not the `'uuid'` shorthand — see the note there.
 
 export const organization = pgTable('organization', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   logo: text('logo'),
@@ -24,7 +31,7 @@ export const member = pgTable(
   'member',
   {
     id: text('id').primaryKey(),
-    organizationId: text('organization_id')
+    organizationId: uuid('organization_id')
       .notNull()
       .references(() => organization.id, { onDelete: 'cascade' }),
     userId: text('user_id')
@@ -45,7 +52,7 @@ export const invitation = pgTable(
   'invitation',
   {
     id: text('id').primaryKey(),
-    organizationId: text('organization_id')
+    organizationId: uuid('organization_id')
       .notNull()
       .references(() => organization.id, { onDelete: 'cascade' }),
     email: text('email').notNull(),

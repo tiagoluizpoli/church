@@ -1,8 +1,9 @@
 import * as schema from '@church/db';
 import {
+  addChurchMember,
   assignment,
   assignmentAudit,
-  church,
+  createChurch,
   event,
   ministry,
   ministryParticipation,
@@ -42,9 +43,16 @@ export const volunteerDashboardTimeline = {
   publishedEventEnd: new Date('2024-06-04T11:00:00Z'),
 } as const;
 
+/**
+ * Roots at `organization` and `user`, never at `church`. `church` is now an
+ * extension row keyed by the organization id, so cascading from it leaves the
+ * organization, its members and its invitations standing — which does not fail
+ * here, it fails later as an unexplained authorization result in another spec.
+ * `tests/tenancy/truncation-root.test.ts` guards this.
+ */
 export async function truncateAll(): Promise<void> {
   await testDb.execute(`
-    TRUNCATE TABLE church, organization, "user" RESTART IDENTITY CASCADE
+    TRUNCATE TABLE organization, "user" RESTART IDENTITY CASCADE
   `);
 }
 
@@ -63,21 +71,35 @@ export async function seed(): Promise<void> {
     ON CONFLICT (id) DO NOTHING
   `);
 
-  // Churches
-  await testDb.insert(church).values([
-    {
-      id: '11111111-1111-1111-1111-111111111111',
-      name: 'First Church',
-      slug: 'first-church',
-      timezone: 'UTC',
-    },
-    {
-      id: '11111111-1111-1111-1111-111111111112',
-      name: 'Second Church',
-      slug: 'second-church',
-      timezone: 'UTC',
-    },
-  ]);
+  // Churches — an organization row plus its extension row, not a bare church.
+  await createChurch({
+    db: testDb,
+    id: '11111111-1111-1111-1111-111111111111',
+    name: 'First Church',
+    slug: 'first-church',
+    timezone: 'UTC',
+  });
+  await createChurch({
+    db: testDb,
+    id: '11111111-1111-1111-1111-111111111112',
+    name: 'Second Church',
+    slug: 'second-church',
+    timezone: 'UTC',
+  });
+
+  // Church Membership: Alice administers church 1, Bob is a plain member.
+  await addChurchMember({
+    db: testDb,
+    churchId: '11111111-1111-1111-1111-111111111111',
+    userId: '22222222-2222-2222-2222-222222222221',
+    accessLevel: 'admin',
+  });
+  await addChurchMember({
+    db: testDb,
+    churchId: '11111111-1111-1111-1111-111111111111',
+    userId: '22222222-2222-2222-2222-222222222222',
+    accessLevel: 'member',
+  });
 
   // Ministries (church-1 only — alphabetical for list test: Adult first, Youth second)
   await testDb.insert(ministry).values([

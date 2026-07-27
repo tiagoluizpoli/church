@@ -20,6 +20,11 @@ interface SeedInvitationInput {
 
 const ONE_DAY_MS = 86_400_000;
 
+// Organization ids are uuids: a Church *is* an organization row, and `church`
+// and every `church_id` beneath it are uuid columns.
+const ORGANIZATION_ID = 'c0000000-0000-4000-8000-000000000001';
+const OTHER_ORGANIZATION_ID = 'c0000000-0000-4000-8000-000000000002';
+
 function tomorrow(): Date {
   return new Date(Date.now() + ONE_DAY_MS);
 }
@@ -38,7 +43,7 @@ async function seedOrganizationWithUser(): Promise<SeededOrganization> {
   const [insertedOrganization] = await testDb
     .insert(organization)
     .values({
-      id: 'org-1',
+      id: ORGANIZATION_ID,
       name: 'Grace Church',
       slug: 'grace-church',
     })
@@ -87,7 +92,7 @@ describe('Organization Schema', () => {
 
     await expect(
       testDb.insert(organization).values({
-        id: 'org-2',
+        id: OTHER_ORGANIZATION_ID,
         name: 'Other Church',
         slug: 'grace-church',
       }),

@@ -1,12 +1,17 @@
 import { faker } from '@faker-js/faker';
 import { db } from '../../client';
 import * as schema from '../../schema';
+import type { ChurchRecord } from '../../tenancy';
 import { SEED_CONFIG } from '../constants';
 import { logStep, logSuccess } from '../utils';
 
-export async function generateMinistriesAndTeams(
-  churches: (typeof schema.church.$inferSelect)[],
-) {
+interface GenerateMinistriesAndTeamsInput {
+  churches: ChurchRecord[];
+}
+
+export async function generateMinistriesAndTeams({
+  churches,
+}: GenerateMinistriesAndTeamsInput) {
   logStep('Generating ministries and teams...');
   faker.seed(SEED_CONFIG.GLOBAL_SEED + 2);
 

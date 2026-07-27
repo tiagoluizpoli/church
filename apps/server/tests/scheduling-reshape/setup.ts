@@ -1,7 +1,8 @@
 import * as schema from '@church/db';
 import {
-  church,
+  addChurchMember,
   churchAdmin,
+  createChurch,
   event,
   eventTemplate,
   ministry,
@@ -52,9 +53,11 @@ export interface CreatePhase3TemplateInput {
   }>;
 }
 
+// Roots at `organization`, not `church`: see the note on `truncateAll` in
+// `tests/integration/repositories/setup.ts`.
 export async function resetSchedulingPhase3Db(): Promise<void> {
   await schedulingTestDb.execute(`
-    TRUNCATE TABLE church, "user" RESTART IDENTITY CASCADE
+    TRUNCATE TABLE organization, "user" RESTART IDENTITY CASCADE
   `);
 }
 
@@ -66,31 +69,31 @@ export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> 
     emailVerified: true,
   });
 
-  const [churchA, churchB] = await schedulingTestDb
-    .insert(church)
-    .values([
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        name: 'Scheduling Church A',
-        slug: 'scheduling-church-a',
-        timezone: 'America/Sao_Paulo',
-      },
-      {
-        id: '22222222-2222-4222-8222-222222222222',
-        name: 'Scheduling Church B',
-        slug: 'scheduling-church-b',
-        timezone: 'America/New_York',
-      },
-    ])
-    .returning();
-
-  if (!churchA || !churchB) {
-    throw new Error('Scheduling phase 3 church seed failed');
-  }
+  const churchA = await createChurch({
+    db: schedulingTestDb,
+    id: '11111111-1111-4111-8111-111111111111',
+    name: 'Scheduling Church A',
+    slug: 'scheduling-church-a',
+    timezone: 'America/Sao_Paulo',
+  });
+  const churchB = await createChurch({
+    db: schedulingTestDb,
+    id: '22222222-2222-4222-8222-222222222222',
+    name: 'Scheduling Church B',
+    slug: 'scheduling-church-b',
+    timezone: 'America/New_York',
+  });
 
   await schedulingTestDb.insert(churchAdmin).values({
     churchId: churchA.id,
     userId: 'sched-admin-user',
+  });
+
+  await addChurchMember({
+    db: schedulingTestDb,
+    churchId: churchA.id,
+    userId: 'sched-admin-user',
+    accessLevel: 'admin',
   });
 
   const [adminVolunteer] = await schedulingTestDb

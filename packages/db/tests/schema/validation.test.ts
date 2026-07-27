@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   assignment,
-  church,
   event,
   ministry,
   ministryParticipation,
@@ -13,6 +12,7 @@ import {
   user,
   volunteer,
 } from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
 describe('Database Level Constraints (T035)', () => {
@@ -28,14 +28,11 @@ describe('Database Level Constraints (T035)', () => {
     await clearDatabase();
 
     // Setup basic hierarchy
-    const [insertedChurch] = await testDb
-      .insert(church)
-      .values({
-        name: 'Constraint Test Church',
-        slug: 'constraint-test',
-      })
-      .returning();
-    if (!insertedChurch) throw new Error('Church insert failed');
+    const insertedChurch = await createChurch({
+      db: testDb,
+      name: 'Constraint Test Church',
+      slug: 'constraint-test',
+    });
     churchId = insertedChurch.id;
 
     const [insertedMinistry] = await testDb

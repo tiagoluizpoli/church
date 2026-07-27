@@ -4,7 +4,6 @@ import {
   assignment,
   availability,
   availabilityCheck,
-  church,
   churchAdmin,
   event,
   eventTemplate,
@@ -22,6 +21,7 @@ import {
   volunteer,
   volunteerNotification,
 } from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
 interface SchedulingSeed {
@@ -35,14 +35,18 @@ interface SchedulingSeed {
 }
 
 async function seedSchedulingBase(): Promise<SchedulingSeed> {
-  const [churchA, churchB] = await testDb
-    .insert(church)
-    .values([
-      { name: 'Church A', slug: 'church-a', timezone: 'America/Sao_Paulo' },
-      { name: 'Church B', slug: 'church-b', timezone: 'UTC' },
-    ])
-    .returning();
-  if (!churchA || !churchB) throw new Error('Church seed failed');
+  const churchA = await createChurch({
+    db: testDb,
+    name: 'Church A',
+    slug: 'church-a',
+    timezone: 'America/Sao_Paulo',
+  });
+  const churchB = await createChurch({
+    db: testDb,
+    name: 'Church B',
+    slug: 'church-b',
+    timezone: 'UTC',
+  });
 
   const userId = 'scheduling-admin-leader';
   await testDb.insert(user).values({

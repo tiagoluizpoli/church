@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as schema from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from '../schema/setup';
 
 describe('Performance: Soft Registration (SC-003)', () => {
@@ -10,7 +11,8 @@ describe('Performance: Soft Registration (SC-003)', () => {
     const userId = crypto.randomUUID();
 
     // Setup prerequisites
-    await testDb.insert(schema.church).values({
+    await createChurch({
+      db: testDb,
       id: churchId,
       name: 'Perf Church',
       slug: 'perf-church',

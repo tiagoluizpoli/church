@@ -2,17 +2,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as schema from '@church/db';
 import {
+  addChurchMember,
   assignment,
   availability,
   availabilityCheck,
-  church,
   churchAdmin,
+  ensureChurch,
   event,
   ministry,
   ministryParticipation,
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
+  organization,
   participationSlotInclusion,
   planningCycle,
   role,
@@ -24,7 +26,7 @@ import {
   volunteer,
   volunteerNotification,
 } from '@church/db';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
@@ -238,20 +240,41 @@ export async function seedE2e({
       )
       .onConflictDoNothing();
 
-    await db
-      .insert(church)
-      .values({
-        id: E2E_IDS.church,
-        name: 'E2E Church',
-        slug: 'e2e-church',
-        timezone: 'America/New_York',
-      })
-      .onConflictDoNothing();
+    await ensureChurch({
+      db,
+      id: E2E_IDS.church,
+      name: 'E2E Church',
+      slug: 'e2e-church',
+      timezone: 'America/New_York',
+    });
 
     await db
       .insert(churchAdmin)
       .values({ churchId: E2E_IDS.church, userId: leaderUserId })
       .onConflictDoNothing();
+
+    // Church Membership is what admits a person to the Church; volunteering is
+    // additive to it. Every user this seed gives a Volunteer profile gets one,
+    // or the seed produces people holding assignments with no way in.
+    await addChurchMember({
+      db,
+      churchId: E2E_IDS.church,
+      userId: leaderUserId,
+      accessLevel: 'admin',
+    });
+
+    for (const memberUserId of [
+      subLeaderUserId,
+      volunteerUserId,
+      ...POOL_VOLUNTEERS.map((poolVolunteer) => poolVolunteer.userId),
+      UNQUALIFIED_VOLUNTEER.userId,
+    ]) {
+      await addChurchMember({
+        db,
+        churchId: E2E_IDS.church,
+        userId: memberUserId,
+      });
+    }
 
     await db
       .insert(planningCycle)
@@ -278,20 +301,25 @@ export async function seedE2e({
       .onConflictDoNothing();
 
     // Second tenant (DL4-X1 church isolation, cross-cutting spec only).
-    await db
-      .insert(church)
-      .values({
-        id: E2E_IDS.churchB,
-        name: 'E2E ChurchB',
-        slug: 'e2e-church-b',
-        timezone: 'America/Chicago',
-      })
-      .onConflictDoNothing();
+    await ensureChurch({
+      db,
+      id: E2E_IDS.churchB,
+      name: 'E2E ChurchB',
+      slug: 'e2e-church-b',
+      timezone: 'America/Chicago',
+    });
 
     await db
       .insert(churchAdmin)
       .values({ churchId: E2E_IDS.churchB, userId: churchBAdminUserId })
       .onConflictDoNothing();
+
+    await addChurchMember({
+      db,
+      churchId: E2E_IDS.churchB,
+      userId: churchBAdminUserId,
+      accessLevel: 'admin',
+    });
 
     const [churchBAdminVolunteerRow] = await db
       .insert(volunteer)
@@ -1016,9 +1044,12 @@ export async function cleanupE2e({
 }: CleanupE2eOptions = {}): Promise<void> {
   const { pool, db } = makeDb();
   try {
-    // CASCADE from church removes ministry/role/volunteer/event/slot rows.
-    await db.delete(church).where(eq(church.id, E2E_IDS.church));
-    await db.delete(church).where(eq(church.id, E2E_IDS.churchB));
+    // Delete the organization, not the church extension row: cascading from
+    // the extension would leave the organization, its members and its
+    // invitations standing, which resurfaces later as authorization failures.
+    await db
+      .delete(organization)
+      .where(inArray(organization.id, [E2E_IDS.church, E2E_IDS.churchB]));
     // Pool users and disposable auth users are not reachable by church
     // cascade — remove them too.
     const cleanupUserIds = [

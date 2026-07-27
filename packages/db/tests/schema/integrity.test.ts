@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
 describe('Relational Integrity', () => {
@@ -62,11 +63,11 @@ describe('Relational Integrity', () => {
     });
 
     it('should enforce unique userId constraint for Volunteer', async () => {
-      const [church] = await testDb
-        .insert(schema.church)
-        .values({ name: 'Test Church', slug: 'test' })
-        .returning();
-      if (!church) throw new Error('Church not created');
+      const church = await createChurch({
+        db: testDb,
+        name: 'Test Church',
+        slug: 'test',
+      });
 
       const [user] = await testDb
         .insert(schema.user)
@@ -124,11 +125,11 @@ describe('Relational Integrity', () => {
     });
 
     it('should require a name for a Ministry', async () => {
-      const [church] = await testDb
-        .insert(schema.church)
-        .values({ name: 'Test Church', slug: 'test' })
-        .returning();
-      if (!church) throw new Error('Church not created');
+      const church = await createChurch({
+        db: testDb,
+        name: 'Test Church',
+        slug: 'test',
+      });
 
       try {
         await testDb.insert(schema.ministry).values({

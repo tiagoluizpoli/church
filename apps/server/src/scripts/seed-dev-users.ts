@@ -1,8 +1,10 @@
 import {
   account,
-  church,
+  addChurchMember,
+  type ChurchRecord,
   churchAdmin,
   createDb,
+  ensureChurch,
   ministry,
   ministryVolunteer,
   ministryVolunteerRole,
@@ -73,25 +75,8 @@ const DEV_USERS = [
   },
 ] as const;
 
-async function ensureChurch() {
-  const existingChurch = await db.query.church.findFirst({
-    where: eq(church.slug, DEV_CHURCH.slug),
-  });
-
-  if (existingChurch) {
-    return existingChurch;
-  }
-
-  const [createdChurch] = await db
-    .insert(church)
-    .values(DEV_CHURCH)
-    .returning();
-
-  if (!createdChurch) {
-    throw new Error('Failed to create local dev church.');
-  }
-
-  return createdChurch;
+async function ensureDevChurch(): Promise<ChurchRecord> {
+  return await ensureChurch({ db, ...DEV_CHURCH });
 }
 
 async function ensureMinistry(churchId: string) {
@@ -422,7 +407,7 @@ async function ensureChurchAdmin(input: { churchId: string; userId: string }) {
 
 export async function seedDevUsers() {
   const passwordHash = await hashPassword(DEV_PASSWORD);
-  const localChurch = await ensureChurch();
+  const localChurch = await ensureDevChurch();
   const localMinistry = await ensureMinistry(localChurch.id);
   const localTeam = await ensureTeam(localChurch.id, localMinistry.id);
   const localRoles = await ensureRoles(localChurch.id, localMinistry.id);
@@ -439,6 +424,14 @@ export async function seedDevUsers() {
       passwordHash,
     );
     const localVolunteer = await ensureVolunteer(authUser.id, localChurch.id);
+
+    // Church Membership is the access grant; volunteering is additive to it.
+    await addChurchMember({
+      db,
+      churchId: localChurch.id,
+      userId: authUser.id,
+      accessLevel: devUser.isChurchAdmin ? 'admin' : 'member',
+    });
 
     await ensureMembership({
       churchId: localChurch.id,

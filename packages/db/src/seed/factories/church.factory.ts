@@ -1,10 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { db } from '../../client';
-import * as schema from '../../schema';
+import { type ChurchRecord, createChurch } from '../../tenancy';
 import { SEED_CONFIG } from '../constants';
 import { logStep, logSuccess } from '../utils';
 
-export async function generateChurches() {
+export async function generateChurches(): Promise<ChurchRecord[]> {
   logStep('Generating churches...');
   faker.seed(SEED_CONFIG.GLOBAL_SEED + 1);
 
@@ -14,19 +14,19 @@ export async function generateChurches() {
     { name: 'First Baptist', slug: 'first-baptist' },
   ];
 
-  const insertedChurches = await db
-    .insert(schema.church)
-    .values(
-      churches.map((c) => ({
+  const createdChurches: ChurchRecord[] = [];
+  for (const church of churches) {
+    createdChurches.push(
+      await createChurch({
+        db,
         id: faker.string.uuid(),
-        name: c.name,
-        slug: c.slug,
-        settings: {},
-      })),
-    )
-    .returning();
+        name: church.name,
+        slug: church.slug,
+      }),
+    );
+  }
 
-  const sortedChurches = [...insertedChurches].sort((a, b) =>
+  const sortedChurches = [...createdChurches].sort((a, b) =>
     a.id.localeCompare(b.id),
   );
   logSuccess(`Generated ${sortedChurches.length} churches.`);

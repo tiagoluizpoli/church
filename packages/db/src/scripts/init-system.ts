@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '../index';
 import * as schema from '../schema';
 import { SeedDataSchema } from '../schemas/seed';
+import { addChurchMember, createChurch, findChurchBySlug } from '../tenancy';
 
 export async function runInitSystem(seedPath: string) {
   console.log('🚀 Initializing Church system...');
@@ -16,23 +17,16 @@ export async function runInitSystem(seedPath: string) {
   );
 
   return await db.transaction(async (tx) => {
-    // 1. Ensure Church exists
-    let church = await tx.query.church.findFirst({
-      where: eq(schema.church.slug, seedData.churchSlug),
-    });
+    // 1. Ensure Church exists — an `organization` row plus its extension row.
+    let church = await findChurchBySlug({ db: tx, slug: seedData.churchSlug });
 
     if (!church) {
       console.log(`Creating church: ${seedData.churchName}`);
-      const [newChurch] = await tx
-        .insert(schema.church)
-        .values({
-          name: seedData.churchName,
-          slug: seedData.churchSlug,
-        })
-        .returning();
-
-      if (!newChurch) throw new Error('Failed to create church');
-      church = newChurch;
+      church = await createChurch({
+        db: tx,
+        name: seedData.churchName,
+        slug: seedData.churchSlug,
+      });
     } else {
       console.log(`Church already exists: ${seedData.churchSlug}`);
     }
@@ -59,6 +53,15 @@ export async function runInitSystem(seedPath: string) {
     } else {
       console.log(`User already exists: ${seedData.adminEmail}`);
     }
+
+    // 2b. Church Membership is what grants access to the Church, independently
+    // of the Volunteer profile created below.
+    await addChurchMember({
+      db: tx,
+      churchId: church.id,
+      userId: user.id,
+      accessLevel: 'admin',
+    });
 
     // 3. Ensure Volunteer exists for user
     let volunteer = await tx.query.volunteer.findFirst({

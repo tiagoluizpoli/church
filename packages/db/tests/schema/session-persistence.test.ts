@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '../../src/schema';
+import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
 describe('Auth & Session Persistence (SC-001)', () => {
@@ -33,14 +34,11 @@ describe('Auth & Session Persistence (SC-001)', () => {
     if (!session) throw new Error('Session setup failed');
 
     // 2. Action: Simulate "migration" operations
-    const [church] = await testDb
-      .insert(schema.church)
-      .values({
-        name: 'New Church',
-        slug: 'new-church',
-      })
-      .returning();
-    if (!church) throw new Error('Church setup failed');
+    const church = await createChurch({
+      db: testDb,
+      name: 'New Church',
+      slug: 'new-church',
+    });
 
     await testDb.insert(schema.volunteer).values({
       userId: user.id,
@@ -61,11 +59,11 @@ describe('Auth & Session Persistence (SC-001)', () => {
   });
 
   it('should preserve session during cascading deletes of non-auth entities', async () => {
-    const [church] = await testDb
-      .insert(schema.church)
-      .values({ name: 'Test Church', slug: 'test-casc' })
-      .returning();
-    if (!church) throw new Error('Church setup failed');
+    const church = await createChurch({
+      db: testDb,
+      name: 'Test Church',
+      slug: 'test-casc',
+    });
 
     const [user] = await testDb
       .insert(schema.user)

@@ -30,6 +30,18 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
+      database: {
+        // An `organization` row *is* a Church, and `church` plus every
+        // `church_id` foreign key beneath it are `uuid`. Better Auth's default
+        // id format would not fit those columns, so every id it mints is a
+        // UUID.
+        //
+        // The function form, not the `'uuid'` shorthand: the shorthand stops
+        // generating ids in JS and leaves them to the database, and Better
+        // Auth's own tables (`user`, `session`, `account`) are `text` columns
+        // with no default, so every insert would fail on a null id.
+        generateId: () => crypto.randomUUID(),
+      },
       defaultCookieAttributes: {
         // `Secure` cookies are silently dropped by browsers over plain HTTP
         // (e.g. LAN-IP dev access from a phone) — only require it, and the

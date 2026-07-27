@@ -1,6 +1,14 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../client';
 import * as schema from '../schema';
+import {
+  addChurchMember,
+  type ChurchRecord,
+  createChurch,
+  findAnyChurch,
+  findChurchById,
+  findChurchBySlug,
+} from '../tenancy';
 
 const DEMO_CHURCH_SLUG = 'volunteer-dashboard-demo';
 const DEMO_CHURCH_NAME = 'Volunteer Dashboard Demo Church';
@@ -24,7 +32,7 @@ interface AuthUserCandidate {
 
 interface DemoContext {
   user: typeof schema.user.$inferSelect;
-  church: typeof schema.church.$inferSelect;
+  church: ChurchRecord;
   volunteer: typeof schema.volunteer.$inferSelect;
   ministry: typeof schema.ministry.$inferSelect;
   team: typeof schema.team.$inferSelect;
@@ -145,33 +153,23 @@ async function resolveTargetUser(email?: string) {
   return user;
 }
 
-async function ensureChurch() {
-  const existingChurch = await db.query.church.findFirst({
-    where: eq(schema.church.slug, DEMO_CHURCH_SLUG),
-  });
+async function ensureChurch(): Promise<ChurchRecord> {
+  const existingChurch = await findChurchBySlug({ db, slug: DEMO_CHURCH_SLUG });
   if (existingChurch) {
     return existingChurch;
   }
 
-  const firstChurch = await db.query.church.findFirst();
+  const firstChurch = await findAnyChurch({ db });
   if (firstChurch) {
     return firstChurch;
   }
 
-  const [createdChurch] = await db
-    .insert(schema.church)
-    .values({
-      name: DEMO_CHURCH_NAME,
-      slug: DEMO_CHURCH_SLUG,
-      timezone: 'America/Sao_Paulo',
-    })
-    .returning();
-
-  if (!createdChurch) {
-    throw new Error('Failed to create demo church.');
-  }
-
-  return createdChurch;
+  return await createChurch({
+    db,
+    name: DEMO_CHURCH_NAME,
+    slug: DEMO_CHURCH_SLUG,
+    timezone: 'America/Sao_Paulo',
+  });
 }
 
 async function ensureVolunteerContext(
@@ -181,14 +179,14 @@ async function ensureVolunteerContext(
     where: eq(schema.volunteer.userId, user.id),
   });
   const church = existingVolunteer
-    ? await db.query.church.findFirst({
-        where: eq(schema.church.id, existingVolunteer.churchId),
-      })
+    ? await findChurchById({ db, id: existingVolunteer.churchId })
     : await ensureChurch();
 
   if (!church) {
     throw new Error('Unable to resolve church for demo seed.');
   }
+
+  await addChurchMember({ db, churchId: church.id, userId: user.id });
 
   const volunteer =
     existingVolunteer ??

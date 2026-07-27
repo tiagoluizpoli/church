@@ -1,14 +1,13 @@
 import { db } from '@church/db';
 import * as schema from '@church/db/schema';
+import { findChurchBySlug } from '@church/db/tenancy';
 import { and, eq } from 'drizzle-orm';
 
 export async function handleSoftRegistration(userId: string) {
   const systemChurchSlug = 'system-church';
 
-  // 1. Find the System Church
-  const church = await db.query.church.findFirst({
-    where: eq(schema.church.slug, systemChurchSlug),
-  });
+  // 1. Find the System Church — a Church's slug lives on its organization row.
+  const church = await findChurchBySlug({ db, slug: systemChurchSlug });
 
   if (!church) {
     console.warn(

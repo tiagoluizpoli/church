@@ -5,6 +5,7 @@ import { env } from '@church/env/server';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins/organization';
+import { assertConfiguredRole } from './organization/assert-configured-role';
 import {
   organizationCreatorRole,
   organizationRoles,
@@ -47,6 +48,19 @@ export function createAuth() {
         allowUserToCreateOrganization: false,
         // No invitation mailer: the plugin therefore sends nothing and mints no
         // token or link. Invitation delivery is the application's own concern.
+        organizationHooks: {
+          // The plugin's own role validation still accepts its built-in
+          // `owner`, and `add-member` validates nothing. These close it.
+          beforeAddMember: async ({ member }) => {
+            assertConfiguredRole({ role: member.role });
+          },
+          beforeUpdateMemberRole: async ({ newRole }) => {
+            assertConfiguredRole({ role: newRole });
+          },
+          beforeCreateInvitation: async ({ invitation }) => {
+            assertConfiguredRole({ role: invitation.role });
+          },
+        },
       }),
     ],
     databaseHooks: {

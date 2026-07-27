@@ -8,12 +8,23 @@ import {
 } from '../../src/schema/organization';
 import { clearDatabase, testDb } from './setup';
 
-interface SeededActor {
+interface SeededOrganization {
   userId: string;
   organizationId: string;
 }
 
-async function seedActor(): Promise<SeededActor> {
+interface SeedInvitationInput {
+  userId: string;
+  organizationId: string;
+}
+
+const ONE_DAY_MS = 86_400_000;
+
+function tomorrow(): Date {
+  return new Date(Date.now() + ONE_DAY_MS);
+}
+
+async function seedOrganizationWithUser(): Promise<SeededOrganization> {
   const [insertedUser] = await testDb
     .insert(user)
     .values({
@@ -40,13 +51,28 @@ async function seedActor(): Promise<SeededActor> {
   };
 }
 
+async function seedInvitation({ userId, organizationId }: SeedInvitationInput) {
+  const [inserted] = await testDb
+    .insert(invitation)
+    .values({
+      id: 'invitation-1',
+      organizationId,
+      email: 'invited@example.com',
+      inviterId: userId,
+      expiresAt: tomorrow(),
+    })
+    .returning();
+
+  return inserted;
+}
+
 describe('Organization Schema', () => {
   beforeEach(async () => {
     await clearDatabase();
   });
 
   it('persists an organization and enforces a unique slug', async () => {
-    const { organizationId } = await seedActor();
+    const { organizationId } = await seedOrganizationWithUser();
 
     const [found] = await testDb
       .select()
@@ -69,7 +95,7 @@ describe('Organization Schema', () => {
   });
 
   it('defaults a membership role to member', async () => {
-    const { userId, organizationId } = await seedActor();
+    const { userId, organizationId } = await seedOrganizationWithUser();
 
     const [inserted] = await testDb
       .insert(member)
@@ -80,7 +106,7 @@ describe('Organization Schema', () => {
   });
 
   it('stores an admin membership for the first user of an organization', async () => {
-    const { userId, organizationId } = await seedActor();
+    const { userId, organizationId } = await seedOrganizationWithUser();
 
     const [inserted] = await testDb
       .insert(member)
@@ -91,36 +117,21 @@ describe('Organization Schema', () => {
   });
 
   it('defaults an invitation status to pending and keeps role optional', async () => {
-    const { userId, organizationId } = await seedActor();
+    const { userId, organizationId } = await seedOrganizationWithUser();
 
-    const [inserted] = await testDb
-      .insert(invitation)
-      .values({
-        id: 'invitation-1',
-        organizationId,
-        email: 'invited@example.com',
-        inviterId: userId,
-        expiresAt: new Date(Date.now() + 86_400_000),
-      })
-      .returning();
+    const inserted = await seedInvitation({ userId, organizationId });
 
     expect(inserted?.status).toBe('pending');
     expect(inserted?.role).toBeNull();
   });
 
   it('cascades membership and invitation removal from the organization', async () => {
-    const { userId, organizationId } = await seedActor();
+    const { userId, organizationId } = await seedOrganizationWithUser();
 
     await testDb
       .insert(member)
       .values({ id: 'member-1', organizationId, userId });
-    await testDb.insert(invitation).values({
-      id: 'invitation-1',
-      organizationId,
-      email: 'invited@example.com',
-      inviterId: userId,
-      expiresAt: new Date(Date.now() + 86_400_000),
-    });
+    await seedInvitation({ userId, organizationId });
 
     await testDb
       .delete(organization)
@@ -131,7 +142,7 @@ describe('Organization Schema', () => {
   });
 
   it('carries an optional active organization on the session', async () => {
-    const { userId, organizationId } = await seedActor();
+    const { userId, organizationId } = await seedOrganizationWithUser();
 
     const [withoutActive] = await testDb
       .insert(session)
@@ -139,7 +150,7 @@ describe('Organization Schema', () => {
         id: 'session-1',
         token: 'token-1',
         userId,
-        expiresAt: new Date(Date.now() + 86_400_000),
+        expiresAt: tomorrow(),
         updatedAt: new Date(),
       })
       .returning();

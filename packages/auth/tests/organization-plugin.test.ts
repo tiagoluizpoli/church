@@ -4,6 +4,7 @@ import { getTableColumns } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import { auth } from '../src/index';
+import { assertConfiguredRole } from '../src/organization/assert-configured-role';
 import {
   organizationCreatorRole,
   organizationRoles,
@@ -17,15 +18,17 @@ interface DeclaredModel {
   fields: Record<string, DeclaredField>;
 }
 
+interface DeclaredPluginOptions {
+  roles?: Record<string, unknown>;
+  creatorRole?: string;
+  sendInvitationEmail?: unknown;
+  allowUserToCreateOrganization?: boolean | ((user: never) => unknown);
+}
+
 interface OrganizationPluginShape {
   id: string;
   schema: Record<string, DeclaredModel>;
-  options: {
-    roles?: Record<string, unknown>;
-    creatorRole?: string;
-    sendInvitationEmail?: unknown;
-    allowUserToCreateOrganization?: boolean | ((user: never) => unknown);
-  };
+  options: DeclaredPluginOptions;
 }
 
 const drizzleTables: Record<string, PgTable> = {
@@ -63,10 +66,18 @@ describe('organization plugin', () => {
   it("neither uses nor maps Better Auth's owner tier", () => {
     const { options } = getOrganizationPlugin();
     expect(options.roles).not.toHaveProperty('owner');
+    expect(organizationRoles).not.toHaveProperty('owner');
     expect(options.creatorRole).not.toBe('owner');
-    expect(JSON.stringify(Object.keys(organizationRoles))).not.toContain(
-      'owner',
+  });
+
+  it('rejects owner at the endpoints the plugin leaves unguarded', () => {
+    expect(() => assertConfiguredRole({ role: 'owner' })).toThrow(/owner/);
+    expect(() => assertConfiguredRole({ role: 'admin,owner' })).toThrow(
+      /owner/,
     );
+    expect(() => assertConfiguredRole({ role: 'admin' })).not.toThrow();
+    expect(() => assertConfiguredRole({ role: 'member' })).not.toThrow();
+    expect(() => assertConfiguredRole({ role: undefined })).not.toThrow();
   });
 
   it('leaves the invitation mailer unset so the plugin sends nothing', () => {

@@ -5,6 +5,7 @@ export * from './church';
 export * from './core';
 export * from './enums';
 export * from './onboarding';
+export * from './organization';
 export * from './participation';
 export * from './planning';
 export * from './scheduling';

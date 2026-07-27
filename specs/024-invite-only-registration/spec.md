@@ -344,7 +344,7 @@ Per-assignment detail is **not** duplicated here; it is reached through `assignm
 
 **`system_role` enum** ([#39](https://github.com/tiagoluizpoli/church/issues/39)): **dropped.**
 
-**Better Auth tables**: the `organization` plugin's `organization`, `member`, `invitation`, `team`/`teamMember` (unused) and the `session.activeOrganizationId` column arrive with the plugin's own schema generation.
+**Better Auth tables**: the `organization` plugin's `organization`, `member`, `invitation` and the `session.activeOrganizationId` column arrive with the plugin's own schema generation. Teams are disabled, so the plugin declares no `team`/`teamMember` models and no `invitation.teamId` — there is nothing to generate and nothing unused to carry.
 
 ### 4.6 Reads that must change with the schema ([#44](https://github.com/tiagoluizpoli/church/issues/44), [#39](https://github.com/tiagoluizpoli/church/issues/39))
 

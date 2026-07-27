@@ -1,8 +1,17 @@
 import { createDb } from '@church/db';
-import * as schema from '@church/db/schema/auth';
+import * as authSchema from '@church/db/schema/auth';
+import * as organizationSchema from '@church/db/schema/organization';
 import { env } from '@church/env/server';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { organization } from 'better-auth/plugins/organization';
+import { assertConfiguredRole } from './organization/assert-configured-role';
+import {
+  organizationCreatorRole,
+  organizationRoles,
+} from './organization/roles';
+
+const schema = { ...authSchema, ...organizationSchema };
 
 export function createAuth() {
   const db = createDb();
@@ -30,7 +39,30 @@ export function createAuth() {
         httpOnly: true,
       },
     },
-    plugins: [],
+    plugins: [
+      organization({
+        roles: organizationRoles,
+        creatorRole: organizationCreatorRole,
+        // Churches are provisioned by the Platform Operator, never over HTTP,
+        // so the plugin's create-organization route stays shut.
+        allowUserToCreateOrganization: false,
+        // No invitation mailer: the plugin therefore sends nothing and mints no
+        // token or link. Invitation delivery is the application's own concern.
+        organizationHooks: {
+          // The plugin's own role validation still accepts its built-in
+          // `owner`, and `add-member` validates nothing. These close it.
+          beforeAddMember: async ({ member }) => {
+            assertConfiguredRole({ role: member.role });
+          },
+          beforeUpdateMemberRole: async ({ newRole }) => {
+            assertConfiguredRole({ role: newRole });
+          },
+          beforeCreateInvitation: async ({ invitation }) => {
+            assertConfiguredRole({ role: invitation.role });
+          },
+        },
+      }),
+    ],
     databaseHooks: {
       session: {
         create: {

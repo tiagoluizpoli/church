@@ -12,6 +12,14 @@ _Avoid_: Account, member
 The root tenant representing a distinct congregation or local church body.
 _Avoid_: Organization, tenant, customer
 
+**Platform Operator**:
+The trusted actor that provisions Churches. It is a single User per environment, identified by configuration, that never holds Church Membership in any Church and exists only to create a Church and invite its first ChurchAdmin.
+_Avoid_: Superadmin, root user, system user
+
+**Church Provisioning**:
+The act of bringing a Church into existence: the Platform Operator atomically creates the Church and mints the Church Invitation that admits its first ChurchAdmin. It is the only origin of a Church; ordinary invite-only onboarding begins once that first ChurchAdmin has redeemed.
+_Avoid_: Church signup, tenant creation, onboarding
+
 **Church Membership**:
 The Scoped Membership that grants a User access to a Church. Its Access Level is `member` or `admin`, and it is independent of whether the User is a Volunteer.
 _Avoid_: Organization membership, tenant membership
@@ -19,6 +27,14 @@ _Avoid_: Organization membership, tenant membership
 **Church Member**:
 A User associated with a Church through Church Membership. Volunteer participation and authority are additive to this base relationship.
 _Avoid_: Organization member, tenant member
+
+**Church Invitation**:
+An email-addressed invitation for a person outside a Church to become a Church Member, creating or connecting their User identity as needed.
+_Avoid_: Sign-up link, magic link, organization invitation
+
+**Ministry Invitation**:
+A targeted invitation to join one Ministry, granting a Ministry Membership at a stated Ministry Access Level together with a set of Roles. It is addressed either to an existing Church Member or to a Church Invitation, in which case the two are minted as a pair and accepted together. A ChurchAdmin may issue one for any Ministry in their Church; a Ministry leader may issue one for their own Ministry only and may grant only the `volunteer` Ministry Access Level. A TeamLeader cannot issue one. It is never a shareable link, and it never grants Team Membership.
+_Avoid_: Church Invitation, team invitation, invite link, invite token
 
 **Active Church**:
 The Church selected as the current scope of an authenticated session. Every protected operation is evaluated within it, and a User may switch only among Churches where they hold Church Membership.
@@ -49,7 +65,7 @@ A specific group of Volunteers within a Ministry (e.g., "Acoustic Team", "Media 
 _Avoid_: Sub-group, crew
 
 **Team Membership**:
-The Scoped Membership that associates a Ministry Volunteer with one Team. Its Access Level is `member` or `leader`.
+The Scoped Membership assigned by an authorized leader to associate a Ministry Volunteer with one Team. Its Access Level is `member` or `leader`; it has no invitation or acceptance lifecycle.
 _Avoid_: Organization team membership
 
 **TeamLeader**:
@@ -61,8 +77,16 @@ A function a Volunteer performs within one Ministry (e.g., "Vocalist", "Guitaris
 _Avoid_: Permission, access level, system role, job
 
 **Volunteer**:
-A Church Member who participates in one or more Ministries and may serve in one or more Roles. A User may have only one Volunteer profile, even when that User administers multiple Churches.
+A Church Member who participates in one or more Ministries and may serve in one or more Roles. A User may have only one **active** Volunteer profile, even when that User administers multiple Churches. Earlier participation in another Church survives as a Retired Volunteer Profile.
 _Avoid_: User, member, worker
+
+**Retired Volunteer Profile**:
+The Volunteer profile a User held in a Church they have transferred away from. It is never deleted and never re-attributed to another Church: it keeps its original Church and carries the Assignments, Ministry Memberships, and Availability history served under it, so past service always reads as service to the Church it was given to. It grants no participation — a retired profile receives no Assignments and answers no Availability. A User may hold many retired profiles but only one active one.
+_Avoid_: Inactive volunteer, archived volunteer, old profile
+
+**Volunteer Transfer**:
+The self-directed move of a User's Volunteer participation from one Church to another. It retires the Volunteer profile in the former Church and creates a new one in the destination, ending the User's Ministry and Team Memberships and withdrawing future Assignments in the former Church while preserving historical service and audit attribution. Nothing carries across: the new profile is born fresh, without the former Church's notes or status. Church Membership is independent and is not ended by a Volunteer Transfer. The former Church cannot prevent the move.
+_Avoid_: Volunteer reassignment, Church-approved transfer
 
 **Event**:
 A scheduled gathering owned by the Church (e.g., "Sunday Service" or a multi-day retreat). An Event belongs to exactly one PlanningCycle and may be hourly-based or day-based. Many Ministries participate in a single Event; the Event itself is not owned by any one Ministry. Its lifecycle is `draft → scheduled` (its cycle locked) `→ cancelled` / `→ past`; an Event is never "published" — publishing is per MinistryParticipation, not per Event.

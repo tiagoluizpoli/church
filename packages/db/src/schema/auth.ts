@@ -39,6 +39,9 @@ export const session = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    // Contributed by Better Auth's `organization` plugin. The plugin declares it
+    // without a foreign key, so none is added here either.
+    activeOrganizationId: text('active_organization_id'),
   },
   (table) => [index('session_userId_idx').on(table.userId)],
 );

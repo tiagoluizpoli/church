@@ -147,7 +147,7 @@ export async function generateVolunteers({
         churchId: v.churchId,
         volunteerId: v.id,
         ministryId: m.id,
-        systemRole: 'volunteer',
+        ministryAccessLevel: 'volunteer',
         status: 'active',
       });
       if (ministryTeam) {

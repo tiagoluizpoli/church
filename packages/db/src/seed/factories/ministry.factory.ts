@@ -79,7 +79,6 @@ export async function generateRoles(
         churchId: m.churchId,
         ministryId: m.id,
         name: rName,
-        isGlobal: false,
       });
     }
   }

@@ -58,7 +58,7 @@ describe('runInitSystem', () => {
 
     const links = await testDb.select().from(schema.ministryVolunteer);
     expect(links).toHaveLength(1);
-    expect(links[0]?.systemRole).toBe('leader');
+    expect(links[0]?.ministryAccessLevel).toBe('leader');
   });
 
   it('BT-004: Edge - malformed JSON validation', async () => {

@@ -1,1 +1,0 @@
-ALTER TYPE "public"."volunteer_notification_type" ADD VALUE 'availability_conflict' BEFORE 'assignment_reminder';

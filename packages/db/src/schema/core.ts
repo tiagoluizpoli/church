@@ -1,5 +1,4 @@
 import {
-  boolean,
   pgTable,
   text,
   timestamp,
@@ -13,7 +12,8 @@ import {
   defaultDirectionEnum,
   enforcementTypeEnum,
   membershipStatusEnum,
-  systemRoleEnum,
+  ministryAccessLevelEnum,
+  teamAccessLevelEnum,
   volunteerStatusEnum,
 } from './enums';
 
@@ -77,13 +77,17 @@ export const team = pgTable('team', {
  * Team membership hangs off `ministry_volunteer_team` (many-to-many, no primary
  * team) and role qualification off `ministry_volunteer_role`.
  *
- * **Contextual Leadership Model**: Leadership is NOT stored as a column on
- * `team` or `ministry`. Instead, `system_role` on this join table is the
- * sole mechanism for designating leadership within a ministry/team context.
+ * **Access Level Model**: Leadership is NOT stored as a column on `team` or
+ * `ministry`. Instead, `ministry_access_level` on this join table designates
+ * ministry-wide leadership, and `ministry_volunteer_team.access_level`
+ * designates leadership scoped to a specific team.
  *
  * - `leader`     → Ministry Leader (full ministry authority)
- * - `sub_leader`  → Team Leader (delegated authority within a team)
  * - `volunteer`   → Regular member
+ *
+ * TeamLeader is no longer a value here: it is a `ministry_volunteer_team`
+ * row with `access_level: 'leader'`, scoped only to the teams that row
+ * points at — not a ministry-wide deputy.
  */
 export const ministryVolunteer = pgTable('ministry_volunteer', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -96,8 +100,10 @@ export const ministryVolunteer = pgTable('ministry_volunteer', {
   ministryId: uuid('ministry_id')
     .notNull()
     .references(() => ministry.id, { onDelete: 'cascade' }),
-  /** Contextual leadership role — sole source of truth for leadership designation. */
-  systemRole: systemRoleEnum('system_role').default('volunteer').notNull(),
+  /** Ministry-wide access level — sole source of truth for ministry leadership designation. */
+  ministryAccessLevel: ministryAccessLevelEnum('ministry_access_level')
+    .default('volunteer')
+    .notNull(),
   status: membershipStatusEnum('status').default('active').notNull(),
   joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
@@ -109,20 +115,18 @@ export const role = pgTable('role', {
   churchId: uuid('church_id')
     .notNull()
     .references(() => church.id, { onDelete: 'cascade' }),
-  ministryId: uuid('ministry_id').references(() => ministry.id, {
-    onDelete: 'cascade',
-  }),
+  ministryId: uuid('ministry_id')
+    .notNull()
+    .references(() => ministry.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
-  isGlobal: boolean('is_global').default(false).notNull(),
 });
 
 /**
  * Qualification: which roles a ministry member is able to fill.
  *
  * Hung off the **membership**, not the volunteer, because roles are
- * ministry-scoped and one person can serve in several ministries. A row may
- * point at a global role (`role.is_global`, `role.ministry_id IS NULL`); the
- * qualification still applies only within this membership's ministry.
+ * ministry-scoped and one person can serve in several ministries. Every role
+ * requires a ministry — there are no global roles.
  *
  * Team is a separate axis — eligibility composes at query time as
  * "qualified for the role AND (requirement has no team OR the volunteer
@@ -172,6 +176,10 @@ export const ministryVolunteerTeam = pgTable(
     teamId: uuid('team_id')
       .notNull()
       .references(() => team.id, { onDelete: 'cascade' }),
+    /** Team-scoped access level — TeamLeader is a row here at `'leader'`, scoped only to this team. */
+    accessLevel: teamAccessLevelEnum('access_level')
+      .default('member')
+      .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -180,28 +188,6 @@ export const ministryVolunteerTeam = pgTable(
     uniqueIndex('ministry_volunteer_team_membership_team_idx').on(
       table.ministryVolunteerId,
       table.teamId,
-    ),
-  ],
-);
-
-export const churchAdmin = pgTable(
-  'church_admin',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    churchId: uuid('church_id')
-      .notNull()
-      .references(() => church.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('church_admin_church_user_idx').on(
-      table.churchId,
-      table.userId,
     ),
   ],
 );

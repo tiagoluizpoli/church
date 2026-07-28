@@ -300,7 +300,7 @@ async function ensureVolunteerContext({
         churchId: church.id,
         ministryId: ministry.id,
         volunteerId: volunteer.id,
-        systemRole: 'volunteer',
+        ministryAccessLevel: 'volunteer',
         status: 'active',
       })
       .returning();
@@ -334,7 +334,6 @@ async function ensureVolunteerContext({
           churchId: church.id,
           ministryId: ministry.id,
           name: DEMO_ROLE_HOST,
-          isGlobal: false,
         })
         .returning()
     )[0];
@@ -354,7 +353,6 @@ async function ensureVolunteerContext({
           churchId: church.id,
           ministryId: ministry.id,
           name: DEMO_ROLE_GREETER,
-          isGlobal: false,
         })
         .returning()
     )[0];

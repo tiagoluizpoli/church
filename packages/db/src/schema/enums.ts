@@ -8,10 +8,14 @@ export const volunteerStatusEnum = pgEnum('volunteer_status', [
   'on_hold',
 ]);
 
-export const systemRoleEnum = pgEnum('system_role', [
+export const ministryAccessLevelEnum = pgEnum('ministry_access_level', [
   'leader',
-  'sub_leader',
   'volunteer',
+]);
+
+export const teamAccessLevelEnum = pgEnum('team_access_level', [
+  'leader',
+  'member',
 ]);
 
 export const membershipStatusEnum = pgEnum('membership_status', [

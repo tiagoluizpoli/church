@@ -126,7 +126,7 @@ export async function runInitSystem({ seedPath }: RunInitSystemInput) {
         churchId: church.id,
         ministryId: ministry.id,
         volunteerId: volunteer.id,
-        systemRole: 'leader',
+        ministryAccessLevel: 'leader',
       });
     }
 

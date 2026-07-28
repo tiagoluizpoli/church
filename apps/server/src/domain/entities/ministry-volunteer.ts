@@ -3,12 +3,9 @@ import type { ChurchId, MinistryId, VolunteerId } from '../branded-ids';
 
 export type MinistryVolunteerId = BrandedId<'MinistryVolunteerId'>;
 
-export const SYSTEM_ROLE_OPTIONS = [
-  'leader',
-  'sub_leader',
-  'volunteer',
-] as const;
-export type SystemRole = (typeof SYSTEM_ROLE_OPTIONS)[number];
+export const MINISTRY_ACCESS_LEVEL_OPTIONS = ['leader', 'volunteer'] as const;
+export type MinistryAccessLevel =
+  (typeof MINISTRY_ACCESS_LEVEL_OPTIONS)[number];
 
 export const MINISTRY_VOLUNTEER_STATUS_OPTIONS = [
   'active',
@@ -21,12 +18,17 @@ export type MinistryVolunteerStatus =
  * Team membership lives in `ministry_volunteer_team` and role qualification in
  * `ministry_volunteer_role` — both many-to-many, both read through the
  * volunteer repository rather than carried on this entity.
+ *
+ * `ministryAccessLevel` is ministry-wide (`leader` = full ministry
+ * authority, `volunteer` = regular member). Team-scoped leadership
+ * (TeamLeader) is a separate axis carried on `ministry_volunteer_team`'s
+ * access level, not on this entity.
  */
 export interface MinistryVolunteerProps {
   churchId: ChurchId;
   volunteerId: VolunteerId;
   ministryId: MinistryId;
-  systemRole: SystemRole;
+  ministryAccessLevel: MinistryAccessLevel;
   status: MinistryVolunteerStatus;
   joinedAt: Date;
 }
@@ -38,12 +40,12 @@ export class MinistryVolunteer extends Entity<
   constructor(
     props: Omit<
       LooseProps<MinistryVolunteerProps>,
-      'systemRole' | 'status' | 'joinedAt'
+      'ministryAccessLevel' | 'status' | 'joinedAt'
     > &
       Partial<
         Pick<
           LooseProps<MinistryVolunteerProps>,
-          'systemRole' | 'status' | 'joinedAt'
+          'ministryAccessLevel' | 'status' | 'joinedAt'
         >
       >,
     id?: string,
@@ -53,7 +55,7 @@ export class MinistryVolunteer extends Entity<
     super(
       {
         ...props,
-        systemRole: props.systemRole ?? 'volunteer',
+        ministryAccessLevel: props.ministryAccessLevel ?? 'volunteer',
         status: props.status ?? 'active',
         joinedAt: props.joinedAt ?? new Date(),
       } as unknown as MinistryVolunteerProps,
@@ -75,8 +77,8 @@ export class MinistryVolunteer extends Entity<
     return this._props.ministryId;
   }
 
-  get systemRole(): SystemRole {
-    return this._props.systemRole;
+  get ministryAccessLevel(): MinistryAccessLevel {
+    return this._props.ministryAccessLevel;
   }
 
   get status(): MinistryVolunteerStatus {
@@ -87,8 +89,8 @@ export class MinistryVolunteer extends Entity<
     return this._props.joinedAt;
   }
 
-  public promote(role: SystemRole): void {
-    this._props.systemRole = role;
+  public promote(accessLevel: MinistryAccessLevel): void {
+    this._props.ministryAccessLevel = accessLevel;
     this._updatedAt = new Date();
   }
 }

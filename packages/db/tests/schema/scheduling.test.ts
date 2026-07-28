@@ -4,9 +4,9 @@ import {
   assignment,
   availability,
   availabilityCheck,
-  churchAdmin,
   event,
   eventTemplate,
+  member,
   ministry,
   ministryParticipation,
   ministryVolunteer,
@@ -72,7 +72,7 @@ async function seedSchedulingBase(): Promise<SchedulingSeed> {
       churchId: churchA.id,
       ministryId: insertedMinistry.id,
       volunteerId: insertedVolunteer.id,
-      systemRole: 'leader',
+      ministryAccessLevel: 'leader',
     })
     .returning();
   const [insertedRole] = await testDb
@@ -87,9 +87,14 @@ async function seedSchedulingBase(): Promise<SchedulingSeed> {
     throw new Error('Membership or role seed failed');
   }
 
-  await testDb.insert(churchAdmin).values({
-    churchId: churchA.id,
+  // Church Membership at the `admin` Access Level — independent of the
+  // Ministry Membership above, per CONTEXT.md's Church Membership /
+  // Ministry Access Level split.
+  await testDb.insert(member).values({
+    id: `member-${userId}`,
+    organizationId: churchA.id,
     userId,
+    role: 'admin',
   });
 
   return {
@@ -330,19 +335,24 @@ describe('Scheduling reshape schema', () => {
     expect(shifts).toHaveLength(0);
   });
 
-  it('allows one user to hold ChurchAdmin and ministry leader roles', async () => {
+  it('lets one user hold Church Membership at admin and Ministry Membership at leader independently', async () => {
     const seed = await seedSchedulingBase();
 
+    // Church Membership (`member.role`) and Ministry Membership
+    // (`ministry_volunteer.ministry_access_level`) are separate Scoped
+    // Memberships in separate tables — holding one says nothing about the
+    // other.
     const admins = await testDb
       .select()
-      .from(churchAdmin)
-      .where(eq(churchAdmin.userId, seed.userId));
+      .from(member)
+      .where(eq(member.userId, seed.userId));
     const memberships = await testDb
       .select()
       .from(ministryVolunteer)
       .where(eq(ministryVolunteer.volunteerId, seed.volunteerId));
 
     expect(admins).toHaveLength(1);
-    expect(memberships[0]?.systemRole).toBe('leader');
+    expect(admins[0]?.role).toBe('admin');
+    expect(memberships[0]?.ministryAccessLevel).toBe('leader');
   });
 });

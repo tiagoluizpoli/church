@@ -1,6 +1,6 @@
 {
-  "id": "7616883c-c646-48cc-978f-df32fbc62559",
-  "prevId": "94055d3f-bedf-4944-9d4f-d680cc1a0f57",
+  "id": "a54cdae0-68d6-4d95-ada0-0706d2f4bfa4",
+  "prevId": "71bd9720-8a73-42b4-aeb1-6c607bb643f4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -21,8 +21,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "slot_id": {
-          "name": "slot_id",
+        "participation_id": {
+          "name": "participation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shift_id": {
+          "name": "shift_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -41,7 +47,8 @@
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "assignment_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'pending'"
@@ -54,7 +61,7 @@
         },
         "assigned_at": {
           "name": "assigned_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -67,11 +74,11 @@
         }
       },
       "indexes": {
-        "assignment_slot_volunteer_idx": {
-          "name": "assignment_slot_volunteer_idx",
+        "assignment_shift_volunteer_idx": {
+          "name": "assignment_shift_volunteer_idx",
           "columns": [
             {
-              "expression": "slot_id",
+              "expression": "shift_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -84,53 +91,101 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "where": "\"assignment\".\"status\" IN ('draft', 'pending', 'confirmed')",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "assignment_church_id_church_id_fk": {
           "name": "assignment_church_id_church_id_fk",
           "tableFrom": "assignment",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
-        "assignment_slot_id_time_slot_id_fk": {
-          "name": "assignment_slot_id_time_slot_id_fk",
+        "assignment_participation_id_ministry_participation_id_fk": {
+          "name": "assignment_participation_id_ministry_participation_id_fk",
           "tableFrom": "assignment",
-          "tableTo": "time_slot",
-          "columnsFrom": ["slot_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsFrom": [
+            "participation_id"
+          ],
+          "tableTo": "ministry_participation",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "assignment_shift_id_shift_id_fk": {
+          "name": "assignment_shift_id_shift_id_fk",
+          "tableFrom": "assignment",
+          "columnsFrom": [
+            "shift_id"
+          ],
+          "tableTo": "shift",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "assignment_volunteer_id_volunteer_id_fk": {
           "name": "assignment_volunteer_id_volunteer_id_fk",
           "tableFrom": "assignment",
+          "columnsFrom": [
+            "volunteer_id"
+          ],
           "tableTo": "volunteer",
-          "columnsFrom": ["volunteer_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "assignment_role_id_role_id_fk": {
           "name": "assignment_role_id_role_id_fk",
           "tableFrom": "assignment",
+          "columnsFrom": [
+            "role_id"
+          ],
           "tableTo": "role",
-          "columnsFrom": ["role_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "assignment_assigned_by_user_id_fk": {
+          "name": "assignment_assigned_by_user_id_fk",
+          "tableFrom": "assignment",
+          "columnsFrom": [
+            "assigned_by"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "assignment_status_check": {
+          "name": "assignment_status_check",
+          "value": "\"assignment\".\"status\" IN ('draft', 'pending', 'confirmed', 'declined', 'cancelled')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.assignment_audit": {
@@ -156,9 +211,16 @@
           "primaryKey": false,
           "notNull": true
         },
-        "leader_id": {
-          "name": "leader_id",
+        "actor_id": {
+          "name": "actor_id",
           "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "audit_action",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -170,7 +232,7 @@
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -181,20 +243,41 @@
         "assignment_audit_church_id_church_id_fk": {
           "name": "assignment_audit_church_id_church_id_fk",
           "tableFrom": "assignment_audit",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "assignment_audit_assignment_id_assignment_id_fk": {
           "name": "assignment_audit_assignment_id_assignment_id_fk",
           "tableFrom": "assignment_audit",
+          "columnsFrom": [
+            "assignment_id"
+          ],
           "tableTo": "assignment",
-          "columnsFrom": ["assignment_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "assignment_audit_actor_id_user_id_fk": {
+          "name": "assignment_audit_actor_id_user_id_fk",
+          "tableFrom": "assignment_audit",
+          "columnsFrom": [
+            "actor_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -220,70 +303,88 @@
           "primaryKey": false,
           "notNull": true
         },
-        "volunteer_id": {
-          "name": "volunteer_id",
+        "availability_check_id": {
+          "name": "availability_check_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "type": {
-          "name": "type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'unavailable'"
-        },
-        "start_time": {
-          "name": "start_time",
-          "type": "timestamp",
+        "shift_id": {
+          "name": "shift_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "end_time": {
-          "name": "end_time",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_all_day": {
-          "name": "is_all_day",
-          "type": "boolean",
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
-          "default": false
-        },
-        "reason": {
-          "name": "reason",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "repeat_rule": {
-          "name": "repeat_rule",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
+          "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "availability_check_shift_idx": {
+          "name": "availability_check_shift_idx",
+          "columns": [
+            {
+              "expression": "availability_check_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "shift_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
       "foreignKeys": {
         "availability_church_id_church_id_fk": {
           "name": "availability_church_id_church_id_fk",
           "tableFrom": "availability",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
-        "availability_volunteer_id_volunteer_id_fk": {
-          "name": "availability_volunteer_id_volunteer_id_fk",
+        "availability_availability_check_id_availability_check_id_fk": {
+          "name": "availability_availability_check_id_availability_check_id_fk",
           "tableFrom": "availability",
-          "tableTo": "volunteer",
-          "columnsFrom": ["volunteer_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsFrom": [
+            "availability_check_id"
+          ],
+          "tableTo": "availability_check",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "availability_shift_id_shift_id_fk": {
+          "name": "availability_shift_id_shift_id_fk",
+          "tableFrom": "availability",
+          "columnsFrom": [
+            "shift_id"
+          ],
+          "tableTo": "shift",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -340,13 +441,13 @@
         },
         "access_token_expires_at": {
           "name": "access_token_expires_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
         "refresh_token_expires_at": {
           "name": "refresh_token_expires_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -364,14 +465,14 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         }
@@ -388,20 +489,24 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "account_user_id_user_id_fk": {
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
+          "columnsFrom": [
+            "user_id"
+          ],
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -422,7 +527,7 @@
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
@@ -434,14 +539,14 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
@@ -462,6 +567,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "active_organization_id": {
+          "name": "active_organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -476,28 +587,34 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "session_user_id_user_id_fk": {
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
+          "columnsFrom": [
+            "user_id"
+          ],
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "session_token_unique": {
           "name": "session_token_unique",
-          "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -541,14 +658,14 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -560,8 +677,10 @@
       "uniqueConstraints": {
         "user_email_unique": {
           "name": "user_email_unique",
-          "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
@@ -592,20 +711,20 @@
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -623,12 +742,133 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
+          "with": {},
           "method": "btree",
-          "with": {}
+          "concurrently": false
         }
       },
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.availability_check": {
+      "name": "availability_check",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "planning_cycle_id": {
+          "name": "planning_cycle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ministry_volunteer_id": {
+          "name": "ministry_volunteer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "availability_check_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "availability_check_cycle_membership_idx": {
+          "name": "availability_check_cycle_membership_idx",
+          "columns": [
+            {
+              "expression": "planning_cycle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "ministry_volunteer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "availability_check_church_id_church_id_fk": {
+          "name": "availability_check_church_id_church_id_fk",
+          "tableFrom": "availability_check",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "availability_check_planning_cycle_id_planning_cycle_id_fk": {
+          "name": "availability_check_planning_cycle_id_planning_cycle_id_fk",
+          "tableFrom": "availability_check",
+          "columnsFrom": [
+            "planning_cycle_id"
+          ],
+          "tableTo": "planning_cycle",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "availability_check_ministry_volunteer_id_ministry_volunteer_id_fk": {
+          "name": "availability_check_ministry_volunteer_id_ministry_volunteer_id_fk",
+          "tableFrom": "availability_check",
+          "columnsFrom": [
+            "ministry_volunteer_id"
+          ],
+          "tableTo": "ministry_volunteer",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -643,20 +883,14 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
+          "notNull": true
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "slug": {
-          "name": "slug",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
+          "default": "'UTC'"
         },
         "settings": {
           "name": "settings",
@@ -664,32 +898,26 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'{}'::jsonb"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "church_slug_unique": {
-          "name": "church_slug_unique",
-          "nullsNotDistinct": false,
-          "columns": ["slug"]
+      "foreignKeys": {
+        "church_id_organization_id_fk": {
+          "name": "church_id_organization_id_fk",
+          "tableFrom": "church",
+          "columnsFrom": [
+            "id"
+          ],
+          "tableTo": "organization",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -725,27 +953,36 @@
         },
         "enforcement_type": {
           "name": "enforcement_type",
-          "type": "varchar(50)",
+          "type": "enforcement_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'soft'"
         },
+        "default_direction": {
+          "name": "default_direction",
+          "type": "default_direction",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'all_out'"
+        },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -756,11 +993,15 @@
         "ministry_church_id_church_id_fk": {
           "name": "ministry_church_id_church_id_fk",
           "tableFrom": "ministry",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -798,29 +1039,25 @@
           "primaryKey": false,
           "notNull": true
         },
-        "team_id": {
-          "name": "team_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "system_role": {
-          "name": "system_role",
-          "type": "varchar(50)",
+        "ministry_access_level": {
+          "name": "ministry_access_level",
+          "type": "ministry_access_level",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'VOLUNTEER'"
+          "default": "'volunteer'"
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "membership_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'active'"
         },
         "joined_at": {
           "name": "joined_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -831,38 +1068,263 @@
         "ministry_volunteer_church_id_church_id_fk": {
           "name": "ministry_volunteer_church_id_church_id_fk",
           "tableFrom": "ministry_volunteer",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "ministry_volunteer_volunteer_id_volunteer_id_fk": {
           "name": "ministry_volunteer_volunteer_id_volunteer_id_fk",
           "tableFrom": "ministry_volunteer",
+          "columnsFrom": [
+            "volunteer_id"
+          ],
           "tableTo": "volunteer",
-          "columnsFrom": ["volunteer_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "ministry_volunteer_ministry_id_ministry_id_fk": {
           "name": "ministry_volunteer_ministry_id_ministry_id_fk",
           "tableFrom": "ministry_volunteer",
+          "columnsFrom": [
+            "ministry_id"
+          ],
           "tableTo": "ministry",
-          "columnsFrom": ["ministry_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ministry_volunteer_role": {
+      "name": "ministry_volunteer_role",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
-        "ministry_volunteer_team_id_team_id_fk": {
-          "name": "ministry_volunteer_team_id_team_id_fk",
-          "tableFrom": "ministry_volunteer",
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ministry_volunteer_id": {
+          "name": "ministry_volunteer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role_id": {
+          "name": "role_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ministry_volunteer_role_membership_role_idx": {
+          "name": "ministry_volunteer_role_membership_role_idx",
+          "columns": [
+            {
+              "expression": "ministry_volunteer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "role_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "ministry_volunteer_role_church_id_church_id_fk": {
+          "name": "ministry_volunteer_role_church_id_church_id_fk",
+          "tableFrom": "ministry_volunteer_role",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_volunteer_role_ministry_volunteer_id_ministry_volunteer_id_fk": {
+          "name": "ministry_volunteer_role_ministry_volunteer_id_ministry_volunteer_id_fk",
+          "tableFrom": "ministry_volunteer_role",
+          "columnsFrom": [
+            "ministry_volunteer_id"
+          ],
+          "tableTo": "ministry_volunteer",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_volunteer_role_role_id_role_id_fk": {
+          "name": "ministry_volunteer_role_role_id_role_id_fk",
+          "tableFrom": "ministry_volunteer_role",
+          "columnsFrom": [
+            "role_id"
+          ],
+          "tableTo": "role",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ministry_volunteer_team": {
+      "name": "ministry_volunteer_team",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ministry_volunteer_id": {
+          "name": "ministry_volunteer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_level": {
+          "name": "access_level",
+          "type": "team_access_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ministry_volunteer_team_membership_team_idx": {
+          "name": "ministry_volunteer_team_membership_team_idx",
+          "columns": [
+            {
+              "expression": "ministry_volunteer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "team_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "ministry_volunteer_team_church_id_church_id_fk": {
+          "name": "ministry_volunteer_team_church_id_church_id_fk",
+          "tableFrom": "ministry_volunteer_team",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_volunteer_team_ministry_volunteer_id_ministry_volunteer_id_fk": {
+          "name": "ministry_volunteer_team_ministry_volunteer_id_ministry_volunteer_id_fk",
+          "tableFrom": "ministry_volunteer_team",
+          "columnsFrom": [
+            "ministry_volunteer_id"
+          ],
+          "tableTo": "ministry_volunteer",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_volunteer_team_team_id_team_id_fk": {
+          "name": "ministry_volunteer_team_team_id_team_id_fk",
+          "tableFrom": "ministry_volunteer_team",
+          "columnsFrom": [
+            "team_id"
+          ],
           "tableTo": "team",
-          "columnsFrom": ["team_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -892,20 +1354,13 @@
           "name": "ministry_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
-        },
-        "is_global": {
-          "name": "is_global",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         }
       },
       "indexes": {},
@@ -913,20 +1368,28 @@
         "role_church_id_church_id_fk": {
           "name": "role_church_id_church_id_fk",
           "tableFrom": "role",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "role_ministry_id_ministry_id_fk": {
           "name": "role_ministry_id_ministry_id_fk",
           "tableFrom": "role",
+          "columnsFrom": [
+            "ministry_id"
+          ],
           "tableTo": "ministry",
-          "columnsFrom": ["ministry_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -963,12 +1426,6 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
-        },
-        "leader_id": {
-          "name": "leader_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -976,29 +1433,28 @@
         "team_church_id_church_id_fk": {
           "name": "team_church_id_church_id_fk",
           "tableFrom": "team",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "team_ministry_id_ministry_id_fk": {
           "name": "team_ministry_id_ministry_id_fk",
           "tableFrom": "team",
+          "columnsFrom": [
+            "ministry_id"
+          ],
           "tableTo": "ministry",
-          "columnsFrom": ["ministry_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "team_leader_id_volunteer_id_fk": {
-          "name": "team_leader_id_volunteer_id_fk",
-          "tableFrom": "team",
-          "tableTo": "volunteer",
-          "columnsFrom": ["leader_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -1032,7 +1488,8 @@
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "volunteer_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'active'"
@@ -1045,14 +1502,14 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -1063,62 +1520,40 @@
         "volunteer_user_id_user_id_fk": {
           "name": "volunteer_user_id_user_id_fk",
           "tableFrom": "volunteer",
+          "columnsFrom": [
+            "user_id"
+          ],
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "volunteer_church_id_church_id_fk": {
           "name": "volunteer_church_id_church_id_fk",
           "tableFrom": "volunteer",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "volunteer_user_id_unique": {
           "name": "volunteer_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": ["user_id"]
+          "columns": [
+            "user_id"
+          ],
+          "nullsNotDistinct": false
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.todo": {
-      "name": "todo",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "text": {
-          "name": "text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "completed": {
-          "name": "completed",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1173,7 +1608,7 @@
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         }
@@ -1183,45 +1618,342 @@
         "ministry_invitation_church_id_church_id_fk": {
           "name": "ministry_invitation_church_id_church_id_fk",
           "tableFrom": "ministry_invitation",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "ministry_invitation_ministry_id_ministry_id_fk": {
           "name": "ministry_invitation_ministry_id_ministry_id_fk",
           "tableFrom": "ministry_invitation",
+          "columnsFrom": [
+            "ministry_id"
+          ],
           "tableTo": "ministry",
-          "columnsFrom": ["ministry_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "ministry_invitation_team_id_team_id_fk": {
           "name": "ministry_invitation_team_id_team_id_fk",
           "tableFrom": "ministry_invitation",
+          "columnsFrom": [
+            "team_id"
+          ],
           "tableTo": "team",
-          "columnsFrom": ["team_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "ministry_invitation_token_unique": {
           "name": "ministry_invitation_token_unique",
-          "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ],
+          "nullsNotDistinct": false
         }
       },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.event": {
-      "name": "event",
+    "public.invitation": {
+      "name": "invitation",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inviter_id": {
+          "name": "inviter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "invitation_organizationId_idx": {
+          "name": "invitation_organizationId_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "invitation_email_idx": {
+          "name": "invitation_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "invitation_organization_id_organization_id_fk": {
+          "name": "invitation_organization_id_organization_id_fk",
+          "tableFrom": "invitation",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "tableTo": "organization",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "invitation_inviter_id_user_id_fk": {
+          "name": "invitation_inviter_id_user_id_fk",
+          "tableFrom": "invitation",
+          "columnsFrom": [
+            "inviter_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.member": {
+      "name": "member",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "member_organizationId_idx": {
+          "name": "member_organizationId_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "member_userId_idx": {
+          "name": "member_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "member_organization_id_organization_id_fk": {
+          "name": "member_organization_id_organization_id_fk",
+          "tableFrom": "member",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "tableTo": "organization",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "member_user_id_user_id_fk": {
+          "name": "member_user_id_user_id_fk",
+          "tableFrom": "member",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.organization": {
+      "name": "organization",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "logo": {
+          "name": "logo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organization_slug_unique": {
+          "name": "organization_slug_unique",
+          "columns": [
+            "slug"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ministry_participation": {
+      "name": "ministry_participation",
       "schema": "",
       "columns": {
         "id": {
@@ -1243,6 +1975,684 @@
           "primaryKey": false,
           "notNull": true
         },
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "participation_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'tailoring'"
+        },
+        "touched_at": {
+          "name": "touched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "participation_ministry_event_idx": {
+          "name": "participation_ministry_event_idx",
+          "columns": [
+            {
+              "expression": "ministry_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "ministry_participation_church_id_church_id_fk": {
+          "name": "ministry_participation_church_id_church_id_fk",
+          "tableFrom": "ministry_participation",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_participation_ministry_id_ministry_id_fk": {
+          "name": "ministry_participation_ministry_id_ministry_id_fk",
+          "tableFrom": "ministry_participation",
+          "columnsFrom": [
+            "ministry_id"
+          ],
+          "tableTo": "ministry",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_participation_event_id_event_id_fk": {
+          "name": "ministry_participation_event_id_event_id_fk",
+          "tableFrom": "ministry_participation",
+          "columnsFrom": [
+            "event_id"
+          ],
+          "tableTo": "event",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.participation_slot_inclusion": {
+      "name": "participation_slot_inclusion",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participation_id": {
+          "name": "participation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_slot_id": {
+          "name": "time_slot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "participation_slot_inclusion_idx": {
+          "name": "participation_slot_inclusion_idx",
+          "columns": [
+            {
+              "expression": "participation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "time_slot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "participation_slot_inclusion_church_id_church_id_fk": {
+          "name": "participation_slot_inclusion_church_id_church_id_fk",
+          "tableFrom": "participation_slot_inclusion",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "participation_slot_inclusion_participation_id_ministry_participation_id_fk": {
+          "name": "participation_slot_inclusion_participation_id_ministry_participation_id_fk",
+          "tableFrom": "participation_slot_inclusion",
+          "columnsFrom": [
+            "participation_id"
+          ],
+          "tableTo": "ministry_participation",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "participation_slot_inclusion_time_slot_id_time_slot_id_fk": {
+          "name": "participation_slot_inclusion_time_slot_id_time_slot_id_fk",
+          "tableFrom": "participation_slot_inclusion",
+          "columnsFrom": [
+            "time_slot_id"
+          ],
+          "tableTo": "time_slot",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.event_template": {
+      "name": "event_template",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weekday": {
+          "name": "weekday",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "event_template_church_name_idx": {
+          "name": "event_template_church_name_idx",
+          "columns": [
+            {
+              "expression": "church_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "event_template_church_id_church_id_fk": {
+          "name": "event_template_church_id_church_id_fk",
+          "tableFrom": "event_template",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "event_template_weekday_check": {
+          "name": "event_template_weekday_check",
+          "value": "\"event_template\".\"weekday\" >= 0 AND \"event_template\".\"weekday\" <= 6"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.ministry_serving_profile": {
+      "name": "ministry_serving_profile",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ministry_id": {
+          "name": "ministry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_template_block_id": {
+          "name": "source_template_block_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "serves": {
+          "name": "serves",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "shift_split": {
+          "name": "shift_split",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headcounts": {
+          "name": "headcounts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "serving_profile_ministry_block_idx": {
+          "name": "serving_profile_ministry_block_idx",
+          "columns": [
+            {
+              "expression": "ministry_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_template_block_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "ministry_serving_profile_church_id_church_id_fk": {
+          "name": "ministry_serving_profile_church_id_church_id_fk",
+          "tableFrom": "ministry_serving_profile",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_serving_profile_ministry_id_ministry_id_fk": {
+          "name": "ministry_serving_profile_ministry_id_ministry_id_fk",
+          "tableFrom": "ministry_serving_profile",
+          "columnsFrom": [
+            "ministry_id"
+          ],
+          "tableTo": "ministry",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "ministry_serving_profile_source_template_block_id_time_block_id_fk": {
+          "name": "ministry_serving_profile_source_template_block_id_time_block_id_fk",
+          "tableFrom": "ministry_serving_profile",
+          "columnsFrom": [
+            "source_template_block_id"
+          ],
+          "tableTo": "time_block",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.planning_cycle": {
+      "name": "planning_cycle",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "planning_cycle_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "planning_cycle_church_state_idx": {
+          "name": "planning_cycle_church_state_idx",
+          "columns": [
+            {
+              "expression": "church_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "planning_cycle_church_id_church_id_fk": {
+          "name": "planning_cycle_church_id_church_id_fk",
+          "tableFrom": "planning_cycle",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "planning_cycle_date_check": {
+          "name": "planning_cycle_date_check",
+          "value": "\"planning_cycle\".\"start_date\" < \"planning_cycle\".\"end_date\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.time_block": {
+      "name": "time_block",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "time_block_template_order_idx": {
+          "name": "time_block_template_order_idx",
+          "columns": [
+            {
+              "expression": "template_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "time_block_church_id_church_id_fk": {
+          "name": "time_block_church_id_church_id_fk",
+          "tableFrom": "time_block",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "time_block_template_id_event_template_id_fk": {
+          "name": "time_block_template_id_event_template_id_fk",
+          "tableFrom": "time_block",
+          "columnsFrom": [
+            "template_id"
+          ],
+          "tableTo": "event_template",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "time_block_time_check": {
+          "name": "time_block_time_check",
+          "value": "\"time_block\".\"start_time\" < \"time_block\".\"end_time\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.event": {
+      "name": "event",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "planning_cycle_id": {
+          "name": "planning_cycle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_template_id": {
+          "name": "source_template_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "title": {
           "name": "title",
           "type": "varchar(255)",
@@ -1263,33 +2673,42 @@
         },
         "start_date": {
           "name": "start_date",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
         "end_date": {
           "name": "end_date",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
         "status": {
           "name": "status",
-          "type": "varchar(50)",
+          "type": "event_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'draft'"
         },
+        "event_type": {
+          "name": "event_type",
+          "type": "event_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'hourly'"
+        },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -1300,26 +2719,160 @@
         "event_church_id_church_id_fk": {
           "name": "event_church_id_church_id_fk",
           "tableFrom": "event",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
-        "event_ministry_id_ministry_id_fk": {
-          "name": "event_ministry_id_ministry_id_fk",
+        "event_planning_cycle_id_planning_cycle_id_fk": {
+          "name": "event_planning_cycle_id_planning_cycle_id_fk",
           "tableFrom": "event",
-          "tableTo": "ministry",
-          "columnsFrom": ["ministry_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsFrom": [
+            "planning_cycle_id"
+          ],
+          "tableTo": "planning_cycle",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "event_source_template_id_event_template_id_fk": {
+          "name": "event_source_template_id_event_template_id_fk",
+          "tableFrom": "event",
+          "columnsFrom": [
+            "source_template_id"
+          ],
+          "tableTo": "event_template",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "event_date_check": {
+          "name": "event_date_check",
+          "value": "\"event\".\"start_date\" < \"event\".\"end_date\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.shift": {
+      "name": "shift",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participation_id": {
+          "name": "participation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_slot_id": {
+          "name": "time_slot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "shift_church_id_church_id_fk": {
+          "name": "shift_church_id_church_id_fk",
+          "tableFrom": "shift",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "shift_participation_id_ministry_participation_id_fk": {
+          "name": "shift_participation_id_ministry_participation_id_fk",
+          "tableFrom": "shift",
+          "columnsFrom": [
+            "participation_id"
+          ],
+          "tableTo": "ministry_participation",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "shift_time_slot_id_time_slot_id_fk": {
+          "name": "shift_time_slot_id_time_slot_id_fk",
+          "tableFrom": "shift",
+          "columnsFrom": [
+            "time_slot_id"
+          ],
+          "tableTo": "time_slot",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "shift_duration_check": {
+          "name": "shift_duration_check",
+          "value": "\"shift\".\"start_time\" < \"shift\".\"end_time\""
+        }
+      },
       "isRLSEnabled": false
     },
     "public.slot_requirement": {
@@ -1339,8 +2892,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "slot_id": {
-          "name": "slot_id",
+        "participation_id": {
+          "name": "participation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shift_id": {
+          "name": "shift_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -1376,44 +2935,78 @@
         "slot_requirement_church_id_church_id_fk": {
           "name": "slot_requirement_church_id_church_id_fk",
           "tableFrom": "slot_requirement",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
-        "slot_requirement_slot_id_time_slot_id_fk": {
-          "name": "slot_requirement_slot_id_time_slot_id_fk",
+        "slot_requirement_participation_id_ministry_participation_id_fk": {
+          "name": "slot_requirement_participation_id_ministry_participation_id_fk",
           "tableFrom": "slot_requirement",
-          "tableTo": "time_slot",
-          "columnsFrom": ["slot_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsFrom": [
+            "participation_id"
+          ],
+          "tableTo": "ministry_participation",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "slot_requirement_shift_id_shift_id_fk": {
+          "name": "slot_requirement_shift_id_shift_id_fk",
+          "tableFrom": "slot_requirement",
+          "columnsFrom": [
+            "shift_id"
+          ],
+          "tableTo": "shift",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "slot_requirement_role_id_role_id_fk": {
           "name": "slot_requirement_role_id_role_id_fk",
           "tableFrom": "slot_requirement",
+          "columnsFrom": [
+            "role_id"
+          ],
           "tableTo": "role",
-          "columnsFrom": ["role_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "slot_requirement_team_id_team_id_fk": {
           "name": "slot_requirement_team_id_team_id_fk",
           "tableFrom": "slot_requirement",
+          "columnsFrom": [
+            "team_id"
+          ],
           "tableTo": "team",
-          "columnsFrom": ["team_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "slot_requirement_min_count_check": {
+          "name": "slot_requirement_min_count_check",
+          "value": "\"slot_requirement\".\"required_count\" >= 1"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.time_slot": {
@@ -1439,15 +3032,21 @@
           "primaryKey": false,
           "notNull": true
         },
+        "source_template_block_id": {
+          "name": "source_template_block_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "start_time": {
           "name": "start_time",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
         "end_time": {
           "name": "end_time",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
@@ -1459,7 +3058,7 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
@@ -1470,20 +3069,306 @@
         "time_slot_church_id_church_id_fk": {
           "name": "time_slot_church_id_church_id_fk",
           "tableFrom": "time_slot",
+          "columnsFrom": [
+            "church_id"
+          ],
           "tableTo": "church",
-          "columnsFrom": ["church_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "time_slot_event_id_event_id_fk": {
           "name": "time_slot_event_id_event_id_fk",
           "tableFrom": "time_slot",
+          "columnsFrom": [
+            "event_id"
+          ],
           "tableTo": "event",
-          "columnsFrom": ["event_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "time_slot_source_template_block_id_time_block_id_fk": {
+          "name": "time_slot_source_template_block_id_time_block_id_fk",
+          "tableFrom": "time_slot",
+          "columnsFrom": [
+            "source_template_block_id"
+          ],
+          "tableTo": "time_block",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "timeslot_duration_check": {
+          "name": "timeslot_duration_check",
+          "value": "\"time_slot\".\"start_time\" < \"time_slot\".\"end_time\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.todo": {
+      "name": "todo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed": {
+          "name": "completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.volunteer_notification": {
+      "name": "volunteer_notification",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "volunteer_id": {
+          "name": "volunteer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "planning_cycle_id": {
+          "name": "planning_cycle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ministry_id": {
+          "name": "ministry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "volunteer_notification_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "volunteer_notification_inbox_idx": {
+          "name": "volunteer_notification_inbox_idx",
+          "columns": [
+            {
+              "expression": "church_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "volunteer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "volunteer_notification_unread_idx": {
+          "name": "volunteer_notification_unread_idx",
+          "columns": [
+            {
+              "expression": "church_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "volunteer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "read_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "volunteer_notification_church_id_church_id_fk": {
+          "name": "volunteer_notification_church_id_church_id_fk",
+          "tableFrom": "volunteer_notification",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "tableTo": "church",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "volunteer_notification_volunteer_id_volunteer_id_fk": {
+          "name": "volunteer_notification_volunteer_id_volunteer_id_fk",
+          "tableFrom": "volunteer_notification",
+          "columnsFrom": [
+            "volunteer_id"
+          ],
+          "tableTo": "volunteer",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "volunteer_notification_planning_cycle_id_planning_cycle_id_fk": {
+          "name": "volunteer_notification_planning_cycle_id_planning_cycle_id_fk",
+          "tableFrom": "volunteer_notification",
+          "columnsFrom": [
+            "planning_cycle_id"
+          ],
+          "tableTo": "planning_cycle",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "volunteer_notification_ministry_id_ministry_id_fk": {
+          "name": "volunteer_notification_ministry_id_ministry_id_fk",
+          "tableFrom": "volunteer_notification",
+          "columnsFrom": [
+            "ministry_id"
+          ],
+          "tableTo": "ministry",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "volunteer_notification_event_id_event_id_fk": {
+          "name": "volunteer_notification_event_id_event_id_fk",
+          "tableFrom": "volunteer_notification",
+          "columnsFrom": [
+            "event_id"
+          ],
+          "tableTo": "event",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "volunteer_notification_assignment_id_assignment_id_fk": {
+          "name": "volunteer_notification_assignment_id_assignment_id_fk",
+          "tableFrom": "volunteer_notification",
+          "columnsFrom": [
+            "assignment_id"
+          ],
+          "tableTo": "assignment",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
@@ -1493,12 +3378,141 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.assignment_status": {
+      "name": "assignment_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "pending",
+        "confirmed",
+        "declined",
+        "cancelled"
+      ]
+    },
+    "public.audit_action": {
+      "name": "audit_action",
+      "schema": "public",
+      "values": [
+        "created",
+        "updated",
+        "deleted",
+        "status_change"
+      ]
+    },
+    "public.availability_check_state": {
+      "name": "availability_check_state",
+      "schema": "public",
+      "values": [
+        "pending",
+        "confirmed"
+      ]
+    },
+    "public.default_direction": {
+      "name": "default_direction",
+      "schema": "public",
+      "values": [
+        "all_in",
+        "all_out"
+      ]
+    },
+    "public.enforcement_type": {
+      "name": "enforcement_type",
+      "schema": "public",
+      "values": [
+        "soft",
+        "hard"
+      ]
+    },
+    "public.event_status": {
+      "name": "event_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "scheduled",
+        "cancelled",
+        "past"
+      ]
+    },
+    "public.event_type": {
+      "name": "event_type",
+      "schema": "public",
+      "values": [
+        "hourly",
+        "day_based"
+      ]
+    },
+    "public.membership_status": {
+      "name": "membership_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    "public.ministry_access_level": {
+      "name": "ministry_access_level",
+      "schema": "public",
+      "values": [
+        "leader",
+        "volunteer"
+      ]
+    },
+    "public.participation_state": {
+      "name": "participation_state",
+      "schema": "public",
+      "values": [
+        "tailoring",
+        "availability_fired",
+        "rostering",
+        "published"
+      ]
+    },
+    "public.planning_cycle_state": {
+      "name": "planning_cycle_state",
+      "schema": "public",
+      "values": [
+        "draft",
+        "locked",
+        "archived"
+      ]
+    },
+    "public.team_access_level": {
+      "name": "team_access_level",
+      "schema": "public",
+      "values": [
+        "leader",
+        "member"
+      ]
+    },
+    "public.volunteer_notification_type": {
+      "name": "volunteer_notification_type",
+      "schema": "public",
+      "values": [
+        "schedule_published",
+        "assignment_added",
+        "assignment_changed",
+        "assignment_removed",
+        "availability_reminder",
+        "availability_conflict",
+        "assignment_reminder"
+      ]
+    },
+    "public.volunteer_status": {
+      "name": "volunteer_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive",
+        "on_hold"
+      ]
+    }
+  },
   "schemas": {},
+  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
-  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

@@ -13,6 +13,17 @@ import {
 import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
 
+/**
+ * Deliberately malformed: `ministryId` is required now that global roles
+ * are retired, so the real insert type no longer allows `null` here. Used
+ * only to exercise the DB-level NOT NULL constraint directly.
+ */
+interface InvalidGlobalRoleInsert {
+  name: string;
+  churchId: string;
+  ministryId: null;
+}
+
 describe('Core Schema Integration', () => {
   let churchId: string;
 
@@ -97,8 +108,8 @@ describe('Core Schema Integration', () => {
     }
   });
 
-  describe('Contextual Leadership (SC-004)', () => {
-    it('should identify ministry leader via system_role', async () => {
+  describe('Access Level Model', () => {
+    it('should identify ministry leader via ministry_access_level', async () => {
       const [insertedMinistry] = await testDb
         .insert(ministry)
         .values({ name: 'Worship', churchId })
@@ -121,13 +132,13 @@ describe('Core Schema Integration', () => {
         churchId,
         ministryId: insertedMinistry.id,
         volunteerId: insertedVolunteer.id,
-        systemRole: 'leader',
+        ministryAccessLevel: 'leader',
       });
 
       const leaderLink = await testDb.query.ministryVolunteer.findFirst({
         where: and(
           eq(ministryVolunteer.ministryId, insertedMinistry.id),
-          eq(ministryVolunteer.systemRole, 'leader'),
+          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
         ),
       });
 
@@ -135,7 +146,7 @@ describe('Core Schema Integration', () => {
       expect(leaderLink?.volunteerId).toBe(insertedVolunteer.id);
     });
 
-    it('should identify team leader via system_role and teamId', async () => {
+    it('should identify a team leader via ministry_volunteer_team.access_level, scoped to that team', async () => {
       const [insertedMinistry] = await testDb
         .insert(ministry)
         .values({ name: 'Worship', churchId })
@@ -148,9 +159,23 @@ describe('Core Schema Integration', () => {
         .returning();
       if (!insertedTeam) throw new Error('Team insert failed');
 
+      const [otherTeam] = await testDb
+        .insert(team)
+        .values({
+          name: 'Instruments',
+          churchId,
+          ministryId: insertedMinistry.id,
+        })
+        .returning();
+      if (!otherTeam) throw new Error('Team insert failed');
+
       const [insertedUser] = await testDb
         .insert(user)
-        .values({ id: 'u2', name: 'Sub Leader', email: 'sub@test.com' })
+        .values({
+          id: 'u2',
+          name: 'Team Leader',
+          email: 'team-leader@test.com',
+        })
         .returning();
       if (!insertedUser) throw new Error('User insert failed');
 
@@ -160,29 +185,49 @@ describe('Core Schema Integration', () => {
         .returning();
       if (!insertedVolunteer) throw new Error('Volunteer insert failed');
 
+      // Team leadership does not require ministry-wide leadership — the
+      // membership stays at the default ministry access level.
       const [insertedMembership] = await testDb
         .insert(ministryVolunteer)
         .values({
           churchId,
           ministryId: insertedMinistry.id,
           volunteerId: insertedVolunteer.id,
-          systemRole: 'sub_leader',
         })
         .returning();
       if (!insertedMembership) throw new Error('Membership insert failed');
 
-      await testDb.insert(ministryVolunteerTeam).values({
-        churchId,
-        ministryVolunteerId: insertedMembership.id,
-        teamId: insertedTeam.id,
+      await testDb.insert(ministryVolunteerTeam).values([
+        {
+          churchId,
+          ministryVolunteerId: insertedMembership.id,
+          teamId: insertedTeam.id,
+          accessLevel: 'leader',
+        },
+        {
+          churchId,
+          ministryVolunteerId: insertedMembership.id,
+          teamId: otherTeam.id,
+        },
+      ]);
+
+      const teamLeaderLink = await testDb.query.ministryVolunteerTeam.findFirst(
+        {
+          where: and(
+            eq(ministryVolunteerTeam.teamId, insertedTeam.id),
+            eq(ministryVolunteerTeam.accessLevel, 'leader'),
+          ),
+        },
+      );
+      const otherTeamLink = await testDb.query.ministryVolunteerTeam.findFirst({
+        where: eq(ministryVolunteerTeam.teamId, otherTeam.id),
       });
 
-      const subLeaderLink = await testDb.query.ministryVolunteerTeam.findFirst({
-        where: eq(ministryVolunteerTeam.teamId, insertedTeam.id),
-      });
-
-      expect(subLeaderLink).toBeDefined();
-      expect(subLeaderLink?.ministryVolunteerId).toBe(insertedMembership.id);
+      expect(teamLeaderLink).toBeDefined();
+      expect(teamLeaderLink?.ministryVolunteerId).toBe(insertedMembership.id);
+      // Leadership on one team does not leak to another team membership row —
+      // TeamLeader is scoped to the specific team, not the ministry.
+      expect(otherTeamLink?.accessLevel).toBe('member');
     });
 
     it('should verify team table does not have leaderId column', async () => {
@@ -210,23 +255,6 @@ describe('Core Schema Integration', () => {
   });
 
   describe('Role Schema', () => {
-    it('should create a global role', async () => {
-      const [insertedRole] = await testDb
-        .insert(role)
-        .values({
-          name: 'General Volunteer',
-          churchId,
-          isGlobal: true,
-          ministryId: null,
-        })
-        .returning();
-
-      if (!insertedRole) throw new Error('Role insert failed');
-      expect(insertedRole.name).toBe('General Volunteer');
-      expect(insertedRole.isGlobal).toBe(true);
-      expect(insertedRole.ministryId).toBeNull();
-    });
-
     it('should create a ministry-scoped role', async () => {
       const [insertedMinistry] = await testDb
         .insert(ministry)
@@ -240,20 +268,39 @@ describe('Core Schema Integration', () => {
           name: 'Guitarist',
           churchId,
           ministryId: insertedMinistry.id,
-          isGlobal: false,
         })
         .returning();
 
       if (!insertedRole) throw new Error('Role insert failed');
       expect(insertedRole.name).toBe('Guitarist');
       expect(insertedRole.ministryId).toBe(insertedMinistry.id);
-      expect(insertedRole.isGlobal).toBe(false);
+    });
+
+    it('should require a ministry — there are no global roles', async () => {
+      const invalidRole: InvalidGlobalRoleInsert = {
+        name: 'General Volunteer',
+        churchId,
+        ministryId: null,
+      };
+
+      await expect(
+        testDb
+          .insert(role)
+          .values(invalidRole as unknown as typeof role.$inferInsert),
+      ).rejects.toThrow();
     });
 
     it('should enforce church_id foreign key constraint on roles', async () => {
+      const [insertedMinistry] = await testDb
+        .insert(ministry)
+        .values({ name: 'Music', churchId })
+        .returning();
+      if (!insertedMinistry) throw new Error('Ministry insert failed');
+
       const invalidRole = {
         name: 'Invalid Role',
         churchId: '00000000-0000-0000-0000-000000000000',
+        ministryId: insertedMinistry.id,
       };
 
       try {

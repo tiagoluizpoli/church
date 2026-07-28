@@ -12,7 +12,7 @@ describe('MinistryVolunteer Entity', () => {
     expect(mv.churchId).toBe('c1');
     expect(mv.volunteerId).toBe('v1');
     expect(mv.ministryId).toBe('m1');
-    expect(mv.systemRole).toBe('volunteer');
+    expect(mv.ministryAccessLevel).toBe('volunteer');
     expect(mv.status).toBe('active');
     expect(mv.joinedAt).toBeInstanceOf(Date);
   });
@@ -25,6 +25,6 @@ describe('MinistryVolunteer Entity', () => {
     });
 
     mv.promote('leader');
-    expect(mv.systemRole).toBe('leader');
+    expect(mv.ministryAccessLevel).toBe('leader');
   });
 });

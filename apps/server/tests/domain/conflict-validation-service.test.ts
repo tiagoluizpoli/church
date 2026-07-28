@@ -42,7 +42,12 @@ const baseOverride: OverrideRequest = {
   churchId: 'chu_123',
   assignmentId: 'assign_001',
   overrideReason: 'Ministry need',
-  caller: { userId: 'leader_001', systemRole: 'leader', ministryId: 'min_789' },
+  caller: {
+    userId: 'leader_001',
+    isChurchAdmin: false,
+    isMinistryLeader: true,
+    ministryId: 'min_789',
+  },
   targetMinistryId: 'min_789',
   now,
 };
@@ -312,10 +317,15 @@ describe('ConflictValidationService', () => {
   // ---------------------------------------------------------------------------
 
   describe('Override Authorization', () => {
-    it('LEADER with matching ministryId → override accepted, audit returned', () => {
+    it('ministry leader with matching ministryId → override accepted, audit returned', () => {
       const req: OverrideRequest = {
         ...baseOverride,
-        caller: { userId: 'u1', systemRole: 'leader', ministryId: 'min_789' },
+        caller: {
+          userId: 'u1',
+          isChurchAdmin: false,
+          isMinistryLeader: true,
+          ministryId: 'min_789',
+        },
         targetMinistryId: 'min_789',
       };
       expect(() =>
@@ -323,10 +333,15 @@ describe('ConflictValidationService', () => {
       ).not.toThrow();
     });
 
-    it('LEADER with non-matching ministryId → permission error thrown', () => {
+    it('ministry leader with non-matching ministryId → permission error thrown', () => {
       const req: OverrideRequest = {
         ...baseOverride,
-        caller: { userId: 'u1', systemRole: 'leader', ministryId: 'min_other' },
+        caller: {
+          userId: 'u1',
+          isChurchAdmin: false,
+          isMinistryLeader: true,
+          ministryId: 'min_other',
+        },
         targetMinistryId: 'min_789',
       };
       expect(() =>
@@ -334,40 +349,45 @@ describe('ConflictValidationService', () => {
       ).toThrow(UnauthorizedOverrideError);
     });
 
-    it('ADMIN with any ministryId → override accepted', () => {
+    it('church admin with any ministryId → override accepted', () => {
       const req: OverrideRequest = {
         ...baseOverride,
-        caller: { userId: 'u1', systemRole: 'admin', ministryId: 'min_other' },
+        caller: {
+          userId: 'u1',
+          isChurchAdmin: true,
+          isMinistryLeader: false,
+          ministryId: 'min_other',
+        },
       };
       expect(() =>
         ConflictValidationService.authorizeOverride(req, conflictReport),
       ).not.toThrow();
     });
 
-    it('ADMIN without ministryId → override accepted (admin is global)', () => {
+    it('church admin without ministryId → override accepted (admin is church-wide)', () => {
       const req: OverrideRequest = {
         ...baseOverride,
-        caller: { userId: 'u1', systemRole: 'admin' },
+        caller: { userId: 'u1', isChurchAdmin: true, isMinistryLeader: false },
       };
       expect(() =>
         ConflictValidationService.authorizeOverride(req, conflictReport),
       ).not.toThrow();
     });
 
-    it('VOLUNTEER → permission error thrown', () => {
+    it('ordinary ministry member → permission error thrown', () => {
       const req: OverrideRequest = {
         ...baseOverride,
-        caller: { userId: 'u1', systemRole: 'volunteer' },
+        caller: { userId: 'u1', isChurchAdmin: false, isMinistryLeader: false },
       };
       expect(() =>
         ConflictValidationService.authorizeOverride(req, conflictReport),
       ).toThrow(UnauthorizedOverrideError);
     });
 
-    it('SUB_LEADER → permission error thrown', () => {
+    it('TeamLeader without ministry leadership → permission error thrown', () => {
       const req: OverrideRequest = {
         ...baseOverride,
-        caller: { userId: 'u1', systemRole: 'sub_leader' },
+        caller: { userId: 'u1', isChurchAdmin: false, isMinistryLeader: false },
       };
       expect(() =>
         ConflictValidationService.authorizeOverride(req, conflictReport),

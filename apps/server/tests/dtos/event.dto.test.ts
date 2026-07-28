@@ -185,16 +185,18 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         {
           id: VolunteerId.from('volunteer-1'),
           name: 'Alice',
-          systemRole: 'leader',
+          ministryAccessLevel: 'leader',
           qualifiedRoleIds: ['role-1', 'role-2'],
           teamIds: ['team-1'],
+          leadTeamIds: [],
         },
         {
           id: VolunteerId.from('volunteer-2'),
           name: 'Bob',
-          systemRole: 'volunteer',
+          ministryAccessLevel: 'volunteer',
           qualifiedRoleIds: [],
           teamIds: [],
+          leadTeamIds: [],
         },
       ],
       roles: [
@@ -283,16 +285,18 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       {
         id: 'volunteer-1',
         name: 'Alice',
-        systemRole: 'leader',
+        ministryAccessLevel: 'leader',
         qualifiedRoleIds: ['role-1', 'role-2'],
         teamIds: ['team-1'],
+        leadTeamIds: [],
       },
       {
         id: 'volunteer-2',
         name: 'Bob',
-        systemRole: 'volunteer',
+        ministryAccessLevel: 'volunteer',
         qualifiedRoleIds: [],
         teamIds: [],
+        leadTeamIds: [],
       },
     ]);
 

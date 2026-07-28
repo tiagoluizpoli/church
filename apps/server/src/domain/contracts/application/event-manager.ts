@@ -10,7 +10,7 @@ import type {
 import type { Assignment } from '../../entities/assignment';
 import type { Availability } from '../../entities/availability';
 import type { Event, EventStatus } from '../../entities/event';
-import type { SystemRole } from '../../entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
 import type { SlotRequirement } from '../../entities/slot-requirement';
 import type { TimeSlot } from '../../entities/time-slot';
 
@@ -83,11 +83,14 @@ export interface ScheduleBuilderEventGroup {
 export interface ScheduleBuilderVolunteerOption {
   id: VolunteerId;
   name: string;
-  systemRole: SystemRole;
+  /** This member's ministry-wide access level. Independent of team leadership. */
+  ministryAccessLevel: MinistryAccessLevel;
   /** Roles this member is qualified to fill, including global roles. */
   qualifiedRoleIds: string[];
   /** Every team this member belongs to within the ministry. Flat, no primary. */
   teamIds: string[];
+  /** Subset of `teamIds` this member leads (TeamLeader — per-team, not ministry-wide). */
+  leadTeamIds: string[];
 }
 
 export interface ScheduleBuilderRoleOption {
@@ -102,9 +105,9 @@ export interface ScheduleBuilderData {
   volunteers: ScheduleBuilderVolunteerOption[];
   roles: ScheduleBuilderRoleOption[];
   /**
-   * Teams the calling sub-leader may schedule for, or `null` when the caller is
-   * a ministry leader and therefore unrestricted. A sub-leader can lead more
-   * than one team, so this is a list.
+   * Teams the calling TeamLeader may schedule for, or `null` when the caller
+   * is a ministry leader and therefore unrestricted. A TeamLeader can lead
+   * more than one team, so this is a list.
    */
   callerTeamIds: string[] | null;
 }

@@ -615,7 +615,6 @@ describe('Phase 3 planning managers', () => {
         churchId: seed.churchAId,
         ministryId: profiledMinistry.id,
         name: 'Profiled role',
-        isGlobal: false,
       })
       .returning()
       .then(([row]) => {

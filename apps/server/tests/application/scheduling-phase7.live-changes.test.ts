@@ -158,7 +158,6 @@ async function seedRole(input: {
       churchId: input.churchId,
       ministryId: input.ministryId,
       name: input.name,
-      isGlobal: false,
     })
     .returning();
 
@@ -174,7 +173,7 @@ async function seedVolunteerMembership(input: {
   ministryId: string;
   name: string;
   email: string;
-  systemRole?: 'leader' | 'sub_leader' | 'volunteer';
+  ministryAccessLevel?: 'leader' | 'volunteer';
 }) {
   const userId = randomUUID();
   const volunteerId = randomUUID();
@@ -203,7 +202,7 @@ async function seedVolunteerMembership(input: {
       churchId: input.churchId,
       ministryId: input.ministryId,
       volunteerId,
-      systemRole: input.systemRole ?? 'volunteer',
+      ministryAccessLevel: input.ministryAccessLevel ?? 'volunteer',
       status: 'active',
     })
     .returning();
@@ -356,7 +355,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       ministryId: seed.ministryAId,
       name: 'Leader Volunteer',
       email: 'leader-phase7@test.com',
-      systemRole: 'leader',
+      ministryAccessLevel: 'leader',
     });
     const volunteerA = await seedVolunteerMembership({
       churchId: seed.churchAId,

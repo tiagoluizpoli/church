@@ -2,7 +2,6 @@ import {
   account,
   addChurchMember,
   type ChurchRecord,
-  churchAdmin,
   createDb,
   ensureChurch,
   ministry,
@@ -54,28 +53,32 @@ const DEV_USERS = [
   {
     email: 'admin@local-dev.test',
     name: 'Local Admin',
-    systemRole: 'leader' as const,
+    ministryAccessLevel: 'leader' as const,
+    teamAccessLevel: 'member' as const,
     isChurchAdmin: true,
     qualifiedRoleNames: ['Coordinator', 'Support'],
   },
   {
     email: 'leader@local-dev.test',
     name: 'Local Leader',
-    systemRole: 'leader' as const,
+    ministryAccessLevel: 'leader' as const,
+    teamAccessLevel: 'member' as const,
     isChurchAdmin: false,
     qualifiedRoleNames: ['Coordinator'],
   },
   {
-    email: 'subleader@local-dev.test',
-    name: 'Local Sub Leader',
-    systemRole: 'sub_leader' as const,
+    email: 'teamleader@local-dev.test',
+    name: 'Local Team Leader',
+    ministryAccessLevel: 'volunteer' as const,
+    teamAccessLevel: 'leader' as const,
     isChurchAdmin: false,
     qualifiedRoleNames: ['Support'],
   },
   {
     email: 'volunteer@local-dev.test',
     name: 'Local Volunteer',
-    systemRole: 'volunteer' as const,
+    ministryAccessLevel: 'volunteer' as const,
+    teamAccessLevel: 'member' as const,
     isChurchAdmin: false,
     qualifiedRoleNames: [],
   },
@@ -169,7 +172,6 @@ async function ensureRoles({ churchId, ministryId }: EnsureRolesInput) {
         churchId,
         ministryId,
         name,
-        isGlobal: false,
       })),
     )
     .returning();
@@ -313,13 +315,18 @@ async function ensureVolunteer({ userId, churchId }: EnsureVolunteerInput) {
   return createdVolunteer;
 }
 
+interface EnsureMembershipTeam {
+  id: string;
+  accessLevel: 'leader' | 'member';
+}
+
 interface EnsureMembershipInput {
   churchId: string;
   volunteerId: string;
   ministryId: string;
-  teamIds: string[];
+  teams: EnsureMembershipTeam[];
   roleIds: string[];
-  systemRole: 'leader' | 'sub_leader' | 'volunteer';
+  ministryAccessLevel: 'leader' | 'volunteer';
 }
 
 async function ensureMembership(input: EnsureMembershipInput) {
@@ -338,14 +345,17 @@ async function ensureMembership(input: EnsureMembershipInput) {
   if (existingMembership) {
     await db
       .update(ministryVolunteer)
-      .set({ systemRole: input.systemRole, status: 'active' })
+      .set({
+        ministryAccessLevel: input.ministryAccessLevel,
+        status: 'active',
+      })
       .where(eq(ministryVolunteer.id, membershipId));
   }
 
   await ensureMembershipTeams({
     churchId: input.churchId,
     membershipId,
-    teamIds: input.teamIds,
+    teams: input.teams,
   });
 
   await ensureMembershipRoles({
@@ -362,7 +372,7 @@ async function insertMembership(input: EnsureMembershipInput) {
       churchId: input.churchId,
       volunteerId: input.volunteerId,
       ministryId: input.ministryId,
-      systemRole: input.systemRole,
+      ministryAccessLevel: input.ministryAccessLevel,
       status: 'active',
     })
     .returning();
@@ -375,7 +385,7 @@ async function insertMembership(input: EnsureMembershipInput) {
 interface EnsureMembershipTeamsInput {
   churchId: string;
   membershipId: string;
-  teamIds: string[];
+  teams: EnsureMembershipTeam[];
 }
 
 /** Replaces the membership's team rows so re-running the seed stays idempotent. */
@@ -384,13 +394,14 @@ async function ensureMembershipTeams(input: EnsureMembershipTeamsInput) {
     .delete(ministryVolunteerTeam)
     .where(eq(ministryVolunteerTeam.ministryVolunteerId, input.membershipId));
 
-  if (input.teamIds.length === 0) return;
+  if (input.teams.length === 0) return;
 
   await db.insert(ministryVolunteerTeam).values(
-    input.teamIds.map((teamId) => ({
+    input.teams.map((teamMembership) => ({
       churchId: input.churchId,
       ministryVolunteerId: input.membershipId,
-      teamId,
+      teamId: teamMembership.id,
+      accessLevel: teamMembership.accessLevel,
     })),
   );
 }
@@ -416,29 +427,6 @@ async function ensureMembershipRoles(input: EnsureMembershipRolesInput) {
       roleId,
     })),
   );
-}
-
-interface EnsureChurchAdminInput {
-  churchId: string;
-  userId: string;
-}
-
-async function ensureChurchAdmin(input: EnsureChurchAdminInput) {
-  const existingChurchAdmin = await db.query.churchAdmin.findFirst({
-    where: and(
-      eq(churchAdmin.churchId, input.churchId),
-      eq(churchAdmin.userId, input.userId),
-    ),
-  });
-
-  if (existingChurchAdmin) {
-    return;
-  }
-
-  await db.insert(churchAdmin).values({
-    churchId: input.churchId,
-    userId: input.userId,
-  });
 }
 
 export async function seedDevUsers() {
@@ -478,28 +466,27 @@ export async function seedDevUsers() {
       churchId: localChurch.id,
       volunteerId: localVolunteer.id,
       ministryId: localMinistry.id,
-      teamIds: devUser.systemRole === 'leader' ? [] : [localTeam.id],
+      teams:
+        devUser.ministryAccessLevel === 'leader'
+          ? []
+          : [{ id: localTeam.id, accessLevel: devUser.teamAccessLevel }],
       roleIds: localRoles
         .filter((r) =>
           (devUser.qualifiedRoleNames as readonly string[]).includes(r.name),
         )
         .map((r) => r.id),
-      systemRole: devUser.systemRole,
+      ministryAccessLevel: devUser.ministryAccessLevel,
     });
 
-    if (devUser.isChurchAdmin) {
-      await ensureChurchAdmin({
-        churchId: localChurch.id,
-        userId: authUser.id,
-      });
-    }
-
+    const roleLabel =
+      devUser.ministryAccessLevel === 'volunteer' &&
+      devUser.teamAccessLevel === 'leader'
+        ? 'team_leader'
+        : devUser.ministryAccessLevel;
     results.push({
       email: devUser.email,
       name: devUser.name,
-      role: devUser.isChurchAdmin
-        ? `church_admin+${devUser.systemRole}`
-        : devUser.systemRole,
+      role: devUser.isChurchAdmin ? `church_admin+${roleLabel}` : roleLabel,
     });
   }
 

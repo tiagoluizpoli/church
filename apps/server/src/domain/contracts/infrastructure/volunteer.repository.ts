@@ -5,6 +5,7 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
+import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
 import type { Volunteer, VolunteerStatus } from '../../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
@@ -13,7 +14,13 @@ export interface VolunteerLeadership {
   ministryName: string;
 }
 
-export type MinistrySystemRole = 'leader' | 'sub_leader' | 'volunteer';
+/** Mirrors `ministry_volunteer_team.access_level` — TeamLeader is `'leader'` here, scoped to that one team. */
+export type TeamAccessLevel = 'leader' | 'member';
+
+export interface MinistryTeamMembership {
+  teamId: string;
+  accessLevel: TeamAccessLevel;
+}
 
 /**
  * A volunteer's membership within a single ministry.
@@ -21,15 +28,16 @@ export type MinistrySystemRole = 'leader' | 'sub_leader' | 'volunteer';
  * Teams and qualified roles are independent axes: a member may belong to
  * several teams and be qualified for several roles, and eligibility for a slot
  * composes the two ("qualified for the role AND — when the requirement names a
- * team — a member of that team").
+ * team — a member of that team"). `ministryAccessLevel` is ministry-wide;
+ * TeamLeader-ness is per-team, carried in `teamMemberships`.
  */
 export interface MinistryMembership {
   volunteerId: VolunteerId;
-  /** Every team this member belongs to within the ministry. Flat, no primary. */
-  teamIds: string[];
+  /** Every team this member belongs to within the ministry, with their access level in each. */
+  teamMemberships: MinistryTeamMembership[];
   /** Roles this member is qualified to fill, including global roles. */
   qualifiedRoleIds: string[];
-  systemRole: MinistrySystemRole;
+  ministryAccessLevel: MinistryAccessLevel;
 }
 
 export interface VolunteerRepository {
@@ -122,8 +130,9 @@ export interface VolunteerRepository {
   ): Promise<MinistryId[]>;
 
   /**
-   * List active memberships (teams, qualified roles, system role) for a ministry.
-   * Used for sub-leader team scoping and candidate eligibility in the builder.
+   * List active memberships (team memberships, qualified roles, ministry
+   * access level) for a ministry. Used for TeamLeader scoping and candidate
+   * eligibility in the builder.
    */
   listMinistryMemberships(
     churchId: ChurchId,

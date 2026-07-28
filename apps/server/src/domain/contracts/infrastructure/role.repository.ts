@@ -14,17 +14,4 @@ export interface RoleRepository {
     ministryId: MinistryId,
     tx?: TransactionContext,
   ): Promise<Role[]>;
-
-  listGlobalAndMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<Role[]>;
-
-  /** List all role IDs that are global or belong to any of the given ministries. */
-  listGlobalAndMinistryRoleIds(
-    churchId: ChurchId,
-    ministryIds: MinistryId[],
-    tx?: TransactionContext,
-  ): Promise<RoleId[]>;
 }

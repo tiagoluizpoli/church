@@ -1,6 +1,5 @@
 import { NotFoundError } from '@church/core';
 import {
-  churchAdmin,
   ministry,
   ministryVolunteer,
   ministryVolunteerRole,
@@ -19,16 +18,22 @@ import type {
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   MinistryMembership,
-  MinistrySystemRole,
+  TeamAccessLevel,
   VolunteerLeadership,
   VolunteerRepository,
 } from '../../domain/contracts/infrastructure/volunteer.repository';
+import type { MinistryAccessLevel } from '../../domain/entities/ministry-volunteer';
 import type {
   Volunteer,
   VolunteerStatus,
 } from '../../domain/entities/volunteer';
 import { mapVolunteer } from '../mappers/volunteer.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  getClient,
+  isChurchAdminMember,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzleVolunteerRepository implements VolunteerRepository {
@@ -39,14 +44,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     userId: UserId,
     tx?: TransactionContext,
   ): Promise<boolean> {
-    const [row] = await getClient(this.db, tx)
-      .select({ id: churchAdmin.id })
-      .from(churchAdmin)
-      .where(
-        and(eq(churchAdmin.churchId, churchId), eq(churchAdmin.userId, userId)),
-      )
-      .limit(1);
-    return row != null;
+    return isChurchAdminMember(this.db, churchId, userId, tx);
   }
 
   async getById(
@@ -165,9 +163,9 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
   }
 
   /**
-   * Members of the ministry explicitly qualified for the role. Leaders and
-   * sub-leaders are included: `systemRole` governs who may edit a cycle, not who
-   * may serve in it.
+   * Members of the ministry explicitly qualified for the role. Ministry
+   * leaders are included: `ministryAccessLevel` governs who may edit a
+   * cycle, not who may serve in it.
    */
   async listQualifiedForRole(
     churchId: ChurchId,
@@ -247,7 +245,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryVolunteer.ministryId, ministryId),
           eq(ministryVolunteer.churchId, churchId),
           eq(ministryVolunteer.status, 'active'),
-          eq(ministryVolunteer.systemRole, 'leader'),
+          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
         ),
       )
       .limit(1);
@@ -272,7 +270,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryVolunteer.volunteerId, volunteerId),
           eq(ministryVolunteer.churchId, churchId),
           eq(ministryVolunteer.status, 'active'),
-          eq(ministryVolunteer.systemRole, 'leader'),
+          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
         ),
       );
     return rows.map((r) => ({
@@ -337,7 +335,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         .select({
           id: ministryVolunteer.id,
           volunteerId: ministryVolunteer.volunteerId,
-          systemRole: ministryVolunteer.systemRole,
+          ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
         })
         .from(ministryVolunteer)
         .where(membershipScope),
@@ -345,6 +343,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         .select({
           membershipId: ministryVolunteerTeam.ministryVolunteerId,
           teamId: ministryVolunteerTeam.teamId,
+          accessLevel: ministryVolunteerTeam.accessLevel,
         })
         .from(ministryVolunteerTeam)
         .innerJoin(
@@ -365,14 +364,17 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         .where(membershipScope),
     ]);
 
-    const teamIdsByMembership = groupByMembership(teamRows, (r) => r.teamId);
+    const teamMembershipsByMembership = groupByMembership(teamRows, (r) => ({
+      teamId: r.teamId,
+      accessLevel: r.accessLevel as TeamAccessLevel,
+    }));
     const roleIdsByMembership = groupByMembership(roleRows, (r) => r.roleId);
 
     return rows.map((r) => ({
       volunteerId: r.volunteerId as VolunteerId,
-      teamIds: teamIdsByMembership.get(r.id) ?? [],
+      teamMemberships: teamMembershipsByMembership.get(r.id) ?? [],
       qualifiedRoleIds: roleIdsByMembership.get(r.id) ?? [],
-      systemRole: r.systemRole as MinistrySystemRole,
+      ministryAccessLevel: r.ministryAccessLevel as MinistryAccessLevel,
     }));
   }
 }
@@ -382,11 +384,11 @@ interface MembershipScopedRow {
 }
 
 /** Collect junction-table rows into a `membershipId -> values` lookup. */
-function groupByMembership<TRow extends MembershipScopedRow>(
+function groupByMembership<TRow extends MembershipScopedRow, TValue>(
   rows: TRow[],
-  select: (row: TRow) => string,
-): Map<string, string[]> {
-  const grouped = new Map<string, string[]>();
+  select: (row: TRow) => TValue,
+): Map<string, TValue[]> {
+  const grouped = new Map<string, TValue[]>();
   for (const row of rows) {
     const existing = grouped.get(row.membershipId);
     if (existing) {

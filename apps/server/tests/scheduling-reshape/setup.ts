@@ -1,7 +1,6 @@
 import * as schema from '@church/db';
 import {
   addChurchMember,
-  churchAdmin,
   createChurch,
   event,
   eventTemplate,
@@ -84,11 +83,6 @@ export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> 
     timezone: 'America/New_York',
   });
 
-  await schedulingTestDb.insert(churchAdmin).values({
-    churchId: churchA.id,
-    userId: 'sched-admin-user',
-  });
-
   await addChurchMember({
     db: schedulingTestDb,
     churchId: churchA.id,
@@ -130,7 +124,7 @@ export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> 
     churchId: churchA.id,
     ministryId: ministryA.id,
     volunteerId: adminVolunteer.id,
-    systemRole: 'leader',
+    ministryAccessLevel: 'leader',
     status: 'active',
   });
 

@@ -5,7 +5,6 @@ import {
   assignmentAudit,
   availability,
   availabilityCheck,
-  churchAdmin,
   createChurch,
   event,
   eventTemplate,
@@ -160,10 +159,6 @@ async function seedEveryTenantedTable(): Promise<void> {
   });
 
   await testDb.insert(todo).values({ text: 'Truncation root todo' });
-
-  await testDb
-    .insert(churchAdmin)
-    .values({ churchId: IDS.church, userId: IDS.user });
 
   await testDb.insert(ministry).values({
     id: IDS.ministry,

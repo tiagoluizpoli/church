@@ -6,7 +6,6 @@ import {
   assignment,
   availability,
   availabilityCheck,
-  churchAdmin,
   ensureChurch,
   event,
   ministry,
@@ -61,7 +60,7 @@ export const VOLUNTEER_STORAGE_STATE = path.resolve(
  * `authorizeLeaderOrAdmin` grants leader rights over the seeded ministry.
  *
  * Links the sub-leader volunteer to `--sub-leader-user-id` so
- * `authorizeScheduleBuilderAccess` resolves them as a sub_leader of team1.
+ * `authorizeScheduleBuilderAccess` resolves them as a TeamLeader of team1.
  */
 const DATABASE_URL =
   process.env.DATABASE_URL ??
@@ -252,11 +251,6 @@ export async function seedE2e({
       timezone: 'America/New_York',
     });
 
-    await db
-      .insert(churchAdmin)
-      .values({ churchId: E2E_IDS.church, userId: leaderUserId })
-      .onConflictDoNothing();
-
     // Church Membership is what admits a person to the Church; volunteering is
     // additive to it. Every user this seed gives a Volunteer profile gets one,
     // or the seed produces people holding assignments with no way in.
@@ -312,11 +306,6 @@ export async function seedE2e({
       slug: 'e2e-church-b',
       timezone: 'America/Chicago',
     });
-
-    await db
-      .insert(churchAdmin)
-      .values({ churchId: E2E_IDS.churchB, userId: churchBAdminUserId })
-      .onConflictDoNothing();
 
     await addChurchMember({
       db,
@@ -399,21 +388,18 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           ministryId: E2E_IDS.ministry,
           name: 'Usher',
-          isGlobal: false,
         },
         {
           id: E2E_IDS.roleGreeter,
           churchId: E2E_IDS.church,
           ministryId: E2E_IDS.ministry,
           name: 'Greeter',
-          isGlobal: false,
         },
         {
           id: E2E_IDS.roleCareHost,
           churchId: E2E_IDS.church,
           ministryId: E2E_IDS.ministryCare,
           name: 'Care Host',
-          isGlobal: false,
         },
       ])
       .onConflictDoNothing();
@@ -502,7 +488,7 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           volunteerId: leaderVolunteerId,
           ministryId: E2E_IDS.ministry,
-          systemRole: 'leader',
+          ministryAccessLevel: 'leader',
           status: 'active',
         },
         {
@@ -510,16 +496,18 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           volunteerId: leaderVolunteerId,
           ministryId: E2E_IDS.ministryCare,
-          systemRole: 'volunteer',
+          ministryAccessLevel: 'volunteer',
           status: 'active',
         },
         {
-          // Sub-leader is scoped to team1 (see ministryVolunteerTeam below).
+          // TeamLeader of team1 (see ministryVolunteerTeam below) — an
+          // ordinary Ministry Member at the ministry level, per CONTEXT.md's
+          // TeamLeader being orthogonal to Ministry Access Level.
           id: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
           churchId: E2E_IDS.church,
           volunteerId: subLeaderVolunteerId,
           ministryId: E2E_IDS.ministry,
-          systemRole: 'sub_leader',
+          ministryAccessLevel: 'volunteer',
           status: 'active',
         },
         {
@@ -527,7 +515,7 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           volunteerId: schedulingVolunteerId,
           ministryId: E2E_IDS.ministry,
-          systemRole: 'volunteer',
+          ministryAccessLevel: 'volunteer',
           status: 'active',
         },
         ...POOL_VOLUNTEERS.map((v, index) => ({
@@ -535,7 +523,7 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           volunteerId: v.id,
           ministryId: E2E_IDS.ministry,
-          systemRole: 'volunteer' as const,
+          ministryAccessLevel: 'volunteer' as const,
           status: 'active' as const,
         })),
         {
@@ -543,13 +531,13 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           volunteerId: UNQUALIFIED_VOLUNTEER.id,
           ministryId: E2E_IDS.ministry,
-          systemRole: 'volunteer' as const,
+          ministryAccessLevel: 'volunteer' as const,
           status: 'active' as const,
         },
       ])
       .onConflictDoUpdate({
         target: [ministryVolunteer.id],
-        set: { systemRole: ministryVolunteer.systemRole },
+        set: { ministryAccessLevel: ministryVolunteer.ministryAccessLevel },
       });
 
     await db
@@ -561,9 +549,12 @@ export async function seedE2e({
           teamId: E2E_IDS.careTeam,
         },
         {
+          // TeamLeader of team1: team-scoped access level, orthogonal to the
+          // 'volunteer' ministryAccessLevel set above.
           churchId: E2E_IDS.church,
           ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
           teamId: E2E_IDS.team1,
+          accessLevel: 'leader',
         },
         ...POOL_VOLUNTEERS.flatMap((v, index) =>
           v.teamId

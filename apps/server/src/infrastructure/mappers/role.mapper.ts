@@ -9,11 +9,8 @@ type RoleRow = InferSelectModel<typeof role>;
 export function mapRole(row: RoleRow): Role {
   const props: RoleProps = {
     churchId: row.churchId as ChurchId,
-    ministryId: row.ministryId
-      ? (row.ministryId as RoleProps['ministryId'])
-      : undefined,
+    ministryId: row.ministryId as RoleProps['ministryId'],
     name: row.name,
-    isGlobal: row.isGlobal,
   };
 
   return new Role(props, row.id as RoleId);

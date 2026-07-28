@@ -108,19 +108,16 @@ function validateOverrideAuthorization(request: OverrideRequest): void {
 
   const { caller, targetMinistryId } = request;
 
-  if (caller.systemRole === 'admin') {
+  if (caller.isChurchAdmin) {
     return;
   }
 
-  if (
-    caller.systemRole === 'leader' &&
-    caller.ministryId === targetMinistryId
-  ) {
+  if (caller.isMinistryLeader && caller.ministryId === targetMinistryId) {
     return;
   }
 
   throw new UnauthorizedOverrideError(
-    `Role '${caller.systemRole}' is not authorized to override conflicts for ministry '${targetMinistryId}'`,
+    `Caller is not authorized to override conflicts for ministry '${targetMinistryId}'`,
   );
 }
 

@@ -168,7 +168,7 @@ async function seedMembership(input: SeedMembershipInput) {
       churchId: input.churchId,
       ministryId: input.ministryId,
       volunteerId: input.volunteerId,
-      systemRole: 'volunteer',
+      ministryAccessLevel: 'volunteer',
       status: input.status ?? 'active',
     })
     .returning();
@@ -762,7 +762,6 @@ async function seedRoleFor(input: { churchId: string; ministryId: string }) {
       churchId: input.churchId,
       ministryId: input.ministryId,
       name: 'Phase4 role',
-      isGlobal: false,
     })
     .returning();
   if (!row) throw new Error('Phase 4 role seed failed');
@@ -797,7 +796,7 @@ async function seedMembershipWithVolunteer(input: {
       churchId: input.churchId,
       ministryId: input.ministryId,
       volunteerId,
-      systemRole: 'volunteer',
+      ministryAccessLevel: 'volunteer',
       status: 'active',
     })
     .returning();

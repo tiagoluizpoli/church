@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { role } from '@church/db';
-import { and, asc, eq, inArray, or } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { ChurchId, MinistryId, RoleId } from '../../domain/branded-ids';
 import type { RoleRepository } from '../../domain/contracts/infrastructure/role.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
@@ -45,40 +45,5 @@ export class DrizzleRoleRepository implements RoleRepository {
       )
       .orderBy(asc(role.name));
     return rows.map(mapRole);
-  }
-
-  async listGlobalAndMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-    tx?: TransactionContext,
-  ): Promise<Role[]> {
-    const rows = await getClient(this.db, tx)
-      .select()
-      .from(role)
-      .where(
-        and(
-          withChurchIsolation(role, churchId),
-          or(eq(role.isGlobal, true), eq(role.ministryId, ministryId)),
-        ),
-      )
-      .orderBy(asc(role.name));
-    return rows.map(mapRole);
-  }
-
-  async listGlobalAndMinistryRoleIds(
-    churchId: ChurchId,
-    ministryIds: MinistryId[],
-    tx?: TransactionContext,
-  ): Promise<RoleId[]> {
-    const conditions =
-      ministryIds.length > 0
-        ? or(eq(role.isGlobal, true), inArray(role.ministryId, ministryIds))
-        : eq(role.isGlobal, true);
-
-    const rows = await getClient(this.db, tx)
-      .select({ id: role.id })
-      .from(role)
-      .where(and(withChurchIsolation(role, churchId), conditions));
-    return rows.map((r) => r.id as RoleId);
   }
 }

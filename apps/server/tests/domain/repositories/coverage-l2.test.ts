@@ -136,7 +136,8 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
       assignmentId: 'assignment-1' as AssignmentId,
       caller: {
         userId: 'leader-1' as UserId,
-        systemRole: 'leader' as const,
+        isChurchAdmin: false,
+        isMinistryLeader: true,
         ministryId,
       },
       overrideReason: 'Approved by lead',

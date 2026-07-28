@@ -316,7 +316,7 @@ export class DrizzleAvailabilityCheckRepository
       .where(
         and(
           inArray(ministryVolunteer.ministryId, input.ministryIds),
-          eq(ministryVolunteer.systemRole, 'leader'),
+          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
           eq(ministryVolunteer.status, 'active'),
           withChurchIsolation(ministryVolunteer, input.churchId),
         ),

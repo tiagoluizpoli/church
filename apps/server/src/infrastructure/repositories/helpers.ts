@@ -1,4 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { member } from '@church/db';
+import { and, eq } from 'drizzle-orm';
+import type { ChurchId, UserId } from '../../domain/branded-ids';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import { DrizzleTransactionContext } from './drizzle-transaction-context';
 import type { AnyDrizzleDb } from './types';
@@ -34,4 +36,31 @@ export function getClient(
     return tx.tx as AnyDrizzleDb;
   }
   return db;
+}
+
+/**
+ * Church-wide administration has no domain table of its own — it's read from
+ * Better Auth's `member.role`, for the organization whose id equals the
+ * Church id (a Church row shares its primary key with its `organization`
+ * row). The one place this check lives; every repository needing it calls
+ * this instead of re-querying `member` directly.
+ */
+export async function isChurchAdminMember(
+  db: AnyDrizzleDb,
+  churchId: ChurchId,
+  userId: UserId,
+  tx?: TransactionContext,
+): Promise<boolean> {
+  const [row] = await getClient(db, tx)
+    .select({ id: member.id })
+    .from(member)
+    .where(
+      and(
+        eq(member.organizationId, churchId),
+        eq(member.userId, userId),
+        eq(member.role, 'admin'),
+      ),
+    )
+    .limit(1);
+  return row != null;
 }

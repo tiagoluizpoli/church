@@ -1,5 +1,4 @@
 import {
-  churchAdmin,
   ministryParticipation,
   ministryVolunteer,
   shift,
@@ -14,7 +13,7 @@ import type {
   ResolveShiftMinistryInput,
   SchedulingScopeRepository,
 } from '../../domain/contracts/infrastructure/scheduling-scope.repository';
-import { isValidUuid } from '../repositories/helpers';
+import { isChurchAdminMember, isValidUuid } from '../repositories/helpers';
 import type { AnyDrizzleDb } from '../repositories/types';
 
 export class DrizzleSchedulingRbacResolver
@@ -62,17 +61,7 @@ export class DrizzleSchedulingRbacResolver
   }
 
   async isChurchAdmin(input: IsChurchAdminInput): Promise<boolean> {
-    const [admin] = await this.db
-      .select({ id: churchAdmin.id })
-      .from(churchAdmin)
-      .where(
-        and(
-          eq(churchAdmin.churchId, input.churchId),
-          eq(churchAdmin.userId, input.userId),
-        ),
-      )
-      .limit(1);
-    return admin != null;
+    return isChurchAdminMember(this.db, input.churchId, input.userId);
   }
 
   async isMinistryLeader(input: IsMinistryLeaderInput): Promise<boolean> {
@@ -89,7 +78,7 @@ export class DrizzleSchedulingRbacResolver
           eq(volunteer.churchId, input.churchId),
           eq(ministryVolunteer.churchId, input.churchId),
           eq(ministryVolunteer.ministryId, input.ministryId),
-          eq(ministryVolunteer.systemRole, 'leader'),
+          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
           eq(ministryVolunteer.status, 'active'),
         ),
       )

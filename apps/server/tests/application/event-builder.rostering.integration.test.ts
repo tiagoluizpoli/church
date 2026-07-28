@@ -117,7 +117,6 @@ async function seedRoleRequirement(
     churchId: input.churchId,
     ministryId: input.ministryId,
     name: 'Greeter',
-    isGlobal: false,
   });
   await schedulingTestDb.insert(slotRequirementTable).values({
     id: randomUUID(),
@@ -202,7 +201,7 @@ async function seedUnqualifiedMember(
     churchId: input.churchId,
     ministryId: input.ministryId,
     volunteerId,
-    systemRole: 'volunteer',
+    ministryAccessLevel: 'volunteer',
     status: 'active',
   });
 
@@ -657,7 +656,6 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       name: 'Usher',
-      isGlobal: false,
     });
     const assignmentId = randomUUID();
     await schedulingTestDb.insert(assignmentTable).values({

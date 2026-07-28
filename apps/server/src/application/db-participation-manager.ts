@@ -250,7 +250,7 @@ export class DbParticipationManager implements IParticipationManager {
         cycleId: input.cycleId,
         tx,
       });
-      const roles = await this.roleRepository.listGlobalAndMinistry(
+      const roles = await this.roleRepository.listByMinistry(
         input.churchId,
         input.ministryId,
         tx,

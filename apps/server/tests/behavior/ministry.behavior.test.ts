@@ -93,7 +93,7 @@ beforeAll(async () => {
       churchId: CHURCH,
       volunteerId: LEADER_VOL,
       ministryId: MINISTRY_A,
-      systemRole: 'leader',
+      ministryAccessLevel: 'leader',
       status: 'active',
     },
     {
@@ -101,7 +101,7 @@ beforeAll(async () => {
       churchId: CHURCH,
       volunteerId: NON_LEADER_VOL,
       ministryId: MINISTRY_B,
-      systemRole: 'volunteer',
+      ministryAccessLevel: 'volunteer',
       status: 'active',
     },
   ]);

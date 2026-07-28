@@ -150,7 +150,6 @@ async function seedRole(input: {
       churchId: input.churchId,
       ministryId: input.ministryId,
       name: input.name,
-      isGlobal: false,
     })
     .returning();
 
@@ -188,7 +187,7 @@ async function seedVolunteerMembership(input: {
   ministryId: string;
   name: string;
   email: string;
-  systemRole?: 'leader' | 'sub_leader' | 'volunteer';
+  ministryAccessLevel?: 'leader' | 'volunteer';
   teamId?: string;
 }) {
   const userId = randomUUID();
@@ -218,7 +217,7 @@ async function seedVolunteerMembership(input: {
       churchId: input.churchId,
       ministryId: input.ministryId,
       volunteerId,
-      systemRole: input.systemRole ?? 'volunteer',
+      ministryAccessLevel: input.ministryAccessLevel ?? 'volunteer',
       status: 'active',
     })
     .returning();

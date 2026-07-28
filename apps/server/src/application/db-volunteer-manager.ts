@@ -606,7 +606,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     const membershipTeams = new Map(
       memberships.map((membership) => [
         membership.volunteerId as string,
-        new Set(membership.teamIds),
+        new Set(membership.teamMemberships.map((team) => team.teamId)),
       ]),
     );
     /**

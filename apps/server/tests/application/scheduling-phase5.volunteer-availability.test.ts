@@ -93,7 +93,7 @@ interface SeedVolunteerWithMembershipInput {
   userId: string;
   volunteerId: string;
   email: string;
-  systemRole?: 'volunteer' | 'leader';
+  ministryAccessLevel?: 'volunteer' | 'leader';
 }
 
 async function seedVolunteerWithMembership(
@@ -125,7 +125,7 @@ async function seedVolunteerWithMembership(
       churchId: input.churchId,
       ministryId: input.ministryId,
       volunteerId: input.volunteerId,
-      systemRole: input.systemRole ?? 'volunteer',
+      ministryAccessLevel: input.ministryAccessLevel ?? 'volunteer',
       status: 'active',
     })
     .returning();
@@ -307,7 +307,7 @@ async function seedSecondMinistryBranch({
     userId: 'phase5-leader-user',
     volunteerId: leaderVolunteerId,
     email: 'phase5-leader@test.com',
-    systemRole: 'leader',
+    ministryAccessLevel: 'leader',
   });
 
   const [secondParticipation] = await schedulingTestDb
@@ -567,7 +567,6 @@ async function seedRoleFor(input: { churchId: string; ministryId: string }) {
       churchId: input.churchId,
       ministryId: input.ministryId,
       name: 'Dashboard role',
-      isGlobal: false,
     })
     .returning();
   if (!row) throw new Error('Dashboard role seed failed');

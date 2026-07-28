@@ -58,33 +58,6 @@ class MockRoleRepository implements RoleRepository {
     );
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }
-
-  async listGlobalAndMinistry(
-    churchId: ChurchId,
-    ministryId: MinistryId,
-  ): Promise<Role[]> {
-    return Array.from(this.roles.values())
-      .filter(
-        (role) =>
-          role.churchId === churchId &&
-          (role.isGlobal || role.ministryId === ministryId),
-      )
-      .sort((left, right) => left.name.localeCompare(right.name));
-  }
-
-  async listGlobalAndMinistryRoleIds(
-    churchId: ChurchId,
-    ministryIds: MinistryId[],
-  ): Promise<RoleId[]> {
-    return Array.from(this.roles.values())
-      .filter(
-        (r) =>
-          r.churchId === churchId &&
-          (r.isGlobal ||
-            (r.ministryId != null && ministryIds.includes(r.ministryId))),
-      )
-      .map((r) => r.id);
-  }
 }
 
 runRoleRepositoryContractTests(

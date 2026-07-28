@@ -42,7 +42,10 @@ export type SoftConflictResult = ConflictReport | NoConflict;
 // --- Caller context for override authorization ---
 export type CallerContext = {
   userId: string;
-  systemRole: 'leader' | 'sub_leader' | 'volunteer' | 'admin';
+  /** Church-wide administration, read from the organization membership's `admin` level. */
+  isChurchAdmin: boolean;
+  /** Ministry Access Level `leader` for `ministryId` below. TeamLeader never carried override authority. */
+  isMinistryLeader: boolean;
   ministryId?: string;
 };
 

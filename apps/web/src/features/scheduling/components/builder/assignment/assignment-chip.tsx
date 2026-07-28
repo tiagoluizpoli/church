@@ -1,12 +1,9 @@
 import { Check, Clock, X } from 'lucide-react';
-import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import { cn } from '@/lib/utils';
-import {
-  type AssigneeMembership,
-  formatAssigneeRoleLabel,
-} from '@/utils/format-assignee-role-label';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 export type ConflictStatus = 'double_booked' | 'unavailable';
 export type ConfirmationStatus = 'pending' | 'confirmed' | 'declined';
@@ -79,11 +76,9 @@ export function AssignmentChip({
           <span className="sr-only">{SYNC_STATE_LABELS[syncState]} — </span>
         ) : null}
         {volunteerName}
-        <AssigneeIdentityBadge
-          roleLabel={formatAssigneeRoleLabel({
-            membership: volunteerMembership,
-            contextTeamId,
-          })}
+        <AssigneeRoleBadge
+          membership={volunteerMembership}
+          contextTeamId={contextTeamId}
           fullNameOnExpand={volunteerName}
         />
       </span>

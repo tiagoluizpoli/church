@@ -24,6 +24,12 @@ interface AssignmentButtonProps {
   onSelect: (input: AssignmentButtonSelectInput) => void;
   pickerVolunteers: PickerVolunteer[];
   onFocus: () => void;
+  /**
+   * The team this cell's requirement is scoped to, if any — threaded through
+   * to the chip so its badge only reads "Team Leader" when the assignee
+   * actually leads this specific team (FR-013).
+   */
+  contextTeamId?: string;
 }
 
 export interface AssignmentButtonSelectInput {
@@ -40,6 +46,7 @@ export function AssignmentButton({
   onSelect,
   pickerVolunteers,
   onFocus,
+  contextTeamId,
 }: AssignmentButtonProps) {
   const [open, setOpen] = useState(false);
   // The row only carries a client-invented id while the create is in flight, so
@@ -55,6 +62,7 @@ export function AssignmentButton({
   const chip = (
     <AssignmentChip
       volunteerName={assignment.volunteerName ?? assignment.volunteerId}
+      volunteerMembership={assignment.membership}
       confirmationStatus={
         assignment.status === 'pending' ||
         assignment.status === 'confirmed' ||
@@ -64,6 +72,7 @@ export function AssignmentButton({
       }
       isPublished={isPublished}
       syncState={isPending ? 'pending' : 'saved'}
+      contextTeamId={contextTeamId}
     />
   );
 

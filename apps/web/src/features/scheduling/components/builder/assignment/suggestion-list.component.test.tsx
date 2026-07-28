@@ -4,13 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SuggestedVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
 import { SuggestionList } from './suggestion-list';
 
-const make = (
-  id: string,
-  name: string,
-  status: SuggestedVolunteer['status'],
-  workloadCount = 0,
-  membership?: SuggestedVolunteer['membership'],
-): SuggestedVolunteer => ({ id, name, status, workloadCount, membership });
+function make(overrides: Partial<SuggestedVolunteer>): SuggestedVolunteer {
+  return {
+    id: 'volunteer-1',
+    name: 'Volunteer',
+    status: 'available',
+    workloadCount: 0,
+    ...overrides,
+  };
+}
 
 describe('SuggestionList (T118)', () => {
   it('renders "No suggestions" when empty', () => {
@@ -21,10 +23,10 @@ describe('SuggestionList (T118)', () => {
 
   it('renders up to 5 suggestions', () => {
     const suggestions = [
-      make('1', 'A A', 'available'),
-      make('2', 'B B', 'available'),
-      make('3', 'C C', 'available'),
-      make('4', 'D D', 'available'),
+      make({ id: '1', name: 'A A', status: 'available' }),
+      make({ id: '2', name: 'B B', status: 'available' }),
+      make({ id: '3', name: 'C C', status: 'available' }),
+      make({ id: '4', name: 'D D', status: 'available' }),
     ];
     render(<SuggestionList suggestions={suggestions} onAssign={vi.fn()} />);
     expect(screen.getAllByTestId('suggestion-option')).toHaveLength(4);
@@ -35,7 +37,9 @@ describe('SuggestionList (T118)', () => {
     const onAssign = vi.fn();
     render(
       <SuggestionList
-        suggestions={[make('vol-1', 'Grace Hopper', 'available')]}
+        suggestions={[
+          make({ id: 'vol-1', name: 'Grace Hopper', status: 'available' }),
+        ]}
         onAssign={onAssign}
       />,
     );
@@ -47,7 +51,7 @@ describe('SuggestionList (T118)', () => {
 
   it('shows More candidates only beyond the five directly visible recommendations', () => {
     const fiveSuggestions = Array.from({ length: 5 }, (_, index) =>
-      make(`${index}`, `Volunteer ${index}`, 'available'),
+      make({ id: `${index}`, name: `Volunteer ${index}`, status: 'available' }),
     );
     const { rerender } = render(
       <SuggestionList
@@ -68,7 +72,7 @@ describe('SuggestionList (T118)', () => {
       <SuggestionList
         suggestions={[
           ...fiveSuggestions,
-          make('5', 'Volunteer 5', 'available'),
+          make({ id: '5', name: 'Volunteer 5', status: 'available' }),
         ]}
         highlightTop
         onAssign={vi.fn()}
@@ -87,9 +91,17 @@ describe('SuggestionList (T118)', () => {
     render(
       <SuggestionList
         suggestions={[
-          make('available', 'Available Person', 'available'),
-          make('response', 'Waiting Person', 'needs_response'),
-          make('conflict', 'Conflict Person', 'conflict'),
+          make({
+            id: 'available',
+            name: 'Available Person',
+            status: 'available',
+          }),
+          make({
+            id: 'response',
+            name: 'Waiting Person',
+            status: 'needs_response',
+          }),
+          make({ id: 'conflict', name: 'Conflict Person', status: 'conflict' }),
         ]}
         onAssign={vi.fn()}
       />,
@@ -109,7 +121,7 @@ describe('SuggestionList (T118)', () => {
   it('uses an amber availability treatment for partial suggestions', () => {
     render(
       <SuggestionList
-        suggestions={[make('1', 'Partial P', 'partial')]}
+        suggestions={[make({ id: '1', name: 'Partial P', status: 'partial' })]}
         onAssign={vi.fn()}
       />,
     );
@@ -122,13 +134,20 @@ describe('SuggestionList (T118)', () => {
     render(
       <SuggestionList
         suggestions={[
-          make('1', 'Local Leader', 'available', 0, {
-            ministryAccessLevel: 'leader',
-            leadTeamIds: [],
+          make({
+            id: '1',
+            name: 'Local Leader',
+            status: 'available',
+            membership: { ministryAccessLevel: 'leader', leadTeamIds: [] },
           }),
-          make('2', 'Local Team Leader', 'available', 0, {
-            ministryAccessLevel: 'volunteer',
-            leadTeamIds: ['team-a'],
+          make({
+            id: '2',
+            name: 'Local Team Leader',
+            status: 'available',
+            membership: {
+              ministryAccessLevel: 'volunteer',
+              leadTeamIds: ['team-a'],
+            },
           }),
         ]}
         onAssign={vi.fn()}
@@ -145,9 +164,14 @@ describe('SuggestionList (T118)', () => {
     render(
       <SuggestionList
         suggestions={[
-          make('1', 'Local Team Leader', 'available', 0, {
-            ministryAccessLevel: 'volunteer',
-            leadTeamIds: ['team-a'],
+          make({
+            id: '1',
+            name: 'Local Team Leader',
+            status: 'available',
+            membership: {
+              ministryAccessLevel: 'volunteer',
+              leadTeamIds: ['team-a'],
+            },
           }),
         ]}
         onAssign={vi.fn()}

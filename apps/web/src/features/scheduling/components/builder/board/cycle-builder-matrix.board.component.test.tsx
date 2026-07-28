@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   CycleBuilderAssignment,
   CycleBuilderData,
+  CycleBuilderEligibleVolunteerSummary,
 } from '../../../hooks/use-cycle-builder';
 import { CycleBuilderMatrix } from './cycle-builder-matrix';
 import { pickCalendarDate } from '@/__tests__/setup/date-picker';
@@ -54,6 +55,8 @@ const boardData: CycleBuilderData = {
                   isAvailable: true,
                   hasConflict: false,
                   qualifiedRoleIds: [],
+                  ministryAccessLevel: 'volunteer',
+                  leadTeamIds: [],
                 },
               ],
             },
@@ -88,13 +91,15 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
   // Both are qualified for both roles: this fixture is about *where someone is
   // already serving*, and since B-2 an unqualified volunteer is no longer
   // recommended at all — which would hide the very distinction under test.
-  const eligibleVolunteers = [
+  const eligibleVolunteers: CycleBuilderEligibleVolunteerSummary[] = [
     {
       volunteerId: 'volunteer-1',
       volunteerName: 'Local Volunteer',
       isAvailable: true,
       hasConflict: false,
       qualifiedRoleIds: ['role-support', 'role-coordinator'],
+      ministryAccessLevel: 'volunteer',
+      leadTeamIds: [],
     },
     {
       volunteerId: 'volunteer-2',
@@ -102,6 +107,8 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
       isAvailable: true,
       hasConflict: false,
       qualifiedRoleIds: ['role-support', 'role-coordinator'],
+      ministryAccessLevel: 'volunteer',
+      leadTeamIds: [],
     },
   ];
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
-import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -9,10 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import {
-  type AssigneeMembership,
-  formatAssigneeRoleLabel,
-} from '@/utils/format-assignee-role-label';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 interface SubstitutionPickerProps {
@@ -70,11 +67,9 @@ export function SubstitutionPicker({
         >
           <span className="flex items-center gap-1">
             {formatVolunteerName(declinedVolunteerName)}
-            <AssigneeIdentityBadge
-              roleLabel={formatAssigneeRoleLabel({
-                membership: declinedVolunteerMembership,
-                contextTeamId,
-              })}
+            <AssigneeRoleBadge
+              membership={declinedVolunteerMembership}
+              contextTeamId={contextTeamId}
               fullNameOnExpand={declinedVolunteerName}
             />
           </span>
@@ -106,11 +101,9 @@ export function SubstitutionPicker({
               >
                 <span className="flex items-center gap-1">
                   {formatVolunteerName(v.name)}
-                  <AssigneeIdentityBadge
-                    roleLabel={formatAssigneeRoleLabel({
-                      membership: v.membership,
-                      contextTeamId,
-                    })}
+                  <AssigneeRoleBadge
+                    membership={v.membership}
+                    contextTeamId={contextTeamId}
                     fullNameOnExpand={v.name}
                   />
                 </span>

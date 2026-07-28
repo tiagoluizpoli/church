@@ -14,6 +14,7 @@ import type {
   ReassignParticipationAssignmentBody,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 interface UseCycleBuilderParams {
   cycleId: string;
@@ -59,10 +60,13 @@ export interface CycleBuilderEligibleVolunteerSummary {
   hasConflict: boolean;
   lastServedAt?: string;
   qualifiedRoleIds: string[];
+  ministryAccessLevel: AssigneeMembership['ministryAccessLevel'];
+  leadTeamIds: string[];
 }
 
 interface CycleBuilderAssignmentDetails {
   volunteerName?: string;
+  membership?: AssigneeMembership;
 }
 
 interface RequiredCountShift {
@@ -210,11 +214,16 @@ function mapCycleBuilderData(
   data: Awaited<ReturnType<typeof adminApi.getCycleBuilderData>>,
 ): CycleBuilderData {
   const volunteerNames = new Map<string, string>();
+  const volunteerMemberships = new Map<string, AssigneeMembership>();
   for (const item of data.events) {
     for (const slotItem of item.slots) {
       for (const shiftItem of slotItem.shifts) {
         for (const volunteer of shiftItem.eligibleVolunteers) {
           volunteerNames.set(volunteer.volunteerId, volunteer.volunteerName);
+          volunteerMemberships.set(volunteer.volunteerId, {
+            ministryAccessLevel: volunteer.ministryAccessLevel,
+            leadTeamIds: volunteer.leadTeamIds,
+          });
         }
       }
     }
@@ -226,6 +235,7 @@ function mapCycleBuilderData(
         shiftItem.assignments.map((assignment) => ({
           ...assignment,
           volunteerName: volunteerNames.get(assignment.volunteerId),
+          membership: volunteerMemberships.get(assignment.volunteerId),
         })),
       ),
     ),
@@ -255,6 +265,7 @@ function mapCycleBuilderData(
           assignments: shiftItem.assignments.map((assignment) => ({
             ...assignment,
             volunteerName: volunteerNames.get(assignment.volunteerId),
+            membership: volunteerMemberships.get(assignment.volunteerId),
           })),
           eligibleVolunteerCount: shiftItem.eligibleVolunteers.length,
           eligibleVolunteers: shiftItem.eligibleVolunteers,

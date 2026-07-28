@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { AssignmentOverrideKind } from '../../../utils/builder/cycle-builder-fit.utils';
-import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,10 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  type AssigneeMembership,
-  formatAssigneeRoleLabel,
-} from '@/utils/format-assignee-role-label';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 interface OverrideDialogProps {
@@ -69,11 +66,9 @@ export function OverrideDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-1">
             {isNotQualified ? 'Assign anyway?' : 'Override conflict'}
-            <AssigneeIdentityBadge
-              roleLabel={formatAssigneeRoleLabel({
-                membership: volunteerMembership,
-                contextTeamId,
-              })}
+            <AssigneeRoleBadge
+              membership={volunteerMembership}
+              contextTeamId={contextTeamId}
               fullNameOnExpand={volunteerName}
             />
           </DialogTitle>

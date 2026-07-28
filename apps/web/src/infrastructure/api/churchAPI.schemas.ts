@@ -1492,6 +1492,14 @@ export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem =
   assignedBy?: string;
 };
 
+export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItemMinistryAccessLevel = typeof GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItemMinistryAccessLevel[keyof typeof GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItemMinistryAccessLevel];
+
+
+export const GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
 export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItem = {
   volunteerId: string;
   volunteerName: string;
@@ -1499,6 +1507,8 @@ export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteer
   hasConflict: boolean;
   lastServedAt?: string;
   qualifiedRoleIds: string[];
+  ministryAccessLevel: GetCycleBuilderData200EventsItemSlotsItemShiftsItemEligibleVolunteersItemMinistryAccessLevel;
+  leadTeamIds: string[];
 };
 
 export type GetCycleBuilderData200EventsItemSlotsItemShiftsItem = {
@@ -1605,6 +1615,14 @@ export type PublishCycle403 = {
   message: string;
 };
 
+export type ListEligibleVolunteers200VolunteersItemMinistryAccessLevel = typeof ListEligibleVolunteers200VolunteersItemMinistryAccessLevel[keyof typeof ListEligibleVolunteers200VolunteersItemMinistryAccessLevel];
+
+
+export const ListEligibleVolunteers200VolunteersItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
 export type ListEligibleVolunteers200VolunteersItem = {
   volunteerId: string;
   volunteerName: string;
@@ -1612,6 +1630,8 @@ export type ListEligibleVolunteers200VolunteersItem = {
   hasConflict: boolean;
   lastServedAt?: string;
   qualifiedRoleIds: string[];
+  ministryAccessLevel: ListEligibleVolunteers200VolunteersItemMinistryAccessLevel;
+  leadTeamIds: string[];
 };
 
 export type ListEligibleVolunteers200 = {

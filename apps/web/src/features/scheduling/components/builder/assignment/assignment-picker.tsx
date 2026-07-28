@@ -72,6 +72,12 @@ interface AssignmentPickerProps {
   onSelect: (volunteerId: string) => void;
   onSelectSuggestion?: (suggestion: SuggestedVolunteer) => void;
   onRemove?: () => void;
+  /**
+   * The team the shift×role this picker is filling belongs to, if any.
+   * Forwarded to each suggestion group so a candidate only badges as "Team
+   * Leader" when they lead this specific team (FR-013).
+   */
+  contextTeamId?: string;
 }
 
 export function AssignmentPicker({
@@ -86,6 +92,7 @@ export function AssignmentPicker({
   onSelect,
   onSelectSuggestion,
   onRemove,
+  contextTeamId,
 }: AssignmentPickerProps) {
   const isTouch = useFormControlSize() === 'touch';
   const [search, setSearch] = useState('');
@@ -206,6 +213,7 @@ export function AssignmentPicker({
                   onSelectSuggestion(suggestion);
                   onOpenChange(false);
                 }}
+                contextTeamId={contextTeamId}
               />
             ) : null}
             {displayedSuggestions.needsResponse.length > 0 ? (
@@ -217,6 +225,7 @@ export function AssignmentPicker({
                   onSelectSuggestion(suggestion);
                   onOpenChange(false);
                 }}
+                contextTeamId={contextTeamId}
               />
             ) : null}
             {displayedSuggestions.conflicts.length > 0 ? (
@@ -228,6 +237,7 @@ export function AssignmentPicker({
                   onSelectSuggestion(suggestion);
                   onOpenChange(false);
                 }}
+                contextTeamId={contextTeamId}
               />
             ) : null}
           </div>

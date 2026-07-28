@@ -141,6 +141,10 @@ export function candidates({
     .map(({ volunteer, fit }) => ({
       id: volunteer.volunteerId,
       name: volunteer.volunteerName,
+      membership: {
+        ministryAccessLevel: volunteer.ministryAccessLevel,
+        leadTeamIds: volunteer.leadTeamIds,
+      },
       availabilityStatus: volunteer.hasConflict
         ? 'unavailable'
         : volunteer.isAvailable
@@ -186,6 +190,10 @@ export function recommendations({
   ): SuggestedVolunteer => ({
     id: volunteer.volunteerId,
     name: volunteer.volunteerName,
+    membership: {
+      ministryAccessLevel: volunteer.ministryAccessLevel,
+      leadTeamIds: volunteer.leadTeamIds,
+    },
     status,
     workloadCount: index.workload.get(volunteer.volunteerId) ?? 0,
     conflictType: volunteer.hasConflict ? 'double_booked' : 'unavailable',

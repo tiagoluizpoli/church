@@ -4,18 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
 import { SubstitutionPicker } from './substitution-picker';
 
-const pv = (
-  id: string,
-  name: string,
-  availabilityStatus: PickerVolunteer['availabilityStatus'],
-  membership?: PickerVolunteer['membership'],
-): PickerVolunteer => ({
-  id,
-  name,
-  availabilityStatus,
-  membership,
-  alreadyAssignedCount: 0,
-});
+function pv(overrides: Partial<PickerVolunteer>): PickerVolunteer {
+  return {
+    id: 'volunteer-1',
+    name: 'Volunteer',
+    availabilityStatus: 'available',
+    alreadyAssignedCount: 0,
+    ...overrides,
+  };
+}
 
 const baseProps = {
   open: true,
@@ -36,10 +33,22 @@ describe('SubstitutionPicker (T109)', () => {
       <SubstitutionPicker
         {...baseProps}
         volunteers={[
-          pv('1', 'Grace Hopper', 'available'),
-          pv('2', 'Ada Lovelace', 'unavailable'),
-          pv('3', 'Alan Turing', 'partial'),
-          pv('declined-1', 'John Doe', 'available'),
+          pv({
+            id: '1',
+            name: 'Grace Hopper',
+            availabilityStatus: 'available',
+          }),
+          pv({
+            id: '2',
+            name: 'Ada Lovelace',
+            availabilityStatus: 'unavailable',
+          }),
+          pv({ id: '3', name: 'Alan Turing', availabilityStatus: 'partial' }),
+          pv({
+            id: 'declined-1',
+            name: 'John Doe',
+            availabilityStatus: 'available',
+          }),
         ]}
       />,
     );
@@ -56,8 +65,16 @@ describe('SubstitutionPicker (T109)', () => {
       <SubstitutionPicker
         {...baseProps}
         volunteers={[
-          pv('1', 'Grace Hopper', 'available'),
-          pv('2', 'Margaret Hamilton', 'available'),
+          pv({
+            id: '1',
+            name: 'Grace Hopper',
+            availabilityStatus: 'available',
+          }),
+          pv({
+            id: '2',
+            name: 'Margaret Hamilton',
+            availabilityStatus: 'available',
+          }),
         ]}
       />,
     );
@@ -73,7 +90,13 @@ describe('SubstitutionPicker (T109)', () => {
       <SubstitutionPicker
         {...baseProps}
         onSelect={onSelect}
-        volunteers={[pv('vol-9', 'Grace Hopper', 'available')]}
+        volunteers={[
+          pv({
+            id: 'vol-9',
+            name: 'Grace Hopper',
+            availabilityStatus: 'available',
+          }),
+        ]}
       />,
     );
     await user.click(screen.getByRole('button', { name: /grace h/i }));
@@ -84,7 +107,13 @@ describe('SubstitutionPicker (T109)', () => {
     render(
       <SubstitutionPicker
         {...baseProps}
-        volunteers={[pv('2', 'Ada Lovelace', 'unavailable')]}
+        volunteers={[
+          pv({
+            id: '2',
+            name: 'Ada Lovelace',
+            availabilityStatus: 'unavailable',
+          }),
+        ]}
       />,
     );
     expect(screen.getByText(/no available volunteers/i)).toBeVisible();
@@ -100,9 +129,14 @@ describe('SubstitutionPicker (T109)', () => {
           leadTeamIds: [],
         }}
         volunteers={[
-          pv('1', 'Local Team Leader', 'available', {
-            ministryAccessLevel: 'volunteer',
-            leadTeamIds: ['team-a'],
+          pv({
+            id: '1',
+            name: 'Local Team Leader',
+            availabilityStatus: 'available',
+            membership: {
+              ministryAccessLevel: 'volunteer',
+              leadTeamIds: ['team-a'],
+            },
           }),
         ]}
         contextTeamId="team-a"
@@ -119,9 +153,14 @@ describe('SubstitutionPicker (T109)', () => {
       <SubstitutionPicker
         {...baseProps}
         volunteers={[
-          pv('1', 'Local Team Leader', 'available', {
-            ministryAccessLevel: 'volunteer',
-            leadTeamIds: ['team-a'],
+          pv({
+            id: '1',
+            name: 'Local Team Leader',
+            availabilityStatus: 'available',
+            membership: {
+              ministryAccessLevel: 'volunteer',
+              leadTeamIds: ['team-a'],
+            },
           }),
         ]}
         contextTeamId="team-b"

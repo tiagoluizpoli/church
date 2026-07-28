@@ -1,8 +1,7 @@
 import type { SuggestedVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
-import { AssigneeIdentityBadge } from './assignee-identity-badge';
+import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { formatAssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 
 type SuggestedVolunteerStatus = SuggestedVolunteer['status'];
 
@@ -108,11 +107,9 @@ export function SuggestionList({
                   <span className="truncate font-medium">
                     {suggestion.name}
                   </span>
-                  <AssigneeIdentityBadge
-                    roleLabel={formatAssigneeRoleLabel({
-                      membership: suggestion.membership,
-                      contextTeamId,
-                    })}
+                  <AssigneeRoleBadge
+                    membership={suggestion.membership}
+                    contextTeamId={contextTeamId}
                     fullNameOnExpand={suggestion.name}
                   />
                 </span>

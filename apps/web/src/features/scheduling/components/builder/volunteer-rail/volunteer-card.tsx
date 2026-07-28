@@ -6,7 +6,7 @@ import type {
   VolunteerPoolItem,
 } from '../../../hooks/use-volunteer-pool';
 import type { AssignableFitTier } from '../../../utils/builder/cycle-builder-fit.utils';
-import { AssigneeIdentityBadge } from '../assignment/assignee-identity-badge';
+import { AssigneeRoleBadge } from '../assignment/assignee-role-badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -361,8 +361,9 @@ export function VolunteerCard({
               </TooltipContent>
             </Tooltip>
           ) : null}
-          <AssigneeIdentityBadge
-            roleLabel={roleLabel}
+          <AssigneeRoleBadge
+            membership={volunteer.membership}
+            contextTeamId={contextTeamId}
             fullNameOnExpand={volunteer.volunteerName}
           />
         </div>

@@ -27,6 +27,8 @@ const shift: CycleBuilderShiftSummary = {
       isAvailable: true,
       hasConflict: false,
       qualifiedRoleIds: [],
+      ministryAccessLevel: 'volunteer',
+      leadTeamIds: [],
     },
     {
       volunteerId: 'volunteer-2',
@@ -34,6 +36,8 @@ const shift: CycleBuilderShiftSummary = {
       isAvailable: true,
       hasConflict: false,
       qualifiedRoleIds: [],
+      ministryAccessLevel: 'volunteer',
+      leadTeamIds: [],
     },
   ],
 };
@@ -361,6 +365,59 @@ describe('CycleBuilderCell', () => {
     const unassign = screen.getByRole('button', { name: 'Unassign' });
     expect(unassign).toHaveClass('border-destructive/40');
     expect(unassign).not.toHaveClass('w-full');
+  });
+
+  describe('Team Leader badge (issue #49 end-to-end)', () => {
+    it('badges an assignee as Team Leader only when contextTeamId names a team they lead', () => {
+      const teamLeaderAssignment: CycleBuilderAssignment = {
+        ...assignments[0],
+        membership: {
+          ministryAccessLevel: 'volunteer',
+          leadTeamIds: ['team-1'],
+        },
+      };
+
+      renderCell({
+        assignments: [teamLeaderAssignment],
+        contextTeamId: 'team-1',
+      });
+
+      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
+        'Team Leader',
+      );
+    });
+
+    it('shows no badge when the cell has no context team the assignee leads', () => {
+      const teamLeaderAssignment: CycleBuilderAssignment = {
+        ...assignments[0],
+        membership: {
+          ministryAccessLevel: 'volunteer',
+          leadTeamIds: ['team-1'],
+        },
+      };
+
+      renderCell({
+        assignments: [teamLeaderAssignment],
+        contextTeamId: 'team-2',
+      });
+
+      expect(
+        screen.queryByTestId('assignee-role-badge'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('badges a ministry-wide Leader regardless of contextTeamId', () => {
+      const leaderAssignment: CycleBuilderAssignment = {
+        ...assignments[0],
+        membership: { ministryAccessLevel: 'leader', leadTeamIds: [] },
+      };
+
+      renderCell({ assignments: [leaderAssignment] });
+
+      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
+        'Leader',
+      );
+    });
   });
 
   describe('write state (B-1)', () => {

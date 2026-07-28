@@ -77,7 +77,7 @@ describe('AppShell role-scoped navigation', () => {
 
   it.each([
     'leader',
-    'team_leader',
+    'TeamLeader',
     'admin',
   ])('additionally shows Scheduling for a %s caller', () => {
     mockedUseCallerRoles.mockReturnValue({

@@ -14,6 +14,7 @@ import {
 } from './use-cycle-builder';
 import { isOptimisticAssignmentId } from './use-cycle-builder.optimistic';
 import { randomId } from '@/shared/utils/id';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 export interface CreateAssignmentInput {
   shiftId: string;
@@ -58,6 +59,7 @@ export type CollisionAction = 'move' | 'both' | 'swap';
 interface OverrideState {
   input: CycleBuilderCellSelectInput;
   volunteerName: string;
+  volunteerMembership?: AssigneeMembership;
   collision?: CollisionState;
   collisionAction?: CollisionAction;
 }
@@ -160,6 +162,35 @@ export function useCycleBuilderActions({
       }
     }
     return input.volunteerId;
+  };
+
+  // Mirrors `volunteerNameFor`'s lookup order — the assignment already on the
+  // board first, then the shift's own eligible-volunteer rows — so the
+  // override dialog's "Team Leader"/"Leader" badge reflects the same person
+  // `volunteerNameFor` just named (FR-013).
+  const volunteerMembershipFor = (
+    input: CycleBuilderCellSelectInput,
+  ): AssigneeMembership | undefined => {
+    const assigned = data.assignments.find(
+      (assignment) => assignment.volunteerId === input.volunteerId,
+    )?.membership;
+    if (assigned) return assigned;
+    for (const event of data.events) {
+      for (const slot of event.slots) {
+        for (const shift of slot.shifts) {
+          const eligible = shift.eligibleVolunteers.find(
+            (volunteer) => volunteer.volunteerId === input.volunteerId,
+          );
+          if (eligible) {
+            return {
+              ministryAccessLevel: eligible.ministryAccessLevel,
+              leadTeamIds: eligible.leadTeamIds,
+            };
+          }
+        }
+      }
+    }
+    return undefined;
   };
 
   const applyAssignment = async ({
@@ -267,6 +298,7 @@ export function useCycleBuilderActions({
       setOverride({
         input: overrideInput,
         volunteerName: volunteerNameFor(overrideInput),
+        volunteerMembership: volunteerMembershipFor(overrideInput),
         collision: activeCollision,
         collisionAction: action,
       });
@@ -372,7 +404,11 @@ export function useCycleBuilderActions({
       return;
     }
     if (input.conflictType) {
-      setOverride({ input, volunteerName: volunteerNameFor(input) });
+      setOverride({
+        input,
+        volunteerName: volunteerNameFor(input),
+        volunteerMembership: volunteerMembershipFor(input),
+      });
       return;
     }
     void applyAssignment({ input });

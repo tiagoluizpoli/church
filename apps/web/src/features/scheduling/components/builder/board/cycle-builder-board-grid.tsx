@@ -311,6 +311,7 @@ export function CycleBuilderBoardGrid({
                                             onDismissFailedWrite={
                                               onDismissFailedWrite
                                             }
+                                            contextTeamId={requirement.teamId}
                                           />
                                         );
                                       })}

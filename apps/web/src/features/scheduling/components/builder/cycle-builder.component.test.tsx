@@ -54,6 +54,8 @@ const builderData: CycleBuilderData = {
                   isAvailable: true,
                   hasConflict: false,
                   qualifiedRoleIds: ['role-1'],
+                  ministryAccessLevel: 'volunteer',
+                  leadTeamIds: [],
                 },
               ],
             },

@@ -110,6 +110,8 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     isAvailable: true,
                     hasConflict: false,
                     qualifiedRoleIds: ['role-1'],
+                    ministryAccessLevel: 'volunteer',
+                    leadTeamIds: [],
                   },
                   {
                     volunteerId: 'bruno',
@@ -117,6 +119,8 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     isAvailable: true,
                     hasConflict: false,
                     qualifiedRoleIds: ['role-1'],
+                    ministryAccessLevel: 'volunteer',
+                    leadTeamIds: [],
                   },
                 ],
               },

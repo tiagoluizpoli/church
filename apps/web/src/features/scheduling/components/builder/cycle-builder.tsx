@@ -4,6 +4,7 @@ import {
   type CycleBuilderMutations,
   useCycleBuilderActions,
 } from '../../hooks/use-cycle-builder-actions';
+import { findShiftById } from '../../utils/builder/cycle-builder-shift-lookup.utils';
 import {
   summarizeCycleCounts,
   summarizeCycleStaffing,
@@ -50,6 +51,27 @@ function roleLabelFor({ input, data }: RoleLabelForInput): string | undefined {
   return (
     input.roleLabel ?? data.roles.find((role) => role.id === input.roleId)?.name
   );
+}
+
+interface ContextTeamIdForInput {
+  input: CycleBuilderCellSelectInput;
+  data: CycleBuilderData;
+}
+
+/**
+ * The team the shift×role behind this override belongs to, if any — the same
+ * `shift.requirements` lookup the board cell derives per-cell, resolved here
+ * from the override's own shift/role pair so its "Team Leader" badge agrees
+ * with the cell it came from (FR-013).
+ */
+function contextTeamIdFor({
+  input,
+  data,
+}: ContextTeamIdForInput): string | undefined {
+  const shift = findShiftById({ data, shiftId: input.shiftId });
+  return shift?.requirements.find(
+    (requirement) => requirement.roleId === input.roleId,
+  )?.teamId;
 }
 
 export function CycleBuilder({
@@ -285,6 +307,7 @@ export function CycleBuilder({
         onOpenChange={(open) => !open && actions.setOverride(null)}
         conflictType={actions.override?.input.conflictType ?? 'unavailable'}
         volunteerName={actions.override?.volunteerName ?? ''}
+        volunteerMembership={actions.override?.volunteerMembership}
         slotLabel={actions.override?.input.slotLabel ?? 'this shift'}
         roleLabel={
           actions.override
@@ -293,6 +316,11 @@ export function CycleBuilder({
         }
         isPending={actions.isSaving}
         onConfirm={actions.confirmOverride}
+        contextTeamId={
+          actions.override
+            ? contextTeamIdFor({ input: actions.override.input, data })
+            : undefined
+        }
       />
     </WorkspacePage>
   );

@@ -3477,12 +3477,23 @@ paths:
                                             type: array
                                             items:
                                               type: string
+                                          ministryAccessLevel:
+                                            type: string
+                                            enum:
+                                              - leader
+                                              - volunteer
+                                          leadTeamIds:
+                                            type: array
+                                            items:
+                                              type: string
                                         required:
                                           - volunteerId
                                           - volunteerName
                                           - isAvailable
                                           - hasConflict
                                           - qualifiedRoleIds
+                                          - ministryAccessLevel
+                                          - leadTeamIds
                                         additionalProperties: false
                                   required:
                                     - shift
@@ -3724,12 +3735,23 @@ paths:
                           type: array
                           items:
                             type: string
+                        ministryAccessLevel:
+                          type: string
+                          enum:
+                            - leader
+                            - volunteer
+                        leadTeamIds:
+                          type: array
+                          items:
+                            type: string
                       required:
                         - volunteerId
                         - volunteerName
                         - isAvailable
                         - hasConflict
                         - qualifiedRoleIds
+                        - ministryAccessLevel
+                        - leadTeamIds
                       additionalProperties: false
                 required:
                   - volunteers

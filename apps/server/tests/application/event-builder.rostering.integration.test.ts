@@ -330,6 +330,12 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     // payload must also say which role earned them the place.
     expect(eligible).toBeDefined();
     expect(eligible?.qualifiedRoleIds).toEqual([roleId]);
+    // seedSchedulingPhase3Base seeds the admin volunteer's ministry
+    // membership with ministryAccessLevel 'leader' and no team memberships —
+    // the eligible-volunteer view must carry that through so the builder can
+    // tell ministry-wide "Leader" apart from a team-scoped TeamLeader.
+    expect(eligible?.ministryAccessLevel).toBe('leader');
+    expect(eligible?.leadTeamIds).toEqual([]);
   });
 
   it('returns the same builder shape for a published participation shift', async () => {

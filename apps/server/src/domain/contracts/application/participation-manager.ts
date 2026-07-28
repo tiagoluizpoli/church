@@ -17,6 +17,7 @@ import type {
   MinistryServingProfile,
   ServingProfileEntryInput,
 } from '../../entities/ministry-serving-profile';
+import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
 import type { Shift } from '../../entities/shift';
 import type { SlotRequirement } from '../../entities/slot-requirement';
 import type { TimeSlot } from '../../entities/time-slot';
@@ -161,6 +162,10 @@ export interface EligibleVolunteerView {
    * read differently from one slot to the next.
    */
   qualifiedRoleIds: string[];
+  /** This volunteer's ministry-wide Ministry Access Level. */
+  ministryAccessLevel: MinistryAccessLevel;
+  /** Teams within the ministry this volunteer leads (Team Membership `leader` access level). */
+  leadTeamIds: string[];
 }
 
 export interface ListEligibleVolunteersInput {

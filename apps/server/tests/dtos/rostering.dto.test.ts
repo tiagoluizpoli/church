@@ -21,6 +21,8 @@ describe('rosteringMapper', () => {
         hasConflict: false,
         lastServedAt,
         qualifiedRoleIds: ['role-1', 'role-2'],
+        ministryAccessLevel: 'leader',
+        leadTeamIds: ['team-1'],
       });
 
       expect(response).toEqual({
@@ -30,6 +32,8 @@ describe('rosteringMapper', () => {
         hasConflict: false,
         lastServedAt: lastServedAt.toISOString(),
         qualifiedRoleIds: ['role-1', 'role-2'],
+        ministryAccessLevel: 'leader',
+        leadTeamIds: ['team-1'],
       });
     });
 
@@ -40,10 +44,14 @@ describe('rosteringMapper', () => {
         isAvailable: false,
         hasConflict: true,
         qualifiedRoleIds: [],
+        ministryAccessLevel: 'volunteer',
+        leadTeamIds: [],
       });
 
       expect(response.lastServedAt).toBeUndefined();
       expect(response.qualifiedRoleIds).toEqual([]);
+      expect(response.ministryAccessLevel).toBe('volunteer');
+      expect(response.leadTeamIds).toEqual([]);
     });
   });
 
@@ -56,6 +64,8 @@ describe('rosteringMapper', () => {
           isAvailable: true,
           hasConflict: false,
           qualifiedRoleIds: ['role-1'],
+          ministryAccessLevel: 'leader',
+          leadTeamIds: ['team-1'],
         },
         {
           volunteerId: VolunteerId.from('v2'),
@@ -64,11 +74,15 @@ describe('rosteringMapper', () => {
           hasConflict: true,
           qualifiedRoleIds: [],
           lastServedAt: new Date('2026-01-05T00:00:00.000Z'),
+          ministryAccessLevel: 'volunteer',
+          leadTeamIds: [],
         },
       ]);
 
       expect(response.volunteers).toHaveLength(2);
       expect(response.volunteers[0]?.volunteerId).toBe('v1');
+      expect(response.volunteers[0]?.ministryAccessLevel).toBe('leader');
+      expect(response.volunteers[0]?.leadTeamIds).toEqual(['team-1']);
       expect(response.volunteers[1]?.lastServedAt).toBeDefined();
     });
 

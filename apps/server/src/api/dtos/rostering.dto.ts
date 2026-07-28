@@ -3,6 +3,7 @@ import type {
   EligibleVolunteerView,
   ParticipationCompletionView,
 } from '../../domain/contracts/application/participation-manager';
+import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-volunteer';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 
 interface AssignmentWarningResponseInput {
@@ -34,6 +35,8 @@ export const eligibleVolunteerResponseSchema = z.object({
   hasConflict: z.boolean(),
   lastServedAt: z.string().optional(),
   qualifiedRoleIds: z.array(z.string()),
+  ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
+  leadTeamIds: z.array(z.string()),
 });
 
 export const eligibleVolunteerListResponseSchema = z.object({
@@ -81,6 +84,8 @@ export const rosteringMapper = {
       hasConflict: volunteer.hasConflict,
       lastServedAt: volunteer.lastServedAt?.toISOString(),
       qualifiedRoleIds: volunteer.qualifiedRoleIds,
+      ministryAccessLevel: volunteer.ministryAccessLevel,
+      leadTeamIds: volunteer.leadTeamIds,
     };
   },
   eligibleVolunteerListToResponse(volunteers: EligibleVolunteerView[]) {

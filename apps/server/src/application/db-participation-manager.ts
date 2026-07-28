@@ -56,6 +56,7 @@ import {
   type MinistryParticipation,
 } from '../domain/entities/ministry-participation';
 import { MinistryServingProfile } from '../domain/entities/ministry-serving-profile';
+import type { MinistryAccessLevel } from '../domain/entities/ministry-volunteer';
 import { Shift } from '../domain/entities/shift';
 import type { SlotRequirement } from '../domain/entities/slot-requirement';
 import type { TimeSlot } from '../domain/entities/time-slot';
@@ -99,11 +100,24 @@ interface BuildEligibleVolunteerViewInput {
   activeAssignmentWarnings: ConflictIssue[];
   lastServedAt?: Date;
   qualifiedRoleIds: string[];
+  ministryAccessLevel: MinistryAccessLevel;
+  leadTeamIds: string[];
 }
 
 interface QualifiedVolunteerRef {
   id: EligibleVolunteerView['volunteerId'];
   name?: string | null;
+}
+
+/**
+ * Per-volunteer membership facts read once per cycle/shift lookup and reused
+ * across every shift — qualification, ministry-wide access level, and the
+ * teams (within this ministry) the volunteer leads.
+ */
+interface VolunteerMembershipInfo {
+  qualifiedRoleIds: string[];
+  ministryAccessLevel: MinistryAccessLevel;
+  leadTeamIds: string[];
 }
 
 interface BuildEligibleForVolunteerInput {
@@ -113,10 +127,10 @@ interface BuildEligibleForVolunteerInput {
   fairnessAssignments: Assignment[];
   assignmentShiftsById: Map<string, Shift>;
   unavailableMarkKeys: Set<string>;
-  qualifiedRoleIdsByVolunteerId: Map<string, string[]>;
+  membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
 }
 
-interface ListQualifiedRoleIdsInput {
+interface ListVolunteerMembershipInfoInput {
   churchId: ChurchId;
   ministryId: MinistryParticipation['ministryId'];
   tx?: TransactionContext;
@@ -127,7 +141,7 @@ interface ListEligibleForShiftsInput {
   participation: MinistryParticipation;
   shifts: Shift[];
   requirements: SlotRequirement[];
-  qualifiedRoleIdsByVolunteerId: Map<string, string[]>;
+  membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
   tx?: TransactionContext;
 }
 
@@ -257,11 +271,12 @@ export class DbParticipationManager implements IParticipationManager {
       );
       // One membership read for the whole cycle: every event in it belongs to
       // the same ministry, so hoisting this out of the loop keeps it O(1).
-      const qualifiedRoleIdsByVolunteerId = await this.listQualifiedRoleIds({
-        churchId: input.churchId,
-        ministryId: input.ministryId,
-        tx,
-      });
+      const membershipInfoByVolunteerId =
+        await this.listVolunteerMembershipInfo({
+          churchId: input.churchId,
+          ministryId: input.ministryId,
+          tx,
+        });
 
       const events: CycleBuilderEventView[] = [];
 
@@ -305,7 +320,7 @@ export class DbParticipationManager implements IParticipationManager {
           participation,
           shifts,
           requirements,
-          qualifiedRoleIdsByVolunteerId,
+          membershipInfoByVolunteerId,
           tx,
         });
 
@@ -634,11 +649,12 @@ export class DbParticipationManager implements IParticipationManager {
               requirements: shiftRequirements,
               tx,
             });
-      const qualifiedRoleIdsByVolunteerId = await this.listQualifiedRoleIds({
-        churchId: input.churchId,
-        ministryId: participation.ministryId,
-        tx,
-      });
+      const membershipInfoByVolunteerId =
+        await this.listVolunteerMembershipInfo({
+          churchId: input.churchId,
+          ministryId: participation.ministryId,
+          tx,
+        });
       const volunteerIds = qualifiedVolunteers.map((volunteer) => volunteer.id);
       const [marks, assignments] = await Promise.all([
         this.availabilityRepository.listByVolunteers(
@@ -691,7 +707,7 @@ export class DbParticipationManager implements IParticipationManager {
           fairnessAssignments: activeAssignments,
           assignmentShiftsById,
           unavailableMarkKeys,
-          qualifiedRoleIdsByVolunteerId,
+          membershipInfoByVolunteerId,
         }),
       );
 
@@ -978,16 +994,19 @@ export class DbParticipationManager implements IParticipationManager {
   }
 
   /**
-   * Qualified role ids per volunteer for one ministry, keyed by volunteer id.
-   * Reads the membership rows directly rather than inverting the per-role
-   * candidate lists, so a volunteer's full skill set survives even when the
-   * cycle happens to require only some of their roles.
+   * Membership facts per volunteer for one ministry, keyed by volunteer id:
+   * qualified role ids, ministry-wide access level, and led teams. Reads the
+   * membership rows directly rather than inverting the per-role candidate
+   * lists, so a volunteer's full skill set survives even when the cycle
+   * happens to require only some of their roles.
    */
-  private async listQualifiedRoleIds({
+  private async listVolunteerMembershipInfo({
     churchId,
     ministryId,
     tx,
-  }: ListQualifiedRoleIdsInput): Promise<Map<string, string[]>> {
+  }: ListVolunteerMembershipInfoInput): Promise<
+    Map<string, VolunteerMembershipInfo>
+  > {
     const memberships = await this.volunteerRepository.listMinistryMemberships(
       churchId,
       ministryId,
@@ -996,7 +1015,13 @@ export class DbParticipationManager implements IParticipationManager {
     return new Map(
       memberships.map((membership) => [
         membership.volunteerId as string,
-        membership.qualifiedRoleIds,
+        {
+          qualifiedRoleIds: membership.qualifiedRoleIds,
+          ministryAccessLevel: membership.ministryAccessLevel,
+          leadTeamIds: membership.teamMemberships
+            .filter((team) => team.accessLevel === 'leader')
+            .map((team) => team.teamId),
+        },
       ]),
     );
   }
@@ -1037,7 +1062,7 @@ export class DbParticipationManager implements IParticipationManager {
     participation,
     shifts,
     requirements,
-    qualifiedRoleIdsByVolunteerId,
+    membershipInfoByVolunteerId,
     tx,
   }: ListEligibleForShiftsInput): Promise<
     Map<string, EligibleVolunteerView[]>
@@ -1188,7 +1213,7 @@ export class DbParticipationManager implements IParticipationManager {
           fairnessAssignments,
           assignmentShiftsById,
           unavailableMarkKeys,
-          qualifiedRoleIdsByVolunteerId,
+          membershipInfoByVolunteerId,
         }),
       );
       eligibleByShift.set(shift.id as string, sortEligibleVolunteers(eligible));
@@ -1273,7 +1298,7 @@ function buildEligibleForVolunteer({
   fairnessAssignments,
   assignmentShiftsById,
   unavailableMarkKeys,
-  qualifiedRoleIdsByVolunteerId,
+  membershipInfoByVolunteerId,
 }: BuildEligibleForVolunteerInput): EligibleVolunteerView {
   const volunteerAssignments = activeAssignments.filter(
     (assignment) => assignment.volunteerId === volunteer.id,
@@ -1312,6 +1337,10 @@ function buildEligibleForVolunteer({
     )
     .sort((left, right) => right.getTime() - left.getTime())[0];
 
+  const membershipInfo = membershipInfoByVolunteerId.get(
+    volunteer.id as string,
+  );
+
   return buildEligibleVolunteerView({
     volunteerId: volunteer.id as string,
     volunteerName: volunteer.name ?? 'Unknown volunteer',
@@ -1320,8 +1349,9 @@ function buildEligibleForVolunteer({
     ),
     activeAssignmentWarnings: warnings,
     lastServedAt,
-    qualifiedRoleIds:
-      qualifiedRoleIdsByVolunteerId.get(volunteer.id as string) ?? [],
+    qualifiedRoleIds: membershipInfo?.qualifiedRoleIds ?? [],
+    ministryAccessLevel: membershipInfo?.ministryAccessLevel ?? 'volunteer',
+    leadTeamIds: membershipInfo?.leadTeamIds ?? [],
   });
 }
 
@@ -1445,6 +1475,8 @@ function buildEligibleVolunteerView({
   activeAssignmentWarnings,
   lastServedAt,
   qualifiedRoleIds,
+  ministryAccessLevel,
+  leadTeamIds,
 }: BuildEligibleVolunteerViewInput): EligibleVolunteerView {
   return {
     volunteerId: volunteerId as EligibleVolunteerView['volunteerId'],
@@ -1453,5 +1485,7 @@ function buildEligibleVolunteerView({
     hasConflict: activeAssignmentWarnings.length > 0,
     lastServedAt,
     qualifiedRoleIds,
+    ministryAccessLevel,
+    leadTeamIds,
   };
 }

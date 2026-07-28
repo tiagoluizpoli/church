@@ -5,8 +5,8 @@ export {
   CHURCH_ADMIN_STORAGE_STATE,
   expect,
   LEADER_STORAGE_STATE,
-  SUB_LEADER_STORAGE_STATE,
   signUpLeader,
+  TEAM_LEADER_STORAGE_STATE,
   test,
   VOLUNTEER_STORAGE_STATE,
 } from './auth';

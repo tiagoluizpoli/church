@@ -5,7 +5,7 @@ import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 // denial at /scheduling/planning-cycles (route-level redirect). This closes
 // the matrix for the other two scheduling routes, which — per T057/BL-017 —
 // have no route-level guard and instead rely on their data queries being
-// server-side rejected for a plain Volunteer (no Leader/Sub-leader/ChurchAdmin
+// server-side rejected for a plain Volunteer (no Leader/TeamLeader/ChurchAdmin
 // capacity). "Denied" here means: no protected ministry/event/cycle data or
 // mutating action is ever reachable, not necessarily a redirect.
 test.describe('Volunteer-only denial across all 3 scheduling routes', () => {

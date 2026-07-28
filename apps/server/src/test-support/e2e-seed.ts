@@ -53,13 +53,13 @@ export const VOLUNTEER_STORAGE_STATE = path.resolve(
  * must not depend on DB tooling. Invoked from the web Playwright `globalSetup`
  * via shell-out:
  *   bun run --cwd apps/server seed:e2e -- --leader-user-id=<id>
- *     --sub-leader-user-id=<id> --volunteer-user-id=<id>
+ *     --team-leader-user-id=<id> --volunteer-user-id=<id>
  *
  * Links the leader volunteer to `--leader-user-id` (a real Better Auth user
  * created at sign-up) so `findByUserIdGlobally` resolves it and
  * `authorizeLeaderOrAdmin` grants leader rights over the seeded ministry.
  *
- * Links the sub-leader volunteer to `--sub-leader-user-id` so
+ * Links the TeamLeader volunteer to `--team-leader-user-id` so
  * `authorizeScheduleBuilderAccess` resolves them as a TeamLeader of team1.
  */
 const DATABASE_URL =
@@ -73,7 +73,7 @@ export const E2E_IDS = {
   ministryCare: 'e2e33333-3333-3333-3333-333333333332',
   leaderVolunteer: 'e2e44444-4444-4444-4444-444444444441',
   schedulingVolunteer: 'e2e44444-4444-4444-4444-444444444442',
-  subLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444446',
+  teamLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444446',
   team1: 'e2eaaaa1-0000-0000-0000-000000000001',
   careTeam: 'e2eaaaa1-0000-0000-0000-000000000002',
   roleUsher: 'e2e55555-5555-5555-5555-555555555551',
@@ -89,7 +89,7 @@ export const E2E_IDS = {
   declineEvent: 'e2e66666-6666-6666-6666-666666666663',
   declineSlot: 'e2e77777-7777-7777-7777-777777777773',
   declineAssignment: 'e2e99999-9999-9999-9999-999999999991',
-  // Sub-leader event — reserved for US6 sub-leader journey.
+  // TeamLeader event — reserved for US6 TeamLeader journey.
   us6Event: 'e2e66666-6666-6666-6666-666666666664',
   us6Slot: 'e2e77777-7777-7777-7777-777777777774',
   careEvent: 'e2e66666-6666-6666-6666-666666666665',
@@ -149,7 +149,7 @@ const POOL_VOLUNTEERS = [
     name: 'Grace Hopper',
     email: 'grace@e2e.test',
     avail: 'available' as const,
-    // Grace is in team1 — sub-leader (US6) can see her in sidebar.
+    // Grace is in team1 — TeamLeader (US6) can see her in sidebar.
     teamId: E2E_IDS.team1,
   },
   {
@@ -217,14 +217,14 @@ function makeDb() {
 
 export interface SeedE2eOptions {
   leaderUserId: string;
-  subLeaderUserId: string;
+  teamLeaderUserId: string;
   volunteerUserId: string;
   churchBAdminUserId: string;
 }
 
 export async function seedE2e({
   leaderUserId,
-  subLeaderUserId,
+  teamLeaderUserId,
   volunteerUserId,
   churchBAdminUserId,
 }: SeedE2eOptions): Promise<typeof E2E_IDS> {
@@ -262,7 +262,7 @@ export async function seedE2e({
     });
 
     for (const memberUserId of [
-      subLeaderUserId,
+      teamLeaderUserId,
       volunteerUserId,
       ...POOL_VOLUNTEERS.map((poolVolunteer) => poolVolunteer.userId),
       UNQUALIFIED_VOLUNTEER.userId,
@@ -361,7 +361,7 @@ export async function seedE2e({
       ])
       .onConflictDoNothing();
 
-    // Team1 — used by US6 sub-leader scoping.
+    // Team1 — used by US6 TeamLeader scoping.
     await db
       .insert(team)
       .values([
@@ -422,19 +422,19 @@ export async function seedE2e({
       })
       .returning({ id: volunteer.id });
 
-    const [subLeaderVolunteerRow] = await db
+    const [teamLeaderVolunteerRow] = await db
       .insert(volunteer)
       .values({
-        id: E2E_IDS.subLeaderVolunteer,
+        id: E2E_IDS.teamLeaderVolunteer,
         churchId: E2E_IDS.church,
-        userId: subLeaderUserId,
+        userId: teamLeaderUserId,
         status: 'active',
       })
       .onConflictDoUpdate({
         target: [volunteer.id],
         set: {
           churchId: E2E_IDS.church,
-          userId: subLeaderUserId,
+          userId: teamLeaderUserId,
           status: 'active',
         },
       })
@@ -459,10 +459,14 @@ export async function seedE2e({
       .returning({ id: volunteer.id });
 
     const leaderVolunteerId = leaderVolunteerRow?.id;
-    const subLeaderVolunteerId = subLeaderVolunteerRow?.id;
+    const teamLeaderVolunteerId = teamLeaderVolunteerRow?.id;
     const schedulingVolunteerId = schedulingVolunteerRow?.id;
 
-    if (!leaderVolunteerId || !subLeaderVolunteerId || !schedulingVolunteerId) {
+    if (
+      !leaderVolunteerId ||
+      !teamLeaderVolunteerId ||
+      !schedulingVolunteerId
+    ) {
       throw new Error(
         'Failed to bind scheduling role volunteers for E2E seed.',
       );
@@ -505,7 +509,7 @@ export async function seedE2e({
           // TeamLeader being orthogonal to Ministry Access Level.
           id: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
           churchId: E2E_IDS.church,
-          volunteerId: subLeaderVolunteerId,
+          volunteerId: teamLeaderVolunteerId,
           ministryId: E2E_IDS.ministry,
           ministryAccessLevel: 'volunteer',
           status: 'active',
@@ -567,7 +571,7 @@ export async function seedE2e({
               ]
             : [],
         ),
-        // In team1, so she is inside the sub-leader's scope: her absence from
+        // In team1, so she is inside the TeamLeader's scope: her absence from
         // the candidate list can only be qualification, never team scoping.
         {
           churchId: E2E_IDS.church,
@@ -580,7 +584,7 @@ export async function seedE2e({
     /**
      * Every membership is qualified for every role in its own ministry.
      * Unlike the dev seed, coverage here is deliberately total: these specs
-     * assert availability conflicts, sub-leader scoping and the override flow,
+     * assert availability conflicts, TeamLeader scoping and the override flow,
      * none of which are about qualification. A partial spread would fail them
      * for a reason they are not testing.
      */
@@ -639,7 +643,7 @@ export async function seedE2e({
           id: E2E_IDS.us6Event,
           churchId: E2E_IDS.church,
           planningCycleId: E2E_IDS.planningCycle,
-          title: 'E2E Sub-Leader Service',
+          title: 'E2E Team Leader Service',
           startDate: new Date('2026-12-28T09:00:00Z'),
           endDate: new Date('2026-12-28T11:00:00Z'),
           status: 'draft',
@@ -743,7 +747,7 @@ export async function seedE2e({
           eventId: E2E_IDS.us6Event,
           startTime: new Date('2026-12-28T09:00:00Z'),
           endTime: new Date('2026-12-28T11:00:00Z'),
-          label: 'Sub-Leader Service',
+          label: 'Team Leader Service',
         },
         {
           id: E2E_IDS.careSlot,
@@ -892,7 +896,7 @@ export async function seedE2e({
           roleId: E2E_IDS.roleUsher,
           requiredCount: 1,
         },
-        // US6 event: Greeter slot scoped to team1 (sub-leader can interact).
+        // US6 event: Greeter slot scoped to team1 (TeamLeader can interact).
         {
           id: 'e2e88888-8888-8888-8888-888888888884',
           churchId: E2E_IDS.church,
@@ -902,7 +906,7 @@ export async function seedE2e({
           requiredCount: 1,
           teamId: E2E_IDS.team1,
         },
-        // US6 event: Usher slot NOT team-scoped (sub-leader sees it as read-only).
+        // US6 event: Usher slot NOT team-scoped (TeamLeader sees it as read-only).
         {
           id: 'e2e88888-8888-8888-8888-888888888885',
           churchId: E2E_IDS.church,
@@ -1026,14 +1030,14 @@ export async function seedE2e({
 
 export interface CleanupE2eOptions {
   leaderUserId?: string;
-  subLeaderUserId?: string;
+  teamLeaderUserId?: string;
   volunteerUserId?: string;
   churchBAdminUserId?: string;
 }
 
 export async function cleanupE2e({
   leaderUserId,
-  subLeaderUserId,
+  teamLeaderUserId,
   volunteerUserId,
   churchBAdminUserId,
 }: CleanupE2eOptions = {}): Promise<void> {
@@ -1051,7 +1055,7 @@ export async function cleanupE2e({
       ...POOL_VOLUNTEERS.map((v) => v.userId),
       UNQUALIFIED_VOLUNTEER.userId,
       leaderUserId,
-      subLeaderUserId,
+      teamLeaderUserId,
       volunteerUserId,
       churchBAdminUserId,
     ].filter((value): value is string => Boolean(value));
@@ -1073,7 +1077,7 @@ function parseArg({ argv, flag }: ParseArgInput): string | undefined {
   return argv.find((a) => a.startsWith(`--${flag}=`))?.split('=')[1];
 }
 
-// CLI entry: `bun run seed:e2e -- --leader-user-id=<id> --sub-leader-user-id=<id>`
+// CLI entry: `bun run seed:e2e -- --leader-user-id=<id> --team-leader-user-id=<id>`
 // or: `bun run seed:e2e -- cleanup`
 if (import.meta.main) {
   const argv = process.argv.slice(2);
@@ -1081,7 +1085,7 @@ if (import.meta.main) {
     if (argv.includes('cleanup')) {
       await cleanupE2e({
         leaderUserId: parseArg({ argv, flag: 'leader-user-id' }),
-        subLeaderUserId: parseArg({ argv, flag: 'sub-leader-user-id' }),
+        teamLeaderUserId: parseArg({ argv, flag: 'team-leader-user-id' }),
         volunteerUserId: parseArg({ argv, flag: 'volunteer-user-id' }),
         churchBAdminUserId: parseArg({ argv, flag: 'church-b-admin-user-id' }),
       });
@@ -1089,7 +1093,7 @@ if (import.meta.main) {
       return;
     }
     const leaderUserId = parseArg({ argv, flag: 'leader-user-id' });
-    const subLeaderUserId = parseArg({ argv, flag: 'sub-leader-user-id' });
+    const teamLeaderUserId = parseArg({ argv, flag: 'team-leader-user-id' });
     const volunteerUserId = parseArg({ argv, flag: 'volunteer-user-id' });
     const churchBAdminUserId = parseArg({
       argv,
@@ -1097,22 +1101,22 @@ if (import.meta.main) {
     });
     if (
       !leaderUserId ||
-      !subLeaderUserId ||
+      !teamLeaderUserId ||
       !volunteerUserId ||
       !churchBAdminUserId
     ) {
       throw new Error(
-        'Usage: seed:e2e -- --leader-user-id=<id> --sub-leader-user-id=<id> --volunteer-user-id=<id> --church-b-admin-user-id=<id>',
+        'Usage: seed:e2e -- --leader-user-id=<id> --team-leader-user-id=<id> --volunteer-user-id=<id> --church-b-admin-user-id=<id>',
       );
     }
     const ids = await seedE2e({
       leaderUserId,
-      subLeaderUserId,
+      teamLeaderUserId,
       volunteerUserId,
       churchBAdminUserId,
     });
     console.log(
-      `[e2e-seed] seeded event ${ids.event} for leader ${leaderUserId} and sub-leader ${subLeaderUserId}`,
+      `[e2e-seed] seeded event ${ids.event} for leader ${leaderUserId} and TeamLeader ${teamLeaderUserId}`,
     );
   };
   run().catch((err) => {

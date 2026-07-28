@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   LEADER_STORAGE_STATE,
-  SUB_LEADER_STORAGE_STATE,
+  TEAM_LEADER_STORAGE_STATE,
 } from '../global-setup';
 
 /**
@@ -11,7 +11,7 @@ import {
  * candidate for a shift because they hold the required role qualification, and
  * for no other reason. The seed makes that separable — every seeded member is
  * qualified for every role in their ministry except `Ursula Unqualified`, who
- * is an active member of the same ministry and the same team as the sub-leader,
+ * is an active member of the same ministry and the same team as the TeamLeader,
  * but holds no qualification at all. Anything that lets her through is an
  * eligibility bug, not a styling one.
  */
@@ -64,27 +64,27 @@ test.describe('qualification governs candidacy', () => {
   });
 });
 
-test.describe('sub-leader scoping composes with qualification', () => {
-  test.use({ storageState: SUB_LEADER_STORAGE_STATE });
+test.describe('TeamLeader scoping composes with qualification', () => {
+  test.use({ storageState: TEAM_LEADER_STORAGE_STATE });
 
   /**
    * Currently red, deliberately not deleted or softened.
    *
    * The cycle-builder endpoint guards on `canManageMinistry` →
-   * `isMinistryLeader`, which matches `systemRole = 'leader'` exactly, so a
-   * sub-leader receives 403 and the page never renders. That contradicts the
-   * rest of the 023 model: `DbEventManager.getScheduleBuilderData` admits
-   * sub-leaders and narrows their view to the teams they lead, and the e2e seed
-   * exists to resolve one "as a sub_leader of team1".
+   * `isMinistryLeader`, which matches `ministryAccessLevel = 'leader'`
+   * exactly, so a TeamLeader receives 403 and the page never renders. That
+   * contradicts the rest of the 023 model: `DbEventManager.getScheduleBuilderData`
+   * admits TeamLeaders and narrows their view to the teams they lead, and the
+   * e2e seed exists to resolve one as a TeamLeader of team1.
    *
-   * Either the guard is too strict or sub-leaders are meant to be excluded from
-   * the cycle builder entirely — that is a product decision, not a test fix.
-   * `test.fail()` keeps the assertion executing and honest: the day the guard
-   * admits sub-leaders, this turns green and Playwright reports it as an
-   * unexpected pass, forcing the annotation to be removed.
+   * Either the guard is too strict or TeamLeaders are meant to be excluded
+   * from the cycle builder entirely — that is a product decision, not a test
+   * fix. `test.fail()` keeps the assertion executing and honest: the day the
+   * guard admits TeamLeaders, this turns green and Playwright reports it as
+   * an unexpected pass, forcing the annotation to be removed.
    */
   test.fail();
-  test('a sub-leader sees their own team’s qualified members and still never the unqualified one', async ({
+  test('a TeamLeader sees their own team’s qualified members and still never the unqualified one', async ({
     page,
   }) => {
     await page.goto(BUILDER_URL);
@@ -95,7 +95,7 @@ test.describe('sub-leader scoping composes with qualification', () => {
     const rail = page.getByTestId('volunteer-pool');
     await expect(rail).toBeVisible();
 
-    // Grace shares team1 with the sub-leader and is qualified: visible.
+    // Grace shares team1 with the TeamLeader and is qualified: visible.
     await expect(rail.getByText(QUALIFIED_NAME, { exact: false })).toHaveCount(
       1,
     );

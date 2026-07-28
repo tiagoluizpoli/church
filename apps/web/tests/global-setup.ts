@@ -11,7 +11,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
  * Playwright global setup: provisions authenticated role sessions and seeded
  * domain data for scheduling E2E specs.
  *
- *  1. Sign up disposable leader, sub-leader, and volunteer users.
+ *  1. Sign up disposable leader, TeamLeader, and volunteer users.
  *  2. Shell out to the SERVER seed script (frontend stays DB-free).
  *  3. Persist admin/leader/volunteer sessions to `tests/.auth/` so specs opt in
  *     `test.use({ storageState })` — existing unauthenticated specs untouched.
@@ -31,9 +31,9 @@ export const VOLUNTEER_STORAGE_STATE = path.resolve(
   dirname,
   '.auth/volunteer.json',
 );
-export const SUB_LEADER_STORAGE_STATE = path.resolve(
+export const TEAM_LEADER_STORAGE_STATE = path.resolve(
   dirname,
-  '.auth/sub-leader.json',
+  '.auth/team-leader.json',
 );
 export const CHURCH_B_ADMIN_STORAGE_STATE = path.resolve(
   dirname,
@@ -46,9 +46,9 @@ const LEADER_BASE = {
   name: 'E2E Leader',
 };
 
-const SUB_LEADER_BASE = {
+const TEAM_LEADER_BASE = {
   password: 'e2e-Password-456',
-  name: 'E2E Sub-Leader',
+  name: 'E2E Team Leader',
 };
 
 const VOLUNTEER_BASE = {
@@ -69,7 +69,7 @@ const AUTH_RESPONSE_SCHEMA = z.object({
 
 export const E2E_AUTH_META_SCHEMA = z.object({
   leaderUserId: z.string().min(1),
-  subLeaderUserId: z.string().min(1),
+  teamLeaderUserId: z.string().min(1),
   volunteerUserId: z.string().min(1),
   churchBAdminUserId: z.string().min(1),
 });
@@ -101,16 +101,16 @@ export default async function globalSetup(): Promise<void> {
   globalTeardown();
 
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
-  const subLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
+  const teamLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const volunteerCtx = await request.newContext({ baseURL: SERVER_URL });
   const churchBAdminCtx = await request.newContext({ baseURL: SERVER_URL });
   const leaderCreds = {
     ...LEADER_BASE,
     email: makeUniqueEmail('e2e-leader'),
   };
-  const subLeaderCreds = {
-    ...SUB_LEADER_BASE,
-    email: makeUniqueEmail('e2e-subleader'),
+  const teamLeaderCreds = {
+    ...TEAM_LEADER_BASE,
+    email: makeUniqueEmail('e2e-teamleader'),
   };
   const volunteerCreds = {
     ...VOLUNTEER_BASE,
@@ -121,10 +121,10 @@ export default async function globalSetup(): Promise<void> {
     email: makeUniqueEmail('e2e-churchb-admin'),
   };
 
-  const [leaderId, subLeaderId, volunteerId, churchBAdminId] =
+  const [leaderId, teamLeaderId, volunteerId, churchBAdminId] =
     await Promise.all([
       authUser(leaderCtx, leaderCreds),
-      authUser(subLeaderCtx, subLeaderCreds),
+      authUser(teamLeaderCtx, teamLeaderCreds),
       authUser(volunteerCtx, volunteerCreds),
       authUser(churchBAdminCtx, churchBAdminCreds),
     ]);
@@ -136,7 +136,7 @@ export default async function globalSetup(): Promise<void> {
       'seed:e2e',
       '--',
       `--leader-user-id=${leaderId}`,
-      `--sub-leader-user-id=${subLeaderId}`,
+      `--team-leader-user-id=${teamLeaderId}`,
       `--volunteer-user-id=${volunteerId}`,
       `--church-b-admin-user-id=${churchBAdminId}`,
     ],
@@ -149,7 +149,7 @@ export default async function globalSetup(): Promise<void> {
     JSON.stringify(
       E2E_AUTH_META_SCHEMA.parse({
         leaderUserId: leaderId,
-        subLeaderUserId: subLeaderId,
+        teamLeaderUserId: teamLeaderId,
         volunteerUserId: volunteerId,
         churchBAdminUserId: churchBAdminId,
       }),
@@ -159,14 +159,14 @@ export default async function globalSetup(): Promise<void> {
   await Promise.all([
     leaderCtx.storageState({ path: CHURCH_ADMIN_STORAGE_STATE }),
     leaderCtx.storageState({ path: LEADER_STORAGE_STATE }),
-    subLeaderCtx.storageState({ path: SUB_LEADER_STORAGE_STATE }),
+    teamLeaderCtx.storageState({ path: TEAM_LEADER_STORAGE_STATE }),
     volunteerCtx.storageState({ path: VOLUNTEER_STORAGE_STATE }),
     churchBAdminCtx.storageState({ path: CHURCH_B_ADMIN_STORAGE_STATE }),
   ]);
 
   await Promise.all([
     leaderCtx.dispose(),
-    subLeaderCtx.dispose(),
+    teamLeaderCtx.dispose(),
     volunteerCtx.dispose(),
     churchBAdminCtx.dispose(),
   ]);

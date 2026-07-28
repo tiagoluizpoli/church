@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
   LEADER_STORAGE_STATE,
-  SUB_LEADER_STORAGE_STATE,
+  TEAM_LEADER_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
 
@@ -17,12 +17,12 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // well-known UUIDs directly — same convention as us1/us3/us4 specs.
 const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
 const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
-const SUB_LEADER_VOLUNTEER_ID = 'e2e44444-4444-4444-4444-444444444446';
+const TEAM_LEADER_VOLUNTEER_ID = 'e2e44444-4444-4444-4444-444444444446';
 
 // VOLUNTEER_STORAGE_STATE's volunteer belongs to Worship, seeded as
-// "E2E Volunteer". SUB_LEADER_STORAGE_STATE's volunteer ("E2E Sub-Leader",
-// SUB_LEADER_VOLUNTEER_ID) is a distinct real logged-in volunteer also in
-// Worship (team1 sub-leader) — used for the cross-volunteer permission check
+// "E2E Volunteer". TEAM_LEADER_STORAGE_STATE's volunteer ("E2E Team Leader",
+// TEAM_LEADER_VOLUNTEER_ID) is a distinct real logged-in volunteer also in
+// Worship (team1 TeamLeader) — used for the cross-volunteer permission check
 // and as the leader's reassign target.
 const OWNER_VOLUNTEER_NAME = 'E2E Volunteer';
 
@@ -360,14 +360,14 @@ test('volunteer cancels their own published assignment, the leader is notified a
 
   // A different volunteer cannot cancel the still-open second Usher assignment
   // (DL2-LC-02, SC-004).
-  const subLeaderContext = await browser.newContext({
-    storageState: SUB_LEADER_STORAGE_STATE,
+  const teamLeaderContext = await browser.newContext({
+    storageState: TEAM_LEADER_STORAGE_STATE,
   });
-  const deniedCancelResponse = await subLeaderContext.request.post(
+  const deniedCancelResponse = await teamLeaderContext.request.post(
     `${SERVER_URL}/api/v1/volunteer/assignments/${secondAssignment.id}/cancel`,
   );
   expect(deniedCancelResponse.status()).toBe(403);
-  await subLeaderContext.close();
+  await teamLeaderContext.close();
 
   // The leader reassigns the still-open second Usher assignment mid-cycle
   // (DL2-RS-08, FR-029).
@@ -375,7 +375,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
     `${SERVER_URL}/api/v1/leader/assignments/${secondAssignment.id}/reassign`,
     {
       data: {
-        volunteerId: SUB_LEADER_VOLUNTEER_ID,
+        volunteerId: TEAM_LEADER_VOLUNTEER_ID,
         reason: 'Original volunteer became unavailable mid-cycle',
       },
     },
@@ -384,5 +384,5 @@ test('volunteer cancels their own published assignment, the leader is notified a
   const reassigned = (
     (await reassignResponse.json()) as ReassignedAssignmentResponse
   ).volunteerId;
-  expect(reassigned).toBe(SUB_LEADER_VOLUNTEER_ID);
+  expect(reassigned).toBe(TEAM_LEADER_VOLUNTEER_ID);
 });

@@ -19,8 +19,8 @@ export default function globalTeardown(): void {
       args.push(`--leader-user-id=${meta.leaderUserId}`);
     }
 
-    if (meta.subLeaderUserId) {
-      args.push(`--sub-leader-user-id=${meta.subLeaderUserId}`);
+    if (meta.teamLeaderUserId) {
+      args.push(`--team-leader-user-id=${meta.teamLeaderUserId}`);
     }
 
     if (meta.volunteerUserId) {

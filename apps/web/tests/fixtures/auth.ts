@@ -2,7 +2,7 @@ import { test as base, type Page } from '@playwright/test';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   LEADER_STORAGE_STATE,
-  SUB_LEADER_STORAGE_STATE,
+  TEAM_LEADER_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
 
@@ -22,7 +22,7 @@ import {
 export {
   CHURCH_ADMIN_STORAGE_STATE,
   LEADER_STORAGE_STATE,
-  SUB_LEADER_STORAGE_STATE,
+  TEAM_LEADER_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
 };
 

@@ -2,14 +2,14 @@ import { expect, test } from '@playwright/test';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   LEADER_STORAGE_STATE,
-  SUB_LEADER_STORAGE_STATE,
+  TEAM_LEADER_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
 } from './global-setup';
 
 const ROLE_STORAGE_STATES: Record<string, string> = {
   'church admin': CHURCH_ADMIN_STORAGE_STATE,
   leader: LEADER_STORAGE_STATE,
-  'sub-leader': SUB_LEADER_STORAGE_STATE,
+  'team leader': TEAM_LEADER_STORAGE_STATE,
   volunteer: VOLUNTEER_STORAGE_STATE,
 };
 

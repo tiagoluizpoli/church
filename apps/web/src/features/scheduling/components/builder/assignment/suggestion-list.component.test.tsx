@@ -9,8 +9,8 @@ const make = (
   name: string,
   status: SuggestedVolunteer['status'],
   workloadCount = 0,
-  systemRole?: SuggestedVolunteer['systemRole'],
-): SuggestedVolunteer => ({ id, name, status, workloadCount, systemRole });
+  membership?: SuggestedVolunteer['membership'],
+): SuggestedVolunteer => ({ id, name, status, workloadCount, membership });
 
 describe('SuggestionList (T118)', () => {
   it('renders "No suggestions" when empty', () => {
@@ -118,19 +118,42 @@ describe('SuggestionList (T118)', () => {
     expect(status).toHaveClass('bg-yellow-500/10');
   });
 
-  it('renders a role badge disambiguating a Leader and a Sub-leader suggestion (FR-013)', () => {
+  it('renders a role badge disambiguating a ministry Leader and a Team Leader suggestion in their own team context (FR-013)', () => {
     render(
       <SuggestionList
         suggestions={[
-          make('1', 'Local Leader', 'available', 0, 'leader'),
-          make('2', 'Local Sub Leader', 'available', 0, 'sub_leader'),
+          make('1', 'Local Leader', 'available', 0, {
+            ministryAccessLevel: 'leader',
+            leadTeamIds: [],
+          }),
+          make('2', 'Local Team Leader', 'available', 0, {
+            ministryAccessLevel: 'volunteer',
+            leadTeamIds: ['team-a'],
+          }),
         ]}
         onAssign={vi.fn()}
+        contextTeamId="team-a"
       />,
     );
     const badges = screen.getAllByTestId('assignee-role-badge');
     expect(badges).toHaveLength(2);
     expect(badges[0]).toHaveTextContent('Leader');
-    expect(badges[1]).toHaveTextContent('Sub-leader');
+    expect(badges[1]).toHaveTextContent('Team Leader');
+  });
+
+  it('does not badge a suggestion as Team Leader outside their own team context (regression guard)', () => {
+    render(
+      <SuggestionList
+        suggestions={[
+          make('1', 'Local Team Leader', 'available', 0, {
+            ministryAccessLevel: 'volunteer',
+            leadTeamIds: ['team-a'],
+          }),
+        ]}
+        onAssign={vi.fn()}
+        contextTeamId="team-b"
+      />,
+    );
+    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 });

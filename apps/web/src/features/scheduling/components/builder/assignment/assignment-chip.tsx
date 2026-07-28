@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import { cn } from '@/lib/utils';
 import {
-  type AssigneeSystemRole,
+  type AssigneeMembership,
   formatAssigneeRoleLabel,
 } from '@/utils/format-assignee-role-label';
 
@@ -28,22 +28,28 @@ const SYNC_STATE_LABELS: Record<AssignmentSyncState, string> = {
 
 interface AssignmentChipProps {
   volunteerName: string;
-  volunteerSystemRole?: AssigneeSystemRole;
+  volunteerMembership?: AssigneeMembership;
   conflictStatus?: ConflictStatus;
   confirmationStatus?: ConfirmationStatus;
   isPublished: boolean;
   syncState?: AssignmentSyncState;
   onClick?: () => void;
+  /**
+   * The team this chip's slot belongs to, if any. The badge only reads "Team
+   * Leader" when the volunteer leads this specific team (FR-013).
+   */
+  contextTeamId?: string;
 }
 
 export function AssignmentChip({
   volunteerName,
-  volunteerSystemRole,
+  volunteerMembership,
   conflictStatus,
   confirmationStatus,
   isPublished,
   syncState = 'saved',
   onClick,
+  contextTeamId,
 }: AssignmentChipProps) {
   const isTouch = useFormControlSize() === 'touch';
   return (
@@ -74,7 +80,10 @@ export function AssignmentChip({
         ) : null}
         {volunteerName}
         <AssigneeIdentityBadge
-          roleLabel={formatAssigneeRoleLabel(volunteerSystemRole)}
+          roleLabel={formatAssigneeRoleLabel({
+            membership: volunteerMembership,
+            contextTeamId,
+          })}
           fullNameOnExpand={volunteerName}
         />
       </span>

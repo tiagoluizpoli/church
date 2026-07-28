@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
-  type AssigneeSystemRole,
+  type AssigneeMembership,
   formatAssigneeRoleLabel,
 } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
@@ -19,20 +19,27 @@ interface SubstitutionPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   declinedVolunteerName: string;
-  declinedVolunteerSystemRole?: AssigneeSystemRole;
+  declinedVolunteerMembership?: AssigneeMembership;
   declinedVolunteerId: string;
   volunteers: PickerVolunteer[];
   onSelect: (newVolunteerId: string) => void;
+  /**
+   * The team this picker is filling a slot for, if any. Candidates only badge
+   * as "Team Leader" when they lead this specific team — a team they lead
+   * elsewhere in the ministry does not qualify (FR-013).
+   */
+  contextTeamId?: string;
 }
 
 export function SubstitutionPicker({
   open,
   onOpenChange,
   declinedVolunteerName,
-  declinedVolunteerSystemRole,
+  declinedVolunteerMembership,
   declinedVolunteerId,
   volunteers,
   onSelect,
+  contextTeamId,
 }: SubstitutionPickerProps) {
   const [search, setSearch] = useState('');
 
@@ -64,7 +71,10 @@ export function SubstitutionPicker({
           <span className="flex items-center gap-1">
             {formatVolunteerName(declinedVolunteerName)}
             <AssigneeIdentityBadge
-              roleLabel={formatAssigneeRoleLabel(declinedVolunteerSystemRole)}
+              roleLabel={formatAssigneeRoleLabel({
+                membership: declinedVolunteerMembership,
+                contextTeamId,
+              })}
               fullNameOnExpand={declinedVolunteerName}
             />
           </span>
@@ -97,7 +107,10 @@ export function SubstitutionPicker({
                 <span className="flex items-center gap-1">
                   {formatVolunteerName(v.name)}
                   <AssigneeIdentityBadge
-                    roleLabel={formatAssigneeRoleLabel(v.systemRole)}
+                    roleLabel={formatAssigneeRoleLabel({
+                      membership: v.membership,
+                      contextTeamId,
+                    })}
                     fullNameOnExpand={v.name}
                   />
                 </span>

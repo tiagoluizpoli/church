@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  type AssigneeSystemRole,
+  type AssigneeMembership,
   formatAssigneeRoleLabel,
 } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
@@ -22,12 +22,17 @@ interface OverrideDialogProps {
   onOpenChange: (open: boolean) => void;
   conflictType: AssignmentOverrideKind;
   volunteerName: string;
-  volunteerSystemRole?: AssigneeSystemRole;
+  volunteerMembership?: AssigneeMembership;
   slotLabel: string;
   /** The role being filled — named in the `not_qualified` variant's copy. */
   roleLabel?: string;
   isPending: boolean;
   onConfirm: (reason: string) => void;
+  /**
+   * The team the conflicted slot belongs to, if any. The badge only reads
+   * "Team Leader" when the volunteer leads this specific team (FR-013).
+   */
+  contextTeamId?: string;
 }
 
 const MIN_REASON = 10;
@@ -37,11 +42,12 @@ export function OverrideDialog({
   onOpenChange,
   conflictType,
   volunteerName,
-  volunteerSystemRole,
+  volunteerMembership,
   slotLabel,
   roleLabel,
   isPending,
   onConfirm,
+  contextTeamId,
 }: OverrideDialogProps) {
   const [reason, setReason] = useState('');
   const tooShort = reason.trim().length < MIN_REASON;
@@ -64,7 +70,10 @@ export function OverrideDialog({
           <DialogTitle className="flex items-center gap-1">
             {isNotQualified ? 'Assign anyway?' : 'Override conflict'}
             <AssigneeIdentityBadge
-              roleLabel={formatAssigneeRoleLabel(volunteerSystemRole)}
+              roleLabel={formatAssigneeRoleLabel({
+                membership: volunteerMembership,
+                contextTeamId,
+              })}
               fullNameOnExpand={volunteerName}
             />
           </DialogTitle>

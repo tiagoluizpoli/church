@@ -73,7 +73,10 @@ describe('AssignmentChip (T100)', () => {
       const { rerender } = render(
         <AssignmentChip
           volunteerName="Local Leader"
-          volunteerSystemRole="leader"
+          volunteerMembership={{
+            ministryAccessLevel: 'leader',
+            leadTeamIds: [],
+          }}
           isPublished={false}
         />,
       );
@@ -83,13 +86,17 @@ describe('AssignmentChip (T100)', () => {
 
       rerender(
         <AssignmentChip
-          volunteerName="Local Sub Leader"
-          volunteerSystemRole="sub_leader"
+          volunteerName="Local Team Leader"
+          volunteerMembership={{
+            ministryAccessLevel: 'volunteer',
+            leadTeamIds: ['team-a'],
+          }}
+          contextTeamId="team-a"
           isPublished={false}
         />,
       );
       expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
-        'Sub-leader',
+        'Team Leader',
       );
     });
 
@@ -97,7 +104,27 @@ describe('AssignmentChip (T100)', () => {
       render(
         <AssignmentChip
           volunteerName="John Doe"
-          volunteerSystemRole="volunteer"
+          volunteerMembership={{
+            ministryAccessLevel: 'volunteer',
+            leadTeamIds: [],
+          }}
+          isPublished={false}
+        />,
+      );
+      expect(
+        screen.queryByTestId('assignee-role-badge'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows no Team Leader badge outside the team this volunteer leads (regression guard)', () => {
+      render(
+        <AssignmentChip
+          volunteerName="Local Team Leader"
+          volunteerMembership={{
+            ministryAccessLevel: 'volunteer',
+            leadTeamIds: ['team-a'],
+          }}
+          contextTeamId="team-b"
           isPublished={false}
         />,
       );

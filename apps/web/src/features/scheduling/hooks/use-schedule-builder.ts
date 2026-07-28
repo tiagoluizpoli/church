@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { mapAvailabilityStatus } from '../utils/availability-status';
 import type { CreateAssignmentBody } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 export interface AssignParams {
   slotId: string;
@@ -73,11 +74,18 @@ export function useScheduleBuilder(eventId: string) {
     const slotIds = new Set(slots.map((s) => s.id));
     const eventAssignments = assignments.filter((a) => slotIds.has(a.slotId));
     const volunteerMap = new Map(volunteers.map((v) => [v.id, v]));
+    const membershipOf = (
+      volunteer: (typeof volunteers)[number] | undefined,
+    ): AssigneeMembership | undefined =>
+      volunteer && {
+        ministryAccessLevel: volunteer.ministryAccessLevel,
+        leadTeamIds: volunteer.leadTeamIds,
+      };
 
     const assignmentsWithName = eventAssignments.map((a) => ({
       ...a,
       volunteerName: volunteerMap.get(a.volunteerId)?.name,
-      volunteerSystemRole: volunteerMap.get(a.volunteerId)?.systemRole,
+      volunteerMembership: membershipOf(volunteerMap.get(a.volunteerId)),
     }));
 
     const eventStartMs = new Date(event.startDate).getTime();
@@ -86,7 +94,7 @@ export function useScheduleBuilder(eventId: string) {
     const volunteerAvailability = volunteers.map((v) => ({
       volunteerId: v.id,
       volunteerName: v.name,
-      systemRole: v.systemRole,
+      membership: membershipOf(v),
       status: computeAvailabilityStatus(
         v.id,
         availability,

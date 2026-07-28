@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { isActiveAssignment } from './use-cycle-builder';
-import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 export type AvailabilityStatus =
   | 'available'
@@ -13,7 +13,7 @@ export interface PoolVolunteer {
   volunteerName: string;
   status: AvailabilityStatus;
   conflictReason?: string;
-  systemRole?: AssigneeSystemRole;
+  membership?: AssigneeMembership;
   /**
    * Role names this volunteer is qualified for, already resolved from ids so
    * the card stays presentational. Empty when the member has no qualifications.

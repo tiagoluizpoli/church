@@ -149,21 +149,21 @@ export type GetScheduleBuilderData200AvailabilityItem = {
   isAllDay: boolean;
 };
 
-export type GetScheduleBuilderData200VolunteersItemSystemRole = typeof GetScheduleBuilderData200VolunteersItemSystemRole[keyof typeof GetScheduleBuilderData200VolunteersItemSystemRole];
+export type GetScheduleBuilderData200VolunteersItemMinistryAccessLevel = typeof GetScheduleBuilderData200VolunteersItemMinistryAccessLevel[keyof typeof GetScheduleBuilderData200VolunteersItemMinistryAccessLevel];
 
 
-export const GetScheduleBuilderData200VolunteersItemSystemRole = {
+export const GetScheduleBuilderData200VolunteersItemMinistryAccessLevel = {
   leader: 'leader',
-  sub_leader: 'sub_leader',
   volunteer: 'volunteer',
 } as const;
 
 export type GetScheduleBuilderData200VolunteersItem = {
   id: string;
   name: string;
-  systemRole: GetScheduleBuilderData200VolunteersItemSystemRole;
+  ministryAccessLevel: GetScheduleBuilderData200VolunteersItemMinistryAccessLevel;
   qualifiedRoleIds: string[];
   teamIds: string[];
+  leadTeamIds: string[];
 };
 
 export type GetScheduleBuilderData200RolesItem = {

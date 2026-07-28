@@ -1,5 +1,5 @@
 import type { AvailabilityStatus } from '../../hooks/use-volunteer-pool';
-import type { AssigneeSystemRole } from '@/utils/format-assignee-role-label';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 /**
  * The shapes the builder's decision core hands to the surfaces that render it.
@@ -24,7 +24,7 @@ export interface ServingAssignmentContext {
 export interface PickerVolunteer {
   id: string;
   name: string;
-  systemRole?: AssigneeSystemRole;
+  membership?: AssigneeMembership;
   availabilityStatus: AvailabilityStatus;
   /**
    * Qualified for the role this picker is filling. `false` still lists the
@@ -40,7 +40,7 @@ export interface PickerVolunteer {
 export interface SuggestedVolunteer {
   id: string;
   name: string;
-  systemRole?: AssigneeSystemRole;
+  membership?: AssigneeMembership;
   status: 'available' | 'partial' | 'needs_response' | 'conflict';
   workloadCount: number;
   conflictType?: 'double_booked' | 'unavailable';

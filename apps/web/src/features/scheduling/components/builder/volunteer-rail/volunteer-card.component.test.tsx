@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { VolunteerCard } from './volunteer-card';
 import type { VolunteerPoolItem } from '@/features/scheduling/hooks/use-volunteer-pool';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 function buildVolunteer(
   overrides: Partial<VolunteerPoolItem>,
@@ -16,28 +17,39 @@ function buildVolunteer(
   };
 }
 
+function membership(
+  overrides: Partial<AssigneeMembership>,
+): AssigneeMembership {
+  return {
+    ministryAccessLevel: 'volunteer',
+    leadTeamIds: [],
+    ...overrides,
+  };
+}
+
 function noop() {
   // Presence of onSelect is what mounts the Select-slot button; the click
   // target itself is exercised by the sidebar tests.
 }
 
 describe('VolunteerCard (T048)', () => {
-  it('renders a role badge distinguishing a Leader from a Sub-leader who truncate identically', () => {
+  it('renders a role badge distinguishing a ministry Leader from a Team Leader who truncate identically', () => {
     render(
       <div>
         <VolunteerCard
           volunteer={buildVolunteer({
             volunteerId: 'leader-1',
             volunteerName: 'Local Leader',
-            systemRole: 'leader',
+            membership: membership({ ministryAccessLevel: 'leader' }),
           })}
         />
         <VolunteerCard
           volunteer={buildVolunteer({
-            volunteerId: 'sub-leader-1',
-            volunteerName: 'Local Sub Leader',
-            systemRole: 'sub_leader',
+            volunteerId: 'team-leader-1',
+            volunteerName: 'Local Team Leader',
+            membership: membership({ leadTeamIds: ['team-a'] }),
           })}
+          contextTeamId="team-a"
         />
       </div>,
     );
@@ -47,18 +59,45 @@ describe('VolunteerCard (T048)', () => {
     const badges = screen.getAllByTestId('assignee-role-badge');
     expect(badges).toHaveLength(2);
     expect(badges[0]).toHaveTextContent('Leader');
-    expect(badges[1]).toHaveTextContent('Sub-leader');
+    expect(badges[1]).toHaveTextContent('Team Leader');
   });
 
-  it('renders no role badge for a plain volunteer', () => {
+  it('shows no Team Leader badge when the rail has no team context, even though the volunteer leads a team elsewhere (regression guard)', () => {
     render(
-      <VolunteerCard volunteer={buildVolunteer({ systemRole: 'volunteer' })} />,
+      <VolunteerCard
+        volunteer={buildVolunteer({
+          membership: membership({ leadTeamIds: ['team-a'] }),
+        })}
+      />,
     );
 
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 
-  it('renders no role badge when systemRole is not provided', () => {
+  it('shows no Team Leader badge when the rail is scoped to a different team than the one this volunteer leads', () => {
+    render(
+      <VolunteerCard
+        volunteer={buildVolunteer({
+          membership: membership({ leadTeamIds: ['team-a'] }),
+        })}
+        contextTeamId="team-b"
+      />,
+    );
+
+    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
+  });
+
+  it('renders no role badge for a plain volunteer', () => {
+    render(
+      <VolunteerCard
+        volunteer={buildVolunteer({ membership: membership({}) })}
+      />,
+    );
+
+    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
+  });
+
+  it('renders no role badge when membership is not provided', () => {
     render(<VolunteerCard volunteer={buildVolunteer({})} />);
 
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
@@ -84,16 +123,17 @@ describe('VolunteerCard (T048)', () => {
           volunteer={buildVolunteer({
             volunteerId: 'leader-1',
             volunteerName: 'Local Leader',
-            systemRole: 'leader',
+            membership: membership({ ministryAccessLevel: 'leader' }),
           })}
           onSelect={noop}
         />
         <VolunteerCard
           volunteer={buildVolunteer({
-            volunteerId: 'sub-leader-1',
-            volunteerName: 'Local Sub Leader',
-            systemRole: 'sub_leader',
+            volunteerId: 'team-leader-1',
+            volunteerName: 'Local Team Leader',
+            membership: membership({ leadTeamIds: ['team-a'] }),
           })}
+          contextTeamId="team-a"
           onSelect={noop}
         />
       </div>,
@@ -104,7 +144,7 @@ describe('VolunteerCard (T048)', () => {
       'Select Local Leader, Leader to place on a slot',
     );
     expect(actions[1]).toHaveAccessibleName(
-      'Select Local Sub Leader, Sub-leader to place on a slot',
+      'Select Local Team Leader, Team Leader to place on a slot',
     );
   });
 
@@ -113,7 +153,7 @@ describe('VolunteerCard (T048)', () => {
       <VolunteerCard
         volunteer={buildVolunteer({
           volunteerName: 'John Doe',
-          systemRole: 'volunteer',
+          membership: membership({}),
         })}
         onSelect={noop}
       />,

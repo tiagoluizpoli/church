@@ -85,21 +85,48 @@ describe('OverrideDialog (T104)', () => {
     expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
   });
 
-  it('renders a role badge next to the title when the volunteer is a Leader or Sub-leader (FR-013)', () => {
+  it("renders a role badge next to the title when the volunteer is a ministry Leader or a Team Leader of the conflicted slot's team (FR-013)", () => {
     render(
       <OverrideDialog
         {...baseProps}
-        volunteerName="Local Sub Leader"
-        volunteerSystemRole="sub_leader"
+        volunteerName="Local Team Leader"
+        volunteerMembership={{
+          ministryAccessLevel: 'volunteer',
+          leadTeamIds: ['team-a'],
+        }}
+        contextTeamId="team-a"
       />,
     );
     expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
-      'Sub-leader',
+      'Team Leader',
     );
   });
 
   it('renders no role badge for a plain volunteer', () => {
-    render(<OverrideDialog {...baseProps} volunteerSystemRole="volunteer" />);
+    render(
+      <OverrideDialog
+        {...baseProps}
+        volunteerMembership={{
+          ministryAccessLevel: 'volunteer',
+          leadTeamIds: [],
+        }}
+      />,
+    );
+    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
+  });
+
+  it('renders no Team Leader badge when the conflicted slot is outside the team this volunteer leads (regression guard)', () => {
+    render(
+      <OverrideDialog
+        {...baseProps}
+        volunteerName="Local Team Leader"
+        volunteerMembership={{
+          ministryAccessLevel: 'volunteer',
+          leadTeamIds: ['team-a'],
+        }}
+        contextTeamId="team-b"
+      />,
+    );
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 });

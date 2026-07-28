@@ -284,11 +284,10 @@ paths:
                           type: string
                         name:
                           type: string
-                        systemRole:
+                        ministryAccessLevel:
                           type: string
                           enum:
                             - leader
-                            - sub_leader
                             - volunteer
                         qualifiedRoleIds:
                           type: array
@@ -298,12 +297,17 @@ paths:
                           type: array
                           items:
                             type: string
+                        leadTeamIds:
+                          type: array
+                          items:
+                            type: string
                       required:
                         - id
                         - name
-                        - systemRole
+                        - ministryAccessLevel
                         - qualifiedRoleIds
                         - teamIds
+                        - leadTeamIds
                       additionalProperties: false
                   roles:
                     type: array

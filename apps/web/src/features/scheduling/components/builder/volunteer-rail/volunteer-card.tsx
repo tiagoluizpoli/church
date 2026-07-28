@@ -205,6 +205,13 @@ interface VolunteerCardProps {
    */
   assignFit?: AssignableFitTier;
   onAssignToFocused?: (volunteerId: string) => void;
+  /**
+   * The team this rail is scoped to, if any. Only when this names a team the
+   * volunteer actually leads does the badge read "Team Leader" — the rail has
+   * no team of its own today (it lists ministry-wide), so this is normally
+   * left unset and only a ministry-wide "Leader" badge can show.
+   */
+  contextTeamId?: string;
 }
 
 export function VolunteerCard({
@@ -216,6 +223,7 @@ export function VolunteerCard({
   onSelect,
   assignFit,
   onAssignToFocused,
+  contextTeamId,
 }: VolunteerCardProps) {
   const isTouch = useFormControlSize() === 'touch';
   // `attributes` is deliberately dropped below: it announces dnd-kit's keyboard
@@ -226,7 +234,7 @@ export function VolunteerCard({
       data: {
         volunteerId: volunteer.volunteerId,
         volunteerName: volunteer.volunteerName,
-        systemRole: volunteer.systemRole,
+        membership: volunteer.membership,
         status: volunteer.status,
         workloadCount: volunteer.workloadCount,
         conflictReason: volunteer.conflictReason,
@@ -234,10 +242,13 @@ export function VolunteerCard({
       disabled: isOverlay,
     });
 
-  const roleLabel = formatAssigneeRoleLabel(volunteer.systemRole);
+  const roleLabel = formatAssigneeRoleLabel({
+    membership: volunteer.membership,
+    contextTeamId,
+  });
   // What the card's actions call this person. The visible name truncates to
   // "First L." and two people can share that, so the accessible name carries
-  // the full name plus the system role (FR-013) — this is the disambiguation
+  // the full name plus the role label (FR-013) — this is the disambiguation
   // the grip's aria-label used to hold, before the grip went aria-hidden.
   const accessibleName = roleLabel
     ? `${volunteer.volunteerName}, ${roleLabel}`

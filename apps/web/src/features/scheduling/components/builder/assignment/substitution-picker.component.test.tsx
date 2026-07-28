@@ -8,12 +8,12 @@ const pv = (
   id: string,
   name: string,
   availabilityStatus: PickerVolunteer['availabilityStatus'],
-  systemRole?: PickerVolunteer['systemRole'],
+  membership?: PickerVolunteer['membership'],
 ): PickerVolunteer => ({
   id,
   name,
   availabilityStatus,
-  systemRole,
+  membership,
   alreadyAssignedCount: 0,
 });
 
@@ -95,13 +95,38 @@ describe('SubstitutionPicker (T109)', () => {
       <SubstitutionPicker
         {...baseProps}
         declinedVolunteerName="Local Leader"
-        declinedVolunteerSystemRole="leader"
-        volunteers={[pv('1', 'Local Sub Leader', 'available', 'sub_leader')]}
+        declinedVolunteerMembership={{
+          ministryAccessLevel: 'leader',
+          leadTeamIds: [],
+        }}
+        volunteers={[
+          pv('1', 'Local Team Leader', 'available', {
+            ministryAccessLevel: 'volunteer',
+            leadTeamIds: ['team-a'],
+          }),
+        ]}
+        contextTeamId="team-a"
       />,
     );
     const badges = screen.getAllByTestId('assignee-role-badge');
     expect(badges).toHaveLength(2);
     expect(badges[0]).toHaveTextContent('Leader');
-    expect(badges[1]).toHaveTextContent('Sub-leader');
+    expect(badges[1]).toHaveTextContent('Team Leader');
+  });
+
+  it("shows no Team Leader badge for a candidate whose team leadership is outside this picker's team context (regression guard)", () => {
+    render(
+      <SubstitutionPicker
+        {...baseProps}
+        volunteers={[
+          pv('1', 'Local Team Leader', 'available', {
+            ministryAccessLevel: 'volunteer',
+            leadTeamIds: ['team-a'],
+          }),
+        ]}
+        contextTeamId="team-b"
+      />,
+    );
+    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 });

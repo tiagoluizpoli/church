@@ -60,6 +60,11 @@ interface SuggestionListProps {
   title?: string;
   highlightTop?: boolean;
   collapsible?: boolean;
+  /**
+   * The team the shift×role behind this list belongs to, if any. A suggestion
+   * only badges as "Team Leader" when they lead this specific team (FR-013).
+   */
+  contextTeamId?: string;
 }
 
 export function SuggestionList({
@@ -68,6 +73,7 @@ export function SuggestionList({
   title,
   highlightTop = false,
   collapsible = false,
+  contextTeamId,
 }: SuggestionListProps) {
   if (suggestions.length === 0) {
     return (
@@ -103,7 +109,10 @@ export function SuggestionList({
                     {suggestion.name}
                   </span>
                   <AssigneeIdentityBadge
-                    roleLabel={formatAssigneeRoleLabel(suggestion.systemRole)}
+                    roleLabel={formatAssigneeRoleLabel({
+                      membership: suggestion.membership,
+                      contextTeamId,
+                    })}
                     fullNameOnExpand={suggestion.name}
                   />
                 </span>

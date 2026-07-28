@@ -45,7 +45,12 @@ export type TenancyWriter =
  */
 export type ChurchAccessLevel = 'member' | 'admin';
 
-export const ChurchIdSchema = z.uuid().brand<'ChurchId'>();
+// `z.guid()`, not `z.uuid()`: the latter enforces the RFC 4122 version/variant
+// nibbles, which Postgres's own `uuid` column type does not — and the E2E seed's
+// deliberately-readable ids (e.g. `e2e11111-...`) are valid UUIDs by that laxer
+// standard. Every real Church id (Better Auth's `organization.id`) is already a
+// proper UUID regardless of which check runs, so nothing is lost here.
+export const ChurchIdSchema = z.guid().brand<'ChurchId'>();
 export type ChurchId = z.infer<typeof ChurchIdSchema>;
 
 export const ChurchSlugSchema = z.string().trim().min(1).brand<'ChurchSlug'>();

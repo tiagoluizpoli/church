@@ -52,7 +52,7 @@ export const volunteerDashboardTimeline = {
  */
 export async function truncateAll(): Promise<void> {
   await testDb.execute(`
-    TRUNCATE TABLE organization, "user" RESTART IDENTITY CASCADE
+    TRUNCATE TABLE organization, "user", verification, todo RESTART IDENTITY CASCADE
   `);
 }
 

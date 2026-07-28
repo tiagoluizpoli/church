@@ -1,7 +1,11 @@
 import { NotFoundError } from '@church/core';
 import type { ChurchId } from '../../../src/domain/branded-ids';
 import { runChurchRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/church.contract-spec';
-import type { ChurchRepository } from '../../../src/domain/contracts/infrastructure/church.repository';
+import type {
+  ChurchRepository,
+  GetChurchByIdInput,
+  GetChurchBySlugInput,
+} from '../../../src/domain/contracts/infrastructure/church.repository';
 import { Church, type ChurchSlug } from '../../../src/domain/entities/church';
 
 class MockChurchRepository implements ChurchRepository {
@@ -18,7 +22,7 @@ class MockChurchRepository implements ChurchRepository {
     this.churches.set(church1.id, church1);
   }
 
-  async getById(id: ChurchId): Promise<Church> {
+  async getById({ id }: GetChurchByIdInput): Promise<Church> {
     const church = this.churches.get(id);
     if (!church) {
       throw new NotFoundError(`Church with ID ${id} not found`);
@@ -26,7 +30,7 @@ class MockChurchRepository implements ChurchRepository {
     return church;
   }
 
-  async getBySlug(slug: ChurchSlug): Promise<Church> {
+  async getBySlug({ slug }: GetChurchBySlugInput): Promise<Church> {
     for (const church of this.churches.values()) {
       if (church.slug === slug) {
         return church;

@@ -35,7 +35,7 @@ describe('runInitSystem', () => {
     };
     writeFileSync(seedPath, JSON.stringify(seedData));
 
-    const result = await runInitSystem(seedPath);
+    const result = await runInitSystem({ seedPath });
 
     expect(result.church?.slug).toBe('test-church');
     expect(result.user?.email).toBe('admin@test.com');
@@ -63,7 +63,7 @@ describe('runInitSystem', () => {
 
   it('BT-004: Edge - malformed JSON validation', async () => {
     writeFileSync(seedPath, '{ invalid json }');
-    await expect(runInitSystem(seedPath)).rejects.toThrow();
+    await expect(runInitSystem({ seedPath })).rejects.toThrow();
   });
 
   it('BT-005: Happy Path - auto-create admin user if missing', async () => {
@@ -74,7 +74,7 @@ describe('runInitSystem', () => {
     };
     writeFileSync(seedPath, JSON.stringify(seedData));
 
-    const result = await runInitSystem(seedPath);
+    const result = await runInitSystem({ seedPath });
     expect(result.user?.email).toBe('new-admin@test.com');
 
     const users = await testDb
@@ -99,7 +99,7 @@ describe('runInitSystem', () => {
     };
     writeFileSync(seedPath, JSON.stringify(seedData));
 
-    const result = await runInitSystem(seedPath);
+    const result = await runInitSystem({ seedPath });
     expect(result.church?.name).toBe('Existing Church'); // Should reuse existing
 
     const churches = await testDb.select().from(schema.church);
@@ -135,7 +135,7 @@ describe('runInitSystem', () => {
     writeFileSync(seedPath, JSON.stringify(seedData));
 
     // Should throw error
-    await expect(runInitSystem(seedPath)).rejects.toThrow();
+    await expect(runInitSystem({ seedPath })).rejects.toThrow();
 
     // Verify Church was NOT created (rollback worked)
     const organizations = await testDb

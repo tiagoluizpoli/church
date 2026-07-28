@@ -5,6 +5,7 @@ import type {
   NodePgQueryResultHKT,
 } from 'drizzle-orm/node-postgres';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
+import { z } from 'zod';
 import * as schema from './schema';
 
 /**
@@ -44,6 +45,14 @@ export type TenancyWriter =
  */
 export type ChurchAccessLevel = 'member' | 'admin';
 
+export const ChurchIdSchema = z.uuid().brand<'ChurchId'>();
+export type ChurchId = z.infer<typeof ChurchIdSchema>;
+
+export const ChurchSlugSchema = z.string().trim().min(1).brand<'ChurchSlug'>();
+export type ChurchSlug = z.infer<typeof ChurchSlugSchema>;
+
+const ChurchMembershipUserIdSchema = z.string().min(1).brand<'UserId'>();
+
 export interface CreateChurchInput {
   db: TenancyWriter;
   name: string;
@@ -55,9 +64,9 @@ export interface CreateChurchInput {
 }
 
 export interface ChurchRecord {
-  id: string;
+  id: ChurchId;
   name: string;
-  slug: string;
+  slug: ChurchSlug;
   timezone: string;
 }
 
@@ -82,6 +91,13 @@ export interface FindAnyChurchInput {
   db: TenancyWriter;
 }
 
+export class ChurchIdentityConflictError extends Error {
+  constructor({ id, slug }: CreateChurchInput) {
+    super(`Church id "${id}" conflicts with slug "${slug}".`);
+    this.name = 'ChurchIdentityConflictError';
+  }
+}
+
 interface SelectChurchInput {
   db: TenancyWriter;
   where?: SQL;
@@ -104,18 +120,25 @@ async function selectChurch(
     .innerJoin(schema.church, eq(schema.church.id, schema.organization.id));
 
   const [row] = input.where ? await query.where(input.where) : await query;
-  return row;
+  if (!row) return undefined;
+
+  return {
+    id: ChurchIdSchema.parse(row.id),
+    name: row.name,
+    slug: ChurchSlugSchema.parse(row.slug),
+    timezone: row.timezone,
+  };
 }
 
-export async function createChurch(
+async function createChurchInTransaction(
   input: CreateChurchInput,
 ): Promise<ChurchRecord> {
   const [organization] = await input.db
     .insert(schema.organization)
     .values({
-      ...(input.id === undefined ? {} : { id: input.id }),
+      ...(input.id === undefined ? {} : { id: ChurchIdSchema.parse(input.id) }),
       name: input.name,
-      slug: input.slug,
+      slug: ChurchSlugSchema.parse(input.slug),
     })
     .returning();
 
@@ -137,11 +160,20 @@ export async function createChurch(
   }
 
   return {
-    id: organization.id,
+    id: ChurchIdSchema.parse(organization.id),
     name: organization.name,
-    slug: organization.slug,
+    slug: ChurchSlugSchema.parse(organization.slug),
     timezone: church.timezone,
   };
+}
+
+/** Creates both halves of a Church atomically, even for pooled-db callers. */
+export async function createChurch(
+  input: CreateChurchInput,
+): Promise<ChurchRecord> {
+  return await input.db.transaction(async (tx) =>
+    createChurchInTransaction({ ...input, db: tx }),
+  );
 }
 
 /**
@@ -156,20 +188,32 @@ export async function createChurch(
 export async function ensureChurch(
   input: CreateChurchInput,
 ): Promise<ChurchRecord> {
-  if (input.id !== undefined) {
-    const pinned = await findChurchById({ db: input.db, id: input.id });
-    if (pinned) return pinned;
+  const id =
+    input.id === undefined ? undefined : ChurchIdSchema.parse(input.id);
+  const slug = ChurchSlugSchema.parse(input.slug);
+
+  if (id !== undefined) {
+    const pinned = await findChurchById({ db: input.db, id });
+    if (pinned) {
+      if (pinned.slug !== slug) {
+        throw new ChurchIdentityConflictError(input);
+      }
+      return pinned;
+    }
   }
 
-  const existing = await findChurchBySlug({ db: input.db, slug: input.slug });
-  return existing ?? (await createChurch(input));
+  const existing = await findChurchBySlug({ db: input.db, slug });
+  if (existing && id !== undefined && existing.id !== id) {
+    throw new ChurchIdentityConflictError(input);
+  }
+  return existing ?? (await createChurch({ ...input, id, slug }));
 }
 
 /**
  * Better Auth's `member` table carries no unique index on
  * `(organization_id, user_id)`, so a re-run of an idempotent seed would
  * otherwise give one person two Church Memberships in the same Church. The
- * existing row wins; Access Level changes are a separate operation.
+ * repeated runs converge the stored Access Level on the caller's requested one.
  *
  * This is check-then-insert, not a constraint: two seeds racing each other can
  * still both insert. Nothing runs them concurrently today, and the index that
@@ -178,23 +222,34 @@ export async function ensureChurch(
 export async function addChurchMember(
   input: AddChurchMemberInput,
 ): Promise<void> {
+  const churchId = ChurchIdSchema.parse(input.churchId);
+  const userId = ChurchMembershipUserIdSchema.parse(input.userId);
   const [existing] = await input.db
-    .select({ id: schema.member.id })
+    .select({ id: schema.member.id, role: schema.member.role })
     .from(schema.member)
     .where(
       and(
-        eq(schema.member.organizationId, input.churchId),
-        eq(schema.member.userId, input.userId),
+        eq(schema.member.organizationId, churchId),
+        eq(schema.member.userId, userId),
       ),
     );
 
-  if (existing) return;
+  const accessLevel = input.accessLevel ?? 'member';
+  if (existing) {
+    if (existing.role !== accessLevel) {
+      await input.db
+        .update(schema.member)
+        .set({ role: accessLevel })
+        .where(eq(schema.member.id, existing.id));
+    }
+    return;
+  }
 
   await input.db.insert(schema.member).values({
     id: crypto.randomUUID(),
-    organizationId: input.churchId,
-    userId: input.userId,
-    role: input.accessLevel ?? 'member',
+    organizationId: churchId,
+    userId,
+    role: accessLevel,
   });
 }
 
@@ -203,7 +258,7 @@ export async function findChurchBySlug(
 ): Promise<ChurchRecord | undefined> {
   return await selectChurch({
     db: input.db,
-    where: eq(schema.organization.slug, input.slug),
+    where: eq(schema.organization.slug, ChurchSlugSchema.parse(input.slug)),
   });
 }
 
@@ -212,7 +267,7 @@ export async function findChurchById(
 ): Promise<ChurchRecord | undefined> {
   return await selectChurch({
     db: input.db,
-    where: eq(schema.organization.id, input.id),
+    where: eq(schema.organization.id, ChurchIdSchema.parse(input.id)),
   });
 }
 

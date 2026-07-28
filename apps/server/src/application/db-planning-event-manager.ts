@@ -148,7 +148,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   async generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
   ): Promise<GeneratedPlanningCounts> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
       const cycle = await this.ensurePlanningCycleWritable({
@@ -412,7 +412,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   }
 
   async createEvent(input: CreatePlanningEventManagerInput): Promise<Event> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
     const eventDates = input.datesRepresentChurchCalendarDays
       ? toChurchCalendarEventDates({
           startDate: input.startDate,
@@ -457,7 +457,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   }
 
   async updateEvent(input: UpdatePlanningEventManagerInput): Promise<Event> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
       const cycle = await this.ensurePlanningCycleWritable({
@@ -531,7 +531,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   async createSlot(
     input: CreatePlanningEventSlotManagerInput,
   ): Promise<TimeSlot> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
       await this.ensureWritableEvent({ input, church, action: 'update', tx });
@@ -552,7 +552,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   async updateSlot(
     input: UpdatePlanningEventSlotManagerInput,
   ): Promise<TimeSlot> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
       await this.loadWritableEventSlot({ input, church, action: 'update', tx });
@@ -571,7 +571,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   }
 
   async deleteSlot(input: DeletePlanningEventSlotManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
       await this.loadWritableEventSlot({ input, church, action: 'delete', tx });
@@ -639,7 +639,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   }
 
   async cancelEvent(input: CancelPlanningEventManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
       const cycle = await this.ensurePlanningCycleWritable({

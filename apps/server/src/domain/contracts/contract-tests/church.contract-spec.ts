@@ -27,22 +27,24 @@ export function runChurchRepositoryContractTests(
       // Let's document this in the contract suite: "The factory MUST return a repository seeded with:
       // - A church with ID '11111111-1111-1111-1111-111111111111' and slug 'first-church'"
       // This is extremely simple and elegant!
-      const found = await repo.getById(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-      );
+      const found = await repo.getById({
+        id: '11111111-1111-1111-1111-111111111111' as ChurchId,
+      });
       expect(found).toBeDefined();
       expect(found.id).toBe('11111111-1111-1111-1111-111111111111');
       expect(found.name).toBe('First Church');
     });
 
     it('should throw NotFoundError when church is not found by ID', async () => {
-      await expect(repo.getById('non-existent' as ChurchId)).rejects.toThrow(
-        NotFoundError,
-      );
+      await expect(
+        repo.getById({ id: 'non-existent' as ChurchId }),
+      ).rejects.toThrow(NotFoundError);
     });
 
     it('should retrieve a church by slug', async () => {
-      const found = await repo.getBySlug('first-church' as ChurchSlug);
+      const found = await repo.getBySlug({
+        slug: 'first-church' as ChurchSlug,
+      });
       expect(found).toBeDefined();
       expect(found.id).toBe('11111111-1111-1111-1111-111111111111');
       expect(found.slug).toBe('first-church');
@@ -50,7 +52,7 @@ export function runChurchRepositoryContractTests(
 
     it('should throw NotFoundError when church is not found by slug', async () => {
       await expect(
-        repo.getBySlug('non-existent-slug' as ChurchSlug),
+        repo.getBySlug({ slug: 'non-existent-slug' as ChurchSlug }),
       ).rejects.toThrow(NotFoundError);
     });
   });

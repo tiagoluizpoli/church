@@ -38,6 +38,12 @@ const DEV_TEAM = {
 
 const DEV_ROLES = ['Coordinator', 'Support'] as const;
 
+interface SeededDevUser {
+  email: string;
+  name: string;
+  role: string;
+}
+
 /**
  * Qualifications are spread deliberately rather than granted to everyone: the
  * builder's candidate filtering is only observable when the qualified set is a
@@ -79,7 +85,11 @@ async function ensureDevChurch(): Promise<ChurchRecord> {
   return await ensureChurch({ db, ...DEV_CHURCH });
 }
 
-async function ensureMinistry(churchId: string) {
+interface EnsureMinistryInput {
+  churchId: string;
+}
+
+async function ensureMinistry({ churchId }: EnsureMinistryInput) {
   const existingMinistry = await db.query.ministry.findFirst({
     where: and(
       eq(ministry.churchId, churchId),
@@ -106,7 +116,12 @@ async function ensureMinistry(churchId: string) {
   return createdMinistry;
 }
 
-async function ensureTeam(churchId: string, ministryId: string) {
+interface EnsureTeamInput {
+  churchId: string;
+  ministryId: string;
+}
+
+async function ensureTeam({ churchId, ministryId }: EnsureTeamInput) {
   const existingTeam = await db.query.team.findFirst({
     where: and(eq(team.churchId, churchId), eq(team.name, DEV_TEAM.name)),
   });
@@ -131,7 +146,12 @@ async function ensureTeam(churchId: string, ministryId: string) {
   return createdTeam;
 }
 
-async function ensureRoles(churchId: string, ministryId: string) {
+interface EnsureRolesInput {
+  churchId: string;
+  ministryId: string;
+}
+
+async function ensureRoles({ churchId, ministryId }: EnsureRolesInput) {
   const existingRoles = await db.query.role.findMany({
     where: eq(role.ministryId, ministryId),
   });
@@ -157,11 +177,17 @@ async function ensureRoles(churchId: string, ministryId: string) {
   return [...existingRoles, ...createdRoles];
 }
 
-async function ensureAuthUser(
-  email: string,
-  name: string,
-  passwordHash: string,
-) {
+interface EnsureAuthUserInput {
+  email: string;
+  name: string;
+  passwordHash: string;
+}
+
+async function ensureAuthUser({
+  email,
+  name,
+  passwordHash,
+}: EnsureAuthUserInput) {
   const normalizedEmail = email.toLowerCase();
   const existingUser = await db.query.user.findFirst({
     where: eq(user.email, normalizedEmail),
@@ -232,7 +258,12 @@ async function ensureAuthUser(
   return ensuredUser;
 }
 
-async function ensureVolunteer(userId: string, churchId: string) {
+interface EnsureVolunteerInput {
+  userId: string;
+  churchId: string;
+}
+
+async function ensureVolunteer({ userId, churchId }: EnsureVolunteerInput) {
   const existingVolunteer = await db.query.volunteer.findFirst({
     where: eq(volunteer.userId, userId),
   });
@@ -387,7 +418,12 @@ async function ensureMembershipRoles(input: EnsureMembershipRolesInput) {
   );
 }
 
-async function ensureChurchAdmin(input: { churchId: string; userId: string }) {
+interface EnsureChurchAdminInput {
+  churchId: string;
+  userId: string;
+}
+
+async function ensureChurchAdmin(input: EnsureChurchAdminInput) {
   const existingChurchAdmin = await db.query.churchAdmin.findFirst({
     where: and(
       eq(churchAdmin.churchId, input.churchId),
@@ -408,22 +444,27 @@ async function ensureChurchAdmin(input: { churchId: string; userId: string }) {
 export async function seedDevUsers() {
   const passwordHash = await hashPassword(DEV_PASSWORD);
   const localChurch = await ensureDevChurch();
-  const localMinistry = await ensureMinistry(localChurch.id);
-  const localTeam = await ensureTeam(localChurch.id, localMinistry.id);
-  const localRoles = await ensureRoles(localChurch.id, localMinistry.id);
-  const results: Array<{
-    email: string;
-    name: string;
-    role: string;
-  }> = [];
+  const localMinistry = await ensureMinistry({ churchId: localChurch.id });
+  const localTeam = await ensureTeam({
+    churchId: localChurch.id,
+    ministryId: localMinistry.id,
+  });
+  const localRoles = await ensureRoles({
+    churchId: localChurch.id,
+    ministryId: localMinistry.id,
+  });
+  const results: SeededDevUser[] = [];
 
   for (const devUser of DEV_USERS) {
-    const authUser = await ensureAuthUser(
-      devUser.email,
-      devUser.name,
+    const authUser = await ensureAuthUser({
+      email: devUser.email,
+      name: devUser.name,
       passwordHash,
-    );
-    const localVolunteer = await ensureVolunteer(authUser.id, localChurch.id);
+    });
+    const localVolunteer = await ensureVolunteer({
+      userId: authUser.id,
+      churchId: localChurch.id,
+    });
 
     // Church Membership is the access grant; volunteering is additive to it.
     await addChurchMember({

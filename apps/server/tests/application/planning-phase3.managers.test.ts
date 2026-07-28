@@ -51,7 +51,9 @@ function createManagers() {
   const templateRepository = new DrizzleEventTemplateRepository(
     schedulingTestDb,
   );
-  const churchRepository = new DrizzleChurchRepository(schedulingTestDb);
+  const churchRepository = new DrizzleChurchRepository({
+    db: schedulingTestDb,
+  });
   const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
   const participationRepository = new DrizzleMinistryParticipationRepository(
     schedulingTestDb,

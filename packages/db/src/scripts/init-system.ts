@@ -6,7 +6,11 @@ import * as schema from '../schema';
 import { SeedDataSchema } from '../schemas/seed';
 import { addChurchMember, createChurch, findChurchBySlug } from '../tenancy';
 
-export async function runInitSystem(seedPath: string) {
+interface RunInitSystemInput {
+  seedPath: string;
+}
+
+export async function runInitSystem({ seedPath }: RunInitSystemInput) {
   console.log('🚀 Initializing Church system...');
 
   const rawData = JSON.parse(readFileSync(seedPath, 'utf-8'));
@@ -132,7 +136,7 @@ export async function runInitSystem(seedPath: string) {
 
 if (import.meta.main) {
   const seedPath = join(process.cwd(), 'seed-data.json');
-  runInitSystem(seedPath)
+  runInitSystem({ seedPath })
     .then(() => {
       console.log('✅ System initialized successfully.');
       process.exit(0);

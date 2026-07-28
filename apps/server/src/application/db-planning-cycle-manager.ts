@@ -68,7 +68,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
   async listCycles(
     input: ListPlanningCyclesManagerInput,
   ): Promise<PlanningCycle[]> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
     const cycles = await this.cycleRepository.list(input);
     const resolvedCycles = await Promise.all(
       cycles.map((cycle) =>
@@ -87,7 +87,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
   async getCycle(
     input: GetPlanningCycleManagerInput,
   ): Promise<PlanningCycleDetails> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
     const cycle = await this.ensureResolvedCycle({
       cycle: await this.cycleRepository.getById(input),
       churchTimeZone: church.timezone,
@@ -101,7 +101,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
   }
 
   async lockCycle(input: LockPlanningCycleManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
       // Serializes concurrent lock attempts on this church's cycles so two
@@ -152,7 +152,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
   }
 
   async reopenEvent(input: ReopenPlanningEventManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById(input.churchId);
+    const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
       const cycle = await this.ensureResolvedCycle({

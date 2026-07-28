@@ -21,4 +21,6 @@ ALTER TABLE "church" DROP CONSTRAINT "church_slug_unique";--> statement-breakpoi
 ALTER TABLE "church" ALTER COLUMN "id" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "church" ADD CONSTRAINT "church_id_organization_id_fk" FOREIGN KEY ("id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "church" DROP COLUMN "name";--> statement-breakpoint
-ALTER TABLE "church" DROP COLUMN "slug";
+ALTER TABLE "church" DROP COLUMN "slug";--> statement-breakpoint
+ALTER TABLE "church" DROP COLUMN "created_at";--> statement-breakpoint
+ALTER TABLE "church" DROP COLUMN "updated_at";

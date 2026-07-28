@@ -23,6 +23,10 @@ interface CliOptions {
   email?: string;
 }
 
+interface ParseCliOptionsInput {
+  argv: string[];
+}
+
 interface AuthUserCandidate {
   id: string;
   email: string;
@@ -58,6 +62,34 @@ interface DemoEventPlan {
   confirmedEvent: DemoEventSpec;
 }
 
+interface ResolveTargetUserInput {
+  email?: string;
+}
+
+interface EnsureVolunteerContextInput {
+  user: typeof schema.user.$inferSelect;
+}
+
+interface BuildEventSpecsInput {
+  now: Date;
+}
+
+interface EnsureEventInput {
+  context: DemoContext;
+  spec: DemoEventSpec;
+}
+
+interface EnsureSlotRequirementInput {
+  context: DemoContext;
+  participationId: string;
+  shiftId: string;
+  roleId: string;
+}
+
+interface SeedVolunteerDashboardDemoInput {
+  email?: string;
+}
+
 interface EnsureAssignmentInput {
   context: DemoContext;
   participationId: string;
@@ -76,7 +108,7 @@ interface EnsureNotificationInput {
   readAt?: Date;
 }
 
-function parseCliOptions(argv: string[]): CliOptions {
+function parseCliOptions({ argv }: ParseCliOptionsInput): CliOptions {
   const emailArg = argv.find((arg) => arg.startsWith('--email='));
   return {
     email: emailArg?.slice('--email='.length),
@@ -105,7 +137,7 @@ async function listAuthUserCandidates(): Promise<AuthUserCandidate[]> {
   return Array.from(uniqueByEmail.values());
 }
 
-async function resolveTargetUser(email?: string) {
+async function resolveTargetUser({ email }: ResolveTargetUserInput) {
   if (email) {
     const user = await db.query.user.findFirst({
       where: eq(schema.user.email, email),
@@ -172,9 +204,9 @@ async function ensureChurch(): Promise<ChurchRecord> {
   });
 }
 
-async function ensureVolunteerContext(
-  user: typeof schema.user.$inferSelect,
-): Promise<DemoContext> {
+async function ensureVolunteerContext({
+  user,
+}: EnsureVolunteerContextInput): Promise<DemoContext> {
   const existingVolunteer = await db.query.volunteer.findFirst({
     where: eq(schema.volunteer.userId, user.id),
   });
@@ -363,7 +395,7 @@ async function ensureVolunteerContext(
   };
 }
 
-function buildEventSpecs(now: Date): DemoEventPlan {
+function buildEventSpecs({ now }: BuildEventSpecsInput): DemoEventPlan {
   const pendingStart = new Date(now);
   pendingStart.setDate(now.getDate() + 7);
   pendingStart.setHours(8, 0, 0, 0);
@@ -416,7 +448,7 @@ function buildEventSpecs(now: Date): DemoEventPlan {
   };
 }
 
-async function ensureEvent(context: DemoContext, spec: DemoEventSpec) {
+async function ensureEvent({ context, spec }: EnsureEventInput) {
   const planningCycle =
     (await db.query.planningCycle.findFirst({
       where: eq(schema.planningCycle.churchId, context.church.id),
@@ -587,12 +619,12 @@ async function ensureEvent(context: DemoContext, spec: DemoEventSpec) {
   return { event, participation, slots, shifts };
 }
 
-async function ensureSlotRequirement(
-  context: DemoContext,
-  participationId: string,
-  shiftId: string,
-  roleId: string,
-) {
+async function ensureSlotRequirement({
+  context,
+  participationId,
+  shiftId,
+  roleId,
+}: EnsureSlotRequirementInput) {
   const existingRequirement = await db.query.slotRequirement.findFirst({
     where: and(
       eq(schema.slotRequirement.churchId, context.church.id),
@@ -698,32 +730,34 @@ async function ensureNotification(input: EnsureNotificationInput) {
   return createdNotification;
 }
 
-export async function seedVolunteerDashboardDemo(email?: string) {
-  const user = await resolveTargetUser(email);
-  const context = await ensureVolunteerContext(user);
+export async function seedVolunteerDashboardDemo({
+  email,
+}: SeedVolunteerDashboardDemoInput) {
+  const user = await resolveTargetUser({ email });
+  const context = await ensureVolunteerContext({ user });
   const now = new Date();
-  const { pendingEvent, confirmedEvent } = buildEventSpecs(now);
-  const pending = await ensureEvent(context, pendingEvent);
-  const confirmed = await ensureEvent(context, confirmedEvent);
+  const { pendingEvent, confirmedEvent } = buildEventSpecs({ now });
+  const pending = await ensureEvent({ context, spec: pendingEvent });
+  const confirmed = await ensureEvent({ context, spec: confirmedEvent });
 
   await Promise.all(
     pending.shifts.map((shift) =>
-      ensureSlotRequirement(
+      ensureSlotRequirement({
         context,
-        pending.participation.id,
-        shift.id,
-        context.hostRole.id,
-      ),
+        participationId: pending.participation.id,
+        shiftId: shift.id,
+        roleId: context.hostRole.id,
+      }),
     ),
   );
   await Promise.all(
     confirmed.shifts.map((shift) =>
-      ensureSlotRequirement(
+      ensureSlotRequirement({
         context,
-        confirmed.participation.id,
-        shift.id,
-        context.greeterRole.id,
-      ),
+        participationId: confirmed.participation.id,
+        shiftId: shift.id,
+        roleId: context.greeterRole.id,
+      }),
     ),
   );
 
@@ -784,8 +818,8 @@ export async function seedVolunteerDashboardDemo(email?: string) {
 }
 
 async function main() {
-  const options = parseCliOptions(process.argv.slice(2));
-  const result = await seedVolunteerDashboardDemo(options.email);
+  const options = parseCliOptions({ argv: process.argv.slice(2) });
+  const result = await seedVolunteerDashboardDemo({ email: options.email });
 
   console.log('Seeded volunteer dashboard demo data:');
   console.log(`- email: ${result.email}`);

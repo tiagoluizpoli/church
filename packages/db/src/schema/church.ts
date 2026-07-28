@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { organization } from './organization';
 
 // A Church *is* an `organization` row. Better Auth owns its identity — `name`
@@ -13,13 +13,6 @@ export const church = pgTable('church', {
     .references(() => organization.id, { onDelete: 'cascade' }),
   timezone: text('timezone').default('UTC').notNull(),
   settings: jsonb('settings').default({}),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
 });
 
 // Declared on this side only: `organization.ts` is Better Auth's territory and

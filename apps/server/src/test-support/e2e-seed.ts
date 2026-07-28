@@ -181,8 +181,12 @@ const POOL_VOLUNTEERS = [
   },
 ] as const;
 
+interface PoolMembershipIdInput {
+  index: number;
+}
+
 /** Stable membership id for the i-th pool volunteer, shared by both inserts. */
-function poolMembershipId(index: number): string {
+function poolMembershipId({ index }: PoolMembershipIdInput): string {
   return `e2eccccc-cccc-cccc-cccc-cccccccccc0${index + 2}`;
 }
 
@@ -204,7 +208,7 @@ const MINISTRY_MEMBERSHIP_IDS = [
   'e2eccccc-cccc-cccc-cccc-ccccccccccc1',
   'e2eccccc-cccc-cccc-cccc-cccccccccca6',
   'e2eccccc-cccc-cccc-cccc-cccccccccca7',
-  ...POOL_VOLUNTEERS.map((_, i) => poolMembershipId(i)),
+  ...POOL_VOLUNTEERS.map((_, index) => poolMembershipId({ index })),
 ] as const;
 
 function makeDb() {
@@ -526,8 +530,8 @@ export async function seedE2e({
           systemRole: 'volunteer',
           status: 'active',
         },
-        ...POOL_VOLUNTEERS.map((v, i) => ({
-          id: poolMembershipId(i),
+        ...POOL_VOLUNTEERS.map((v, index) => ({
+          id: poolMembershipId({ index }),
           churchId: E2E_IDS.church,
           volunteerId: v.id,
           ministryId: E2E_IDS.ministry,
@@ -561,12 +565,12 @@ export async function seedE2e({
           ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
           teamId: E2E_IDS.team1,
         },
-        ...POOL_VOLUNTEERS.flatMap((v, i) =>
+        ...POOL_VOLUNTEERS.flatMap((v, index) =>
           v.teamId
             ? [
                 {
                   churchId: E2E_IDS.church,
-                  ministryVolunteerId: poolMembershipId(i),
+                  ministryVolunteerId: poolMembershipId({ index }),
                   teamId: v.teamId,
                 },
               ]
@@ -1069,7 +1073,12 @@ export async function cleanupE2e({
   }
 }
 
-function parseArg(argv: string[], flag: string): string | undefined {
+interface ParseArgInput {
+  argv: string[];
+  flag: string;
+}
+
+function parseArg({ argv, flag }: ParseArgInput): string | undefined {
   return argv.find((a) => a.startsWith(`--${flag}=`))?.split('=')[1];
 }
 
@@ -1080,18 +1089,21 @@ if (import.meta.main) {
   const run = async () => {
     if (argv.includes('cleanup')) {
       await cleanupE2e({
-        leaderUserId: parseArg(argv, 'leader-user-id'),
-        subLeaderUserId: parseArg(argv, 'sub-leader-user-id'),
-        volunteerUserId: parseArg(argv, 'volunteer-user-id'),
-        churchBAdminUserId: parseArg(argv, 'church-b-admin-user-id'),
+        leaderUserId: parseArg({ argv, flag: 'leader-user-id' }),
+        subLeaderUserId: parseArg({ argv, flag: 'sub-leader-user-id' }),
+        volunteerUserId: parseArg({ argv, flag: 'volunteer-user-id' }),
+        churchBAdminUserId: parseArg({ argv, flag: 'church-b-admin-user-id' }),
       });
       console.log('[e2e-seed] cleaned up');
       return;
     }
-    const leaderUserId = parseArg(argv, 'leader-user-id');
-    const subLeaderUserId = parseArg(argv, 'sub-leader-user-id');
-    const volunteerUserId = parseArg(argv, 'volunteer-user-id');
-    const churchBAdminUserId = parseArg(argv, 'church-b-admin-user-id');
+    const leaderUserId = parseArg({ argv, flag: 'leader-user-id' });
+    const subLeaderUserId = parseArg({ argv, flag: 'sub-leader-user-id' });
+    const volunteerUserId = parseArg({ argv, flag: 'volunteer-user-id' });
+    const churchBAdminUserId = parseArg({
+      argv,
+      flag: 'church-b-admin-user-id',
+    });
     if (
       !leaderUserId ||
       !subLeaderUserId ||

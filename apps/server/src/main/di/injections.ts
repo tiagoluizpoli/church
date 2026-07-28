@@ -94,7 +94,7 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleShiftRepository(db),
   });
   container.register(injection.infra.churchRepository, {
-    useFactory: () => new DrizzleChurchRepository(db),
+    useFactory: () => new DrizzleChurchRepository({ db }),
   });
   container.register(injection.infra.ministryRepository, {
     useFactory: () => new DrizzleMinistryRepository(db),

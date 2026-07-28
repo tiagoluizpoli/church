@@ -86,6 +86,7 @@ describe('Better Auth id generation', () => {
       .select()
       .from(schema.session)
       .where(eq(schema.session.userId, result.user.id));
+    expect(sessions).toHaveLength(1);
     for (const session of sessions) {
       expect(session.id).toMatch(UUID_PATTERN);
     }

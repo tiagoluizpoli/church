@@ -38,7 +38,7 @@ runChurchRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleChurchRepository(testDb);
+    return new DrizzleChurchRepository({ db: testDb });
   },
   async () => {
     await truncateAll();

@@ -15,10 +15,12 @@ describe('DrizzleChurchRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for a well-formed uuid that does not exist', async () => {
     await seedSchedulingPhase3Base();
-    const repo = new DrizzleChurchRepository(schedulingTestDb);
+    const repo = new DrizzleChurchRepository({ db: schedulingTestDb });
 
     await expect(
-      repo.getById(ChurchId.from('99999999-9999-4999-8999-999999999999')),
+      repo.getById({
+        id: ChurchId.from('99999999-9999-4999-8999-999999999999'),
+      }),
     ).rejects.toThrow(NotFoundError);
   });
 });

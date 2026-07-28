@@ -75,18 +75,6 @@ export function createAuth() {
         },
       }),
     ],
-    databaseHooks: {
-      session: {
-        create: {
-          after: async (session) => {
-            const { handleSoftRegistration } = await import(
-              './hooks/soft-registration'
-            );
-            await handleSoftRegistration(session.userId);
-          },
-        },
-      },
-    },
   });
 }
 

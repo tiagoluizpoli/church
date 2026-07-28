@@ -76,7 +76,7 @@ describe('Local Seeder', () => {
           .orderBy(schema.assignment.id);
 
         return {
-          churches: churches.map(({ createdAt, updatedAt, ...rest }) => rest),
+          churches,
           ministries: ministries.map(
             ({ createdAt, updatedAt, ...rest }) => rest,
           ),

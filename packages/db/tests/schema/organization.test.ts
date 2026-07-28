@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { eq, getTableColumns } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { session, user } from '../../src/schema/auth';
+import { church } from '../../src/schema/church';
 import {
   invitation,
   member,
@@ -74,6 +75,14 @@ async function seedInvitation({ userId, organizationId }: SeedInvitationInput) {
 describe('Organization Schema', () => {
   beforeEach(async () => {
     await clearDatabase();
+  });
+
+  it('keeps the Church extension to its exact domain columns', () => {
+    expect(Object.keys(getTableColumns(church)).sort()).toEqual([
+      'id',
+      'settings',
+      'timezone',
+    ]);
   });
 
   it('persists an organization and enforces a unique slug', async () => {

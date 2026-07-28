@@ -1,9 +1,12 @@
 import { NotFoundError } from '@church/core';
 import { church, organization } from '@church/db';
 import { eq } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/branded-ids';
-import type { ChurchRepository } from '../../domain/contracts/infrastructure/church.repository';
-import type { Church, ChurchSlug } from '../../domain/entities/church';
+import type {
+  ChurchRepository,
+  GetChurchByIdInput,
+  GetChurchBySlugInput,
+} from '../../domain/contracts/infrastructure/church.repository';
+import type { Church } from '../../domain/entities/church';
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -12,10 +15,18 @@ import type { AnyDrizzleDb } from './types';
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
 
-export class DrizzleChurchRepository implements ChurchRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+interface DrizzleChurchRepositoryInput {
+  db: AnyDrizzleDb;
+}
 
-  async getById(id: ChurchId): Promise<Church> {
+export class DrizzleChurchRepository implements ChurchRepository {
+  constructor({ db }: DrizzleChurchRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
+
+  async getById({ id }: GetChurchByIdInput): Promise<Church> {
     if (!isValidUuid(id)) {
       throw new NotFoundError(`Church not found: ${id}`);
     }
@@ -28,7 +39,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     return mapChurch(row);
   }
 
-  async getBySlug(slug: ChurchSlug): Promise<Church> {
+  async getBySlug({ slug }: GetChurchBySlugInput): Promise<Church> {
     const [row] = await getClient(this.db)
       .select(churchJoinShape)
       .from(church)

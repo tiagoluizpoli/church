@@ -26,7 +26,9 @@ import {
   team,
   timeBlock,
   timeSlot,
+  todo,
   user,
+  verification,
   volunteer,
   volunteerNotification,
 } from '@church/db';
@@ -46,18 +48,6 @@ import { testDb, truncateAll } from '../integration/repositories/setup';
  * hand-kept list. A table added to the schema and not covered here fails this
  * test, which is the point.
  */
-
-/**
- * Tables with no path to either root — nothing cascades into them, and nothing
- * should. Listed explicitly so adding a table is a decision, not an omission.
- */
-const UNREACHABLE_TABLES = new Set([
-  // Standalone scaffolding table; belongs to no tenant and no identity.
-  'todo',
-  // Better Auth's short-lived one-time codes, keyed by email rather than by a
-  // user row, so no foreign key exists to cascade along.
-  'verification',
-]);
 
 const IDS = {
   church: 'aaaaaaa1-0000-4000-8000-000000000001',
@@ -161,6 +151,15 @@ async function seedEveryTenantedTable(): Promise<void> {
     userId: IDS.user,
     updatedAt: new Date(),
   });
+
+  await testDb.insert(verification).values({
+    id: 'truncation-root-verification',
+    identifier: 'truncation-root@test.com',
+    value: 'one-time-token',
+    expiresAt: new Date('2030-01-01T00:00:00Z'),
+  });
+
+  await testDb.insert(todo).values({ text: 'Truncation root todo' });
 
   await testDb
     .insert(churchAdmin)
@@ -346,7 +345,7 @@ async function seedEveryTenantedTable(): Promise<void> {
 }
 
 describe('truncateAll roots at organization and user', () => {
-  let reachableTables: string[] = [];
+  let tables: string[] = [];
   let countsAfterSeed: TableRowCount[] = [];
   let countsAfterTruncate: TableRowCount[] = [];
 
@@ -355,13 +354,11 @@ describe('truncateAll roots at organization and user', () => {
     await seedEveryTenantedTable();
 
     const allTables = await listPublicTables();
-    reachableTables = allTables.filter(
-      (table) => !UNREACHABLE_TABLES.has(table),
-    );
+    tables = allTables;
 
-    countsAfterSeed = await countRows(reachableTables);
+    countsAfterSeed = await countRows(tables);
     await truncateAll();
-    countsAfterTruncate = await countRows(reachableTables);
+    countsAfterTruncate = await countRows(tables);
   });
 
   it('covers every table the truncation is expected to reach', () => {

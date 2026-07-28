@@ -2,13 +2,13 @@ import * as authSchema from '@church/db/schema/auth';
 import * as organizationSchema from '@church/db/schema/organization';
 import { getTableColumns } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { auth } from '../src/index';
-import { assertConfiguredRole } from '../src/organization/assert-configured-role';
 import {
   organizationCreatorRole,
   organizationRoles,
 } from '../src/organization/roles';
+import { clearDatabase } from './setup';
 
 interface DeclaredField {
   required?: boolean;
@@ -31,12 +31,59 @@ interface OrganizationPluginShape {
   options: DeclaredPluginOptions;
 }
 
+interface AuthResponse {
+  user: {
+    id: string;
+  };
+  cookie: string;
+}
+
+interface SignUpInput {
+  email: string;
+}
+
+interface CreatedOrganization {
+  id: string;
+}
+
+interface CreatedMember {
+  id: string;
+}
+
+interface OrganizationFixture {
+  organizationId: string;
+  candidateUserId: string;
+  memberId: string;
+  adminCookie: string;
+}
+
+interface RequestOrganizationEndpointInput {
+  path: string;
+  body: Record<string, string>;
+  cookie?: string;
+}
+
+interface AddMemberRequest {
+  body: {
+    userId: string;
+    organizationId: string;
+    role: string;
+  };
+}
+
+type AddMemberEndpoint = (input: AddMemberRequest) => Promise<unknown>;
+
 const drizzleTables: Record<string, PgTable> = {
   organization: organizationSchema.organization,
   member: organizationSchema.member,
   invitation: organizationSchema.invitation,
   session: authSchema.session,
 };
+
+// Better Auth narrows its generated server API to configured roles. This test
+// intentionally exercises hostile transport input, which reaches the hook
+// before persistence.
+const addMemberEndpoint = auth.api.addMember as unknown as AddMemberEndpoint;
 
 function getOrganizationPlugin(): OrganizationPluginShape {
   const plugin = auth.options.plugins?.find(
@@ -46,7 +93,89 @@ function getOrganizationPlugin(): OrganizationPluginShape {
   return plugin as unknown as OrganizationPluginShape;
 }
 
+async function signUp({ email }: SignUpInput): Promise<AuthResponse> {
+  const response = await auth.handler(
+    new Request('http://localhost:3000/api/auth/sign-up/email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        name: email,
+        password: 'organization-role-password',
+      }),
+    }),
+  );
+  const body = (await response.json()) as AuthResponse;
+  if (!response.ok) throw new Error('Auth fixture signup failed.');
+  const cookie = response.headers.get('set-cookie')?.split(';')[0];
+  if (!cookie) throw new Error('Auth fixture session cookie is missing.');
+  return { user: body.user, cookie };
+}
+
+async function createOrganizationFixture(): Promise<OrganizationFixture> {
+  const admin = await signUp({ email: 'admin@example.com' });
+  const candidate = await signUp({ email: 'candidate@example.com' });
+  const member = await signUp({ email: 'member@example.com' });
+  const { adapter } = await auth.$context;
+  const organization = await adapter.create<
+    Record<string, unknown>,
+    CreatedOrganization
+  >({
+    model: 'organization',
+    data: { name: 'Role Test Church', slug: 'role-test-church' },
+  });
+  await adapter.create<Record<string, unknown>, CreatedMember>({
+    model: 'member',
+    data: {
+      organizationId: organization.id,
+      userId: admin.user.id,
+      role: 'admin',
+    },
+  });
+  const existingMember = await adapter.create<
+    Record<string, unknown>,
+    CreatedMember
+  >({
+    model: 'member',
+    data: {
+      organizationId: organization.id,
+      userId: member.user.id,
+      role: 'member',
+    },
+  });
+  return {
+    organizationId: organization.id,
+    candidateUserId: candidate.user.id,
+    memberId: existingMember.id,
+    adminCookie: admin.cookie,
+  };
+}
+
+async function requestOrganizationEndpoint({
+  path,
+  body,
+  cookie,
+}: RequestOrganizationEndpointInput): Promise<Response> {
+  return await auth.handler(
+    new Request(`http://localhost:3000/api/auth/organization/${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(cookie ? { cookie } : {}),
+      },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
 describe('organization plugin', () => {
+  let fixture: OrganizationFixture;
+
+  beforeAll(async () => {
+    await clearDatabase();
+    fixture = await createOrganizationFixture();
+  });
+
   it('is enabled on the auth instance', () => {
     expect(getOrganizationPlugin().id).toBe('organization');
   });
@@ -70,14 +199,51 @@ describe('organization plugin', () => {
     expect(options.creatorRole).not.toBe('owner');
   });
 
-  it('rejects owner at the endpoints the plugin leaves unguarded', () => {
-    expect(() => assertConfiguredRole({ role: 'owner' })).toThrow(/owner/);
-    expect(() => assertConfiguredRole({ role: 'admin,owner' })).toThrow(
-      /owner/,
-    );
-    expect(() => assertConfiguredRole({ role: 'admin' })).not.toThrow();
-    expect(() => assertConfiguredRole({ role: 'member' })).not.toThrow();
-    expect(() => assertConfiguredRole({ role: undefined })).not.toThrow();
+  it.each([
+    'owner',
+    'admin,owner',
+  ])('rejects %s through add-member', async (role) => {
+    await expect(
+      addMemberEndpoint({
+        body: {
+          userId: fixture.candidateUserId,
+          organizationId: fixture.organizationId,
+          role,
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it.each([
+    'owner',
+    'admin,owner',
+  ])('rejects %s through update-member-role', async (role) => {
+    const response = await requestOrganizationEndpoint({
+      path: 'update-member-role',
+      cookie: fixture.adminCookie,
+      body: {
+        memberId: fixture.memberId,
+        organizationId: fixture.organizationId,
+        role,
+      },
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it.each([
+    'owner',
+    'admin,owner',
+  ])('rejects %s through invite-member', async (role) => {
+    const response = await requestOrganizationEndpoint({
+      path: 'invite-member',
+      cookie: fixture.adminCookie,
+      body: {
+        email: 'invited@example.com',
+        organizationId: fixture.organizationId,
+        role,
+      },
+    });
+    expect(response.status).toBe(400);
   });
 
   it('leaves the invitation mailer unset so the plugin sends nothing', () => {

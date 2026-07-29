@@ -35,6 +35,7 @@ const churchId = ChurchId.from('11111111-1111-4111-8111-a11111111111');
 const adminUserId = UserId.from('authority-admin-user');
 const leaderUserId = UserId.from('authority-leader-user');
 const volunteerUserId = UserId.from('authority-volunteer-user');
+const strandedUserId = UserId.from('authority-stranded-user');
 const ministryId = MinistryId.from('33333333-3333-4333-8333-a33333333331');
 const teamId = TeamId.from('55555555-5555-4555-8555-a55555555551');
 const roleId = RoleId.from('66666666-6666-4666-8666-a66666666661');
@@ -73,6 +74,12 @@ async function seed(): Promise<void> {
       email: 'authority-volunteer@test.com',
       emailVerified: true,
     },
+    {
+      id: strandedUserId,
+      name: 'Authority Stranded',
+      email: 'authority-stranded@test.com',
+      emailVerified: true,
+    },
   ]);
 
   await createChurch({
@@ -101,6 +108,7 @@ async function seed(): Promise<void> {
     userId: volunteerUserId,
     accessLevel: 'member',
   });
+  // strandedUserId deliberately gets no Church Membership and no Volunteer row.
 
   await testDb
     .insert(ministry)
@@ -283,5 +291,29 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
         resource: someoneElsesResource,
       }),
     ).toEqual({ allowed: false, reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+  });
+
+  it('resolves a User with no Church Membership row, denied everywhere with NO_CHURCH_MEMBERSHIP', async () => {
+    const resolver = new DrizzleAuthorityActorResolver(testDb);
+    const actor = await resolver.resolveActor({
+      userId: strandedUserId,
+      activeChurchId: churchId,
+    });
+
+    expect(actor.volunteerId).toBeNull();
+    expect(actor.churchMembership).toBeNull();
+    expect(actor.ministryMemberships).toEqual([]);
+    expect(actor.teamMemberships).toEqual([]);
+
+    const decision = AuthorityService.authorize({
+      actor,
+      action: 'manage',
+      resource: { type: 'church', churchId },
+    });
+
+    expect(decision).toEqual({
+      allowed: false,
+      reason: 'NO_CHURCH_MEMBERSHIP',
+    });
   });
 });

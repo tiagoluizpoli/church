@@ -97,6 +97,8 @@ export default defineConfig({
             // only once it is named here.
             'tests/tenancy/truncation-root.test.ts',
             'tests/tenancy/provision-church.test.ts',
+            'tests/tenancy/init-system.test.ts',
+            'tests/tenancy/ensure-platform-operator.test.ts',
           ],
         },
       },

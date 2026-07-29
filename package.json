@@ -44,7 +44,7 @@
     "db:watch": "turbo -F @church/db db:watch",
     "db:stop": "turbo -F @church/db db:stop",
     "db:down": "turbo -F @church/db db:down",
-    "db:init": "turbo -F @church/db db:init-system",
+    "db:init": "bun run --cwd apps/server db:init-system",
     "db:clean": "turbo -F @church/db db:clean",
     "db:seed": "turbo -F @church/db db:seed",
     "db:seed:reset": "turbo -F @church/db db:seed:reset",

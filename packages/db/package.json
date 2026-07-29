@@ -28,7 +28,6 @@
     "db:seed": "bun --env-file=../../.env src/seed/index.ts",
     "db:seed:reset": "bun --env-file=../../.env src/seed/index.ts --reset",
     "db:seed:dashboard-demo": "bun --env-file=../../.env src/scripts/seed-volunteer-dashboard-demo.ts",
-    "db:init-system": "bun --env-file=../../.env src/scripts/init-system.ts",
     "db:setup-test": "bun --env-file=../../.env src/setup-test-db.ts",
     "db:clean": "bun --env-file=../../.env src/scripts/clean-db.ts",
     "typecheck": "tsc --noEmit",

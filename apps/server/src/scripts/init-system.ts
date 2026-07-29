@@ -1,16 +1,35 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { and, eq } from 'drizzle-orm';
-import { db } from '../index';
-import * as schema from '../schema';
-import { SeedDataSchema } from '../schemas/seed';
-import { addChurchMember, createChurch, findChurchBySlug } from '../tenancy';
+import {
+  addChurchMember,
+  type ChurchRecord,
+  createDb,
+  findChurchBySlug,
+  ministry,
+  ministryVolunteer,
+  user,
+  volunteer,
+} from '@church/db';
+import { SeedDataSchema } from '@church/db/schemas/seed';
+import { and, eq, type InferSelectModel } from 'drizzle-orm';
+import { provisionSeedChurch } from './provision-seed-church';
+
+const db = createDb();
 
 interface RunInitSystemInput {
   seedPath: string;
 }
 
-export async function runInitSystem({ seedPath }: RunInitSystemInput) {
+export interface RunInitSystemResult {
+  church: ChurchRecord;
+  user: InferSelectModel<typeof user>;
+  volunteer: InferSelectModel<typeof volunteer>;
+  ministry: InferSelectModel<typeof ministry>;
+}
+
+export async function runInitSystem({
+  seedPath,
+}: RunInitSystemInput): Promise<RunInitSystemResult> {
   console.log('🚀 Initializing Church system...');
 
   const rawData = JSON.parse(readFileSync(seedPath, 'utf-8'));
@@ -26,24 +45,25 @@ export async function runInitSystem({ seedPath }: RunInitSystemInput) {
 
     if (!church) {
       console.log(`Creating church: ${seedData.churchName}`);
-      church = await createChurch({
+      church = await provisionSeedChurch({
         db: tx,
-        name: seedData.churchName,
-        slug: seedData.churchSlug,
+        churchName: seedData.churchName,
+        churchSlug: seedData.churchSlug,
+        adminEmail: seedData.adminEmail,
       });
     } else {
       console.log(`Church already exists: ${seedData.churchSlug}`);
     }
 
     // 2. Ensure User exists
-    let user = await tx.query.user.findFirst({
-      where: eq(schema.user.email, seedData.adminEmail),
+    let adminUser = await tx.query.user.findFirst({
+      where: eq(user.email, seedData.adminEmail),
     });
 
-    if (!user) {
+    if (!adminUser) {
       console.log(`Creating user: ${seedData.adminEmail}`);
       const [newUser] = await tx
-        .insert(schema.user)
+        .insert(user)
         .values({
           id: crypto.randomUUID(),
           email: seedData.adminEmail,
@@ -53,7 +73,7 @@ export async function runInitSystem({ seedPath }: RunInitSystemInput) {
         .returning();
 
       if (!newUser) throw new Error('Failed to create user');
-      user = newUser;
+      adminUser = newUser;
     } else {
       console.log(`User already exists: ${seedData.adminEmail}`);
     }
@@ -63,45 +83,45 @@ export async function runInitSystem({ seedPath }: RunInitSystemInput) {
     await addChurchMember({
       db: tx,
       churchId: church.id,
-      userId: user.id,
+      userId: adminUser.id,
       accessLevel: 'admin',
     });
 
     // 3. Ensure Volunteer exists for user
-    let volunteer = await tx.query.volunteer.findFirst({
+    let userVolunteer = await tx.query.volunteer.findFirst({
       where: and(
-        eq(schema.volunteer.userId, user.id),
-        eq(schema.volunteer.churchId, church.id),
+        eq(volunteer.userId, adminUser.id),
+        eq(volunteer.churchId, church.id),
       ),
     });
 
-    if (!volunteer) {
-      console.log(`Creating volunteer for user: ${user.email}`);
+    if (!userVolunteer) {
+      console.log(`Creating volunteer for user: ${adminUser.email}`);
       const [newVolunteer] = await tx
-        .insert(schema.volunteer)
+        .insert(volunteer)
         .values({
-          userId: user.id,
+          userId: adminUser.id,
           churchId: church.id,
           status: 'active',
         })
         .returning();
 
       if (!newVolunteer) throw new Error('Failed to create volunteer');
-      volunteer = newVolunteer;
+      userVolunteer = newVolunteer;
     }
 
     // 4. Ensure "Administration" ministry exists
-    let ministry = await tx.query.ministry.findFirst({
+    let adminMinistry = await tx.query.ministry.findFirst({
       where: and(
-        eq(schema.ministry.name, 'Administration'),
-        eq(schema.ministry.churchId, church.id),
+        eq(ministry.name, 'Administration'),
+        eq(ministry.churchId, church.id),
       ),
     });
 
-    if (!ministry) {
+    if (!adminMinistry) {
       console.log('Creating "Administration" ministry');
       const [newMinistry] = await tx
-        .insert(schema.ministry)
+        .insert(ministry)
         .values({
           name: 'Administration',
           churchId: church.id,
@@ -109,28 +129,33 @@ export async function runInitSystem({ seedPath }: RunInitSystemInput) {
         .returning();
 
       if (!newMinistry) throw new Error('Failed to create ministry');
-      ministry = newMinistry;
+      adminMinistry = newMinistry;
     }
 
     // 5. Link Volunteer to Ministry as LEADER
     const link = await tx.query.ministryVolunteer.findFirst({
       where: and(
-        eq(schema.ministryVolunteer.ministryId, ministry.id),
-        eq(schema.ministryVolunteer.volunteerId, volunteer.id),
+        eq(ministryVolunteer.ministryId, adminMinistry.id),
+        eq(ministryVolunteer.volunteerId, userVolunteer.id),
       ),
     });
 
     if (!link) {
       console.log('Promoting volunteer to LEADER of Administration');
-      await tx.insert(schema.ministryVolunteer).values({
+      await tx.insert(ministryVolunteer).values({
         churchId: church.id,
-        ministryId: ministry.id,
-        volunteerId: volunteer.id,
+        ministryId: adminMinistry.id,
+        volunteerId: userVolunteer.id,
         ministryAccessLevel: 'leader',
       });
     }
 
-    return { church, user, volunteer, ministry };
+    return {
+      church,
+      user: adminUser,
+      volunteer: userVolunteer,
+      ministry: adminMinistry,
+    };
   });
 }
 

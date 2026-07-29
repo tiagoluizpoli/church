@@ -3,7 +3,7 @@ import {
   addChurchMember,
   type ChurchRecord,
   createDb,
-  ensureChurch,
+  findChurchBySlug,
   ministry,
   ministryVolunteer,
   ministryVolunteerRole,
@@ -15,6 +15,7 @@ import {
 } from '@church/db';
 import { hashPassword } from 'better-auth/crypto';
 import { and, eq } from 'drizzle-orm';
+import { provisionSeedChurch } from './provision-seed-church';
 
 const db = createDb();
 
@@ -85,7 +86,20 @@ const DEV_USERS = [
 ] as const;
 
 async function ensureDevChurch(): Promise<ChurchRecord> {
-  return await ensureChurch({ db, ...DEV_CHURCH });
+  const existingChurch = await findChurchBySlug({ db, slug: DEV_CHURCH.slug });
+  if (existingChurch) return existingChurch;
+
+  const adminDevUser = DEV_USERS.find((devUser) => devUser.isChurchAdmin);
+  if (!adminDevUser) {
+    throw new Error('No church-admin dev user configured to invite.');
+  }
+
+  return await provisionSeedChurch({
+    db,
+    churchName: DEV_CHURCH.name,
+    churchSlug: DEV_CHURCH.slug,
+    adminEmail: adminDevUser.email,
+  });
 }
 
 interface EnsureMinistryInput {

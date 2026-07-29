@@ -1,18 +1,19 @@
 import { unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import * as schema from '@church/db';
+import { createChurch } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import * as schema from '../../src/schema';
 import { runInitSystem } from '../../src/scripts/init-system';
-import { createChurch } from '../../src/tenancy';
-import { clearDatabase, testDb } from '../schema/setup';
+import { testDb, truncateAll } from '../integration/repositories/setup';
 
 describe('runInitSystem', () => {
   const seedPath = join(__dirname, 'test-seed.json');
 
   beforeEach(async () => {
-    await clearDatabase();
-    // Create a dummy user
+    await truncateAll();
+    // Dummy user pre-seeded so BT-001 exercises the "user already exists"
+    // branch, distinct from BT-005's "auto-create" branch.
     await testDb.insert(schema.user).values({
       id: 'admin-id',
       email: 'admin@test.com',
@@ -59,6 +60,15 @@ describe('runInitSystem', () => {
     const links = await testDb.select().from(schema.ministryVolunteer);
     expect(links).toHaveLength(1);
     expect(links[0]?.ministryAccessLevel).toBe('leader');
+
+    // Provisioned through the Platform Operator operation — a Church
+    // Invitation for the admin exists alongside the granted membership.
+    const invitations = await testDb
+      .select()
+      .from(schema.invitation)
+      .where(eq(schema.invitation.email, 'admin@test.com'));
+    expect(invitations).toHaveLength(1);
+    expect(invitations[0]?.status).toBe('pending');
   });
 
   it('BT-004: Edge - malformed JSON validation', async () => {
@@ -104,6 +114,14 @@ describe('runInitSystem', () => {
 
     const churches = await testDb.select().from(schema.church);
     expect(churches).toHaveLength(1);
+
+    // Re-running against an existing Church never re-provisions — no
+    // Church Invitation is minted for it.
+    const invitations = await testDb
+      .select()
+      .from(schema.invitation)
+      .where(eq(schema.invitation.email, 'admin@test.com'));
+    expect(invitations).toHaveLength(0);
   });
 
   it('BT-008: Catastrophic - rollback on failure', async () => {
@@ -146,5 +164,12 @@ describe('runInitSystem', () => {
 
     const churches = await testDb.select().from(schema.church);
     expect(churches.map((row) => row.id)).toEqual([otherChurch.id]);
+
+    // The provisioning half rolled back too — no stray invitation left behind.
+    const invitations = await testDb
+      .select()
+      .from(schema.invitation)
+      .where(eq(schema.invitation.email, 'admin@rollback.com'));
+    expect(invitations).toHaveLength(0);
   });
 });

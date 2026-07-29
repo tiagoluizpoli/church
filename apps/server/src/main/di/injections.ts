@@ -21,6 +21,7 @@ import { DbPlanningCycleManager } from '../../application/db-planning-cycle-mana
 import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
 import { DbSchedulingRbacManager } from '../../application/db-scheduling-rbac-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
+import { DrizzleAuthorityActorResolver } from '../../infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingRbacResolver } from '../../infrastructure/auth/drizzle-scheduling-rbac-resolver';
 import {
   DrizzleAssignmentAuditRepository,
@@ -56,6 +57,9 @@ export function registerInjections(): void {
   });
   container.register(injection.auth.schedulingRbacResolver, {
     useClass: SchedulingRbacGuard,
+  });
+  container.register(injection.auth.authorityActorRepository, {
+    useFactory: () => new DrizzleAuthorityActorResolver(db),
   });
   container.register(injection.infra.eventRepository, {
     useFactory: () => new DrizzleEventRepository(db),

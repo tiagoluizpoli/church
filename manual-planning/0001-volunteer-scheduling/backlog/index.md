@@ -55,6 +55,7 @@ Parked items have no rank and no GitHub issue.
 | [BL-009](./items/BL-009.md) | Free-standing role-count presets (ex-`RoleTemplate`) | Scheduling Reshape (017) | A leader wants the same named `(role → count)` bundle on a **second** dynamic event and copy-from-profile does not reach it. |
 | [BL-010](./items/BL-010.md) | Per-ministry `Shift` model refinements | Scheduling Reshape (017) | **Two triggers, one per half.** *Reusable shift layouts*: a ministry hand-recreates the same non-default split on a second cycle. *Cross-ministry visibility*: two ministries sharing one `TimeSlot` mis-coordinate their splits and one asks to see the other's. Either trigger promotes only its own half — this item never returns whole. |
 | [BL-019](./items/BL-019.md) | Volunteer response health report for leaders | Volunteer Scheduling / Leader Operations | **Decision-gated, not usage-gated.** Requires both open product decisions settled — retention period for response history, and which follow-up actions belong in the product — **plus** at least three planning cycles of real response history to report on. |
+| [BL-025](./items/BL-025.md) | Dedup `denyParticipationScope`/`denyShiftScope` across `leader-controller.ts` and `leader-rostering-controller.ts` | Backend Architecture | A third controller needs the identical scope-guard shape, **or** [BL-011](./items/BL-011.md)'s auth-hook-factory work lands and touches either file anyway. |
 
 ---
 

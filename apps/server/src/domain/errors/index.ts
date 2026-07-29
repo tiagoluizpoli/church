@@ -3,6 +3,7 @@ export * from '../conflict/errors';
 export * from './availability-overlap';
 export * from './below-full-publish';
 export * from './check-access-denied';
+export * from './church-slug-taken';
 export * from './cross-ministry-scope';
 export * from './event-outside-planning-cycle';
 export * from './illegal-state-transition';

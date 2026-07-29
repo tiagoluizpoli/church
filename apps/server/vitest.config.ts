@@ -96,6 +96,7 @@ export default defineConfig({
             // These lists are explicit, not globs: a new tests/ directory runs
             // only once it is named here.
             'tests/tenancy/truncation-root.test.ts',
+            'tests/tenancy/provision-church.test.ts',
           ],
         },
       },

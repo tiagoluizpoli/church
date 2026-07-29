@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { auth } from '@church/auth';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
@@ -18,6 +19,7 @@ import type { IEventManager } from '../../domain/contracts/application/event-man
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   assignmentMapper,
@@ -71,6 +73,35 @@ interface AssignmentRouteParams {
   assignmentId: string;
 }
 
+interface DenySchedulingAccessInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+}
+
+interface DenyMinistryScopeInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  ministryId: string;
+}
+
+interface DenyEventScopeInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  eventId: string;
+}
+
+interface DenyEventSlotScopeInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  slotId: string;
+}
+
+interface DenyAssignmentScopeInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  assignmentId: string;
+}
+
 @injectable()
 export class AdminLeaderController implements FastifyController {
   readonly prefix = '/admin';
@@ -84,6 +115,8 @@ export class AdminLeaderController implements FastifyController {
     private readonly assignmentManager: IAssignmentManager,
     @inject('IVolunteerManager')
     private readonly volunteerManager: IVolunteerManager,
+    @inject('AuthorityGuard')
+    private readonly authorityGuard: AuthorityGuard,
   ) {}
 
   registerRoutes(
@@ -109,16 +142,6 @@ export class AdminLeaderController implements FastifyController {
         });
       }
 
-      const isScheduleBuilderRoute =
-        request.method === 'GET' &&
-        request.url.startsWith('/api/v1/admin/schedule-builder');
-      if (!ctx.isAdmin && !ctx.isLeader && !isScheduleBuilderRoute) {
-        return reply.status(403).send({
-          error: 'FORBIDDEN',
-          message: 'Admin or leader role required',
-        });
-      }
-
       request.userId = session.user.id;
       request.volunteerId = ctx.volunteerId;
       request.churchId = ctx.churchId;
@@ -135,6 +158,9 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
+        const denied = await this.denySchedulingAccess({ request, reply });
+        if (denied) return;
+
         const ministries = await this.ministryManager.listByLeader({
           leaderId: VolunteerId.from(request.volunteerId),
           churchId: ChurchId.from(request.churchId),
@@ -182,6 +208,13 @@ export class AdminLeaderController implements FastifyController {
       },
       async (request, reply) => {
         const { ministryId, status } = request.query as ListEventsQuery;
+        const denied = await this.denyMinistryScope({
+          request,
+          reply,
+          ministryId,
+        });
+        if (denied) return;
+
         const events = await this.eventManager.listEvents({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
@@ -198,6 +231,9 @@ export class AdminLeaderController implements FastifyController {
       { schema: { tags: ['admin'], operationId: 'cancelEvent' } },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
+        const denied = await this.denyEventScope({ request, reply, eventId });
+        if (denied) return;
+
         await this.eventManager.cancelEvent({
           eventId: EventId.from(eventId),
           churchId: ChurchId.from(request.churchId),
@@ -211,6 +247,9 @@ export class AdminLeaderController implements FastifyController {
       { schema: { tags: ['admin'], operationId: 'sendReminders' } },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
+        const denied = await this.denyEventScope({ request, reply, eventId });
+        if (denied) return;
+
         await this.eventManager.sendReminder({
           eventId: EventId.from(eventId),
           churchId: ChurchId.from(request.churchId),
@@ -232,6 +271,9 @@ export class AdminLeaderController implements FastifyController {
       },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
+        const denied = await this.denyEventScope({ request, reply, eventId });
+        if (denied) return;
+
         const body = request.body as z.infer<typeof createSlotBodySchema>;
         const slot = await this.eventManager.createSlot({
           churchId: ChurchId.from(request.churchId),
@@ -255,7 +297,10 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { slotId } = request.params as EventSlotRouteParams;
+        const { eventId, slotId } = request.params as EventSlotRouteParams;
+        const denied = await this.denyEventScope({ request, reply, eventId });
+        if (denied) return;
+
         const body = request.body as z.infer<typeof updateSlotBodySchema>;
         const slot = await this.eventManager.updateSlot({
           churchId: ChurchId.from(request.churchId),
@@ -272,7 +317,10 @@ export class AdminLeaderController implements FastifyController {
       '/events/:eventId/slots/:slotId',
       { schema: { tags: ['admin'], operationId: 'deleteSlot' } },
       async (request, reply) => {
-        const { slotId } = request.params as EventSlotRouteParams;
+        const { eventId, slotId } = request.params as EventSlotRouteParams;
+        const denied = await this.denyEventScope({ request, reply, eventId });
+        if (denied) return;
+
         await this.eventManager.deleteSlot({
           slotId: TimeSlotId.from(slotId),
           churchId: ChurchId.from(request.churchId),
@@ -293,6 +341,13 @@ export class AdminLeaderController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
+        const denied = await this.denyAssignmentScope({
+          request,
+          reply,
+          assignmentId,
+        });
+        if (denied) return;
+
         const body = request.body as z.infer<
           typeof overrideAssignmentBodySchema
         >;
@@ -318,6 +373,9 @@ export class AdminLeaderController implements FastifyController {
       },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
+        const denied = await this.denyEventScope({ request, reply, eventId });
+        if (denied) return;
+
         const body = request.body as z.infer<typeof generateSlotsBodySchema>;
 
         const strategy =
@@ -353,7 +411,10 @@ export class AdminLeaderController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { slotId } = request.params as EventSlotRouteParams;
+        const { eventId, slotId } = request.params as EventSlotRouteParams;
+        const denied = await this.denyEventScope({ request, reply, eventId });
+        if (denied) return;
+
         const body = request.body as z.infer<typeof slotRequirementBodySchema>;
         const req = await this.eventManager.upsertSlotRequirement({
           churchId: ChurchId.from(request.churchId),
@@ -380,6 +441,13 @@ export class AdminLeaderController implements FastifyController {
       },
       async (request, reply) => {
         const body = request.body as z.infer<typeof createAssignmentBodySchema>;
+        const denied = await this.denyEventSlotScope({
+          request,
+          reply,
+          slotId: body.slotId,
+        });
+        if (denied) return;
+
         const result = await this.assignmentManager.createAssignment({
           churchId: ChurchId.from(request.churchId),
           slotId: TimeSlotId.from(body.slotId),
@@ -397,6 +465,13 @@ export class AdminLeaderController implements FastifyController {
       { schema: { tags: ['admin'], operationId: 'deleteAssignment' } },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
+        const denied = await this.denyAssignmentScope({
+          request,
+          reply,
+          assignmentId,
+        });
+        if (denied) return;
+
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
           churchId: ChurchId.from(request.churchId),
@@ -417,6 +492,13 @@ export class AdminLeaderController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
+        const denied = await this.denyAssignmentScope({
+          request,
+          reply,
+          assignmentId,
+        });
+        if (denied) return;
+
         const items = await this.assignmentManager.listAuditLog({
           assignmentId: AssignmentId.from(assignmentId),
           churchId: ChurchId.from(request.churchId),
@@ -424,5 +506,117 @@ export class AdminLeaderController implements FastifyController {
         return reply.send(assignmentMapper.auditListToResponse(items));
       },
     );
+  }
+
+  /**
+   * Returns whether access was denied. `FastifyReply` is a thenable (it
+   * resolves once the response is flushed) — `return reply.send(...)` from
+   * an `async` method would have its own returned promise silently adopt
+   * that reply's resolution instead of the reply object itself, so callers
+   * must never `await` a reply and branch on the awaited value. Each guard
+   * here sends the 403 as a side effect and returns a plain boolean.
+   *
+   * Gates the frontend's nav-visibility probe (`useCallerRoles`): there is
+   * no "my roles" endpoint, so the caller derives whether it may see
+   * Scheduling nav from whether this lightweight query is forbidden.
+   */
+  private async denySchedulingAccess({
+    request,
+    reply,
+  }: DenySchedulingAccessInput): Promise<boolean> {
+    const allowed = await this.authorityGuard.hasSchedulingAccess({
+      churchId: ChurchId.from(request.churchId),
+      userId: UserId.from(request.userId),
+    });
+    if (allowed) return false;
+
+    reply.status(403).send({
+      error: 'FORBIDDEN',
+      message: 'Admin or leader role required',
+    });
+    return true;
+  }
+
+  private async denyMinistryScope({
+    request,
+    reply,
+    ministryId,
+  }: DenyMinistryScopeInput): Promise<boolean> {
+    const allowed = await this.authorityGuard.canManageMinistry({
+      churchId: ChurchId.from(request.churchId),
+      ministryId: MinistryId.from(ministryId),
+      userId: UserId.from(request.userId),
+    });
+    if (allowed) return false;
+
+    reply.status(403).send({
+      error: 'FORBIDDEN',
+      message: 'Not a leader of this ministry',
+    });
+    return true;
+  }
+
+  private async denyEventScope({
+    request,
+    reply,
+    eventId,
+  }: DenyEventScopeInput): Promise<boolean> {
+    const allowed = await this.authorityGuard.canManageEvent({
+      churchId: ChurchId.from(request.churchId),
+      eventId: EventId.from(eventId),
+      userId: UserId.from(request.userId),
+    });
+    if (allowed) return false;
+
+    reply.status(403).send({
+      error: 'FORBIDDEN',
+      message: 'Not a leader of this event',
+    });
+    return true;
+  }
+
+  private async denyEventSlotScope({
+    request,
+    reply,
+    slotId,
+  }: DenyEventSlotScopeInput): Promise<boolean> {
+    const allowed = await this.authorityGuard.canManageEventSlot({
+      churchId: ChurchId.from(request.churchId),
+      slotId: TimeSlotId.from(slotId),
+      userId: UserId.from(request.userId),
+    });
+    if (allowed) return false;
+
+    reply.status(403).send({
+      error: 'FORBIDDEN',
+      message: 'Slot belongs to another ministry',
+    });
+    return true;
+  }
+
+  private async denyAssignmentScope({
+    request,
+    reply,
+    assignmentId,
+  }: DenyAssignmentScopeInput): Promise<boolean> {
+    const assignment = await this.assignmentManager.getAssignment({
+      churchId: ChurchId.from(request.churchId),
+      assignmentId: AssignmentId.from(assignmentId),
+    });
+    const { shiftId } = assignment;
+    const allowed =
+      shiftId != null &&
+      (await this.authorityGuard.canManageShift({
+        churchId: ChurchId.from(request.churchId),
+        shiftId,
+        userId: UserId.from(request.userId),
+      }));
+    if (allowed) return false;
+
+    reply.status(403).send({
+      error: 'FORBIDDEN',
+      message: 'Assignment belongs to another ministry',
+    });
+    return true;
   }
 }

@@ -1,22 +1,22 @@
-import {
-  ministryParticipation,
-  ministryVolunteer,
-  shift,
-  volunteer,
-} from '@church/db';
+import { ministryParticipation, shift } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import type { MinistryId } from '../../domain/branded-ids';
 import type {
-  IsChurchAdminInput,
-  IsMinistryLeaderInput,
   ResolveParticipationMinistryInput,
   ResolveShiftMinistryInput,
   SchedulingScopeRepository,
 } from '../../domain/contracts/infrastructure/scheduling-scope.repository';
-import { isChurchAdminMember, isValidUuid } from '../repositories/helpers';
+import { isValidUuid } from '../repositories/helpers';
 import type { AnyDrizzleDb } from '../repositories/types';
 
-export class DrizzleSchedulingRbacResolver
+/**
+ * Resolves the owning Ministry for a Participation or Shift, so callers can
+ * hand the result to `AuthorityService` as a `MinistryResource`. Supersedes
+ * `DrizzleSchedulingRbacResolver` for callers migrated onto AuthorityService
+ * — the admin/leader decision it used to make (`isChurchAdmin`,
+ * `isMinistryLeader`) now lives entirely in `AuthorityService`.
+ */
+export class DrizzleSchedulingScopeResolver
   implements SchedulingScopeRepository
 {
   constructor(private readonly db: AnyDrizzleDb) {}
@@ -58,31 +58,5 @@ export class DrizzleSchedulingRbacResolver
       )
       .limit(1);
     return (row?.ministryId as MinistryId | undefined) ?? null;
-  }
-
-  async isChurchAdmin(input: IsChurchAdminInput): Promise<boolean> {
-    return isChurchAdminMember(this.db, input.churchId, input.userId);
-  }
-
-  async isMinistryLeader(input: IsMinistryLeaderInput): Promise<boolean> {
-    const [leader] = await this.db
-      .select({ id: ministryVolunteer.id })
-      .from(volunteer)
-      .innerJoin(
-        ministryVolunteer,
-        eq(ministryVolunteer.volunteerId, volunteer.id),
-      )
-      .where(
-        and(
-          eq(volunteer.userId, input.userId),
-          eq(volunteer.churchId, input.churchId),
-          eq(ministryVolunteer.churchId, input.churchId),
-          eq(ministryVolunteer.ministryId, input.ministryId),
-          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
-          eq(ministryVolunteer.status, 'active'),
-        ),
-      )
-      .limit(1);
-    return leader != null;
   }
 }

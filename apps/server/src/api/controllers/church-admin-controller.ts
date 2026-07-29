@@ -21,6 +21,7 @@ import type { IPlanningCycleManager } from '../../domain/contracts/application/p
 import type { IPlanningEventManager } from '../../domain/contracts/application/planning-event-manager';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   createEventBodySchema,
@@ -109,6 +110,8 @@ export class ChurchAdminController implements FastifyController {
     private readonly participationManager: IParticipationManager,
     @inject('IMinistryManager')
     private readonly ministryManager: IMinistryManager,
+    @inject('AuthorityGuard')
+    private readonly authorityGuard: AuthorityGuard,
   ) {}
 
   registerRoutes(
@@ -134,7 +137,11 @@ export class ChurchAdminController implements FastifyController {
         });
       }
 
-      if (!ctx.isAdmin) {
+      const authorized = await this.authorityGuard.canManageChurch({
+        churchId: ChurchId.from(ctx.churchId),
+        userId: UserId.from(session.user.id),
+      });
+      if (!authorized) {
         return reply.status(403).send({
           error: 'FORBIDDEN',
           message: 'Church admin role required',

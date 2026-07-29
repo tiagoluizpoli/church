@@ -204,6 +204,7 @@ describe('Leader participation routes', () => {
       error: 'FORBIDDEN',
       message: 'Participation belongs to another ministry',
     });
+    expect(participationManager.splitShifts).not.toHaveBeenCalled();
   });
 
   it('POST /api/v1/leader/participations/:id/fire-availability returns 202', async () => {

@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { container } from 'tsyringe';
-import { SchedulingRbacGuard } from '../../api/auth/scheduling-rbac-guard';
+import { AuthorityGuard } from '../../api/auth/authority-guard';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
@@ -11,6 +11,7 @@ import { LeaderRosteringController } from '../../api/controllers/leader-rosterin
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
+import { DbAuthorityManager } from '../../application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../application/db-availability-check-manager';
 import { DbEventManager } from '../../application/db-event-manager';
 import { DbEventTemplateManager } from '../../application/db-event-template-manager';
@@ -19,10 +20,9 @@ import { DbMinistryManager } from '../../application/db-ministry-manager';
 import { DbParticipationManager } from '../../application/db-participation-manager';
 import { DbPlanningCycleManager } from '../../application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
-import { DbSchedulingRbacManager } from '../../application/db-scheduling-rbac-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
 import { DrizzleAuthorityActorResolver } from '../../infrastructure/auth/drizzle-authority-actor-resolver';
-import { DrizzleSchedulingRbacResolver } from '../../infrastructure/auth/drizzle-scheduling-rbac-resolver';
+import { DrizzleSchedulingScopeResolver } from '../../infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
   DrizzleAssignmentAuditRepository,
   DrizzleAssignmentRepository,
@@ -50,16 +50,16 @@ import { injection } from './injection-tokens';
 
 export function registerInjections(): void {
   container.register(injection.auth.scopeRepository, {
-    useFactory: () => new DrizzleSchedulingRbacResolver(db),
-  });
-  container.register(injection.auth.manager, {
-    useClass: DbSchedulingRbacManager,
-  });
-  container.register(injection.auth.schedulingRbacResolver, {
-    useClass: SchedulingRbacGuard,
+    useFactory: () => new DrizzleSchedulingScopeResolver(db),
   });
   container.register(injection.auth.authorityActorRepository, {
     useFactory: () => new DrizzleAuthorityActorResolver(db),
+  });
+  container.register(injection.auth.authorityManager, {
+    useClass: DbAuthorityManager,
+  });
+  container.register(injection.auth.authorityGuard, {
+    useClass: AuthorityGuard,
   });
   container.register(injection.infra.eventRepository, {
     useFactory: () => new DrizzleEventRepository(db),

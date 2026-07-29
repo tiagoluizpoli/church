@@ -75,6 +75,10 @@ const volunteerManager = {
   resolveVolunteerContext: vi.fn(),
 };
 
+const authorityGuard = {
+  canManageChurch: vi.fn(),
+};
+
 let app: FastifyTypedInstance;
 
 function createVolunteerContext(input?: Partial<MockVolunteerContext>) {
@@ -129,6 +133,7 @@ beforeAll(async () => {
     volunteerManager as never,
     participationManager as never,
     ministryManager as never,
+    authorityGuard as never,
   );
   await app.register(
     async (instance) => {
@@ -153,6 +158,7 @@ beforeEach(() => {
   volunteerManager.resolveVolunteerContext.mockResolvedValue(
     createVolunteerContext(),
   );
+  authorityGuard.canManageChurch.mockResolvedValue(true);
 });
 
 describe('Church admin planning routes', () => {
@@ -202,9 +208,7 @@ describe('Church admin planning routes', () => {
 
     expect(ok.statusCode).toBe(204);
 
-    volunteerManager.resolveVolunteerContext.mockResolvedValue(
-      createVolunteerContext({ isAdmin: false }),
-    );
+    authorityGuard.canManageChurch.mockResolvedValueOnce(false);
 
     const forbidden = await app.inject({
       method: 'POST',
@@ -213,9 +217,6 @@ describe('Church admin planning routes', () => {
 
     expect(forbidden.statusCode).toBe(403);
 
-    volunteerManager.resolveVolunteerContext.mockResolvedValue(
-      createVolunteerContext(),
-    );
     cycleManager.lockCycle.mockRejectedValueOnce(
       new IllegalStateTransitionError('locked', 'locked'),
     );

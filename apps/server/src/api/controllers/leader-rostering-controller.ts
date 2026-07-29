@@ -19,7 +19,7 @@ import type { IParticipationManager } from '../../domain/contracts/application/p
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
-import type { SchedulingRbacGuard } from '../auth/scheduling-rbac-guard';
+import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   assignmentMapper,
@@ -88,7 +88,19 @@ interface ResolveOwnedAssignmentInput {
 
 interface ResolveOwnedAssignmentResult {
   assignment?: Assignment;
-  denied?: FastifyReply;
+  denied: boolean;
+}
+
+interface DenyParticipationScopeInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  participationId: string;
+}
+
+interface DenyShiftScopeInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  shiftId: string;
 }
 
 @injectable()
@@ -102,8 +114,8 @@ export class LeaderRosteringController implements FastifyController {
     private readonly assignmentManager: IAssignmentManager,
     @inject('IVolunteerManager')
     private readonly volunteerManager: IVolunteerManager,
-    @inject('SchedulingRbacResolver')
-    private readonly rbacGuard: SchedulingRbacGuard,
+    @inject('AuthorityGuard')
+    private readonly authorityGuard: AuthorityGuard,
   ) {}
 
   registerRoutes(
@@ -129,13 +141,6 @@ export class LeaderRosteringController implements FastifyController {
         });
       }
 
-      if (!ctx.isLeader && !ctx.isAdmin) {
-        return reply.status(403).send({
-          error: 'FORBIDDEN',
-          message: 'Ministry leader role required',
-        });
-      }
-
       request.userId = session.user.id;
       request.volunteerId = ctx.volunteerId;
       request.churchId = ctx.churchId;
@@ -158,7 +163,7 @@ export class LeaderRosteringController implements FastifyController {
         const { cycleId } = request.params as CycleRouteParams;
         const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.rbacGuard.canManageMinistry({
+        const allowed = await this.authorityGuard.canManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -197,7 +202,7 @@ export class LeaderRosteringController implements FastifyController {
         const { cycleId } = request.params as CycleRouteParams;
         const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.rbacGuard.canManageMinistry({
+        const allowed = await this.authorityGuard.canManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -236,7 +241,7 @@ export class LeaderRosteringController implements FastifyController {
         const { cycleId } = request.params as CycleRouteParams;
         const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.rbacGuard.canManageMinistry({
+        const allowed = await this.authorityGuard.canManageMinistry({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -274,8 +279,8 @@ export class LeaderRosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope(request, reply, shiftId);
-        if (denied) return denied;
+        const denied = await this.denyShiftScope({ request, reply, shiftId });
+        if (denied) return;
 
         const volunteers =
           await this.participationManager.listEligibleVolunteers({
@@ -303,8 +308,8 @@ export class LeaderRosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope(request, reply, shiftId);
-        if (denied) return denied;
+        const denied = await this.denyShiftScope({ request, reply, shiftId });
+        if (denied) return;
 
         const body = request.body as CreateParticipationAssignmentBody;
         const result =
@@ -339,7 +344,7 @@ export class LeaderRosteringController implements FastifyController {
           reply,
           assignmentId,
         });
-        if (resolved.denied) return resolved.denied;
+        if (resolved.denied) return;
 
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
@@ -370,7 +375,7 @@ export class LeaderRosteringController implements FastifyController {
           reply,
           assignmentId,
         });
-        if (resolved.denied) return resolved.denied;
+        if (resolved.denied) return;
 
         const body = request.body as ReassignAssignmentBody;
         const reassigned =
@@ -399,12 +404,12 @@ export class LeaderRosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope(
+        const denied = await this.denyParticipationScope({
           request,
           reply,
           participationId,
-        );
-        if (denied) return denied;
+        });
+        if (denied) return;
 
         const completion = await this.participationManager.getCompletion({
           churchId: ChurchId.from(request.churchId),
@@ -426,12 +431,12 @@ export class LeaderRosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope(
+        const denied = await this.denyParticipationScope({
           request,
           reply,
           participationId,
-        );
-        if (denied) return denied;
+        });
+        if (denied) return;
 
         const body = request.body as PublishParticipationBody;
         await this.participationManager.publish({
@@ -444,24 +449,33 @@ export class LeaderRosteringController implements FastifyController {
     );
   }
 
-  private async denyParticipationScope(
-    request: FastifyRequest,
-    reply: FastifyReply,
-    participationId: string,
-  ) {
-    const allowed = await this.rbacGuard.canManageParticipation({
+  /**
+   * Returns whether access was denied. `FastifyReply` is a thenable (it
+   * resolves once the response is flushed) — `return reply.send(...)` from
+   * an `async` method would have its own returned promise silently adopt
+   * that reply's resolution instead of the reply object itself, so callers
+   * must never `await` a reply and branch on the awaited value. Each guard
+   * here sends the 403 as a side effect and returns a plain boolean.
+   */
+  private async denyParticipationScope({
+    request,
+    reply,
+    participationId,
+  }: DenyParticipationScopeInput): Promise<boolean> {
+    const allowed = await this.authorityGuard.canManageParticipation({
       churchId: ChurchId.from(request.churchId),
       participationId: MinistryParticipationId.from(participationId),
       userId: UserId.from(request.userId),
     });
     if (allowed) {
-      return undefined;
+      return false;
     }
 
-    return reply.status(403).send({
+    reply.status(403).send({
       error: 'FORBIDDEN',
       message: 'Participation belongs to another ministry',
     });
+    return true;
   }
 
   private async resolveOwnedAssignment({
@@ -473,35 +487,36 @@ export class LeaderRosteringController implements FastifyController {
       churchId: ChurchId.from(request.churchId),
       assignmentId: AssignmentId.from(assignmentId),
     });
-    const denied = await this.denyShiftScope(
+    const denied = await this.denyShiftScope({
       request,
       reply,
-      assignment.shiftId as string,
-    );
+      shiftId: assignment.shiftId as string,
+    });
     if (denied) {
-      return { denied };
+      return { denied: true };
     }
 
-    return { assignment };
+    return { assignment, denied: false };
   }
 
-  private async denyShiftScope(
-    request: FastifyRequest,
-    reply: FastifyReply,
-    shiftId: string,
-  ) {
-    const allowed = await this.rbacGuard.canManageShift({
+  private async denyShiftScope({
+    request,
+    reply,
+    shiftId,
+  }: DenyShiftScopeInput): Promise<boolean> {
+    const allowed = await this.authorityGuard.canManageShift({
       churchId: ChurchId.from(request.churchId),
       shiftId: ShiftId.from(shiftId),
       userId: UserId.from(request.userId),
     });
     if (allowed) {
-      return undefined;
+      return false;
     }
 
-    return reply.status(403).send({
+    reply.status(403).send({
       error: 'FORBIDDEN',
       message: 'Shift belongs to another ministry',
     });
+    return true;
   }
 }

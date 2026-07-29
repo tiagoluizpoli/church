@@ -3,7 +3,6 @@ import type {
   MinistryId,
   MinistryParticipationId,
   ShiftId,
-  UserId,
 } from '../../branded-ids';
 
 export interface ResolveParticipationMinistryInput {
@@ -16,17 +15,11 @@ export interface ResolveShiftMinistryInput {
   shiftId: ShiftId;
 }
 
-export interface IsChurchAdminInput {
-  churchId: ChurchId;
-  userId: UserId;
-}
-
-export interface IsMinistryLeaderInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  userId: UserId;
-}
-
+/**
+ * Resolves the owning Ministry for a scheduling resource identified only by
+ * its id, so a caller can hand that Ministry to `AuthorityService`. Does not
+ * itself decide anything — decision-making lives in `AuthorityService`.
+ */
 export interface SchedulingScopeRepository {
   resolveParticipationMinistry(
     input: ResolveParticipationMinistryInput,
@@ -34,6 +27,4 @@ export interface SchedulingScopeRepository {
   resolveShiftMinistry(
     input: ResolveShiftMinistryInput,
   ): Promise<MinistryId | null>;
-  isChurchAdmin(input: IsChurchAdminInput): Promise<boolean>;
-  isMinistryLeader(input: IsMinistryLeaderInput): Promise<boolean>;
 }

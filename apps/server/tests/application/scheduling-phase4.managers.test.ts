@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import {
   assignment as assignmentTable,
@@ -10,9 +11,9 @@ import {
 } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { DbAuthorityManager } from '../../src/application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../src/application/db-availability-check-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
-import { DbSchedulingRbacManager } from '../../src/application/db-scheduling-rbac-manager';
 import {
   ChurchId,
   MinistryId,
@@ -32,10 +33,12 @@ import {
   InvalidShiftSplitError,
   ShiftOutOfBoundsError,
 } from '../../src/domain/errors';
-import { DrizzleSchedulingRbacResolver } from '../../src/infrastructure/auth/drizzle-scheduling-rbac-resolver';
+import { DrizzleAuthorityActorResolver } from '../../src/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleSchedulingScopeResolver } from '../../src/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
@@ -367,19 +370,22 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       }),
     ).rejects.toThrow();
 
-    // RBAC manager scope: leader of ministryA cannot manage churchB participation
-    const rbac = new DbSchedulingRbacManager(
-      new DrizzleSchedulingRbacResolver(schedulingTestDb),
+    // AuthorityManager scope: leader of ministryA cannot manage churchB participation
+    const authorityManager = new DbAuthorityManager(
+      new DrizzleAuthorityActorResolver(schedulingTestDb),
+      new DrizzleSchedulingScopeResolver(schedulingTestDb),
+      new DrizzleEventRepository(schedulingTestDb),
+      new DrizzleTimeSlotRepository(schedulingTestDb),
     );
     await expect(
-      rbac.canManageParticipation({
+      authorityManager.canManageParticipation({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(graphB.participation.id),
         userId: UserId.from(seed.adminUserId),
       }),
     ).resolves.toBe(false);
     await expect(
-      rbac.canManageParticipation({
+      authorityManager.canManageParticipation({
         churchId: ChurchId.from(seed.churchAId),
         participationId: MinistryParticipationId.from(graphA.participation.id),
         userId: UserId.from(seed.adminUserId),

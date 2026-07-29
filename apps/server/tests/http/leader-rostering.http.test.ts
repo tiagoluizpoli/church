@@ -100,6 +100,8 @@ describe('Leader rostering routes', () => {
         hasConflict: false,
         lastServedAt: new Date('2026-08-01T10:00:00.000Z'),
         qualifiedRoleIds: ['role-1'],
+        ministryAccessLevel: 'volunteer',
+        leadTeamIds: [],
       },
     ]);
 
@@ -118,6 +120,8 @@ describe('Leader rostering routes', () => {
           hasConflict: false,
           lastServedAt: '2026-08-01T10:00:00.000Z',
           qualifiedRoleIds: ['role-1'],
+          ministryAccessLevel: 'volunteer',
+          leadTeamIds: [],
         },
       ],
     });
@@ -261,6 +265,9 @@ describe('Leader rostering routes', () => {
       error: 'FORBIDDEN',
       message: 'Shift belongs to another ministry',
     });
+    expect(
+      assignmentManager.reassignParticipationAssignment,
+    ).not.toHaveBeenCalled();
   });
 
   it('POST /api/v1/leader/shifts/:id/assignments returns 403 for another ministry scope', async () => {
@@ -280,5 +287,8 @@ describe('Leader rostering routes', () => {
       error: 'FORBIDDEN',
       message: 'Shift belongs to another ministry',
     });
+    expect(
+      assignmentManager.createParticipationAssignment,
+    ).not.toHaveBeenCalled();
   });
 });

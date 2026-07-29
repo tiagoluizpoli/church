@@ -36,9 +36,9 @@ export const injection = {
   },
   auth: {
     scopeRepository: 'ISchedulingScopeRepository',
-    manager: 'ISchedulingRbacManager',
-    schedulingRbacResolver: 'SchedulingRbacResolver',
     authorityActorRepository: 'IAuthorityActorRepository',
+    authorityManager: 'IAuthorityManager',
+    authorityGuard: 'AuthorityGuard',
   },
   config: {
     assignmentCancelLeadTimeDays: 'AssignmentCancelLeadTimeDays',

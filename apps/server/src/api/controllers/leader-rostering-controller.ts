@@ -487,16 +487,23 @@ export class LeaderRosteringController implements FastifyController {
       churchId: ChurchId.from(request.churchId),
       assignmentId: AssignmentId.from(assignmentId),
     });
-    const denied = await this.denyShiftScope({
-      request,
-      reply,
-      shiftId: assignment.shiftId as string,
-    });
-    if (denied) {
-      return { denied: true };
+    const { shiftId } = assignment;
+    const allowed =
+      shiftId != null &&
+      (await this.authorityGuard.canManageShift({
+        churchId: ChurchId.from(request.churchId),
+        shiftId,
+        userId: UserId.from(request.userId),
+      }));
+    if (allowed) {
+      return { assignment, denied: false };
     }
 
-    return { assignment, denied: false };
+    reply.status(403).send({
+      error: 'FORBIDDEN',
+      message: 'Shift belongs to another ministry',
+    });
+    return { denied: true };
   }
 
   private async denyShiftScope({

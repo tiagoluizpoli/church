@@ -291,4 +291,23 @@ describe('Leader rostering routes', () => {
       assignmentManager.createParticipationAssignment,
     ).not.toHaveBeenCalled();
   });
+
+  it('PATCH /api/v1/leader/assignments/:id/reassign denies when the Assignment has no Shift scope', async () => {
+    assignmentManager.getAssignment.mockResolvedValue({ shiftId: undefined });
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/leader/assignments/assign-1/reassign',
+      payload: {
+        volunteerId: 'vol-2',
+        reason: 'Original volunteer became unavailable',
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(rbacGuard.canManageShift).not.toHaveBeenCalled();
+    expect(
+      assignmentManager.reassignParticipationAssignment,
+    ).not.toHaveBeenCalled();
+  });
 });

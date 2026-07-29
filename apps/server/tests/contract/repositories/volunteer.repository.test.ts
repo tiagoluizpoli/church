@@ -38,9 +38,19 @@ class MockVolunteerRepository implements VolunteerRepository {
       },
       '44444444-4444-4444-4444-444444444442' as VolunteerId,
     );
+    const v3Retired = new Volunteer(
+      {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        userId: '22222222-2222-2222-2222-222222222223' as UserId,
+        status: 'active',
+        leftAt: new Date('2024-01-01T00:00:00Z'),
+      },
+      '44444444-4444-4444-4444-444444444443' as VolunteerId,
+    );
 
     this.volunteers.set(v1.id, v1);
     this.volunteers.set(v2.id, v2);
+    this.volunteers.set(v3Retired.id, v3Retired);
 
     this.memberships.add(
       '44444444-4444-4444-4444-444444444441:33333333-3333-3333-3333-333333333331',
@@ -63,7 +73,7 @@ class MockVolunteerRepository implements VolunteerRepository {
     userId: UserId,
   ): Promise<Volunteer | null> {
     for (const v of this.volunteers.values()) {
-      if (v.churchId === churchId && v.userId === userId) {
+      if (v.churchId === churchId && v.userId === userId && !v.isRetired) {
         return v;
       }
     }
@@ -141,7 +151,7 @@ class MockVolunteerRepository implements VolunteerRepository {
 
   async findByUserIdGlobally(userId: UserId): Promise<Volunteer | null> {
     for (const v of this.volunteers.values()) {
-      if (v.userId === userId) return v;
+      if (v.userId === userId && !v.isRetired) return v;
     }
     return null;
   }

@@ -32,6 +32,7 @@ import {
   getClient,
   isChurchAdminMember,
   isValidUuid,
+  withActiveVolunteer,
   withChurchIsolation,
 } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -79,6 +80,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         and(
           eq(volunteer.userId, userId),
           withChurchIsolation(volunteer, churchId),
+          withActiveVolunteer(volunteer),
         ),
       );
     return row ? mapVolunteer(row) : null;
@@ -224,7 +226,13 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       .select({ volunteer, userName: user.name })
       .from(volunteer)
       .innerJoin(user, eq(user.id, volunteer.userId))
-      .where(and(eq(volunteer.userId, userId), eq(volunteer.status, 'active')))
+      .where(
+        and(
+          eq(volunteer.userId, userId),
+          eq(volunteer.status, 'active'),
+          withActiveVolunteer(volunteer),
+        ),
+      )
       .limit(1);
     return row ? mapVolunteer(row.volunteer, row.userName) : null;
   }

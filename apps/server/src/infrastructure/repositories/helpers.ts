@@ -1,5 +1,5 @@
 import { member } from '@church/db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { ChurchId, UserId } from '../../domain/branded-ids';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import { DrizzleTransactionContext } from './drizzle-transaction-context';
@@ -22,6 +22,16 @@ export function withChurchIsolation<T extends { churchId: any }>(
   churchId: string,
 ) {
   return eq(table.churchId, churchId);
+}
+
+/**
+ * Returns the Drizzle SQL filter expression that excludes retired Volunteer
+ * profiles. Apply to every volunteer-by-user read — a retired profile must
+ * never resolve as someone's current Volunteer.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: table shape is intentionally loose
+export function withActiveVolunteer<T extends { leftAt: any }>(table: T) {
+  return isNull(table.leftAt);
 }
 
 /**

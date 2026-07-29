@@ -67,7 +67,8 @@ export async function seed(): Promise<void> {
     INSERT INTO "user" (id, name, email, email_verified, created_at, updated_at)
     VALUES
       ('22222222-2222-2222-2222-222222222221', 'Alice Test', 'alice@test.com', true, now(), now()),
-      ('22222222-2222-2222-2222-222222222222', 'Bob Test', 'bob@test.com', true, now(), now())
+      ('22222222-2222-2222-2222-222222222222', 'Bob Test', 'bob@test.com', true, now(), now()),
+      ('22222222-2222-2222-2222-222222222223', 'Carol Test', 'carol@test.com', true, now(), now())
     ON CONFLICT (id) DO NOTHING
   `);
 
@@ -146,6 +147,16 @@ export async function seed(): Promise<void> {
       churchId: '11111111-1111-1111-1111-111111111111',
       userId: '22222222-2222-2222-2222-222222222222',
       status: 'active',
+    },
+    // Retired profile — Carol left church-1. Kept forever (never moved or
+    // deleted) so her historical assignments stay attributed here; every
+    // volunteer-by-user read must exclude her.
+    {
+      id: '44444444-4444-4444-4444-444444444443',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      userId: '22222222-2222-2222-2222-222222222223',
+      status: 'active',
+      leftAt: new Date('2024-01-01T00:00:00Z'),
     },
   ]);
 

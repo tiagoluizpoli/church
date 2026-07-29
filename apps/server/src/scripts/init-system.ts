@@ -11,7 +11,7 @@ import {
   volunteer,
 } from '@church/db';
 import { SeedDataSchema } from '@church/db/schemas/seed';
-import { and, eq, type InferSelectModel } from 'drizzle-orm';
+import { and, eq, type InferSelectModel, isNull } from 'drizzle-orm';
 import { provisionSeedChurch } from './provision-seed-church';
 
 const db = createDb();
@@ -92,6 +92,7 @@ export async function runInitSystem({
       where: and(
         eq(volunteer.userId, adminUser.id),
         eq(volunteer.churchId, church.id),
+        isNull(volunteer.leftAt),
       ),
     });
 

@@ -15,6 +15,9 @@ export function mapVolunteer(
     userId: row.userId as UserId,
     status: row.status as VolunteerProps['status'],
     notes: row.notes ?? undefined,
+    leftAt: row.leftAt ?? undefined,
+    successorVolunteerId:
+      (row.successorVolunteerId as VolunteerId) ?? undefined,
     name: name ?? undefined,
   };
 

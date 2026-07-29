@@ -33,6 +33,16 @@ export function runVolunteerRepositoryContractTests(
       expect(found.id).toBe('44444444-4444-4444-4444-444444444441');
     });
 
+    it('should still retrieve a retired volunteer by ID — history stays attributed to the original Church', async () => {
+      const found = await repo.getById(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '44444444-4444-4444-4444-444444444443' as VolunteerId,
+      );
+      expect(found).toBeDefined();
+      expect(found.id).toBe('44444444-4444-4444-4444-444444444443');
+      expect(found.churchId).toBe('11111111-1111-1111-1111-111111111111');
+    });
+
     it('should throw NotFoundError when volunteer is not found', async () => {
       await expect(
         repo.getById(
@@ -55,6 +65,21 @@ export function runVolunteerRepositoryContractTests(
       const found = await repo.findByUserId(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         'non-existent' as UserId,
+      );
+      expect(found).toBeNull();
+    });
+
+    it('should never return a retired profile from findByUserId', async () => {
+      const found = await repo.findByUserId(
+        '11111111-1111-1111-1111-111111111111' as ChurchId,
+        '22222222-2222-2222-2222-222222222223' as UserId,
+      );
+      expect(found).toBeNull();
+    });
+
+    it('should never return a retired profile from findByUserIdGlobally', async () => {
+      const found = await repo.findByUserIdGlobally(
+        '22222222-2222-2222-2222-222222222223' as UserId,
       );
       expect(found).toBeNull();
     });

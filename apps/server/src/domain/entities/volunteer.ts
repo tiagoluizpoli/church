@@ -13,6 +13,9 @@ export interface VolunteerProps {
   userId: UserId;
   status: VolunteerStatus;
   notes?: string;
+  /** Set when this profile is retired; the profile that succeeded it. */
+  leftAt?: Date;
+  successorVolunteerId?: VolunteerId;
   /** Denormalized display name, populated when the user table is joined. */
   name?: string;
 }
@@ -50,6 +53,18 @@ export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
 
   get notes(): string | undefined {
     return this._props.notes;
+  }
+
+  get leftAt(): Date | undefined {
+    return this._props.leftAt;
+  }
+
+  get successorVolunteerId(): VolunteerId | undefined {
+    return this._props.successorVolunteerId;
+  }
+
+  get isRetired(): boolean {
+    return this._props.leftAt != null;
   }
 
   get name(): string | undefined {

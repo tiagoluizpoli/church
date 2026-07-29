@@ -15,6 +15,13 @@
       "when": 1785213115918,
       "tag": "0001_planning-cycle-overlap-and-shift-bounds-guards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785365953114,
+      "tag": "0002_fuzzy_wrecker",
+      "breakpoints": true
     }
   ]
 }

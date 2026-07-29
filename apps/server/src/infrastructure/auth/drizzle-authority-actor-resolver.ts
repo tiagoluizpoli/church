@@ -27,7 +27,7 @@ import type {
   ResolveAuthorityActorInput,
 } from '../../domain/contracts/infrastructure/authority-actor.repository';
 import type { MinistryAccessLevel } from '../../domain/entities/ministry-volunteer';
-import { getClient } from '../repositories/helpers';
+import { getClient, withActiveVolunteer } from '../repositories/helpers';
 import type { AnyDrizzleDb } from '../repositories/types';
 
 interface ChurchScopedLookupInput {
@@ -147,7 +147,11 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       .select({ id: volunteer.id })
       .from(volunteer)
       .where(
-        and(eq(volunteer.userId, userId), eq(volunteer.churchId, churchId)),
+        and(
+          eq(volunteer.userId, userId),
+          eq(volunteer.churchId, churchId),
+          withActiveVolunteer(volunteer),
+        ),
       )
       .limit(1);
     return row ? (row.id as VolunteerId) : null;

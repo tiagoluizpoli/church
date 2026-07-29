@@ -14,7 +14,7 @@ import {
   volunteer,
 } from '@church/db';
 import { hashPassword } from 'better-auth/crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { provisionSeedChurch } from './provision-seed-church';
 
 const db = createDb();
@@ -281,7 +281,7 @@ interface EnsureVolunteerInput {
 
 async function ensureVolunteer({ userId, churchId }: EnsureVolunteerInput) {
   const existingVolunteer = await db.query.volunteer.findFirst({
-    where: eq(volunteer.userId, userId),
+    where: and(eq(volunteer.userId, userId), isNull(volunteer.leftAt)),
   });
 
   if (existingVolunteer && existingVolunteer.churchId !== churchId) {

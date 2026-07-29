@@ -254,6 +254,74 @@ describe('Core Schema Integration', () => {
     });
   });
 
+  describe('Volunteer retirement', () => {
+    it('rejects a second active profile for the same user', async () => {
+      const [insertedUser] = await testDb
+        .insert(user)
+        .values({ id: 'u-retire-1', name: 'Dual', email: 'dual@test.com' })
+        .returning();
+      if (!insertedUser) throw new Error('User insert failed');
+
+      await testDb
+        .insert(volunteer)
+        .values({ userId: insertedUser.id, churchId });
+
+      try {
+        await testDb
+          .insert(volunteer)
+          .values({ userId: insertedUser.id, churchId });
+        expect.fail('Should have thrown unique constraint error');
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
+      }
+    });
+
+    it('allows a retired profile and its active successor for the same user', async () => {
+      const [insertedUser] = await testDb
+        .insert(user)
+        .values({
+          id: 'u-retire-2',
+          name: 'Transfer',
+          email: 'transfer@test.com',
+        })
+        .returning();
+      if (!insertedUser) throw new Error('User insert failed');
+
+      const [original] = await testDb
+        .insert(volunteer)
+        .values({ userId: insertedUser.id, churchId })
+        .returning();
+      if (!original) throw new Error('Volunteer insert failed');
+
+      await testDb
+        .update(volunteer)
+        .set({ leftAt: new Date() })
+        .where(eq(volunteer.id, original.id));
+
+      const [successor] = await testDb
+        .insert(volunteer)
+        .values({ userId: insertedUser.id, churchId })
+        .returning();
+      if (!successor) throw new Error('Successor volunteer insert failed');
+
+      await testDb
+        .update(volunteer)
+        .set({ successorVolunteerId: successor.id })
+        .where(eq(volunteer.id, original.id));
+
+      const retired = await testDb.query.volunteer.findFirst({
+        where: eq(volunteer.id, original.id),
+      });
+
+      expect(retired?.leftAt).not.toBeNull();
+      expect(retired?.successorVolunteerId).toBe(successor.id);
+      expect(successor.leftAt).toBeNull();
+      expect(successor.churchId).toBe(churchId);
+    });
+  });
+
   describe('Role Schema', () => {
     it('should create a ministry-scoped role', async () => {
       const [insertedMinistry] = await testDb

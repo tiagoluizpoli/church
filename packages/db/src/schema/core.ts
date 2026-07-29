@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   pgTable,
   text,
   timestamp,
@@ -40,25 +42,45 @@ export const ministry = pgTable('ministry', {
     .notNull(),
 });
 
-export const volunteer = pgTable('volunteer', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: text('user_id')
-    .notNull()
-    .unique()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  status: volunteerStatusEnum('status').default('active').notNull(),
-  notes: text('notes'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+/**
+ * A retired profile (`leftAt` set) keeps its original `churchId` forever, so
+ * every assignment, membership and availability record hanging off it stays
+ * attributed to the Church that actually received the service — the row is
+ * never moved or deleted, only superseded. `successorVolunteerId` makes the
+ * chain walkable without an audit query. Retirement is an axis independent of
+ * `status`, which keeps meaning "currently servable".
+ */
+export const volunteer = pgTable(
+  'volunteer',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    status: volunteerStatusEnum('status').default('active').notNull(),
+    notes: text('notes'),
+    leftAt: timestamp('left_at', { withTimezone: true, mode: 'date' }),
+    successorVolunteerId: uuid('successor_volunteer_id').references(
+      (): AnyPgColumn => volunteer.id,
+    ),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    /** One *active* profile per User — the structural backstop against a double transfer. */
+    uniqueIndex('volunteer_user_id_active_idx')
+      .on(table.userId)
+      .where(sql`${table.leftAt} IS NULL`),
+  ],
+);
 
 export const team = pgTable('team', {
   id: uuid('id').primaryKey().defaultRandom(),

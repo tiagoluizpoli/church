@@ -36,6 +36,7 @@ const adminUserId = UserId.from('authority-admin-user');
 const leaderUserId = UserId.from('authority-leader-user');
 const volunteerUserId = UserId.from('authority-volunteer-user');
 const strandedUserId = UserId.from('authority-stranded-user');
+const retiredUserId = UserId.from('authority-retired-user');
 const ministryId = MinistryId.from('33333333-3333-4333-8333-a33333333331');
 const teamId = TeamId.from('55555555-5555-4555-8555-a55555555551');
 const roleId = RoleId.from('66666666-6666-4666-8666-a66666666661');
@@ -44,6 +45,9 @@ const leaderVolunteerId = VolunteerId.from(
 );
 const memberVolunteerId = VolunteerId.from(
   '44444444-4444-4444-8444-a44444444442',
+);
+const retiredVolunteerId = VolunteerId.from(
+  '44444444-4444-4444-8444-a44444444443',
 );
 
 // Roots at `organization`/`user`: see the note on `truncateAll` in
@@ -80,6 +84,12 @@ async function seed(): Promise<void> {
       email: 'authority-stranded@test.com',
       emailVerified: true,
     },
+    {
+      id: retiredUserId,
+      name: 'Authority Retired',
+      email: 'authority-retired@test.com',
+      emailVerified: true,
+    },
   ]);
 
   await createChurch({
@@ -108,6 +118,12 @@ async function seed(): Promise<void> {
     userId: volunteerUserId,
     accessLevel: 'member',
   });
+  await addChurchMember({
+    db: testDb,
+    churchId,
+    userId: retiredUserId,
+    accessLevel: 'member',
+  });
   // strandedUserId deliberately gets no Church Membership and no Volunteer row.
 
   await testDb
@@ -132,6 +148,15 @@ async function seed(): Promise<void> {
       churchId,
       userId: volunteerUserId,
       status: 'active',
+    },
+    // Retired profile — a departed Church Member who kept their Church
+    // Membership (its own axis) but must never resolve as a Volunteer again.
+    {
+      id: retiredVolunteerId,
+      churchId,
+      userId: retiredUserId,
+      status: 'active',
+      leftAt: new Date('2024-01-01T00:00:00Z'),
     },
   ]);
 
@@ -291,6 +316,30 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
         resource: someoneElsesResource,
       }),
     ).toEqual({ allowed: false, reason: 'INSUFFICIENT_ACCESS_LEVEL' });
+  });
+
+  it('never resolves a retired Volunteer profile, even though Church Membership survives retirement', async () => {
+    const resolver = new DrizzleAuthorityActorResolver(testDb);
+    const actor = await resolver.resolveActor({
+      userId: retiredUserId,
+      activeChurchId: churchId,
+    });
+
+    expect(actor.volunteerId).toBeNull();
+    expect(actor.churchMembership).toEqual({ churchId, accessLevel: 'member' });
+    expect(actor.ministryMemberships).toEqual([]);
+    expect(actor.teamMemberships).toEqual([]);
+
+    const decision = AuthorityService.authorize({
+      actor,
+      action: 'participate',
+      resource: { type: 'ministry', churchId, ministryId },
+    });
+
+    expect(decision).toEqual({
+      allowed: false,
+      reason: 'INSUFFICIENT_ACCESS_LEVEL',
+    });
   });
 
   it('resolves a User with no Church Membership row, denied everywhere with NO_CHURCH_MEMBERSHIP', async () => {

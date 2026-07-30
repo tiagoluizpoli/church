@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
+import { switchActiveChurch } from '@/shared/utils/active-church-switch';
 import {
   MEMBERSHIP_REMOVED_PREFIX,
   MEMBERSHIP_REMOVED_SUFFIX,
@@ -64,6 +65,14 @@ interface AreasLabelInput {
   availableAreas: ListActiveChurchOptions200ChurchesItem['availableAreas'];
 }
 
+interface SelectChurchInput {
+  churchId: string;
+}
+
+interface NavigateAfterChurchSelectionInput {
+  destination: string;
+}
+
 function areasLabel({ availableAreas }: AreasLabelInput): string {
   return availableAreas.map((area) => AREA_LABELS[area] ?? area).join(', ');
 }
@@ -79,12 +88,30 @@ function SelectChurchRoute() {
     queryFn: () => activeChurchApi.listActiveChurchOptions(),
   });
 
+  const selectChurch = async ({
+    churchId,
+  }: SelectChurchInput): Promise<void> => {
+    await activeChurchApi.selectActiveChurch({ churchId });
+  };
+
+  const navigateAfterChurchSelection = ({
+    destination,
+  }: NavigateAfterChurchSelectionInput): void => {
+    if (destination !== '/dashboard') {
+      throw new Error('Church selection must continue to the dashboard.');
+    }
+    navigate({ to: '/dashboard' });
+  };
+
   const selectMutation = useMutation({
-    mutationFn: (churchId: string) =>
-      activeChurchApi.selectActiveChurch({ churchId }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries();
-      navigate({ to: '/dashboard' });
+    mutationFn: async (churchId: string): Promise<void> => {
+      await switchActiveChurch({
+        churchId,
+        destination: '/dashboard',
+        navigate: navigateAfterChurchSelection,
+        queryClient,
+        selectActiveChurch: selectChurch,
+      });
     },
   });
 

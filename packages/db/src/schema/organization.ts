@@ -41,6 +41,14 @@ export const member = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
+    // App-owned extension column, same exception as the `uuid` id above: the
+    // plugin never writes or reads it, so it is safe to add outside its
+    // schema declaration. Set on every successful Active Church entry —
+    // auto-select and explicit selection alike — never by Better Auth itself.
+    lastOpenedAt: timestamp('last_opened_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
   },
   (table) => [
     index('member_organizationId_idx').on(table.organizationId),

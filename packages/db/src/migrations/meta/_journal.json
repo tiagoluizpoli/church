@@ -22,6 +22,13 @@
       "when": 1785365953114,
       "tag": "0002_fuzzy_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785428459011,
+      "tag": "0003_wild_devos",
+      "breakpoints": true
     }
   ]
 }

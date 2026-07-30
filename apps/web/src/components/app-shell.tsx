@@ -1,4 +1,4 @@
-import { Link, useLocation } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
   CalendarClock,
@@ -94,6 +94,10 @@ interface NavLabelInput {
   childLabel: string | null;
 }
 
+interface GetSelectChurchDestinationInput {
+  destination: string;
+}
+
 const BASE_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Availability', to: '/availability', icon: Clock },
@@ -175,11 +179,18 @@ function formatNavLabel({ itemLabel, childLabel }: NavLabelInput): string {
   return childLabel ? `${itemLabel}: ${childLabel}` : itemLabel;
 }
 
+function getSelectChurchDestination({
+  destination,
+}: GetSelectChurchDestinationInput): string {
+  return `/select-church?redirect=${encodeURIComponent(destination)}`;
+}
+
 export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { canSeeScheduling } = useCallerRoles();
   const navItems: NavItem[] = canSeeScheduling
     ? [...BASE_NAV_ITEMS, SCHEDULING_NAV_ITEM]
@@ -195,6 +206,9 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
       })
     : null;
   const mobileSubtitle = currentSectionLabel ?? 'Calm scheduling';
+  const selectChurchDestination = getSelectChurchDestination({
+    destination: location.href,
+  });
 
   // Listen for CTRL+K / CMD+K globally
   React.useEffect(() => {
@@ -257,6 +271,10 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const handleDrawerOpenChange = React.useCallback((open: boolean) => {
     setIsDrawerOpen(open);
   }, []);
+
+  const handleSwitchChurch = React.useCallback(() => {
+    navigate({ to: selectChurchDestination });
+  }, [navigate, selectChurchDestination]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground md:flex-row">
@@ -333,6 +351,19 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
               <CalendarClock className="h-5 w-5" />
             </div>
           )}
+        </div>
+
+        <div className={isCollapsed ? 'px-2 py-3' : 'px-3 py-3'}>
+          <button
+            type="button"
+            onClick={handleSwitchChurch}
+            className="radius-surface flex h-10 w-full items-center justify-center border border-sidebar-border bg-sidebar-accent/60 px-3 font-medium text-sidebar-foreground text-sm transition-colors hover:bg-sidebar-accent"
+          >
+            <span className={isCollapsed ? 'sr-only' : undefined}>
+              Switch Church
+            </span>
+            {isCollapsed ? <UsersRound className="size-4" /> : null}
+          </button>
         </div>
 
         {/* Sidebar Nav */}
@@ -645,6 +676,18 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
               <ModeToggle />
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              handleSwitchChurch();
+              setIsDrawerOpen(false);
+            }}
+            className="radius-surface flex h-12 items-center gap-3 border border-sidebar-border/55 px-4 py-3 font-medium text-base text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <UsersRound className="size-4 shrink-0" />
+            Switch Church
+          </button>
 
           <nav className="flex flex-col space-y-1">
             {navItems.map((item) => {

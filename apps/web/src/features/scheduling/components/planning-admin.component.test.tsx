@@ -12,6 +12,9 @@ const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getPlanningCycle = vi.fn();
 const applyPlanningTemplates = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
+const getActiveChurchStatus = vi
+  .fn()
+  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -20,6 +23,10 @@ vi.mock('@/utils/api-instances', () => ({
     getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
     applyPlanningTemplates: (...args: unknown[]) =>
       applyPlanningTemplates(...args),
+  },
+  activeChurchApi: {
+    getActiveChurchStatus: (...args: unknown[]) =>
+      getActiveChurchStatus(...args),
   },
 }));
 

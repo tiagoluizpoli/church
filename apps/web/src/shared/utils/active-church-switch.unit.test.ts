@@ -38,8 +38,8 @@ describe('active Church route policy', () => {
       '/dashboard?section=availability#today',
       '/dashboard?section=availability#today',
     ],
-    ['/notifications', '/notifications'],
-    ['/volunteer/availability', '/volunteer/availability'],
+    ['/notifications', '/dashboard'],
+    ['/volunteer/availability', '/dashboard'],
     ['/scheduling/planning-cycles', '/scheduling/planning-cycles'],
     ['/scheduling/planning-cycles/', '/scheduling/planning-cycles/'],
     ['/scheduling/tailoring/', '/scheduling/tailoring/'],
@@ -49,9 +49,57 @@ describe('active Church route policy', () => {
     ['/unrecognized-route', '/dashboard'],
     ['https://untrusted.example/dashboard', '/dashboard'],
   ])('resolves %s to %s', (destination, expectedDestination) => {
-    expect(getActiveChurchDestination({ destination })).toBe(
-      expectedDestination,
-    );
+    expect(
+      getActiveChurchDestination({
+        availableAreas: ['dashboard', 'scheduling'],
+        destination,
+      }),
+    ).toBe(expectedDestination);
+  });
+
+  it('falls back when the target Church lacks the preserved route capability', () => {
+    expect(
+      getActiveChurchDestination({
+        availableAreas: ['dashboard'],
+        destination: '/scheduling/planning-cycles?view=board#upcoming',
+      }),
+    ).toBe('/dashboard');
+  });
+
+  it('preserves /dashboard with its query and hash when the target has the dashboard area', () => {
+    expect(
+      getActiveChurchDestination({
+        availableAreas: ['dashboard'],
+        destination: '/dashboard?section=availability#today',
+      }),
+    ).toBe('/dashboard?section=availability#today');
+  });
+
+  it('falls back and drops query/hash when the target lacks the dashboard area', () => {
+    expect(
+      getActiveChurchDestination({
+        availableAreas: ['scheduling'],
+        destination: '/dashboard?section=availability#today',
+      }),
+    ).toBe('/dashboard');
+  });
+
+  it('preserves a scheduling collection route when the target has only the scheduling area', () => {
+    expect(
+      getActiveChurchDestination({
+        availableAreas: ['scheduling'],
+        destination: '/scheduling/planning-cycles?view=board#upcoming',
+      }),
+    ).toBe('/scheduling/planning-cycles?view=board#upcoming');
+  });
+
+  it('falls back to the dashboard when the target has neither area', () => {
+    expect(
+      getActiveChurchDestination({
+        availableAreas: [],
+        destination: '/scheduling/tailoring/',
+      }),
+    ).toBe('/dashboard');
   });
 });
 
@@ -78,6 +126,7 @@ describe('switchActiveChurch', () => {
     });
 
     await switchActiveChurch({
+      availableAreas: ['dashboard'],
       churchId: 'church-b',
       destination: '/dashboard?section=availability',
       navigate,
@@ -99,6 +148,7 @@ describe('switchActiveChurch', () => {
       createSwitchTestDependencies();
 
     await switchActiveChurch({
+      availableAreas: ['dashboard'],
       churchId: 'church-b',
       destination: '/scheduling/tailoring/ministry-1',
       navigate,
@@ -118,6 +168,7 @@ describe('switchActiveChurch', () => {
     });
 
     await switchActiveChurch({
+      availableAreas: ['dashboard'],
       churchId: 'church-b',
       destination: '/dashboard',
       navigate,

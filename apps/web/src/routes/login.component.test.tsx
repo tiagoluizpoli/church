@@ -5,6 +5,9 @@ import { renderRoute } from '@/__tests__/setup/render-route';
 
 const getSession = vi.fn();
 const getVolunteerDashboard = vi.fn();
+const getActiveChurchStatus = vi
+  .fn()
+  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -20,6 +23,10 @@ vi.mock('@/utils/api-instances', () => ({
   volunteerApi: {
     getVolunteerDashboard: (...args: unknown[]) =>
       getVolunteerDashboard(...args),
+  },
+  activeChurchApi: {
+    getActiveChurchStatus: (...args: unknown[]) =>
+      getActiveChurchStatus(...args),
   },
 }));
 

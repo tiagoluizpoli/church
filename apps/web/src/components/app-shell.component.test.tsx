@@ -7,6 +7,8 @@ import { AppShell } from './app-shell';
 import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
 let mockPathname = '/dashboard';
+let mockHref = '/dashboard';
+const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: { children: ReactNode; to: string }) => (
@@ -14,8 +16,8 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
-  useLocation: () => ({ pathname: mockPathname }),
-  useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: mockPathname, href: mockHref }),
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -55,6 +57,7 @@ describe('AppShell role-scoped navigation', () => {
   afterEach(() => {
     vi.clearAllMocks();
     mockPathname = '/dashboard';
+    mockHref = '/dashboard';
   });
 
   it('shows only Dashboard and Availability for a Volunteer-only caller', () => {
@@ -177,6 +180,7 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
   afterEach(() => {
     vi.clearAllMocks();
     mockPathname = '/dashboard';
+    mockHref = '/dashboard';
   });
 
   it('renders a connector element for each child nav item under its parent section', async () => {
@@ -233,5 +237,81 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
     });
     expect(cyclesLink).not.toHaveClass('font-semibold');
     expect(cyclesLink).toHaveAttribute('href', '/scheduling/planning-cycles');
+  });
+});
+
+describe('AppShell Switch Church control', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    mockPathname = '/dashboard';
+    mockHref = '/dashboard';
+  });
+
+  it('navigates to select-church with the full path, query, and hash preserved as the redirect target', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: true,
+      isResolving: false,
+    });
+    mockPathname = '/scheduling/planning-cycles';
+    mockHref = '/scheduling/planning-cycles?view=board#upcoming';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+    await user.click(
+      within(screen.getByTestId('sidebar')).getByRole('button', {
+        name: 'Switch Church',
+      }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/select-church?redirect=%2Fscheduling%2Fplanning-cycles%3Fview%3Dboard%23upcoming',
+    });
+  });
+
+  it('navigates to select-church from the mobile drawer and closes the drawer', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+    mockHref = '/dashboard';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('mobile-drawer-trigger'));
+    const drawer = await screen.findByTestId('mobile-drawer-content');
+
+    await user.click(
+      within(drawer).getByRole('button', { name: 'Switch Church' }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/select-church?redirect=%2Fdashboard',
+    });
+  });
+
+  it('keeps the Switch Church control reachable and functional when the sidebar is collapsed', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+    mockHref = '/dashboard';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('sidebar-toggle'));
+
+    const switchChurchButton = within(screen.getByTestId('sidebar')).getByRole(
+      'button',
+      { name: 'Switch Church' },
+    );
+    expect(
+      switchChurchButton.querySelector('.lucide-users-round'),
+    ).not.toBeNull();
+
+    await user.click(switchChurchButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/select-church?redirect=%2Fdashboard',
+    });
   });
 });

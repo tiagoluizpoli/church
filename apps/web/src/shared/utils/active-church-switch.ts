@@ -1,13 +1,20 @@
 import type { Query, QueryClient } from '@tanstack/react-query';
 
 type ActiveChurchRoutePolicyKind = 'preserve' | 'fallback';
+type ActiveChurchArea = 'dashboard' | 'scheduling';
 
 interface ActiveChurchRoutePolicy {
   pattern: RegExp;
   policy: ActiveChurchRoutePolicyKind;
+  requiredArea?: ActiveChurchArea;
 }
 
 interface GetActiveChurchDestinationInput {
+  availableAreas: string[];
+  destination: string;
+}
+
+interface GetDestinationPathnameInput {
   destination: string;
 }
 
@@ -20,6 +27,7 @@ interface ActiveChurchNavigatorInput {
 }
 
 interface SwitchActiveChurchInput {
+  availableAreas: string[];
   churchId: string;
   destination: string;
   queryClient: QueryClient;
@@ -35,22 +43,35 @@ const DESTINATION_BASE_URL = 'https://church.local';
 // by the previous Church context.
 const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
   { pattern: /^\/$/, policy: 'fallback' },
-  { pattern: /^\/dashboard$/, policy: 'preserve' },
+  {
+    pattern: /^\/dashboard$/,
+    policy: 'preserve',
+    requiredArea: 'dashboard',
+  },
   { pattern: /^\/availability$/, policy: 'fallback' },
-  { pattern: /^\/notifications$/, policy: 'preserve' },
-  { pattern: /^\/volunteer\/availability$/, policy: 'preserve' },
+  { pattern: /^\/notifications$/, policy: 'fallback' },
+  { pattern: /^\/volunteer\/availability$/, policy: 'fallback' },
   { pattern: /^\/scheduling\/?$/, policy: 'fallback' },
-  { pattern: /^\/scheduling\/planning-cycles\/?$/, policy: 'preserve' },
+  {
+    pattern: /^\/scheduling\/planning-cycles\/?$/,
+    policy: 'preserve',
+    requiredArea: 'scheduling',
+  },
   { pattern: /^\/scheduling\/planning-cycles\/new$/, policy: 'fallback' },
   {
     pattern: /^\/scheduling\/planning-cycles\/templates$/,
     policy: 'preserve',
+    requiredArea: 'scheduling',
   },
   {
     pattern: /^\/scheduling\/planning-cycles\/[^/]+$/,
     policy: 'fallback',
   },
-  { pattern: /^\/scheduling\/tailoring\/?$/, policy: 'preserve' },
+  {
+    pattern: /^\/scheduling\/tailoring\/?$/,
+    policy: 'preserve',
+    requiredArea: 'scheduling',
+  },
   { pattern: /^\/scheduling\/tailoring\/[^/]+$/, policy: 'fallback' },
   {
     pattern: /^\/scheduling\/tailoring\/[^/]+\/[^/]+$/,
@@ -68,7 +89,7 @@ function isChurchScopedQuery(query: Query): boolean {
 
 function getDestinationPathname({
   destination,
-}: GetActiveChurchDestinationInput): string | null {
+}: GetDestinationPathnameInput): string | null {
   try {
     const parsedDestination = new URL(destination, DESTINATION_BASE_URL);
     return parsedDestination.origin === DESTINATION_BASE_URL
@@ -80,6 +101,7 @@ function getDestinationPathname({
 }
 
 export function getActiveChurchDestination({
+  availableAreas,
   destination,
 }: GetActiveChurchDestinationInput): string {
   const pathname = getDestinationPathname({ destination });
@@ -89,12 +111,15 @@ export function getActiveChurchDestination({
     pattern.test(pathname),
   );
 
-  return routePolicy?.policy === 'preserve'
+  return routePolicy?.policy === 'preserve' &&
+    routePolicy.requiredArea !== undefined &&
+    availableAreas.includes(routePolicy.requiredArea)
     ? destination
     : DASHBOARD_DESTINATION;
 }
 
 export async function switchActiveChurch({
+  availableAreas,
   churchId,
   destination,
   navigate,
@@ -105,6 +130,6 @@ export async function switchActiveChurch({
   queryClient.removeQueries({ predicate: isChurchScopedQuery });
   await selectActiveChurch({ churchId });
   await navigate({
-    destination: getActiveChurchDestination({ destination }),
+    destination: getActiveChurchDestination({ availableAreas, destination }),
   });
 }

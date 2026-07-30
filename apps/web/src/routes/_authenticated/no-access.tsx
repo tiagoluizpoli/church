@@ -1,5 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { removedFromSearchSchema } from '@/shared/utils/membership-removal';
+import {
+  MEMBERSHIP_REMOVED_PREFIX,
+  MEMBERSHIP_REMOVED_SUFFIX,
+  removedFromSearchSchema,
+} from '@/shared/utils/membership-removal';
 
 export const Route = createFileRoute('/_authenticated/no-access')({
   validateSearch: (search) => removedFromSearchSchema.parse(search),
@@ -18,8 +22,9 @@ function NoAccessRoute() {
         <p className="workspace-section-description">
           {removedFrom ? (
             <>
-              You no longer have access to <strong>{removedFrom}</strong>. Your
-              Church Membership was removed.
+              {MEMBERSHIP_REMOVED_PREFIX}
+              <strong>{removedFrom}</strong>
+              {MEMBERSHIP_REMOVED_SUFFIX}
             </>
           ) : (
             <>

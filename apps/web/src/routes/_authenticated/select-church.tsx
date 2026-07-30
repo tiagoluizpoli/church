@@ -12,7 +12,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
-import { removedFromSearchSchema } from '@/shared/utils/membership-removal';
+import {
+  MEMBERSHIP_REMOVED_PREFIX,
+  MEMBERSHIP_REMOVED_SUFFIX,
+  removedFromSearchSchema,
+} from '@/shared/utils/membership-removal';
 import { activeChurchApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/_authenticated/select-church')({
@@ -135,8 +139,9 @@ function SelectChurchRoute() {
           <div className="flex items-start gap-3 border-border border-y bg-amber-500/8 px-5 py-4 md:px-8">
             <TriangleAlert className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-500" />
             <p className="text-sm">
-              You no longer have access to <strong>{removedFrom}</strong>. Your
-              Church Membership was removed.
+              {MEMBERSHIP_REMOVED_PREFIX}
+              <strong>{removedFrom}</strong>
+              {MEMBERSHIP_REMOVED_SUFFIX}
             </p>
           </div>
         ) : null}

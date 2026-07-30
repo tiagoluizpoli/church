@@ -119,6 +119,33 @@ describe('select-church route (compare-access selector)', () => {
     });
   });
 
+  it('shows an error message when switching the Church fails', async () => {
+    const user = userEvent.setup();
+    listActiveChurchOptions.mockResolvedValue({
+      churches: [
+        {
+          churchId: 'church-a',
+          name: 'Igreja Central',
+          timezone: 'America/Sao_Paulo',
+          accessLevel: 'admin',
+          availableAreas: ['dashboard', 'scheduling'],
+          lastOpenedAt: null,
+        },
+      ],
+    });
+    selectActiveChurch.mockRejectedValue(new Error('network error'));
+
+    renderSelectChurch();
+    const options = await screen.findAllByText('Igreja Central');
+    await user.click(options[0]);
+
+    expect(
+      await screen.findByText(
+        "Couldn't switch Church. Try selecting it again.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('navigates to the redirect target when the selected target Church has the required capability', async () => {
     const user = userEvent.setup();
     listActiveChurchOptions.mockResolvedValue({

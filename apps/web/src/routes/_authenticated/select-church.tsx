@@ -13,7 +13,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
-import { switchActiveChurch } from '@/shared/utils/active-church-switch';
+import {
+  type ActiveChurchArea,
+  switchActiveChurch,
+} from '@/shared/utils/active-church-switch';
 import {
   MEMBERSHIP_REMOVED_PREFIX,
   MEMBERSHIP_REMOVED_SUFFIX,
@@ -74,7 +77,7 @@ interface SelectActiveChurchInput {
 }
 
 interface SwitchChurchMutationInput {
-  availableAreas: string[];
+  availableAreas: ActiveChurchArea[];
   churchId: string;
 }
 
@@ -193,6 +196,15 @@ function SelectChurchRoute() {
             <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
             <p className="text-sm">
               Couldn't load your Churches. Try reloading the page.
+            </p>
+          </div>
+        ) : null}
+
+        {selectMutation.isError ? (
+          <div className="flex items-start gap-3 border-border border-y bg-destructive/8 px-5 py-4 md:px-8">
+            <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
+            <p className="text-sm">
+              Couldn't switch Church. Try selecting it again.
             </p>
           </div>
         ) : null}

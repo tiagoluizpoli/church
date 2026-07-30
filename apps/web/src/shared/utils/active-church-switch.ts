@@ -1,16 +1,13 @@
 import type { Query, QueryClient } from '@tanstack/react-query';
 
-type ActiveChurchRoutePolicyKind = 'preserve' | 'fallback';
-type ActiveChurchArea = 'dashboard' | 'scheduling';
+export type ActiveChurchArea = 'dashboard' | 'scheduling';
 
-interface ActiveChurchRoutePolicy {
-  pattern: RegExp;
-  policy: ActiveChurchRoutePolicyKind;
-  requiredArea?: ActiveChurchArea;
-}
+type ActiveChurchRoutePolicy =
+  | { pattern: RegExp; policy: 'fallback' }
+  | { pattern: RegExp; policy: 'preserve'; requiredArea: ActiveChurchArea };
 
 interface GetActiveChurchDestinationInput {
-  availableAreas: string[];
+  availableAreas: ActiveChurchArea[];
   destination: string;
 }
 
@@ -27,7 +24,7 @@ interface ActiveChurchNavigatorInput {
 }
 
 interface SwitchActiveChurchInput {
-  availableAreas: string[];
+  availableAreas: ActiveChurchArea[];
   churchId: string;
   destination: string;
   queryClient: QueryClient;
@@ -112,7 +109,6 @@ export function getActiveChurchDestination({
   );
 
   return routePolicy?.policy === 'preserve' &&
-    routePolicy.requiredArea !== undefined &&
     availableAreas.includes(routePolicy.requiredArea)
     ? destination
     : DASHBOARD_DESTINATION;

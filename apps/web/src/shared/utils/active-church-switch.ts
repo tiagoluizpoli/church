@@ -1,4 +1,5 @@
 import type { Query, QueryClient } from '@tanstack/react-query';
+import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
 
 export type ActiveChurchArea = 'dashboard' | 'scheduling';
 
@@ -26,10 +27,15 @@ interface ActiveChurchNavigatorInput {
 interface SwitchActiveChurchInput {
   availableAreas: ActiveChurchArea[];
   churchId: string;
+  churchName: string;
   destination: string;
   queryClient: QueryClient;
   selectActiveChurch: (input: SelectActiveChurchInput) => Promise<void> | void;
   navigate: (input: ActiveChurchNavigatorInput) => Promise<void> | void;
+}
+
+interface ClearActiveChurchScopedCacheInput {
+  queryClient: QueryClient;
 }
 
 const DASHBOARD_DESTINATION = '/dashboard';
@@ -80,8 +86,15 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
   },
 ];
 
-function isChurchScopedQuery(query: Query): boolean {
+export function isChurchScopedQuery(query: Query): boolean {
   return query.queryKey[0] !== 'active-church';
+}
+
+export async function clearActiveChurchScopedCache({
+  queryClient,
+}: ClearActiveChurchScopedCacheInput): Promise<void> {
+  await queryClient.cancelQueries({ predicate: isChurchScopedQuery });
+  queryClient.removeQueries({ predicate: isChurchScopedQuery });
 }
 
 function getDestinationPathname({
@@ -117,14 +130,15 @@ export function getActiveChurchDestination({
 export async function switchActiveChurch({
   availableAreas,
   churchId,
+  churchName,
   destination,
   navigate,
   queryClient,
   selectActiveChurch,
 }: SwitchActiveChurchInput): Promise<void> {
-  await queryClient.cancelQueries({ predicate: isChurchScopedQuery });
-  queryClient.removeQueries({ predicate: isChurchScopedQuery });
+  await clearActiveChurchScopedCache({ queryClient });
   await selectActiveChurch({ churchId });
+  postActiveChurchSwitched({ availableAreas, churchId, churchName });
   await navigate({
     destination: getActiveChurchDestination({ availableAreas, destination }),
   });

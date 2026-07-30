@@ -1,6 +1,10 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  type ActiveChurchSwitchedMessage,
+  subscribeToActiveChurchSwitch,
+} from './active-church-broadcast';
+import {
   getActiveChurchDestination,
   switchActiveChurch,
 } from './active-church-switch';
@@ -128,6 +132,7 @@ describe('switchActiveChurch', () => {
     await switchActiveChurch({
       availableAreas: ['dashboard'],
       churchId: 'church-b',
+      churchName: 'Igreja Central',
       destination: '/dashboard?section=availability',
       navigate,
       queryClient,
@@ -150,6 +155,7 @@ describe('switchActiveChurch', () => {
     await switchActiveChurch({
       availableAreas: ['dashboard'],
       churchId: 'church-b',
+      churchName: 'Igreja Central',
       destination: '/scheduling/tailoring/ministry-1',
       navigate,
       queryClient,
@@ -170,6 +176,7 @@ describe('switchActiveChurch', () => {
     await switchActiveChurch({
       availableAreas: ['dashboard'],
       churchId: 'church-b',
+      churchName: 'Igreja Central',
       destination: '/dashboard',
       navigate,
       queryClient,
@@ -180,5 +187,35 @@ describe('switchActiveChurch', () => {
     expect(queryClient.getQueryData(['active-church', 'options'])).toEqual({
       churches: ['church-a', 'church-b'],
     });
+  });
+
+  it('broadcasts the switch to other tabs after selecting, before navigating', async () => {
+    const { queryClient, selectActiveChurch, navigate } =
+      createSwitchTestDependencies();
+    const received: ActiveChurchSwitchedMessage[] = [];
+    const unsubscribe = subscribeToActiveChurchSwitch({
+      onMessage: (message) => received.push(message),
+    });
+
+    try {
+      await switchActiveChurch({
+        availableAreas: ['dashboard'],
+        churchId: 'church-b',
+        churchName: 'Igreja Central',
+        destination: '/dashboard',
+        navigate,
+        queryClient,
+        selectActiveChurch,
+      });
+
+      await vi.waitFor(() => expect(received).toHaveLength(1));
+      expect(received[0]).toEqual({
+        availableAreas: ['dashboard'],
+        churchId: 'church-b',
+        churchName: 'Igreja Central',
+      });
+    } finally {
+      unsubscribe();
+    }
   });
 });

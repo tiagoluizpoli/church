@@ -14,6 +14,7 @@ import {
 import * as React from 'react';
 import { TimezoneToggle } from '../shared/components/timezone-toggle';
 import { useCallerRoles } from '../shared/hooks/use-caller-roles';
+import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
@@ -774,6 +775,9 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
 
       {/* 6. Command Palette */}
       <CommandPalette open={isPaletteOpen} onOpenChange={setIsPaletteOpen} />
+
+      {/* 7. Cross-tab Active Church sync guard */}
+      <ActiveChurchTabSyncGuard />
     </div>
   );
 }

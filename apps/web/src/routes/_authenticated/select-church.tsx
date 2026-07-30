@@ -79,6 +79,7 @@ interface SelectActiveChurchInput {
 interface SwitchChurchMutationInput {
   availableAreas: ActiveChurchArea[];
   churchId: string;
+  churchName: string;
 }
 
 interface NavigateAfterChurchSelectionInput {
@@ -119,6 +120,7 @@ function SelectChurchRoute() {
       await switchActiveChurch({
         availableAreas: selectChurchInput.availableAreas,
         churchId: selectChurchInput.churchId,
+        churchName: selectChurchInput.churchName,
         destination: redirect ?? '/dashboard',
         navigate: navigateAfterChurchSelection,
         queryClient,
@@ -221,6 +223,7 @@ function SelectChurchRoute() {
                     selectMutation.mutate({
                       availableAreas: church.availableAreas,
                       churchId: church.churchId,
+                      churchName: church.name,
                     })
                   }
                   className="group flex min-h-24 w-full items-center gap-4 rounded-lg border bg-card px-4 py-4 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-60"
@@ -262,6 +265,7 @@ function SelectChurchRoute() {
                       selectMutation.mutate({
                         availableAreas: church.availableAreas,
                         churchId: church.churchId,
+                        churchName: church.name,
                       })
                     }
                     className="grid min-h-20 w-full grid-cols-[minmax(15rem,1.4fr)_minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(12rem,1fr)_3rem] items-center border-border border-t px-8 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-60"

@@ -10,6 +10,7 @@ import { LeaderController } from '../../api/controllers/leader-controller';
 import { LeaderRosteringController } from '../../api/controllers/leader-rostering-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
+import { DbActiveChurchResolver } from '../../application/db-active-church-resolver';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbAuthorityManager } from '../../application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../application/db-availability-check-manager';
@@ -22,6 +23,7 @@ import { DbPlanningCycleManager } from '../../application/db-planning-cycle-mana
 import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
 import { DrizzleAuthorityActorResolver } from '../../infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleChurchMembershipRepository } from '../../infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '../../infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
   DrizzleAssignmentAuditRepository,
@@ -60,6 +62,12 @@ export function registerInjections(): void {
   });
   container.register(injection.auth.authorityGuard, {
     useClass: AuthorityGuard,
+  });
+  container.register(injection.auth.churchMembershipRepository, {
+    useFactory: () => new DrizzleChurchMembershipRepository(db),
+  });
+  container.register(injection.auth.activeChurchResolver, {
+    useClass: DbActiveChurchResolver,
   });
   container.register(injection.infra.eventRepository, {
     useFactory: () => new DrizzleEventRepository(db),

@@ -39,6 +39,8 @@ export const injection = {
     authorityActorRepository: 'IAuthorityActorRepository',
     authorityManager: 'IAuthorityManager',
     authorityGuard: 'AuthorityGuard',
+    churchMembershipRepository: 'IChurchMembershipRepository',
+    activeChurchResolver: 'IActiveChurchResolver',
   },
   config: {
     assignmentCancelLeadTimeDays: 'AssignmentCancelLeadTimeDays',

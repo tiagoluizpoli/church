@@ -39,7 +39,7 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
   { pattern: /^\/availability$/, policy: 'fallback' },
   { pattern: /^\/notifications$/, policy: 'preserve' },
   { pattern: /^\/volunteer\/availability$/, policy: 'preserve' },
-  { pattern: /^\/scheduling$/, policy: 'fallback' },
+  { pattern: /^\/scheduling\/?$/, policy: 'fallback' },
   { pattern: /^\/scheduling\/planning-cycles\/?$/, policy: 'preserve' },
   { pattern: /^\/scheduling\/planning-cycles\/new$/, policy: 'fallback' },
   {

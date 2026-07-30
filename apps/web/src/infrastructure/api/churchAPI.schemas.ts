@@ -16,6 +16,7 @@ export const GetActiveChurchStatus200Status = {
 export type GetActiveChurchStatus200 = {
   status: GetActiveChurchStatus200Status;
   churchId?: string;
+  membershipRemovedFrom?: string;
 };
 
 export type GetActiveChurchStatus401 = {
@@ -74,6 +75,7 @@ export const SelectActiveChurch200Status = {
 export type SelectActiveChurch200 = {
   status: SelectActiveChurch200Status;
   churchId?: string;
+  membershipRemovedFrom?: string;
 };
 
 export type SelectActiveChurch401 = {

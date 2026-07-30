@@ -6,6 +6,7 @@ import type {
   ResolveActiveChurchInput,
 } from '../domain/contracts/application/active-church-resolver';
 import type { AuthorityActorRepository } from '../domain/contracts/infrastructure/authority-actor.repository';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { ChurchMembershipRepository } from '../domain/contracts/infrastructure/church-membership.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -22,6 +23,11 @@ interface ResolveWithNoActiveOrganizationInput {
   tx: TransactionContext;
 }
 
+interface ResolveAfterMembershipRemovedInput {
+  userId: UserId;
+  formerChurchId: ChurchId;
+}
+
 @injectable()
 export class DbActiveChurchResolver implements IActiveChurchResolver {
   constructor(
@@ -29,6 +35,8 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
     private readonly actorRepository: AuthorityActorRepository,
     @inject('IChurchMembershipRepository')
     private readonly membershipRepository: ChurchMembershipRepository,
+    @inject('IChurchRepository')
+    private readonly churchRepository: ChurchRepository,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
   ) {}
@@ -86,7 +94,16 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
       tx,
     });
 
-    if (!actor.churchMembership) return { status: 'no_membership' };
+    if (!actor.churchMembership) {
+      // A membership that vanishes between the count-check and this actor
+      // lookup within the same repeatable-read transaction would otherwise
+      // recurse into this same branch forever — fall back to a plain deny.
+      if (autoSelected) return { status: 'no_membership' };
+      return this.resolveAfterMembershipRemoved({
+        userId,
+        formerChurchId: churchId,
+      });
+    }
 
     if (autoSelected) {
       // Only the silent-auto-select branch touches "last opened" here — a
@@ -101,5 +118,29 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
       volunteerId: actor.volunteerId,
       autoSelected,
     };
+  }
+
+  /**
+   * The session named an active organization whose Church Membership just
+   * came back empty — the Membership was removed out from under the caller.
+   * Re-derives the correct outcome from the caller's *remaining* Memberships
+   * (several -> selection_required, one -> silent auto-select, none ->
+   * no_membership) and tags it with the former Church's name so the client
+   * can explain what happened without naming who removed the caller.
+   */
+  private async resolveAfterMembershipRemoved(
+    input: ResolveAfterMembershipRemovedInput,
+  ): Promise<ActiveChurchResolution> {
+    const { userId, formerChurchId } = input;
+    const formerChurch = await this.churchRepository.getById({
+      id: formerChurchId,
+    });
+
+    const resolution = await this.unitOfWork.run(
+      (tx) => this.resolveWithNoActiveOrganization({ userId, tx }),
+      { isolationLevel: 'repeatable read' },
+    );
+
+    return { ...resolution, membershipRemovedFrom: formerChurch.name };
   }
 }

@@ -46,6 +46,7 @@ function actorWithoutMembership(activeChurchId: ChurchId): AuthorityActor {
 
 const actorRepository = { resolveActor: vi.fn() };
 const membershipRepository = { listByUserId: vi.fn(), touchOpened: vi.fn() };
+const churchRepository = { getById: vi.fn() };
 const unitOfWork = { run: vi.fn() };
 const FAKE_TX = { brand: 'fake-tx' } as never;
 
@@ -53,6 +54,7 @@ function createResolver(): DbActiveChurchResolver {
   return new DbActiveChurchResolver(
     actorRepository as never,
     membershipRepository as never,
+    churchRepository as never,
     unitOfWork as never,
   );
 }
@@ -92,18 +94,83 @@ describe('DbActiveChurchResolver', () => {
     expect(membershipRepository.listByUserId).not.toHaveBeenCalled();
   });
 
-  it('denies when the session names a Church the User was removed from, even though the session is otherwise valid', async () => {
+  it('shows the selector with a removal notice when the session names a Church the User was removed from and several Memberships remain', async () => {
     const resolver = createResolver();
     actorRepository.resolveActor.mockResolvedValueOnce(
       actorWithoutMembership(churchId),
     );
+    churchRepository.getById.mockResolvedValueOnce({
+      name: 'Former Home Church',
+    } as never);
+    membershipRepository.listByUserId.mockResolvedValueOnce([
+      { churchId: otherChurchId, accessLevel: 'member' },
+      { churchId: 'chu_third' as ChurchId, accessLevel: 'admin' },
+    ]);
 
     const result = await resolver.resolve({
       userId,
       activeOrganizationId: churchId,
     });
 
-    expect(result).toEqual({ status: 'no_membership' });
+    expect(result).toEqual({
+      status: 'selection_required',
+      membershipRemovedFrom: 'Former Home Church',
+    });
+    expect(churchRepository.getById).toHaveBeenCalledWith({ id: churchId });
+  });
+
+  it('auto-selects the one remaining Church with a removal notice when the session names a Church the User was removed from', async () => {
+    const resolver = createResolver();
+    actorRepository.resolveActor
+      .mockResolvedValueOnce(actorWithoutMembership(churchId))
+      .mockResolvedValueOnce(
+        actorWithMembership({ churchId: otherChurchId, accessLevel: 'member' }),
+      );
+    churchRepository.getById.mockResolvedValueOnce({
+      name: 'Former Home Church',
+    } as never);
+    membershipRepository.listByUserId.mockResolvedValueOnce([
+      { churchId: otherChurchId, accessLevel: 'member' },
+    ]);
+
+    const result = await resolver.resolve({
+      userId,
+      activeOrganizationId: churchId,
+    });
+
+    expect(result).toEqual({
+      status: 'resolved',
+      churchId: otherChurchId,
+      volunteerId: null,
+      autoSelected: true,
+      membershipRemovedFrom: 'Former Home Church',
+    });
+    expect(membershipRepository.touchOpened).toHaveBeenCalledWith({
+      userId,
+      churchId: otherChurchId,
+      tx: FAKE_TX,
+    });
+  });
+
+  it('shows a removal notice on the no-access outcome when the session names a Church the User was removed from and none remain', async () => {
+    const resolver = createResolver();
+    actorRepository.resolveActor.mockResolvedValueOnce(
+      actorWithoutMembership(churchId),
+    );
+    churchRepository.getById.mockResolvedValueOnce({
+      name: 'Former Home Church',
+    } as never);
+    membershipRepository.listByUserId.mockResolvedValueOnce([]);
+
+    const result = await resolver.resolve({
+      userId,
+      activeOrganizationId: churchId,
+    });
+
+    expect(result).toEqual({
+      status: 'no_membership',
+      membershipRemovedFrom: 'Former Home Church',
+    });
   });
 
   it('auto-selects the one Church when the session has none active and exactly one Membership exists, inside one repeatable-read transaction', async () => {

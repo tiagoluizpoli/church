@@ -69,6 +69,7 @@ export default defineConfig({
             'src/**/*.test.ts',
             'tests/api/auth/authority-guard.test.ts',
             'tests/api/auth/active-church-pre-validation.test.ts',
+            'tests/api/auth/resolve-active-church-and-persist.test.ts',
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',

@@ -38,8 +38,8 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-function renderSelectChurch() {
-  return renderRoute({ initialPath: '/select-church' });
+function renderSelectChurch(initialPath = '/select-church') {
+  return renderRoute({ initialPath });
 }
 
 describe('select-church route (compare-access selector)', () => {
@@ -117,5 +117,34 @@ describe('select-church route (compare-access selector)', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/dashboard');
     });
+  });
+
+  it('shows a removal notice naming the former Church when redirected here with removedFrom', async () => {
+    listActiveChurchOptions.mockResolvedValue({
+      churches: [
+        {
+          churchId: 'church-b',
+          name: 'Comunidade Esperança',
+          timezone: 'UTC',
+          accessLevel: 'member',
+          availableAreas: ['dashboard'],
+          lastOpenedAt: null,
+        },
+      ],
+    });
+
+    renderSelectChurch('/select-church?removedFrom=Igreja+Central');
+
+    expect(await screen.findByText(/no longer have access to/i)).toBeVisible();
+    expect(screen.getByText('Igreja Central')).toBeVisible();
+  });
+
+  it('shows no removal notice on a plain, unprompted visit', async () => {
+    listActiveChurchOptions.mockResolvedValue({ churches: [] });
+
+    renderSelectChurch();
+
+    await screen.findByText('Select an Active Church');
+    expect(screen.queryByText(/no longer have access to/i)).toBeNull();
   });
 });

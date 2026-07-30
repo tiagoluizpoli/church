@@ -98,6 +98,73 @@ describe('the Active Church guard (_active-church)', () => {
     expect(listPlanningCycles).not.toHaveBeenCalled();
   });
 
+  it('forwards the former Church name to /select-church when the active Membership was removed and several remain', async () => {
+    getSession.mockResolvedValue({
+      data: {
+        user: { id: 'u1' },
+        session: { activeOrganizationId: 'church-1' },
+      },
+    });
+    getActiveChurchStatus.mockResolvedValue({
+      status: 'selection_required',
+      membershipRemovedFrom: 'Old Church',
+    });
+
+    const { router } = renderPlanningCycles();
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/select-church');
+    });
+    expect(router.state.location.search).toEqual({ removedFrom: 'Old Church' });
+  });
+
+  it('forwards the former Church name to /no-access when the active Membership was removed and none remain', async () => {
+    getSession.mockResolvedValue({
+      data: {
+        user: { id: 'u1' },
+        session: { activeOrganizationId: 'church-1' },
+      },
+    });
+    getActiveChurchStatus.mockResolvedValue({
+      status: 'no_membership',
+      membershipRemovedFrom: 'Old Church',
+    });
+
+    const { router } = renderPlanningCycles();
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/no-access');
+    });
+    expect(router.state.location.search).toEqual({ removedFrom: 'Old Church' });
+  });
+
+  it('redirects to /dashboard with the former Church name when the active Membership was removed but one remaining Church auto-selects silently', async () => {
+    getSession.mockResolvedValue({
+      data: {
+        user: { id: 'u1' },
+        session: { activeOrganizationId: 'church-1' },
+      },
+    });
+    getActiveChurchStatus
+      .mockResolvedValueOnce({
+        status: 'resolved',
+        churchId: 'church-2',
+        membershipRemovedFrom: 'Old Church',
+      })
+      // The redirect to /dashboard re-enters this same layout's beforeLoad —
+      // by then the session's active organization is the newly auto-selected
+      // Church, so the real endpoint would no longer report a removal.
+      .mockResolvedValue({ status: 'resolved', churchId: 'church-2' });
+
+    const { router } = renderPlanningCycles();
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/dashboard');
+    });
+    expect(router.state.location.search).toEqual({ removedFrom: 'Old Church' });
+    expect(listPlanningCycles).not.toHaveBeenCalled();
+  });
+
   it('mounts the shell when the session has no active organization yet but auto-selects silently', async () => {
     getSession.mockResolvedValue({
       data: { user: { id: 'u1' }, session: { activeOrganizationId: null } },

@@ -38,6 +38,8 @@ paths:
                       - no_membership
                   churchId:
                     type: string
+                  membershipRemovedFrom:
+                    type: string
                 required:
                   - status
                 additionalProperties: false
@@ -152,6 +154,8 @@ paths:
                       - selection_required
                       - no_membership
                   churchId:
+                    type: string
+                  membershipRemovedFrom:
                     type: string
                 required:
                   - status

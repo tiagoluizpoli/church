@@ -135,6 +135,32 @@ describe('GET /api/v1/active-church/status', () => {
     expect(response.json()).toEqual({ status: 'no_membership' });
   });
 
+  it('surfaces the former Church name when the resolution carries a removal notice, and clears the stale session organization', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: 'usr_1' },
+      session: { activeOrganizationId: CHURCH_ID },
+    } as never);
+    activeChurchResolver.resolve.mockResolvedValueOnce({
+      status: 'selection_required',
+      membershipRemovedFrom: 'Former Home Church',
+    });
+    mockSetActiveOrganization.mockResolvedValueOnce(undefined as never);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/active-church/status',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      status: 'selection_required',
+      membershipRemovedFrom: 'Former Home Church',
+    });
+    expect(mockSetActiveOrganization).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { organizationId: null } }),
+    );
+  });
+
   it('persists a silent auto-select back onto the session', async () => {
     mockGetSession.mockResolvedValueOnce({
       user: { id: 'usr_1' },

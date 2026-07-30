@@ -42,6 +42,24 @@ export async function resolveActiveChurchAndPersist(
           'Failed to persist auto-selected active organization onto session',
         );
       });
+  } else if (resolution.status !== 'resolved' && activeOrganizationId) {
+    // The session named a Church that no longer resolves as active — either
+    // its Membership was removed (no_membership) or several remain and none
+    // is chosen yet (selection_required). Clearing it here, in the one place
+    // both the pre-validation hook and the entry-gate status endpoint route
+    // through, lets the next request self-heal instead of repeating this
+    // same outcome against a stale id.
+    await auth.api
+      .setActiveOrganization({
+        headers: headersFromRequest(request),
+        body: { organizationId: null },
+      })
+      .catch((error) => {
+        request.log.warn(
+          { err: error },
+          'Failed to clear stale active organization from session',
+        );
+      });
   }
 
   return resolution;

@@ -6,7 +6,17 @@ export interface ResolveActiveChurchInput {
   activeOrganizationId: ChurchId | null;
 }
 
-export interface ResolvedActiveChurch {
+/**
+ * Present on every variant only when this resolution replaces a session
+ * active organization whose Church Membership was just found gone — never
+ * set for a caller who simply never had an active Church yet.
+ */
+export interface MembershipRemovalNotice {
+  /** Name of the Church the caller's Membership was removed from. */
+  membershipRemovedFrom?: string;
+}
+
+export interface ResolvedActiveChurch extends MembershipRemovalNotice {
   status: 'resolved';
   churchId: ChurchId;
   /** The caller's own Volunteer profile in `churchId`, if any — a Church admin may have none. */
@@ -21,12 +31,12 @@ export interface ResolvedActiveChurch {
 }
 
 /** No Church Membership resolves for the caller: none at all, or the session's active organization no longer does. */
-export interface NoChurchMembership {
+export interface NoChurchMembership extends MembershipRemovalNotice {
   status: 'no_membership';
 }
 
 /** Several Church Memberships exist and none is active — resolvable only once a selector exists. */
-export interface ActiveChurchSelectionRequired {
+export interface ActiveChurchSelectionRequired extends MembershipRemovalNotice {
   status: 'selection_required';
 }
 

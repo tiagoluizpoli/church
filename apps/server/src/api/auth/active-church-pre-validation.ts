@@ -59,20 +59,8 @@ export function createActiveChurchPreValidation(
     }
 
     if (resolution.status === 'no_membership') {
-      if (activeOrganizationId) {
-        // The session named a Church the caller no longer belongs to.
-        // Clearing it lets the next request self-heal: a User down to one
-        // remaining Membership is auto-selected into it, rather than
-        // repeating this same deny against the stale Church forever.
-        await auth.api
-          .setActiveOrganization({ headers, body: { organizationId: null } })
-          .catch((error) => {
-            request.log.warn(
-              { err: error },
-              'Failed to clear stale active organization from session',
-            );
-          });
-      }
+      // A stale active organization, if any, was already cleared by
+      // resolveActiveChurchAndPersist above.
       return reply.status(401).send({
         error: 'UNAUTHORIZED',
         message: 'No active Church membership found',

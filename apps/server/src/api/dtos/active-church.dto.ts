@@ -5,6 +5,8 @@ import type { ChurchSelectionOption } from '../../domain/contracts/application/a
 export const activeChurchStatusResponseSchema = z.object({
   status: z.enum(['resolved', 'selection_required', 'no_membership']),
   churchId: z.string().optional(),
+  /** Name of the Church the caller's Membership was just found removed from, when that's why this status resolved. */
+  membershipRemovedFrom: z.string().optional(),
 });
 export type ActiveChurchStatusResponse = z.infer<
   typeof activeChurchStatusResponseSchema
@@ -37,9 +39,13 @@ export const activeChurchMapper = {
   toStatusResponse(
     resolution: ActiveChurchResolution,
   ): ActiveChurchStatusResponse {
-    return resolution.status === 'resolved'
-      ? { status: resolution.status, churchId: resolution.churchId }
-      : { status: resolution.status };
+    return {
+      status: resolution.status,
+      membershipRemovedFrom: resolution.membershipRemovedFrom,
+      ...(resolution.status === 'resolved'
+        ? { churchId: resolution.churchId }
+        : {}),
+    };
   },
 
   toSelectionOptionResponse(

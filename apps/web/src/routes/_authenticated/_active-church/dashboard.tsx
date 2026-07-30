@@ -1,12 +1,18 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { z } from 'zod';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
 import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
+import {
+  membershipRemovedMessage,
+  removedFromSearchSchema,
+} from '@/shared/utils/membership-removal';
 
-const dashboardSearchSchema = z.object({
+const dashboardSearchSchema = removedFromSearchSchema.extend({
   section: z
     .enum(['availability', 'assignments', 'ministry_schedule'])
     .optional(),
@@ -26,6 +32,12 @@ function RouteComponent() {
   const { session } = Route.useRouteContext();
   const search = Route.useSearch();
   const volunteerName = session.data?.user.name;
+
+  useEffect(() => {
+    if (search.removedFrom) {
+      toast.info(membershipRemovedMessage({ churchName: search.removedFrom }));
+    }
+  }, [search.removedFrom]);
 
   return (
     <WorkspacePage>

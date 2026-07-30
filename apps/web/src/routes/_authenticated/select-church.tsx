@@ -1,14 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowRight, CalendarClock, CircleAlert, LogOut } from 'lucide-react';
+import {
+  ArrowRight,
+  CalendarClock,
+  CircleAlert,
+  LogOut,
+  TriangleAlert,
+} from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
+import { removedFromSearchSchema } from '@/shared/utils/membership-removal';
 import { activeChurchApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/_authenticated/select-church')({
+  validateSearch: (search) => removedFromSearchSchema.parse(search),
   component: SelectChurchRoute,
 });
 
@@ -58,6 +66,7 @@ function areasLabel({ availableAreas }: AreasLabelInput): string {
 
 function SelectChurchRoute() {
   const { session } = Route.useRouteContext();
+  const { removedFrom } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -121,6 +130,16 @@ function SelectChurchRoute() {
             Churches. Compare access before continuing.
           </p>
         </section>
+
+        {removedFrom ? (
+          <div className="flex items-start gap-3 border-border border-y bg-amber-500/8 px-5 py-4 md:px-8">
+            <TriangleAlert className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-500" />
+            <p className="text-sm">
+              You no longer have access to <strong>{removedFrom}</strong>. Your
+              Church Membership was removed.
+            </p>
+          </div>
+        ) : null}
 
         {optionsQuery.isLoading ? (
           <p className="px-5 pb-8 text-muted-foreground text-sm md:px-8">

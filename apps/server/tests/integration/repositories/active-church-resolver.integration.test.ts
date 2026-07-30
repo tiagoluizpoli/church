@@ -9,6 +9,7 @@ import { DbActiveChurchResolver } from '../../../src/application/db-active-churc
 import { ChurchId, UserId } from '../../../src/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '../../../src/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '../../../src/infrastructure/auth/drizzle-church-membership-repository';
+import { DrizzleChurchRepository } from '../../../src/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleUnitOfWork } from '../../../src/infrastructure/repositories/drizzle-unit-of-work';
 
 const DATABASE_URL = getTestDatabaseUrl();
@@ -20,6 +21,12 @@ const churchBId = ChurchId.from('11111111-1111-4111-8111-c11111111112');
 const singleMemberUserId = UserId.from('active-resolver-single-user');
 const dualMemberUserId = UserId.from('active-resolver-dual-user');
 const strandedUserId = UserId.from('active-resolver-stranded-user');
+const removedSingleRemainUserId = UserId.from(
+  'active-resolver-removed-single-remain',
+);
+const removedNoneRemainUserId = UserId.from(
+  'active-resolver-removed-none-remain',
+);
 
 // Roots at `organization`/`user`: see the note on `truncateAll` in
 // `tests/integration/repositories/setup.ts`.
@@ -47,6 +54,18 @@ async function seed(): Promise<void> {
       id: strandedUserId,
       name: 'Active Resolver Stranded',
       email: 'active-resolver-stranded@test.com',
+      emailVerified: true,
+    },
+    {
+      id: removedSingleRemainUserId,
+      name: 'Active Resolver Removed Single Remain',
+      email: 'active-resolver-removed-single-remain@test.com',
+      emailVerified: true,
+    },
+    {
+      id: removedNoneRemainUserId,
+      name: 'Active Resolver Removed None Remain',
+      email: 'active-resolver-removed-none-remain@test.com',
       emailVerified: true,
     },
   ]);
@@ -85,12 +104,27 @@ async function seed(): Promise<void> {
     accessLevel: 'admin',
   });
   // strandedUserId deliberately gets no Church Membership row.
+
+  await addChurchMember({
+    db: testDb,
+    churchId: churchBId,
+    userId: removedSingleRemainUserId,
+    accessLevel: 'member',
+  });
+  // removedSingleRemainUserId deliberately gets no Membership row in churchA —
+  // simulates a session still naming churchA as active after that Membership
+  // was removed, with exactly one Membership (churchB) remaining.
+
+  // removedNoneRemainUserId deliberately gets no Membership row anywhere —
+  // simulates a session naming churchA as active after that Membership was
+  // removed, with no Membership remaining at all.
 }
 
 function createResolver(): DbActiveChurchResolver {
   return new DbActiveChurchResolver(
     new DrizzleAuthorityActorResolver(testDb),
     new DrizzleChurchMembershipRepository(testDb),
+    new DrizzleChurchRepository({ db: testDb }),
     new DrizzleUnitOfWork(testDb),
   );
 }
@@ -153,5 +187,36 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
     });
 
     expect(result).toEqual({ status: 'no_membership' });
+  });
+
+  it('auto-selects the one remaining Church and reports the former Church name when the session names a Church whose Membership was removed', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: removedSingleRemainUserId,
+      activeOrganizationId: churchAId,
+    });
+
+    expect(result).toEqual({
+      status: 'resolved',
+      churchId: churchBId,
+      volunteerId: null,
+      autoSelected: true,
+      membershipRemovedFrom: 'Active Resolver Church A',
+    });
+  });
+
+  it('denies and reports the former Church name when the session names a Church whose Membership was removed and none remain', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: removedNoneRemainUserId,
+      activeOrganizationId: churchAId,
+    });
+
+    expect(result).toEqual({
+      status: 'no_membership',
+      membershipRemovedFrom: 'Active Resolver Church A',
+    });
   });
 });

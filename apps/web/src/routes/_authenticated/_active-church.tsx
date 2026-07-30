@@ -11,12 +11,28 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     // server-side on every load and covers every branch — an already-set
     // Church that no longer checks out, several Memberships with none active,
     // and no Membership at all — rather than only the first of those.
-    const { status } = await activeChurchApi.getActiveChurchStatus();
+    const { status, membershipRemovedFrom } =
+      await activeChurchApi.getActiveChurchStatus();
     if (status === 'selection_required') {
-      throw redirect({ to: '/select-church' });
+      throw redirect({
+        to: '/select-church',
+        search: { removedFrom: membershipRemovedFrom },
+      });
     }
     if (status === 'no_membership') {
-      throw redirect({ to: '/no-access' });
+      throw redirect({
+        to: '/no-access',
+        search: { removedFrom: membershipRemovedFrom },
+      });
+    }
+    if (membershipRemovedFrom) {
+      // The one remaining Membership just auto-selected silently — land on
+      // the dashboard specifically (not whatever route was in flight) so the
+      // explanation has a stable, always-reachable place to show.
+      throw redirect({
+        to: '/dashboard',
+        search: { removedFrom: membershipRemovedFrom },
+      });
     }
   },
 });

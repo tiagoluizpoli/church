@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as PrototypeActiveChurchRouteImport } from './routes/prototype/active-church'
+import { Route as AuthenticatedSelectChurchRouteImport } from './routes/_authenticated/select-church'
 import { Route as AuthenticatedNoAccessRouteImport } from './routes/_authenticated/no-access'
 import { Route as AuthenticatedActiveChurchRouteImport } from './routes/_authenticated/_active-church'
 import { Route as AuthenticatedActiveChurchIndexRouteImport } from './routes/_authenticated/_active-church/index'
@@ -47,6 +48,12 @@ const PrototypeActiveChurchRoute = PrototypeActiveChurchRouteImport.update({
   path: '/prototype/active-church',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSelectChurchRoute =
+  AuthenticatedSelectChurchRouteImport.update({
+    id: '/select-church',
+    path: '/select-church',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedNoAccessRoute = AuthenticatedNoAccessRouteImport.update({
   id: '/no-access',
   path: '/no-access',
@@ -182,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedActiveChurchIndexRoute
   '/login': typeof LoginRoute
   '/no-access': typeof AuthenticatedNoAccessRoute
+  '/select-church': typeof AuthenticatedSelectChurchRoute
   '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedActiveChurchIndexRoute
   '/login': typeof LoginRoute
   '/no-access': typeof AuthenticatedNoAccessRoute
+  '/select-church': typeof AuthenticatedSelectChurchRoute
   '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
@@ -226,6 +235,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/_active-church': typeof AuthenticatedActiveChurchRouteWithChildren
   '/_authenticated/no-access': typeof AuthenticatedNoAccessRoute
+  '/_authenticated/select-church': typeof AuthenticatedSelectChurchRoute
   '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/_authenticated/_active-church/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/_authenticated/_active-church/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/no-access'
+    | '/select-church'
     | '/prototype/active-church'
     | '/availability'
     | '/dashboard'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/no-access'
+    | '/select-church'
     | '/prototype/active-church'
     | '/availability'
     | '/dashboard'
@@ -295,6 +307,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/_active-church'
     | '/_authenticated/no-access'
+    | '/_authenticated/select-church'
     | '/prototype/active-church'
     | '/_authenticated/_active-church/availability'
     | '/_authenticated/_active-church/dashboard'
@@ -344,6 +357,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/prototype/active-church'
       preLoaderRoute: typeof PrototypeActiveChurchRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/select-church': {
+      id: '/_authenticated/select-church'
+      path: '/select-church'
+      fullPath: '/select-church'
+      preLoaderRoute: typeof AuthenticatedSelectChurchRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/no-access': {
       id: '/_authenticated/no-access'
@@ -604,11 +624,13 @@ const AuthenticatedActiveChurchRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedActiveChurchRoute: typeof AuthenticatedActiveChurchRouteWithChildren
   AuthenticatedNoAccessRoute: typeof AuthenticatedNoAccessRoute
+  AuthenticatedSelectChurchRoute: typeof AuthenticatedSelectChurchRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedActiveChurchRoute: AuthenticatedActiveChurchRouteWithChildren,
   AuthenticatedNoAccessRoute: AuthenticatedNoAccessRoute,
+  AuthenticatedSelectChurchRoute: AuthenticatedSelectChurchRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

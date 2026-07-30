@@ -6,7 +6,7 @@ export default defineConfig({
       target: './apps/server/auto-generated-api.yaml',
       filters: {
         mode: 'include',
-        tags: ['admin', 'volunteer', 'feature-flags'],
+        tags: ['admin', 'volunteer', 'feature-flags', 'active-church'],
       },
     },
     output: {

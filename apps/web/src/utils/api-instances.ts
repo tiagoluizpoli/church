@@ -1,3 +1,4 @@
+import { getActiveChurch } from '@/infrastructure/api/active-church';
 import { getAdmin } from '@/infrastructure/api/admin';
 import { getFeatureFlags as createFeatureFlagsApi } from '@/infrastructure/api/feature-flags';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
@@ -44,3 +45,4 @@ export const volunteerApi = {
   ...generatedVolunteerApi,
 };
 export const featureFlagsApi = createFeatureFlagsApi();
+export const activeChurchApi = getActiveChurch();

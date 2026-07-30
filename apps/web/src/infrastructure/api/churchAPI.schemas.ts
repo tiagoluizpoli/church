@@ -4,6 +4,88 @@
  * Church API
  * OpenAPI spec version: 1.0.0
  */
+export type GetActiveChurchStatus200Status = typeof GetActiveChurchStatus200Status[keyof typeof GetActiveChurchStatus200Status];
+
+
+export const GetActiveChurchStatus200Status = {
+  resolved: 'resolved',
+  selection_required: 'selection_required',
+  no_membership: 'no_membership',
+} as const;
+
+export type GetActiveChurchStatus200 = {
+  status: GetActiveChurchStatus200Status;
+  churchId?: string;
+};
+
+export type GetActiveChurchStatus401 = {
+  error: string;
+  message: string;
+};
+
+export type ListActiveChurchOptions200ChurchesItemAccessLevel = typeof ListActiveChurchOptions200ChurchesItemAccessLevel[keyof typeof ListActiveChurchOptions200ChurchesItemAccessLevel];
+
+
+export const ListActiveChurchOptions200ChurchesItemAccessLevel = {
+  member: 'member',
+  admin: 'admin',
+} as const;
+
+export type ListActiveChurchOptions200ChurchesItemAvailableAreasItem = typeof ListActiveChurchOptions200ChurchesItemAvailableAreasItem[keyof typeof ListActiveChurchOptions200ChurchesItemAvailableAreasItem];
+
+
+export const ListActiveChurchOptions200ChurchesItemAvailableAreasItem = {
+  dashboard: 'dashboard',
+  scheduling: 'scheduling',
+} as const;
+
+export type ListActiveChurchOptions200ChurchesItem = {
+  churchId: string;
+  name: string;
+  timezone: string;
+  accessLevel: ListActiveChurchOptions200ChurchesItemAccessLevel;
+  availableAreas: ListActiveChurchOptions200ChurchesItemAvailableAreasItem[];
+  /** @nullable */
+  lastOpenedAt: string | null;
+};
+
+export type ListActiveChurchOptions200 = {
+  churches: ListActiveChurchOptions200ChurchesItem[];
+};
+
+export type ListActiveChurchOptions401 = {
+  error: string;
+  message: string;
+};
+
+export type SelectActiveChurchBody = {
+  churchId: string;
+};
+
+export type SelectActiveChurch200Status = typeof SelectActiveChurch200Status[keyof typeof SelectActiveChurch200Status];
+
+
+export const SelectActiveChurch200Status = {
+  resolved: 'resolved',
+  selection_required: 'selection_required',
+  no_membership: 'no_membership',
+} as const;
+
+export type SelectActiveChurch200 = {
+  status: SelectActiveChurch200Status;
+  churchId?: string;
+};
+
+export type SelectActiveChurch401 = {
+  error: string;
+  message: string;
+};
+
+export type SelectActiveChurch403 = {
+  error: string;
+  message: string;
+};
+
 export type ListMinistries200MinistriesItemEnforcementType = typeof ListMinistries200MinistriesItemEnforcementType[keyof typeof ListMinistries200MinistriesItemEnforcementType];
 
 

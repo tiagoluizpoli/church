@@ -2,22 +2,21 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
-import { authClient } from '@/lib/auth-client';
+import { activeChurchApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/_authenticated/_active-church')({
   component: ActiveChurchLayout,
-  beforeLoad: async ({ context }) => {
-    const activeOrganizationId =
-      context.session.data?.session?.activeOrganizationId;
-    // No active Church yet is not itself a denial: the Church-scoped request
-    // this shell is about to make auto-selects a sole Membership server-side.
-    // An *already-set* Church that no longer checks out is what must gate
-    // the shell — a stale session naming a Church the User was removed from.
-    if (activeOrganizationId) {
-      const activeMember = await authClient.organization.getActiveMember();
-      if (!activeMember.data) {
-        throw redirect({ to: '/no-access' });
-      }
+  beforeLoad: async () => {
+    // The entry gate's one source of truth: revalidates Church Membership
+    // server-side on every load and covers every branch — an already-set
+    // Church that no longer checks out, several Memberships with none active,
+    // and no Membership at all — rather than only the first of those.
+    const { status } = await activeChurchApi.getActiveChurchStatus();
+    if (status === 'selection_required') {
+      throw redirect({ to: '/select-church' });
+    }
+    if (status === 'no_membership') {
+      throw redirect({ to: '/no-access' });
     }
   },
 });

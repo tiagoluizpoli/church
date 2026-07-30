@@ -45,7 +45,7 @@ function actorWithoutMembership(activeChurchId: ChurchId): AuthorityActor {
 }
 
 const actorRepository = { resolveActor: vi.fn() };
-const membershipRepository = { listByUserId: vi.fn() };
+const membershipRepository = { listByUserId: vi.fn(), touchOpened: vi.fn() };
 const unitOfWork = { run: vi.fn() };
 const FAKE_TX = { brand: 'fake-tx' } as never;
 
@@ -138,6 +138,22 @@ describe('DbActiveChurchResolver', () => {
       activeChurchId: churchId,
       tx: FAKE_TX,
     });
+    expect(membershipRepository.touchOpened).toHaveBeenCalledWith({
+      userId,
+      churchId,
+      tx: FAKE_TX,
+    });
+  });
+
+  it('does not touch "last opened" when resolving against an already-active Church on every scoped request', async () => {
+    const resolver = createResolver();
+    actorRepository.resolveActor.mockResolvedValueOnce(
+      actorWithMembership({ churchId, accessLevel: 'admin', volunteerId }),
+    );
+
+    await resolver.resolve({ userId, activeOrganizationId: churchId });
+
+    expect(membershipRepository.touchOpened).not.toHaveBeenCalled();
   });
 
   it('requires selection when the session has no active Church and several Memberships exist', async () => {

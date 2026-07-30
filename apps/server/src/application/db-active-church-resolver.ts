@@ -88,6 +88,13 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
 
     if (!actor.churchMembership) return { status: 'no_membership' };
 
+    if (autoSelected) {
+      // Only the silent-auto-select branch touches "last opened" here — a
+      // request against an *already*-active Church resolves through this
+      // same method on every call, and must not bump the timestamp each time.
+      await this.membershipRepository.touchOpened({ userId, churchId, tx });
+    }
+
     return {
       status: 'resolved',
       churchId,

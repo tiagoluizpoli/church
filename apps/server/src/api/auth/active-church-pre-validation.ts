@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ChurchId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import { headersFromRequest } from '../utils/headers';
+import { resolveActiveChurchAndPersist } from './resolve-active-church-and-persist';
 
 export interface CreateActiveChurchPreValidationInput {
   resolver: IActiveChurchResolver;
@@ -41,7 +42,9 @@ export function createActiveChurchPreValidation(
 
     const userId = UserId.from(session.user.id);
     const activeOrganizationId = session.session.activeOrganizationId;
-    const resolution = await resolver.resolve({
+    const resolution = await resolveActiveChurchAndPersist({
+      resolver,
+      request,
       userId,
       activeOrganizationId: activeOrganizationId
         ? ChurchId.from(activeOrganizationId)
@@ -81,23 +84,6 @@ export function createActiveChurchPreValidation(
         error: 'UNAUTHORIZED',
         message: 'Volunteer profile not found',
       });
-    }
-
-    if (resolution.autoSelected) {
-      // Best-effort persistence: the request still proceeds against the
-      // Church just resolved even if the session write fails, and the next
-      // request simply resolves the same way again.
-      await auth.api
-        .setActiveOrganization({
-          headers,
-          body: { organizationId: resolution.churchId },
-        })
-        .catch((error) => {
-          request.log.warn(
-            { err: error },
-            'Failed to persist auto-selected active organization onto session',
-          );
-        });
     }
 
     request.userId = session.user.id;

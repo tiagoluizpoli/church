@@ -33,6 +33,7 @@ export const injection = {
     ministryManager: 'IMinistryManager',
     participationManager: 'IParticipationManager',
     featureFlagManager: 'IFeatureFlagManager',
+    activeChurchSelectionManager: 'IActiveChurchSelectionManager',
   },
   auth: {
     scopeRepository: 'ISchedulingScopeRepository',

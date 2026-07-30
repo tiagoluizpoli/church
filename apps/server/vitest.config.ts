@@ -70,6 +70,7 @@ export default defineConfig({
             'tests/api/auth/authority-guard.test.ts',
             'tests/api/auth/active-church-pre-validation.test.ts',
             'tests/application/db-active-church-resolver.test.ts',
+            'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',
             'tests/application/db-event-manager.test.ts',
             'tests/application/db-event-template-manager.test.ts',

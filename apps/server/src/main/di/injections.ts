@@ -3,6 +3,7 @@ import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { container } from 'tsyringe';
 import { AuthorityGuard } from '../../api/auth/authority-guard';
+import { ActiveChurchController } from '../../api/controllers/active-church-controller';
 import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
@@ -11,6 +12,7 @@ import { LeaderRosteringController } from '../../api/controllers/leader-rosterin
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
 import { DbActiveChurchResolver } from '../../application/db-active-church-resolver';
+import { DbActiveChurchSelectionManager } from '../../application/db-active-church-selection-manager';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
 import { DbAuthorityManager } from '../../application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../application/db-availability-check-manager';
@@ -168,8 +170,15 @@ export function registerInjections(): void {
   container.register(injection.managers.featureFlagManager, {
     useClass: DbFeatureFlagManager,
   });
+  container.register(injection.managers.activeChurchSelectionManager, {
+    useClass: DbActiveChurchSelectionManager,
+  });
 
   // Controllers
+  container.registerSingleton(
+    injection.controllers.fastify,
+    ActiveChurchController,
+  );
   container.registerSingleton(
     injection.controllers.fastify,
     AdminLeaderController,

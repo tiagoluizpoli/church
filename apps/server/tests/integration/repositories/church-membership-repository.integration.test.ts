@@ -126,4 +126,48 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
 
     expect(memberships).toEqual([]);
   });
+
+  it('lists comparison facts — identity, timezone and Access Level — for every Church Membership', async () => {
+    const repository = new DrizzleChurchMembershipRepository(testDb);
+
+    const comparisons = await repository.listComparisonsByUserId({
+      userId: dualMemberUserId,
+    });
+
+    expect(comparisons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          churchId: churchAId,
+          accessLevel: 'member',
+          churchName: 'Membership Church A',
+          timezone: 'UTC',
+          lastOpenedAt: null,
+        }),
+        expect.objectContaining({
+          churchId: churchBId,
+          accessLevel: 'admin',
+          churchName: 'Membership Church B',
+          timezone: 'UTC',
+          lastOpenedAt: null,
+        }),
+      ]),
+    );
+  });
+
+  it('records when a Church was opened, scoped to the (user, Church) pair', async () => {
+    const repository = new DrizzleChurchMembershipRepository(testDb);
+
+    await repository.touchOpened({
+      userId: dualMemberUserId,
+      churchId: churchAId,
+    });
+    const comparisons = await repository.listComparisonsByUserId({
+      userId: dualMemberUserId,
+    });
+
+    const churchA = comparisons.find((row) => row.churchId === churchAId);
+    const churchB = comparisons.find((row) => row.churchId === churchBId);
+    expect(churchA?.lastOpenedAt).toBeInstanceOf(Date);
+    expect(churchB?.lastOpenedAt).toBeNull();
+  });
 });

@@ -1,0 +1,18 @@
+name: Sync wayfinder project status
+
+on:
+  issues:
+    types: [closed, reopened]
+  workflow_dispatch: {}
+
+jobs:
+  recompute-status:
+    name: Recompute Backlog/Ready from issue dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run recompute
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+        run: bash .github/scripts/sync-wayfinder-status.sh

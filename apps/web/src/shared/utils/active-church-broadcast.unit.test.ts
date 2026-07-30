@@ -35,18 +35,14 @@ describe('active Church cross-tab broadcast', () => {
   });
 
   it('does nothing when BroadcastChannel is unavailable', () => {
-    const original = globalThis.BroadcastChannel;
-    // @ts-expect-error simulating an environment without BroadcastChannel
-    globalThis.BroadcastChannel = undefined;
+    vi.stubGlobal('BroadcastChannel', undefined);
 
-    try {
-      expect(() => postActiveChurchSwitched(SAMPLE_MESSAGE)).not.toThrow();
-      const unsubscribe = subscribeToActiveChurchSwitch({
-        onMessage: vi.fn(),
-      });
-      expect(() => unsubscribe()).not.toThrow();
-    } finally {
-      globalThis.BroadcastChannel = original;
-    }
+    expect(() => postActiveChurchSwitched(SAMPLE_MESSAGE)).not.toThrow();
+    const unsubscribe = subscribeToActiveChurchSwitch({
+      onMessage: vi.fn(),
+    });
+    expect(() => unsubscribe()).not.toThrow();
+
+    vi.unstubAllGlobals();
   });
 });

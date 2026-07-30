@@ -1,15 +1,15 @@
 import 'reflect-metadata';
-import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
-import { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
+import { ChurchId, VolunteerId } from '../../domain/branded-ids';
+import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   assignmentListResponseSchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
-import { headersFromRequest } from '../utils/headers';
 
 @injectable()
 export class VolunteerScheduleController implements FastifyController {
@@ -18,34 +18,21 @@ export class VolunteerScheduleController implements FastifyController {
   constructor(
     @inject('IVolunteerManager')
     private readonly volunteerManager: IVolunteerManager,
+    @inject('IActiveChurchResolver')
+    private readonly activeChurchResolver: IActiveChurchResolver,
   ) {}
 
   registerRoutes(
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
-    app.addHook('preValidation', async (request, reply) => {
-      const headers = headersFromRequest(request);
-      const session = await auth.api.getSession({ headers }).catch(() => null);
-      if (!session?.user) {
-        return reply
-          .status(401)
-          .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
-      }
-
-      const ctx = await this.volunteerManager.resolveVolunteerContext(
-        UserId.from(session.user.id),
-      );
-      if (!ctx) {
-        return reply.status(401).send({
-          error: 'UNAUTHORIZED',
-          message: 'Volunteer profile not found',
-        });
-      }
-
-      request.volunteerId = ctx.volunteerId;
-      request.churchId = ctx.churchId;
-    });
+    app.addHook(
+      'preValidation',
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        requireVolunteer: true,
+      }),
+    );
 
     app.get(
       '/schedule',
@@ -58,7 +45,8 @@ export class VolunteerScheduleController implements FastifyController {
       },
       async (request, reply) => {
         const assignments = await this.volunteerManager.getPublishedSchedule({
-          volunteerId: VolunteerId.from(request.volunteerId),
+          // Non-null: this controller's preValidation requires a Volunteer profile.
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.assignmentsToResponse(assignments));

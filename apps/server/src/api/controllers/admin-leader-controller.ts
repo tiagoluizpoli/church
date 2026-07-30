@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { auth } from '@church/auth';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
@@ -14,11 +13,12 @@ import {
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
+import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
-import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -48,7 +48,6 @@ import {
   timeSlotResponseSchema,
   updateSlotBodySchema,
 } from '../dtos/time-slot.dto';
-import { headersFromRequest } from '../utils/headers';
 
 interface ScheduleBuilderQuery {
   eventId: string;
@@ -113,8 +112,8 @@ export class AdminLeaderController implements FastifyController {
     private readonly eventManager: IEventManager,
     @inject('IAssignmentManager')
     private readonly assignmentManager: IAssignmentManager,
-    @inject('IVolunteerManager')
-    private readonly volunteerManager: IVolunteerManager,
+    @inject('IActiveChurchResolver')
+    private readonly activeChurchResolver: IActiveChurchResolver,
     @inject('AuthorityGuard')
     private readonly authorityGuard: AuthorityGuard,
   ) {}
@@ -123,29 +122,13 @@ export class AdminLeaderController implements FastifyController {
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
-    app.addHook('preValidation', async (request, reply) => {
-      const headers = headersFromRequest(request);
-      const session = await auth.api.getSession({ headers }).catch(() => null);
-      if (!session?.user) {
-        return reply
-          .status(401)
-          .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
-      }
-
-      const ctx = await this.volunteerManager.resolveVolunteerContext(
-        UserId.from(session.user.id),
-      );
-      if (!ctx) {
-        return reply.status(401).send({
-          error: 'UNAUTHORIZED',
-          message: 'Volunteer profile not found',
-        });
-      }
-
-      request.userId = session.user.id;
-      request.volunteerId = ctx.volunteerId;
-      request.churchId = ctx.churchId;
-    });
+    app.addHook(
+      'preValidation',
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        requireVolunteer: true,
+      }),
+    );
 
     // Ministry routes
     app.get(
@@ -162,7 +145,8 @@ export class AdminLeaderController implements FastifyController {
         if (denied) return;
 
         const ministries = await this.ministryManager.listByLeader({
-          leaderId: VolunteerId.from(request.volunteerId),
+          // Non-null: this controller's preValidation requires a Volunteer profile.
+          leaderId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(ministryMapper.toResponseList(ministries));
@@ -188,7 +172,8 @@ export class AdminLeaderController implements FastifyController {
         const data = await this.eventManager.getScheduleBuilderData({
           churchId: ChurchId.from(request.churchId),
           eventId: EventId.from(eventId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          // Non-null: this controller's preValidation requires a Volunteer profile.
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
         });
         return reply.send(eventMapper.scheduleBuilderToResponse(data));

@@ -38,8 +38,8 @@ const assignmentManager = {
   reassignParticipationAssignment: vi.fn(),
 };
 
-const volunteerManager = {
-  resolveVolunteerContext: vi.fn(),
+const activeChurchResolver = {
+  resolve: vi.fn(),
 };
 
 const rbacGuard = {
@@ -54,7 +54,7 @@ beforeAll(async () => {
   const controller = new LeaderRosteringController(
     participationManager as never,
     assignmentManager as never,
-    volunteerManager as never,
+    activeChurchResolver as never,
     rbacGuard as never,
   );
   await app.register(
@@ -76,12 +76,13 @@ beforeEach(() => {
   vi.resetAllMocks();
   mockGetSession.mockResolvedValue({
     user: { id: 'leader-user' },
+    session: { activeOrganizationId: null },
   } as never);
-  volunteerManager.resolveVolunteerContext.mockResolvedValue({
+  activeChurchResolver.resolve.mockResolvedValue({
+    status: 'resolved',
     churchId: '11111111-1111-1111-1111-111111111111',
     volunteerId: '44444444-4444-4444-8444-444444444444',
-    isAdmin: false,
-    isLeader: true,
+    autoSelected: false,
   });
   rbacGuard.canManageParticipation.mockResolvedValue(true);
   rbacGuard.canManageShift.mockResolvedValue(true);

@@ -4,7 +4,6 @@ import type {
   ChurchId,
   MinistryId,
   ShiftId,
-  UserId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../../branded-ids';
@@ -227,15 +226,7 @@ export interface MarkAllNotificationsReadInput {
   churchId: ChurchId;
 }
 
-export interface VolunteerContext {
-  churchId: ChurchId;
-  isAdmin: boolean;
-  isLeader: boolean;
-  volunteerId: VolunteerId;
-}
-
 export interface IVolunteerManager {
-  resolveVolunteerContext(userId: UserId): Promise<VolunteerContext | null>;
   getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard>;
   getUpcomingAssignments(
     input: GetUpcomingAssignmentsInput,

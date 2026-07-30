@@ -1,11 +1,6 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
-import type {
-  ChurchId,
-  MinistryId,
-  ShiftId,
-  UserId,
-} from '../domain/branded-ids';
+import type { ChurchId, MinistryId, ShiftId } from '../domain/branded-ids';
 import type {
   AvailabilityOverlapItem,
   CancelOwnAssignmentInput,
@@ -31,7 +26,6 @@ import type {
   VolunteerAvailabilityCheckDetail,
   VolunteerAvailabilityCheckSummary,
   VolunteerCheckShift,
-  VolunteerContext,
   VolunteerDashboard,
 } from '../domain/contracts/application/volunteer-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
@@ -251,23 +245,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     @inject('AssignmentCancelLeadTimeDays')
     private readonly cancelLeadTimeDays: number,
   ) {}
-
-  async resolveVolunteerContext(
-    userId: UserId,
-  ): Promise<VolunteerContext | null> {
-    const volunteer = await this.volunteerRepo.findByUserIdGlobally(userId);
-    if (!volunteer) return null;
-    const [ledMinistries, isAdmin] = await Promise.all([
-      this.volunteerRepo.listLedMinistries(volunteer.churchId, volunteer.id),
-      this.volunteerRepo.isChurchAdmin(volunteer.churchId, userId),
-    ]);
-    return {
-      volunteerId: volunteer.id,
-      churchId: volunteer.churchId,
-      isAdmin,
-      isLeader: ledMinistries.length > 0,
-    };
-  }
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
     const { volunteerId, churchId } = input;

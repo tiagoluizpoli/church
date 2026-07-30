@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
 import type { z } from 'zod';
 import {
@@ -14,13 +13,14 @@ import {
   TimeSlotId,
   UserId,
 } from '../../domain/branded-ids';
+import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
 import type { IPlanningCycleManager } from '../../domain/contracts/application/planning-cycle-manager';
 import type { IPlanningEventManager } from '../../domain/contracts/application/planning-event-manager';
-import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -59,7 +59,6 @@ import {
   timeSlotResponseSchema,
   updateSlotBodySchema,
 } from '../dtos/time-slot.dto';
-import { headersFromRequest } from '../utils/headers';
 
 interface PlanningCycleRouteParams {
   cycleId: string;
@@ -104,8 +103,8 @@ export class ChurchAdminController implements FastifyController {
     private readonly eventTemplateManager: IEventTemplateManager,
     @inject('IPlanningEventManager')
     private readonly planningEventManager: IPlanningEventManager,
-    @inject('IVolunteerManager')
-    private readonly volunteerManager: IVolunteerManager,
+    @inject('IActiveChurchResolver')
+    private readonly activeChurchResolver: IActiveChurchResolver,
     @inject('IParticipationManager')
     private readonly participationManager: IParticipationManager,
     @inject('IMinistryManager')
@@ -118,28 +117,15 @@ export class ChurchAdminController implements FastifyController {
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
+    app.addHook(
+      'preValidation',
+      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+    );
+
     app.addHook('preValidation', async (request, reply) => {
-      const headers = headersFromRequest(request);
-      const session = await auth.api.getSession({ headers }).catch(() => null);
-      if (!session?.user) {
-        return reply
-          .status(401)
-          .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
-      }
-
-      const ctx = await this.volunteerManager.resolveVolunteerContext(
-        UserId.from(session.user.id),
-      );
-      if (!ctx) {
-        return reply.status(401).send({
-          error: 'UNAUTHORIZED',
-          message: 'Volunteer profile not found',
-        });
-      }
-
       const authorized = await this.authorityGuard.canManageChurch({
-        churchId: ChurchId.from(ctx.churchId),
-        userId: UserId.from(session.user.id),
+        churchId: ChurchId.from(request.churchId),
+        userId: UserId.from(request.userId),
       });
       if (!authorized) {
         return reply.status(403).send({
@@ -147,10 +133,6 @@ export class ChurchAdminController implements FastifyController {
           message: 'Church admin role required',
         });
       }
-
-      request.userId = session.user.id;
-      request.volunteerId = ctx.volunteerId;
-      request.churchId = ctx.churchId;
     });
 
     app.post(

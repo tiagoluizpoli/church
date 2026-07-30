@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { auth } from '@church/auth';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
@@ -8,12 +7,13 @@ import {
   ChurchId,
   MinistryId,
   ShiftId,
-  UserId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../../domain/branded-ids';
+import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   notificationListResponseSchema,
@@ -30,7 +30,6 @@ import {
   setUnavailabilityMarksBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
-import { headersFromRequest } from '../utils/headers';
 
 interface MinistryRouteParams {
   ministryId: string;
@@ -56,38 +55,29 @@ const getNotificationsQuerystringSchema = z.object({
 @injectable()
 export class VolunteerController implements FastifyController {
   readonly prefix = '/volunteer';
+  // `VolunteerId.from(request.volunteerId as string)` below: this
+  // controller's preValidation hook requires a Volunteer profile for every
+  // route, so `volunteerId` is always present here despite being optional
+  // on `FastifyRequest`.
 
   constructor(
     @inject('IVolunteerManager')
     private readonly volunteerManager: IVolunteerManager,
+    @inject('IActiveChurchResolver')
+    private readonly activeChurchResolver: IActiveChurchResolver,
   ) {}
 
   registerRoutes(
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
-    app.addHook('preValidation', async (request, reply) => {
-      const headers = headersFromRequest(request);
-      const session = await auth.api.getSession({ headers }).catch(() => null);
-      if (!session?.user) {
-        return reply
-          .status(401)
-          .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
-      }
-
-      const ctx = await this.volunteerManager.resolveVolunteerContext(
-        UserId.from(session.user.id),
-      );
-      if (!ctx) {
-        return reply.status(401).send({
-          error: 'UNAUTHORIZED',
-          message: 'Volunteer profile not found',
-        });
-      }
-
-      request.volunteerId = ctx.volunteerId;
-      request.churchId = ctx.churchId;
-    });
+    app.addHook(
+      'preValidation',
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        requireVolunteer: true,
+      }),
+    );
 
     app.get(
       '/dashboard',
@@ -100,7 +90,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const dashboard = await this.volunteerManager.getDashboard({
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.dashboardToResponse(dashboard));
@@ -118,7 +108,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const assignments = await this.volunteerManager.getUpcomingAssignments({
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.assignmentsToResponse(assignments));
@@ -138,7 +128,7 @@ export class VolunteerController implements FastifyController {
         const { ministryId } = request.params as MinistryRouteParams;
         const schedule = await this.volunteerManager.getMinistrySchedule({
           ministryId: MinistryId.from(ministryId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(volunteerMapper.ministryScheduleToResponse(schedule));
@@ -156,7 +146,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const summaries = await this.volunteerManager.listAvailabilityChecks({
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(
@@ -178,7 +168,7 @@ export class VolunteerController implements FastifyController {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
         const detail = await this.volunteerManager.getAvailabilityCheck({
           checkId: AvailabilityCheckId.from(checkId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(
@@ -204,7 +194,7 @@ export class VolunteerController implements FastifyController {
         >;
         const detail = await this.volunteerManager.setUnavailability({
           checkId: AvailabilityCheckId.from(checkId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
           shiftIds: body.shiftIds.map((shiftId) => ShiftId.from(shiftId)),
           wholeDayDates: body.wholeDayDates,
@@ -227,7 +217,7 @@ export class VolunteerController implements FastifyController {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
         await this.volunteerManager.confirmAvailabilityCheck({
           checkId: AvailabilityCheckId.from(checkId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.status(204).send();
@@ -251,7 +241,7 @@ export class VolunteerController implements FastifyController {
         >;
         const result = await this.volunteerManager.respondToAssignment({
           assignmentId: AssignmentId.from(assignmentId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
           response: body.response,
           reason: body.reason,
@@ -273,7 +263,7 @@ export class VolunteerController implements FastifyController {
         const { assignmentId } = request.params as AssignmentRouteParams;
         await this.volunteerManager.cancelOwnAssignment({
           assignmentId: AssignmentId.from(assignmentId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.status(204).send(null);
@@ -295,7 +285,7 @@ export class VolunteerController implements FastifyController {
           typeof getNotificationsQuerystringSchema
         >;
         const result = await this.volunteerManager.getNotifications({
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
           cursor: cursor ? new Date(cursor) : undefined,
           limit,
@@ -317,7 +307,7 @@ export class VolunteerController implements FastifyController {
         const { notificationId } = request.params as NotificationRouteParams;
         await this.volunteerManager.markNotificationRead({
           notificationId: VolunteerNotificationId.from(notificationId),
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.status(200).send({ marked: true });
@@ -334,7 +324,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         await this.volunteerManager.markAllNotificationsRead({
-          volunteerId: VolunteerId.from(request.volunteerId),
+          volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
         return reply.status(201).send({ marked: true });

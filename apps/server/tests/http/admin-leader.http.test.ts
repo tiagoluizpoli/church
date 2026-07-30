@@ -20,13 +20,6 @@ vi.mock('@church/auth', () => ({
   },
 }));
 
-interface MockVolunteerContext {
-  churchId: string;
-  volunteerId: string;
-  isAdmin: boolean;
-  isLeader: boolean;
-}
-
 const mockGetSession = vi.mocked(
   (await import('@church/auth')).auth.api.getSession,
 );
@@ -55,8 +48,8 @@ const assignmentManager = {
   listAuditLog: vi.fn(),
 };
 
-const volunteerManager = {
-  resolveVolunteerContext: vi.fn(),
+const activeChurchResolver = {
+  resolve: vi.fn(),
 };
 
 const authorityGuard = {
@@ -69,15 +62,12 @@ const authorityGuard = {
 
 let app: FastifyTypedInstance;
 
-function createVolunteerContext(
-  input?: Partial<MockVolunteerContext>,
-): MockVolunteerContext {
+function createActiveChurchResolution() {
   return {
+    status: 'resolved' as const,
     churchId: '11111111-1111-1111-1111-111111111111',
     volunteerId: '44444444-4444-4444-8444-444444444444',
-    isAdmin: false,
-    isLeader: false,
-    ...input,
+    autoSelected: false,
   };
 }
 
@@ -87,7 +77,7 @@ beforeAll(async () => {
     ministryManager as never,
     eventManager as never,
     assignmentManager as never,
-    volunteerManager as never,
+    activeChurchResolver as never,
     authorityGuard as never,
   );
   await app.register(
@@ -109,9 +99,10 @@ beforeEach(() => {
   vi.resetAllMocks();
   mockGetSession.mockResolvedValue({
     user: { id: 'admin-leader-user' },
+    session: { activeOrganizationId: null },
   } as never);
-  volunteerManager.resolveVolunteerContext.mockResolvedValue(
-    createVolunteerContext(),
+  activeChurchResolver.resolve.mockResolvedValue(
+    createActiveChurchResolution(),
   );
   authorityGuard.canManageMinistry.mockResolvedValue(true);
   authorityGuard.canManageEvent.mockResolvedValue(true);

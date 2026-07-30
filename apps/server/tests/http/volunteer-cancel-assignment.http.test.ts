@@ -25,15 +25,21 @@ const mockGetSession = vi.mocked(
 );
 
 const volunteerManager = {
-  resolveVolunteerContext: vi.fn(),
   cancelOwnAssignment: vi.fn(),
+};
+
+const activeChurchResolver = {
+  resolve: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new VolunteerController(volunteerManager as never);
+  const controller = new VolunteerController(
+    volunteerManager as never,
+    activeChurchResolver as never,
+  );
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
@@ -53,12 +59,13 @@ beforeEach(() => {
   vi.resetAllMocks();
   mockGetSession.mockResolvedValue({
     user: { id: 'vol-user' },
+    session: { activeOrganizationId: null },
   } as never);
-  volunteerManager.resolveVolunteerContext.mockResolvedValue({
+  activeChurchResolver.resolve.mockResolvedValue({
+    status: 'resolved',
     churchId: '11111111-1111-1111-1111-111111111111',
     volunteerId: '44444444-4444-4444-8444-444444444444',
-    isAdmin: false,
-    isLeader: false,
+    autoSelected: false,
   });
 });
 

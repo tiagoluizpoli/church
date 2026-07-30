@@ -22,13 +22,6 @@ vi.mock('@church/auth', () => ({
   },
 }));
 
-interface MockVolunteerContext {
-  churchId: string;
-  volunteerId: string;
-  isAdmin: boolean;
-  isLeader: boolean;
-}
-
 const mockGetSession = vi.mocked(
   (await import('@church/auth')).auth.api.getSession,
 );
@@ -49,8 +42,8 @@ const availabilityCheckManager = {
   resendReminder: vi.fn(),
 };
 
-const volunteerManager = {
-  resolveVolunteerContext: vi.fn(),
+const activeChurchResolver = {
+  resolve: vi.fn(),
 };
 
 const rbacGuard = {
@@ -61,15 +54,12 @@ const rbacGuard = {
 
 let app: FastifyTypedInstance;
 
-function createVolunteerContext(
-  input?: Partial<MockVolunteerContext>,
-): MockVolunteerContext {
+function createActiveChurchResolution() {
   return {
+    status: 'resolved' as const,
     churchId: '11111111-1111-1111-1111-111111111111',
     volunteerId: '44444444-4444-4444-8444-444444444444',
-    isAdmin: false,
-    isLeader: true,
-    ...input,
+    autoSelected: false,
   };
 }
 
@@ -96,7 +86,7 @@ beforeAll(async () => {
   const controller = new LeaderController(
     participationManager as never,
     availabilityCheckManager as never,
-    volunteerManager as never,
+    activeChurchResolver as never,
     rbacGuard as never,
   );
   await app.register(
@@ -118,9 +108,10 @@ beforeEach(() => {
   vi.resetAllMocks();
   mockGetSession.mockResolvedValue({
     user: { id: 'leader-user' },
+    session: { activeOrganizationId: null },
   } as never);
-  volunteerManager.resolveVolunteerContext.mockResolvedValue(
-    createVolunteerContext(),
+  activeChurchResolver.resolve.mockResolvedValue(
+    createActiveChurchResolution(),
   );
   rbacGuard.canManageMinistry.mockResolvedValue(true);
   rbacGuard.canManageParticipation.mockResolvedValue(true);

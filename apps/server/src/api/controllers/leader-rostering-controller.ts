@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { auth } from '@church/auth';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
@@ -14,11 +13,12 @@ import {
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
+import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
 import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
-import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -42,7 +42,6 @@ import {
   reassignAssignmentBodySchema,
   rosteringMapper,
 } from '../dtos/rostering.dto';
-import { headersFromRequest } from '../utils/headers';
 
 interface ParticipationRouteParams {
   participationId: string;
@@ -112,8 +111,8 @@ export class LeaderRosteringController implements FastifyController {
     private readonly participationManager: IParticipationManager,
     @inject('IAssignmentManager')
     private readonly assignmentManager: IAssignmentManager,
-    @inject('IVolunteerManager')
-    private readonly volunteerManager: IVolunteerManager,
+    @inject('IActiveChurchResolver')
+    private readonly activeChurchResolver: IActiveChurchResolver,
     @inject('AuthorityGuard')
     private readonly authorityGuard: AuthorityGuard,
   ) {}
@@ -122,29 +121,10 @@ export class LeaderRosteringController implements FastifyController {
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
-    app.addHook('preValidation', async (request, reply) => {
-      const headers = headersFromRequest(request);
-      const session = await auth.api.getSession({ headers }).catch(() => null);
-      if (!session?.user) {
-        return reply
-          .status(401)
-          .send({ error: 'UNAUTHORIZED', message: 'Authentication required' });
-      }
-
-      const ctx = await this.volunteerManager.resolveVolunteerContext(
-        UserId.from(session.user.id),
-      );
-      if (!ctx) {
-        return reply.status(401).send({
-          error: 'UNAUTHORIZED',
-          message: 'Volunteer profile not found',
-        });
-      }
-
-      request.userId = session.user.id;
-      request.volunteerId = ctx.volunteerId;
-      request.churchId = ctx.churchId;
-    });
+    app.addHook(
+      'preValidation',
+      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+    );
 
     app.get(
       '/cycles/:cycleId/builder',

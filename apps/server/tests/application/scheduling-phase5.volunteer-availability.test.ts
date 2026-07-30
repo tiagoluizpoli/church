@@ -20,7 +20,6 @@ import {
   ChurchId,
   MinistryId,
   ShiftId,
-  UserId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../../src/domain/branded-ids';
@@ -625,34 +624,6 @@ async function seedPublishedAssignment(input: {
 describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboard surfaces)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
-  });
-
-  it('resolveVolunteerContext resolves admin+leader, plain volunteer, and unknown user', async () => {
-    const fixture = await seedPhase5Fixture();
-    const { volunteerManager } = createPhase5Manager();
-
-    const adminContext = await volunteerManager.resolveVolunteerContext(
-      UserId.from(fixture.seed.adminUserId),
-    );
-    expect(adminContext).toMatchObject({
-      churchId: fixture.seed.churchAId,
-      isAdmin: true,
-      isLeader: true,
-    });
-
-    const volunteerContext = await volunteerManager.resolveVolunteerContext(
-      UserId.from(VOLUNTEER_USER_ID),
-    );
-    expect(volunteerContext).toMatchObject({
-      churchId: fixture.seed.churchAId,
-      isAdmin: false,
-      isLeader: false,
-    });
-
-    const unknownContext = await volunteerManager.resolveVolunteerContext(
-      UserId.from('unknown-user-id'),
-    );
-    expect(unknownContext).toBeNull();
   });
 
   it('getDashboard aggregates availability tasks, upcoming assignment groups, notification preview, and ministry options', async () => {

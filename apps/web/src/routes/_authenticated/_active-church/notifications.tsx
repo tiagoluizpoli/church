@@ -1,22 +1,13 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { NotificationDetailSheet } from '@/features/volunteers/components/notification-detail-sheet';
 import { NotificationsInboxSection } from '@/features/volunteers/components/notifications-inbox-section';
 import { useNotificationInbox } from '@/features/volunteers/hooks/use-notification-inbox';
 import { resolveNotificationTarget } from '@/features/volunteers/lib/notification-navigation';
-import { authClient } from '@/lib/auth-client';
 
-export const Route = createFileRoute('/notifications')({
+export const Route = createFileRoute(
+  '/_authenticated/_active-church/notifications',
+)({
   component: RouteComponent,
-  beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data) {
-      redirect({
-        to: '/login',
-        throw: true,
-      });
-    }
-    return { session };
-  },
 });
 
 function RouteComponent() {

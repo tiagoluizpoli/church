@@ -8,11 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
 
+export interface SignInFormProps {
+  onSwitchToSignUp: () => void;
+  redirectTo?: string;
+}
+
 export default function SignInForm({
   onSwitchToSignUp,
-}: {
-  onSwitchToSignUp: () => void;
-}) {
+  redirectTo,
+}: SignInFormProps) {
   const navigate = useNavigate({
     from: '/',
   });
@@ -32,7 +36,7 @@ export default function SignInForm({
         {
           onSuccess: () => {
             navigate({
-              to: '/dashboard',
+              href: redirectTo ?? '/dashboard',
             });
             toast.success('Sign in successful');
           },

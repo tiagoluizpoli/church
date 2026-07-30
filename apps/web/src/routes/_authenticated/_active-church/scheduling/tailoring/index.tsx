@@ -16,7 +16,9 @@ import { MinistryTailoringList } from '@/features/scheduling/components/tailorin
 import { StatPill } from '@/features/scheduling/components/tailoring/stat-pill';
 import { adminApi } from '@/utils/api-instances';
 
-export const Route = createFileRoute('/scheduling/tailoring/')({
+export const Route = createFileRoute(
+  '/_authenticated/_active-church/scheduling/tailoring/',
+)({
   component: TailoringMinistryListRoute,
 });
 

@@ -6,7 +6,7 @@ import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
-  '/scheduling/rostering/$ministryId/$cycleId',
+  '/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId',
 )({
   component: EventBuilderRoute,
 });

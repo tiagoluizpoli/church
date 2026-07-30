@@ -50,7 +50,7 @@ import { toLocalDayKey } from '@/shared/utils/date';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
-  '/scheduling/tailoring/$ministryId/$cycleId',
+  '/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId',
 )({
   component: TailoringWorkspaceRoute,
 });

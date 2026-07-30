@@ -1,20 +1,14 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
 import { VolunteerAvailabilityPage } from '@/features/volunteers/components/volunteer-availability-page';
-import { authClient } from '@/lib/auth-client';
 
-export const Route = createFileRoute('/volunteer/availability')({
+export const Route = createFileRoute(
+  '/_authenticated/_active-church/volunteer/availability',
+)({
   component: VolunteerAvailabilityRoute,
-  beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data) {
-      redirect({ to: '/login', throw: true });
-    }
-    return { session };
-  },
 });
 
 function VolunteerAvailabilityRoute() {

@@ -1,11 +1,10 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { z } from 'zod';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
 import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
-import { authClient } from '@/lib/auth-client';
 
 const dashboardSearchSchema = z.object({
   section: z
@@ -16,19 +15,11 @@ const dashboardSearchSchema = z.object({
   ministryId: z.string().optional(),
 });
 
-export const Route = createFileRoute('/dashboard')({
+export const Route = createFileRoute(
+  '/_authenticated/_active-church/dashboard',
+)({
   validateSearch: (search) => dashboardSearchSchema.parse(search),
   component: RouteComponent,
-  beforeLoad: async () => {
-    const session = await authClient.getSession();
-    if (!session.data) {
-      redirect({
-        to: '/login',
-        throw: true,
-      });
-    }
-    return { session };
-  },
 });
 
 function RouteComponent() {

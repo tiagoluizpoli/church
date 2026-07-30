@@ -10,7 +10,9 @@ const templatesSearchSchema = z.object({
   returnTo: z.string().optional(),
 });
 
-export const Route = createFileRoute('/scheduling/planning-cycles/templates')({
+export const Route = createFileRoute(
+  '/_authenticated/_active-church/scheduling/planning-cycles/templates',
+)({
   validateSearch: (search) => templatesSearchSchema.parse(search),
   component: TemplateLibraryRoute,
 });

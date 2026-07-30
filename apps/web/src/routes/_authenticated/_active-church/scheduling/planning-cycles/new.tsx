@@ -9,7 +9,9 @@ import {
   usePlanningCycleSelection,
 } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
-export const Route = createFileRoute('/scheduling/planning-cycles/new')({
+export const Route = createFileRoute(
+  '/_authenticated/_active-church/scheduling/planning-cycles/new',
+)({
   component: NewPlanningCycleRoute,
 });
 

@@ -3,7 +3,9 @@ import { useEffect } from 'react';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { usePlanningCycleSelection } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
-export const Route = createFileRoute('/scheduling/planning-cycles/')({
+export const Route = createFileRoute(
+  '/_authenticated/_active-church/scheduling/planning-cycles/',
+)({
   component: PlanningCyclesIndexRoute,
 });
 

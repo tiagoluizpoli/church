@@ -8,6 +8,7 @@ import {
   LogOut,
   TriangleAlert,
 } from 'lucide-react';
+import { z } from 'zod';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
@@ -21,7 +22,10 @@ import {
 import { activeChurchApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/_authenticated/select-church')({
-  validateSearch: (search) => removedFromSearchSchema.parse(search),
+  validateSearch: (search) =>
+    removedFromSearchSchema
+      .extend({ redirect: z.string().optional() })
+      .parse(search),
   component: SelectChurchRoute,
 });
 
@@ -65,7 +69,12 @@ interface AreasLabelInput {
   availableAreas: ListActiveChurchOptions200ChurchesItem['availableAreas'];
 }
 
-interface SelectChurchInput {
+interface SelectActiveChurchInput {
+  churchId: string;
+}
+
+interface SwitchChurchMutationInput {
+  availableAreas: string[];
   churchId: string;
 }
 
@@ -79,7 +88,7 @@ function areasLabel({ availableAreas }: AreasLabelInput): string {
 
 function SelectChurchRoute() {
   const { session } = Route.useRouteContext();
-  const { removedFrom } = Route.useSearch();
+  const { redirect, removedFrom } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -90,24 +99,24 @@ function SelectChurchRoute() {
 
   const selectChurch = async ({
     churchId,
-  }: SelectChurchInput): Promise<void> => {
+  }: SelectActiveChurchInput): Promise<void> => {
     await activeChurchApi.selectActiveChurch({ churchId });
   };
 
   const navigateAfterChurchSelection = ({
     destination,
   }: NavigateAfterChurchSelectionInput): void => {
-    if (destination !== '/dashboard') {
-      throw new Error('Church selection must continue to the dashboard.');
-    }
-    navigate({ to: '/dashboard' });
+    navigate({ to: destination });
   };
 
   const selectMutation = useMutation({
-    mutationFn: async (churchId: string): Promise<void> => {
+    mutationFn: async (
+      selectChurchInput: SwitchChurchMutationInput,
+    ): Promise<void> => {
       await switchActiveChurch({
-        churchId,
-        destination: '/dashboard',
+        availableAreas: selectChurchInput.availableAreas,
+        churchId: selectChurchInput.churchId,
+        destination: redirect ?? '/dashboard',
         navigate: navigateAfterChurchSelection,
         queryClient,
         selectActiveChurch: selectChurch,
@@ -196,7 +205,12 @@ function SelectChurchRoute() {
                   key={church.churchId}
                   type="button"
                   disabled={selectMutation.isPending}
-                  onClick={() => selectMutation.mutate(church.churchId)}
+                  onClick={() =>
+                    selectMutation.mutate({
+                      availableAreas: church.availableAreas,
+                      churchId: church.churchId,
+                    })
+                  }
                   className="group flex min-h-24 w-full items-center gap-4 rounded-lg border bg-card px-4 py-4 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-60"
                 >
                   <Avatar className="size-11 shrink-0 rounded-md after:rounded-md">
@@ -232,7 +246,12 @@ function SelectChurchRoute() {
                     key={church.churchId}
                     type="button"
                     disabled={selectMutation.isPending}
-                    onClick={() => selectMutation.mutate(church.churchId)}
+                    onClick={() =>
+                      selectMutation.mutate({
+                        availableAreas: church.availableAreas,
+                        churchId: church.churchId,
+                      })
+                    }
                     className="grid min-h-20 w-full grid-cols-[minmax(15rem,1.4fr)_minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(12rem,1fr)_3rem] items-center border-border border-t px-8 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-60"
                   >
                     <span className="flex items-center gap-3">

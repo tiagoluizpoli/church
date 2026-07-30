@@ -9,12 +9,19 @@ import type { ListMinistryCycleSummaries200CyclesItem } from '@/infrastructure/a
 const listMinistryCycleSummaries = vi.fn();
 const listMinistries = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
+const getActiveChurchStatus = vi
+  .fn()
+  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
     listMinistryCycleSummaries: (...args: unknown[]) =>
       listMinistryCycleSummaries(...args),
     listMinistries: (...args: unknown[]) => listMinistries(...args),
+  },
+  activeChurchApi: {
+    getActiveChurchStatus: (...args: unknown[]) =>
+      getActiveChurchStatus(...args),
   },
 }));
 

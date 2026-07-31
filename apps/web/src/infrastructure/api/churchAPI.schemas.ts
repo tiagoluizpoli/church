@@ -119,6 +119,88 @@ export type ListMinistries200 = {
   ministries: ListMinistries200MinistriesItem[];
 };
 
+export type ListMinistries401 = {
+  error: string;
+  message: string;
+};
+
+export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
+
+
+export const MintMinistryInvitationBodyMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type MintMinistryInvitationBody = {
+  /** @pattern ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
+  email: string;
+  ministryAccessLevel: MintMinistryInvitationBodyMinistryAccessLevel;
+  roleIds: string[];
+};
+
+export type MintMinistryInvitation201Kind = typeof MintMinistryInvitation201Kind[keyof typeof MintMinistryInvitation201Kind];
+
+
+export const MintMinistryInvitation201Kind = {
+  'ministry-only': 'ministry-only',
+  chained: 'chained',
+} as const;
+
+export type MintMinistryInvitation201Status = typeof MintMinistryInvitation201Status[keyof typeof MintMinistryInvitation201Status];
+
+
+export const MintMinistryInvitation201Status = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+  canceled: 'canceled',
+} as const;
+
+export type MintMinistryInvitation201 = {
+  id: string;
+  kind: MintMinistryInvitation201Kind;
+  status: MintMinistryInvitation201Status;
+  expiresAt: string;
+  redemptionPath: string;
+};
+
+export type MintMinistryInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type ResendMinistryInvitation200Kind = typeof ResendMinistryInvitation200Kind[keyof typeof ResendMinistryInvitation200Kind];
+
+
+export const ResendMinistryInvitation200Kind = {
+  'ministry-only': 'ministry-only',
+  chained: 'chained',
+} as const;
+
+export type ResendMinistryInvitation200Status = typeof ResendMinistryInvitation200Status[keyof typeof ResendMinistryInvitation200Status];
+
+
+export const ResendMinistryInvitation200Status = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+  canceled: 'canceled',
+} as const;
+
+export type ResendMinistryInvitation200 = {
+  id: string;
+  kind: ResendMinistryInvitation200Kind;
+  status: ResendMinistryInvitation200Status;
+  expiresAt: string;
+  redemptionPath: string;
+};
+
+export type ResendMinistryInvitation404 = {
+  error: string;
+  message: string;
+};
+
 export type GetScheduleBuilderDataParams = {
 eventId: string;
 ministryId?: string;
@@ -263,6 +345,11 @@ export type GetScheduleBuilderData200 = {
   roles: GetScheduleBuilderData200RolesItem[];
   /** @nullable */
   callerTeamIds: string[] | null;
+};
+
+export type GetScheduleBuilderData401 = {
+  error: string;
+  message: string;
 };
 
 export type ListEventsParams = {

@@ -25,19 +25,19 @@ export interface MinistryInvitationTestHarnessOptions {
 export function createMinistryInvitationTestHarness({
   db,
 }: MinistryInvitationTestHarnessOptions) {
-  const ministryInvitationRepository = new DrizzleMinistryInvitationRepository(
+  const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({
     db,
-  );
-  const roleRepository = new DrizzleRoleRepository(db);
-  const ministryRepository = new DrizzleMinistryRepository(db);
+  });
+  const roleRepository = new DrizzleRoleRepository({ db });
+  const ministryRepository = new DrizzleMinistryRepository({ db });
   const outboxRepository = new DrizzleOutboxRepository({ db });
   const authorityManager = new DbAuthorityManager(
-    new DrizzleAuthorityActorResolver(db),
-    new DrizzleSchedulingScopeResolver(db),
-    new DrizzleEventRepository(db),
-    new DrizzleTimeSlotRepository(db),
+    new DrizzleAuthorityActorResolver({ db }),
+    new DrizzleSchedulingScopeResolver({ db }),
+    new DrizzleEventRepository({ db }),
+    new DrizzleTimeSlotRepository({ db }),
   );
-  const unitOfWork = new DrizzleUnitOfWork(db);
+  const unitOfWork = new DrizzleUnitOfWork({ db });
   const manager = new DbMinistryInvitationManager(
     ministryInvitationRepository,
     roleRepository,

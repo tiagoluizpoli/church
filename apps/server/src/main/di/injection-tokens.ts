@@ -35,6 +35,7 @@ export const injection = {
     availabilityCheckManager: 'IAvailabilityCheckManager',
     ministryManager: 'IMinistryManager',
     ministryInvitationManager: 'IMinistryInvitationManager',
+    outboxDrainer: 'IOutboxDrainer',
     participationManager: 'IParticipationManager',
     featureFlagManager: 'IFeatureFlagManager',
     activeChurchSelectionManager: 'IActiveChurchSelectionManager',

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { MinistryInvitationDeliveryStatus } from '../../domain/contracts/application/ministry-invitation-manager';
+import { MINISTRY_INVITATION_DELIVERY_STATUS_OPTIONS } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { MinistryInvitation } from '../../domain/entities/ministry-invitation';
 import { MINISTRY_INVITATION_STATUS_OPTIONS } from '../../domain/entities/ministry-invitation';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-volunteer';
@@ -16,20 +18,34 @@ export const ministryInvitationResponseSchema = z.object({
   status: z.enum(MINISTRY_INVITATION_STATUS_OPTIONS),
   expiresAt: z.string(),
   redemptionPath: z.string(),
+  /**
+   * The invitation's most recent outbox message status (spec #56 §6.4).
+   * Both mint and resend enqueue an outbox message before returning, so
+   * this is always present — never `null`.
+   */
+  deliveryStatus: z.enum(MINISTRY_INVITATION_DELIVERY_STATUS_OPTIONS),
 });
 
 export type MinistryInvitationResponse = z.infer<
   typeof ministryInvitationResponseSchema
 >;
 
+export interface ToMinistryInvitationResponseInput {
+  invitation: MinistryInvitation;
+  deliveryStatus: MinistryInvitationDeliveryStatus;
+}
 export const ministryInvitationMapper = {
-  toResponse(invitation: MinistryInvitation): MinistryInvitationResponse {
+  toResponse(
+    input: ToMinistryInvitationResponseInput,
+  ): MinistryInvitationResponse {
+    const { invitation, deliveryStatus } = input;
     return {
       id: invitation.id,
       kind: invitation.kind,
       status: invitation.status,
       expiresAt: invitation.expiresAt.toISOString(),
       redemptionPath: redemptionPathFor(invitation),
+      deliveryStatus,
     };
   },
 };

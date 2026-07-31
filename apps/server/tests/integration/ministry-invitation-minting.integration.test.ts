@@ -18,6 +18,7 @@ import {
   DrizzleEventRepository,
   DrizzleMinistryInvitationRepository,
   DrizzleMinistryRepository,
+  DrizzleOutboxRepository,
   DrizzleRoleRepository,
   DrizzleTimeSlotRepository,
   DrizzleUnitOfWork,
@@ -40,6 +41,7 @@ const authorityManager = new DbAuthorityManager(
   new DrizzleTimeSlotRepository({ db: testDb }),
 );
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
+const outboxRepository = new DrizzleOutboxRepository({ db: testDb });
 
 const manager = new DbMinistryInvitationManager(
   ministryInvitationRepository,
@@ -47,6 +49,7 @@ const manager = new DbMinistryInvitationManager(
   ministryRepository,
   authorityManager,
   unitOfWork,
+  outboxRepository,
 );
 
 let fixture: TwoChurchIdentityFixture;

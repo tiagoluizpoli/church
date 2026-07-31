@@ -4,7 +4,9 @@ import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
+  GetMinistryInvitationDeliveryStatusInput,
   IMinistryInvitationManager,
+  MinistryInvitationDeliveryStatus,
   MintMinistryInvitationInput,
   ResendMinistryInvitationInput,
 } from '../domain/contracts/application/ministry-invitation-manager';
@@ -13,6 +15,7 @@ import type {
   ChurchInvitationSummary,
   MinistryInvitationRepository,
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
+import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -21,6 +24,7 @@ import { InsufficientInvitationAuthorityError } from '../domain/errors/insuffici
 import { InvalidInvitationRoleError } from '../domain/errors/invalid-invitation-role';
 import { InviteeAlreadyMinistryMemberError } from '../domain/errors/invitee-already-ministry-member';
 import { MinistryInvitationNotFoundError } from '../domain/errors/ministry-invitation-not-found';
+import { MissingOutboxDeliveryRecordError } from '../domain/errors/missing-outbox-delivery-record';
 
 const MINISTRY_ONLY_INVITATION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -63,6 +67,8 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     private readonly authorityManager: IAuthorityManager,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
+    @inject('IOutboxRepository')
+    private readonly outboxRepository: OutboxRepository,
   ) {}
 
   async mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation> {
@@ -144,6 +150,28 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
       return invitation;
     });
+  }
+
+  /**
+   * Both `mint` and `resend` enqueue exactly one outbox message before
+   * returning, so a `null` read here would mean the row that was just
+   * committed is missing — an invariant violation, not a valid API state.
+   */
+  async getDeliveryStatus(
+    input: GetMinistryInvitationDeliveryStatusInput,
+  ): Promise<MinistryInvitationDeliveryStatus> {
+    const { churchId, ministryInvitationId } = input;
+    const status =
+      await this.outboxRepository.findLatestStatusForMinistryInvitation({
+        churchId,
+        ministryInvitationId,
+      });
+    if (status == null) {
+      throw new MissingOutboxDeliveryRecordError({ ministryInvitationId });
+    }
+    // 'processing' is a transient infrastructure detail (the worker is
+    // mid-send) — the API's vocabulary treats it the same as 'pending'.
+    return status === 'processing' ? 'pending' : status;
   }
 
   private async mintForExistingMember(

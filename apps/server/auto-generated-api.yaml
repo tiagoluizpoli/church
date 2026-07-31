@@ -318,12 +318,19 @@ paths:
                     type: string
                   redemptionPath:
                     type: string
+                  deliveryStatus:
+                    type: string
+                    enum:
+                      - pending
+                      - sent
+                      - failed
                 required:
                   - id
                   - kind
                   - status
                   - expiresAt
                   - redemptionPath
+                  - deliveryStatus
                 additionalProperties: false
         "404":
           description: Default Response
@@ -382,12 +389,19 @@ paths:
                     type: string
                   redemptionPath:
                     type: string
+                  deliveryStatus:
+                    type: string
+                    enum:
+                      - pending
+                      - sent
+                      - failed
                 required:
                   - id
                   - kind
                   - status
                   - expiresAt
                   - redemptionPath
+                  - deliveryStatus
                 additionalProperties: false
         "404":
           description: Default Response

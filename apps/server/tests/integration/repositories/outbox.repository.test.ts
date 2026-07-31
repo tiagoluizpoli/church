@@ -1,6 +1,11 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchId, MinistryId, UserId } from '../../../src/domain/branded-ids';
+import {
+  ChurchId,
+  MinistryId,
+  type MinistryInvitationId,
+  UserId,
+} from '../../../src/domain/branded-ids';
 import { DrizzleTransactionContext } from '../../../src/infrastructure/repositories';
 import { asTxContext } from '../../../src/infrastructure/repositories/drizzle-transaction-context';
 import {
@@ -149,5 +154,102 @@ describe('DrizzleOutboxRepository', () => {
     const totalClaimed = first.length + second.length;
 
     expect(totalClaimed).toBe(1);
+  });
+});
+
+describe('DrizzleOutboxRepository.findLatestStatusForMinistryInvitation', () => {
+  it('reads the pending status enqueued by minting', async () => {
+    const invitation = await mintOne();
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBe('pending');
+  });
+
+  it('reflects sent once the claimed row is marked sent', async () => {
+    const invitation = await mintOne();
+    const [claimed] = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    if (!claimed) throw new Error('Expected a claimed row');
+
+    await unitOfWork.run((tx) =>
+      outboxRepository.markSent({
+        id: claimed.id,
+        providerMessageId: 'provider-123',
+        sentAt: new Date(),
+        tx,
+      }),
+    );
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBe('sent');
+  });
+
+  it('returns the most recently enqueued row after a resend', async () => {
+    const invitation = await mintOne();
+    const [claimed] = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    if (!claimed) throw new Error('Expected a claimed row');
+    await unitOfWork.run((tx) =>
+      outboxRepository.markSent({
+        id: claimed.id,
+        providerMessageId: 'provider-123',
+        sentAt: new Date(),
+        tx,
+      }),
+    );
+
+    await manager.resend({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      ministryInvitationId: invitation.id,
+      callerId: UserId.from(fixture.adminA),
+    });
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBe('pending');
+  });
+
+  it('returns null when no outbox row exists for the invitation', async () => {
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: 'non-existent-invitation' as MinistryInvitationId,
+      },
+    );
+
+    expect(status).toBeNull();
+  });
+
+  it('is church-isolated: another Church cannot read this invitation delivery status', async () => {
+    const invitation = await mintOne();
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchB.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBeNull();
   });
 });

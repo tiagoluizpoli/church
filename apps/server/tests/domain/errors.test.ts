@@ -9,6 +9,7 @@ import {
 import { InvalidDateRangeError } from '../../src/domain/errors/invalid-date-range';
 import { InvalidRequiredCountError } from '../../src/domain/errors/invalid-required-count';
 import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
+import { MissingOutboxDeliveryRecordError } from '../../src/domain/errors/missing-outbox-delivery-record';
 
 describe('Domain Errors', () => {
   describe('InvalidDateRangeError', () => {
@@ -55,6 +56,27 @@ describe('Domain Errors', () => {
     it('supports a custom message', () => {
       const error = new IsolationBreachError('Custom breach info');
       expect(error.message).toBe('Custom breach info');
+    });
+  });
+
+  describe('MissingOutboxDeliveryRecordError', () => {
+    it('inherits from DomainError and Error', () => {
+      const error = new MissingOutboxDeliveryRecordError({
+        ministryInvitationId: 'invitation-1',
+      });
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toBeInstanceOf(Error);
+    });
+
+    it('has the correct name, code, and message', () => {
+      const error = new MissingOutboxDeliveryRecordError({
+        ministryInvitationId: 'invitation-1',
+      });
+      expect(error.name).toBe('MissingOutboxDeliveryRecordError');
+      expect(error.code).toBe('MISSING_OUTBOX_DELIVERY_RECORD');
+      expect(error.message).toBe(
+        'No outbox message found for Ministry Invitation invitation-1',
+      );
     });
   });
 

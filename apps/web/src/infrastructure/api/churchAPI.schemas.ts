@@ -157,12 +157,22 @@ export const MintMinistryInvitation201Status = {
   canceled: 'canceled',
 } as const;
 
+export type MintMinistryInvitation201DeliveryStatus = typeof MintMinistryInvitation201DeliveryStatus[keyof typeof MintMinistryInvitation201DeliveryStatus];
+
+
+export const MintMinistryInvitation201DeliveryStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
 export type MintMinistryInvitation201 = {
   id: string;
   kind: MintMinistryInvitation201Kind;
   status: MintMinistryInvitation201Status;
   expiresAt: string;
   redemptionPath: string;
+  deliveryStatus: MintMinistryInvitation201DeliveryStatus;
 };
 
 export type MintMinistryInvitation404 = {
@@ -188,12 +198,22 @@ export const ResendMinistryInvitation200Status = {
   canceled: 'canceled',
 } as const;
 
+export type ResendMinistryInvitation200DeliveryStatus = typeof ResendMinistryInvitation200DeliveryStatus[keyof typeof ResendMinistryInvitation200DeliveryStatus];
+
+
+export const ResendMinistryInvitation200DeliveryStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
 export type ResendMinistryInvitation200 = {
   id: string;
   kind: ResendMinistryInvitation200Kind;
   status: ResendMinistryInvitation200Status;
   expiresAt: string;
   redemptionPath: string;
+  deliveryStatus: ResendMinistryInvitation200DeliveryStatus;
 };
 
 export type ResendMinistryInvitation404 = {

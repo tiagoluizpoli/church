@@ -219,17 +219,25 @@ export class AdminLeaderController implements FastifyController {
           typeof mintMinistryInvitationBodySchema
         >;
 
+        const churchId = ChurchId.from(request.churchId);
         const invitation = await this.ministryInvitationManager.mint({
-          churchId: ChurchId.from(request.churchId),
+          churchId,
           ministryId: MinistryId.from(ministryId),
           inviterId: UserId.from(request.userId),
           email: body.email,
           ministryAccessLevel: body.ministryAccessLevel,
           roleIds: body.roleIds.map((roleId) => RoleId.from(roleId)),
         });
+        const deliveryStatus =
+          await this.ministryInvitationManager.getDeliveryStatus({
+            churchId,
+            ministryInvitationId: invitation.id,
+          });
         return reply
           .status(201)
-          .send(ministryInvitationMapper.toResponse(invitation));
+          .send(
+            ministryInvitationMapper.toResponse({ invitation, deliveryStatus }),
+          );
       },
     );
 
@@ -249,13 +257,21 @@ export class AdminLeaderController implements FastifyController {
         const { ministryId, invitationId } =
           request.params as ResendMinistryInvitationRouteParams;
 
+        const churchId = ChurchId.from(request.churchId);
         const invitation = await this.ministryInvitationManager.resend({
-          churchId: ChurchId.from(request.churchId),
+          churchId,
           ministryId: MinistryId.from(ministryId),
           ministryInvitationId: MinistryInvitationId.from(invitationId),
           callerId: UserId.from(request.userId),
         });
-        return reply.send(ministryInvitationMapper.toResponse(invitation));
+        const deliveryStatus =
+          await this.ministryInvitationManager.getDeliveryStatus({
+            churchId,
+            ministryInvitationId: invitation.id,
+          });
+        return reply.send(
+          ministryInvitationMapper.toResponse({ invitation, deliveryStatus }),
+        );
       },
     );
 

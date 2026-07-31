@@ -31,6 +31,7 @@ const ministryManager = {
 const ministryInvitationManager = {
   mint: vi.fn(),
   resend: vi.fn(),
+  getDeliveryStatus: vi.fn(),
 };
 
 const eventManager = {
@@ -352,6 +353,7 @@ describe('Ministry Invitation minting routes', () => {
       churchInvitationId: 'church-invitation-1',
       expiresAt: new Date('2030-01-01T00:00:00Z'),
     });
+    ministryInvitationManager.getDeliveryStatus.mockResolvedValue('pending');
 
     const response = await app.inject({
       method: 'POST',
@@ -370,6 +372,7 @@ describe('Ministry Invitation minting routes', () => {
       status: 'pending',
       expiresAt: '2030-01-01T00:00:00.000Z',
       redemptionPath: '/invitations/church/church-invitation-1',
+      deliveryStatus: 'pending',
     });
     expect(ministryInvitationManager.mint).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
@@ -378,6 +381,10 @@ describe('Ministry Invitation minting routes', () => {
       email: 'outsider@example.com',
       ministryAccessLevel: 'volunteer',
       roleIds: [],
+    });
+    expect(ministryInvitationManager.getDeliveryStatus).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryInvitationId: 'ministry-invitation-1',
     });
   });
 
@@ -403,6 +410,7 @@ describe('Ministry Invitation minting routes', () => {
       status: 'pending',
       expiresAt: new Date('2030-02-01T00:00:00Z'),
     });
+    ministryInvitationManager.getDeliveryStatus.mockResolvedValue('pending');
 
     const response = await app.inject({
       method: 'POST',
@@ -416,6 +424,11 @@ describe('Ministry Invitation minting routes', () => {
       status: 'pending',
       expiresAt: '2030-02-01T00:00:00.000Z',
       redemptionPath: '/invitations/ministry/ministry-invitation-1',
+      deliveryStatus: 'pending',
+    });
+    expect(ministryInvitationManager.getDeliveryStatus).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryInvitationId: 'ministry-invitation-1',
     });
     expect(ministryInvitationManager.resend).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',

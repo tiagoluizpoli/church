@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoute } from '@/__tests__/setup/render-route';
+import { CROSS_CHURCH_ACCESS_DENIED_MESSAGE } from '@/shared/utils/cross-church-link';
 
 const getSession = vi.fn();
 const getActiveChurchStatus = vi.fn();
@@ -73,5 +74,16 @@ describe('dashboard route', () => {
 
     await screen.findByText('Volunteer dashboard stub');
     expect(toastInfo).not.toHaveBeenCalled();
+  });
+
+  it('toasts a generic access-denied notice, naming no Church, when redirected here with accessDenied', async () => {
+    renderDashboard('/dashboard?accessDenied=true');
+
+    await screen.findByText('Volunteer dashboard stub');
+    await waitFor(() => {
+      expect(toastInfo).toHaveBeenCalledWith(
+        CROSS_CHURCH_ACCESS_DENIED_MESSAGE,
+      );
+    });
   });
 });

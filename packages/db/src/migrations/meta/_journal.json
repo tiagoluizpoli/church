@@ -29,6 +29,13 @@
       "when": 1785428459011,
       "tag": "0003_wild_devos",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785470631701,
+      "tag": "0004_ministry-invitation-rewrite-and-outbox",
+      "breakpoints": true
     }
   ]
 }

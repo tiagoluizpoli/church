@@ -6,6 +6,7 @@ import {
   InvalidStateTransitionError,
   PublishValidationError,
 } from '../../src/domain/assignment/errors';
+import { EmailSendError } from '../../src/domain/errors/email-send-error';
 import { InvalidDateRangeError } from '../../src/domain/errors/invalid-date-range';
 import { InvalidRequiredCountError } from '../../src/domain/errors/invalid-required-count';
 import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
@@ -107,6 +108,28 @@ describe('Domain Errors', () => {
       const error = new EmptyScheduleError();
       expect(error.name).toBe('EmptyScheduleError');
       expect(error.message).toBe('Cannot publish an event with no assignments');
+    });
+  });
+
+  describe('EmailSendError', () => {
+    it('inherits from DomainError and Error', () => {
+      const error = new EmailSendError({
+        message: 'send failed',
+        retryable: true,
+      });
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toBeInstanceOf(Error);
+    });
+
+    it('stores retryable and formats the message', () => {
+      const error = new EmailSendError({
+        message: 'send failed',
+        retryable: false,
+      });
+      expect(error.name).toBe('EmailSendError');
+      expect(error.code).toBe('EMAIL_SEND_FAILED');
+      expect(error.message).toBe('send failed');
+      expect(error.retryable).toBe(false);
     });
   });
 

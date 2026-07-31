@@ -50,7 +50,9 @@ import {
   DrizzleVolunteerNotificationRepository,
   DrizzleVolunteerRepository,
 } from '../../infrastructure/repositories';
+import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { LocalNotificationService } from '../../infrastructure/services/local-notification-service';
+import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
 import { UnleashFeatureFlagService } from '../../infrastructure/services/unleash-feature-flag-service';
 import { injection } from './injection-tokens';
 
@@ -140,6 +142,15 @@ export function registerInjections(): void {
     injection.infra.featureFlagService,
     UnleashFeatureFlagService,
   );
+  container.register(injection.infra.emailSender, {
+    useFactory: () =>
+      env.NODE_ENV === 'production'
+        ? new ResendEmailSender({
+            apiKey: env.RESEND_API_KEY ?? '',
+            from: env.RESEND_FROM_EMAIL,
+          })
+        : new CaptureEmailSender(),
+  });
 
   // Managers
   container.register(injection.managers.assignmentManager, {

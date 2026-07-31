@@ -22,6 +22,7 @@ export const injection = {
     unitOfWork: 'IUnitOfWork',
     notificationService: 'INotificationService',
     featureFlagService: 'IFeatureFlagService',
+    emailSender: 'IEmailSender',
   },
   managers: {
     eventManager: 'IEventManager',

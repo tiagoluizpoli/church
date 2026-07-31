@@ -15,7 +15,7 @@ describe('DrizzleRoleRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for an invalid uuid', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleRoleRepository(schedulingTestDb);
+    const repo = new DrizzleRoleRepository({ db: schedulingTestDb });
     await expect(
       repo.getById(ChurchId.from(seed.churchAId), RoleId.from('nope')),
     ).rejects.toThrow(NotFoundError);

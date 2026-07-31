@@ -63,23 +63,23 @@ function createPhase5Manager({
 }: CreatePhase5ManagerInput = {}): Phase5Manager {
   const notificationSpy = createNotificationServiceSpy();
   const volunteerManager = new DbVolunteerManager(
-    new DrizzleVolunteerRepository(schedulingTestDb),
-    new DrizzleAssignmentRepository(schedulingTestDb),
-    new DrizzleAvailabilityRepository(schedulingTestDb),
-    new DrizzleVolunteerNotificationRepository(schedulingTestDb),
-    new DrizzleEventRepository(schedulingTestDb),
-    new DrizzleShiftRepository(schedulingTestDb),
-    new DrizzleMinistryRepository(schedulingTestDb),
-    new DrizzleMinistryParticipationRepository(schedulingTestDb),
-    new DrizzleRoleRepository(schedulingTestDb),
-    new DrizzleTeamRepository(schedulingTestDb),
-    new DrizzleAvailabilityCheckRepository(schedulingTestDb),
+    new DrizzleVolunteerRepository({ db: schedulingTestDb }),
+    new DrizzleAssignmentRepository({ db: schedulingTestDb }),
+    new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
+    new DrizzleVolunteerNotificationRepository({ db: schedulingTestDb }),
+    new DrizzleEventRepository({ db: schedulingTestDb }),
+    new DrizzleShiftRepository({ db: schedulingTestDb }),
+    new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
+    new DrizzleRoleRepository({ db: schedulingTestDb }),
+    new DrizzleTeamRepository({ db: schedulingTestDb }),
+    new DrizzleAvailabilityCheckRepository({ db: schedulingTestDb }),
     new SchedulingFeatureFlagServiceStub({
       participationDefaultAllIn: true,
       volunteerDashboardAllowOverlapSave: allowOverlapSave ?? false,
     }),
     notificationSpy,
-    new DrizzleUnitOfWork(schedulingTestDb),
+    new DrizzleUnitOfWork({ db: schedulingTestDb }),
     3,
   );
 

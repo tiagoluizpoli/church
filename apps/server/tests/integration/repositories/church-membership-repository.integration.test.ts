@@ -90,7 +90,7 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
   });
 
   it('lists every Church Membership a User holds, each with its own Access Level', async () => {
-    const repository = new DrizzleChurchMembershipRepository(testDb);
+    const repository = new DrizzleChurchMembershipRepository({ db: testDb });
 
     const memberships = await repository.listByUserId({
       userId: dualMemberUserId,
@@ -106,7 +106,7 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
   });
 
   it('lists a single Church Membership for a User who belongs to exactly one Church', async () => {
-    const repository = new DrizzleChurchMembershipRepository(testDb);
+    const repository = new DrizzleChurchMembershipRepository({ db: testDb });
 
     const memberships = await repository.listByUserId({
       userId: singleMemberUserId,
@@ -118,7 +118,7 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
   });
 
   it('returns an empty list for a User with no Church Membership', async () => {
-    const repository = new DrizzleChurchMembershipRepository(testDb);
+    const repository = new DrizzleChurchMembershipRepository({ db: testDb });
 
     const memberships = await repository.listByUserId({
       userId: strandedUserId,
@@ -128,7 +128,7 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
   });
 
   it('lists comparison facts — identity, timezone and Access Level — for every Church Membership', async () => {
-    const repository = new DrizzleChurchMembershipRepository(testDb);
+    const repository = new DrizzleChurchMembershipRepository({ db: testDb });
 
     const comparisons = await repository.listComparisonsByUserId({
       userId: dualMemberUserId,
@@ -155,7 +155,7 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
   });
 
   it('records when a Church was opened, scoped to the (user, Church) pair', async () => {
-    const repository = new DrizzleChurchMembershipRepository(testDb);
+    const repository = new DrizzleChurchMembershipRepository({ db: testDb });
 
     await repository.touchOpened({
       userId: dualMemberUserId,

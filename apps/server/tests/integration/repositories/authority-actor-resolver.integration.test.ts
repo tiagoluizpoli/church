@@ -213,7 +213,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
   });
 
   it('resolves a Church Membership admin with no Volunteer profile, allowed to manage the Church but not participate anywhere', async () => {
-    const resolver = new DrizzleAuthorityActorResolver(testDb);
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
     const actor = await resolver.resolveActor({
       userId: adminUserId,
       activeChurchId: churchId,
@@ -244,7 +244,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
   });
 
   it('resolves a TeamLeader end to end, allowed to manage their Team', async () => {
-    const resolver = new DrizzleAuthorityActorResolver(testDb);
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
     const actor = await resolver.resolveActor({
       userId: leaderUserId,
       activeChurchId: churchId,
@@ -273,7 +273,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
   });
 
   it("resolves a rank-and-file volunteer's own Role qualification and lets them participate in their own resource only", async () => {
-    const resolver = new DrizzleAuthorityActorResolver(testDb);
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
     const actor = await resolver.resolveActor({
       userId: volunteerUserId,
       activeChurchId: churchId,
@@ -319,7 +319,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
   });
 
   it('never resolves a retired Volunteer profile, even though Church Membership survives retirement', async () => {
-    const resolver = new DrizzleAuthorityActorResolver(testDb);
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
     const actor = await resolver.resolveActor({
       userId: retiredUserId,
       activeChurchId: churchId,
@@ -343,7 +343,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
   });
 
   it('resolves a User with no Church Membership row, denied everywhere with NO_CHURCH_MEMBERSHIP', async () => {
-    const resolver = new DrizzleAuthorityActorResolver(testDb);
+    const resolver = new DrizzleAuthorityActorResolver({ db: testDb });
     const actor = await resolver.resolveActor({
       userId: strandedUserId,
       activeChurchId: churchId,

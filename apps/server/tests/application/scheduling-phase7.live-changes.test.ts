@@ -76,27 +76,35 @@ interface SeedRoleQualificationInput {
 function createPhase7Managers({
   cancelLeadTimeDays = 3,
 }: CreatePhase7ManagersInput = {}): Phase7Managers {
-  const assignmentRepo = new DrizzleAssignmentRepository(schedulingTestDb);
-  const participationRepo = new DrizzleMinistryParticipationRepository(
-    schedulingTestDb,
-  );
-  const shiftRepo = new DrizzleShiftRepository(schedulingTestDb);
-  const volunteerRepo = new DrizzleVolunteerRepository(schedulingTestDb);
-  const ministryRepo = new DrizzleMinistryRepository(schedulingTestDb);
-  const availabilityRepo = new DrizzleAvailabilityRepository(schedulingTestDb);
-  const timeSlotRepo = new DrizzleTimeSlotRepository(schedulingTestDb);
-  const eventRepo = new DrizzlePlanningEventRepository(schedulingTestDb);
+  const assignmentRepo = new DrizzleAssignmentRepository({
+    db: schedulingTestDb,
+  });
+  const participationRepo = new DrizzleMinistryParticipationRepository({
+    db: schedulingTestDb,
+  });
+  const shiftRepo = new DrizzleShiftRepository({ db: schedulingTestDb });
+  const volunteerRepo = new DrizzleVolunteerRepository({
+    db: schedulingTestDb,
+  });
+  const ministryRepo = new DrizzleMinistryRepository({ db: schedulingTestDb });
+  const availabilityRepo = new DrizzleAvailabilityRepository({
+    db: schedulingTestDb,
+  });
+  const timeSlotRepo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
+  const eventRepo = new DrizzlePlanningEventRepository({
+    db: schedulingTestDb,
+  });
   const notificationSpy = createNotificationServiceSpy();
-  const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
-  const plainEventRepo = new DrizzleEventRepository(schedulingTestDb);
-  const availabilityCheckRepo = new DrizzleAvailabilityCheckRepository(
-    schedulingTestDb,
-  );
+  const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
+  const plainEventRepo = new DrizzleEventRepository({ db: schedulingTestDb });
+  const availabilityCheckRepo = new DrizzleAvailabilityCheckRepository({
+    db: schedulingTestDb,
+  });
 
   return {
     assignmentManager: new DbAssignmentManager(
       assignmentRepo,
-      new DrizzleAssignmentAuditRepository(schedulingTestDb),
+      new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
       shiftRepo,
       participationRepo,
       ministryRepo,
@@ -115,8 +123,8 @@ function createPhase7Managers({
       timeSlotRepo,
       volunteerRepo,
       ministryRepo,
-      new DrizzleMinistryServingProfileRepository(schedulingTestDb),
-      new DrizzleRoleRepository(schedulingTestDb),
+      new DrizzleMinistryServingProfileRepository({ db: schedulingTestDb }),
+      new DrizzleRoleRepository({ db: schedulingTestDb }),
       notificationSpy,
       unitOfWork,
     ),
@@ -124,13 +132,13 @@ function createPhase7Managers({
       volunteerRepo,
       assignmentRepo,
       availabilityRepo,
-      new DrizzleVolunteerNotificationRepository(schedulingTestDb),
+      new DrizzleVolunteerNotificationRepository({ db: schedulingTestDb }),
       plainEventRepo,
       shiftRepo,
       ministryRepo,
       participationRepo,
-      new DrizzleRoleRepository(schedulingTestDb),
-      new DrizzleTeamRepository(schedulingTestDb),
+      new DrizzleRoleRepository({ db: schedulingTestDb }),
+      new DrizzleTeamRepository({ db: schedulingTestDb }),
       availabilityCheckRepo,
       new SchedulingFeatureFlagServiceStub({
         participationDefaultAllIn: true,

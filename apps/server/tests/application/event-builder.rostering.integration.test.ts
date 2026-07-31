@@ -47,34 +47,34 @@ import {
 } from '../scheduling-reshape/setup';
 
 function createParticipationManager(): DbParticipationManager {
-  const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
+  const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
   return new DbParticipationManager(
-    new DrizzleMinistryParticipationRepository(schedulingTestDb),
-    new DrizzleShiftRepository(schedulingTestDb),
-    new DrizzlePlanningEventRepository(schedulingTestDb),
-    new DrizzleAssignmentRepository(schedulingTestDb),
-    new DrizzleAvailabilityRepository(schedulingTestDb),
-    new DrizzleTimeSlotRepository(schedulingTestDb),
-    new DrizzleVolunteerRepository(schedulingTestDb),
-    new DrizzleMinistryRepository(schedulingTestDb),
-    new DrizzleMinistryServingProfileRepository(schedulingTestDb),
-    new DrizzleRoleRepository(schedulingTestDb),
+    new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
+    new DrizzleShiftRepository({ db: schedulingTestDb }),
+    new DrizzlePlanningEventRepository({ db: schedulingTestDb }),
+    new DrizzleAssignmentRepository({ db: schedulingTestDb }),
+    new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
+    new DrizzleTimeSlotRepository({ db: schedulingTestDb }),
+    new DrizzleVolunteerRepository({ db: schedulingTestDb }),
+    new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    new DrizzleMinistryServingProfileRepository({ db: schedulingTestDb }),
+    new DrizzleRoleRepository({ db: schedulingTestDb }),
     createNotificationServiceSpy(),
     unitOfWork,
   );
 }
 
 function createAssignmentManager(): DbAssignmentManager {
-  const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
+  const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
   return new DbAssignmentManager(
-    new DrizzleAssignmentRepository(schedulingTestDb),
-    new DrizzleAssignmentAuditRepository(schedulingTestDb),
-    new DrizzleShiftRepository(schedulingTestDb),
-    new DrizzleMinistryParticipationRepository(schedulingTestDb),
-    new DrizzleMinistryRepository(schedulingTestDb),
-    new DrizzleVolunteerRepository(schedulingTestDb),
-    new DrizzleAvailabilityRepository(schedulingTestDb),
-    new DrizzlePlanningEventRepository(schedulingTestDb),
+    new DrizzleAssignmentRepository({ db: schedulingTestDb }),
+    new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
+    new DrizzleShiftRepository({ db: schedulingTestDb }),
+    new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
+    new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    new DrizzleVolunteerRepository({ db: schedulingTestDb }),
+    new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
+    new DrizzlePlanningEventRepository({ db: schedulingTestDb }),
     createNotificationServiceSpy(),
     unitOfWork,
   );
@@ -362,9 +362,9 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
-    await new DrizzleMinistryParticipationRepository(
-      schedulingTestDb,
-    ).updateState({
+    await new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    }).updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
       state: 'published',
@@ -684,7 +684,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       timestamp: new Date('2026-08-01T10:00:00.000Z'),
     });
 
-    const repo = new DrizzleAssignmentAuditRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });
     const items = await repo.listByCycle({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: PlanningCycleId.from(cycle.id),

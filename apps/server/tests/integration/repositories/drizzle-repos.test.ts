@@ -49,7 +49,7 @@ runMinistryRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleMinistryRepository(testDb);
+    return new DrizzleMinistryRepository({ db: testDb });
   },
   async () => {
     await truncateAll();
@@ -60,7 +60,7 @@ runRoleRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleRoleRepository(testDb);
+    return new DrizzleRoleRepository({ db: testDb });
   },
   async () => {
     await truncateAll();
@@ -71,7 +71,7 @@ runVolunteerRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleVolunteerRepository(testDb);
+    return new DrizzleVolunteerRepository({ db: testDb });
   },
   async () => {
     await truncateAll();
@@ -82,7 +82,7 @@ runEventRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleEventRepository(testDb);
+    return new DrizzleEventRepository({ db: testDb });
   },
   async () => {
     await truncateAll();
@@ -93,7 +93,7 @@ runTimeSlotRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleTimeSlotRepository(testDb);
+    return new DrizzleTimeSlotRepository({ db: testDb });
   },
   async () => {
     await truncateAll();
@@ -104,7 +104,7 @@ runAssignmentRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleAssignmentRepository(testDb);
+    return new DrizzleAssignmentRepository({ db: testDb });
   },
   async () => {
     await truncateAll();
@@ -115,7 +115,7 @@ runAssignmentAuditRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleAssignmentAuditRepository(testDb);
+    return new DrizzleAssignmentAuditRepository({ db: testDb });
   },
   async () => {
     await truncateAll();

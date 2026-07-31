@@ -40,10 +40,18 @@ import type { AnyDrizzleDb } from './types';
  */
 const CHURCH_INVITATION_TTL_MS = 48 * 60 * 60 * 1000;
 
+interface DrizzleMinistryInvitationRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleMinistryInvitationRepository
   implements MinistryInvitationRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleMinistryInvitationRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async acquireMintLock(input: AcquireMintLockInput): Promise<void> {
     const { ministryId, email, tx } = input;

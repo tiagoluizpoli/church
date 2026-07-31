@@ -46,28 +46,36 @@ import {
 } from '../scheduling-reshape/setup';
 
 function createManagers() {
-  const cycleRepository = new DrizzlePlanningCycleRepository(schedulingTestDb);
-  const eventRepository = new DrizzlePlanningEventRepository(schedulingTestDb);
-  const templateRepository = new DrizzleEventTemplateRepository(
-    schedulingTestDb,
-  );
+  const cycleRepository = new DrizzlePlanningCycleRepository({
+    db: schedulingTestDb,
+  });
+  const eventRepository = new DrizzlePlanningEventRepository({
+    db: schedulingTestDb,
+  });
+  const templateRepository = new DrizzleEventTemplateRepository({
+    db: schedulingTestDb,
+  });
   const churchRepository = new DrizzleChurchRepository({
     db: schedulingTestDb,
   });
-  const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
-  const participationRepository = new DrizzleMinistryParticipationRepository(
-    schedulingTestDb,
-  );
-  const shiftRepository = new DrizzleShiftRepository(schedulingTestDb);
-  const servingProfileRepository = new DrizzleMinistryServingProfileRepository(
-    schedulingTestDb,
-  );
-  const ministryRepository = new DrizzleMinistryRepository(schedulingTestDb);
+  const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
+  const participationRepository = new DrizzleMinistryParticipationRepository({
+    db: schedulingTestDb,
+  });
+  const shiftRepository = new DrizzleShiftRepository({ db: schedulingTestDb });
+  const servingProfileRepository = new DrizzleMinistryServingProfileRepository({
+    db: schedulingTestDb,
+  });
+  const ministryRepository = new DrizzleMinistryRepository({
+    db: schedulingTestDb,
+  });
   const featureFlagService = new SchedulingFeatureFlagServiceStub({
     participationDefaultAllIn: false,
     volunteerDashboardAllowOverlapSave: false,
   });
-  const timeSlotRepository = new DrizzleTimeSlotRepository(schedulingTestDb);
+  const timeSlotRepository = new DrizzleTimeSlotRepository({
+    db: schedulingTestDb,
+  });
 
   return {
     cycleManager: new DbPlanningCycleManager(

@@ -27,8 +27,16 @@ import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleTimeSlotRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleTimeSlotRepository implements TimeSlotRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleTimeSlotRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   private async fetchWithRequirements(
     db: AnyDrizzleDb,

@@ -15,8 +15,16 @@ import { mapMinistry } from '../mappers/ministry.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleMinistryRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleMinistryRepository implements MinistryRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleMinistryRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async getById(
     churchId: ChurchId,

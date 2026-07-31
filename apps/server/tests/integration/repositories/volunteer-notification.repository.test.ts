@@ -18,7 +18,9 @@ describe('DrizzleVolunteerNotificationRepository', () => {
 
   it('create persists with nullable optional fields defaulted and mapped back as undefined', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleVolunteerNotificationRepository(schedulingTestDb);
+    const repo = new DrizzleVolunteerNotificationRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
@@ -40,7 +42,9 @@ describe('DrizzleVolunteerNotificationRepository', () => {
 
   it('listByVolunteer orders desc by createdAt, paginates with cursor, and reports hasMore via nextCursor', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleVolunteerNotificationRepository(schedulingTestDb);
+    const repo = new DrizzleVolunteerNotificationRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
@@ -74,7 +78,9 @@ describe('DrizzleVolunteerNotificationRepository', () => {
 
   it('listByVolunteer clamps a non-positive limit to at least 1', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleVolunteerNotificationRepository(schedulingTestDb);
+    const repo = new DrizzleVolunteerNotificationRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
@@ -95,7 +101,9 @@ describe('DrizzleVolunteerNotificationRepository', () => {
 
   it('countUnread counts only unread rows and markRead/markAllRead update readAt', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleVolunteerNotificationRepository(schedulingTestDb);
+    const repo = new DrizzleVolunteerNotificationRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 
@@ -138,7 +146,9 @@ describe('DrizzleVolunteerNotificationRepository', () => {
 
   it('countUnread and markAllRead return 0 when there are no notifications at all', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleVolunteerNotificationRepository(schedulingTestDb);
+    const repo = new DrizzleVolunteerNotificationRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const volunteerId = VolunteerId.from(seed.adminVolunteerId);
 

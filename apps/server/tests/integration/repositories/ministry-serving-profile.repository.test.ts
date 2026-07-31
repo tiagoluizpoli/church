@@ -45,7 +45,9 @@ describe('DrizzleMinistryServingProfileRepository', () => {
 
   it('listByMinistry returns [] when no profiles exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleMinistryServingProfileRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryServingProfileRepository({
+      db: schedulingTestDb,
+    });
 
     const result = await repo.listByMinistry({
       churchId: ChurchId.from(seed.churchAId),
@@ -61,7 +63,9 @@ describe('DrizzleMinistryServingProfileRepository', () => {
       churchId: seed.churchAId,
       label: 'Welcome',
     });
-    const repo = new DrizzleMinistryServingProfileRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryServingProfileRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const ministryId = MinistryId.from(seed.ministryAId);
 
@@ -111,7 +115,9 @@ describe('DrizzleMinistryServingProfileRepository', () => {
       churchId: seed.churchAId,
       label: 'Message',
     });
-    const repo = new DrizzleMinistryServingProfileRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryServingProfileRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const ministryId = MinistryId.from(seed.ministryAId);
 
@@ -161,7 +167,9 @@ describe('DrizzleMinistryServingProfileRepository', () => {
       churchId: seed.churchBId,
       label: 'Block B',
     });
-    const repo = new DrizzleMinistryServingProfileRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryServingProfileRepository({
+      db: schedulingTestDb,
+    });
 
     await repo.replaceForMinistry({
       churchId: ChurchId.from(seed.churchAId),

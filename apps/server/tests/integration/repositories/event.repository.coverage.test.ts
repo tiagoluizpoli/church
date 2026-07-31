@@ -15,7 +15,7 @@ describe('DrizzleEventRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for a well-formed uuid that does not exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleEventRepository(schedulingTestDb);
+    const repo = new DrizzleEventRepository({ db: schedulingTestDb });
 
     await expect(
       repo.getById(

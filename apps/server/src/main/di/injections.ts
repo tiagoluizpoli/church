@@ -59,10 +59,10 @@ import { injection } from './injection-tokens';
 
 export function registerInjections(): void {
   container.register(injection.auth.scopeRepository, {
-    useFactory: () => new DrizzleSchedulingScopeResolver(db),
+    useFactory: () => new DrizzleSchedulingScopeResolver({ db }),
   });
   container.register(injection.auth.authorityActorRepository, {
-    useFactory: () => new DrizzleAuthorityActorResolver(db),
+    useFactory: () => new DrizzleAuthorityActorResolver({ db }),
   });
   container.register(injection.auth.authorityManager, {
     useClass: DbAuthorityManager,
@@ -71,73 +71,73 @@ export function registerInjections(): void {
     useClass: AuthorityGuard,
   });
   container.register(injection.auth.churchMembershipRepository, {
-    useFactory: () => new DrizzleChurchMembershipRepository(db),
+    useFactory: () => new DrizzleChurchMembershipRepository({ db }),
   });
   container.register(injection.auth.activeChurchResolver, {
     useClass: DbActiveChurchResolver,
   });
   container.register(injection.infra.eventRepository, {
-    useFactory: () => new DrizzleEventRepository(db),
+    useFactory: () => new DrizzleEventRepository({ db }),
   });
   container.register(injection.infra.eventTemplateRepository, {
-    useFactory: () => new DrizzleEventTemplateRepository(db),
+    useFactory: () => new DrizzleEventTemplateRepository({ db }),
   });
   container.register(injection.infra.planningCycleRepository, {
-    useFactory: () => new DrizzlePlanningCycleRepository(db),
+    useFactory: () => new DrizzlePlanningCycleRepository({ db }),
   });
   container.register(injection.infra.planningEventRepository, {
-    useFactory: () => new DrizzlePlanningEventRepository(db),
+    useFactory: () => new DrizzlePlanningEventRepository({ db }),
   });
   container.register(injection.infra.volunteerRepository, {
-    useFactory: () => new DrizzleVolunteerRepository(db),
+    useFactory: () => new DrizzleVolunteerRepository({ db }),
   });
   container.register(injection.infra.assignmentRepository, {
-    useFactory: () => new DrizzleAssignmentRepository(db),
+    useFactory: () => new DrizzleAssignmentRepository({ db }),
   });
   container.register(injection.infra.assignmentAuditRepository, {
-    useFactory: () => new DrizzleAssignmentAuditRepository(db),
+    useFactory: () => new DrizzleAssignmentAuditRepository({ db }),
   });
   container.register(injection.infra.availabilityRepository, {
-    useFactory: () => new DrizzleAvailabilityRepository(db),
+    useFactory: () => new DrizzleAvailabilityRepository({ db }),
   });
   container.register(injection.infra.availabilityCheckRepository, {
-    useFactory: () => new DrizzleAvailabilityCheckRepository(db),
+    useFactory: () => new DrizzleAvailabilityCheckRepository({ db }),
   });
   container.register(injection.infra.ministryParticipationRepository, {
-    useFactory: () => new DrizzleMinistryParticipationRepository(db),
+    useFactory: () => new DrizzleMinistryParticipationRepository({ db }),
   });
   container.register(injection.infra.ministryServingProfileRepository, {
-    useFactory: () => new DrizzleMinistryServingProfileRepository(db),
+    useFactory: () => new DrizzleMinistryServingProfileRepository({ db }),
   });
   container.register(injection.infra.shiftRepository, {
-    useFactory: () => new DrizzleShiftRepository(db),
+    useFactory: () => new DrizzleShiftRepository({ db }),
   });
   container.register(injection.infra.churchRepository, {
     useFactory: () => new DrizzleChurchRepository({ db }),
   });
   container.register(injection.infra.ministryRepository, {
-    useFactory: () => new DrizzleMinistryRepository(db),
+    useFactory: () => new DrizzleMinistryRepository({ db }),
   });
   container.register(injection.infra.ministryInvitationRepository, {
-    useFactory: () => new DrizzleMinistryInvitationRepository(db),
+    useFactory: () => new DrizzleMinistryInvitationRepository({ db }),
   });
   container.register(injection.infra.outboxRepository, {
     useFactory: () => new DrizzleOutboxRepository({ db }),
   });
   container.register(injection.infra.roleRepository, {
-    useFactory: () => new DrizzleRoleRepository(db),
+    useFactory: () => new DrizzleRoleRepository({ db }),
   });
   container.register(injection.infra.teamRepository, {
-    useFactory: () => new DrizzleTeamRepository(db),
+    useFactory: () => new DrizzleTeamRepository({ db }),
   });
   container.register(injection.infra.timeSlotRepository, {
-    useFactory: () => new DrizzleTimeSlotRepository(db),
+    useFactory: () => new DrizzleTimeSlotRepository({ db }),
   });
   container.register(injection.infra.volunteerNotificationRepository, {
-    useFactory: () => new DrizzleVolunteerNotificationRepository(db),
+    useFactory: () => new DrizzleVolunteerNotificationRepository({ db }),
   });
   container.register(injection.infra.unitOfWork, {
-    useFactory: () => new DrizzleUnitOfWork(db),
+    useFactory: () => new DrizzleUnitOfWork({ db }),
   });
   container.register(injection.infra.notificationService, {
     useClass: LocalNotificationService,

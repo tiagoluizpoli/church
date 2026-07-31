@@ -15,7 +15,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
 
   it('update throws NotFoundError when the template does not exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleEventTemplateRepository(schedulingTestDb);
+    const repo = new DrizzleEventTemplateRepository({ db: schedulingTestDb });
 
     await expect(
       repo.update({
@@ -32,7 +32,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for an invalid uuid and for a missing template', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleEventTemplateRepository(schedulingTestDb);
+    const repo = new DrizzleEventTemplateRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await expect(
@@ -54,7 +54,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
 
   it('getByIds returns [] without querying when templateIds is empty', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleEventTemplateRepository(schedulingTestDb);
+    const repo = new DrizzleEventTemplateRepository({ db: schedulingTestDb });
 
     const result = await repo.getByIds({
       churchId: ChurchId.from(seed.churchAId),

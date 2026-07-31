@@ -9,15 +9,23 @@ import {
 } from './drizzle-transaction-context';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleUnitOfWorkInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleUnitOfWork implements UnitOfWork {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleUnitOfWorkInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async run<T>(
     fn: (tx: TransactionContext) => Promise<T>,
     options?: RunTransactionOptions,
   ): Promise<T> {
     return this.db.transaction(async (tx) => {
-      const ctx = new DrizzleTransactionContext(tx);
+      const ctx = new DrizzleTransactionContext({ tx });
       return fn(asTxContext(ctx));
     }, options);
   }

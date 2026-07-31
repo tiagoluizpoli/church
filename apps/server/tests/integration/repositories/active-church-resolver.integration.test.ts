@@ -122,10 +122,10 @@ async function seed(): Promise<void> {
 
 function createResolver(): DbActiveChurchResolver {
   return new DbActiveChurchResolver(
-    new DrizzleAuthorityActorResolver(testDb),
-    new DrizzleChurchMembershipRepository(testDb),
+    new DrizzleAuthorityActorResolver({ db: testDb }),
+    new DrizzleChurchMembershipRepository({ db: testDb }),
     new DrizzleChurchRepository({ db: testDb }),
-    new DrizzleUnitOfWork(testDb),
+    new DrizzleUnitOfWork({ db: testDb }),
   );
 }
 

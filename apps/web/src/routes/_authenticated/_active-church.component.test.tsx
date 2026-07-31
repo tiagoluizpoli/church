@@ -7,6 +7,7 @@ const getSession = vi.fn();
 const getActiveChurchStatus = vi.fn();
 const listPlanningCycles = vi.fn();
 const listActiveChurchOptions = vi.fn();
+const selectActiveChurch = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -24,6 +25,7 @@ vi.mock('@/utils/api-instances', () => ({
       getActiveChurchStatus(...args),
     listActiveChurchOptions: (...args: unknown[]) =>
       listActiveChurchOptions(...args),
+    selectActiveChurch: (...args: unknown[]) => selectActiveChurch(...args),
   },
 }));
 
@@ -178,5 +180,122 @@ describe('the Active Church guard (_active-church)', () => {
     renderPlanningCycles();
 
     expect(await screen.findByText('Existing cycles')).toBeVisible();
+  });
+
+  describe('cross-Church deep links', () => {
+    function renderWithChurchParam(church: string) {
+      return renderRoute({
+        initialPath: `/scheduling/planning-cycles?church=${church}`,
+      });
+    }
+
+    it('opens directly with no confirmation when the link targets the current Active Church', async () => {
+      getSession.mockResolvedValue({
+        data: {
+          user: { id: 'u1' },
+          session: { activeOrganizationId: 'church-1' },
+        },
+      });
+      getActiveChurchStatus.mockResolvedValue({
+        status: 'resolved',
+        churchId: 'church-1',
+      });
+      listPlanningCycles.mockResolvedValue({ cycles: [] });
+
+      const { router } = renderWithChurchParam('church-1');
+
+      expect(await screen.findByText('Existing cycles')).toBeVisible();
+      expect(router.state.location.pathname).toBe(
+        '/scheduling/planning-cycles',
+      );
+      expect(selectActiveChurch).not.toHaveBeenCalled();
+    });
+
+    it('shows one confirmation before switching when the link targets another Church the caller is a member of', async () => {
+      getSession.mockResolvedValue({
+        data: {
+          user: { id: 'u1' },
+          session: { activeOrganizationId: 'church-1' },
+        },
+      });
+      getActiveChurchStatus.mockResolvedValue({
+        status: 'resolved',
+        churchId: 'church-1',
+      });
+      listActiveChurchOptions.mockResolvedValue({
+        churches: [
+          { churchId: 'church-1', name: 'Igreja Central' },
+          { churchId: 'church-2', name: 'Comunidade Esperança' },
+        ],
+      });
+
+      const { router } = renderWithChurchParam('church-2');
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/switch-church-confirm');
+      });
+      expect(router.state.location.search).toEqual({
+        target: 'church-2',
+        redirect: '/scheduling/planning-cycles',
+      });
+      expect(listPlanningCycles).not.toHaveBeenCalled();
+    });
+
+    it('auto-selects the target Church when no Active Church exists yet and the link is verified', async () => {
+      getSession.mockResolvedValue({
+        data: { user: { id: 'u1' }, session: { activeOrganizationId: null } },
+      });
+      getActiveChurchStatus.mockResolvedValue({
+        status: 'selection_required',
+      });
+      listActiveChurchOptions.mockResolvedValue({
+        churches: [
+          { churchId: 'church-1', name: 'Igreja Central' },
+          { churchId: 'church-2', name: 'Comunidade Esperança' },
+        ],
+      });
+      selectActiveChurch.mockResolvedValue({
+        status: 'resolved',
+        churchId: 'church-2',
+      });
+      listPlanningCycles.mockResolvedValue({ cycles: [] });
+
+      const { router } = renderWithChurchParam('church-2');
+
+      await waitFor(() => {
+        expect(selectActiveChurch).toHaveBeenCalledWith({
+          churchId: 'church-2',
+        });
+      });
+      expect(await screen.findByText('Existing cycles')).toBeVisible();
+      expect(router.state.location.pathname).toBe(
+        '/scheduling/planning-cycles',
+      );
+    });
+
+    it('keeps the current Active Church and shows a generic access-denied when the caller has no Membership in the target Church', async () => {
+      getSession.mockResolvedValue({
+        data: {
+          user: { id: 'u1' },
+          session: { activeOrganizationId: 'church-1' },
+        },
+      });
+      getActiveChurchStatus.mockResolvedValue({
+        status: 'resolved',
+        churchId: 'church-1',
+      });
+      listActiveChurchOptions.mockResolvedValue({
+        churches: [{ churchId: 'church-1', name: 'Igreja Central' }],
+      });
+
+      const { router } = renderWithChurchParam('church-9');
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/dashboard');
+      });
+      expect(router.state.location.search).toEqual({ accessDenied: true });
+      expect(selectActiveChurch).not.toHaveBeenCalled();
+      expect(listPlanningCycles).not.toHaveBeenCalled();
+    });
   });
 });

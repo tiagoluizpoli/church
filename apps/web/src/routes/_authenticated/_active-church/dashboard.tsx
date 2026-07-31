@@ -7,6 +7,7 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 import { VolunteerDashboard } from '@/features/volunteers/components/volunteer-dashboard';
+import { CROSS_CHURCH_ACCESS_DENIED_MESSAGE } from '@/shared/utils/cross-church-link';
 import {
   membershipRemovedMessage,
   removedFromSearchSchema,
@@ -19,6 +20,7 @@ const dashboardSearchSchema = removedFromSearchSchema.extend({
   eventId: z.string().optional(),
   assignmentId: z.string().optional(),
   ministryId: z.string().optional(),
+  accessDenied: z.boolean().optional(),
 });
 
 export const Route = createFileRoute(
@@ -38,6 +40,12 @@ function RouteComponent() {
       toast.info(membershipRemovedMessage({ churchName: search.removedFrom }));
     }
   }, [search.removedFrom]);
+
+  useEffect(() => {
+    if (search.accessDenied) {
+      toast.info(CROSS_CHURCH_ACCESS_DENIED_MESSAGE);
+    }
+  }, [search.accessDenied]);
 
   return (
     <WorkspacePage>

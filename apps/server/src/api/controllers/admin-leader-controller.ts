@@ -49,6 +49,11 @@ import {
   updateSlotBodySchema,
 } from '../dtos/time-slot.dto';
 
+const errorResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+});
+
 interface ScheduleBuilderQuery {
   eventId: string;
   ministryId?: string;
@@ -73,6 +78,11 @@ interface AssignmentRouteParams {
 }
 
 interface DenySchedulingAccessInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+}
+
+interface DenyMissingVolunteerProfileInput {
   request: FastifyRequest;
   reply: FastifyReply;
 }
@@ -122,11 +132,16 @@ export class AdminLeaderController implements FastifyController {
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
+    // Most routes here are pure Church-authority operations (event/slot/
+    // assignment management) that a ChurchAdmin with no Volunteer profile
+    // must still be able to reach — see createActiveChurchPreValidation's
+    // own doc comment. `requireVolunteer` therefore stays off at the
+    // controller level; the two routes below that actually consume
+    // `request.volunteerId` check for it themselves.
     app.addHook(
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
-        requireVolunteer: true,
       }),
     );
 
@@ -137,15 +152,23 @@ export class AdminLeaderController implements FastifyController {
         schema: {
           tags: ['admin'],
           operationId: 'listMinistries',
-          response: { 200: ministryListResponseSchema },
+          response: {
+            200: ministryListResponseSchema,
+            401: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
+        const deniedProfile = await this.denyMissingVolunteerProfile({
+          request,
+          reply,
+        });
+        if (deniedProfile) return;
+
         const denied = await this.denySchedulingAccess({ request, reply });
         if (denied) return;
 
         const ministries = await this.ministryManager.listByLeader({
-          // Non-null: this controller's preValidation requires a Volunteer profile.
           leaderId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
@@ -164,15 +187,23 @@ export class AdminLeaderController implements FastifyController {
             eventId: z.string(),
             ministryId: z.string().optional(),
           }),
-          response: { 200: scheduleBuilderDataResponseSchema },
+          response: {
+            200: scheduleBuilderDataResponseSchema,
+            401: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
+        const deniedProfile = await this.denyMissingVolunteerProfile({
+          request,
+          reply,
+        });
+        if (deniedProfile) return;
+
         const { eventId, ministryId } = request.query as ScheduleBuilderQuery;
         const data = await this.eventManager.getScheduleBuilderData({
           churchId: ChurchId.from(request.churchId),
           eventId: EventId.from(eventId),
-          // Non-null: this controller's preValidation requires a Volunteer profile.
           volunteerId: VolunteerId.from(request.volunteerId as string),
           ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
         });
@@ -491,6 +522,27 @@ export class AdminLeaderController implements FastifyController {
         return reply.send(assignmentMapper.auditListToResponse(items));
       },
     );
+  }
+
+  /**
+   * `/ministries` and `/schedule-builder` are the only two routes here that
+   * read `request.volunteerId` (leader-scoped listing, and the schedule
+   * builder's own permission check) — everywhere else in this controller is
+   * a pure Church-authority operation a Volunteer-less ChurchAdmin must
+   * still reach, so the profile requirement is scoped to just these two
+   * instead of the controller's shared preValidation hook.
+   */
+  private async denyMissingVolunteerProfile({
+    request,
+    reply,
+  }: DenyMissingVolunteerProfileInput): Promise<boolean> {
+    if (request.volunteerId) return false;
+
+    reply.status(401).send({
+      error: 'UNAUTHORIZED',
+      message: 'Volunteer profile not found',
+    });
+    return true;
   }
 
   /**

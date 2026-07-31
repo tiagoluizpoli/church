@@ -179,6 +179,49 @@ describe('Admin leader controller authorization wiring', () => {
     });
   });
 
+  it('a ChurchAdmin with no Volunteer profile is still a valid caller for pure Church-authority routes', async () => {
+    activeChurchResolver.resolve.mockResolvedValue({
+      ...createActiveChurchResolution(),
+      volunteerId: null,
+    });
+    eventManager.listEvents.mockResolvedValue([]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/events?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('GET /api/v1/admin/ministries and /api/v1/admin/schedule-builder still require a Volunteer profile', async () => {
+    activeChurchResolver.resolve.mockResolvedValue({
+      ...createActiveChurchResolution(),
+      volunteerId: null,
+    });
+
+    const ministries = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/ministries',
+    });
+    expect(ministries.statusCode).toBe(401);
+    expect(ministries.json()).toEqual({
+      error: 'UNAUTHORIZED',
+      message: 'Volunteer profile not found',
+    });
+    expect(ministryManager.listByLeader).not.toHaveBeenCalled();
+
+    const scheduleBuilder = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/schedule-builder?eventId=66666666-6666-6666-6666-666666666666',
+    });
+    expect(scheduleBuilder.statusCode).toBe(401);
+    expect(scheduleBuilder.json()).toEqual({
+      error: 'UNAUTHORIZED',
+      message: 'Volunteer profile not found',
+    });
+    expect(eventManager.getScheduleBuilderData).not.toHaveBeenCalled();
+  });
+
   it('POST /api/v1/admin/events/:eventId/cancel authorizes via AuthorityGuard.canManageEvent', async () => {
     const eventId = '66666666-6666-6666-6666-666666666666';
 

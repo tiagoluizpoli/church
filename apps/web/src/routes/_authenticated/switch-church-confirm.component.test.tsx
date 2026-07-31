@@ -189,4 +189,19 @@ describe('switch-church-confirm route', () => {
     });
     expect(router.state.location.search).toEqual({ accessDenied: true });
   });
+
+  it('shows an error message when the Church list fails to load', async () => {
+    listActiveChurchOptions.mockRejectedValue(new Error('network error'));
+
+    renderConfirm(
+      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
+    );
+
+    expect(
+      await screen.findByText(
+        "Couldn't load your Churches. Try reloading the page.",
+      ),
+    ).toBeInTheDocument();
+    expect(selectActiveChurch).not.toHaveBeenCalled();
+  });
 });

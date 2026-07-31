@@ -97,17 +97,17 @@ function SwitchChurchConfirmRoute() {
     churchId: currentChurchId ?? undefined,
   });
   const targetChurch = findChurch({ churches, churchId: target });
-  const membershipChanged =
+  const hasMembershipChanged =
     optionsQuery.isSuccess && (!currentChurch || !targetChurch);
 
   // A Membership changed between the deep link firing and this page
   // loading. Keep the current Active Church and deny generically rather
   // than confirm a switch to a Church the caller can no longer prove.
   useEffect(() => {
-    if (membershipChanged) {
+    if (hasMembershipChanged) {
       navigate({ to: DASHBOARD_PATH, search: { accessDenied: true } });
     }
-  }, [membershipChanged, navigate]);
+  }, [hasMembershipChanged, navigate]);
 
   const handleStay = (): void => {
     navigate({ to: DASHBOARD_PATH });
@@ -140,7 +140,7 @@ function SwitchChurchConfirmRoute() {
     );
   }
 
-  if (membershipChanged || !currentChurch || !targetChurch) {
+  if (hasMembershipChanged || !currentChurch || !targetChurch) {
     return null;
   }
 

@@ -15,8 +15,16 @@ import type {
 import { getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleOutboxRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleOutboxRepository implements OutboxRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleOutboxRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async claimPending(
     input: ClaimPendingOutboxMessagesInput,

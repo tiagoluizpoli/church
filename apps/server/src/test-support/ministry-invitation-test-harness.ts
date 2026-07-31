@@ -30,7 +30,7 @@ export function createMinistryInvitationTestHarness({
   );
   const roleRepository = new DrizzleRoleRepository(db);
   const ministryRepository = new DrizzleMinistryRepository(db);
-  const outboxRepository = new DrizzleOutboxRepository(db);
+  const outboxRepository = new DrizzleOutboxRepository({ db });
   const authorityManager = new DbAuthorityManager(
     new DrizzleAuthorityActorResolver(db),
     new DrizzleSchedulingScopeResolver(db),

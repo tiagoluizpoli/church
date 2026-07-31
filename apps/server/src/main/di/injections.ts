@@ -122,7 +122,7 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleMinistryInvitationRepository(db),
   });
   container.register(injection.infra.outboxRepository, {
-    useFactory: () => new DrizzleOutboxRepository(db),
+    useFactory: () => new DrizzleOutboxRepository({ db }),
   });
   container.register(injection.infra.roleRepository, {
     useFactory: () => new DrizzleRoleRepository(db),

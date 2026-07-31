@@ -43,6 +43,13 @@
       "when": 1785523655199,
       "tag": "0005_robust_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785538938711,
+      "tag": "0006_pink_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

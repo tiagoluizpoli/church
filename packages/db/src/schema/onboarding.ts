@@ -65,6 +65,15 @@ export const ministryInvitation = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+    lastResendAt: timestamp('last_resend_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    resendCount: integer('resend_count').default(0).notNull(),
+    resendWindowStartedAt: timestamp('resend_window_started_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

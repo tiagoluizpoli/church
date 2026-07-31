@@ -29,6 +29,9 @@ export function mapMinistryInvitation(
     inviterId: row.inviterId as UserId,
     expiresAt: row.expiresAt,
     roleIds,
+    lastResendAt: row.lastResendAt ?? undefined,
+    resendCount: row.resendCount,
+    resendWindowStartedAt: row.resendWindowStartedAt ?? undefined,
   };
 
   return new MinistryInvitation(

@@ -12,6 +12,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { RoleId, UserId } from '../../domain/branded-ids';
 import type {
   AcquireMintLockInput,
+  AcquireResendLockInput,
+  ApplyResendInput,
   ChurchInvitationSummary,
   CreateChainedChurchInvitationInput,
   CreateMinistryInvitationInput,
@@ -57,6 +59,13 @@ export class DrizzleMinistryInvitationRepository
     const { ministryId, email, tx } = input;
     await getClient(this.db, tx).execute(
       sql`select pg_advisory_xact_lock(hashtext(${`${ministryId}:${email}`}))`,
+    );
+  }
+
+  async acquireResendLock(input: AcquireResendLockInput): Promise<void> {
+    const { ministryInvitationId, tx } = input;
+    await getClient(this.db, tx).execute(
+      sql`select pg_advisory_xact_lock(hashtext(${ministryInvitationId}))`,
     );
   }
 
@@ -292,6 +301,34 @@ export class DrizzleMinistryInvitationRepository
       )
       .returning();
     if (!row) throw new Error('Ministry invitation not found for refresh');
+    return this.hydrate(row);
+  }
+
+  async applyResend(input: ApplyResendInput) {
+    const {
+      churchId,
+      ministryInvitation: invitation,
+      expiresAt,
+      throttle,
+      tx,
+    } = input;
+    const db = getClient(this.db, tx);
+    const [row] = await db
+      .update(ministryInvitation)
+      .set({
+        expiresAt,
+        lastResendAt: throttle.lastResendAt,
+        resendCount: throttle.resendCount,
+        resendWindowStartedAt: throttle.resendWindowStartedAt,
+      })
+      .where(
+        and(
+          withChurchIsolation(ministryInvitation, churchId),
+          eq(ministryInvitation.id, invitation.id),
+        ),
+      )
+      .returning();
+    if (!row) throw new Error('Ministry invitation not found for resend');
     return this.hydrate(row);
   }
 

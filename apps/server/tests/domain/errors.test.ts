@@ -11,6 +11,8 @@ import { InvalidDateRangeError } from '../../src/domain/errors/invalid-date-rang
 import { InvalidRequiredCountError } from '../../src/domain/errors/invalid-required-count';
 import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
 import { MissingOutboxDeliveryRecordError } from '../../src/domain/errors/missing-outbox-delivery-record';
+import { ResendCooldownActiveError } from '../../src/domain/errors/resend-cooldown-active';
+import { ResendDailyCapExceededError } from '../../src/domain/errors/resend-daily-cap-exceeded';
 
 describe('Domain Errors', () => {
   describe('InvalidDateRangeError', () => {
@@ -78,6 +80,34 @@ describe('Domain Errors', () => {
       expect(error.message).toBe(
         'No outbox message found for Ministry Invitation invitation-1',
       );
+    });
+  });
+
+  describe('ResendCooldownActiveError', () => {
+    it('inherits from DomainError and Error', () => {
+      const error = new ResendCooldownActiveError();
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toBeInstanceOf(Error);
+    });
+
+    it('has the correct name and code', () => {
+      const error = new ResendCooldownActiveError();
+      expect(error.name).toBe('ResendCooldownActiveError');
+      expect(error.code).toBe('RESEND_COOLDOWN_ACTIVE');
+    });
+  });
+
+  describe('ResendDailyCapExceededError', () => {
+    it('inherits from DomainError and Error', () => {
+      const error = new ResendDailyCapExceededError();
+      expect(error).toBeInstanceOf(DomainError);
+      expect(error).toBeInstanceOf(Error);
+    });
+
+    it('has the correct name and code', () => {
+      const error = new ResendDailyCapExceededError();
+      expect(error.name).toBe('ResendDailyCapExceededError');
+      expect(error.code).toBe('RESEND_DAILY_CAP_EXCEEDED');
     });
   });
 

@@ -6,8 +6,6 @@ import type {
   MarkOutboxMessageFailedInput,
   MarkOutboxMessageSentInput,
   OutboxMessage,
-  OutboxMessageKind,
-  OutboxMessageStatus,
   OutboxRepository,
 } from '../../domain/contracts/infrastructure/outbox.repository';
 import { getClient } from './helpers';
@@ -54,18 +52,23 @@ export class DrizzleOutboxRepository implements OutboxRepository {
 
 type OutboxMessageRow = typeof outboxMessage.$inferSelect;
 
+/**
+ * `payload` is jsonb — its shape is only as trustworthy as whatever enqueued
+ * it. This cast is the one place that trust boundary is crossed; everywhere
+ * else sees the discriminated `OutboxMessage` union.
+ */
 function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
   return {
     id: row.id,
     churchId: row.churchId as ChurchId,
-    kind: row.kind as OutboxMessageKind,
-    payload: row.payload as Record<string, unknown>,
-    status: row.status as OutboxMessageStatus,
+    kind: row.kind,
+    payload: row.payload,
+    status: row.status,
     attempts: row.attempts,
     scheduledFor: row.scheduledFor,
     lastError: row.lastError ?? undefined,
     providerMessageId: row.providerMessageId ?? undefined,
     correlationId: row.correlationId,
     sentAt: row.sentAt ?? undefined,
-  };
+  } as OutboxMessage;
 }

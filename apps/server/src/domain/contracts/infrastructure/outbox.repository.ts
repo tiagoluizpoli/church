@@ -10,11 +10,9 @@ export type OutboxMessageKind =
 
 export type OutboxMessageStatus = 'pending' | 'sent' | 'failed';
 
-export interface OutboxMessage {
+interface OutboxMessageBase {
   id: string;
   churchId: ChurchId;
-  kind: OutboxMessageKind;
-  payload: Record<string, unknown>;
   status: OutboxMessageStatus;
   attempts: number;
   scheduledFor: Date;
@@ -23,6 +21,36 @@ export interface OutboxMessage {
   correlationId: string;
   sentAt?: Date;
 }
+
+/** Mirrors the payload `mintChained` enqueues (db-ministry-invitation-manager.ts). */
+export interface ChainedInvitationOutboxMessage extends OutboxMessageBase {
+  kind: 'invitation.chained';
+  payload: { ministryInvitationId: string; churchInvitationId: string };
+}
+
+/** Mirrors the payload `mintForExistingMember`/`resend` enqueue. */
+export interface MinistryInvitationOutboxMessage extends OutboxMessageBase {
+  kind: 'invitation.ministry';
+  payload: { ministryInvitationId: string };
+}
+
+/** Not enqueued anywhere yet (issue #62) — shape follows spec §6.2's bootstrap bullet. */
+export interface ChurchBootstrapOutboxMessage extends OutboxMessageBase {
+  kind: 'invitation.church-bootstrap';
+  payload: { churchInvitationId: string };
+}
+
+/** Volunteer Transfer notifications — payload shape not designed yet (issue #60). */
+export interface TransferOutboxMessage extends OutboxMessageBase {
+  kind: 'transfer.ministry-digest' | 'transfer.leaderless-ministry';
+  payload: Record<string, unknown>;
+}
+
+export type OutboxMessage =
+  | ChainedInvitationOutboxMessage
+  | MinistryInvitationOutboxMessage
+  | ChurchBootstrapOutboxMessage
+  | TransferOutboxMessage;
 
 export interface ClaimPendingOutboxMessagesInput {
   limit: number;

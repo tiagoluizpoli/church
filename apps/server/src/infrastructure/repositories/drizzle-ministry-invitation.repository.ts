@@ -8,9 +8,10 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { RoleId, UserId } from '../../domain/branded-ids';
 import type {
+  AcquireMintLockInput,
   ChurchInvitationSummary,
   CreateChainedChurchInvitationInput,
   CreateMinistryInvitationInput,
@@ -41,6 +42,13 @@ export class DrizzleMinistryInvitationRepository
   implements MinistryInvitationRepository
 {
   constructor(private readonly db: AnyDrizzleDb) {}
+
+  async acquireMintLock(input: AcquireMintLockInput): Promise<void> {
+    const { ministryId, email, tx } = input;
+    await getClient(this.db, tx).execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`${ministryId}:${email}`}))`,
+    );
+  }
 
   async findChurchMemberByEmail(
     input: FindChurchMemberByEmailInput,

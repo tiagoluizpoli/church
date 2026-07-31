@@ -89,6 +89,11 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     }
 
     return this.unitOfWork.run(async (tx) => {
+      // Serializes concurrent mints for this (Ministry, email) pair so two
+      // simultaneous re-invites can't both observe "no pending row" and
+      // both attempt `create` — see acquireMintLock's own doc comment.
+      await this.repo.acquireMintLock({ ministryId, email: input.email, tx });
+
       const inviteeUserId = await this.repo.findChurchMemberByEmail({
         churchId,
         email: input.email,

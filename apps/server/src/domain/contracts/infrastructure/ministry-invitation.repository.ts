@@ -3,6 +3,12 @@ import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
 import type { TransactionContext } from './transaction-context';
 
+export interface AcquireMintLockInput {
+  ministryId: MinistryId;
+  email: string;
+  tx: TransactionContext;
+}
+
 export interface FindChurchMemberByEmailInput {
   churchId: ChurchId;
   email: string;
@@ -89,6 +95,15 @@ export interface EnqueueOutboxMessageInput {
 }
 
 export interface MinistryInvitationRepository {
+  /**
+   * Serializes concurrent mints for the same (Ministry, email) pair behind a
+   * transaction-scoped advisory lock, so two simultaneous re-invites can't
+   * both observe "no pending row" and both attempt `create` — the second
+   * would otherwise hit the partial unique index as a raw constraint
+   * violation instead of the idempotent refresh the caller expects.
+   */
+  acquireMintLock(input: AcquireMintLockInput): Promise<void>;
+
   /** The userId of an existing Church Member whose email matches — `null` for anyone else. */
   findChurchMemberByEmail(
     input: FindChurchMemberByEmailInput,

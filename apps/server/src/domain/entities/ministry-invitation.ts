@@ -35,9 +35,9 @@ export interface MinistryInvitationProps {
 /**
  * Targeted, never a bearer link: exactly one of `inviteeUserId` /
  * `churchInvitationId` is set, enforced by a database constraint rather than
- * here. There is deliberately no "expired" status — `isExpired` evaluates
- * lazily against a caller-supplied `now`, matching Better Auth rather than
- * diverging from it.
+ * here. There is deliberately no "expired" status — expiry is evaluated
+ * lazily against `expiresAt` at read time (redemption's concern, not
+ * minting's), matching Better Auth rather than diverging from it.
  */
 export class MinistryInvitation extends Entity<
   MinistryInvitationProps,
@@ -96,9 +96,5 @@ export class MinistryInvitation extends Entity<
   /** Never a bearer link: a chained invitation has no invitee of its own yet. */
   get kind(): 'ministry-only' | 'chained' {
     return this._props.churchInvitationId ? 'chained' : 'ministry-only';
-  }
-
-  isExpired(now: Date): boolean {
-    return this._props.status === 'pending' && now > this._props.expiresAt;
   }
 }

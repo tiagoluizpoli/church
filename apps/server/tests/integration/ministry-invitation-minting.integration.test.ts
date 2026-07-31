@@ -255,6 +255,25 @@ describe('DbMinistryInvitationManager.mint', () => {
     expect(second.id).toBe(first.id);
     expect(second.churchInvitationId).toBe(first.churchInvitationId);
   });
+
+  it('serializes two concurrent re-invites of the same person into one row rather than a constraint violation', async () => {
+    const mintSameRecipient = () =>
+      manager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email: `${fixture.existingChurchMemberA}@fixture.test`,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [],
+      });
+
+    const [first, second] = await Promise.all([
+      mintSameRecipient(),
+      mintSameRecipient(),
+    ]);
+
+    expect(first.id).toBe(second.id);
+  });
 });
 
 describe('DbMinistryInvitationManager.resend', () => {

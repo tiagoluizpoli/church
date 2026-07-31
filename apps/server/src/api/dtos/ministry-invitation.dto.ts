@@ -1,16 +1,18 @@
 import { z } from 'zod';
 import type { MinistryInvitation } from '../../domain/entities/ministry-invitation';
+import { MINISTRY_INVITATION_STATUS_OPTIONS } from '../../domain/entities/ministry-invitation';
+import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-volunteer';
 
 export const mintMinistryInvitationBodySchema = z.object({
   email: z.string().email(),
-  ministryAccessLevel: z.enum(['volunteer', 'leader']),
+  ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
   roleIds: z.array(z.string()),
 });
 
 export const ministryInvitationResponseSchema = z.object({
   id: z.string(),
   kind: z.enum(['ministry-only', 'chained']),
-  status: z.enum(['pending', 'accepted', 'rejected', 'canceled']),
+  status: z.enum(MINISTRY_INVITATION_STATUS_OPTIONS),
   expiresAt: z.string(),
   redemptionPath: z.string(),
 });

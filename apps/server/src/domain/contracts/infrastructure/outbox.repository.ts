@@ -8,7 +8,7 @@ export type OutboxMessageKind =
   | 'transfer.ministry-digest'
   | 'transfer.leaderless-ministry';
 
-export type OutboxMessageStatus = 'pending' | 'sent' | 'failed';
+export type OutboxMessageStatus = 'pending' | 'processing' | 'sent' | 'failed';
 
 interface OutboxMessageBase {
   id: string;
@@ -77,12 +77,14 @@ export interface MarkOutboxMessageFailedInput {
 
 export interface OutboxRepository {
   /**
-   * Claims up to `limit` due, pending rows via `FOR UPDATE SKIP LOCKED`, so
-   * concurrent workers never claim the same row twice. Callers process and
-   * mark each row within the same transaction the claim was made in — the
-   * lock is held for the row's entire send attempt, which is the simplest
-   * design the current `pending | sent | failed` status set supports without
-   * adding a `processing` status.
+   * Claims up to `limit` due, pending rows via `FOR UPDATE SKIP LOCKED` and
+   * transitions them to `processing`, all within the caller's transaction —
+   * which the caller commits immediately after this call returns. The actual
+   * send happens outside any open transaction (so a slow or hung EmailSender
+   * call never holds a database connection), then `markSent`/`markFailed`
+   * runs in a second, separate transaction. Concurrent workers never claim
+   * the same row twice because the lock is held for the claim+transition
+   * step, not the whole send attempt.
    */
   claimPending(
     input: ClaimPendingOutboxMessagesInput,

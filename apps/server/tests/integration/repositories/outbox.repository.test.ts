@@ -40,7 +40,7 @@ describe('DrizzleOutboxRepository', () => {
     );
 
     expect(claimed).toHaveLength(1);
-    expect(claimed[0]?.status).toBe('pending');
+    expect(claimed[0]?.status).toBe('processing');
     expect(claimed[0]?.kind).toBe('invitation.ministry');
     expect(claimed[0]?.payload).toMatchObject({
       ministryInvitationId: invitation.id,

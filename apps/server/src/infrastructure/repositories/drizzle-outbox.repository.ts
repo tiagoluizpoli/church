@@ -1,5 +1,5 @@
 import { outboxMessage } from '@church/db';
-import { and, asc, eq, lte } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
 import type {
   ChainedInvitationOutboxMessage,
@@ -30,8 +30,9 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     input: ClaimPendingOutboxMessagesInput,
   ): Promise<OutboxMessage[]> {
     const { limit, now, tx } = input;
-    const rows = await getClient(this.db, tx)
-      .select()
+    const client = getClient(this.db, tx);
+    const claimable = await client
+      .select({ id: outboxMessage.id })
       .from(outboxMessage)
       .where(
         and(
@@ -42,6 +43,14 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .orderBy(asc(outboxMessage.scheduledFor))
       .limit(limit)
       .for('update', { skipLocked: true });
+    if (claimable.length === 0) return [];
+
+    const claimedIds = claimable.map((row) => row.id);
+    const rows = await client
+      .update(outboxMessage)
+      .set({ status: 'processing' })
+      .where(inArray(outboxMessage.id, claimedIds))
+      .returning();
     return rows.map(mapOutboxMessage);
   }
 

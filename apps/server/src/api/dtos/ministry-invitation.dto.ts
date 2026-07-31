@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { MinistryInvitation } from '../../domain/entities/ministry-invitation';
 import { MINISTRY_INVITATION_STATUS_OPTIONS } from '../../domain/entities/ministry-invitation';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-volunteer';
+import { redemptionPathFor } from '../../domain/services/ministry-invitation-redemption-path';
 
 export const mintMinistryInvitationBodySchema = z.object({
   email: z.string().email(),
@@ -20,12 +21,6 @@ export const ministryInvitationResponseSchema = z.object({
 export type MinistryInvitationResponse = z.infer<
   typeof ministryInvitationResponseSchema
 >;
-
-function redemptionPathFor(invitation: MinistryInvitation): string {
-  return invitation.kind === 'chained'
-    ? `/invitations/church/${invitation.churchInvitationId}`
-    : `/invitations/ministry/${invitation.id}`;
-}
 
 export const ministryInvitationMapper = {
   toResponse(invitation: MinistryInvitation): MinistryInvitationResponse {

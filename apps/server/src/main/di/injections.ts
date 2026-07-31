@@ -21,6 +21,7 @@ import { DbEventTemplateManager } from '../../application/db-event-template-mana
 import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
 import { DbMinistryInvitationManager } from '../../application/db-ministry-invitation-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
+import { DbOutboxDrainer } from '../../application/db-outbox-drainer';
 import { DbParticipationManager } from '../../application/db-participation-manager';
 import { DbPlanningCycleManager } from '../../application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
@@ -171,6 +172,9 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.ministryInvitationManager, {
     useClass: DbMinistryInvitationManager,
+  });
+  container.register(injection.managers.outboxDrainer, {
+    useClass: DbOutboxDrainer,
   });
   container.register(injection.managers.planningCycleManager, {
     useClass: DbPlanningCycleManager,

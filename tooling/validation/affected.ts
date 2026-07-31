@@ -176,9 +176,23 @@ function runTurboTask({
     '--filter',
     workspaceName,
   ]);
+  // --only: turbo.json's `dependsOn: ["^task"]` would otherwise fan this task
+  // out into every upstream dependency (@church/core, @church/db, ...) even
+  // when workspaceNames + testTargets already account for the full affected
+  // closure (classifyChanges walks DEPENDENTS itself). Without --only, that
+  // fan-out runs the task in packages that don't have `args`' file paths and
+  // crashes with "No test files found".
   execFileSync(
     'bunx',
-    ['turbo', task, `--concurrency=${concurrency}`, ...filters, '--', ...args],
+    [
+      'turbo',
+      task,
+      `--concurrency=${concurrency}`,
+      ...filters,
+      '--only',
+      '--',
+      ...args,
+    ],
     { stdio: 'inherit' },
   );
 }

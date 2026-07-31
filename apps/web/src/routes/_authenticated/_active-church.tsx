@@ -11,7 +11,7 @@ import { activeChurchApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/_authenticated/_active-church')({
   component: ActiveChurchLayout,
-  beforeLoad: async ({ search, location }) => {
+  beforeLoad: async ({ search, location, context }) => {
     // The entry gate's one source of truth: revalidates Church Membership
     // server-side on every load and covers every branch — an already-set
     // Church that no longer checks out, several Memberships with none active,
@@ -22,7 +22,13 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     const requestedChurchId = extractRequestedChurchId({ search });
     const currentChurchId = status === 'resolved' ? (churchId ?? null) : null;
     if (requestedChurchId && requestedChurchId !== currentChurchId) {
-      const { churches } = await activeChurchApi.listActiveChurchOptions();
+      // Cached under the query key /select-church and /switch-church-confirm
+      // already read from, so a redirect to either shows this list instantly
+      // instead of firing a second request for data just fetched here.
+      const { churches } = await context.queryClient.ensureQueryData({
+        queryKey: ['active-church', 'options'],
+        queryFn: () => activeChurchApi.listActiveChurchOptions(),
+      });
       const decision = resolveCrossChurchDeepLink({
         requestedChurchId,
         currentChurchId,

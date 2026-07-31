@@ -51,6 +51,66 @@ interface SelectChurchInput {
   churchId: string;
 }
 
+interface CrossChurchConfirmCardProps {
+  currentChurchName: string;
+  targetChurchName: string;
+  isSwitchError: boolean;
+  isSwitchPending: boolean;
+  onStay: () => void;
+  onSwitch: () => void;
+}
+
+function CrossChurchConfirmCard({
+  currentChurchName,
+  targetChurchName,
+  isSwitchError,
+  isSwitchPending,
+  onStay,
+  onSwitch,
+}: CrossChurchConfirmCardProps) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
+      <Card className="w-full max-w-lg">
+        <CardContent className="p-6 md:p-8">
+          <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Building2 className="size-5" />
+          </div>
+          <h1 className="mt-5 text-balance font-semibold text-2xl tracking-tight">
+            This link opens another Church
+          </h1>
+          <p className="mt-3 text-pretty text-foreground/75 leading-6">
+            You're currently working in <strong>{currentChurchName}</strong>.
+            The requested page belongs to <strong>{targetChurchName}</strong>.
+          </p>
+          <p className="mt-4 text-muted-foreground text-sm">
+            Switching clears Church-scoped cached data before the page opens.
+            Your membership will be verified again.
+          </p>
+          {isSwitchError ? (
+            <div className="mt-4 flex items-start gap-3 rounded-lg bg-destructive/8 p-3">
+              <CircleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
+              <p className="text-sm">Couldn't switch Church. Try again.</p>
+            </div>
+          ) : null}
+          <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={onStay}
+              disabled={isSwitchPending}
+            >
+              Stay in {currentChurchName}
+            </Button>
+            <Button onClick={onSwitch} disabled={isSwitchPending}>
+              Switch to {targetChurchName}
+              <ArrowRight />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function SwitchChurchConfirmRoute() {
   const { session } = Route.useRouteContext();
   const { target, redirect } = Route.useSearch();
@@ -145,44 +205,13 @@ function SwitchChurchConfirmRoute() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
-      <Card className="w-full max-w-lg">
-        <CardContent className="p-6 md:p-8">
-          <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Building2 className="size-5" />
-          </div>
-          <h1 className="mt-5 text-balance font-semibold text-2xl tracking-tight">
-            This link opens another Church
-          </h1>
-          <p className="mt-3 text-pretty text-foreground/75 leading-6">
-            You're currently working in <strong>{currentChurch.name}</strong>.
-            The requested page belongs to <strong>{targetChurch.name}</strong>.
-          </p>
-          <p className="mt-4 text-muted-foreground text-sm">
-            Switching clears Church-scoped cached data before the page opens.
-            Your membership will be verified again.
-          </p>
-          {switchMutation.isError ? (
-            <div className="mt-4 flex items-start gap-3 rounded-lg bg-destructive/8 p-3">
-              <CircleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
-              <p className="text-sm">Couldn't switch Church. Try again.</p>
-            </div>
-          ) : null}
-          <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={handleStay}
-              disabled={switchMutation.isPending}
-            >
-              Stay in {currentChurch.name}
-            </Button>
-            <Button onClick={handleSwitch} disabled={switchMutation.isPending}>
-              Switch to {targetChurch.name}
-              <ArrowRight />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <CrossChurchConfirmCard
+      currentChurchName={currentChurch.name}
+      targetChurchName={targetChurch.name}
+      isSwitchError={switchMutation.isError}
+      isSwitchPending={switchMutation.isPending}
+      onStay={handleStay}
+      onSwitch={handleSwitch}
+    />
   );
 }

@@ -28,6 +28,11 @@ const ministryManager = {
   listByLeader: vi.fn(),
 };
 
+const ministryInvitationManager = {
+  mint: vi.fn(),
+  resend: vi.fn(),
+};
+
 const eventManager = {
   getScheduleBuilderData: vi.fn(),
   listEvents: vi.fn(),
@@ -75,6 +80,7 @@ beforeAll(async () => {
   app = await createFastify();
   const controller = new AdminLeaderController(
     ministryManager as never,
+    ministryInvitationManager as never,
     eventManager as never,
     assignmentManager as never,
     activeChurchResolver as never,

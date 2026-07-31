@@ -5,6 +5,7 @@ export * from './church-id';
 export * from './event-id';
 export * from './event-template-id';
 export * from './ministry-id';
+export * from './ministry-invitation-id';
 export * from './ministry-participation-id';
 export * from './ministry-serving-profile-id';
 export * from './participation-slot-inclusion-id';

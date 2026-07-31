@@ -31,9 +31,11 @@ const ERROR_MAP: Record<string, { status: number }> = {
   INVALID_SLOT_DURATION: { status: 400 },
   INVALID_OVERRIDE_REASON: { status: 400 },
   NOT_FOUND: { status: 404 },
+  MINISTRY_NOT_FOUND: { status: 404 },
   UNAUTHORIZED_OVERRIDE: { status: 403 },
   CHECK_ACCESS_DENIED: { status: 403 },
   ASSIGNMENT_ACCESS_DENIED: { status: 403 },
+  INSUFFICIENT_INVITATION_AUTHORITY: { status: 403 },
   CANCEL_WINDOW_CLOSED: { status: 409 },
   AVAILABILITY_OVERLAP: { status: 409 },
   ISOLATION_BREACH: { status: 409 },
@@ -47,9 +49,11 @@ const ERROR_MAP: Record<string, { status: number }> = {
   INVALID_STATE_TRANSITION: { status: 409 },
   HARD_CONSTRAINT_VIOLATION: { status: 409 },
   BELOW_FULL_PUBLISH: { status: 409 },
+  INVITEE_ALREADY_MINISTRY_MEMBER: { status: 409 },
   EMPTY_SCHEDULE: { status: 422 },
   PAST_EVENT: { status: 422 },
   PUBLISH_VALIDATION: { status: 422 },
+  INVALID_INVITATION_ROLE: { status: 422 },
 };
 
 export async function createFastify() {

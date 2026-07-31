@@ -32,6 +32,11 @@ export type EmailPayload =
   | MinistryInvitationEmail
   | ChurchBootstrapInvitationEmail;
 
+export interface SendEmailResult {
+  /** Absent for the capture adapter — nothing was actually dispatched. */
+  providerMessageId?: string;
+}
+
 export interface EmailSender {
-  send(payload: EmailPayload): Promise<void>;
+  send(payload: EmailPayload): Promise<SendEmailResult>;
 }

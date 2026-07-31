@@ -23,9 +23,10 @@ describe('CaptureEmailSender', () => {
     const sender = new CaptureEmailSender();
     const payload = buildPayload();
 
-    await sender.send(payload);
+    const result = await sender.send(payload);
 
     expect(sender.sent).toEqual([payload]);
+    expect(result).toEqual({});
   });
 
   it('accumulates every send in order', async () => {

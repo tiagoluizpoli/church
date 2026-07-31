@@ -12,6 +12,7 @@ export const injection = {
     churchRepository: 'IChurchRepository',
     ministryRepository: 'IMinistryRepository',
     ministryInvitationRepository: 'IMinistryInvitationRepository',
+    outboxRepository: 'IOutboxRepository',
     ministryParticipationRepository: 'IMinistryParticipationRepository',
     ministryServingProfileRepository: 'IMinistryServingProfileRepository',
     shiftRepository: 'IShiftRepository',

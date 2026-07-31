@@ -40,6 +40,7 @@ import {
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
   DrizzleMinistryServingProfileRepository,
+  DrizzleOutboxRepository,
   DrizzlePlanningCycleRepository,
   DrizzlePlanningEventRepository,
   DrizzleRoleRepository,
@@ -119,6 +120,9 @@ export function registerInjections(): void {
   });
   container.register(injection.infra.ministryInvitationRepository, {
     useFactory: () => new DrizzleMinistryInvitationRepository(db),
+  });
+  container.register(injection.infra.outboxRepository, {
+    useFactory: () => new DrizzleOutboxRepository(db),
   });
   container.register(injection.infra.roleRepository, {
     useFactory: () => new DrizzleRoleRepository(db),

@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import type {
   EmailPayload,
   EmailSender,
+  SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { EmailSendError } from '../../domain/errors/email-send-error';
 
@@ -39,10 +40,10 @@ export class ResendEmailSender implements EmailSender {
     this.from = from;
   }
 
-  async send(payload: EmailPayload): Promise<void> {
+  async send(payload: EmailPayload): Promise<SendEmailResult> {
     const { subject, html } = composeEmail(payload);
 
-    const { error } = await this.sendViaResend({
+    const { data, error } = await this.sendViaResend({
       from: this.from,
       to: payload.to,
       subject,
@@ -55,6 +56,8 @@ export class ResendEmailSender implements EmailSender {
         retryable: !NON_RETRYABLE_STATUS_CODES.has(error.statusCode ?? 500),
       });
     }
+
+    return { providerMessageId: data?.id };
   }
 
   private async sendViaResend(

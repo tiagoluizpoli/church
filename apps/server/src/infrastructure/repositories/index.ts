@@ -9,6 +9,7 @@ export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
 export { DrizzleMinistryInvitationRepository } from './drizzle-ministry-invitation.repository';
 export { DrizzleMinistryParticipationRepository } from './drizzle-ministry-participation.repository';
 export { DrizzleMinistryServingProfileRepository } from './drizzle-ministry-serving-profile.repository';
+export { DrizzleOutboxRepository } from './drizzle-outbox.repository';
 export { DrizzlePlanningCycleRepository } from './drizzle-planning-cycle.repository';
 export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
 export { DrizzleRoleRepository } from './drizzle-role.repository';

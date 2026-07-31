@@ -70,7 +70,7 @@ describe('ResendEmailSender', () => {
     sendMock.mockResolvedValue({ data: { id: 'email-1' }, error: null });
     const sender = makeSender();
 
-    await sender.send(buildChainedPayload());
+    const result = await sender.send(buildChainedPayload());
 
     expect(sendMock).toHaveBeenCalledWith({
       from: 'Church <hi@church.test>',
@@ -78,6 +78,7 @@ describe('ResendEmailSender', () => {
       subject: expect.stringContaining('Grace Church'),
       html: expect.stringContaining('Worship Team'),
     });
+    expect(result).toEqual({ providerMessageId: 'email-1' });
   });
 
   it('composes a bootstrap email with no ministry content', async () => {

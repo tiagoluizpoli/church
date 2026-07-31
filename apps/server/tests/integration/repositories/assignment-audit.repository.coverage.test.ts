@@ -94,7 +94,7 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
       ministryId: seed.ministryAId,
       volunteerId: seed.adminVolunteerId,
     });
-    const repo = new DrizzleAssignmentAuditRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);
@@ -131,7 +131,7 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
       ministryId: seed.ministryAId,
       volunteerId: seed.adminVolunteerId,
     });
-    const repo = new DrizzleAssignmentAuditRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);
@@ -177,7 +177,7 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
       .set({ label: null })
       .where(eq(timeSlot.eventId, event.id));
 
-    const repo = new DrizzleAssignmentAuditRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);
@@ -208,7 +208,7 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
       ministryId: seed.ministryAId,
       volunteerId: seed.adminVolunteerId,
     });
-    const repo = new DrizzleAssignmentAuditRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const assignmentId = AssignmentId.from(assignmentRow.id);
     const actorId = UserId.from(seed.adminUserId);

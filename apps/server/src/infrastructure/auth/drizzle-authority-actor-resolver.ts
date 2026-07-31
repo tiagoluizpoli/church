@@ -74,6 +74,10 @@ function groupByMembership<TRow extends { membershipId: string }>(
   return grouped;
 }
 
+interface DrizzleAuthorityActorResolverInput {
+  db: AnyDrizzleDb;
+}
+
 /**
  * Resolves the AuthorityActor AuthorityService evaluates against: Church
  * Membership reads Better Auth's `member` table directly (the same source
@@ -82,7 +86,11 @@ function groupByMembership<TRow extends { membershipId: string }>(
  * `DrizzleSchedulingRbacResolver` for callers migrated onto AuthorityService.
  */
 export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleAuthorityActorResolverInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async resolveActor(
     input: ResolveAuthorityActorInput,

@@ -1,8 +1,16 @@
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 
-export class DrizzleTransactionContext {
+export interface DrizzleTransactionContextInput {
   // biome-ignore lint/suspicious/noExplicitAny: Drizzle PgTransaction is a complex generic — any is intentional here
-  constructor(public readonly tx: any) {}
+  tx: any;
+}
+
+export class DrizzleTransactionContext {
+  readonly tx: DrizzleTransactionContextInput['tx'];
+
+  constructor({ tx }: DrizzleTransactionContextInput) {
+    this.tx = tx;
+  }
 }
 
 /**

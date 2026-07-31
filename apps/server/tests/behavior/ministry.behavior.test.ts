@@ -112,8 +112,8 @@ afterAll(async () => {
 });
 
 describe('DbMinistryManager.listByLeader (T032)', () => {
-  const ministryRepo = new DrizzleMinistryRepository(db);
-  const volunteerRepo = new DrizzleVolunteerRepository(db);
+  const ministryRepo = new DrizzleMinistryRepository({ db: db });
+  const volunteerRepo = new DrizzleVolunteerRepository({ db: db });
   const manager = new DbMinistryManager(ministryRepo, volunteerRepo);
 
   it('returns ministries where volunteer is leader', async () => {
@@ -144,8 +144,8 @@ describe('DbMinistryManager.listByLeader (T032)', () => {
 });
 
 describe('DbMinistryManager.setDefaultDirection', () => {
-  const ministryRepo = new DrizzleMinistryRepository(db);
-  const volunteerRepo = new DrizzleVolunteerRepository(db);
+  const ministryRepo = new DrizzleMinistryRepository({ db: db });
+  const volunteerRepo = new DrizzleVolunteerRepository({ db: db });
   const manager = new DbMinistryManager(ministryRepo, volunteerRepo);
 
   it('updates the ministry default direction', async () => {

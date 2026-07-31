@@ -14,7 +14,7 @@ describe('DrizzleTeamRepository (extra coverage)', () => {
 
   it('listByIds returns [] without querying when ids is empty', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleTeamRepository(schedulingTestDb);
+    const repo = new DrizzleTeamRepository({ db: schedulingTestDb });
 
     const result = await repo.listByIds(ChurchId.from(seed.churchAId), []);
     expect(result).toEqual([]);

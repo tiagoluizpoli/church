@@ -17,7 +17,9 @@ describe('Phase 3 planning repositories', () => {
 
   it('round-trips planning cycles and filters them by church and state', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repository = new DrizzlePlanningCycleRepository(schedulingTestDb);
+    const repository = new DrizzlePlanningCycleRepository({
+      db: schedulingTestDb,
+    });
 
     const created = await repository.create({
       churchId: ChurchId.from(seed.churchAId),
@@ -57,7 +59,9 @@ describe('Phase 3 planning repositories', () => {
 
   it('detects overlapping planning cycles per church only', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repository = new DrizzlePlanningCycleRepository(schedulingTestDb);
+    const repository = new DrizzlePlanningCycleRepository({
+      db: schedulingTestDb,
+    });
 
     await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -83,7 +87,9 @@ describe('Phase 3 planning repositories', () => {
 
   it('round-trips templates with ordered blocks and deletes them cleanly', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repository = new DrizzleEventTemplateRepository(schedulingTestDb);
+    const repository = new DrizzleEventTemplateRepository({
+      db: schedulingTestDb,
+    });
 
     const created = await repository.create({
       churchId: ChurchId.from(seed.churchAId),
@@ -148,7 +154,9 @@ describe('Phase 3 planning repositories', () => {
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
     });
-    const repository = new DrizzlePlanningEventRepository(schedulingTestDb);
+    const repository = new DrizzlePlanningEventRepository({
+      db: schedulingTestDb,
+    });
 
     const createdEvent = await repository.createEvent({
       churchId: ChurchId.from(seed.churchAId),

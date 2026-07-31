@@ -21,8 +21,16 @@ interface EventTemplateGraphRow {
   blocks: Array<typeof timeBlock.$inferSelect>;
 }
 
+interface DrizzleEventTemplateRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleEventTemplateRepository implements EventTemplateRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleEventTemplateRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async create(input: CreateEventTemplateInput): Promise<EventTemplate> {
     const db = getClient(this.db, input.tx);

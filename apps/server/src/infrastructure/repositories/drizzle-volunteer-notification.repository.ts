@@ -16,10 +16,18 @@ import { mapVolunteerNotification } from '../mappers/volunteer-notification.mapp
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleVolunteerNotificationRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleVolunteerNotificationRepository
   implements VolunteerNotificationRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleVolunteerNotificationRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async create(
     churchId: ChurchId,

@@ -42,7 +42,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
 
   it('create() throws when neither shiftId nor slotId is provided', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleAssignmentRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const [roleRow] = await schedulingTestDb
       .insert(role)
@@ -65,7 +65,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
   it('create() throws NotFoundError when the slotId has no shift, and resolves via a real shiftId', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleAssignmentRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const [roleRow] = await schedulingTestDb
       .insert(role)
@@ -111,7 +111,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
   it('findBySlotAndVolunteer returns null when there is no match', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleAssignmentRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     const found = await repo.findBySlotAndVolunteer(
@@ -124,7 +124,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
 
   it('listByVolunteers returns [] for an empty id list without querying', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleAssignmentRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const result = await repo.listByVolunteers(
       ChurchId.from(seed.churchAId),
       [],
@@ -135,7 +135,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
   it('updateStatus defaults a missing reason to null', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleAssignmentRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const [roleRow] = await schedulingTestDb
       .insert(role)
@@ -174,7 +174,7 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
   it('deleteByEvent is a no-op when the event has no assignments', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleAssignmentRepository(schedulingTestDb);
+    const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await expect(

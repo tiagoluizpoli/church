@@ -18,8 +18,16 @@ import { mapAvailability } from '../mappers/availability.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleAvailabilityRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleAvailabilityRepository implements AvailabilityRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleAvailabilityRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   private async rows(
     churchId: ChurchId,

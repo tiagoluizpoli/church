@@ -35,7 +35,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       weekday: 0,
       blocks: [],
     });
-    const repo = new DrizzlePlanningEventRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
 
     const created = await repo.createEvent({
       churchId,
@@ -64,7 +64,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
     });
-    const repo = new DrizzlePlanningEventRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
 
     const created = await repo.createEvent({
       churchId,
@@ -105,7 +105,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
 
   it('updateEvent throws NotFoundError when the event does not exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzlePlanningEventRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
 
     await expect(
       repo.updateEvent({
@@ -118,7 +118,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
 
   it('getEvent throws NotFoundError for an invalid uuid and for a missing event', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzlePlanningEventRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await expect(
@@ -142,7 +142,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
     });
-    const repo = new DrizzlePlanningEventRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
 
     const createdEvent = await repo.createEvent({
       churchId,
@@ -173,7 +173,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       timezone: 'UTC',
     });
 
-    const repo = new DrizzlePlanningEventRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
 
     await expect(
       repo.seedParticipations({

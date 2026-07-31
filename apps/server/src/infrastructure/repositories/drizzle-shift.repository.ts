@@ -20,8 +20,16 @@ import { mapSlotRequirement } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleShiftRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleShiftRepository implements ShiftRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleShiftRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async createMany(input: CreateShiftsInput): Promise<Shift[]> {
     if (input.shifts.length === 0) {

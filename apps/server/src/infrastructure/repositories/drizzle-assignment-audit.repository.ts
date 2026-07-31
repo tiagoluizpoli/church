@@ -28,10 +28,18 @@ import { mapAssignmentAudit } from '../mappers/assignment-audit.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleAssignmentAuditRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleAssignmentAuditRepository
   implements AssignmentAuditRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleAssignmentAuditRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async create(
     churchId: ChurchId,

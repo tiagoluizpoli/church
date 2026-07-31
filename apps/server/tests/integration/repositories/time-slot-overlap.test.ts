@@ -12,7 +12,7 @@ const CHURCH = '11111111-1111-1111-1111-111111111111' as ChurchId;
 const EVENT = '66666666-6666-6666-6666-666666666661' as EventId;
 const SLOT = '77777777-7777-7777-7777-777777777771' as TimeSlotId;
 
-const repo = new DrizzleTimeSlotRepository(db);
+const repo = new DrizzleTimeSlotRepository({ db: db });
 
 // Seed slot-1 spans 2024-06-05 09:00–11:00 UTC on the draft event.
 describe('DrizzleTimeSlotRepository.findOverlapping (T091)', () => {

@@ -23,7 +23,9 @@ describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for an invalid uuid', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     await expect(
       repo.getById({
@@ -35,7 +37,9 @@ describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
 
   it('listByIds returns [] without querying when participationIds is empty', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const result = await repo.listByIds({
       churchId: ChurchId.from(seed.churchAId),
@@ -46,7 +50,9 @@ describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
 
   it('updateState throws NotFoundError when the participation does not exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     await expect(
       repo.updateState({
@@ -65,7 +71,9 @@ describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
       seed,
       state: 'locked',
     });
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(participation.id);
 
@@ -135,7 +143,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       endDate: new Date('2026-11-01T00:00:00.000Z'),
       state: 'locked',
     });
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const rows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -162,7 +172,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       endDate: new Date('2026-11-01T00:00:00.000Z'),
       state: 'draft',
     });
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const rows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -175,7 +187,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
   it('reads not_started when the ministry has events but none are touched', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycle } = await seedCycleAndEvent({ seed });
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const rows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -220,7 +234,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       .update(ministryParticipation)
       .set({ touchedAt: new Date() })
       .where(eq(ministryParticipation.id, graphA.participation.id));
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const rows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -268,7 +284,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       participationId: graphA.participation.id,
       timeSlotId: graphA.slot.id,
     });
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const rows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -314,7 +332,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       .update(ministryParticipation)
       .set({ touchedAt: new Date(), state: 'published' })
       .where(eq(ministryParticipation.id, participation.id));
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const rows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -359,7 +379,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       .update(ministryParticipation)
       .set({ touchedAt: new Date(), state: 'availability_fired' })
       .where(eq(ministryParticipation.id, firedGraph.participation.id));
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const rows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchAId),
@@ -394,7 +416,9 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
   it('church isolation: a query for church B never sees church A cycles/participations (Spec R2 §4)', async () => {
     const seed = await seedSchedulingPhase3Base();
     await seedCycleAndEvent({ seed, state: 'locked' });
-    const repo = new DrizzleMinistryParticipationRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
 
     const churchBRows = await repo.listMinistryCycleSummaries({
       churchId: ChurchId.from(seed.churchBId),

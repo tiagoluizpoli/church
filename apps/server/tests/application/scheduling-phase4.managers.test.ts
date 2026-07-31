@@ -70,19 +70,23 @@ interface Phase4Managers {
 function createPhase4Managers(
   notificationService?: NotificationService,
 ): Phase4Managers {
-  const participationRepository = new DrizzleMinistryParticipationRepository(
-    schedulingTestDb,
-  );
-  const shiftRepository = new DrizzleShiftRepository(schedulingTestDb);
-  const eventRepository = new DrizzlePlanningEventRepository(schedulingTestDb);
-  const timeSlotRepository = new DrizzleTimeSlotRepository(schedulingTestDb);
-  const servingProfileRepository = new DrizzleMinistryServingProfileRepository(
-    schedulingTestDb,
-  );
-  const availabilityCheckRepository = new DrizzleAvailabilityCheckRepository(
-    schedulingTestDb,
-  );
-  const unitOfWork = new DrizzleUnitOfWork(schedulingTestDb);
+  const participationRepository = new DrizzleMinistryParticipationRepository({
+    db: schedulingTestDb,
+  });
+  const shiftRepository = new DrizzleShiftRepository({ db: schedulingTestDb });
+  const eventRepository = new DrizzlePlanningEventRepository({
+    db: schedulingTestDb,
+  });
+  const timeSlotRepository = new DrizzleTimeSlotRepository({
+    db: schedulingTestDb,
+  });
+  const servingProfileRepository = new DrizzleMinistryServingProfileRepository({
+    db: schedulingTestDb,
+  });
+  const availabilityCheckRepository = new DrizzleAvailabilityCheckRepository({
+    db: schedulingTestDb,
+  });
+  const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
   const notificationSpy = createNotificationServiceSpy();
 
   return {
@@ -90,13 +94,13 @@ function createPhase4Managers(
       participationRepository,
       shiftRepository,
       eventRepository,
-      new DrizzleAssignmentRepository(schedulingTestDb),
-      new DrizzleAvailabilityRepository(schedulingTestDb),
+      new DrizzleAssignmentRepository({ db: schedulingTestDb }),
+      new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
       timeSlotRepository,
-      new DrizzleVolunteerRepository(schedulingTestDb),
-      new DrizzleMinistryRepository(schedulingTestDb),
+      new DrizzleVolunteerRepository({ db: schedulingTestDb }),
+      new DrizzleMinistryRepository({ db: schedulingTestDb }),
       servingProfileRepository,
-      new DrizzleRoleRepository(schedulingTestDb),
+      new DrizzleRoleRepository({ db: schedulingTestDb }),
       notificationService ?? notificationSpy,
       unitOfWork,
     ),
@@ -372,10 +376,10 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
 
     // AuthorityManager scope: leader of ministryA cannot manage churchB participation
     const authorityManager = new DbAuthorityManager(
-      new DrizzleAuthorityActorResolver(schedulingTestDb),
-      new DrizzleSchedulingScopeResolver(schedulingTestDb),
-      new DrizzleEventRepository(schedulingTestDb),
-      new DrizzleTimeSlotRepository(schedulingTestDb),
+      new DrizzleAuthorityActorResolver({ db: schedulingTestDb }),
+      new DrizzleSchedulingScopeResolver({ db: schedulingTestDb }),
+      new DrizzleEventRepository({ db: schedulingTestDb }),
+      new DrizzleTimeSlotRepository({ db: schedulingTestDb }),
     );
     await expect(
       authorityManager.canManageParticipation({
@@ -663,9 +667,9 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     });
     expect(first.createdCheckCount).toBe(1);
 
-    const participationRepo = new DrizzleMinistryParticipationRepository(
-      schedulingTestDb,
-    );
+    const participationRepo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
     const updated = await participationRepo.getById({
       churchId,
       participationId: MinistryParticipationId.from(graph1.participation.id),
@@ -733,9 +737,9 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
   it('DL2-AF-08 fired notifications persist with the planning cycle scope', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { participation, cycle } = await seedCycleWithEvent({ seed });
-    const notificationRepository = new DrizzleVolunteerNotificationRepository(
-      schedulingTestDb,
-    );
+    const notificationRepository = new DrizzleVolunteerNotificationRepository({
+      db: schedulingTestDb,
+    });
     const { availabilityManager } = createPhase4Managers(
       new LocalNotificationService(notificationRepository),
     );

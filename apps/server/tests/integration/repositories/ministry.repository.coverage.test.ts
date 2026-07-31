@@ -17,7 +17,7 @@ describe('DrizzleMinistryRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for an invalid uuid', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleMinistryRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryRepository({ db: schedulingTestDb });
     await expect(
       repo.getById(ChurchId.from(seed.churchAId), MinistryId.from('nope')),
     ).rejects.toThrow(NotFoundError);
@@ -25,7 +25,7 @@ describe('DrizzleMinistryRepository (extra coverage)', () => {
 
   it('updateDefaultDirection persists the new direction and throws NotFoundError for a foreign-church ministry', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleMinistryRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const ministryId = MinistryId.from(seed.ministryAId);
 
@@ -50,7 +50,7 @@ describe('DrizzleMinistryRepository (extra coverage)', () => {
 
   it('listByChurch excludes soft-deleted ministries', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleMinistryRepository(schedulingTestDb);
+    const repo = new DrizzleMinistryRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     const before = await repo.listByChurch(churchId);

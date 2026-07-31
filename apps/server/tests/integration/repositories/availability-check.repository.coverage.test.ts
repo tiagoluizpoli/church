@@ -18,7 +18,9 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
 
   it('getCheckContext throws NotFoundError when the check does not exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleAvailabilityCheckRepository(schedulingTestDb);
+    const repo = new DrizzleAvailabilityCheckRepository({
+      db: schedulingTestDb,
+    });
 
     await expect(
       repo.getCheckContext({
@@ -32,7 +34,9 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
 
   it('listMinistryLeaderVolunteerIds returns [] without querying when ministryIds is empty', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleAvailabilityCheckRepository(schedulingTestDb);
+    const repo = new DrizzleAvailabilityCheckRepository({
+      db: schedulingTestDb,
+    });
 
     const result = await repo.listMinistryLeaderVolunteerIds({
       churchId: ChurchId.from(seed.churchAId),
@@ -92,7 +96,9 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       .returning();
     if (!checkRow) throw new Error('availability check seed failed');
 
-    const repo = new DrizzleAvailabilityCheckRepository(schedulingTestDb);
+    const repo = new DrizzleAvailabilityCheckRepository({
+      db: schedulingTestDb,
+    });
     const rows = await repo.listCheckShifts({
       churchId: ChurchId.from(seed.churchAId),
       checkId: AvailabilityCheckId.from(checkRow.id),

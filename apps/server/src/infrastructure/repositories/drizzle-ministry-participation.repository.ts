@@ -32,10 +32,18 @@ import {
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleMinistryParticipationRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleMinistryParticipationRepository
   implements MinistryParticipationRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleMinistryParticipationRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async getById(input: GetParticipationInput): Promise<MinistryParticipation> {
     if (!isValidUuid(input.participationId)) {

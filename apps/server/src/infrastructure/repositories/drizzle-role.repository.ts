@@ -9,8 +9,16 @@ import { mapRole } from '../mappers/role.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleRoleRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleRoleRepository implements RoleRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleRoleRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async getById(
     churchId: ChurchId,

@@ -49,7 +49,7 @@ describe('DrizzleShiftRepository', () => {
       seed.churchAId,
       seed.ministryAId,
     );
-    const repo = new DrizzleShiftRepository(schedulingTestDb);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     const empty = await repo.createMany({ churchId, shifts: [] });
@@ -82,7 +82,7 @@ describe('DrizzleShiftRepository', () => {
       seed.churchAId,
       seed.ministryAId,
     );
-    const repo = new DrizzleShiftRepository(schedulingTestDb);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await expect(
@@ -131,7 +131,7 @@ describe('DrizzleShiftRepository', () => {
       seed.churchAId,
       seed.ministryAId,
     );
-    const repo = new DrizzleShiftRepository(schedulingTestDb);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(
       graph.participation.id,
@@ -179,7 +179,7 @@ describe('DrizzleShiftRepository', () => {
       seed.churchAId,
       seed.ministryAId,
     );
-    const repo = new DrizzleShiftRepository(schedulingTestDb);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const [created] = await repo.createMany({
       churchId,
@@ -223,7 +223,7 @@ describe('DrizzleShiftRepository', () => {
       seed.churchAId,
       seed.ministryAId,
     );
-    const repo = new DrizzleShiftRepository(schedulingTestDb);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const [created] = await repo.createMany({
       churchId,
@@ -264,7 +264,7 @@ describe('DrizzleShiftRepository', () => {
       seed.churchAId,
       seed.ministryAId,
     );
-    const repo = new DrizzleShiftRepository(schedulingTestDb);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(
       graph.participation.id,
@@ -318,7 +318,7 @@ describe('DrizzleShiftRepository', () => {
       seed.churchAId,
       seed.ministryAId,
     );
-    const repo = new DrizzleShiftRepository(schedulingTestDb);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const participationId = MinistryParticipationId.from(
       graph.participation.id,

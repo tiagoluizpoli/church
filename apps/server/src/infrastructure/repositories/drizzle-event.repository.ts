@@ -25,8 +25,16 @@ import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleEventRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleEventRepository implements EventRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleEventRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async getMinistryId(
     churchId: ChurchId,

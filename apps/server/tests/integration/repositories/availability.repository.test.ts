@@ -92,7 +92,7 @@ describe('DrizzleAvailabilityRepository', () => {
       seed.ministryAId,
       seed.adminVolunteerId,
     );
-    const repo = new DrizzleAvailabilityRepository(schedulingTestDb);
+    const repo = new DrizzleAvailabilityRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await repo.replaceMarksForCheck({
@@ -129,7 +129,7 @@ describe('DrizzleAvailabilityRepository', () => {
       seed.ministryAId,
       seed.adminVolunteerId,
     );
-    const repo = new DrizzleAvailabilityRepository(schedulingTestDb);
+    const repo = new DrizzleAvailabilityRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const availabilityCheckId = AvailabilityCheckId.from(check.id);
 
@@ -154,7 +154,7 @@ describe('DrizzleAvailabilityRepository', () => {
 
   it('listByVolunteers returns [] immediately for an empty volunteerIds array', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleAvailabilityRepository(schedulingTestDb);
+    const repo = new DrizzleAvailabilityRepository({ db: schedulingTestDb });
     const result = await repo.listByVolunteers(
       ChurchId.from(seed.churchAId),
       [],

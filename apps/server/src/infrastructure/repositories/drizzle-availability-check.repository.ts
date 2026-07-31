@@ -41,10 +41,18 @@ import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleAvailabilityCheckRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleAvailabilityCheckRepository
   implements AvailabilityCheckRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleAvailabilityCheckRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async listActiveMemberships(
     input: ListActiveMembershipsInput,

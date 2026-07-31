@@ -37,8 +37,16 @@ import {
 } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleVolunteerRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleVolunteerRepository implements VolunteerRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleVolunteerRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async isChurchAdmin(
     churchId: ChurchId,

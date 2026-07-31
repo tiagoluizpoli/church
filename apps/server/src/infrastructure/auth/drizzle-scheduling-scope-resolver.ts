@@ -9,6 +9,10 @@ import type {
 import { isValidUuid } from '../repositories/helpers';
 import type { AnyDrizzleDb } from '../repositories/types';
 
+interface DrizzleSchedulingScopeResolverInput {
+  db: AnyDrizzleDb;
+}
+
 /**
  * Resolves the owning Ministry for a Participation or Shift, so callers can
  * hand the result to `AuthorityService` as a `MinistryResource`. Supersedes
@@ -19,7 +23,11 @@ import type { AnyDrizzleDb } from '../repositories/types';
 export class DrizzleSchedulingScopeResolver
   implements SchedulingScopeRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleSchedulingScopeResolverInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async resolveParticipationMinistry(
     input: ResolveParticipationMinistryInput,

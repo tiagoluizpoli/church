@@ -28,18 +28,18 @@ import {
 } from '../../src/test-support/identity-fixtures';
 import { testDb, truncateAll } from './repositories/setup';
 
-const ministryInvitationRepository = new DrizzleMinistryInvitationRepository(
-  testDb,
-);
-const roleRepository = new DrizzleRoleRepository(testDb);
-const ministryRepository = new DrizzleMinistryRepository(testDb);
+const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({
+  db: testDb,
+});
+const roleRepository = new DrizzleRoleRepository({ db: testDb });
+const ministryRepository = new DrizzleMinistryRepository({ db: testDb });
 const authorityManager = new DbAuthorityManager(
-  new DrizzleAuthorityActorResolver(testDb),
-  new DrizzleSchedulingScopeResolver(testDb),
-  new DrizzleEventRepository(testDb),
-  new DrizzleTimeSlotRepository(testDb),
+  new DrizzleAuthorityActorResolver({ db: testDb }),
+  new DrizzleSchedulingScopeResolver({ db: testDb }),
+  new DrizzleEventRepository({ db: testDb }),
+  new DrizzleTimeSlotRepository({ db: testDb }),
 );
-const unitOfWork = new DrizzleUnitOfWork(testDb);
+const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
 
 const manager = new DbMinistryInvitationManager(
   ministryInvitationRepository,

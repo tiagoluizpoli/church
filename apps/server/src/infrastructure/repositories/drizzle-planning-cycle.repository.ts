@@ -15,8 +15,16 @@ import { mapPlanningCycle } from '../mappers/planning-cycle.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzlePlanningCycleRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzlePlanningCycleRepository implements PlanningCycleRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzlePlanningCycleRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async create(input: CreatePlanningCycleInput): Promise<PlanningCycle> {
     const db = getClient(this.db, input.tx);

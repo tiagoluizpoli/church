@@ -42,7 +42,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for an invalid uuid', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     await expect(
       repo.getById(
         ChurchId.from(seed.churchAId),
@@ -54,7 +54,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('create() attaches shifts for every existing participation on the event', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const eventId = EventId.from(graph.event.id);
 
@@ -77,7 +77,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('update() applies only provided fields and throws NotFoundError when missing', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     const updated = await repo.update(
@@ -102,7 +102,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('deleteById removes the slot', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await repo.deleteById(churchId, TimeSlotId.from(graph.slot.id));
@@ -114,7 +114,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('upsertRequirement inserts then updates the required count for the same role', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const slotId = TimeSlotId.from(graph.slot.id);
 
@@ -154,7 +154,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('upsertRequirement throws NotFoundError when the slot has no shift', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     const [roleRow] = await schedulingTestDb
@@ -179,7 +179,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('bulkCreate throws NotFoundError when the event has no participation, and defaults an omitted label to null', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await expect(
@@ -212,7 +212,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('create() defaults an omitted label to null and skips shift creation when the event has no participations', async () => {
     const seed = await seedSchedulingPhase3Base();
     const churchId = ChurchId.from(seed.churchAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
 
     // Create a bare event with no participation via a fresh graph helper that
     // skips participation creation: reuse seedEventGraph's cycle + a raw event.
@@ -251,7 +251,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('update() applies startTime and endTime when label is omitted', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     const newStart = new Date('2026-08-02T10:00:00.000Z');
@@ -273,7 +273,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
   it('countActiveAssignments counts only pending/confirmed assignments for the role on the slot', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
-    const repo = new DrizzleTimeSlotRepository(schedulingTestDb);
+    const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
     const slotId = TimeSlotId.from(graph.slot.id);
 

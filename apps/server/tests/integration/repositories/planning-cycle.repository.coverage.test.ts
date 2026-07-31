@@ -15,7 +15,7 @@ describe('DrizzlePlanningCycleRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for an invalid uuid and for a missing cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzlePlanningCycleRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningCycleRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
     await expect(
@@ -35,7 +35,7 @@ describe('DrizzlePlanningCycleRepository (extra coverage)', () => {
 
   it('updateState throws NotFoundError when the cycle does not exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzlePlanningCycleRepository(schedulingTestDb);
+    const repo = new DrizzlePlanningCycleRepository({ db: schedulingTestDb });
 
     await expect(
       repo.updateState({

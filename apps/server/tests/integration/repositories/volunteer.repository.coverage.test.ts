@@ -15,7 +15,7 @@ describe('DrizzleVolunteerRepository (extra coverage)', () => {
 
   it('getById throws NotFoundError for a well-formed uuid that does not exist', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleVolunteerRepository(schedulingTestDb);
+    const repo = new DrizzleVolunteerRepository({ db: schedulingTestDb });
 
     await expect(
       repo.getById(
@@ -27,7 +27,7 @@ describe('DrizzleVolunteerRepository (extra coverage)', () => {
 
   it('listByIds returns [] without querying when ids is empty', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repo = new DrizzleVolunteerRepository(schedulingTestDb);
+    const repo = new DrizzleVolunteerRepository({ db: schedulingTestDb });
 
     const result = await repo.listByIds(ChurchId.from(seed.churchAId), []);
     expect(result).toEqual([]);

@@ -12,6 +12,10 @@ import type {
 import { getClient } from '../repositories/helpers';
 import type { AnyDrizzleDb } from '../repositories/types';
 
+interface DrizzleChurchMembershipRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 /**
  * Reads Better Auth's `member` table directly — the same source
  * `DrizzleAuthorityActorResolver.findChurchMembership` uses for one Church,
@@ -21,7 +25,11 @@ import type { AnyDrizzleDb } from '../repositories/types';
 export class DrizzleChurchMembershipRepository
   implements ChurchMembershipRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleChurchMembershipRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async listByUserId(
     input: ListChurchMembershipsByUserIdInput,

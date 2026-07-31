@@ -24,8 +24,16 @@ import { mapAssignment } from '../mappers/assignment.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleAssignmentRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleAssignmentRepository implements AssignmentRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleAssignmentRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   private async rows(
     churchId: ChurchId,

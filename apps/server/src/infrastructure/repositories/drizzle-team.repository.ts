@@ -8,8 +8,16 @@ import { mapTeam } from '../mappers/team.mapper';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleTeamRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleTeamRepository implements TeamRepository {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleTeamRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async listByIds(
     churchId: ChurchId,

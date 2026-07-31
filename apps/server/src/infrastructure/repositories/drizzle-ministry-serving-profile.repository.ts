@@ -11,10 +11,18 @@ import { mapMinistryServingProfile } from '../mappers/ministry-serving-profile.m
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
+interface DrizzleMinistryServingProfileRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
 export class DrizzleMinistryServingProfileRepository
   implements MinistryServingProfileRepository
 {
-  constructor(private readonly db: AnyDrizzleDb) {}
+  constructor({ db }: DrizzleMinistryServingProfileRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
 
   async listByMinistry(
     input: ListServingProfileByMinistryInput,

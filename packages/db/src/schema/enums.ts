@@ -82,3 +82,22 @@ export const volunteerNotificationTypeEnum = pgEnum(
     'assignment_reminder',
   ],
 );
+
+export const ministryInvitationStatusEnum = pgEnum(
+  'ministry_invitation_status',
+  ['pending', 'accepted', 'rejected', 'canceled'],
+);
+
+export const outboxMessageKindEnum = pgEnum('outbox_message_kind', [
+  'invitation.chained',
+  'invitation.ministry',
+  'invitation.church-bootstrap',
+  'transfer.ministry-digest',
+  'transfer.leaderless-ministry',
+]);
+
+export const outboxMessageStatusEnum = pgEnum('outbox_message_status', [
+  'pending',
+  'sent',
+  'failed',
+]);

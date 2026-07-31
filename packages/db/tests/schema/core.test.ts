@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  invitation as churchInvitation,
   ministry,
   ministryInvitation,
   ministryVolunteer,
@@ -70,42 +71,139 @@ describe('Core Schema Integration', () => {
     expect(inserted.churchId).toBe(churchId);
   });
 
-  it('should enforce unique token for ministry invitation', async () => {
-    const [insertedMinistry] = await testDb
-      .insert(ministry)
-      .values({
-        name: 'Worship',
+  describe('ministry_invitation targeting constraints', () => {
+    let ministryId: string;
+    let inviterId: string;
+    let inviteeUserId: string;
+
+    beforeEach(async () => {
+      const [insertedMinistry] = await testDb
+        .insert(ministry)
+        .values({ name: 'Worship', churchId })
+        .returning();
+      if (!insertedMinistry) throw new Error('Ministry insert failed');
+      ministryId = insertedMinistry.id;
+
+      const [inviter] = await testDb
+        .insert(user)
+        .values({
+          id: 'core-test-inviter',
+          name: 'Inviter',
+          email: 'core-test-inviter@test.com',
+        })
+        .returning();
+      if (!inviter) throw new Error('User insert failed');
+      inviterId = inviter.id;
+
+      const [invitee] = await testDb
+        .insert(user)
+        .values({
+          id: 'core-test-invitee',
+          name: 'Invitee',
+          email: 'core-test-invitee@test.com',
+        })
+        .returning();
+      if (!invitee) throw new Error('User insert failed');
+      inviteeUserId = invitee.id;
+    });
+
+    it('rejects a row with neither inviteeUserId nor churchInvitationId set', async () => {
+      try {
+        await testDb.insert(ministryInvitation).values({
+          churchId,
+          ministryId,
+          ministryAccessLevel: 'volunteer',
+          inviterId,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        });
+        expect.fail('Should have thrown check constraint error');
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
+      }
+    });
+
+    it('rejects a row with both inviteeUserId and churchInvitationId set', async () => {
+      const [invitation] = await testDb
+        .insert(churchInvitation)
+        .values({
+          id: 'core-test-church-invitation',
+          organizationId: churchId,
+          email: 'outsider@test.com',
+          inviterId,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        })
+        .returning();
+      if (!invitation) throw new Error('Church invitation insert failed');
+
+      try {
+        await testDb.insert(ministryInvitation).values({
+          churchId,
+          ministryId,
+          ministryAccessLevel: 'volunteer',
+          inviterId,
+          inviteeUserId,
+          churchInvitationId: invitation.id,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        });
+        expect.fail('Should have thrown check constraint error');
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
+      }
+    });
+
+    it('enforces one pending invitation per (ministryId, inviteeUserId)', async () => {
+      const values = {
         churchId,
-      })
-      .returning();
-    if (!insertedMinistry) throw new Error('Ministry insert failed');
+        ministryId,
+        ministryAccessLevel: 'volunteer' as const,
+        inviterId,
+        inviteeUserId,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      };
 
-    const invitation1 = {
-      churchId,
-      ministryId: insertedMinistry.id,
-      token: 'common-token',
-      type: 'one-time',
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
-    };
+      await testDb.insert(ministryInvitation).values(values).returning();
 
-    const invitation2 = {
-      churchId,
-      ministryId: insertedMinistry.id,
-      token: 'common-token',
-      type: 'one-time',
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
-    };
+      try {
+        await testDb.insert(ministryInvitation).values(values).returning();
+        expect.fail('Should have thrown unique constraint error');
+      } catch (error) {
+        const err = error as Error;
+        if (err.name === 'AssertionError') throw err;
+        expect(err.message).toBeDefined();
+      }
+    });
 
-    await testDb.insert(ministryInvitation).values(invitation1).returning();
+    it('allows a second pending invitation for the same invitee once the first is no longer pending', async () => {
+      const base = {
+        churchId,
+        ministryId,
+        ministryAccessLevel: 'volunteer' as const,
+        inviterId,
+        inviteeUserId,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      };
 
-    try {
-      await testDb.insert(ministryInvitation).values(invitation2).returning();
-      expect.fail('Should have thrown unique constraint error');
-    } catch (error) {
-      const err = error as Error;
-      if (err.name === 'AssertionError') throw err;
-      expect(err.message).toBeDefined();
-    }
+      const [first] = await testDb
+        .insert(ministryInvitation)
+        .values(base)
+        .returning();
+      if (!first) throw new Error('Ministry invitation insert failed');
+
+      await testDb
+        .update(ministryInvitation)
+        .set({ status: 'canceled', canceledAt: new Date() })
+        .where(eq(ministryInvitation.id, first.id));
+
+      const [second] = await testDb
+        .insert(ministryInvitation)
+        .values(base)
+        .returning();
+      expect(second?.id).toBeDefined();
+    });
   });
 
   describe('Access Level Model', () => {

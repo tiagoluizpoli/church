@@ -6,6 +6,7 @@ export * from './church';
 export * from './event';
 export * from './event-template';
 export * from './ministry';
+export * from './ministry-invitation';
 export * from './ministry-participation';
 export * from './ministry-serving-profile';
 export * from './ministry-volunteer';

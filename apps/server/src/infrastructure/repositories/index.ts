@@ -6,6 +6,7 @@ export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
 export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
+export { DrizzleMinistryInvitationRepository } from './drizzle-ministry-invitation.repository';
 export { DrizzleMinistryParticipationRepository } from './drizzle-ministry-participation.repository';
 export { DrizzleMinistryServingProfileRepository } from './drizzle-ministry-serving-profile.repository';
 export { DrizzlePlanningCycleRepository } from './drizzle-planning-cycle.repository';

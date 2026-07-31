@@ -11,11 +11,13 @@ import {
   invitation,
   ministry,
   ministryInvitation,
+  ministryInvitationRole,
   ministryParticipation,
   ministryServingProfile,
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
+  outboxMessage,
   participationSlotInclusion,
   planningCycle,
   role,
@@ -65,6 +67,8 @@ const IDS = {
   shift: 'aaaaaaa1-0000-4000-8000-00000000000d',
   assignment: 'aaaaaaa1-0000-4000-8000-00000000000e',
   availabilityCheck: 'aaaaaaa1-0000-4000-8000-00000000000f',
+  ministryInvitation: 'aaaaaaa1-0000-4000-8000-000000000010',
+  outboxMessage: 'aaaaaaa1-0000-4000-8000-000000000011',
 } as const;
 
 interface TableRowCount {
@@ -207,12 +211,28 @@ async function seedEveryTenantedTable(): Promise<void> {
   });
 
   await testDb.insert(ministryInvitation).values({
+    id: IDS.ministryInvitation,
     churchId: IDS.church,
     ministryId: IDS.ministry,
-    teamId: IDS.team,
-    token: 'truncation-root-ministry-invitation',
-    type: 'one-time',
+    inviteeUserId: IDS.user,
+    ministryAccessLevel: 'volunteer',
+    inviterId: IDS.user,
     expiresAt: new Date('2030-01-01T00:00:00Z'),
+  });
+
+  await testDb.insert(ministryInvitationRole).values({
+    churchId: IDS.church,
+    ministryInvitationId: IDS.ministryInvitation,
+    roleId: IDS.role,
+  });
+
+  await testDb.insert(outboxMessage).values({
+    id: IDS.outboxMessage,
+    churchId: IDS.church,
+    kind: 'invitation.ministry',
+    payload: { ministryInvitationId: IDS.ministryInvitation },
+    scheduledFor: new Date('2030-01-01T00:00:00Z'),
+    correlationId: 'truncation-root-correlation',
   });
 
   await testDb.insert(planningCycle).values({

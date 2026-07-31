@@ -19,6 +19,7 @@ import { DbAvailabilityCheckManager } from '../../application/db-availability-ch
 import { DbEventManager } from '../../application/db-event-manager';
 import { DbEventTemplateManager } from '../../application/db-event-template-manager';
 import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
+import { DbMinistryInvitationManager } from '../../application/db-ministry-invitation-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
 import { DbParticipationManager } from '../../application/db-participation-manager';
 import { DbPlanningCycleManager } from '../../application/db-planning-cycle-manager';
@@ -35,6 +36,7 @@ import {
   DrizzleChurchRepository,
   DrizzleEventRepository,
   DrizzleEventTemplateRepository,
+  DrizzleMinistryInvitationRepository,
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
   DrizzleMinistryServingProfileRepository,
@@ -113,6 +115,9 @@ export function registerInjections(): void {
   container.register(injection.infra.ministryRepository, {
     useFactory: () => new DrizzleMinistryRepository(db),
   });
+  container.register(injection.infra.ministryInvitationRepository, {
+    useFactory: () => new DrizzleMinistryInvitationRepository(db),
+  });
   container.register(injection.infra.roleRepository, {
     useFactory: () => new DrizzleRoleRepository(db),
   });
@@ -148,6 +153,9 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.ministryManager, {
     useClass: DbMinistryManager,
+  });
+  container.register(injection.managers.ministryInvitationManager, {
+    useClass: DbMinistryInvitationManager,
   });
   container.register(injection.managers.planningCycleManager, {
     useClass: DbPlanningCycleManager,

@@ -76,6 +76,7 @@ export default defineConfig({
             'tests/application/db-event-manager.test.ts',
             'tests/application/db-event-template-manager.test.ts',
             'tests/application/db-feature-flag-manager.test.ts',
+            'tests/application/db-ministry-invitation-manager.test.ts',
             'tests/contract/**/*.test.ts',
             'tests/domain/**/*.test.ts',
             'tests/dtos/**/*.test.ts',

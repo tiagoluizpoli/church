@@ -28,6 +28,11 @@ const ministryManager = {
   listByLeader: vi.fn(),
 };
 
+const ministryInvitationManager = {
+  mint: vi.fn(),
+  resend: vi.fn(),
+};
+
 const eventManager = {
   getScheduleBuilderData: vi.fn(),
   listEvents: vi.fn(),
@@ -75,6 +80,7 @@ beforeAll(async () => {
   app = await createFastify();
   const controller = new AdminLeaderController(
     ministryManager as never,
+    ministryInvitationManager as never,
     eventManager as never,
     assignmentManager as never,
     activeChurchResolver as never,
@@ -332,5 +338,90 @@ describe('Admin leader controller authorization wiring', () => {
     expect(response.statusCode).toBe(403);
     expect(authorityGuard.canManageShift).not.toHaveBeenCalled();
     expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
+  });
+});
+
+describe('Ministry Invitation minting routes', () => {
+  const ministryId = '22222222-2222-2222-8222-222222222222';
+
+  it('POST /api/v1/admin/ministries/:ministryId/invitations mints and maps the response', async () => {
+    ministryInvitationManager.mint.mockResolvedValue({
+      id: 'ministry-invitation-1',
+      kind: 'chained',
+      status: 'pending',
+      churchInvitationId: 'church-invitation-1',
+      expiresAt: new Date('2030-01-01T00:00:00Z'),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/ministries/${ministryId}/invitations`,
+      payload: {
+        email: 'outsider@example.com',
+        ministryAccessLevel: 'volunteer',
+        roleIds: [],
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({
+      id: 'ministry-invitation-1',
+      kind: 'chained',
+      status: 'pending',
+      expiresAt: '2030-01-01T00:00:00.000Z',
+      redemptionPath: '/invitations/church/church-invitation-1',
+    });
+    expect(ministryInvitationManager.mint).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryId,
+      inviterId: 'admin-leader-user',
+      email: 'outsider@example.com',
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+    });
+  });
+
+  it('POST /api/v1/admin/ministries/:ministryId/invitations rejects a malformed email', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/ministries/${ministryId}/invitations`,
+      payload: {
+        email: 'not-an-email',
+        ministryAccessLevel: 'volunteer',
+        roleIds: [],
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(ministryInvitationManager.mint).not.toHaveBeenCalled();
+  });
+
+  it('POST .../invitations/:invitationId/resend refreshes and maps the response', async () => {
+    ministryInvitationManager.resend.mockResolvedValue({
+      id: 'ministry-invitation-1',
+      kind: 'ministry-only',
+      status: 'pending',
+      expiresAt: new Date('2030-02-01T00:00:00Z'),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/ministries/${ministryId}/invitations/ministry-invitation-1/resend`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      id: 'ministry-invitation-1',
+      kind: 'ministry-only',
+      status: 'pending',
+      expiresAt: '2030-02-01T00:00:00.000Z',
+      redemptionPath: '/invitations/ministry/ministry-invitation-1',
+    });
+    expect(ministryInvitationManager.resend).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryId,
+      ministryInvitationId: 'ministry-invitation-1',
+      callerId: 'admin-leader-user',
+    });
   });
 });

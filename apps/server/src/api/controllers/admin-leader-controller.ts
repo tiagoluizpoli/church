@@ -7,6 +7,7 @@ import {
   ChurchId,
   EventId,
   MinistryId,
+  MinistryInvitationId,
   RoleId,
   TeamId,
   TimeSlotId,
@@ -16,6 +17,7 @@ import {
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
+import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
@@ -38,6 +40,11 @@ import {
   ministryListResponseSchema,
   ministryMapper,
 } from '../dtos/ministry.dto';
+import {
+  ministryInvitationMapper,
+  ministryInvitationResponseSchema,
+  mintMinistryInvitationBodySchema,
+} from '../dtos/ministry-invitation.dto';
 import {
   createSlotBodySchema,
   generateSlotsBodySchema,
@@ -75,6 +82,15 @@ interface EventSlotRouteParams {
 
 interface AssignmentRouteParams {
   assignmentId: string;
+}
+
+interface MinistryInvitationRouteParams {
+  ministryId: string;
+}
+
+interface ResendMinistryInvitationRouteParams {
+  ministryId: string;
+  invitationId: string;
 }
 
 interface DenySchedulingAccessInput {
@@ -118,6 +134,8 @@ export class AdminLeaderController implements FastifyController {
   constructor(
     @inject('IMinistryManager')
     private readonly ministryManager: IMinistryManager,
+    @inject('IMinistryInvitationManager')
+    private readonly ministryInvitationManager: IMinistryInvitationManager,
     @inject('IEventManager')
     private readonly eventManager: IEventManager,
     @inject('IAssignmentManager')
@@ -173,6 +191,71 @@ export class AdminLeaderController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
         });
         return reply.send(ministryMapper.toResponseList(ministries));
+      },
+    );
+
+    // Ministry Invitation routes — reachable by ChurchAdmin or Ministry
+    // leader alike, so they live here rather than under a role-specific
+    // controller; `DbMinistryInvitationManager` derives and enforces the
+    // caller's actual authority itself (indistinguishable 404 on any
+    // unauthorized/nonexistent/cross-Church Ministry), so no guard call is
+    // needed at this layer.
+    app.post(
+      '/ministries/:ministryId/invitations',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'mintMinistryInvitation',
+          body: mintMinistryInvitationBodySchema,
+          response: {
+            201: ministryInvitationResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { ministryId } = request.params as MinistryInvitationRouteParams;
+        const body = request.body as z.infer<
+          typeof mintMinistryInvitationBodySchema
+        >;
+
+        const invitation = await this.ministryInvitationManager.mint({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          inviterId: UserId.from(request.userId),
+          email: body.email,
+          ministryAccessLevel: body.ministryAccessLevel,
+          roleIds: body.roleIds.map((roleId) => RoleId.from(roleId)),
+        });
+        return reply
+          .status(201)
+          .send(ministryInvitationMapper.toResponse(invitation));
+      },
+    );
+
+    app.post(
+      '/ministries/:ministryId/invitations/:invitationId/resend',
+      {
+        schema: {
+          tags: ['admin'],
+          operationId: 'resendMinistryInvitation',
+          response: {
+            200: ministryInvitationResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { ministryId, invitationId } =
+          request.params as ResendMinistryInvitationRouteParams;
+
+        const invitation = await this.ministryInvitationManager.resend({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          ministryInvitationId: MinistryInvitationId.from(invitationId),
+          callerId: UserId.from(request.userId),
+        });
+        return reply.send(ministryInvitationMapper.toResponse(invitation));
       },
     );
 

@@ -8,7 +8,14 @@ export type OutboxMessageKind =
   | 'transfer.ministry-digest'
   | 'transfer.leaderless-ministry';
 
-export type OutboxMessageStatus = 'pending' | 'processing' | 'sent' | 'failed';
+export const OUTBOX_MESSAGE_STATUS_OPTIONS = [
+  'pending',
+  'processing',
+  'sent',
+  'failed',
+] as const;
+export type OutboxMessageStatus =
+  (typeof OUTBOX_MESSAGE_STATUS_OPTIONS)[number];
 
 interface OutboxMessageBase {
   id: string;
@@ -75,6 +82,12 @@ export interface MarkOutboxMessageFailedInput {
   tx: TransactionContext;
 }
 
+export interface FindLatestOutboxStatusForMinistryInvitationInput {
+  churchId: ChurchId;
+  ministryInvitationId: string;
+  tx?: TransactionContext;
+}
+
 export interface OutboxRepository {
   /**
    * Claims up to `limit` due, pending rows via `FOR UPDATE SKIP LOCKED` and
@@ -93,4 +106,17 @@ export interface OutboxRepository {
   markSent(input: MarkOutboxMessageSentInput): Promise<void>;
 
   markFailed(input: MarkOutboxMessageFailedInput): Promise<void>;
+
+  /**
+   * Reads the most recent outbox row's status for a Ministry Invitation.
+   * There is no FK column — `payload` is jsonb — so this matches
+   * structurally on `payload->>'ministryInvitationId'`, scoped by Church. A
+   * resend enqueues a second row for the same invitation, so "latest" is
+   * ordered by `createdAt` descending; the minting API's response surfaces
+   * this as the invitation's delivery status (spec #56 §6.4). Returns
+   * `null` when no outbox row exists yet for that invitation.
+   */
+  findLatestStatusForMinistryInvitation(
+    input: FindLatestOutboxStatusForMinistryInvitationInput,
+  ): Promise<OutboxMessageStatus | null>;
 }

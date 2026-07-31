@@ -46,6 +46,7 @@ export function createMinistryInvitationTestHarness({
     ministryRepository,
     authorityManager,
     unitOfWork,
+    outboxRepository,
   );
 
   return {

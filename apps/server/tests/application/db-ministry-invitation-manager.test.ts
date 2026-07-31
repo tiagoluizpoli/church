@@ -13,6 +13,7 @@ import { InsufficientInvitationAuthorityError } from '../../src/domain/errors/in
 import { InvalidInvitationRoleError } from '../../src/domain/errors/invalid-invitation-role';
 import { InviteeAlreadyMinistryMemberError } from '../../src/domain/errors/invitee-already-ministry-member';
 import { MinistryInvitationNotFoundError } from '../../src/domain/errors/ministry-invitation-not-found';
+import { MissingOutboxDeliveryRecordError } from '../../src/domain/errors/missing-outbox-delivery-record';
 
 const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;
@@ -43,6 +44,7 @@ const authorityManager = {
   canManageChurch: vi.fn(),
 };
 const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
+const outboxRepository = { findLatestStatusForMinistryInvitation: vi.fn() };
 
 function createManager(): DbMinistryInvitationManager {
   return new DbMinistryInvitationManager(
@@ -51,6 +53,7 @@ function createManager(): DbMinistryInvitationManager {
     ministryRepository as never,
     authorityManager as never,
     unitOfWork as never,
+    outboxRepository as never,
   );
 }
 
@@ -273,5 +276,52 @@ describe('DbMinistryInvitationManager.resend', () => {
     expect(repo.enqueueOutboxMessage).toHaveBeenCalledWith(
       expect.objectContaining({ churchId, kind: 'invitation.chained' }),
     );
+  });
+});
+
+describe('DbMinistryInvitationManager.getDeliveryStatus', () => {
+  it('returns the outbox repository status for the invitation', async () => {
+    outboxRepository.findLatestStatusForMinistryInvitation.mockResolvedValueOnce(
+      'sent',
+    );
+
+    const status = await createManager().getDeliveryStatus({
+      churchId,
+      ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+    });
+
+    expect(status).toBe('sent');
+    expect(
+      outboxRepository.findLatestStatusForMinistryInvitation,
+    ).toHaveBeenCalledWith({
+      churchId,
+      ministryInvitationId: 'invitation-1',
+    });
+  });
+
+  it("maps the infrastructure 'processing' status to 'pending'", async () => {
+    outboxRepository.findLatestStatusForMinistryInvitation.mockResolvedValueOnce(
+      'processing',
+    );
+
+    const status = await createManager().getDeliveryStatus({
+      churchId,
+      ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+    });
+
+    expect(status).toBe('pending');
+  });
+
+  it('throws when no outbox message exists for the invitation', async () => {
+    outboxRepository.findLatestStatusForMinistryInvitation.mockResolvedValueOnce(
+      null,
+    );
+
+    await expect(
+      createManager().getDeliveryStatus({
+        churchId,
+        ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+      }),
+    ).rejects.toThrow(MissingOutboxDeliveryRecordError);
   });
 });

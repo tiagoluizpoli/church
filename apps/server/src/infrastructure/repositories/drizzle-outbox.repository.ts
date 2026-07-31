@@ -1,18 +1,20 @@
 import { outboxMessage } from '@church/db';
-import { and, asc, eq, inArray, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
 import type {
   ChainedInvitationOutboxMessage,
   ChurchBootstrapOutboxMessage,
   ClaimPendingOutboxMessagesInput,
+  FindLatestOutboxStatusForMinistryInvitationInput,
   MarkOutboxMessageFailedInput,
   MarkOutboxMessageSentInput,
   MinistryInvitationOutboxMessage,
   OutboxMessage,
+  OutboxMessageStatus,
   OutboxRepository,
   TransferOutboxMessage,
 } from '../../domain/contracts/infrastructure/outbox.repository';
-import { getClient } from './helpers';
+import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleOutboxRepositoryInput {
@@ -68,6 +70,24 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .update(outboxMessage)
       .set({ status, attempts, lastError, scheduledFor })
       .where(eq(outboxMessage.id, id));
+  }
+
+  async findLatestStatusForMinistryInvitation(
+    input: FindLatestOutboxStatusForMinistryInvitationInput,
+  ): Promise<OutboxMessageStatus | null> {
+    const { churchId, ministryInvitationId, tx } = input;
+    const [row] = await getClient(this.db, tx)
+      .select({ status: outboxMessage.status })
+      .from(outboxMessage)
+      .where(
+        and(
+          withChurchIsolation(outboxMessage, churchId),
+          sql`${outboxMessage.payload} ->> 'ministryInvitationId' = ${ministryInvitationId}`,
+        ),
+      )
+      .orderBy(desc(outboxMessage.createdAt))
+      .limit(1);
+    return row?.status ?? null;
   }
 }
 

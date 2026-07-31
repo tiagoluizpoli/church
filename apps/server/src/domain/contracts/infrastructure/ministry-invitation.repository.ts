@@ -80,6 +80,17 @@ export interface RefreshMinistryInvitationExpiryInput {
   tx?: TransactionContext;
 }
 
+export interface FindByIdInput {
+  churchId: ChurchId;
+  ministryInvitationId: string;
+  tx?: TransactionContext;
+}
+
+export interface ResolveRecipientEmailInput {
+  ministryInvitation: MinistryInvitation;
+  tx?: TransactionContext;
+}
+
 export interface EnqueueOutboxMessageInput {
   churchId: ChurchId;
   kind:
@@ -121,6 +132,19 @@ export interface MinistryInvitationRepository {
   findPendingById(
     input: FindPendingByIdInput,
   ): Promise<MinistryInvitation | null>;
+
+  /**
+   * Any status, scoped only to Church — the outbox worker re-reads by id
+   * (from the outbox payload, which carries no Ministry) to check whether an
+   * invitation is still `pending` before it sends.
+   */
+  findById(input: FindByIdInput): Promise<MinistryInvitation | null>;
+
+  /**
+   * The invitation's single addressee, resolved to an email: the existing
+   * Church Member's account email, or the chained Church Invitation's email.
+   */
+  resolveRecipientEmail(input: ResolveRecipientEmailInput): Promise<string>;
 
   hasActiveMinistryMembership(
     input: HasActiveMinistryMembershipInput,

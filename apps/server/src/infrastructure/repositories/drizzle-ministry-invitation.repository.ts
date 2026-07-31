@@ -16,6 +16,7 @@ import type {
   CreateChainedChurchInvitationInput,
   CreateMinistryInvitationInput,
   EnqueueOutboxMessageInput,
+  FindByIdInput,
   FindChurchMemberByEmailInput,
   FindPendingByChurchInvitationInput,
   FindPendingByIdInput,
@@ -24,6 +25,7 @@ import type {
   HasActiveMinistryMembershipInput,
   MinistryInvitationRepository,
   RefreshMinistryInvitationExpiryInput,
+  ResolveRecipientEmailInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
@@ -118,6 +120,53 @@ export class DrizzleMinistryInvitationRepository
       .limit(1);
     if (!row) return null;
     return this.hydrate(row);
+  }
+
+  async findById(input: FindByIdInput) {
+    const { churchId, ministryInvitationId, tx } = input;
+    if (!isValidUuid(ministryInvitationId)) return null;
+    const [row] = await getClient(this.db, tx)
+      .select()
+      .from(ministryInvitation)
+      .where(
+        and(
+          withChurchIsolation(ministryInvitation, churchId),
+          eq(ministryInvitation.id, ministryInvitationId),
+        ),
+      )
+      .limit(1);
+    if (!row) return null;
+    return this.hydrate(row, tx);
+  }
+
+  async resolveRecipientEmail(
+    input: ResolveRecipientEmailInput,
+  ): Promise<string> {
+    const { ministryInvitation: invitation, tx } = input;
+    const db = getClient(this.db, tx);
+
+    if (invitation.inviteeUserId) {
+      const [row] = await db
+        .select({ email: user.email })
+        .from(user)
+        .where(eq(user.id, invitation.inviteeUserId))
+        .limit(1);
+      if (!row)
+        throw new Error('Invitee user not found for ministry invitation');
+      return row.email;
+    }
+
+    const [row] = await db
+      .select({ email: churchInvitation.email })
+      .from(churchInvitation)
+      .where(eq(churchInvitation.id, invitation.churchInvitationId as string))
+      .limit(1);
+    if (!row) {
+      throw new Error(
+        'Chained church invitation not found for ministry invitation',
+      );
+    }
+    return row.email;
   }
 
   async hasActiveMinistryMembership(

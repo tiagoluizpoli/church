@@ -2,11 +2,15 @@ import { outboxMessage } from '@church/db';
 import { and, asc, eq, lte } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
 import type {
+  ChainedInvitationOutboxMessage,
+  ChurchBootstrapOutboxMessage,
   ClaimPendingOutboxMessagesInput,
   MarkOutboxMessageFailedInput,
   MarkOutboxMessageSentInput,
+  MinistryInvitationOutboxMessage,
   OutboxMessage,
   OutboxRepository,
+  TransferOutboxMessage,
 } from '../../domain/contracts/infrastructure/outbox.repository';
 import { getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -54,15 +58,14 @@ type OutboxMessageRow = typeof outboxMessage.$inferSelect;
 
 /**
  * `payload` is jsonb — its shape is only as trustworthy as whatever enqueued
- * it. This cast is the one place that trust boundary is crossed; everywhere
- * else sees the discriminated `OutboxMessage` union.
+ * it. Branching on `kind` narrows the return type to one exact member of the
+ * union, so the only cast left is `payload`, one kind at a time, rather than
+ * a single cast over the whole object.
  */
 function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
-  return {
+  const base = {
     id: row.id,
     churchId: row.churchId as ChurchId,
-    kind: row.kind,
-    payload: row.payload,
     status: row.status,
     attempts: row.attempts,
     scheduledFor: row.scheduledFor,
@@ -70,5 +73,33 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
     providerMessageId: row.providerMessageId ?? undefined,
     correlationId: row.correlationId,
     sentAt: row.sentAt ?? undefined,
-  } as OutboxMessage;
+  };
+
+  switch (row.kind) {
+    case 'invitation.chained':
+      return {
+        ...base,
+        kind: row.kind,
+        payload: row.payload as ChainedInvitationOutboxMessage['payload'],
+      };
+    case 'invitation.ministry':
+      return {
+        ...base,
+        kind: row.kind,
+        payload: row.payload as MinistryInvitationOutboxMessage['payload'],
+      };
+    case 'invitation.church-bootstrap':
+      return {
+        ...base,
+        kind: row.kind,
+        payload: row.payload as ChurchBootstrapOutboxMessage['payload'],
+      };
+    case 'transfer.ministry-digest':
+    case 'transfer.leaderless-ministry':
+      return {
+        ...base,
+        kind: row.kind,
+        payload: row.payload as TransferOutboxMessage['payload'],
+      };
+  }
 }

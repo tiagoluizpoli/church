@@ -57,6 +57,7 @@ Parked items have no rank and no GitHub issue.
 | [BL-019](./items/BL-019.md) | Volunteer response health report for leaders | Volunteer Scheduling / Leader Operations | **Decision-gated, not usage-gated.** Requires both open product decisions settled — retention period for response history, and which follow-up actions belong in the product — **plus** at least three planning cycles of real response history to report on. |
 | [BL-025](./items/BL-025.md) | Dedup `denyParticipationScope`/`denyShiftScope` across `leader-controller.ts` and `leader-rostering-controller.ts` | Backend Architecture | A third controller needs the identical scope-guard shape, **or** [BL-011](./items/BL-011.md)'s auth-hook-factory work lands and touches either file anyway. |
 | [BL-026](./items/BL-026.md) | Volunteer dashboard has no visible state for zero Church access | Volunteer Dashboard | A User reports (or QA observes) a blank dashboard after losing Church access, **or** [#54](https://github.com/tiagoluizpoli/church/issues/54) lands and defines the system-wide no-access presentation. |
+| [BL-027](./items/BL-027.md) | No `AbortSignal` wiring for in-flight requests | Frontend Architecture / Data Layer | A confirmed incident (or reproducible test) where a stale-context request lands after an Active Church switch, **or** a second, unrelated need for true request cancellation shows up. |
 
 ---
 

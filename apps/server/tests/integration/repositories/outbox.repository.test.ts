@@ -141,7 +141,7 @@ describe('DrizzleOutboxRepository', () => {
         outboxRepository.claimPending({
           limit: 1,
           now,
-          tx: asTxContext(new DrizzleTransactionContext(tx)),
+          tx: asTxContext(new DrizzleTransactionContext({ tx })),
         }),
       );
 

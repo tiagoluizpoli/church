@@ -25,6 +25,14 @@ import { InvalidInvitationRoleError } from '../domain/errors/invalid-invitation-
 import { InviteeAlreadyMinistryMemberError } from '../domain/errors/invitee-already-ministry-member';
 import { MinistryInvitationNotFoundError } from '../domain/errors/ministry-invitation-not-found';
 import { MissingOutboxDeliveryRecordError } from '../domain/errors/missing-outbox-delivery-record';
+import { ResendCooldownActiveError } from '../domain/errors/resend-cooldown-active';
+import { ResendDailyCapExceededError } from '../domain/errors/resend-daily-cap-exceeded';
+import {
+  hasResendDailyCapExceeded,
+  isResendCooldownActive,
+  nextResendThrottleState,
+  type ResendThrottleState,
+} from '../domain/services/resend-throttle';
 
 const MINISTRY_ONLY_INVITATION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -52,6 +60,11 @@ interface ResolveChainedChurchInvitationInput {
   email: string;
   inviterId: UserId;
   tx: TransactionContext;
+}
+
+interface EnsureResendAllowedInput {
+  throttleState: ResendThrottleState;
+  now: Date;
 }
 
 @injectable()
@@ -120,6 +133,11 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     await this.ensureMintableScope({ churchId, ministryId, callerId });
 
     return this.unitOfWork.run(async (tx) => {
+      // Serializes concurrent resends of the same invitation so two
+      // simultaneous calls can't both read the same cooldown/cap state and
+      // both pass the check — see acquireResendLock's own doc comment.
+      await this.repo.acquireResendLock({ ministryInvitationId, tx });
+
       const existing = await this.repo.findPendingById({
         churchId,
         ministryId,
@@ -128,11 +146,22 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       });
       if (!existing) throw new MinistryInvitationNotFoundError();
 
-      const expiresAt = new Date(Date.now() + MINISTRY_ONLY_INVITATION_TTL_MS);
-      const invitation = await this.repo.refreshExpiry({
+      const now = new Date();
+      const throttleState: ResendThrottleState = {
+        lastResendAt: existing.lastResendAt,
+        resendCount: existing.resendCount,
+        resendWindowStartedAt: existing.resendWindowStartedAt,
+      };
+      this.ensureResendAllowed({ throttleState, now });
+
+      const expiresAt = new Date(
+        now.getTime() + MINISTRY_ONLY_INVITATION_TTL_MS,
+      );
+      const invitation = await this.repo.applyResend({
         churchId,
         ministryInvitation: existing,
         expiresAt,
+        throttle: nextResendThrottleState({ state: throttleState, now }),
         tx,
       });
 
@@ -344,5 +373,15 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     });
 
     return { callerIsAdmin };
+  }
+
+  private ensureResendAllowed(input: EnsureResendAllowedInput): void {
+    const { throttleState, now } = input;
+    if (isResendCooldownActive({ state: throttleState, now })) {
+      throw new ResendCooldownActiveError();
+    }
+    if (hasResendDailyCapExceeded({ state: throttleState, now })) {
+      throw new ResendDailyCapExceededError();
+    }
   }
 }

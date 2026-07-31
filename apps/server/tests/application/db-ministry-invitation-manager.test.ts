@@ -14,6 +14,8 @@ import { InvalidInvitationRoleError } from '../../src/domain/errors/invalid-invi
 import { InviteeAlreadyMinistryMemberError } from '../../src/domain/errors/invitee-already-ministry-member';
 import { MinistryInvitationNotFoundError } from '../../src/domain/errors/ministry-invitation-not-found';
 import { MissingOutboxDeliveryRecordError } from '../../src/domain/errors/missing-outbox-delivery-record';
+import { ResendCooldownActiveError } from '../../src/domain/errors/resend-cooldown-active';
+import { ResendDailyCapExceededError } from '../../src/domain/errors/resend-daily-cap-exceeded';
 
 const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;
@@ -25,6 +27,7 @@ const fakeTx = { id: 'fake-tx' } as never;
 
 const repo = {
   acquireMintLock: vi.fn(),
+  acquireResendLock: vi.fn(),
   findChurchMemberByEmail: vi.fn(),
   findPendingByInvitee: vi.fn(),
   findPendingByChurchInvitation: vi.fn(),
@@ -34,6 +37,7 @@ const repo = {
   createChainedChurchInvitation: vi.fn(),
   create: vi.fn(),
   refreshExpiry: vi.fn(),
+  applyResend: vi.fn(),
   enqueueOutboxMessage: vi.fn(),
 };
 
@@ -260,10 +264,37 @@ describe('DbMinistryInvitationManager.resend', () => {
     ).rejects.toBeInstanceOf(MinistryInvitationNotFoundError);
   });
 
-  it('refreshes expiry and enqueues a fresh delivery using the existing kind', async () => {
-    const existing = { id: 'invitation-1', kind: 'chained' };
+  it('acquires the resend lock before reading the invitation', async () => {
+    const existing = { id: 'invitation-1', kind: 'chained', resendCount: 0 };
     repo.findPendingById.mockResolvedValueOnce(existing);
-    repo.refreshExpiry.mockResolvedValueOnce(existing);
+    repo.applyResend.mockResolvedValueOnce(existing);
+
+    await createManager().resend({
+      churchId,
+      ministryId,
+      ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+      callerId: adminId,
+    });
+
+    expect(repo.acquireResendLock).toHaveBeenCalledWith({
+      ministryInvitationId: 'invitation-1',
+      tx: fakeTx,
+    });
+    const [lockCallOrder] = repo.acquireResendLock.mock.invocationCallOrder;
+    const [findCallOrder] = repo.findPendingById.mock.invocationCallOrder;
+    expect(lockCallOrder).toBeDefined();
+    expect(findCallOrder).toBeDefined();
+    expect(lockCallOrder as number).toBeLessThan(findCallOrder as number);
+  });
+
+  it('refreshes expiry and enqueues a fresh delivery using the existing kind', async () => {
+    const existing = {
+      id: 'invitation-1',
+      kind: 'chained',
+      resendCount: 0,
+    };
+    repo.findPendingById.mockResolvedValueOnce(existing);
+    repo.applyResend.mockResolvedValueOnce(existing);
 
     const invitation = await createManager().resend({
       churchId,
@@ -273,8 +304,85 @@ describe('DbMinistryInvitationManager.resend', () => {
     });
 
     expect(invitation).toBe(existing);
+    expect(repo.applyResend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        churchId,
+        ministryInvitation: existing,
+        throttle: expect.objectContaining({ resendCount: 1 }),
+      }),
+    );
     expect(repo.enqueueOutboxMessage).toHaveBeenCalledWith(
       expect.objectContaining({ churchId, kind: 'invitation.chained' }),
+    );
+  });
+
+  it('rejects a resend within the 60-second cooldown', async () => {
+    const existing = {
+      id: 'invitation-1',
+      kind: 'chained',
+      lastResendAt: new Date(),
+      resendCount: 1,
+      resendWindowStartedAt: new Date(),
+    };
+    repo.findPendingById.mockResolvedValueOnce(existing);
+
+    await expect(
+      createManager().resend({
+        churchId,
+        ministryId,
+        ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+        callerId: adminId,
+      }),
+    ).rejects.toBeInstanceOf(ResendCooldownActiveError);
+    expect(repo.applyResend).not.toHaveBeenCalled();
+    expect(repo.enqueueOutboxMessage).not.toHaveBeenCalled();
+  });
+
+  it('rejects a resend once the daily cap is reached within the current window', async () => {
+    const existing = {
+      id: 'invitation-1',
+      kind: 'chained',
+      lastResendAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      resendCount: 10,
+      resendWindowStartedAt: new Date(),
+    };
+    repo.findPendingById.mockResolvedValueOnce(existing);
+
+    await expect(
+      createManager().resend({
+        churchId,
+        ministryId,
+        ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+        callerId: adminId,
+      }),
+    ).rejects.toBeInstanceOf(ResendDailyCapExceededError);
+    expect(repo.applyResend).not.toHaveBeenCalled();
+    expect(repo.enqueueOutboxMessage).not.toHaveBeenCalled();
+  });
+
+  it('allows a resend once the daily-cap window has rolled over', async () => {
+    const existing = {
+      id: 'invitation-1',
+      kind: 'chained',
+      lastResendAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+      resendCount: 10,
+      resendWindowStartedAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+    };
+    repo.findPendingById.mockResolvedValueOnce(existing);
+    repo.applyResend.mockResolvedValueOnce(existing);
+
+    await expect(
+      createManager().resend({
+        churchId,
+        ministryId,
+        ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+        callerId: adminId,
+      }),
+    ).resolves.toBe(existing);
+    expect(repo.applyResend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        throttle: expect.objectContaining({ resendCount: 1 }),
+      }),
     );
   });
 });

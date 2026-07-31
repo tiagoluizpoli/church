@@ -30,6 +30,10 @@ export interface MinistryInvitationProps {
   expiresAt: Date;
   /** Roles the invitee is invited to fill. Never authorization — a qualification. */
   roleIds: RoleId[];
+  /** Resend cooldown/cap bookkeeping (§6.4) — undefined/0 until the first resend. */
+  lastResendAt?: Date;
+  resendCount?: number;
+  resendWindowStartedAt?: Date;
 }
 
 /**
@@ -91,6 +95,18 @@ export class MinistryInvitation extends Entity<
 
   get roleIds(): RoleId[] {
     return this._props.roleIds;
+  }
+
+  get lastResendAt(): Date | undefined {
+    return this._props.lastResendAt;
+  }
+
+  get resendCount(): number {
+    return this._props.resendCount ?? 0;
+  }
+
+  get resendWindowStartedAt(): Date | undefined {
+    return this._props.resendWindowStartedAt;
   }
 
   /** Never a bearer link: a chained invitation has no invitee of its own yet. */

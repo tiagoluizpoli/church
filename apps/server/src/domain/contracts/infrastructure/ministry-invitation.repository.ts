@@ -9,6 +9,11 @@ export interface AcquireMintLockInput {
   tx: TransactionContext;
 }
 
+export interface AcquireResendLockInput {
+  ministryInvitationId: string;
+  tx: TransactionContext;
+}
+
 export interface FindChurchMemberByEmailInput {
   churchId: ChurchId;
   email: string;
@@ -80,6 +85,20 @@ export interface RefreshMinistryInvitationExpiryInput {
   tx?: TransactionContext;
 }
 
+export interface ResendThrottleFields {
+  lastResendAt: Date;
+  resendCount: number;
+  resendWindowStartedAt: Date;
+}
+
+export interface ApplyResendInput {
+  churchId: ChurchId;
+  ministryInvitation: MinistryInvitation;
+  expiresAt: Date;
+  throttle: ResendThrottleFields;
+  tx?: TransactionContext;
+}
+
 export interface FindByIdInput {
   churchId: ChurchId;
   ministryInvitationId: string;
@@ -114,6 +133,14 @@ export interface MinistryInvitationRepository {
    * violation instead of the idempotent refresh the caller expects.
    */
   acquireMintLock(input: AcquireMintLockInput): Promise<void>;
+
+  /**
+   * Serializes concurrent resends of the same invitation behind a
+   * transaction-scoped advisory lock, so two simultaneous resend calls can't
+   * both read the same cooldown/cap state and both pass the check — the
+   * same failure mode `acquireMintLock` prevents for concurrent mints.
+   */
+  acquireResendLock(input: AcquireResendLockInput): Promise<void>;
 
   /** The userId of an existing Church Member whose email matches — `null` for anyone else. */
   findChurchMemberByEmail(
@@ -165,6 +192,9 @@ export interface MinistryInvitationRepository {
   refreshExpiry(
     input: RefreshMinistryInvitationExpiryInput,
   ): Promise<MinistryInvitation>;
+
+  /** Refreshes `expiresAt` and persists resend-throttle bookkeeping in one write — resend's variant of `refreshExpiry`. */
+  applyResend(input: ApplyResendInput): Promise<MinistryInvitation>;
 
   enqueueOutboxMessage(input: EnqueueOutboxMessageInput): Promise<void>;
 }

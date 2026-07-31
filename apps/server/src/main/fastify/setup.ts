@@ -50,6 +50,8 @@ const ERROR_MAP: Record<string, { status: number }> = {
   HARD_CONSTRAINT_VIOLATION: { status: 409 },
   BELOW_FULL_PUBLISH: { status: 409 },
   INVITEE_ALREADY_MINISTRY_MEMBER: { status: 409 },
+  RESEND_COOLDOWN_ACTIVE: { status: 429 },
+  RESEND_DAILY_CAP_EXCEEDED: { status: 429 },
   EMPTY_SCHEDULE: { status: 422 },
   PAST_EVENT: { status: 422 },
   PUBLISH_VALIDATION: { status: 422 },

@@ -14,6 +14,8 @@ export const env = createEnv({
     ASSIGNMENT_CANCEL_LEAD_TIME_DAYS: z.coerce.number().int().min(0).default(3),
     RESEND_API_KEY: z.string().optional(),
     RESEND_FROM_EMAIL: z.string().default('Church <onboarding@resend.dev>'),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
+    OUTBOX_DRAIN_BATCH_SIZE: z.coerce.number().int().min(1).default(10),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),

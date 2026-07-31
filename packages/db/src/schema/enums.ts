@@ -98,6 +98,7 @@ export const outboxMessageKindEnum = pgEnum('outbox_message_kind', [
 
 export const outboxMessageStatusEnum = pgEnum('outbox_message_status', [
   'pending',
+  'processing',
   'sent',
   'failed',
 ]);

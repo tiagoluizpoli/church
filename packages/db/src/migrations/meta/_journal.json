@@ -36,6 +36,13 @@
       "when": 1785470631701,
       "tag": "0004_ministry-invitation-rewrite-and-outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785523655199,
+      "tag": "0005_robust_the_watchers",
+      "breakpoints": true
     }
   ]
 }

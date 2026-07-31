@@ -1,0 +1,1 @@
+ALTER TYPE "public"."outbox_message_status" ADD VALUE 'processing' BEFORE 'sent';

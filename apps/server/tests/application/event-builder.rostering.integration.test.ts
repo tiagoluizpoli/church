@@ -11,7 +11,7 @@ import {
   user as userTable,
   volunteer as volunteerTable,
 } from '@church/db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
@@ -25,6 +25,8 @@ import {
   UserId,
   VolunteerId,
 } from '../../src/domain/branded-ids';
+import { HardConstraintError } from '../../src/domain/conflict/errors/hard-constraint-error';
+import type { TransactionContext } from '../../src/domain/contracts/infrastructure/transaction-context';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
@@ -35,14 +37,17 @@ import { DrizzlePlanningEventRepository } from '../../src/infrastructure/reposit
 import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleTransactionContext } from '../../src/infrastructure/repositories/drizzle-transaction-context';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
+import type { AnyDrizzleDb } from '../../src/infrastructure/repositories/types';
 import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
+  schedulingTestPool,
   seedSchedulingPhase3Base,
 } from '../scheduling-reshape/setup';
 
@@ -64,7 +69,9 @@ function createParticipationManager(): DbParticipationManager {
   );
 }
 
-function createAssignmentManager(): DbAssignmentManager {
+function createAssignmentManager(input?: {
+  volunteerRepository?: DrizzleVolunteerRepository;
+}): DbAssignmentManager {
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
   return new DbAssignmentManager(
     new DrizzleAssignmentRepository({ db: schedulingTestDb }),
@@ -72,7 +79,8 @@ function createAssignmentManager(): DbAssignmentManager {
     new DrizzleShiftRepository({ db: schedulingTestDb }),
     new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
     new DrizzleMinistryRepository({ db: schedulingTestDb }),
-    new DrizzleVolunteerRepository({ db: schedulingTestDb }),
+    input?.volunteerRepository ??
+      new DrizzleVolunteerRepository({ db: schedulingTestDb }),
     new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
     new DrizzlePlanningEventRepository({ db: schedulingTestDb }),
     createNotificationServiceSpy(),
@@ -212,6 +220,79 @@ const CYCLE_START = new Date('2026-08-01T00:00:00.000Z');
 const CYCLE_END = new Date('2026-09-01T00:00:00.000Z');
 const EVENT_START = new Date('2026-08-02T12:00:00.000Z');
 const EVENT_END = new Date('2026-08-02T15:00:00.000Z');
+const ROSTER_LOCK_WAIT_TIMEOUT_MS = 10_000;
+const LOCK_WAIT_POLL_INTERVAL_MS = 10;
+
+interface LockedRosterQueryRow {
+  isBlocked: boolean;
+}
+
+interface RosterLockObserverInput {
+  rosterBackendPid: number;
+  sweepBackendPid: number;
+}
+
+class RosterTrackingVolunteerRepository extends DrizzleVolunteerRepository {
+  constructor(
+    private readonly onRosterBackendPid: (backendPid: number) => void,
+  ) {
+    super({ db: schedulingTestDb });
+  }
+
+  override async hasMembershipInMinistry(
+    churchId: ChurchId,
+    volunteerId: VolunteerId,
+    ministryId: MinistryId,
+    tx?: TransactionContext,
+  ): Promise<boolean> {
+    if (!(tx instanceof DrizzleTransactionContext)) {
+      throw new Error('Roster membership check did not receive a transaction');
+    }
+    const result = await tx.tx.execute(
+      sql`SELECT pg_backend_pid() AS "backendPid"`,
+    );
+    this.onRosterBackendPid(readBackendPid(result));
+    return super.hasMembershipInMinistry(churchId, volunteerId, ministryId, tx);
+  }
+}
+
+function readBackendPid(result: { rows: Record<string, unknown>[] }): number {
+  const backendPid = result.rows[0]?.backendPid;
+  if (typeof backendPid !== 'number') {
+    throw new Error('Could not identify the transaction backend');
+  }
+  return backendPid;
+}
+
+async function waitForRosteringMembershipLock(
+  input: RosterLockObserverInput,
+): Promise<void> {
+  const deadline = Date.now() + ROSTER_LOCK_WAIT_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const { rows } = await schedulingTestPool.query<LockedRosterQueryRow>(
+      `
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_stat_activity activity
+        WHERE activity.pid = $1
+          AND activity.state = 'active'
+          AND activity.wait_event_type = 'Lock'
+          AND $2 = ANY(pg_blocking_pids(activity.pid))
+      ) AS "isBlocked"
+    `,
+      [input.rosterBackendPid, input.sweepBackendPid],
+    );
+    if (rows[0]?.isBlocked) {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, LOCK_WAIT_POLL_INTERVAL_MS);
+    });
+  }
+  throw new Error(
+    'Roster membership query did not block on the transfer sweep within 10 seconds',
+  );
+}
 
 describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
   beforeEach(async () => {
@@ -497,6 +578,152 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
         expect.objectContaining({ type: 'NOT_QUALIFIED' }),
       ]),
     );
+  });
+});
+
+describe('DbAssignmentManager.createParticipationAssignment membership race (issue #61)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('does not commit an assignment after the transfer sweep has passed the membership', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Membership Lock Cycle',
+      startDate: CYCLE_START,
+      endDate: CYCLE_END,
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Membership Lock Service',
+      startDate: EVENT_START,
+      endDate: EVENT_END,
+    });
+    const shiftId = await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: EVENT_START,
+      endTime: EVENT_END,
+    });
+    const roleId = await seedRoleRequirement({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      participationId: graph.participation.id,
+      shiftId,
+    });
+    await seedRoleQualification({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      volunteerId: seed.adminVolunteerId,
+      roleId,
+    });
+    const [membership] = await schedulingTestDb
+      .select({ id: ministryVolunteerTable.id })
+      .from(ministryVolunteerTable)
+      .where(
+        and(
+          eq(ministryVolunteerTable.churchId, seed.churchAId),
+          eq(ministryVolunteerTable.ministryId, seed.ministryAId),
+          eq(ministryVolunteerTable.volunteerId, seed.adminVolunteerId),
+        ),
+      );
+    if (!membership) {
+      throw new Error('Active ministry membership was not seeded');
+    }
+
+    let releaseSweep: (() => void) | undefined;
+    const sweepPaused = new Promise<void>((resolve) => {
+      releaseSweep = resolve;
+    });
+    let signalUpdateIssued: () => void;
+    const updateIssued = new Promise<void>((resolve) => {
+      signalUpdateIssued = resolve;
+    });
+    let signalSweepBackendPid: (backendPid: number) => void;
+    const sweepBackendPid = new Promise<number>((resolve) => {
+      signalSweepBackendPid = resolve;
+    });
+    const sweepPromise = (schedulingTestDb as AnyDrizzleDb).transaction(
+      async (tx) => {
+        const result = await tx.execute(
+          sql`SELECT pg_backend_pid() AS "backendPid"`,
+        );
+        signalSweepBackendPid(readBackendPid(result));
+        await tx
+          .update(ministryVolunteerTable)
+          .set({ status: 'inactive' })
+          .where(eq(ministryVolunteerTable.id, membership.id));
+        signalUpdateIssued();
+        await sweepPaused;
+      },
+    );
+
+    await updateIssued;
+    let signalRosterBackendPid: (backendPid: number) => void = () => {
+      throw new Error('Roster backend observer was not initialized');
+    };
+    const rosterBackendPid = new Promise<number>((resolve) => {
+      signalRosterBackendPid = resolve;
+    });
+    const assignmentManager = createAssignmentManager({
+      volunteerRepository: new RosterTrackingVolunteerRepository(
+        signalRosterBackendPid,
+      ),
+    });
+    const rosterPromise = assignmentManager
+      .createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shiftId),
+        volunteerId: VolunteerId.from(seed.adminVolunteerId),
+        roleId: RoleId.from(roleId),
+        actorId: UserId.from(seed.adminUserId),
+      })
+      .then(
+        (result) => ({ ok: true as const, result }),
+        (error: unknown) => ({ ok: false as const, error }),
+      );
+
+    const [sweepPid, rosterPid] = await Promise.all([
+      sweepBackendPid,
+      rosterBackendPid,
+    ]);
+    let lockWaitError: unknown;
+    try {
+      await waitForRosteringMembershipLock({
+        rosterBackendPid: rosterPid,
+        sweepBackendPid: sweepPid,
+      });
+    } catch (error) {
+      lockWaitError = error;
+    }
+    if (!releaseSweep) {
+      throw new Error('Transfer sweep pause was not initialized');
+    }
+    releaseSweep();
+    await sweepPromise;
+    const rosterOutcome = await rosterPromise;
+
+    if (lockWaitError) {
+      throw lockWaitError;
+    }
+    expect(rosterOutcome.ok).toBe(false);
+    if (rosterOutcome.ok) {
+      return;
+    }
+    expect(rosterOutcome.error).toBeInstanceOf(HardConstraintError);
+    expect((rosterOutcome.error as HardConstraintError).reason).toBe(
+      'NOT_IN_MINISTRY',
+    );
+    const assignments = await schedulingTestDb
+      .select({ id: assignmentTable.id })
+      .from(assignmentTable)
+      .where(eq(assignmentTable.volunteerId, seed.adminVolunteerId));
+    expect(assignments).toHaveLength(0);
   });
 });
 

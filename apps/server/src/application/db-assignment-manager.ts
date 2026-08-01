@@ -224,23 +224,13 @@ export class DbAssignmentManager implements IAssignmentManager {
       tx,
     );
 
-    const [hasMembership, hasQualification, existingShiftAssignments] =
-      await Promise.all([
-        this.volunteerRepository.hasMembershipInMinistry(
-          input.churchId,
-          input.volunteerId,
-          participation.ministryId,
-          tx,
-        ),
-        this.volunteerRepository.hasRoleQualification(
-          input.churchId,
-          input.volunteerId,
-          participation.ministryId,
-          input.roleId,
-          tx,
-        ),
-        this.assignmentRepo.listByShift(input.churchId, shift.id, tx),
-      ]);
+    const hasMembership =
+      await this.volunteerRepository.hasMembershipInMinistry(
+        input.churchId,
+        input.volunteerId,
+        participation.ministryId,
+        tx,
+      );
 
     if (!hasMembership) {
       throw new HardConstraintError(
@@ -248,6 +238,20 @@ export class DbAssignmentManager implements IAssignmentManager {
         'Volunteer does not belong to the requested ministry',
       );
     }
+
+    const hasQualification =
+      await this.volunteerRepository.hasRoleQualification(
+        input.churchId,
+        input.volunteerId,
+        participation.ministryId,
+        input.roleId,
+        tx,
+      );
+    const existingShiftAssignments = await this.assignmentRepo.listByShift(
+      input.churchId,
+      shift.id,
+      tx,
+    );
 
     const warnings: CreateParticipationAssignmentResult['warnings'] = [];
     if (!hasQualification) {
@@ -276,20 +280,20 @@ export class DbAssignmentManager implements IAssignmentManager {
       );
     }
 
-    const [availabilityMarks, overlappingAssignments] = await Promise.all([
-      this.availabilityRepository.listByVolunteers(
+    const availabilityMarks =
+      await this.availabilityRepository.listByVolunteers(
         input.churchId,
         [input.volunteerId],
         tx,
-      ),
-      this.assignmentRepo.listByVolunteerInRange(
+      );
+    const overlappingAssignments =
+      await this.assignmentRepo.listByVolunteerInRange(
         input.churchId,
         input.volunteerId,
         shift.startTime,
         shift.endTime,
         tx,
-      ),
-    ]);
+      );
 
     if (
       availabilityMarks.some(

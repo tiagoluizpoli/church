@@ -1,6 +1,7 @@
 import type {
   EmailPayload,
   EmailSender,
+  SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
 
@@ -11,7 +12,7 @@ import type {
 export class CaptureEmailSender implements EmailSender {
   readonly sent: EmailPayload[] = [];
 
-  async send(payload: EmailPayload): Promise<SendEmailResult> {
+  async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
     this.sent.push(payload);
     return {};
   }

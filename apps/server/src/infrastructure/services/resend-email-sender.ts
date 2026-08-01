@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import type {
   EmailPayload,
   EmailSender,
+  SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { EmailSendError } from '../../domain/errors/email-send-error';
@@ -14,6 +15,14 @@ export interface ResendEmailSenderOptions {
 interface ComposedEmail {
   subject: string;
   html: string;
+}
+
+interface ComposeEmailInput {
+  payload: EmailPayload;
+}
+
+interface SendViaResendInput {
+  request: Parameters<Resend['emails']['send']>[0];
 }
 
 /**
@@ -40,14 +49,16 @@ export class ResendEmailSender implements EmailSender {
     this.from = from;
   }
 
-  async send(payload: EmailPayload): Promise<SendEmailResult> {
-    const { subject, html } = composeEmail(payload);
+  async send({ payload }: SendEmailInput): Promise<SendEmailResult> {
+    const { subject, html } = composeEmail({ payload });
 
     const { data, error } = await this.sendViaResend({
-      from: this.from,
-      to: payload.to,
-      subject,
-      html,
+      request: {
+        from: this.from,
+        to: payload.to,
+        subject,
+        html,
+      },
     });
 
     if (error) {
@@ -60,9 +71,9 @@ export class ResendEmailSender implements EmailSender {
     return { providerMessageId: data?.id };
   }
 
-  private async sendViaResend(
-    request: Parameters<Resend['emails']['send']>[0],
-  ): ReturnType<Resend['emails']['send']> {
+  private async sendViaResend({
+    request,
+  }: SendViaResendInput): ReturnType<Resend['emails']['send']> {
     try {
       return await this.client.emails.send(request);
     } catch (cause) {
@@ -77,7 +88,7 @@ export class ResendEmailSender implements EmailSender {
   }
 }
 
-function composeEmail(payload: EmailPayload): ComposedEmail {
+function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
   switch (payload.kind) {
     case 'invitation.chained':
     case 'invitation.ministry':
@@ -89,6 +100,11 @@ function composeEmail(payload: EmailPayload): ComposedEmail {
           <p>This invitation expires on ${payload.expiresAt.toDateString()}.</p>
           <p><a href="${payload.redemptionUrl}">Accept invitation</a></p>
         `,
+      };
+    case 'invitation.verification-code':
+      return {
+        subject: `Your ${payload.churchName} verification code`,
+        html: `<p>Your verification code is <strong>${payload.code}</strong>.</p><p>It expires in 10 minutes.</p>`,
       };
     case 'invitation.church-bootstrap':
       return {

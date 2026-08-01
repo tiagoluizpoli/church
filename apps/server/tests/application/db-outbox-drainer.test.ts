@@ -94,11 +94,13 @@ describe('DbOutboxDrainer.drainOnce', () => {
     expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
     expect(emailSender.send).toHaveBeenCalledWith(
       expect.objectContaining({
-        kind: 'invitation.ministry',
-        to: 'invitee@example.com',
-        churchName: 'Grace Church',
-        ministryName: 'Worship Team',
-        roleNames: ['Vocalist'],
+        payload: expect.objectContaining({
+          kind: 'invitation.ministry',
+          to: 'invitee@example.com',
+          churchName: 'Grace Church',
+          ministryName: 'Worship Team',
+          roleNames: ['Vocalist'],
+        }),
       }),
     );
     expect(outboxRepository.markSent).toHaveBeenCalledWith(

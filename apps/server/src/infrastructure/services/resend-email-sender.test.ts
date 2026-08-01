@@ -60,7 +60,9 @@ describe('ResendEmailSender', () => {
     sendMock.mockRejectedValue(new Error('fetch failed'));
     const sender = makeSender();
 
-    await expect(sender.send(buildChainedPayload())).rejects.toMatchObject({
+    await expect(
+      sender.send({ payload: buildChainedPayload() }),
+    ).rejects.toMatchObject({
       message: 'fetch failed',
       retryable: true,
     });
@@ -70,7 +72,7 @@ describe('ResendEmailSender', () => {
     sendMock.mockResolvedValue({ data: { id: 'email-1' }, error: null });
     const sender = makeSender();
 
-    const result = await sender.send(buildChainedPayload());
+    const result = await sender.send({ payload: buildChainedPayload() });
 
     expect(sendMock).toHaveBeenCalledWith({
       from: 'Church <hi@church.test>',
@@ -85,7 +87,7 @@ describe('ResendEmailSender', () => {
     sendMock.mockResolvedValue({ data: { id: 'email-2' }, error: null });
     const sender = makeSender();
 
-    await sender.send(buildBootstrapPayload());
+    await sender.send({ payload: buildBootstrapPayload() });
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({ html: expect.not.stringContaining('Roles:') }),
@@ -107,7 +109,7 @@ describe('ResendEmailSender', () => {
     const sender = makeSender();
 
     await expect(
-      sender.send(buildChainedPayload() as EmailPayload),
+      sender.send({ payload: buildChainedPayload() as EmailPayload }),
     ).rejects.toMatchObject({
       message: 'send failed',
       retryable,

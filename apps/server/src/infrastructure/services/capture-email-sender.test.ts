@@ -23,7 +23,7 @@ describe('CaptureEmailSender', () => {
     const sender = new CaptureEmailSender();
     const payload = buildPayload();
 
-    const result = await sender.send(payload);
+    const result = await sender.send({ payload });
 
     expect(sender.sent).toEqual([payload]);
     expect(result).toEqual({});
@@ -34,8 +34,8 @@ describe('CaptureEmailSender', () => {
     const first = buildPayload({ to: 'first@example.com' });
     const second = buildPayload({ to: 'second@example.com' });
 
-    await sender.send(first);
-    await sender.send(second);
+    await sender.send({ payload: first });
+    await sender.send({ payload: second });
 
     expect(sender.sent).toEqual([first, second]);
   });

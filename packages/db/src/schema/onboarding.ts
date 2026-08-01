@@ -97,6 +97,40 @@ export const ministryInvitation = pgTable(
 );
 
 /**
+ * One replaceable verification-code lifecycle per pending Ministry Invitation.
+ * Only the SHA-256 digest persists. A resend replaces the digest, expiry and
+ * attempt count, deliberately invalidating every previously issued code.
+ */
+export const invitationVerificationCode = pgTable(
+  'invitation_verification_code',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ministryInvitationId: uuid('ministry_invitation_id')
+      .notNull()
+      .references(() => ministryInvitation.id, { onDelete: 'cascade' })
+      .unique(),
+    codeHash: text('code_hash').notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    failedAttempts: integer('failed_attempts').default(0).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true, mode: 'date' }),
+    lastSentAt: timestamp('last_sent_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+);
+
+/**
  * Mirrors `ministry_volunteer_role` with real FKs rather than a `uuid[]`
  * column, so a Role deleted between mint and acceptance cascades out of
  * the pending invitation instead of needing existence checking at

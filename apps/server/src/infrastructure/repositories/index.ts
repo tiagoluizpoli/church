@@ -5,6 +5,7 @@ export { DrizzleAvailabilityCheckRepository } from './drizzle-availability-check
 export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
 export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';
+export { DrizzleInvitationVerificationCodeRepository } from './drizzle-invitation-verification-code.repository';
 export { DrizzleMinistryRepository } from './drizzle-ministry.repository';
 export { DrizzleMinistryInvitationRepository } from './drizzle-ministry-invitation.repository';
 export { DrizzleMinistryParticipationRepository } from './drizzle-ministry-participation.repository';
@@ -12,6 +13,7 @@ export { DrizzleMinistryServingProfileRepository } from './drizzle-ministry-serv
 export { DrizzleOutboxRepository } from './drizzle-outbox.repository';
 export { DrizzlePlanningCycleRepository } from './drizzle-planning-cycle.repository';
 export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
+export { DrizzleRedemptionRepository } from './drizzle-redemption.repository';
 export { DrizzleRoleRepository } from './drizzle-role.repository';
 export { DrizzleShiftRepository } from './drizzle-shift.repository';
 export { DrizzleTeamRepository } from './drizzle-team.repository';

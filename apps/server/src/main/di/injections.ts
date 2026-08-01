@@ -25,7 +25,9 @@ import { DbOutboxDrainer } from '../../application/db-outbox-drainer';
 import { DbParticipationManager } from '../../application/db-participation-manager';
 import { DbPlanningCycleManager } from '../../application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
+import { DbRedemptionManager } from '../../application/db-redemption-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
+import { InvitationVerificationCodeManager } from '../../application/invitation-verification-code-manager';
 import { DrizzleAuthorityActorResolver } from '../../infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '../../infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '../../infrastructure/auth/drizzle-scheduling-scope-resolver';
@@ -37,6 +39,7 @@ import {
   DrizzleChurchRepository,
   DrizzleEventRepository,
   DrizzleEventTemplateRepository,
+  DrizzleInvitationVerificationCodeRepository,
   DrizzleMinistryInvitationRepository,
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
@@ -44,6 +47,7 @@ import {
   DrizzleOutboxRepository,
   DrizzlePlanningCycleRepository,
   DrizzlePlanningEventRepository,
+  DrizzleRedemptionRepository,
   DrizzleRoleRepository,
   DrizzleShiftRepository,
   DrizzleTeamRepository,
@@ -119,6 +123,12 @@ export function registerInjections(): void {
   container.register(injection.infra.ministryRepository, {
     useFactory: () => new DrizzleMinistryRepository({ db }),
   });
+  container.register(injection.infra.invitationVerificationCodeRepository, {
+    useFactory: () => new DrizzleInvitationVerificationCodeRepository({ db }),
+  });
+  container.register(injection.infra.redemptionRepository, {
+    useFactory: () => new DrizzleRedemptionRepository({ db }),
+  });
   container.register(injection.infra.ministryInvitationRepository, {
     useFactory: () => new DrizzleMinistryInvitationRepository({ db }),
   });
@@ -172,6 +182,25 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.ministryInvitationManager, {
     useClass: DbMinistryInvitationManager,
+  });
+  container.register(injection.managers.invitationVerificationCodeManager, {
+    useFactory: () =>
+      new InvitationVerificationCodeManager({
+        repository: container.resolve(
+          injection.infra.invitationVerificationCodeRepository,
+        ),
+        emailSender: container.resolve(injection.infra.emailSender),
+        verificationCodeSecret: env.BETTER_AUTH_SECRET,
+      }),
+  });
+  container.register(injection.managers.redemptionManager, {
+    useFactory: () =>
+      new DbRedemptionManager({
+        redemptionRepository: container.resolve(
+          injection.infra.redemptionRepository,
+        ),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.managers.outboxDrainer, {
     useClass: DbOutboxDrainer,

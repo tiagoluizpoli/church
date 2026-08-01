@@ -21,6 +21,13 @@ export interface MinistryInvitationEmail {
   redemptionUrl: string;
 }
 
+export interface VerificationCodeEmail {
+  kind: 'invitation.verification-code';
+  to: string;
+  churchName: string;
+  code: string;
+}
+
 export interface ChurchBootstrapInvitationEmail {
   kind: 'invitation.church-bootstrap';
   to: string;
@@ -30,6 +37,7 @@ export interface ChurchBootstrapInvitationEmail {
 
 export type EmailPayload =
   | MinistryInvitationEmail
+  | VerificationCodeEmail
   | ChurchBootstrapInvitationEmail;
 
 export interface SendEmailResult {
@@ -37,6 +45,10 @@ export interface SendEmailResult {
   providerMessageId?: string;
 }
 
+export interface SendEmailInput {
+  payload: EmailPayload;
+}
+
 export interface EmailSender {
-  send(payload: EmailPayload): Promise<SendEmailResult>;
+  send(input: SendEmailInput): Promise<SendEmailResult>;
 }

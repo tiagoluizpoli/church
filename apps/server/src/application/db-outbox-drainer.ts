@@ -118,7 +118,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     };
 
     try {
-      const result = await this.emailSender.send(payload);
+      const result = await this.emailSender.send({ payload });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.markSent({
           id: message.id,

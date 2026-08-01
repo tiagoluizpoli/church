@@ -133,7 +133,8 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryVolunteer.churchId, churchId),
           eq(ministryVolunteer.status, 'active'),
         ),
-      );
+      )
+      .for('share');
     return row != null;
   }
 

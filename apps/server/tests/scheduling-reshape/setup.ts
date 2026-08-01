@@ -19,8 +19,11 @@ import pg from 'pg';
 
 const DATABASE_URL = getTestDatabaseUrl();
 
-const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
-export const schedulingTestDb = drizzle(pool, { schema });
+export const schedulingTestPool = new pg.Pool({
+  connectionString: DATABASE_URL,
+  max: 3,
+});
+export const schedulingTestDb = drizzle(schedulingTestPool, { schema });
 
 export interface SchedulingPhase3Seed {
   churchAId: string;

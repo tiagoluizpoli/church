@@ -108,6 +108,42 @@ describe('verification code persistence', () => {
     ).toHaveLength(1);
   });
 
+  it('resumes only the redemption request that consumed the code', async () => {
+    const invitation = await mintInvitation();
+    const { verificationCodeManager } = createHarness();
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const idempotencyKey = '11111111-1111-4111-8111-111111111111';
+    await verificationCodeManager.issue({
+      ministryInvitationId: invitation.id,
+      recipientEmail: 'new-redemption-user@fixture.test',
+      churchName: fixture.churchA.name,
+      now,
+    });
+
+    await verificationCodeManager.verify({
+      ministryInvitationId: invitation.id,
+      code: '123456',
+      idempotencyKey,
+      now,
+    });
+    await expect(
+      verificationCodeManager.verify({
+        ministryInvitationId: invitation.id,
+        code: '123456',
+        idempotencyKey,
+        now,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      verificationCodeManager.verify({
+        ministryInvitationId: invitation.id,
+        code: '123456',
+        idempotencyKey: '22222222-2222-4222-8222-222222222222',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
+  });
+
   it('never increments past five failed attempts under concurrent invalid submissions', async () => {
     const invitation = await mintInvitation();
     const { verificationCodeManager } = createHarness();

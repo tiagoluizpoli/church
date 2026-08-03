@@ -27,6 +27,7 @@ export const injection = {
     notificationService: 'INotificationService',
     featureFlagService: 'IFeatureFlagService',
     emailSender: 'IEmailSender',
+    redemptionIdentityGateway: 'IRedemptionIdentityGateway',
   },
   managers: {
     eventManager: 'IEventManager',

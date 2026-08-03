@@ -74,6 +74,12 @@ export const E2E_AUTH_META_SCHEMA = z.object({
   churchBAdminUserId: z.string().min(1),
 });
 
+interface AuthUserCredentials {
+  email: string;
+  password: string;
+  name: string;
+}
+
 function makeUniqueEmail(label: string): string {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `${label}-${suffix}@test.com`;
@@ -81,10 +87,22 @@ function makeUniqueEmail(label: string): string {
 
 async function authUser(
   ctx: Awaited<ReturnType<typeof request.newContext>>,
-  creds: { email: string; password: string; name: string },
+  creds: AuthUserCredentials,
 ): Promise<string> {
-  const res = await ctx.post(`${SERVER_URL}/api/auth/sign-up/email`, {
-    data: creds,
+  execFileSync(
+    'bun',
+    [
+      '--env-file=../../.env',
+      'run',
+      'src/scripts/e2e-create-user.ts',
+      creds.email,
+      creds.name,
+      creds.password,
+    ],
+    { cwd: SERVER_DIR },
+  );
+  const res = await ctx.post(`${SERVER_URL}/api/auth/sign-in/email`, {
+    data: { email: creds.email, password: creds.password },
   });
   if (!res.ok()) {
     throw new Error(

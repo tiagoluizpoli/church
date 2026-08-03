@@ -57,6 +57,13 @@
       "when": 1785553619220,
       "tag": "0007_shiny_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785724596041,
+      "tag": "0008_cuddly_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }

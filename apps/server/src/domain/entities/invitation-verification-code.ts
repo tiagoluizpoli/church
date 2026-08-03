@@ -7,6 +7,7 @@ export interface VerificationCodeState {
   expiresAt: Date;
   failedAttempts: number;
   consumedAt: Date | null;
+  redemptionIdempotencyKey: string | null;
   lastSentAt: Date;
 }
 

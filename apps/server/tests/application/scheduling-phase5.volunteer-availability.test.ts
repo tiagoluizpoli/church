@@ -13,7 +13,7 @@ import {
   volunteerNotification,
 } from '@church/db';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
 import {
   AvailabilityCheckId,
@@ -627,6 +627,8 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
   });
 
   it('getDashboard aggregates availability tasks, upcoming assignment groups, notification preview, and ministry options', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-01T00:00:00.000Z'));
     const fixture = await seedPhase5Fixture();
     const { volunteerManager } = createPhase5Manager();
     const churchId = ChurchId.from(fixture.seed.churchAId);
@@ -712,6 +714,7 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
     expect(dashboard.ministryOptions).toContainEqual(
       expect.objectContaining({ id: fixture.seed.ministryAId }),
     );
+    vi.useRealTimers();
   });
 
   it('getUpcomingAssignments only includes shifts starting within the 30 day window', async () => {

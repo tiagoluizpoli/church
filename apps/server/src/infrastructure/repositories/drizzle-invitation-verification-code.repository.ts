@@ -62,6 +62,7 @@ export class DrizzleInvitationVerificationCodeRepository
         lastSentAt: sentAt,
         failedAttempts: 0,
         consumedAt: null,
+        redemptionIdempotencyKey: null,
       })
       .onConflictDoUpdate({
         target: invitationVerificationCode.ministryInvitationId,
@@ -71,6 +72,7 @@ export class DrizzleInvitationVerificationCodeRepository
           lastSentAt: sentAt,
           failedAttempts: 0,
           consumedAt: null,
+          redemptionIdempotencyKey: null,
         },
         where: or(
           isNull(invitationVerificationCode.lastSentAt),
@@ -106,10 +108,11 @@ export class DrizzleInvitationVerificationCodeRepository
     candidateHash,
     consumedAt,
     now,
+    redemptionIdempotencyKey,
   }: ConsumeVerificationCodeIfValidInput): Promise<boolean> {
     const [row] = await this.db
       .update(invitationVerificationCode)
-      .set({ consumedAt })
+      .set({ consumedAt, redemptionIdempotencyKey })
       .where(
         and(
           eq(
@@ -174,6 +177,7 @@ function mapVerificationCode({
     expiresAt: row.expiresAt,
     failedAttempts: row.failedAttempts,
     consumedAt: row.consumedAt,
+    redemptionIdempotencyKey: row.redemptionIdempotencyKey,
     lastSentAt: row.lastSentAt,
   };
 }

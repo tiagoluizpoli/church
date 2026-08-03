@@ -4472,6 +4472,235 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/redemption/church/{invitationId}:
+    get:
+      operationId: previewChurchInvitation
+      tags:
+        - redemption
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email:
+                    type: string
+                    format: email
+                    pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+                  churchName:
+                    type: string
+                  ministryName:
+                    type: string
+                  ministryAccessLevel:
+                    type: string
+                    enum:
+                      - volunteer
+                      - leader
+                  roleNames:
+                    type: array
+                    items:
+                      type: string
+                  expiresAt:
+                    type: string
+                required:
+                  - email
+                  - churchName
+                  - ministryName
+                  - ministryAccessLevel
+                  - roleNames
+                  - expiresAt
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - INVITATION_UNAVAILABLE
+                required:
+                  - error
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - RATE_LIMITED
+                required:
+                  - error
+                additionalProperties: false
+  /api/v1/redemption/church/{invitationId}/code:
+    post:
+      operationId: requestChurchInvitationVerificationCode
+      tags:
+        - redemption
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - sent
+                required:
+                  - status
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - INVITATION_UNAVAILABLE
+                required:
+                  - error
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - RATE_LIMITED
+                required:
+                  - error
+                additionalProperties: false
+  /api/v1/redemption/church/{invitationId}/redeem:
+    post:
+      operationId: redeemChurchInvitation
+      tags:
+        - redemption
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                password:
+                  type: string
+                  minLength: 8
+                code:
+                  type: string
+                  pattern: ^\d{6}$
+                idempotencyKey:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              required:
+                - name
+                - password
+                - code
+                - idempotencyKey
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - full-success
+                      volunteerId:
+                        type: string
+                    required:
+                      - kind
+                      - volunteerId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - church-only
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - retryable-failure
+                      reason:
+                        type: string
+                        enum:
+                          - MINISTRY_ACCEPTANCE_FAILED
+                    required:
+                      - kind
+                      - reason
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - terminal-failure
+                      reason:
+                        type: string
+                        enum:
+                          - INVITATION_UNAVAILABLE
+                          - VERIFICATION_FAILED
+                          - IDENTITY_FAILED
+                    required:
+                      - kind
+                      - reason
+                    additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard

@@ -9,6 +9,7 @@ import {
   event,
   eventTemplate,
   invitation,
+  invitationVerificationCode,
   ministry,
   ministryInvitation,
   ministryInvitationRole,
@@ -218,6 +219,13 @@ async function seedEveryTenantedTable(): Promise<void> {
     ministryAccessLevel: 'volunteer',
     inviterId: IDS.user,
     expiresAt: new Date('2030-01-01T00:00:00Z'),
+  });
+
+  await testDb.insert(invitationVerificationCode).values({
+    ministryInvitationId: IDS.ministryInvitation,
+    codeHash: 'truncation-root-verification-code-hash',
+    expiresAt: new Date('2030-01-01T00:00:00Z'),
+    lastSentAt: new Date('2030-01-01T00:00:00Z'),
   });
 
   await testDb.insert(ministryInvitationRole).values({

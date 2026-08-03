@@ -22,6 +22,7 @@ export interface ConsumeVerificationCodeIfValidInput {
   candidateHash: string;
   consumedAt: Date;
   now: Date;
+  redemptionIdempotencyKey?: string;
 }
 
 export interface RecordFailedVerificationAttemptIfAllowedInput {

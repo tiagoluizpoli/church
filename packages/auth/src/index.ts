@@ -27,6 +27,9 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
     },
+    // Public registration is deliberately unavailable. Redemption uses the
+    // server API directly, which does not traverse this HTTP route.
+    disabledPaths: ['/sign-up/email'],
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {

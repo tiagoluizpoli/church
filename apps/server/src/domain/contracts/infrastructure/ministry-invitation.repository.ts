@@ -110,6 +110,25 @@ export interface ResolveRecipientEmailInput {
   tx?: TransactionContext;
 }
 
+export interface PublicRedemptionPreview {
+  ministryInvitationId: string;
+  churchId: ChurchId;
+  churchInvitationId: string;
+  email: string;
+  churchName: string;
+  ministryName: string;
+  ministryAccessLevel: MinistryAccessLevel;
+  roleNames: string[];
+  expiresAt: Date;
+  churchInvitationStatus: 'pending' | 'accepted';
+}
+
+export interface FindPublicRedemptionPreviewInput {
+  ministryInvitationId: string;
+  now: Date;
+  includeAcceptedChurchInvitation?: boolean;
+}
+
 export interface EnqueueOutboxMessageInput {
   churchId: ChurchId;
   kind:
@@ -172,6 +191,14 @@ export interface MinistryInvitationRepository {
    * Church Member's account email, or the chained Church Invitation's email.
    */
   resolveRecipientEmail(input: ResolveRecipientEmailInput): Promise<string>;
+
+  /**
+   * Public redemption lookup. All unavailable lifecycle states deliberately
+   * collapse to null so transport never reveals why a link cannot be used.
+   */
+  findPublicRedemptionPreview(
+    input: FindPublicRedemptionPreviewInput,
+  ): Promise<PublicRedemptionPreview | null>;
 
   hasActiveMinistryMembership(
     input: HasActiveMinistryMembershipInput,

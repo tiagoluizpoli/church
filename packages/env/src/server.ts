@@ -19,6 +19,11 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),
+    /** Non-production only, regardless of this flag — gates every debug-only
+     * HTTP route (e.g. redemption's verification-code readback for E2E), so
+     * a future public non-production environment (staging, ...) stays shut
+     * by default instead of inheriting every debug route via NODE_ENV alone. */
+    ENABLE_DEBUG_ENDPOINTS: z.stringbool().default(false),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

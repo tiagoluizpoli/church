@@ -12,6 +12,7 @@ import { LeaderRosteringController } from '../../api/controllers/leader-rosterin
 import { RedemptionController } from '../../api/controllers/redemption-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
+import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { DbActiveChurchResolver } from '../../application/db-active-church-resolver';
 import { DbActiveChurchSelectionManager } from '../../application/db-active-church-selection-manager';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
@@ -223,10 +224,9 @@ export function registerInjections(): void {
           injection.infra.redemptionRepository,
         ),
         unitOfWork: container.resolve(injection.infra.unitOfWork),
-        verificationCodeInspector:
-          env.NODE_ENV === 'production'
-            ? undefined
-            : container.resolve(injection.infra.verificationCodeInspector),
+        verificationCodeInspector: debugEndpointsEnabled()
+          ? container.resolve(injection.infra.verificationCodeInspector)
+          : undefined,
       }),
   });
   container.register(injection.managers.outboxDrainer, {

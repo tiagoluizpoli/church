@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { env } from '@church/env/server';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { MinistryInvitationId } from '../../domain/branded-ids';
@@ -17,6 +16,7 @@ import {
   unavailableRedemptionResponseSchema,
   verificationCodeRequestedResponseSchema,
 } from '../dtos/redemption.dto';
+import { debugEndpointsEnabled } from '../utils/debug-endpoints';
 
 type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
 type RedeemNewUserBody = z.infer<typeof redeemNewUserBodySchema>;
@@ -153,7 +153,7 @@ export class RedemptionController implements FastifyController {
       },
     );
 
-    if (env.NODE_ENV !== 'production') {
+    if (debugEndpointsEnabled()) {
       app.get(
         '/church/:invitationId/debug-code',
         {

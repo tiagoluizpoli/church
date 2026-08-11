@@ -11,7 +11,6 @@ import type {
 } from '../../domain/contracts/infrastructure/redemption-identity-gateway';
 
 const signInResponseSchema = z.object({
-  token: z.string(),
   user: z.object({ id: z.string() }),
 });
 
@@ -40,34 +39,32 @@ export class BetterAuthRedemptionIdentityGateway
       });
       return {
         userId: UserId.from(session.userId),
-        sessionToken: session.token,
         sessionCookie: session.cookie,
       };
     }
     const session = await this.createAuthenticatedSession({ email, password });
     return {
       userId: UserId.from(userId),
-      sessionToken: session.token,
       sessionCookie: session.cookie,
     };
   }
 
   async acceptChurchInvitation({
     churchInvitationId,
-    sessionToken,
+    sessionCookie,
   }: AcceptChurchInvitationInput): Promise<void> {
     await auth.api.acceptInvitation({
-      headers: new Headers({ authorization: `Bearer ${sessionToken}` }),
+      headers: new Headers({ cookie: sessionCookie }),
       body: { invitationId: churchInvitationId },
     });
   }
 
   async setActiveChurch({
     churchId,
-    sessionToken,
+    sessionCookie,
   }: SetActiveRedemptionChurchInput): Promise<void> {
     await auth.api.setActiveOrganization({
-      headers: new Headers({ authorization: `Bearer ${sessionToken}` }),
+      headers: new Headers({ cookie: sessionCookie }),
       body: { organizationId: churchId },
     });
   }
@@ -88,7 +85,6 @@ export class BetterAuthRedemptionIdentityGateway
     if (!response.ok || !cookie || !responseBody.success)
       throw new Error('Better Auth did not create a session cookie.');
     return {
-      token: responseBody.data.token,
       userId: responseBody.data.user.id,
       cookie,
     };
@@ -101,7 +97,6 @@ interface CreateAuthenticatedSessionInput {
 }
 
 interface AuthenticatedSession {
-  token: string;
   userId: string;
   cookie: string;
 }

@@ -22,6 +22,7 @@ const redemptionManager: RedemptionManager = {
   requestVerificationCode: vi.fn(),
   redeemNewUser: vi.fn(),
   acceptPendingMinistryInvitation: vi.fn(),
+  getDebugVerificationCode: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -207,5 +208,33 @@ describe('RedemptionController', () => {
       kind: 'terminal-failure',
       reason: 'VERIFICATION_FAILED',
     });
+  });
+
+  it('hands back the debug verification code the manager reports', async () => {
+    vi.mocked(redemptionManager.getDebugVerificationCode).mockResolvedValue(
+      '654321',
+    );
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/church/${INVITATION_ID}/debug-code`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ code: '654321' });
+  });
+
+  it('404s the debug-code route when no code was captured for the invitation', async () => {
+    vi.mocked(redemptionManager.getDebugVerificationCode).mockResolvedValue(
+      null,
+    );
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/church/${INVITATION_ID}/debug-code`,
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: 'INVITATION_UNAVAILABLE' });
   });
 });

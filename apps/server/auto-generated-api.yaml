@@ -4701,6 +4701,47 @@ paths:
                       - kind
                       - reason
                     additionalProperties: false
+  /api/v1/redemption/church/{invitationId}/debug-code:
+    get:
+      operationId: debugGetChurchInvitationVerificationCode
+      tags:
+        - redemption-debug
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    pattern: ^\d{6}$
+                required:
+                  - code
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - INVITATION_UNAVAILABLE
+                required:
+                  - error
+                additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard

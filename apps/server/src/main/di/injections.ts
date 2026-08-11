@@ -162,15 +162,24 @@ export function registerInjections(): void {
     injection.infra.featureFlagService,
     UnleashFeatureFlagService,
   );
-  container.register(injection.infra.emailSender, {
-    useFactory: () =>
-      env.NODE_ENV === 'production'
-        ? new ResendEmailSender({
-            apiKey: env.RESEND_API_KEY ?? '',
-            from: env.RESEND_FROM_EMAIL,
-          })
-        : new CaptureEmailSender(),
-  });
+  if (env.NODE_ENV === 'production') {
+    container.register(injection.infra.emailSender, {
+      useFactory: () =>
+        new ResendEmailSender({
+          apiKey: env.RESEND_API_KEY ?? '',
+          from: env.RESEND_FROM_EMAIL,
+        }),
+    });
+  } else {
+    // One shared instance outside production: the redemption debug route
+    // reads back what the verification-code manager just sent through it.
+    const captureEmailSender = new CaptureEmailSender();
+    container.registerInstance(injection.infra.emailSender, captureEmailSender);
+    container.registerInstance(
+      injection.infra.verificationCodeInspector,
+      captureEmailSender,
+    );
+  }
 
   // Managers
   container.register(injection.managers.assignmentManager, {
@@ -214,6 +223,10 @@ export function registerInjections(): void {
           injection.infra.redemptionRepository,
         ),
         unitOfWork: container.resolve(injection.infra.unitOfWork),
+        verificationCodeInspector:
+          env.NODE_ENV === 'production'
+            ? undefined
+            : container.resolve(injection.infra.verificationCodeInspector),
       }),
   });
   container.register(injection.managers.outboxDrainer, {

@@ -39,4 +39,37 @@ describe('CaptureEmailSender', () => {
 
     expect(sender.sent).toEqual([first, second]);
   });
+
+  it('returns the most recently captured verification code for the recipient', async () => {
+    const sender = new CaptureEmailSender();
+    await sender.send({
+      payload: {
+        kind: 'invitation.verification-code',
+        to: 'invitee@example.com',
+        churchName: 'Grace Church',
+        code: '111111',
+      },
+    });
+    await sender.send({
+      payload: {
+        kind: 'invitation.verification-code',
+        to: 'invitee@example.com',
+        churchName: 'Grace Church',
+        code: '222222',
+      },
+    });
+
+    expect(sender.lastVerificationCodeFor({ to: 'invitee@example.com' })).toBe(
+      '222222',
+    );
+  });
+
+  it('returns undefined when no verification code was captured for the recipient', async () => {
+    const sender = new CaptureEmailSender();
+    await sender.send({ payload: buildPayload({ to: 'other@example.com' }) });
+
+    expect(
+      sender.lastVerificationCodeFor({ to: 'invitee@example.com' }),
+    ).toBeUndefined();
+  });
 });

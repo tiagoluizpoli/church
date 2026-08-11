@@ -7,6 +7,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { ChurchId, VolunteerId } from '../../domain/branded-ids';
 import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import { createFastify } from '../../main/fastify/setup';
@@ -50,7 +51,7 @@ beforeEach(() => {
 describe('RedemptionController', () => {
   it('returns only the public preview fields for an available invitation', async () => {
     vi.mocked(redemptionManager.getPublicPreview).mockResolvedValue({
-      churchId: '33333333-3333-4333-8333-333333333333' as never,
+      churchId: ChurchId.from('33333333-3333-4333-8333-333333333333'),
       churchInvitationId: '44444444-4444-4444-8444-444444444444',
       email: 'invitee@example.test',
       churchName: 'St. Peter',
@@ -139,7 +140,7 @@ describe('RedemptionController', () => {
   it('forwards the authenticated session cookie on a full redemption', async () => {
     vi.mocked(redemptionManager.redeemNewUser).mockResolvedValue({
       kind: 'full-success',
-      volunteerId: VOLUNTEER_ID as never,
+      volunteerId: VolunteerId.from(VOLUNTEER_ID),
       sessionCookie: 'better-auth.session_token=token; Path=/; HttpOnly',
     });
 

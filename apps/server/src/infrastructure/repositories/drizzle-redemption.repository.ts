@@ -4,6 +4,7 @@ import {
   ministryInvitationRole,
   ministryVolunteer,
   ministryVolunteerRole,
+  outboxMessage,
   role,
   volunteer,
 } from '@church/db';
@@ -33,7 +34,8 @@ interface DrizzleRedemptionRepositoryInput {
 /**
  * Checkpoint-three persistence only. The application manager owns the
  * transaction so a failed grant rolls back the new Volunteer, Ministry
- * Membership, Role grants, and invitation acceptance together.
+ * Membership, Role grants, invitation acceptance, and confirmation outbox
+ * message together.
  */
 export class DrizzleRedemptionRepository implements RedemptionRepository {
   constructor({ db }: DrizzleRedemptionRepositoryInput) {
@@ -47,6 +49,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     ministryInvitationId,
     userId,
     acceptedAt,
+    correlationId,
     tx,
   }: AcceptMinistryInvitationInput): Promise<VolunteerId> {
     const db = getClient(this.db, tx);
@@ -127,6 +130,16 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     if (!acceptedInvitation) {
       throw new PendingMinistryInvitationNotFoundError();
     }
+    await db.insert(outboxMessage).values({
+      churchId,
+      kind: 'redemption.accepted',
+      payload: {
+        ministryInvitationId,
+        volunteerId: createdVolunteer.id,
+      },
+      correlationId,
+      scheduledFor: acceptedAt,
+    });
     return createdVolunteer.id as VolunteerId;
   }
 

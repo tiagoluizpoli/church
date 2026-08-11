@@ -35,10 +35,18 @@ export interface ChurchBootstrapInvitationEmail {
   redemptionUrl: string;
 }
 
+export interface RedemptionAcceptedEmail {
+  kind: 'redemption.accepted';
+  to: string;
+  churchName: string;
+  ministryName: string;
+}
+
 export type EmailPayload =
   | MinistryInvitationEmail
   | VerificationCodeEmail
-  | ChurchBootstrapInvitationEmail;
+  | ChurchBootstrapInvitationEmail
+  | RedemptionAcceptedEmail;
 
 export interface SendEmailResult {
   /** Absent for the capture adapter — nothing was actually dispatched. */

@@ -20,9 +20,9 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 
 export interface DbRedemptionManagerDependencies {
-  identityGateway?: RedemptionIdentityGateway;
-  invitationRepository?: MinistryInvitationRepository;
-  invitationVerificationCodeManager?: InvitationVerificationCodeManager;
+  identityGateway: RedemptionIdentityGateway;
+  invitationRepository: MinistryInvitationRepository;
+  invitationVerificationCodeManager: InvitationVerificationCodeManager;
   redemptionRepository: RedemptionRepository;
   unitOfWork: UnitOfWork;
 }
@@ -48,9 +48,9 @@ export class DbRedemptionManager implements RedemptionManager {
     this.unitOfWork = unitOfWork;
   }
 
-  private readonly identityGateway?: RedemptionIdentityGateway;
-  private readonly invitationRepository?: MinistryInvitationRepository;
-  private readonly invitationVerificationCodeManager?: InvitationVerificationCodeManager;
+  private readonly identityGateway: RedemptionIdentityGateway;
+  private readonly invitationRepository: MinistryInvitationRepository;
+  private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
   private readonly redemptionRepository: RedemptionRepository;
   private readonly unitOfWork: UnitOfWork;
 
@@ -58,8 +58,6 @@ export class DbRedemptionManager implements RedemptionManager {
     ministryInvitationId,
     now = new Date(),
   }: GetPublicRedemptionPreviewInput): Promise<PublicRedemptionPreview | null> {
-    if (!this.invitationRepository)
-      throw new Error('Redemption preview dependencies are not configured.');
     const preview = await this.invitationRepository.findPublicRedemptionPreview(
       {
         ministryInvitationId,
@@ -74,17 +72,7 @@ export class DbRedemptionManager implements RedemptionManager {
     ministryInvitationId,
     now = new Date(),
   }: RequestRedemptionCodeInput): Promise<boolean> {
-    if (!this.invitationVerificationCodeManager)
-      throw new Error('Redemption code dependencies are not configured.');
-    if (!this.invitationRepository)
-      throw new Error('Redemption preview dependencies are not configured.');
-    const preview = await this.invitationRepository.findPublicRedemptionPreview(
-      {
-        ministryInvitationId,
-        now,
-        includeAcceptedChurchInvitation: true,
-      },
-    );
+    const preview = await this.getPublicPreview({ ministryInvitationId, now });
     if (!preview) return false;
     await this.invitationVerificationCodeManager.issue({
       ministryInvitationId,
@@ -103,9 +91,9 @@ export class DbRedemptionManager implements RedemptionManager {
     idempotencyKey,
     now = new Date(),
   }: RedeemNewUserInput): Promise<RedeemNewUserOutcome> {
-    if (!this.identityGateway || !this.invitationVerificationCodeManager)
-      throw new Error('Redemption identity dependencies are not configured.');
-    const preview = await this.getPublicPreview({ ministryInvitationId, now });
+    const preview = await this.invitationRepository.findPublicRedemptionPreview(
+      { ministryInvitationId, now, includeAcceptedChurchInvitation: true },
+    );
     if (!preview)
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     try {
@@ -175,7 +163,7 @@ export class DbRedemptionManager implements RedemptionManager {
         ministryInvitationId,
         userId,
         acceptedAt,
-        correlationId,
+        correlationId: correlationId ?? crypto.randomUUID(),
         tx,
       }),
     );

@@ -32,15 +32,15 @@ const emailSender = { send: vi.fn() };
 const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
 
 function createDrainer(): DbOutboxDrainer {
-  return new DbOutboxDrainer(
-    outboxRepository as never,
-    invitationRepository as never,
-    churchRepository as never,
-    ministryRepository as never,
-    roleRepository as never,
-    emailSender as never,
-    unitOfWork as never,
-  );
+  return new DbOutboxDrainer({
+    outboxRepository: outboxRepository as never,
+    invitationRepository: invitationRepository as never,
+    churchRepository: churchRepository as never,
+    ministryRepository: ministryRepository as never,
+    roleRepository: roleRepository as never,
+    emailSender: emailSender as never,
+    unitOfWork: unitOfWork as never,
+  });
 }
 
 function buildMessage(overrides: Partial<Record<string, unknown>> = {}) {

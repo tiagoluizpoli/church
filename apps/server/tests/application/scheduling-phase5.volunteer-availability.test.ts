@@ -196,11 +196,17 @@ interface Phase5Fixture {
   eventId: string;
   participationId: string;
   timeSlotId: string;
-  shiftMorning: { id: string; startTime: Date; endTime: Date };
-  shiftEvening: { id: string; startTime: Date; endTime: Date };
+  shiftMorning: SeededShift;
+  shiftEvening: SeededShift;
   volunteerId: string;
   membershipId: string;
   checkId: string;
+}
+
+interface SeededShift {
+  id: string;
+  startTime: Date;
+  endTime: Date;
 }
 
 const VOLUNTEER_USER_ID = 'phase5-volunteer-user';
@@ -558,7 +564,12 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
   });
 });
 
-async function seedRoleFor(input: { churchId: string; ministryId: string }) {
+interface SeedRoleInput {
+  churchId: string;
+  ministryId: string;
+}
+
+async function seedRoleFor(input: SeedRoleInput) {
   const [row] = await schedulingTestDb
     .insert(role)
     .values({
@@ -572,7 +583,7 @@ async function seedRoleFor(input: { churchId: string; ministryId: string }) {
   return row;
 }
 
-async function seedPublishedAssignment(input: {
+interface SeedPublishedAssignmentInput {
   churchId: string;
   ministryId: string;
   volunteerId: string;
@@ -581,7 +592,9 @@ async function seedPublishedAssignment(input: {
   eventEnd: Date;
   cycleId: string;
   status?: 'pending' | 'confirmed' | 'declined';
-}) {
+}
+
+async function seedPublishedAssignment(input: SeedPublishedAssignmentInput) {
   const roleRow = await seedRoleFor(input);
   const graph = await createSchedulingPhase3EventGraph({
     churchId: input.churchId,

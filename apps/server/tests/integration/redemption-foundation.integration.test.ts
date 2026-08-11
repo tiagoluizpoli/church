@@ -4,10 +4,12 @@ import {
   ministryInvitation,
   ministryVolunteer,
   ministryVolunteerRole,
+  outboxMessage,
   volunteer,
 } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';
 import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
 import { InvitationVerificationCodeManager } from '../../src/application/invitation-verification-code-manager';
 import {
@@ -16,6 +18,7 @@ import {
   RoleId,
   UserId,
 } from '../../src/domain/branded-ids';
+import type { RedemptionIdentityGateway } from '../../src/domain/contracts/infrastructure/redemption-identity-gateway';
 import {
   DrizzleInvitationVerificationCodeRepository,
   DrizzleRedemptionRepository,
@@ -33,28 +36,67 @@ const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({ db: testDb });
 const redemptionRepository = new DrizzleRedemptionRepository({ db: testDb });
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
-const { manager: invitationManager } = createMinistryInvitationTestHarness({
-  db: testDb,
-});
+const {
+  manager: invitationManager,
+  churchRepository,
+  ministryInvitationRepository,
+  ministryRepository,
+  outboxRepository,
+  roleRepository,
+} = createMinistryInvitationTestHarness({ db: testDb });
 
 interface RedemptionHarness {
   verificationCodeManager: InvitationVerificationCodeManager;
   redemptionManager: DbRedemptionManager;
 }
 
+const unusedIdentityGateway: RedemptionIdentityGateway = {
+  async createAccount() {
+    throw new Error('Identity gateway is not used by checkpoint-three tests.');
+  },
+  async acceptChurchInvitation() {
+    throw new Error('Identity gateway is not used by checkpoint-three tests.');
+  },
+  async setActiveChurch() {
+    throw new Error('Identity gateway is not used by checkpoint-three tests.');
+  },
+};
+
 function createHarness(): RedemptionHarness {
+  const verificationCodeManager = new InvitationVerificationCodeManager({
+    repository: verificationCodeRepository,
+    emailSender: new CaptureEmailSender(),
+    generateCode: () => '123456',
+    verificationCodeSecret: 'test-secret',
+  });
   return {
-    verificationCodeManager: new InvitationVerificationCodeManager({
-      repository: verificationCodeRepository,
-      emailSender: new CaptureEmailSender(),
-      generateCode: () => '123456',
-      verificationCodeSecret: 'test-secret',
-    }),
+    verificationCodeManager,
     redemptionManager: new DbRedemptionManager({
+      identityGateway: unusedIdentityGateway,
+      invitationRepository: ministryInvitationRepository,
+      invitationVerificationCodeManager: verificationCodeManager,
       redemptionRepository,
       unitOfWork,
     }),
   };
+}
+
+interface CreateOutboxDrainerInput {
+  emailSender: CaptureEmailSender;
+}
+
+function createOutboxDrainer({
+  emailSender,
+}: CreateOutboxDrainerInput): DbOutboxDrainer {
+  return new DbOutboxDrainer({
+    outboxRepository,
+    invitationRepository: ministryInvitationRepository,
+    churchRepository,
+    ministryRepository,
+    roleRepository,
+    emailSender,
+    unitOfWork,
+  });
 }
 
 let fixture: TwoChurchIdentityFixture;
@@ -218,14 +260,19 @@ describe('verification code persistence', () => {
 describe('checkpoint-three redemption persistence', () => {
   it('derives Ministry access and roles from the pending invitation in one transaction', async () => {
     const invitation = await mintInvitation();
+    await createOutboxDrainer({
+      emailSender: new CaptureEmailSender(),
+    }).drainOnce({ limit: 10 });
     const { redemptionManager } = createHarness();
 
+    const correlationId = '11111111-1111-4111-8111-111111111111';
     const volunteerId = await redemptionManager.acceptPendingMinistryInvitation(
       {
         churchId: ChurchId.from(fixture.churchA.id),
         ministryInvitationId: invitation.id,
         userId: UserId.from(fixture.memberNoVolunteerA),
         acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
+        correlationId,
       },
     );
     const [membership] = await testDb
@@ -242,6 +289,35 @@ describe('checkpoint-three redemption persistence', () => {
     expect(membership?.ministryId).toBe(fixture.ministryOneA);
     expect(membership?.ministryAccessLevel).toBe('leader');
     expect(grantedRoles).toEqual([{ roleId: fixture.roleInMinistryOneA }]);
+    const redemptionOutbox = await testDb
+      .select({
+        correlationId: outboxMessage.correlationId,
+        kind: outboxMessage.kind,
+        payload: outboxMessage.payload,
+      })
+      .from(outboxMessage)
+      .where(eq(outboxMessage.kind, 'redemption.accepted'));
+    expect(redemptionOutbox).toEqual([
+      {
+        correlationId,
+        kind: 'redemption.accepted',
+        payload: {
+          ministryInvitationId: invitation.id,
+          volunteerId,
+        },
+      },
+    ]);
+    const emailSender = new CaptureEmailSender();
+    await expect(
+      createOutboxDrainer({ emailSender }).drainOnce({ limit: 10 }),
+    ).resolves.toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.sent).toEqual([
+      expect.objectContaining({
+        kind: 'redemption.accepted',
+        churchName: fixture.churchA.name,
+        ministryName: expect.stringContaining('Worship'),
+      }),
+    ]);
   });
 
   it('rejects expired and cross-Church acceptance without partial grants', async () => {
@@ -318,8 +394,13 @@ describe('checkpoint-three redemption persistence', () => {
           eq(ministryVolunteer.ministryId, fixture.ministryOneA),
         ),
       );
+    const redemptionOutbox = await testDb
+      .select({ id: outboxMessage.id })
+      .from(outboxMessage)
+      .where(eq(outboxMessage.kind, 'redemption.accepted'));
 
     expect(storedInvitation?.status).toBe('pending');
     expect(acceptedMemberships).toEqual(existingMemberships);
+    expect(redemptionOutbox).toEqual([]);
   });
 });

@@ -217,7 +217,20 @@ export function registerInjections(): void {
       }),
   });
   container.register(injection.managers.outboxDrainer, {
-    useClass: DbOutboxDrainer,
+    useFactory: () =>
+      new DbOutboxDrainer({
+        outboxRepository: container.resolve(injection.infra.outboxRepository),
+        invitationRepository: container.resolve(
+          injection.infra.ministryInvitationRepository,
+        ),
+        churchRepository: container.resolve(injection.infra.churchRepository),
+        ministryRepository: container.resolve(
+          injection.infra.ministryRepository,
+        ),
+        roleRepository: container.resolve(injection.infra.roleRepository),
+        emailSender: container.resolve(injection.infra.emailSender),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.managers.planningCycleManager, {
     useClass: DbPlanningCycleManager,

@@ -27,16 +27,20 @@ beforeEach(async () => {
   fixture = await seedTwoChurchIdentityFixture({ db: testDb });
 });
 
-function buildDrainer(emailSender: CaptureEmailSender): DbOutboxDrainer {
-  return new DbOutboxDrainer(
+interface BuildDrainerInput {
+  emailSender: CaptureEmailSender;
+}
+
+function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
+  return new DbOutboxDrainer({
     outboxRepository,
-    ministryInvitationRepository,
+    invitationRepository: ministryInvitationRepository,
     churchRepository,
     ministryRepository,
     roleRepository,
     emailSender,
     unitOfWork,
-  );
+  });
 }
 
 describe('DbOutboxDrainer (integration)', () => {
@@ -51,7 +55,7 @@ describe('DbOutboxDrainer (integration)', () => {
     });
 
     const emailSender = new CaptureEmailSender();
-    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
     expect(emailSender.sent).toHaveLength(1);
@@ -76,8 +80,8 @@ describe('DbOutboxDrainer (integration)', () => {
     const emailSenderB = new CaptureEmailSender();
 
     const [resultA, resultB] = await Promise.all([
-      buildDrainer(emailSenderA).drainOnce({ limit: 1 }),
-      buildDrainer(emailSenderB).drainOnce({ limit: 1 }),
+      buildDrainer({ emailSender: emailSenderA }).drainOnce({ limit: 1 }),
+      buildDrainer({ emailSender: emailSenderB }).drainOnce({ limit: 1 }),
     ]);
 
     const totalClaimed = resultA.claimed + resultB.claimed;

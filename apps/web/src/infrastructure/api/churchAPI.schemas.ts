@@ -1977,6 +1977,106 @@ export type PublishParticipation403 = {
   message: string;
 };
 
+export type PreviewChurchInvitation200MinistryAccessLevel = typeof PreviewChurchInvitation200MinistryAccessLevel[keyof typeof PreviewChurchInvitation200MinistryAccessLevel];
+
+
+export const PreviewChurchInvitation200MinistryAccessLevel = {
+  volunteer: 'volunteer',
+  leader: 'leader',
+} as const;
+
+export type PreviewChurchInvitation200 = {
+  /** @pattern ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
+  email: string;
+  churchName: string;
+  ministryName: string;
+  ministryAccessLevel: PreviewChurchInvitation200MinistryAccessLevel;
+  roleNames: string[];
+  expiresAt: string;
+};
+
+export type PreviewChurchInvitation404Error = typeof PreviewChurchInvitation404Error[keyof typeof PreviewChurchInvitation404Error];
+
+
+export const PreviewChurchInvitation404Error = {
+  INVITATION_UNAVAILABLE: 'INVITATION_UNAVAILABLE',
+} as const;
+
+export type PreviewChurchInvitation404 = {
+  error: PreviewChurchInvitation404Error;
+};
+
+export type PreviewChurchInvitation429Error = typeof PreviewChurchInvitation429Error[keyof typeof PreviewChurchInvitation429Error];
+
+
+export const PreviewChurchInvitation429Error = {
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type PreviewChurchInvitation429 = {
+  error: PreviewChurchInvitation429Error;
+};
+
+export type RequestChurchInvitationVerificationCode200Status = typeof RequestChurchInvitationVerificationCode200Status[keyof typeof RequestChurchInvitationVerificationCode200Status];
+
+
+export const RequestChurchInvitationVerificationCode200Status = {
+  sent: 'sent',
+} as const;
+
+export type RequestChurchInvitationVerificationCode200 = {
+  status: RequestChurchInvitationVerificationCode200Status;
+};
+
+export type RequestChurchInvitationVerificationCode404Error = typeof RequestChurchInvitationVerificationCode404Error[keyof typeof RequestChurchInvitationVerificationCode404Error];
+
+
+export const RequestChurchInvitationVerificationCode404Error = {
+  INVITATION_UNAVAILABLE: 'INVITATION_UNAVAILABLE',
+} as const;
+
+export type RequestChurchInvitationVerificationCode404 = {
+  error: RequestChurchInvitationVerificationCode404Error;
+};
+
+export type RequestChurchInvitationVerificationCode429Error = typeof RequestChurchInvitationVerificationCode429Error[keyof typeof RequestChurchInvitationVerificationCode429Error];
+
+
+export const RequestChurchInvitationVerificationCode429Error = {
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type RequestChurchInvitationVerificationCode429 = {
+  error: RequestChurchInvitationVerificationCode429Error;
+};
+
+export type RedeemChurchInvitationBody = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /** @minLength 8 */
+  password: string;
+  /** @pattern ^\d{6}$ */
+  code: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  idempotencyKey: string;
+};
+
+export type RedeemChurchInvitation200 = {
+  kind: 'full-success';
+  volunteerId: string;
+} | {
+  kind: 'church-only';
+} | {
+  kind: 'retryable-failure';
+  reason: 'MINISTRY_ACCEPTANCE_FAILED';
+} | {
+  kind: 'terminal-failure';
+  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
+};
+
 export type GetVolunteerDashboard200AvailabilityTasksItemEventType = typeof GetVolunteerDashboard200AvailabilityTasksItemEventType[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemEventType];
 
 

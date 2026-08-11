@@ -39,6 +39,7 @@ jobs:
       UNLEASH_API_URL: http://localhost:4242/api
       UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
 
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +66,7 @@ jobs:
 
       - name: Create .env for test runner
         run: |
-          printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=test\n' \
+          printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=test\nENABLE_DEBUG_ENDPOINTS=true\n' \
             "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
             "$CORS_ORIGIN" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" > .env
 
@@ -106,6 +107,7 @@ jobs:
       UNLEASH_API_URL: http://localhost:4242/api
       UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
 
     steps:
       - uses: actions/checkout@v4
@@ -130,7 +132,7 @@ jobs:
 
       - name: Create .env for test runner
         run: |
-          printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nVITE_SERVER_URL=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=test\n' \
+          printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nVITE_SERVER_URL=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=test\nENABLE_DEBUG_ENDPOINTS=true\n' \
             "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
             "$CORS_ORIGIN" "$VITE_SERVER_URL" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" > .env
 

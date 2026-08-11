@@ -228,4 +228,51 @@ describe('the chained-invitation redemption route', () => {
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled();
   });
+
+  it('on an identity failure, shows a retry-eligible message', async () => {
+    previewChurchInvitation.mockResolvedValue(PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'terminal-failure',
+      reason: 'IDENTITY_FAILED',
+    });
+
+    const { default: userEvent } = await import('@testing-library/user-event');
+    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
+    await user.type(
+      screen.getByLabelText('Password'),
+      'correct-horse-battery-staple',
+    );
+    await user.type(screen.getByPlaceholderText('123456'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Join' }));
+
+    expect(
+      await screen.findByText("We couldn't create your account"),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
+  });
+
+  it('on a church-only outcome, disables Join and points the caller at their existing account', async () => {
+    previewChurchInvitation.mockResolvedValue(PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({ kind: 'church-only' });
+
+    const { default: userEvent } = await import('@testing-library/user-event');
+    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
+    await user.type(
+      screen.getByLabelText('Password'),
+      'correct-horse-battery-staple',
+    );
+    await user.type(screen.getByPlaceholderText('123456'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Join' }));
+
+    expect(
+      await screen.findByText("You're already part of this Church"),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled();
+  });
 });

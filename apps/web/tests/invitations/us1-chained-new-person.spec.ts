@@ -77,6 +77,12 @@ async function fetchDebugVerificationCode({
   return code;
 }
 
+type RedeemOutcome =
+  | { kind: 'full-success'; volunteerId: string }
+  | { kind: 'church-only' }
+  | { kind: 'retryable-failure'; reason: string }
+  | { kind: 'terminal-failure'; reason: string };
+
 function uniqueOutsiderEmail(): string {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `e2e-outsider-${suffix}@test.com`;
@@ -107,7 +113,18 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
     await page.getByLabel('Name').fill('E2E Outsider');
     await page.getByLabel('Password').fill('correct-horse-battery-staple');
     await page.getByPlaceholder('123456').fill(code);
-    await page.getByRole('button', { name: 'Join' }).click();
+    const [redeemResponse] = await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().endsWith(`/redemption/church/${invitation.id}/redeem`),
+      ),
+      page.getByRole('button', { name: 'Join' }).click(),
+    ]);
+    const redeemOutcome = (await redeemResponse.json()) as RedeemOutcome;
+    expect(redeemOutcome.kind).toBe('full-success');
+    if (redeemOutcome.kind === 'full-success') {
+      expect(redeemOutcome.volunteerId).toEqual(expect.any(String));
+      expect(redeemOutcome.volunteerId.length).toBeGreaterThan(0);
+    }
 
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
 

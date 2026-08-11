@@ -328,7 +328,10 @@ function ChurchInvitationRedemptionRoute() {
           ) : null}
           {requestCodeMutation.isError ? (
             <p className="text-destructive text-xs">
-              Too many requests. Wait a moment before trying again.
+              {isAxiosError(requestCodeMutation.error) &&
+              requestCodeMutation.error.response?.status === 404
+                ? 'This invitation is no longer available.'
+                : 'Too many requests. Wait a moment before trying again.'}
             </p>
           ) : null}
           <form.Field name="code">

@@ -371,7 +371,7 @@ describe('Ministry Invitation minting routes', () => {
       kind: 'chained',
       status: 'pending',
       expiresAt: '2030-01-01T00:00:00.000Z',
-      redemptionPath: '/invitations/church/church-invitation-1',
+      redemptionPath: '/invitations/church/ministry-invitation-1',
       deliveryStatus: 'pending',
     });
     expect(ministryInvitationManager.mint).toHaveBeenCalledWith({

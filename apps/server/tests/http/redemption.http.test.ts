@@ -89,14 +89,13 @@ class TestRedemptionIdentityGateway implements RedemptionIdentityGateway {
     });
     return {
       userId: UserId.from(userId),
-      sessionToken,
       sessionCookie: `session_token=${sessionToken}; HttpOnly; Path=/`,
     };
   }
 
   async acceptChurchInvitation({
     churchInvitationId,
-    sessionToken,
+    sessionCookie,
   }: AcceptChurchInvitationInput): Promise<void> {
     const [pendingInvitation] = await this.db
       .select()
@@ -114,7 +113,7 @@ class TestRedemptionIdentityGateway implements RedemptionIdentityGateway {
     const [activeSession] = await this.db
       .select({ userId: session.userId })
       .from(session)
-      .where(eq(session.token, sessionToken))
+      .where(eq(session.token, tokenFromCookie({ sessionCookie })))
       .limit(1);
     if (!activeSession) throw new Error('Session was unavailable.');
 
@@ -132,13 +131,23 @@ class TestRedemptionIdentityGateway implements RedemptionIdentityGateway {
 
   async setActiveChurch({
     churchId,
-    sessionToken,
+    sessionCookie,
   }: SetActiveRedemptionChurchInput): Promise<void> {
     await this.db
       .update(session)
       .set({ activeOrganizationId: churchId })
-      .where(eq(session.token, sessionToken));
+      .where(eq(session.token, tokenFromCookie({ sessionCookie })));
   }
+}
+
+interface TokenFromCookieInput {
+  sessionCookie: string;
+}
+
+function tokenFromCookie({ sessionCookie }: TokenFromCookieInput): string {
+  const [, value] = /session_token=([^;]+)/.exec(sessionCookie) ?? [];
+  if (!value) throw new Error('Session cookie did not carry a session token.');
+  return value;
 }
 
 class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {

@@ -17,6 +17,7 @@ import { Route as AuthenticatedSelectChurchRouteImport } from './routes/_authent
 import { Route as AuthenticatedNoAccessRouteImport } from './routes/_authenticated/no-access'
 import { Route as AuthenticatedActiveChurchRouteImport } from './routes/_authenticated/_active-church'
 import { Route as AuthenticatedActiveChurchIndexRouteImport } from './routes/_authenticated/_active-church/index'
+import { Route as InvitationsChurchInvitationIdRouteImport } from './routes/invitations/church/$invitationId'
 import { Route as AuthenticatedActiveChurchSchedulingRouteImport } from './routes/_authenticated/_active-church/scheduling'
 import { Route as AuthenticatedActiveChurchNotificationsRouteImport } from './routes/_authenticated/_active-church/notifications'
 import { Route as AuthenticatedActiveChurchDashboardRouteImport } from './routes/_authenticated/_active-church/dashboard'
@@ -76,6 +77,12 @@ const AuthenticatedActiveChurchIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedActiveChurchRoute,
+  } as any)
+const InvitationsChurchInvitationIdRoute =
+  InvitationsChurchInvitationIdRouteImport.update({
+    id: '/invitations/church/$invitationId',
+    path: '/invitations/church/$invitationId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const AuthenticatedActiveChurchSchedulingRoute =
   AuthenticatedActiveChurchSchedulingRouteImport.update({
@@ -203,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
   '/scheduling': typeof AuthenticatedActiveChurchSchedulingRouteWithChildren
+  '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/scheduling/planning-cycles': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesRouteWithChildren
   '/scheduling/tailoring': typeof AuthenticatedActiveChurchSchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof AuthenticatedActiveChurchVolunteerAvailabilityRoute
@@ -227,6 +235,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
+  '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/volunteer/availability': typeof AuthenticatedActiveChurchVolunteerAvailabilityRoute
   '/scheduling': typeof AuthenticatedActiveChurchSchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesCycleIdRoute
@@ -251,6 +260,7 @@ export interface FileRoutesById {
   '/_authenticated/_active-church/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/_authenticated/_active-church/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
   '/_authenticated/_active-church/scheduling': typeof AuthenticatedActiveChurchSchedulingRouteWithChildren
+  '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/_authenticated/_active-church/': typeof AuthenticatedActiveChurchIndexRoute
   '/_authenticated/_active-church/scheduling/planning-cycles': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesRouteWithChildren
   '/_authenticated/_active-church/scheduling/tailoring': typeof AuthenticatedActiveChurchSchedulingTailoringRouteWithChildren
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/notifications'
     | '/scheduling'
+    | '/invitations/church/$invitationId'
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
@@ -303,6 +314,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/dashboard'
     | '/notifications'
+    | '/invitations/church/$invitationId'
     | '/volunteer/availability'
     | '/scheduling'
     | '/scheduling/planning-cycles/$cycleId'
@@ -326,6 +338,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_active-church/dashboard'
     | '/_authenticated/_active-church/notifications'
     | '/_authenticated/_active-church/scheduling'
+    | '/invitations/church/$invitationId'
     | '/_authenticated/_active-church/'
     | '/_authenticated/_active-church/scheduling/planning-cycles'
     | '/_authenticated/_active-church/scheduling/tailoring'
@@ -346,6 +359,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
   PrototypeActiveChurchRoute: typeof PrototypeActiveChurchRoute
+  InvitationsChurchInvitationIdRoute: typeof InvitationsChurchInvitationIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -405,6 +419,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedActiveChurchIndexRouteImport
       parentRoute: typeof AuthenticatedActiveChurchRoute
+    }
+    '/invitations/church/$invitationId': {
+      id: '/invitations/church/$invitationId'
+      path: '/invitations/church/$invitationId'
+      fullPath: '/invitations/church/$invitationId'
+      preLoaderRoute: typeof InvitationsChurchInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_active-church/scheduling': {
       id: '/_authenticated/_active-church/scheduling'
@@ -663,6 +684,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
   PrototypeActiveChurchRoute: PrototypeActiveChurchRoute,
+  InvitationsChurchInvitationIdRoute: InvitationsChurchInvitationIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

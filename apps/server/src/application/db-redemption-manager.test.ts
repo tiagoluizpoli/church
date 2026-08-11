@@ -92,7 +92,6 @@ function createHarness({
   const identityGateway: RedemptionIdentityGateway = {
     createAccount: vi.fn().mockResolvedValue({
       userId: USER_ID,
-      sessionToken: 'session-token',
       sessionCookie:
         'better-auth.session_token=session-token; Path=/; HttpOnly',
     }),

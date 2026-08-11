@@ -30,6 +30,11 @@ export interface GetPublicRedemptionPreviewInput {
   now?: Date;
 }
 
+export interface GetDebugVerificationCodeInput {
+  ministryInvitationId: MinistryInvitationId;
+  now?: Date;
+}
+
 export interface RequestRedemptionCodeInput {
   ministryInvitationId: MinistryInvitationId;
   now?: Date;
@@ -80,4 +85,9 @@ export interface RedemptionManager {
   acceptPendingMinistryInvitation(
     input: AcceptPendingMinistryInvitationInput,
   ): Promise<VolunteerId>;
+  /** Non-production support only: null in production, when the invitation
+   * is unavailable, or when no code has been captured yet. */
+  getDebugVerificationCode(
+    input: GetDebugVerificationCodeInput,
+  ): Promise<string | null>;
 }

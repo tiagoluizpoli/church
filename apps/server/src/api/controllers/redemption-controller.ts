@@ -7,6 +7,7 @@ import { VerificationCodeError } from '../../domain/errors/verification-code-err
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  debugVerificationCodeResponseSchema,
   rateLimitedResponseSchema,
   redeemNewUserBodySchema,
   redemptionOutcomeResponseSchema,
@@ -15,6 +16,7 @@ import {
   unavailableRedemptionResponseSchema,
   verificationCodeRequestedResponseSchema,
 } from '../dtos/redemption.dto';
+import { debugEndpointsEnabled } from '../utils/debug-endpoints';
 
 type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
 type RedeemNewUserBody = z.infer<typeof redeemNewUserBodySchema>;
@@ -150,6 +152,34 @@ export class RedemptionController implements FastifyController {
         return reply.send(outcome);
       },
     );
+
+    if (debugEndpointsEnabled()) {
+      app.get(
+        '/church/:invitationId/debug-code',
+        {
+          schema: {
+            tags: ['redemption-debug'],
+            operationId: 'debugGetChurchInvitationVerificationCode',
+            params: redemptionParamsSchema,
+            response: {
+              200: debugVerificationCodeResponseSchema,
+              404: unavailableRedemptionResponseSchema,
+            },
+          },
+        },
+        async (request, reply) => {
+          const params = request.params as RedemptionParams;
+          const code = await this.redemptionManager.getDebugVerificationCode({
+            ministryInvitationId: MinistryInvitationId.from(
+              params.invitationId,
+            ),
+          });
+          if (!code)
+            return reply.status(404).send({ error: 'INVITATION_UNAVAILABLE' });
+          return reply.send({ code });
+        },
+      );
+    }
   }
 }
 

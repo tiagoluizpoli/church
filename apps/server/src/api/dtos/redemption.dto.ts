@@ -39,6 +39,11 @@ export const verificationCodeRequestedResponseSchema = z.object({
   status: z.literal('sent'),
 });
 
+/** Non-production-only: hands back the code the capture-mode sender recorded, so an E2E run can complete a flow it would otherwise never observe a hashed-at-rest code for. */
+export const debugVerificationCodeResponseSchema = z.object({
+  code: z.string().regex(/^\d{6}$/),
+});
+
 export const redemptionOutcomeResponseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('full-success'), volunteerId: z.string() }),
   z.object({ kind: z.literal('church-only') }),

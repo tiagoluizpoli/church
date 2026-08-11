@@ -8,18 +8,17 @@ export interface CreateRedemptionAccountInput {
 
 export interface CreateRedemptionAccountOutput {
   userId: UserId;
-  sessionToken: string;
   sessionCookie: string;
 }
 
 export interface AcceptChurchInvitationInput {
   churchInvitationId: string;
-  sessionToken: string;
+  sessionCookie: string;
 }
 
 export interface SetActiveRedemptionChurchInput {
   churchId: ChurchId;
-  sessionToken: string;
+  sessionCookie: string;
 }
 
 export interface RedemptionIdentityGateway {

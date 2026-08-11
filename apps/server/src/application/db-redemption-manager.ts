@@ -3,6 +3,7 @@ import type { VolunteerId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
   AcceptPendingMinistryInvitationInput,
+  GetDebugVerificationCodeInput,
   GetPublicRedemptionPreviewInput,
   PublicRedemptionPreview,
   RedeemNewUserInput,
@@ -17,6 +18,7 @@ import type {
   RedemptionIdentityGateway,
 } from '../domain/contracts/infrastructure/redemption-identity-gateway';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { VerificationCodeInspector } from '../domain/contracts/infrastructure/verification-code-inspector';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 
 export interface DbRedemptionManagerDependencies {
@@ -25,6 +27,8 @@ export interface DbRedemptionManagerDependencies {
   invitationVerificationCodeManager: InvitationVerificationCodeManager;
   redemptionRepository: RedemptionRepository;
   unitOfWork: UnitOfWork;
+  /** Non-production only — see `getDebugVerificationCode`. */
+  verificationCodeInspector?: VerificationCodeInspector;
 }
 
 /**
@@ -40,12 +44,14 @@ export class DbRedemptionManager implements RedemptionManager {
     invitationVerificationCodeManager,
     redemptionRepository,
     unitOfWork,
+    verificationCodeInspector,
   }: DbRedemptionManagerDependencies) {
     this.identityGateway = identityGateway;
     this.invitationRepository = invitationRepository;
     this.invitationVerificationCodeManager = invitationVerificationCodeManager;
     this.redemptionRepository = redemptionRepository;
     this.unitOfWork = unitOfWork;
+    this.verificationCodeInspector = verificationCodeInspector;
   }
 
   private readonly identityGateway: RedemptionIdentityGateway;
@@ -53,6 +59,9 @@ export class DbRedemptionManager implements RedemptionManager {
   private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
   private readonly redemptionRepository: RedemptionRepository;
   private readonly unitOfWork: UnitOfWork;
+  private readonly verificationCodeInspector:
+    | VerificationCodeInspector
+    | undefined;
 
   async getPublicPreview({
     ministryInvitationId,
@@ -119,12 +128,12 @@ export class DbRedemptionManager implements RedemptionManager {
       if (preview.churchInvitationStatus === 'pending') {
         await this.identityGateway.acceptChurchInvitation({
           churchInvitationId: preview.churchInvitationId,
-          sessionToken: account.sessionToken,
+          sessionCookie: account.sessionCookie,
         });
       }
       await this.identityGateway.setActiveChurch({
         churchId: preview.churchId,
-        sessionToken: account.sessionToken,
+        sessionCookie: account.sessionCookie,
       });
     } catch {
       return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
@@ -166,6 +175,20 @@ export class DbRedemptionManager implements RedemptionManager {
         correlationId: correlationId ?? crypto.randomUUID(),
         tx,
       }),
+    );
+  }
+
+  async getDebugVerificationCode({
+    ministryInvitationId,
+    now = new Date(),
+  }: GetDebugVerificationCodeInput): Promise<string | null> {
+    if (!this.verificationCodeInspector) return null;
+    const preview = await this.getPublicPreview({ ministryInvitationId, now });
+    if (!preview) return null;
+    return (
+      this.verificationCodeInspector.lastVerificationCodeFor({
+        to: preview.email,
+      }) ?? null
     );
   }
 }

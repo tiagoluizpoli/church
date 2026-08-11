@@ -28,6 +28,8 @@ export const injection = {
     featureFlagService: 'IFeatureFlagService',
     emailSender: 'IEmailSender',
     redemptionIdentityGateway: 'IRedemptionIdentityGateway',
+    /** Non-production only — see `VerificationCodeInspector`. */
+    verificationCodeInspector: 'IVerificationCodeInspector',
   },
   managers: {
     eventManager: 'IEventManager',

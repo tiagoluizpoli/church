@@ -12,6 +12,7 @@ import { LeaderRosteringController } from '../../api/controllers/leader-rosterin
 import { RedemptionController } from '../../api/controllers/redemption-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
+import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { DbActiveChurchResolver } from '../../application/db-active-church-resolver';
 import { DbActiveChurchSelectionManager } from '../../application/db-active-church-selection-manager';
 import { DbAssignmentManager } from '../../application/db-assignment-manager';
@@ -162,15 +163,24 @@ export function registerInjections(): void {
     injection.infra.featureFlagService,
     UnleashFeatureFlagService,
   );
-  container.register(injection.infra.emailSender, {
-    useFactory: () =>
-      env.NODE_ENV === 'production'
-        ? new ResendEmailSender({
-            apiKey: env.RESEND_API_KEY ?? '',
-            from: env.RESEND_FROM_EMAIL,
-          })
-        : new CaptureEmailSender(),
-  });
+  if (env.NODE_ENV === 'production') {
+    container.register(injection.infra.emailSender, {
+      useFactory: () =>
+        new ResendEmailSender({
+          apiKey: env.RESEND_API_KEY ?? '',
+          from: env.RESEND_FROM_EMAIL,
+        }),
+    });
+  } else {
+    // One shared instance outside production: the redemption debug route
+    // reads back what the verification-code manager just sent through it.
+    const captureEmailSender = new CaptureEmailSender();
+    container.registerInstance(injection.infra.emailSender, captureEmailSender);
+    container.registerInstance(
+      injection.infra.verificationCodeInspector,
+      captureEmailSender,
+    );
+  }
 
   // Managers
   container.register(injection.managers.assignmentManager, {
@@ -214,6 +224,9 @@ export function registerInjections(): void {
           injection.infra.redemptionRepository,
         ),
         unitOfWork: container.resolve(injection.infra.unitOfWork),
+        verificationCodeInspector: debugEndpointsEnabled()
+          ? container.resolve(injection.infra.verificationCodeInspector)
+          : undefined,
       }),
   });
   container.register(injection.managers.outboxDrainer, {

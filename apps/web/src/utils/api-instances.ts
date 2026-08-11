@@ -1,6 +1,7 @@
 import { getActiveChurch } from '@/infrastructure/api/active-church';
 import { getAdmin } from '@/infrastructure/api/admin';
 import { getFeatureFlags as createFeatureFlagsApi } from '@/infrastructure/api/feature-flags';
+import { getRedemption } from '@/infrastructure/api/redemption';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
 
 interface LegacyCreateEventBody {
@@ -46,3 +47,4 @@ export const volunteerApi = {
 };
 export const featureFlagsApi = createFeatureFlagsApi();
 export const activeChurchApi = getActiveChurch();
+export const redemptionApi = getRedemption();

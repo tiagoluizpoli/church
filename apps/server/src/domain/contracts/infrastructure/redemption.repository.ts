@@ -11,6 +11,7 @@ export interface AcceptMinistryInvitationInput {
   ministryInvitationId: MinistryInvitationId;
   userId: UserId;
   acceptedAt: Date;
+  correlationId: string;
   tx: TransactionContext;
 }
 

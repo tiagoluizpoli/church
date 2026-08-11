@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { outboxMessage } from '@church/db';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ChurchId,
@@ -217,6 +218,31 @@ describe('DrizzleOutboxRepository.findLatestStatusForMinistryInvitation', () => 
       ministryId: MinistryId.from(fixture.ministryOneA),
       ministryInvitationId: invitation.id,
       callerId: UserId.from(fixture.adminA),
+    });
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBe('pending');
+  });
+
+  it('ignores redemption confirmation messages when reading invitation delivery status', async () => {
+    const invitation = await mintOne();
+    await testDb.insert(outboxMessage).values({
+      churchId: fixture.churchA.id,
+      kind: 'redemption.accepted',
+      payload: {
+        ministryInvitationId: invitation.id,
+        volunteerId: crypto.randomUUID(),
+      },
+      status: 'sent',
+      correlationId: crypto.randomUUID(),
+      scheduledFor: new Date(),
+      createdAt: new Date(Date.now() + 1_000),
     });
 
     const status = await outboxRepository.findLatestStatusForMinistryInvitation(

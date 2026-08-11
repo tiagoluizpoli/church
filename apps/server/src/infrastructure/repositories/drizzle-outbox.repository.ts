@@ -12,6 +12,7 @@ import type {
   OutboxMessage,
   OutboxMessageStatus,
   OutboxRepository,
+  RedemptionAcceptedOutboxMessage,
   TransferOutboxMessage,
 } from '../../domain/contracts/infrastructure/outbox.repository';
 import { getClient, withChurchIsolation } from './helpers';
@@ -82,6 +83,10 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .where(
         and(
           withChurchIsolation(outboxMessage, churchId),
+          inArray(outboxMessage.kind, [
+            'invitation.chained',
+            'invitation.ministry',
+          ]),
           sql`${outboxMessage.payload} ->> 'ministryInvitationId' = ${ministryInvitationId}`,
         ),
       )
@@ -130,6 +135,12 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         ...base,
         kind: row.kind,
         payload: row.payload as ChurchBootstrapOutboxMessage['payload'],
+      };
+    case 'redemption.accepted':
+      return {
+        ...base,
+        kind: row.kind,
+        payload: row.payload as RedemptionAcceptedOutboxMessage['payload'],
       };
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':

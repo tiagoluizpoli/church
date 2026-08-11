@@ -1,15 +1,19 @@
 import {
+  church,
   invitation as churchInvitation,
   member,
+  ministry,
   ministryInvitation,
   ministryInvitationRole,
   ministryVolunteer,
+  organization,
   outboxMessage,
+  role,
   user,
   volunteer,
 } from '@church/db';
-import { and, eq, sql } from 'drizzle-orm';
-import type { RoleId, UserId } from '../../domain/branded-ids';
+import { and, eq, gt, inArray, sql } from 'drizzle-orm';
+import type { ChurchId, RoleId, UserId } from '../../domain/branded-ids';
 import type {
   AcquireMintLockInput,
   AcquireResendLockInput,
@@ -24,8 +28,10 @@ import type {
   FindPendingByIdInput,
   FindPendingByInviteeInput,
   FindPendingChurchInvitationByEmailInput,
+  FindPublicRedemptionPreviewInput,
   HasActiveMinistryMembershipInput,
   MinistryInvitationRepository,
+  PublicRedemptionPreview,
   RefreshMinistryInvitationExpiryInput,
   ResolveRecipientEmailInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
@@ -184,6 +190,68 @@ export class DrizzleMinistryInvitationRepository
       );
     }
     return row.email;
+  }
+
+  async findPublicRedemptionPreview({
+    ministryInvitationId,
+    now,
+    includeAcceptedChurchInvitation = false,
+  }: FindPublicRedemptionPreviewInput): Promise<PublicRedemptionPreview | null> {
+    if (!isValidUuid(ministryInvitationId)) return null;
+    const rows = await this.db
+      .select({
+        ministryInvitationId: ministryInvitation.id,
+        churchId: ministryInvitation.churchId,
+        churchInvitationId: ministryInvitation.churchInvitationId,
+        churchInvitationStatus: churchInvitation.status,
+        email: churchInvitation.email,
+        churchName: organization.name,
+        ministryName: ministry.name,
+        ministryAccessLevel: ministryInvitation.ministryAccessLevel,
+        roleName: role.name,
+        expiresAt: ministryInvitation.expiresAt,
+      })
+      .from(ministryInvitation)
+      .innerJoin(
+        churchInvitation,
+        eq(churchInvitation.id, ministryInvitation.churchInvitationId),
+      )
+      .innerJoin(church, eq(church.id, ministryInvitation.churchId))
+      .innerJoin(organization, eq(organization.id, church.id))
+      .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
+      .leftJoin(
+        ministryInvitationRole,
+        eq(ministryInvitationRole.ministryInvitationId, ministryInvitation.id),
+      )
+      .leftJoin(role, eq(role.id, ministryInvitationRole.roleId))
+      .where(
+        and(
+          eq(ministryInvitation.id, ministryInvitationId),
+          eq(ministryInvitation.status, 'pending'),
+          eq(churchInvitation.organizationId, ministryInvitation.churchId),
+          gt(ministryInvitation.expiresAt, now),
+          includeAcceptedChurchInvitation
+            ? inArray(churchInvitation.status, ['pending', 'accepted'])
+            : eq(churchInvitation.status, 'pending'),
+          gt(churchInvitation.expiresAt, now),
+        ),
+      );
+    const first = rows[0];
+    if (!first?.churchInvitationId) return null;
+    return {
+      ministryInvitationId: first.ministryInvitationId,
+      churchId: first.churchId as ChurchId,
+      churchInvitationId: first.churchInvitationId,
+      email: first.email,
+      churchName: first.churchName,
+      ministryName: first.ministryName,
+      ministryAccessLevel: first.ministryAccessLevel,
+      roleNames: rows.flatMap((row) => (row.roleName ? [row.roleName] : [])),
+      expiresAt: first.expiresAt,
+      churchInvitationStatus: first.churchInvitationStatus as
+        | 'pending'
+        | 'accepted',
+    };
   }
 
   async hasActiveMinistryMembership(

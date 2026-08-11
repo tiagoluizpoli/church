@@ -31,10 +31,12 @@ interface OrganizationPluginShape {
   options: DeclaredPluginOptions;
 }
 
+interface AuthUser {
+  id: string;
+}
+
 interface AuthResponse {
-  user: {
-    id: string;
-  };
+  user: AuthUser;
   cookie: string;
 }
 
@@ -63,12 +65,14 @@ interface RequestOrganizationEndpointInput {
   cookie?: string;
 }
 
+interface AddMemberRequestBody {
+  userId: string;
+  organizationId: string;
+  role: string;
+}
+
 interface AddMemberRequest {
-  body: {
-    userId: string;
-    organizationId: string;
-    role: string;
-  };
+  body: AddMemberRequestBody;
 }
 
 type AddMemberEndpoint = (input: AddMemberRequest) => Promise<unknown>;
@@ -94,21 +98,24 @@ function getOrganizationPlugin(): OrganizationPluginShape {
 }
 
 async function signUp({ email }: SignUpInput): Promise<AuthResponse> {
+  const body = await auth.api.signUpEmail({
+    body: {
+      email,
+      name: email,
+      password: 'organization-role-password',
+    },
+  });
+  if (!body.token) throw new Error('Auth fixture session token is missing.');
   const response = await auth.handler(
-    new Request('http://localhost:3000/api/auth/sign-up/email', {
+    new Request('http://localhost:3000/api/auth/sign-in/email', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        name: email,
-        password: 'organization-role-password',
-      }),
+      body: JSON.stringify({ email, password: 'organization-role-password' }),
     }),
   );
-  const body = (await response.json()) as AuthResponse;
-  if (!response.ok) throw new Error('Auth fixture signup failed.');
   const cookie = response.headers.get('set-cookie')?.split(';')[0];
-  if (!cookie) throw new Error('Auth fixture session cookie is missing.');
+  if (!response.ok || !cookie)
+    throw new Error('Auth fixture session cookie is missing.');
   return { user: body.user, cookie };
 }
 

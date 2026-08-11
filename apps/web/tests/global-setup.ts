@@ -74,17 +74,41 @@ export const E2E_AUTH_META_SCHEMA = z.object({
   churchBAdminUserId: z.string().min(1),
 });
 
-function makeUniqueEmail(label: string): string {
+interface AuthUserCredentials {
+  email: string;
+  password: string;
+  name: string;
+}
+
+interface AuthUserInput {
+  ctx: Awaited<ReturnType<typeof request.newContext>>;
+  creds: AuthUserCredentials;
+}
+
+interface MakeUniqueEmailInput {
+  label: string;
+}
+
+function makeUniqueEmail({ label }: MakeUniqueEmailInput): string {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `${label}-${suffix}@test.com`;
 }
 
-async function authUser(
-  ctx: Awaited<ReturnType<typeof request.newContext>>,
-  creds: { email: string; password: string; name: string },
-): Promise<string> {
-  const res = await ctx.post(`${SERVER_URL}/api/auth/sign-up/email`, {
-    data: creds,
+async function authUser({ ctx, creds }: AuthUserInput): Promise<string> {
+  execFileSync(
+    'bun',
+    [
+      '--env-file=../../.env',
+      'run',
+      'src/scripts/e2e-create-user.ts',
+      creds.email,
+      creds.name,
+      creds.password,
+    ],
+    { cwd: SERVER_DIR },
+  );
+  const res = await ctx.post(`${SERVER_URL}/api/auth/sign-in/email`, {
+    data: { email: creds.email, password: creds.password },
   });
   if (!res.ok()) {
     throw new Error(
@@ -106,27 +130,27 @@ export default async function globalSetup(): Promise<void> {
   const churchBAdminCtx = await request.newContext({ baseURL: SERVER_URL });
   const leaderCreds = {
     ...LEADER_BASE,
-    email: makeUniqueEmail('e2e-leader'),
+    email: makeUniqueEmail({ label: 'e2e-leader' }),
   };
   const teamLeaderCreds = {
     ...TEAM_LEADER_BASE,
-    email: makeUniqueEmail('e2e-teamleader'),
+    email: makeUniqueEmail({ label: 'e2e-teamleader' }),
   };
   const volunteerCreds = {
     ...VOLUNTEER_BASE,
-    email: makeUniqueEmail('e2e-volunteer'),
+    email: makeUniqueEmail({ label: 'e2e-volunteer' }),
   };
   const churchBAdminCreds = {
     ...CHURCH_B_ADMIN_BASE,
-    email: makeUniqueEmail('e2e-churchb-admin'),
+    email: makeUniqueEmail({ label: 'e2e-churchb-admin' }),
   };
 
   const [leaderId, teamLeaderId, volunteerId, churchBAdminId] =
     await Promise.all([
-      authUser(leaderCtx, leaderCreds),
-      authUser(teamLeaderCtx, teamLeaderCreds),
-      authUser(volunteerCtx, volunteerCreds),
-      authUser(churchBAdminCtx, churchBAdminCreds),
+      authUser({ ctx: leaderCtx, creds: leaderCreds }),
+      authUser({ ctx: teamLeaderCtx, creds: teamLeaderCreds }),
+      authUser({ ctx: volunteerCtx, creds: volunteerCreds }),
+      authUser({ ctx: churchBAdminCtx, creds: churchBAdminCreds }),
     ]);
 
   execFileSync(

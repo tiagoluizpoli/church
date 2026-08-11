@@ -1,5 +1,6 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import type { MinistryInvitationId } from '../domain/branded-ids';
+import type { InvitationVerificationCodeManager as InvitationVerificationCodeManagerContract } from '../domain/contracts/application/invitation-verification-code-manager';
 import type { EmailSender } from '../domain/contracts/infrastructure/email-sender';
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
 import {
@@ -18,6 +19,7 @@ export interface IssueVerificationCodeInput {
 export interface VerifyInvitationCodeInput {
   ministryInvitationId: MinistryInvitationId;
   code: string;
+  idempotencyKey?: string;
   now?: Date;
 }
 
@@ -42,7 +44,9 @@ interface VerificationCodeValidationErrorInput {
   status: ReturnType<typeof validateVerificationCode>['status'];
 }
 
-export class InvitationVerificationCodeManager {
+export class InvitationVerificationCodeManager
+  implements InvitationVerificationCodeManagerContract
+{
   constructor({
     repository,
     emailSender,
@@ -104,6 +108,7 @@ export class InvitationVerificationCodeManager {
   async verify({
     ministryInvitationId,
     code,
+    idempotencyKey,
     now = new Date(),
   }: VerifyInvitationCodeInput): Promise<void> {
     const state = await this.repository.find({ ministryInvitationId });
@@ -113,6 +118,18 @@ export class InvitationVerificationCodeManager {
       code,
       secret: this.verificationCodeSecret,
     });
+    if (
+      state.consumedAt &&
+      idempotencyKey &&
+      state.redemptionIdempotencyKey === idempotencyKey &&
+      state.expiresAt > now &&
+      verifyVerificationCodeHash({
+        codeHash: state.codeHash,
+        candidateHash,
+      })
+    ) {
+      return;
+    }
     const outcome = validateVerificationCode({
       state,
       candidateMatches: verifyVerificationCodeHash({
@@ -127,6 +144,7 @@ export class InvitationVerificationCodeManager {
         candidateHash,
         consumedAt: now,
         now,
+        redemptionIdempotencyKey: idempotencyKey,
       });
       if (consumed) return;
     }

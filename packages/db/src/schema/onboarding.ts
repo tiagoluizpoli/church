@@ -116,6 +116,7 @@ export const invitationVerificationCode = pgTable(
     }).notNull(),
     failedAttempts: integer('failed_attempts').default(0).notNull(),
     consumedAt: timestamp('consumed_at', { withTimezone: true, mode: 'date' }),
+    redemptionIdempotencyKey: text('redemption_idempotency_key'),
     lastSentAt: timestamp('last_sent_at', {
       withTimezone: true,
       mode: 'date',

@@ -13,7 +13,7 @@ import {
   volunteerNotification,
 } from '@church/db';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
 import {
   AvailabilityCheckId,
@@ -196,11 +196,17 @@ interface Phase5Fixture {
   eventId: string;
   participationId: string;
   timeSlotId: string;
-  shiftMorning: { id: string; startTime: Date; endTime: Date };
-  shiftEvening: { id: string; startTime: Date; endTime: Date };
+  shiftMorning: SeededShift;
+  shiftEvening: SeededShift;
   volunteerId: string;
   membershipId: string;
   checkId: string;
+}
+
+interface SeededShift {
+  id: string;
+  startTime: Date;
+  endTime: Date;
 }
 
 const VOLUNTEER_USER_ID = 'phase5-volunteer-user';
@@ -558,7 +564,12 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
   });
 });
 
-async function seedRoleFor(input: { churchId: string; ministryId: string }) {
+interface SeedRoleInput {
+  churchId: string;
+  ministryId: string;
+}
+
+async function seedRoleFor(input: SeedRoleInput) {
   const [row] = await schedulingTestDb
     .insert(role)
     .values({
@@ -572,7 +583,7 @@ async function seedRoleFor(input: { churchId: string; ministryId: string }) {
   return row;
 }
 
-async function seedPublishedAssignment(input: {
+interface SeedPublishedAssignmentInput {
   churchId: string;
   ministryId: string;
   volunteerId: string;
@@ -581,7 +592,9 @@ async function seedPublishedAssignment(input: {
   eventEnd: Date;
   cycleId: string;
   status?: 'pending' | 'confirmed' | 'declined';
-}) {
+}
+
+async function seedPublishedAssignment(input: SeedPublishedAssignmentInput) {
   const roleRow = await seedRoleFor(input);
   const graph = await createSchedulingPhase3EventGraph({
     churchId: input.churchId,
@@ -627,6 +640,8 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
   });
 
   it('getDashboard aggregates availability tasks, upcoming assignment groups, notification preview, and ministry options', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-01T00:00:00.000Z'));
     const fixture = await seedPhase5Fixture();
     const { volunteerManager } = createPhase5Manager();
     const churchId = ChurchId.from(fixture.seed.churchAId);
@@ -712,6 +727,7 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
     expect(dashboard.ministryOptions).toContainEqual(
       expect.objectContaining({ id: fixture.seed.ministryAId }),
     );
+    vi.useRealTimers();
   });
 
   it('getUpcomingAssignments only includes shifts starting within the 30 day window', async () => {

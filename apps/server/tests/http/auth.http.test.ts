@@ -31,6 +31,20 @@ describe('Auth passthrough (T031)', () => {
     expect(res.statusCode).not.toBe(404);
   });
 
+  it('returns Not Found for public credential sign-up', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: {
+        email: 'stranger@example.test',
+        name: 'Stranger',
+        password: 'correct-horse-battery-staple',
+      },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toBe('Not Found');
+  });
+
   it('GET /api/v1/nonexistent returns 404', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/v1/nonexistent' });
     expect(res.statusCode).toBe(404);

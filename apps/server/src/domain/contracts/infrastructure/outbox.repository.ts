@@ -5,6 +5,7 @@ export type OutboxMessageKind =
   | 'invitation.chained'
   | 'invitation.ministry'
   | 'invitation.church-bootstrap'
+  | 'redemption.accepted'
   | 'transfer.ministry-digest'
   | 'transfer.leaderless-ministry';
 
@@ -29,22 +30,46 @@ interface OutboxMessageBase {
   sentAt?: Date;
 }
 
+export interface ChainedInvitationOutboxPayload {
+  ministryInvitationId: string;
+  churchInvitationId: string;
+}
+
 /** Mirrors the payload `mintChained` enqueues (db-ministry-invitation-manager.ts). */
 export interface ChainedInvitationOutboxMessage extends OutboxMessageBase {
   kind: 'invitation.chained';
-  payload: { ministryInvitationId: string; churchInvitationId: string };
+  payload: ChainedInvitationOutboxPayload;
+}
+
+export interface MinistryInvitationOutboxPayload {
+  ministryInvitationId: string;
 }
 
 /** Mirrors the payload `mintForExistingMember`/`resend` enqueue. */
 export interface MinistryInvitationOutboxMessage extends OutboxMessageBase {
   kind: 'invitation.ministry';
-  payload: { ministryInvitationId: string };
+  payload: MinistryInvitationOutboxPayload;
+}
+
+export interface ChurchBootstrapOutboxPayload {
+  churchInvitationId: string;
 }
 
 /** Not enqueued anywhere yet (issue #62) — shape follows spec §6.2's bootstrap bullet. */
 export interface ChurchBootstrapOutboxMessage extends OutboxMessageBase {
   kind: 'invitation.church-bootstrap';
-  payload: { churchInvitationId: string };
+  payload: ChurchBootstrapOutboxPayload;
+}
+
+/** Confirmation sent once a Ministry Invitation has been redeemed. */
+export interface RedemptionAcceptedOutboxPayload {
+  ministryInvitationId: string;
+  volunteerId: string;
+}
+
+export interface RedemptionAcceptedOutboxMessage extends OutboxMessageBase {
+  kind: 'redemption.accepted';
+  payload: RedemptionAcceptedOutboxPayload;
 }
 
 /** Volunteer Transfer notifications — payload shape not designed yet (issue #60). */
@@ -57,6 +82,7 @@ export type OutboxMessage =
   | ChainedInvitationOutboxMessage
   | MinistryInvitationOutboxMessage
   | ChurchBootstrapOutboxMessage
+  | RedemptionAcceptedOutboxMessage
   | TransferOutboxMessage;
 
 export interface ClaimPendingOutboxMessagesInput {

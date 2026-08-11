@@ -36,6 +36,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
         lastSentAt: sentAt,
         failedAttempts: 0,
         consumedAt: null,
+        redemptionIdempotencyKey: null,
       };
       return true;
     },
@@ -47,7 +48,12 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
         state = null;
       }
     },
-    async consumeIfValid({ candidateHash, consumedAt, now }) {
+    async consumeIfValid({
+      candidateHash,
+      consumedAt,
+      now,
+      redemptionIdempotencyKey,
+    }) {
       if (
         state?.codeHash === candidateHash &&
         !state.consumedAt &&
@@ -55,6 +61,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
         state.failedAttempts < 5
       ) {
         state.consumedAt = consumedAt;
+        state.redemptionIdempotencyKey = redemptionIdempotencyKey ?? null;
         return true;
       }
       return false;
@@ -162,6 +169,43 @@ describe('InvitationVerificationCodeManager', () => {
     ).rejects.toMatchObject({
       code: 'VERIFICATION_CODE_ATTEMPT_LIMIT_REACHED',
     });
+  });
+
+  it('allows a consumed code to resume only the same redemption request', async () => {
+    const harness = createHarness();
+    const invitationId = MinistryInvitationId.from(
+      '00000000-0000-4000-8000-000000000005',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    await harness.manager.issue({
+      ministryInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now,
+    });
+
+    await harness.manager.verify({
+      ministryInvitationId: invitationId,
+      code: '123456',
+      idempotencyKey: '11111111-1111-4111-8111-111111111111',
+      now,
+    });
+    await expect(
+      harness.manager.verify({
+        ministryInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: '11111111-1111-4111-8111-111111111111',
+        now,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      harness.manager.verify({
+        ministryInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: '22222222-2222-4222-8222-222222222222',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
   });
 
   it('replaces the code and resets its attempt budget only after the sixty-second cooldown', async () => {

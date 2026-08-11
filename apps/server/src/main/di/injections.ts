@@ -9,6 +9,7 @@ import { ChurchAdminController } from '../../api/controllers/church-admin-contro
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
 import { LeaderController } from '../../api/controllers/leader-controller';
 import { LeaderRosteringController } from '../../api/controllers/leader-rostering-controller';
+import { RedemptionController } from '../../api/controllers/redemption-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
 import { DbActiveChurchResolver } from '../../application/db-active-church-resolver';
@@ -56,6 +57,7 @@ import {
   DrizzleVolunteerNotificationRepository,
   DrizzleVolunteerRepository,
 } from '../../infrastructure/repositories';
+import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { LocalNotificationService } from '../../infrastructure/services/local-notification-service';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
@@ -63,6 +65,9 @@ import { UnleashFeatureFlagService } from '../../infrastructure/services/unleash
 import { injection } from './injection-tokens';
 
 export function registerInjections(): void {
+  container.register(injection.infra.redemptionIdentityGateway, {
+    useClass: BetterAuthRedemptionIdentityGateway,
+  });
   container.register(injection.auth.scopeRepository, {
     useFactory: () => new DrizzleSchedulingScopeResolver({ db }),
   });
@@ -196,6 +201,15 @@ export function registerInjections(): void {
   container.register(injection.managers.redemptionManager, {
     useFactory: () =>
       new DbRedemptionManager({
+        identityGateway: container.resolve(
+          injection.infra.redemptionIdentityGateway,
+        ),
+        invitationRepository: container.resolve(
+          injection.infra.ministryInvitationRepository,
+        ),
+        invitationVerificationCodeManager: container.resolve(
+          injection.managers.invitationVerificationCodeManager,
+        ),
         redemptionRepository: container.resolve(
           injection.infra.redemptionRepository,
         ),
@@ -203,7 +217,20 @@ export function registerInjections(): void {
       }),
   });
   container.register(injection.managers.outboxDrainer, {
-    useClass: DbOutboxDrainer,
+    useFactory: () =>
+      new DbOutboxDrainer({
+        outboxRepository: container.resolve(injection.infra.outboxRepository),
+        invitationRepository: container.resolve(
+          injection.infra.ministryInvitationRepository,
+        ),
+        churchRepository: container.resolve(injection.infra.churchRepository),
+        ministryRepository: container.resolve(
+          injection.infra.ministryRepository,
+        ),
+        roleRepository: container.resolve(injection.infra.roleRepository),
+        emailSender: container.resolve(injection.infra.emailSender),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.managers.planningCycleManager, {
     useClass: DbPlanningCycleManager,
@@ -252,6 +279,14 @@ export function registerInjections(): void {
     injection.controllers.fastify,
     LeaderRosteringController,
   );
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new RedemptionController({
+        redemptionManager: container.resolve(
+          injection.managers.redemptionManager,
+        ),
+      }),
+  });
   container.registerSingleton(
     injection.controllers.fastify,
     VolunteerController,

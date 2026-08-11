@@ -92,6 +92,7 @@ export const outboxMessageKindEnum = pgEnum('outbox_message_kind', [
   'invitation.chained',
   'invitation.ministry',
   'invitation.church-bootstrap',
+  'redemption.accepted',
   'transfer.ministry-digest',
   'transfer.leaderless-ministry',
 ]);

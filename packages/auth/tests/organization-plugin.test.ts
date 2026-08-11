@@ -31,10 +31,12 @@ interface OrganizationPluginShape {
   options: DeclaredPluginOptions;
 }
 
+interface AuthUser {
+  id: string;
+}
+
 interface AuthResponse {
-  user: {
-    id: string;
-  };
+  user: AuthUser;
   cookie: string;
 }
 
@@ -63,12 +65,14 @@ interface RequestOrganizationEndpointInput {
   cookie?: string;
 }
 
+interface AddMemberRequestBody {
+  userId: string;
+  organizationId: string;
+  role: string;
+}
+
 interface AddMemberRequest {
-  body: {
-    userId: string;
-    organizationId: string;
-    role: string;
-  };
+  body: AddMemberRequestBody;
 }
 
 type AddMemberEndpoint = (input: AddMemberRequest) => Promise<unknown>;

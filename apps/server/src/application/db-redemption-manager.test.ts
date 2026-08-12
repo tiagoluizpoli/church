@@ -14,6 +14,7 @@ import type {
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionRepository } from '../domain/contracts/infrastructure/redemption.repository';
 import type { RedemptionIdentityGateway } from '../domain/contracts/infrastructure/redemption-identity-gateway';
+import type { SecurityLogRepository } from '../domain/contracts/infrastructure/security-log.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
@@ -96,6 +97,7 @@ function createHarness({
         'better-auth.session_token=session-token; Path=/; HttpOnly',
     }),
     acceptChurchInvitation: vi.fn().mockImplementation(accept),
+    rejectChurchInvitation: vi.fn(),
     setActiveChurch: vi.fn(),
   };
   const acceptedInputs: AcceptPendingMinistryInvitationInput[] = [];
@@ -105,12 +107,16 @@ function createHarness({
       acceptedInputs.push(input);
       return VOLUNTEER_ID;
     },
+    async declineMinistryInvitation() {},
   };
   const unitOfWork: UnitOfWork = {
     async run(fn) {
       const transaction = {} as TransactionContext;
       return fn(transaction);
     },
+  };
+  const securityLogRepository: SecurityLogRepository = {
+    recordIdentityMismatch: vi.fn(),
   };
   return {
     acceptedInputs,
@@ -122,6 +128,7 @@ function createHarness({
         invitationRepository as MinistryInvitationRepository,
       invitationVerificationCodeManager: verificationCodeManager,
       redemptionRepository,
+      securityLogRepository,
       unitOfWork,
     }),
     verificationCodeManager,

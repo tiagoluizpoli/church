@@ -13,10 +13,12 @@ import { user } from './auth';
 import { church } from './church';
 import { ministry, role } from './core';
 import {
+  identityAuditActionEnum,
   ministryAccessLevelEnum,
   ministryInvitationStatusEnum,
   outboxMessageKindEnum,
   outboxMessageStatusEnum,
+  securityLogEventEnum,
 } from './enums';
 import { invitation as churchInvitation } from './organization';
 
@@ -193,5 +195,61 @@ export const outboxMessage = pgTable('outbox_message', {
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+/**
+ * The audit boundary from spec §7.6, modeled on `assignment_audit`'s shape
+ * but not sharing the table — that one is foreign-keyed to `assignment` and
+ * cannot represent an identity act. `ministryInvitationId` is nullable so a
+ * future Volunteer Transfer row (no invitation) can share this table too.
+ * Carries `correlationId` (unlike `assignment_audit`) so one attempt's audit
+ * row and outbox rows are traceable together. Ordinary preview visits, and
+ * failed identity checks / throttling, are deliberately never written here —
+ * those belong to the security log instead.
+ */
+export const identityAudit = pgTable('identity_audit', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  churchId: uuid('church_id')
+    .notNull()
+    .references(() => church.id, { onDelete: 'cascade' }),
+  ministryInvitationId: uuid('ministry_invitation_id').references(
+    () => ministryInvitation.id,
+    { onDelete: 'cascade' },
+  ),
+  actorId: text('actor_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  action: identityAuditActionEnum('action').notNull(),
+  reason: text('reason'),
+  correlationId: text('correlation_id').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
+});
+
+/**
+ * Spec §7.6's security log: failed identity checks and throttling, kept out
+ * of `identity_audit` because they are not domain acts — a support/security
+ * tool, not a business record. `churchId` and `ministryInvitationId` are
+ * nullable because a throttled *public* request (session 2) may never
+ * resolve either.
+ */
+export const securityLog = pgTable('security_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  churchId: uuid('church_id').references(() => church.id, {
+    onDelete: 'cascade',
+  }),
+  ministryInvitationId: uuid('ministry_invitation_id').references(
+    () => ministryInvitation.id,
+    { onDelete: 'cascade' },
+  ),
+  actorId: text('actor_id').references(() => user.id, {
+    onDelete: 'cascade',
+  }),
+  event: securityLogEventEnum('event').notNull(),
+  correlationId: text('correlation_id').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true, mode: 'date' })
+    .defaultNow()
     .notNull(),
 });

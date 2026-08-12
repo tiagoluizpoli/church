@@ -24,6 +24,7 @@ import {
 } from '../../src/domain/branded-ids';
 import type {
   AcceptMinistryInvitationInput,
+  DeclineMinistryInvitationInput,
   RedemptionRepository,
 } from '../../src/domain/contracts/infrastructure/redemption.repository';
 import type {
@@ -31,12 +32,15 @@ import type {
   CreateRedemptionAccountInput,
   CreateRedemptionAccountOutput,
   RedemptionIdentityGateway,
+  RejectChurchInvitationInput,
   SetActiveRedemptionChurchInput,
 } from '../../src/domain/contracts/infrastructure/redemption-identity-gateway';
 import {
   DrizzleInvitationVerificationCodeRepository,
   DrizzleRedemptionRepository,
+  DrizzleSecurityLogRepository,
   DrizzleUnitOfWork,
+  DrizzleVolunteerRepository,
 } from '../../src/infrastructure/repositories';
 import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
 import { createFastify } from '../../src/main/fastify/setup';
@@ -129,6 +133,27 @@ class TestRedemptionIdentityGateway implements RedemptionIdentityGateway {
       .where(eq(churchInvitation.id, churchInvitationId));
   }
 
+  async rejectChurchInvitation({
+    churchInvitationId,
+    sessionCookie,
+  }: RejectChurchInvitationInput): Promise<void> {
+    const [activeSession] = await this.db
+      .select({ userId: session.userId })
+      .from(session)
+      .where(eq(session.token, tokenFromCookie({ sessionCookie })))
+      .limit(1);
+    if (!activeSession) throw new Error('Session was unavailable.');
+    await this.db
+      .update(churchInvitation)
+      .set({ status: 'rejected' })
+      .where(
+        and(
+          eq(churchInvitation.id, churchInvitationId),
+          eq(churchInvitation.status, 'pending'),
+        ),
+      );
+  }
+
   async setActiveChurch({
     churchId,
     sessionCookie,
@@ -170,6 +195,12 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
     }
     return volunteerId;
   }
+
+  async declineMinistryInvitation(
+    input: DeclineMinistryInvitationInput,
+  ): Promise<void> {
+    return this.delegate.declineMinistryInvitation(input);
+  }
 }
 
 interface RedemptionHttpHarness {
@@ -194,6 +225,10 @@ const verificationCodeRepository =
     db: testDb,
   });
 const drizzleRedemptionRepository = new DrizzleRedemptionRepository({
+  db: testDb,
+  volunteerRepository: new DrizzleVolunteerRepository({ db: testDb }),
+});
+const securityLogRepository = new DrizzleSecurityLogRepository({
   db: testDb,
 });
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
@@ -228,6 +263,7 @@ async function createHarness({
     invitationRepository: ministryInvitationRepository,
     invitationVerificationCodeManager: verificationCodeManager,
     redemptionRepository,
+    securityLogRepository,
     unitOfWork,
   });
   app = await createFastify();

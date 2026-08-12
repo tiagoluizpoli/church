@@ -7,6 +7,7 @@ import type {
   CreateRedemptionAccountInput,
   CreateRedemptionAccountOutput,
   RedemptionIdentityGateway,
+  RejectChurchInvitationInput,
   SetActiveRedemptionChurchInput,
 } from '../../domain/contracts/infrastructure/redemption-identity-gateway';
 
@@ -54,6 +55,16 @@ export class BetterAuthRedemptionIdentityGateway
     sessionCookie,
   }: AcceptChurchInvitationInput): Promise<void> {
     await auth.api.acceptInvitation({
+      headers: new Headers({ cookie: sessionCookie }),
+      body: { invitationId: churchInvitationId },
+    });
+  }
+
+  async rejectChurchInvitation({
+    churchInvitationId,
+    sessionCookie,
+  }: RejectChurchInvitationInput): Promise<void> {
+    await auth.api.rejectInvitation({
       headers: new Headers({ cookie: sessionCookie }),
       body: { invitationId: churchInvitationId },
     });

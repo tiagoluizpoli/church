@@ -14,8 +14,18 @@ import { createFastify } from '../../main/fastify/setup';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { RedemptionController } from './redemption-controller';
 
+vi.mock('@church/auth', () => ({
+  auth: { api: { getSession: vi.fn() } },
+}));
+
+const mockGetSession = vi.mocked(
+  (await import('@church/auth')).auth.api.getSession,
+);
+
 const INVITATION_ID = '11111111-1111-4111-8111-111111111111';
 const VOLUNTEER_ID = '22222222-2222-4222-8222-222222222222';
+const AUTH_COOKIE = 'better-auth.session_token=session-token';
+const USER_ID = 'usr_1';
 
 const redemptionManager: RedemptionManager = {
   getPublicPreview: vi.fn(),
@@ -239,5 +249,250 @@ describe('RedemptionController', () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ error: 'INVITATION_UNAVAILABLE' });
+  });
+});
+
+describe('GET /redemption/ministry/:invitationId', () => {
+  it('returns 401 when there is no session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}`,
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(
+      redemptionManager.getAuthenticatedInvitationStatus,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('returns the redeemable status for the intended, authenticated User', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(
+      redemptionManager.getAuthenticatedInvitationStatus,
+    ).mockResolvedValue({
+      kind: 'redeemable',
+      email: 'existing-member@example.test',
+      churchName: 'St. Peter',
+      ministryName: 'Worship',
+      ministryAccessLevel: 'volunteer',
+      roleNames: ['Singer'],
+      expiresAt: new Date('2026-08-03T12:00:00.000Z'),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}`,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      kind: 'redeemable',
+      email: 'existing-member@example.test',
+      churchName: 'St. Peter',
+      ministryName: 'Worship',
+      ministryAccessLevel: 'volunteer',
+      roleNames: ['Singer'],
+      expiresAt: '2026-08-03T12:00:00.000Z',
+    });
+    expect(
+      redemptionManager.getAuthenticatedInvitationStatus,
+    ).toHaveBeenCalledWith({
+      ministryInvitationId: INVITATION_ID,
+      userId: USER_ID,
+    });
+  });
+
+  it('never surfaces the invited email for a wrong signed-in account', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(
+      redemptionManager.getAuthenticatedInvitationStatus,
+    ).mockResolvedValue({ kind: 'identity-mismatch' });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}`,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ kind: 'identity-mismatch' });
+    expect(response.body).not.toContain('@');
+  });
+
+  it('offers Continue to Church for an already-accepted invitation', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(
+      redemptionManager.getAuthenticatedInvitationStatus,
+    ).mockResolvedValue({
+      kind: 'already-accepted',
+      churchId: ChurchId.from('33333333-3333-4333-8333-333333333333'),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}`,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      kind: 'already-accepted',
+      churchId: '33333333-3333-4333-8333-333333333333',
+    });
+  });
+});
+
+describe('POST /redemption/ministry/:invitationId/accept', () => {
+  it('returns 401 when there is no session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
+      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(redemptionManager.acceptExistingMember).not.toHaveBeenCalled();
+  });
+
+  it('accepts on behalf of the authenticated, addressed User', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(redemptionManager.acceptExistingMember).mockResolvedValue({
+      kind: 'full-success',
+      volunteerId: VolunteerId.from(VOLUNTEER_ID),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      kind: 'full-success',
+      volunteerId: VOLUNTEER_ID,
+    });
+    expect(redemptionManager.acceptExistingMember).toHaveBeenCalledWith({
+      ministryInvitationId: INVITATION_ID,
+      userId: USER_ID,
+      sessionCookie: AUTH_COOKIE,
+      idempotencyKey: '55555555-5555-4555-8555-555555555555',
+    });
+  });
+
+  it('is idempotent: acceptance already granted is reported, not re-executed', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(redemptionManager.acceptExistingMember).mockResolvedValue({
+      kind: 'already-accepted',
+      churchId: ChurchId.from('33333333-3333-4333-8333-333333333333'),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      kind: 'already-accepted',
+      churchId: '33333333-3333-4333-8333-333333333333',
+    });
+  });
+});
+
+describe('decline endpoints', () => {
+  it('POST /redemption/ministry/:invitationId/decline returns 401 without a session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}/decline`,
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(redemptionManager.declineInvitation).not.toHaveBeenCalled();
+  });
+
+  it('POST /redemption/ministry/:invitationId/decline rejects only the Ministry-only invitation', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(redemptionManager.declineInvitation).mockResolvedValue({
+      kind: 'declined',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/ministry/${INVITATION_ID}/decline`,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ kind: 'declined' });
+    expect(redemptionManager.declineInvitation).toHaveBeenCalledWith({
+      ministryInvitationId: INVITATION_ID,
+      userId: USER_ID,
+      sessionCookie: AUTH_COOKIE,
+    });
+  });
+
+  it('POST /redemption/church/:invitationId/decline returns 401 without a session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(redemptionManager.declineInvitation).not.toHaveBeenCalled();
+  });
+
+  it('POST /redemption/church/:invitationId/decline rejects the chained pair through the same manager call', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(redemptionManager.declineInvitation).mockResolvedValue({
+      kind: 'declined',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/church/${INVITATION_ID}/decline`,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ kind: 'declined' });
+    expect(redemptionManager.declineInvitation).toHaveBeenCalledWith({
+      ministryInvitationId: INVITATION_ID,
+      userId: USER_ID,
+      sessionCookie: AUTH_COOKIE,
+    });
   });
 });

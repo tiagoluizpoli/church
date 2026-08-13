@@ -267,6 +267,8 @@ export class DrizzleMinistryInvitationRepository
       .select({
         invitation: ministryInvitation,
         churchInvitationStatus: churchInvitation.status,
+        churchInvitationEmail: churchInvitation.email,
+        inviteeEmail: user.email,
         churchName: organization.name,
         ministryName: ministry.name,
         roleId: role.id,
@@ -280,6 +282,7 @@ export class DrizzleMinistryInvitationRepository
         churchInvitation,
         eq(churchInvitation.id, ministryInvitation.churchInvitationId),
       )
+      .leftJoin(user, eq(user.id, ministryInvitation.inviteeUserId))
       .leftJoin(
         ministryInvitationRole,
         eq(ministryInvitationRole.ministryInvitationId, ministryInvitation.id),
@@ -291,6 +294,12 @@ export class DrizzleMinistryInvitationRepository
     const roleIds = rows.flatMap((row) =>
       row.roleId ? [row.roleId as RoleId] : [],
     );
+    const email = first.inviteeEmail ?? first.churchInvitationEmail;
+    if (!email) {
+      throw new Error(
+        `Ministry invitation ${ministryInvitationId} has neither an invitee User nor a Church Invitation to resolve an email from.`,
+      );
+    }
     return {
       ministryInvitation: mapMinistryInvitation(first.invitation, roleIds),
       churchInvitationStatus: (first.churchInvitationStatus ?? undefined) as
@@ -299,6 +308,7 @@ export class DrizzleMinistryInvitationRepository
         | 'rejected'
         | 'canceled'
         | undefined,
+      email,
       churchName: first.churchName,
       ministryName: first.ministryName,
       roleNames: rows.flatMap((row) => (row.roleName ? [row.roleName] : [])),

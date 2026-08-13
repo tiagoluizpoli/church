@@ -279,6 +279,7 @@ export class DbRedemptionManager implements RedemptionManager {
     }
     return {
       kind: 'redeemable',
+      email: resolved.context.email,
       churchName: resolved.context.churchName,
       ministryName: resolved.context.ministryName,
       ministryAccessLevel: ministryInvitation.ministryAccessLevel,

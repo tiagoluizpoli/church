@@ -1,13 +1,15 @@
 import 'reflect-metadata';
 import {
+  invitation as churchInvitation,
   member,
   ministryInvitation,
   ministryVolunteer,
   session,
+  user,
 } from '@church/db';
 import { env } from '@church/env/server';
 import { makeSignature } from 'better-auth/crypto';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RedemptionController } from '../../src/api/controllers/redemption-controller';
 import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
@@ -118,6 +120,43 @@ async function mintExistingMemberInvitation() {
     ministryAccessLevel: 'volunteer',
     roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
   });
+}
+
+/**
+ * Mints for an email that matches no existing Church Member, which per spec
+ * §5.3 resolves the mint to the chained Church Invitation + Ministry
+ * Invitation pair — unlike `mintExistingMemberInvitation`, whose fixture
+ * email always belongs to a real Church Member and so is never chained.
+ */
+async function mintChainedInvitation() {
+  const email = `outsider-${crypto.randomUUID()}@fixture.test`;
+  const invitation = await invitationManager.mint({
+    churchId: ChurchId.from(fixture.churchA.id),
+    ministryId: MinistryId.from(fixture.ministryOneA),
+    inviterId: UserId.from(fixture.adminA),
+    email,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+  });
+  return { invitation, email };
+}
+
+interface CreateUserSessionInput {
+  email: string;
+}
+
+/** A real User + signed session for a chained invitation's own email — the person Better Auth's `rejectInvitation` requires to be signed in. */
+async function createUserSession({
+  email,
+}: CreateUserSessionInput): Promise<string> {
+  const userId = crypto.randomUUID();
+  await testDb.insert(user).values({
+    id: userId,
+    name: 'Chained Invitee',
+    email,
+    emailVerified: true,
+  });
+  return createSessionCookie({ userId });
 }
 
 describe('Existing-member Ministry Invitation HTTP boundary', () => {
@@ -243,11 +282,9 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.statusCode).toBe(401);
     });
 
-    it('reaches the same decline operation through the chained-route alias', async () => {
-      const invitation = await mintExistingMemberInvitation();
-      const cookie = await createSessionCookie({
-        userId: fixture.existingChurchMemberA,
-      });
+    it('rejects both halves of a chained invitation for its own intended person', async () => {
+      const { invitation, email } = await mintChainedInvitation();
+      const cookie = await createUserSession({ email });
 
       const response = await app.inject({
         method: 'POST',
@@ -258,15 +295,23 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({ kind: 'declined' });
       const [declinedInvitation] = await testDb
-        .select({ status: ministryInvitation.status })
+        .select({
+          status: ministryInvitation.status,
+          churchInvitationId: ministryInvitation.churchInvitationId,
+        })
         .from(ministryInvitation)
+        .where(eq(ministryInvitation.id, invitation.id));
+      expect(declinedInvitation?.status).toBe('rejected');
+      const [declinedChurchInvitation] = await testDb
+        .select({ status: churchInvitation.status })
+        .from(churchInvitation)
         .where(
-          and(
-            eq(ministryInvitation.id, invitation.id),
-            eq(ministryInvitation.status, 'rejected'),
+          eq(
+            churchInvitation.id,
+            declinedInvitation?.churchInvitationId as string,
           ),
         );
-      expect(declinedInvitation).toBeDefined();
+      expect(declinedChurchInvitation?.status).toBe('rejected');
     });
   });
 });

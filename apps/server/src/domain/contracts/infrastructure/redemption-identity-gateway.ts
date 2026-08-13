@@ -16,6 +16,12 @@ export interface AcceptChurchInvitationInput {
   sessionCookie: string;
 }
 
+/** Caller decides whether to invoke this — only meaningful while the Church Invitation is still `pending`. */
+export interface RejectChurchInvitationInput {
+  churchInvitationId: string;
+  sessionCookie: string;
+}
+
 export interface SetActiveRedemptionChurchInput {
   churchId: ChurchId;
   sessionCookie: string;
@@ -26,5 +32,6 @@ export interface RedemptionIdentityGateway {
     input: CreateRedemptionAccountInput,
   ): Promise<CreateRedemptionAccountOutput>;
   acceptChurchInvitation(input: AcceptChurchInvitationInput): Promise<void>;
+  rejectChurchInvitation(input: RejectChurchInvitationInput): Promise<void>;
   setActiveChurch(input: SetActiveRedemptionChurchInput): Promise<void>;
 }

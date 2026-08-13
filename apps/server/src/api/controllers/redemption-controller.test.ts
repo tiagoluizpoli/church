@@ -22,6 +22,9 @@ const redemptionManager: RedemptionManager = {
   requestVerificationCode: vi.fn(),
   redeemNewUser: vi.fn(),
   acceptPendingMinistryInvitation: vi.fn(),
+  getAuthenticatedInvitationStatus: vi.fn(),
+  acceptExistingMember: vi.fn(),
+  declineInvitation: vi.fn(),
   getDebugVerificationCode: vi.fn(),
 };
 

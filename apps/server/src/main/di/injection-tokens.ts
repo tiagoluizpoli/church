@@ -15,6 +15,7 @@ export const injection = {
       'IInvitationVerificationCodeRepository',
     ministryInvitationRepository: 'IMinistryInvitationRepository',
     redemptionRepository: 'IRedemptionRepository',
+    securityLogRepository: 'ISecurityLogRepository',
     outboxRepository: 'IOutboxRepository',
     ministryParticipationRepository: 'IMinistryParticipationRepository',
     ministryServingProfileRepository: 'IMinistryServingProfileRepository',

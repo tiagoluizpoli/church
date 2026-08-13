@@ -51,6 +51,7 @@ import {
   DrizzlePlanningEventRepository,
   DrizzleRedemptionRepository,
   DrizzleRoleRepository,
+  DrizzleSecurityLogRepository,
   DrizzleShiftRepository,
   DrizzleTeamRepository,
   DrizzleTimeSlotRepository,
@@ -133,7 +134,16 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleInvitationVerificationCodeRepository({ db }),
   });
   container.register(injection.infra.redemptionRepository, {
-    useFactory: () => new DrizzleRedemptionRepository({ db }),
+    useFactory: () =>
+      new DrizzleRedemptionRepository({
+        db,
+        volunteerRepository: container.resolve(
+          injection.infra.volunteerRepository,
+        ),
+      }),
+  });
+  container.register(injection.infra.securityLogRepository, {
+    useFactory: () => new DrizzleSecurityLogRepository({ db }),
   });
   container.register(injection.infra.ministryInvitationRepository, {
     useFactory: () => new DrizzleMinistryInvitationRepository({ db }),
@@ -222,6 +232,9 @@ export function registerInjections(): void {
         ),
         redemptionRepository: container.resolve(
           injection.infra.redemptionRepository,
+        ),
+        securityLogRepository: container.resolve(
+          injection.infra.securityLogRepository,
         ),
         unitOfWork: container.resolve(injection.infra.unitOfWork),
         verificationCodeInspector: debugEndpointsEnabled()

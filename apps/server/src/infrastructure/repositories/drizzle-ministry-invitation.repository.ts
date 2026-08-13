@@ -24,12 +24,15 @@ import type {
   EnqueueOutboxMessageInput,
   FindByIdInput,
   FindChurchMemberByEmailInput,
+  FindMinistryInvitationContextInput,
   FindPendingByChurchInvitationInput,
   FindPendingByIdInput,
   FindPendingByInviteeInput,
   FindPendingChurchInvitationByEmailInput,
   FindPublicRedemptionPreviewInput,
   HasActiveMinistryMembershipInput,
+  IsInvitationAddressedToUserInput,
+  MinistryInvitationContext,
   MinistryInvitationRepository,
   PublicRedemptionPreview,
   RefreshMinistryInvitationExpiryInput,
@@ -252,6 +255,75 @@ export class DrizzleMinistryInvitationRepository
         | 'pending'
         | 'accepted',
     };
+  }
+
+  async findMinistryInvitationContext({
+    ministryInvitationId,
+    tx,
+  }: FindMinistryInvitationContextInput): Promise<MinistryInvitationContext | null> {
+    if (!isValidUuid(ministryInvitationId)) return null;
+    const db = getClient(this.db, tx);
+    const rows = await db
+      .select({
+        invitation: ministryInvitation,
+        churchInvitationStatus: churchInvitation.status,
+        churchName: organization.name,
+        ministryName: ministry.name,
+        roleId: role.id,
+        roleName: role.name,
+      })
+      .from(ministryInvitation)
+      .innerJoin(church, eq(church.id, ministryInvitation.churchId))
+      .innerJoin(organization, eq(organization.id, church.id))
+      .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
+      .leftJoin(
+        churchInvitation,
+        eq(churchInvitation.id, ministryInvitation.churchInvitationId),
+      )
+      .leftJoin(
+        ministryInvitationRole,
+        eq(ministryInvitationRole.ministryInvitationId, ministryInvitation.id),
+      )
+      .leftJoin(role, eq(role.id, ministryInvitationRole.roleId))
+      .where(eq(ministryInvitation.id, ministryInvitationId));
+    const first = rows[0];
+    if (!first) return null;
+    const roleIds = rows.flatMap((row) =>
+      row.roleId ? [row.roleId as RoleId] : [],
+    );
+    return {
+      ministryInvitation: mapMinistryInvitation(first.invitation, roleIds),
+      churchInvitationStatus: (first.churchInvitationStatus ?? undefined) as
+        | 'pending'
+        | 'accepted'
+        | 'rejected'
+        | 'canceled'
+        | undefined,
+      churchName: first.churchName,
+      ministryName: first.ministryName,
+      roleNames: rows.flatMap((row) => (row.roleName ? [row.roleName] : [])),
+    };
+  }
+
+  async isInvitationAddressedToUser({
+    ministryInvitation: invitation,
+    userId,
+    tx,
+  }: IsInvitationAddressedToUserInput): Promise<boolean> {
+    if (invitation.inviteeUserId) return invitation.inviteeUserId === userId;
+    const db = getClient(this.db, tx);
+    const [row] = await db
+      .select({ id: user.id })
+      .from(churchInvitation)
+      .innerJoin(user, eq(user.email, churchInvitation.email))
+      .where(
+        and(
+          eq(churchInvitation.id, invitation.churchInvitationId as string),
+          eq(user.id, userId),
+        ),
+      )
+      .limit(1);
+    return row != null;
   }
 
   async hasActiveMinistryMembership(

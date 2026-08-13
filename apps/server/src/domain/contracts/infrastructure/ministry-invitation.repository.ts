@@ -129,6 +129,34 @@ export interface FindPublicRedemptionPreviewInput {
   includeAcceptedChurchInvitation?: boolean;
 }
 
+export interface FindMinistryInvitationContextInput {
+  ministryInvitationId: string;
+  tx?: TransactionContext;
+}
+
+/**
+ * Any-status, kind-agnostic lookup for the existing-member/lifecycle-branch
+ * flows — unlike `findPublicRedemptionPreview`, this does not filter on
+ * `status`/`expiresAt` or require a chained Church Invitation to exist, so
+ * the caller (application layer) classifies redeemable / already-accepted /
+ * unavailable itself. Returning `null` only for a nonexistent id keeps the
+ * same "collapse to null" shape `findPublicRedemptionPreview` uses.
+ */
+export interface MinistryInvitationContext {
+  ministryInvitation: MinistryInvitation;
+  /** Only set for a chained invitation. */
+  churchInvitationStatus?: 'pending' | 'accepted' | 'rejected' | 'canceled';
+  churchName: string;
+  ministryName: string;
+  roleNames: string[];
+}
+
+export interface IsInvitationAddressedToUserInput {
+  ministryInvitation: MinistryInvitation;
+  userId: UserId;
+  tx?: TransactionContext;
+}
+
 export interface EnqueueOutboxMessageInput {
   churchId: ChurchId;
   kind:
@@ -199,6 +227,20 @@ export interface MinistryInvitationRepository {
   findPublicRedemptionPreview(
     input: FindPublicRedemptionPreviewInput,
   ): Promise<PublicRedemptionPreview | null>;
+
+  /** Kind-agnostic, any-status lookup backing the existing-member and decline flows (§7.3). */
+  findMinistryInvitationContext(
+    input: FindMinistryInvitationContextInput,
+  ): Promise<MinistryInvitationContext | null>;
+
+  /**
+   * A ministry-only invitation is addressed to `inviteeUserId` directly; a
+   * chained invitation is addressed to whoever holds its Church Invitation's
+   * email, checked without loading that email into the caller.
+   */
+  isInvitationAddressedToUser(
+    input: IsInvitationAddressedToUserInput,
+  ): Promise<boolean>;
 
   hasActiveMinistryMembership(
     input: HasActiveMinistryMembershipInput,

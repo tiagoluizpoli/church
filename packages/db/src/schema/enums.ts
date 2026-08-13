@@ -103,3 +103,29 @@ export const outboxMessageStatusEnum = pgEnum('outbox_message_status', [
   'sent',
   'failed',
 ]);
+
+/**
+ * Spec §7.6's exhaustive audit boundary: acceptance (new-person chained
+ * redemption), decline, the cross-Church split's Church-only partial
+ * acceptance, Ministry acceptance (existing-member redemption), and
+ * Volunteer Transfer. Failed identity checks and throttling are
+ * deliberately excluded — those go to the security log, never here.
+ */
+export const identityAuditActionEnum = pgEnum('identity_audit_action', [
+  'acceptance',
+  'decline',
+  'church_only_partial_acceptance',
+  'ministry_acceptance',
+  'volunteer_transfer',
+]);
+
+/**
+ * Spec §7.6: failed identity checks and throttling go here, never to
+ * `identity_audit` — this is a security/support tool, not a domain record.
+ * `throttled` is reserved for the rate-limited public endpoints session 2
+ * (#106) adds; nothing writes it yet.
+ */
+export const securityLogEventEnum = pgEnum('security_log_event', [
+  'identity_mismatch',
+  'throttled',
+]);

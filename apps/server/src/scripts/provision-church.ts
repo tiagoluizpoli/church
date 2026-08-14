@@ -105,6 +105,8 @@ export interface ProvisionChurchInput {
   /** The Platform Operator's own User id — resolving which User that is happens outside this operation. */
   operatorUserId: string;
   baseUrl?: string;
+  /** Supply only when a fixture pins the identifier; production provisioning never does. */
+  id?: string;
 }
 
 export interface ProvisionChurchResult {
@@ -134,6 +136,7 @@ export async function provisionChurch(
     try {
       createdChurch = await createChurch({
         db: tx,
+        id: input.id,
         name: input.churchName,
         slug: input.churchSlug,
       });

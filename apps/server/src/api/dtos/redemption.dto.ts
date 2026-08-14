@@ -56,3 +56,58 @@ export const redemptionOutcomeResponseSchema = z.discriminatedUnion('kind', [
     reason: z.enum(terminalFailureReasons),
   }),
 ]);
+
+export const unauthorizedResponseSchema = z.object({
+  error: z.literal('UNAUTHORIZED'),
+  message: z.string(),
+});
+
+/** Post-authentication lifecycle for an existing Church Member's Ministry Invitation (spec §7.3). */
+export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.object({
+      kind: z.literal('redeemable'),
+      email: z.string().email(),
+      churchName: z.string(),
+      ministryName: z.string(),
+      ministryAccessLevel: z.enum(ministryAccessLevelValues),
+      roleNames: z.array(z.string()),
+      expiresAt: z.string(),
+    }),
+    z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
+    z.object({ kind: z.literal('identity-mismatch') }),
+    z.object({ kind: z.literal('unavailable') }),
+  ],
+);
+
+export const acceptExistingMemberBodySchema = z.object({
+  idempotencyKey: z.string().uuid(),
+});
+
+export const existingMemberOutcomeResponseSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.object({ kind: z.literal('full-success'), volunteerId: z.string() }),
+    z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
+    z.object({ kind: z.literal('identity-mismatch') }),
+    z.object({
+      kind: z.literal('retryable-failure'),
+      reason: z.literal('MINISTRY_ACCEPTANCE_FAILED'),
+    }),
+    z.object({
+      kind: z.literal('terminal-failure'),
+      reason: z.enum(terminalFailureReasons),
+    }),
+  ],
+);
+
+export const declineOutcomeResponseSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('declined') }),
+  z.object({ kind: z.literal('identity-mismatch') }),
+  z.object({
+    kind: z.literal('terminal-failure'),
+    /** Superset of the two reasons decline can actually return — kept in sync with the other outcome schemas' list rather than a second hand-typed one. */
+    reason: z.enum(terminalFailureReasons),
+  }),
+]);

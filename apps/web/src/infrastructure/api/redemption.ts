@@ -5,6 +5,11 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AcceptMinistryInvitation200,
+  AcceptMinistryInvitationBody,
+  DeclineChurchInvitation200,
+  DeclineMinistryInvitation200,
+  GetMinistryInvitationStatus200,
   PreviewChurchInvitation200,
   RedeemChurchInvitation200,
   RedeemChurchInvitationBody,
@@ -44,7 +49,46 @@ const previewChurchInvitation = (
     },
       );
     }
-  return {previewChurchInvitation,requestChurchInvitationVerificationCode,redeemChurchInvitation}};
+  const declineChurchInvitation = (
+    invitationId: string,
+ ) => {
+      return apiClient<DeclineChurchInvitation200>(
+      {url: `/api/v1/redemption/church/${invitationId}/decline`, method: 'POST'
+    },
+      );
+    }
+  const getMinistryInvitationStatus = (
+    invitationId: string,
+ ) => {
+      return apiClient<GetMinistryInvitationStatus200>(
+      {url: `/api/v1/redemption/ministry/${invitationId}`, method: 'GET'
+    },
+      );
+    }
+  const acceptMinistryInvitation = (
+    invitationId: string,
+    acceptMinistryInvitationBody: AcceptMinistryInvitationBody,
+ ) => {
+      return apiClient<AcceptMinistryInvitation200>(
+      {url: `/api/v1/redemption/ministry/${invitationId}/accept`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: acceptMinistryInvitationBody
+    },
+      );
+    }
+  const declineMinistryInvitation = (
+    invitationId: string,
+ ) => {
+      return apiClient<DeclineMinistryInvitation200>(
+      {url: `/api/v1/redemption/ministry/${invitationId}/decline`, method: 'POST'
+    },
+      );
+    }
+  return {previewChurchInvitation,requestChurchInvitationVerificationCode,redeemChurchInvitation,declineChurchInvitation,getMinistryInvitationStatus,acceptMinistryInvitation,declineMinistryInvitation}};
 export type PreviewChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['previewChurchInvitation']>>>
 export type RequestChurchInvitationVerificationCodeResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['requestChurchInvitationVerificationCode']>>>
 export type RedeemChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['redeemChurchInvitation']>>>
+export type DeclineChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['declineChurchInvitation']>>>
+export type GetMinistryInvitationStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['getMinistryInvitationStatus']>>>
+export type AcceptMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['acceptMinistryInvitation']>>>
+export type DeclineMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['declineMinistryInvitation']>>>

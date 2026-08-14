@@ -2077,6 +2077,111 @@ export type RedeemChurchInvitation200 = {
   reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
 };
 
+export type DeclineChurchInvitation200 = {
+  kind: 'declined';
+} | {
+  kind: 'identity-mismatch';
+} | {
+  kind: 'terminal-failure';
+  reason: 'INVITATION_UNAVAILABLE' | 'IDENTITY_FAILED';
+};
+
+export type DeclineChurchInvitation401Error = typeof DeclineChurchInvitation401Error[keyof typeof DeclineChurchInvitation401Error];
+
+
+export const DeclineChurchInvitation401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type DeclineChurchInvitation401 = {
+  error: DeclineChurchInvitation401Error;
+  message: string;
+};
+
+export type GetMinistryInvitationStatus200 = {
+  kind: 'redeemable';
+  /** @pattern ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
+  email: string;
+  churchName: string;
+  ministryName: string;
+  ministryAccessLevel: 'volunteer' | 'leader';
+  roleNames: string[];
+  expiresAt: string;
+} | {
+  kind: 'already-accepted';
+  churchId: string;
+} | {
+  kind: 'identity-mismatch';
+} | {
+  kind: 'unavailable';
+};
+
+export type GetMinistryInvitationStatus401Error = typeof GetMinistryInvitationStatus401Error[keyof typeof GetMinistryInvitationStatus401Error];
+
+
+export const GetMinistryInvitationStatus401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type GetMinistryInvitationStatus401 = {
+  error: GetMinistryInvitationStatus401Error;
+  message: string;
+};
+
+export type AcceptMinistryInvitationBody = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  idempotencyKey: string;
+};
+
+export type AcceptMinistryInvitation200 = {
+  kind: 'full-success';
+  volunteerId: string;
+} | {
+  kind: 'already-accepted';
+  churchId: string;
+} | {
+  kind: 'identity-mismatch';
+} | {
+  kind: 'retryable-failure';
+  reason: 'MINISTRY_ACCEPTANCE_FAILED';
+} | {
+  kind: 'terminal-failure';
+  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
+};
+
+export type AcceptMinistryInvitation401Error = typeof AcceptMinistryInvitation401Error[keyof typeof AcceptMinistryInvitation401Error];
+
+
+export const AcceptMinistryInvitation401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type AcceptMinistryInvitation401 = {
+  error: AcceptMinistryInvitation401Error;
+  message: string;
+};
+
+export type DeclineMinistryInvitation200 = {
+  kind: 'declined';
+} | {
+  kind: 'identity-mismatch';
+} | {
+  kind: 'terminal-failure';
+  reason: 'INVITATION_UNAVAILABLE' | 'IDENTITY_FAILED';
+};
+
+export type DeclineMinistryInvitation401Error = typeof DeclineMinistryInvitation401Error[keyof typeof DeclineMinistryInvitation401Error];
+
+
+export const DeclineMinistryInvitation401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type DeclineMinistryInvitation401 = {
+  error: DeclineMinistryInvitation401Error;
+  message: string;
+};
+
 export type GetVolunteerDashboard200AvailabilityTasksItemEventType = typeof GetVolunteerDashboard200AvailabilityTasksItemEventType[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemEventType];
 
 

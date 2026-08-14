@@ -146,6 +146,8 @@ export interface MinistryInvitationContext {
   ministryInvitation: MinistryInvitation;
   /** Only set for a chained invitation. */
   churchInvitationStatus?: 'pending' | 'accepted' | 'rejected' | 'canceled';
+  /** The invited address — the existing User's own email, or the chained Church Invitation's. */
+  email: string;
   churchName: string;
   ministryName: string;
   roleNames: string[];

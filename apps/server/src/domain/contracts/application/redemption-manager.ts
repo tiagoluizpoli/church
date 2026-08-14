@@ -91,6 +91,7 @@ export interface GetAuthenticatedInvitationStatusInput {
 
 export interface RedeemableInvitationStatus {
   kind: 'redeemable';
+  email: string;
   churchName: string;
   ministryName: string;
   ministryAccessLevel: 'volunteer' | 'leader';

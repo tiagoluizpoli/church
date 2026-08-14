@@ -39,6 +39,7 @@ import type {
   ResolveRecipientEmailInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -267,6 +268,8 @@ export class DrizzleMinistryInvitationRepository
       .select({
         invitation: ministryInvitation,
         churchInvitationStatus: churchInvitation.status,
+        churchInvitationEmail: churchInvitation.email,
+        inviteeEmail: user.email,
         churchName: organization.name,
         ministryName: ministry.name,
         roleId: role.id,
@@ -280,6 +283,7 @@ export class DrizzleMinistryInvitationRepository
         churchInvitation,
         eq(churchInvitation.id, ministryInvitation.churchInvitationId),
       )
+      .leftJoin(user, eq(user.id, ministryInvitation.inviteeUserId))
       .leftJoin(
         ministryInvitationRole,
         eq(ministryInvitationRole.ministryInvitationId, ministryInvitation.id),
@@ -291,6 +295,10 @@ export class DrizzleMinistryInvitationRepository
     const roleIds = rows.flatMap((row) =>
       row.roleId ? [row.roleId as RoleId] : [],
     );
+    const email = resolveInvitationEmail({
+      inviteeEmail: first.inviteeEmail,
+      churchInvitationEmail: first.churchInvitationEmail,
+    });
     return {
       ministryInvitation: mapMinistryInvitation(first.invitation, roleIds),
       churchInvitationStatus: (first.churchInvitationStatus ?? undefined) as
@@ -299,6 +307,7 @@ export class DrizzleMinistryInvitationRepository
         | 'rejected'
         | 'canceled'
         | undefined,
+      email,
       churchName: first.churchName,
       ministryName: first.ministryName,
       roleNames: rows.flatMap((row) => (row.roleName ? [row.roleName] : [])),

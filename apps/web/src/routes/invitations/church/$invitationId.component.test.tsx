@@ -118,6 +118,53 @@ describe('the chained-invitation redemption route', () => {
     ).toBeDisabled();
   });
 
+  it('resumes at code entry on a fresh mount rather than restarting — a reload never re-gates name/password/code behind a prior step', async () => {
+    // Interrupted new-account journeys resume at email verification (spec
+    // §7.3): the route has no separate "step" state to lose on reload — a
+    // fresh mount always presents name, password and the code field
+    // together, so a code already sent in an earlier tab/session before the
+    // reload is still enough to finish, with no "Send code" click required.
+    previewChurchInvitation.mockResolvedValue(PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'full-success',
+      volunteerId: 'volunteer-1',
+    });
+    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    getVolunteerDashboard.mockResolvedValue({
+      availabilityTasks: [],
+      upcomingAssignmentGroups: [],
+      unreadNotificationCount: 0,
+      notificationPreview: [],
+      defaultMinistryId: undefined,
+      ministryOptions: [],
+    });
+
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const { router } = renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+    });
+    const user = userEvent.setup();
+
+    await screen.findByRole('heading', { name: /Join/ });
+    expect(screen.getByLabelText('Name')).toBeEnabled();
+    expect(screen.getByLabelText('Password')).toBeEnabled();
+    expect(screen.getByPlaceholderText('123456')).toBeEnabled();
+    expect(requestChurchInvitationVerificationCode).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText('Name'), 'New Volunteer');
+    await user.type(
+      screen.getByLabelText('Password'),
+      'correct-horse-battery-staple',
+    );
+    await user.type(screen.getByPlaceholderText('123456'), '654321');
+    await user.click(screen.getByRole('button', { name: 'Join' }));
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/dashboard');
+    });
+    expect(requestChurchInvitationVerificationCode).not.toHaveBeenCalled();
+  });
+
   it('on full success, refreshes the session and navigates directly to the dashboard', async () => {
     previewChurchInvitation.mockResolvedValue(PREVIEW);
     redeemChurchInvitation.mockResolvedValue({

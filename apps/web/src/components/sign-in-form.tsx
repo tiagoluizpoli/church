@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
 
 export interface SignInFormProps {
-  onSwitchToSignUp: () => void;
+  onSwitchToSignUp?: () => void;
   redirectTo?: string;
 }
 
@@ -60,7 +60,11 @@ export default function SignInForm({
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-6 text-center font-bold text-3xl">Welcome Back</h1>
+      <h1 className="mb-2 text-center font-bold text-3xl">Welcome Back</h1>
+      <p className="mb-6 text-center text-muted-foreground text-sm">
+        Access is invitation-only. Sign in with the account from your
+        invitation.
+      </p>
 
       <form
         onSubmit={(e) => {
@@ -134,15 +138,17 @@ export default function SignInForm({
         </form.Subscribe>
       </form>
 
-      <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignUp}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Need an account? Sign Up
-        </Button>
-      </div>
+      {onSwitchToSignUp && (
+        <div className="mt-4 text-center">
+          <Button
+            variant="link"
+            onClick={onSwitchToSignUp}
+            className="text-indigo-600 hover:text-indigo-800"
+          >
+            Need an account? Sign Up
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

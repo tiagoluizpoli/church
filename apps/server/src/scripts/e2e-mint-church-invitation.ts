@@ -1,5 +1,5 @@
 import { auth } from '@church/auth';
-import { z } from 'zod';
+import { signInForE2e } from './e2e-sign-in';
 
 interface E2eMintChurchInvitationInput {
   inviterEmail: string;
@@ -26,31 +26,6 @@ function parseInput(): E2eMintChurchInvitationInput {
   return { inviterEmail, inviterPassword, inviteeEmail, organizationId, role };
 }
 
-const signInResponseSchema = z.object({
-  user: z.object({ id: z.string() }),
-});
-
-interface SignInInput {
-  email: string;
-  password: string;
-}
-
-async function signIn({ email, password }: SignInInput): Promise<string> {
-  const response = await auth.handler(
-    new Request('http://localhost/api/auth/sign-in/email', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    }),
-  );
-  const cookie = response.headers.get('set-cookie');
-  const body = signInResponseSchema.safeParse(await response.json());
-  if (!response.ok || !cookie || !body.success) {
-    throw new Error('Better Auth did not create a session cookie.');
-  }
-  return cookie;
-}
-
 /**
  * E2E-only helper: mints a plain Church Invitation (Better Auth's own
  * `createInvitation`, not the app's Ministry Invitation) so a second E2E
@@ -59,7 +34,7 @@ async function signIn({ email, password }: SignInInput): Promise<string> {
  * a ChurchAdmin would invite an ordinary Church Member in production.
  */
 const input = parseInput();
-const cookie = await signIn({
+const { cookie } = await signInForE2e({
   email: input.inviterEmail,
   password: input.inviterPassword,
 });

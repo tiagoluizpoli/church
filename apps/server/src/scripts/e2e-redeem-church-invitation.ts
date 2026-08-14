@@ -1,5 +1,5 @@
 import { auth } from '@church/auth';
-import { z } from 'zod';
+import { signInForE2e } from './e2e-sign-in';
 
 interface E2eRedeemChurchInvitationInput {
   email: string;
@@ -16,44 +16,6 @@ function parseInput(): E2eRedeemChurchInvitationInput {
     );
   }
   return { email, name, password, invitationId };
-}
-
-interface CreateAuthenticatedSessionInput {
-  email: string;
-  password: string;
-}
-
-interface AuthenticatedSession {
-  userId: string;
-  cookie: string;
-}
-
-const signInResponseSchema = z.object({
-  user: z.object({ id: z.string() }),
-});
-
-/**
- * Mirrors `BetterAuthRedemptionIdentityGateway`'s own sign-in helper: this
- * script has no incoming HTTP request to read a cookie from, so it builds a
- * session the same way redemption does after `signUpEmail`.
- */
-async function createAuthenticatedSession({
-  email,
-  password,
-}: CreateAuthenticatedSessionInput): Promise<AuthenticatedSession> {
-  const response = await auth.handler(
-    new Request('http://localhost/api/auth/sign-in/email', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    }),
-  );
-  const cookie = response.headers.get('set-cookie');
-  const body = signInResponseSchema.safeParse(await response.json());
-  if (!response.ok || !cookie || !body.success) {
-    throw new Error('Better Auth did not create a session cookie.');
-  }
-  return { userId: body.data.user.id, cookie };
 }
 
 /**
@@ -74,7 +36,7 @@ try {
   // Already exists — the invited email may belong to an existing User
   // (spec 024 §2.4); fall through and sign in instead.
 }
-const session = await createAuthenticatedSession({
+const session = await signInForE2e({
   email: input.email,
   password: input.password,
 });

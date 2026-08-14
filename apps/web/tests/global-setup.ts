@@ -111,13 +111,12 @@ function makeUniqueEmail({ label }: MakeUniqueEmailInput): string {
   return `${label}-${suffix}@test.com`;
 }
 
-function runServerScript({
-  scriptPath,
-  args,
-}: {
+interface RunServerScriptInput {
   scriptPath: string;
   args: string[];
-}): string {
+}
+
+function runServerScript({ scriptPath, args }: RunServerScriptInput): string {
   return execFileSync(
     'bun',
     ['--env-file=../../.env', 'run', scriptPath, ...args],

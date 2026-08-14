@@ -107,6 +107,7 @@ export const declineOutcomeResponseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('identity-mismatch') }),
   z.object({
     kind: z.literal('terminal-failure'),
-    reason: z.enum(['INVITATION_UNAVAILABLE', 'IDENTITY_FAILED'] as const),
+    /** Superset of the two reasons decline can actually return — kept in sync with the other outcome schemas' list rather than a second hand-typed one. */
+    reason: z.enum(terminalFailureReasons),
   }),
 ]);

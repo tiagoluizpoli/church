@@ -41,6 +41,16 @@ interface RequireRedeemerInput {
   reply: FastifyReply;
 }
 
+/** The restricted preview field set both the chained and existing-member routes expose (spec §7.1). */
+interface InvitationPreviewFields {
+  email: string;
+  churchName: string;
+  ministryName: string;
+  ministryAccessLevel: 'volunteer' | 'leader';
+  roleNames: string[];
+  expiresAt: Date;
+}
+
 export interface RedemptionControllerDependencies {
   redemptionManager: RedemptionManager;
 }
@@ -91,14 +101,7 @@ export class RedemptionController implements FastifyController {
         });
         if (!preview)
           return reply.status(404).send({ error: 'INVITATION_UNAVAILABLE' });
-        return reply.send({
-          email: preview.email,
-          churchName: preview.churchName,
-          ministryName: preview.ministryName,
-          ministryAccessLevel: preview.ministryAccessLevel,
-          roleNames: preview.roleNames,
-          expiresAt: preview.expiresAt.toISOString(),
-        });
+        return reply.send(toInvitationPreviewFields(preview));
       },
     );
 
@@ -216,12 +219,7 @@ export class RedemptionController implements FastifyController {
         if (status.kind === 'redeemable') {
           return reply.send({
             kind: status.kind,
-            email: status.email,
-            churchName: status.churchName,
-            ministryName: status.ministryName,
-            ministryAccessLevel: status.ministryAccessLevel,
-            roleNames: status.roleNames,
-            expiresAt: status.expiresAt.toISOString(),
+            ...toInvitationPreviewFields(status),
           });
         }
         return reply.send(status);
@@ -353,4 +351,16 @@ function isRateLimited({ key, now = Date.now() }: RateLimitInput): boolean {
   attempts.push(now);
   publicRateLimit.set(key, attempts);
   return attempts.length > RATE_MAX_REQUESTS;
+}
+
+/** Shared by the chained and existing-member previews — both expose the same restricted field set (spec §7.1). */
+function toInvitationPreviewFields(preview: InvitationPreviewFields) {
+  return {
+    email: preview.email,
+    churchName: preview.churchName,
+    ministryName: preview.ministryName,
+    ministryAccessLevel: preview.ministryAccessLevel,
+    roleNames: preview.roleNames,
+    expiresAt: preview.expiresAt.toISOString(),
+  };
 }

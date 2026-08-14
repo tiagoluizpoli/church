@@ -2,6 +2,10 @@ import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
+interface SignOutOptions {
+  fetchOptions: { onSuccess: () => void };
+}
+
 const getSession = vi.fn();
 const signOut = vi.fn();
 const getMinistryInvitationStatus = vi.fn();
@@ -240,12 +244,10 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     // `/login`'s own beforeLoad redirects an already-authenticated visitor
     // straight back — signOut must clear the session getSession() reports,
     // same as the real authClient, or the redirect there bounces home.
-    signOut.mockImplementation(
-      ({ fetchOptions }: { fetchOptions: { onSuccess: () => void } }) => {
-        getSession.mockResolvedValue({ data: null });
-        fetchOptions.onSuccess();
-      },
-    );
+    signOut.mockImplementation(({ fetchOptions }: SignOutOptions) => {
+      getSession.mockResolvedValue({ data: null });
+      fetchOptions.onSuccess();
+    });
 
     const { router, container } = renderRoute({
       initialPath: '/invitations/ministry/invitation-1',

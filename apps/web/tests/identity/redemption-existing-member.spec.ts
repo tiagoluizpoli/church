@@ -86,6 +86,20 @@ interface RedeemNewUserOutcome {
     | 'terminal-failure';
 }
 
+interface AcceptMinistryInvitationOutcome {
+  kind: string;
+  volunteerId?: string;
+}
+
+interface MinistryOption {
+  id: string;
+  name: string;
+}
+
+interface VolunteerDashboardMinistryOptions {
+  ministryOptions: MinistryOption[];
+}
+
 interface BootstrapExistingChurchMemberInput {
   email: string;
   name: string;
@@ -187,10 +201,8 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
       ),
       page.getByRole('button', { name: 'Accept' }).click(),
     ]);
-    const acceptOutcome = (await acceptResponse.json()) as {
-      kind: string;
-      volunteerId?: string;
-    };
+    const acceptOutcome =
+      (await acceptResponse.json()) as AcceptMinistryInvitationOutcome;
     expect(acceptOutcome.kind).toBe('full-success');
     expect(acceptOutcome.volunteerId).toEqual(expect.any(String));
 
@@ -204,9 +216,8 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
     const dashboardResponse = await page.request.get(
       `${SERVER_URL}/api/v1/volunteer/dashboard`,
     );
-    const { ministryOptions } = (await dashboardResponse.json()) as {
-      ministryOptions: { id: string; name: string }[];
-    };
+    const { ministryOptions } =
+      (await dashboardResponse.json()) as VolunteerDashboardMinistryOptions;
     expect(ministryOptions.map((option) => option.id)).toEqual(
       expect.arrayContaining([CARE_MINISTRY_ID, WORSHIP_MINISTRY_ID]),
     );

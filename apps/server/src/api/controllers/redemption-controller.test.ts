@@ -276,6 +276,7 @@ describe('GET /redemption/ministry/:invitationId', () => {
       redemptionManager.getAuthenticatedInvitationStatus,
     ).mockResolvedValue({
       kind: 'redeemable',
+      invitationKind: 'ministry-only',
       email: 'existing-member@example.test',
       churchName: 'St. Peter',
       ministryName: 'Worship',
@@ -293,6 +294,7 @@ describe('GET /redemption/ministry/:invitationId', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       kind: 'redeemable',
+      invitationKind: 'ministry-only',
       email: 'existing-member@example.test',
       churchName: 'St. Peter',
       ministryName: 'Worship',

@@ -91,6 +91,8 @@ export interface GetAuthenticatedInvitationStatusInput {
 
 export interface RedeemableInvitationStatus {
   kind: 'redeemable';
+  /** Distinguishes a chained pair from a Ministry-only invitation so the client can word decline correctly (spec §7.3). */
+  invitationKind: 'ministry-only' | 'chained';
   email: string;
   churchName: string;
   ministryName: string;

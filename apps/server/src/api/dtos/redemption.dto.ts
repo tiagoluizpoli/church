@@ -68,6 +68,7 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
   [
     z.object({
       kind: z.literal('redeemable'),
+      invitationKind: z.enum(['ministry-only', 'chained']),
       email: z.string().email(),
       churchName: z.string(),
       ministryName: z.string(),

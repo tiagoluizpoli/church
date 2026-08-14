@@ -23,6 +23,7 @@ import { Route as AuthenticatedActiveChurchNotificationsRouteImport } from './ro
 import { Route as AuthenticatedActiveChurchDashboardRouteImport } from './routes/_authenticated/_active-church/dashboard'
 import { Route as AuthenticatedActiveChurchAvailabilityRouteImport } from './routes/_authenticated/_active-church/availability'
 import { Route as AuthenticatedActiveChurchSchedulingIndexRouteImport } from './routes/_authenticated/_active-church/scheduling/index'
+import { Route as AuthenticatedInvitationsMinistryInvitationIdRouteImport } from './routes/_authenticated/invitations/ministry/$invitationId'
 import { Route as AuthenticatedActiveChurchVolunteerAvailabilityRouteImport } from './routes/_authenticated/_active-church/volunteer/availability'
 import { Route as AuthenticatedActiveChurchSchedulingTailoringRouteImport } from './routes/_authenticated/_active-church/scheduling/tailoring'
 import { Route as AuthenticatedActiveChurchSchedulingPlanningCyclesRouteImport } from './routes/_authenticated/_active-church/scheduling/planning-cycles'
@@ -113,6 +114,12 @@ const AuthenticatedActiveChurchSchedulingIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedActiveChurchSchedulingRoute,
+  } as any)
+const AuthenticatedInvitationsMinistryInvitationIdRoute =
+  AuthenticatedInvitationsMinistryInvitationIdRouteImport.update({
+    id: '/invitations/ministry/$invitationId',
+    path: '/invitations/ministry/$invitationId',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedActiveChurchVolunteerAvailabilityRoute =
   AuthenticatedActiveChurchVolunteerAvailabilityRouteImport.update({
@@ -214,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/scheduling/planning-cycles': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesRouteWithChildren
   '/scheduling/tailoring': typeof AuthenticatedActiveChurchSchedulingTailoringRouteWithChildren
   '/volunteer/availability': typeof AuthenticatedActiveChurchVolunteerAvailabilityRoute
+  '/invitations/ministry/$invitationId': typeof AuthenticatedInvitationsMinistryInvitationIdRoute
   '/scheduling/': typeof AuthenticatedActiveChurchSchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesNewRoute
@@ -237,6 +245,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/volunteer/availability': typeof AuthenticatedActiveChurchVolunteerAvailabilityRoute
+  '/invitations/ministry/$invitationId': typeof AuthenticatedInvitationsMinistryInvitationIdRoute
   '/scheduling': typeof AuthenticatedActiveChurchSchedulingIndexRoute
   '/scheduling/planning-cycles/$cycleId': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesCycleIdRoute
   '/scheduling/planning-cycles/new': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesNewRoute
@@ -265,6 +274,7 @@ export interface FileRoutesById {
   '/_authenticated/_active-church/scheduling/planning-cycles': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesRouteWithChildren
   '/_authenticated/_active-church/scheduling/tailoring': typeof AuthenticatedActiveChurchSchedulingTailoringRouteWithChildren
   '/_authenticated/_active-church/volunteer/availability': typeof AuthenticatedActiveChurchVolunteerAvailabilityRoute
+  '/_authenticated/invitations/ministry/$invitationId': typeof AuthenticatedInvitationsMinistryInvitationIdRoute
   '/_authenticated/_active-church/scheduling/': typeof AuthenticatedActiveChurchSchedulingIndexRoute
   '/_authenticated/_active-church/scheduling/planning-cycles/$cycleId': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesCycleIdRoute
   '/_authenticated/_active-church/scheduling/planning-cycles/new': typeof AuthenticatedActiveChurchSchedulingPlanningCyclesNewRoute
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/scheduling/planning-cycles'
     | '/scheduling/tailoring'
     | '/volunteer/availability'
+    | '/invitations/ministry/$invitationId'
     | '/scheduling/'
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/invitations/church/$invitationId'
     | '/volunteer/availability'
+    | '/invitations/ministry/$invitationId'
     | '/scheduling'
     | '/scheduling/planning-cycles/$cycleId'
     | '/scheduling/planning-cycles/new'
@@ -343,6 +355,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_active-church/scheduling/planning-cycles'
     | '/_authenticated/_active-church/scheduling/tailoring'
     | '/_authenticated/_active-church/volunteer/availability'
+    | '/_authenticated/invitations/ministry/$invitationId'
     | '/_authenticated/_active-church/scheduling/'
     | '/_authenticated/_active-church/scheduling/planning-cycles/$cycleId'
     | '/_authenticated/_active-church/scheduling/planning-cycles/new'
@@ -461,6 +474,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/scheduling/'
       preLoaderRoute: typeof AuthenticatedActiveChurchSchedulingIndexRouteImport
       parentRoute: typeof AuthenticatedActiveChurchSchedulingRoute
+    }
+    '/_authenticated/invitations/ministry/$invitationId': {
+      id: '/_authenticated/invitations/ministry/$invitationId'
+      path: '/invitations/ministry/$invitationId'
+      fullPath: '/invitations/ministry/$invitationId'
+      preLoaderRoute: typeof AuthenticatedInvitationsMinistryInvitationIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/_active-church/volunteer/availability': {
       id: '/_authenticated/_active-church/volunteer/availability'
@@ -667,6 +687,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedNoAccessRoute: typeof AuthenticatedNoAccessRoute
   AuthenticatedSelectChurchRoute: typeof AuthenticatedSelectChurchRoute
   AuthenticatedSwitchChurchConfirmRoute: typeof AuthenticatedSwitchChurchConfirmRoute
+  AuthenticatedInvitationsMinistryInvitationIdRoute: typeof AuthenticatedInvitationsMinistryInvitationIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -674,6 +695,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedNoAccessRoute: AuthenticatedNoAccessRoute,
   AuthenticatedSelectChurchRoute: AuthenticatedSelectChurchRoute,
   AuthenticatedSwitchChurchConfirmRoute: AuthenticatedSwitchChurchConfirmRoute,
+  AuthenticatedInvitationsMinistryInvitationIdRoute:
+    AuthenticatedInvitationsMinistryInvitationIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

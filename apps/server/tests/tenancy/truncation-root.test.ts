@@ -8,6 +8,7 @@ import {
   createChurch,
   event,
   eventTemplate,
+  identityAudit,
   invitation,
   invitationVerificationCode,
   ministry,
@@ -22,6 +23,7 @@ import {
   participationSlotInclusion,
   planningCycle,
   role,
+  securityLog,
   session,
   shift,
   slotRequirement,
@@ -364,6 +366,22 @@ async function seedEveryTenantedTable(): Promise<void> {
     title: 'Truncation notification',
     body: 'Truncation notification body',
     payload: {},
+  });
+
+  await testDb.insert(identityAudit).values({
+    churchId: IDS.church,
+    ministryInvitationId: IDS.ministryInvitation,
+    actorId: IDS.user,
+    action: 'acceptance',
+    correlationId: 'truncation-root-identity-audit',
+  });
+
+  await testDb.insert(securityLog).values({
+    churchId: IDS.church,
+    ministryInvitationId: IDS.ministryInvitation,
+    actorId: IDS.user,
+    event: 'identity_mismatch',
+    correlationId: 'truncation-root-security-log',
   });
 }
 

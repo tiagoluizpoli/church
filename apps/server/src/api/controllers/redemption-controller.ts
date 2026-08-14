@@ -219,6 +219,7 @@ export class RedemptionController implements FastifyController {
         if (status.kind === 'redeemable') {
           return reply.send({
             kind: status.kind,
+            invitationKind: status.invitationKind,
             ...toInvitationPreviewFields(status),
           });
         }

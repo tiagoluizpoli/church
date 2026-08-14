@@ -4749,6 +4749,7 @@ paths:
                         type: string
                         enum:
                           - INVITATION_UNAVAILABLE
+                          - VERIFICATION_FAILED
                           - IDENTITY_FAILED
                     required:
                       - kind
@@ -4797,6 +4798,11 @@ paths:
                         type: string
                         enum:
                           - redeemable
+                      invitationKind:
+                        type: string
+                        enum:
+                          - ministry-only
+                          - chained
                       email:
                         type: string
                         format: email
@@ -4818,6 +4824,7 @@ paths:
                         type: string
                     required:
                       - kind
+                      - invitationKind
                       - email
                       - churchName
                       - ministryName
@@ -5033,6 +5040,7 @@ paths:
                         type: string
                         enum:
                           - INVITATION_UNAVAILABLE
+                          - VERIFICATION_FAILED
                           - IDENTITY_FAILED
                     required:
                       - kind

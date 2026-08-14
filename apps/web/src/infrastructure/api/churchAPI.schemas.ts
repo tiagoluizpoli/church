@@ -2083,7 +2083,7 @@ export type DeclineChurchInvitation200 = {
   kind: 'identity-mismatch';
 } | {
   kind: 'terminal-failure';
-  reason: 'INVITATION_UNAVAILABLE' | 'IDENTITY_FAILED';
+  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
 };
 
 export type DeclineChurchInvitation401Error = typeof DeclineChurchInvitation401Error[keyof typeof DeclineChurchInvitation401Error];
@@ -2100,6 +2100,7 @@ export type DeclineChurchInvitation401 = {
 
 export type GetMinistryInvitationStatus200 = {
   kind: 'redeemable';
+  invitationKind: 'ministry-only' | 'chained';
   /** @pattern ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
   email: string;
   churchName: string;
@@ -2167,7 +2168,7 @@ export type DeclineMinistryInvitation200 = {
   kind: 'identity-mismatch';
 } | {
   kind: 'terminal-failure';
-  reason: 'INVITATION_UNAVAILABLE' | 'IDENTITY_FAILED';
+  reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'IDENTITY_FAILED';
 };
 
 export type DeclineMinistryInvitation401Error = typeof DeclineMinistryInvitation401Error[keyof typeof DeclineMinistryInvitation401Error];

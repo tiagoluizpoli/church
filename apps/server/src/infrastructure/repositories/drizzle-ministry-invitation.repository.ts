@@ -39,6 +39,7 @@ import type {
   ResolveRecipientEmailInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -294,12 +295,10 @@ export class DrizzleMinistryInvitationRepository
     const roleIds = rows.flatMap((row) =>
       row.roleId ? [row.roleId as RoleId] : [],
     );
-    const email = first.inviteeEmail ?? first.churchInvitationEmail;
-    if (!email) {
-      throw new Error(
-        `Ministry invitation ${ministryInvitationId} has neither an invitee User nor a Church Invitation to resolve an email from.`,
-      );
-    }
+    const email = resolveInvitationEmail({
+      inviteeEmail: first.inviteeEmail,
+      churchInvitationEmail: first.churchInvitationEmail,
+    });
     return {
       ministryInvitation: mapMinistryInvitation(first.invitation, roleIds),
       churchInvitationStatus: (first.churchInvitationStatus ?? undefined) as

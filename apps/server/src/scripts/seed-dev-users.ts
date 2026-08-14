@@ -5,6 +5,7 @@ import {
   createDb,
   findChurchBySlug,
   ministry,
+  ministryInvitation,
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
@@ -26,6 +27,20 @@ const DEV_CHURCH = {
   name: 'Local Dev Church',
   timezone: 'America/Sao_Paulo',
 } as const;
+
+/**
+ * A second, otherwise-empty Church so tenant isolation is exercisable
+ * locally without a second full domain fixture (issue #62). Its own
+ * ChurchAdmin bootstrap invitation is left pending/unredeemed on purpose —
+ * one more lifecycle example alongside `MINISTRY_INVITATION_FIXTURES` below.
+ */
+const DEV_CHURCH_B = {
+  slug: 'local-dev-church-b',
+  name: 'Local Dev Church B',
+  timezone: 'America/Los_Angeles',
+} as const;
+
+const DEV_CHURCH_B_ADMIN_EMAIL = 'admin-b@local-dev.test';
 
 const DEV_MINISTRY = {
   name: 'Local Ops',
@@ -191,6 +206,130 @@ async function ensureRoles({ churchId, ministryId }: EnsureRolesInput) {
     .returning();
 
   return [...existingRoles, ...createdRoles];
+}
+
+async function ensureDevChurchB(): Promise<ChurchRecord> {
+  const existingChurch = await findChurchBySlug({
+    db,
+    slug: DEV_CHURCH_B.slug,
+  });
+  if (existingChurch) return existingChurch;
+
+  return await provisionSeedChurch({
+    db,
+    churchName: DEV_CHURCH_B.name,
+    churchSlug: DEV_CHURCH_B.slug,
+    adminEmail: DEV_CHURCH_B_ADMIN_EMAIL,
+  });
+}
+
+interface MinistryInvitationFixture {
+  id: string;
+  email: string;
+  name: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'canceled';
+  /** Only the past-expiry `pending` row sets this before today; the rest expire 14 days out. */
+  expiresInDays: number;
+}
+
+/**
+ * One row per lifecycle status the Ministry Invitation domain defines, plus
+ * a past-expiry `pending` row — there is no `expired` status, so that state
+ * is only reachable this way (issue #62). Fixed ids so re-running the seed
+ * converges instead of duplicating.
+ */
+const MINISTRY_INVITATION_FIXTURES: MinistryInvitationFixture[] = [
+  {
+    id: 'd0000001-0000-4000-8000-000000000001',
+    email: 'invite-pending@local-dev.test',
+    name: 'Local Invite Pending',
+    status: 'pending',
+    expiresInDays: 14,
+  },
+  {
+    id: 'd0000001-0000-4000-8000-000000000002',
+    email: 'invite-expired@local-dev.test',
+    name: 'Local Invite Expired',
+    status: 'pending',
+    expiresInDays: -1,
+  },
+  {
+    id: 'd0000001-0000-4000-8000-000000000003',
+    email: 'invite-accepted@local-dev.test',
+    name: 'Local Invite Accepted',
+    status: 'accepted',
+    expiresInDays: 14,
+  },
+  {
+    id: 'd0000001-0000-4000-8000-000000000004',
+    email: 'invite-rejected@local-dev.test',
+    name: 'Local Invite Rejected',
+    status: 'rejected',
+    expiresInDays: 14,
+  },
+  {
+    id: 'd0000001-0000-4000-8000-000000000005',
+    email: 'invite-canceled@local-dev.test',
+    name: 'Local Invite Canceled',
+    status: 'canceled',
+    expiresInDays: 14,
+  },
+];
+
+interface EnsureMinistryInvitationLifecycleFixturesInput {
+  churchId: string;
+  ministryId: string;
+  inviterId: string;
+}
+
+/**
+ * Seeds one Ministry Invitation per lifecycle status directly — fixture
+ * setup may write known state directly (spec 024 §3.2); production minting
+ * never does. Each invitee is a real Church Member so the row satisfies the
+ * schema's addressee shape, but deliberately not a Ministry Member, so the
+ * invitation stays meaningful to redeem by hand locally.
+ */
+async function ensureMinistryInvitationLifecycleFixtures({
+  churchId,
+  ministryId,
+  inviterId,
+}: EnsureMinistryInvitationLifecycleFixturesInput): Promise<void> {
+  const passwordHash = await hashPassword(DEV_PASSWORD);
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  for (const fixture of MINISTRY_INVITATION_FIXTURES) {
+    const invitee = await ensureAuthUser({
+      email: fixture.email,
+      name: fixture.name,
+      passwordHash,
+    });
+    await addChurchMember({ db, churchId, userId: invitee.id });
+
+    await db
+      .insert(ministryInvitation)
+      .values({
+        id: fixture.id,
+        churchId,
+        ministryId,
+        inviteeUserId: invitee.id,
+        ministryAccessLevel: 'volunteer',
+        status: fixture.status,
+        inviterId,
+        expiresAt: new Date(now + fixture.expiresInDays * dayMs),
+        acceptedAt: fixture.status === 'accepted' ? new Date() : null,
+        canceledAt: fixture.status === 'canceled' ? new Date() : null,
+      })
+      .onConflictDoUpdate({
+        target: [ministryInvitation.id],
+        set: {
+          status: fixture.status,
+          expiresAt: new Date(now + fixture.expiresInDays * dayMs),
+          acceptedAt: fixture.status === 'accepted' ? new Date() : null,
+          canceledAt: fixture.status === 'canceled' ? new Date() : null,
+        },
+      });
+  }
 }
 
 interface EnsureAuthUserInput {
@@ -456,6 +595,7 @@ export async function seedDevUsers() {
     ministryId: localMinistry.id,
   });
   const results: SeededDevUser[] = [];
+  let churchAdminUserId: string | undefined;
 
   for (const devUser of DEV_USERS) {
     const authUser = await ensureAuthUser({
@@ -463,6 +603,7 @@ export async function seedDevUsers() {
       name: devUser.name,
       passwordHash,
     });
+    if (devUser.isChurchAdmin) churchAdminUserId = authUser.id;
     const localVolunteer = await ensureVolunteer({
       userId: authUser.id,
       churchId: localChurch.id,
@@ -504,13 +645,31 @@ export async function seedDevUsers() {
     });
   }
 
+  if (!churchAdminUserId) {
+    throw new Error(
+      'No church-admin dev user was seeded to own the invitation fixtures.',
+    );
+  }
+  await ensureMinistryInvitationLifecycleFixtures({
+    churchId: localChurch.id,
+    ministryId: localMinistry.id,
+    inviterId: churchAdminUserId,
+  });
+
+  const churchB = await ensureDevChurchB();
+
   return {
     church: DEV_CHURCH,
+    churchB,
     ministry: DEV_MINISTRY.name,
     team: DEV_TEAM.name,
     roles: localRoles.map((r) => r.name),
     password: DEV_PASSWORD,
     users: results,
+    invitationFixtures: MINISTRY_INVITATION_FIXTURES.map((f) => ({
+      email: f.email,
+      status: f.status,
+    })),
   };
 }
 
@@ -523,6 +682,10 @@ if (import.meta.main) {
       console.log(`Team: ${result.team}`);
       console.log(`Roles: ${result.roles.join(', ')}`);
       console.log(`Password: ${result.password}`);
+      console.log(`ChurchB: ${result.churchB.name} (${result.churchB.slug})`);
+      console.log(
+        `Invitation fixtures: ${result.invitationFixtures.map((f) => `${f.status}:${f.email}`).join(', ')}`,
+      );
       for (const seededUser of result.users) {
         console.log(
           `- ${seededUser.role}: ${seededUser.email} (${seededUser.name})`,

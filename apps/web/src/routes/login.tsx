@@ -1,8 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useState } from 'react';
 import { z } from 'zod';
 import SignInForm from '@/components/sign-in-form';
-import SignUpForm from '@/components/sign-up-form';
 import { authClient } from '@/lib/auth-client';
 import { validateInternalReturnTarget } from '@/shared/utils/return-target';
 
@@ -28,16 +26,8 @@ export const Route = createFileRoute('/login')({
 
 function RouteComponent() {
   const { redirect: redirectSearch } = Route.useSearch();
-  const [showSignIn, setShowSignIn] = useState(false);
   const redirectTo =
     validateInternalReturnTarget({ target: redirectSearch }) ?? undefined;
 
-  return showSignIn ? (
-    <SignInForm
-      onSwitchToSignUp={() => setShowSignIn(false)}
-      redirectTo={redirectTo}
-    />
-  ) : (
-    <SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
-  );
+  return <SignInForm redirectTo={redirectTo} />;
 }

@@ -52,7 +52,12 @@ describe('the sign-in route (login)', () => {
 
     const { router } = renderRoute({ initialPath: '/login' });
 
-    expect(await screen.findByText('Create Account')).toBeVisible();
+    expect(await screen.findByText('Welcome Back')).toBeVisible();
+    expect(screen.getByText(/access is invitation-only/i)).toBeVisible();
+    expect(screen.queryByText('Create Account')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Need an account? Sign Up'),
+    ).not.toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/login');
   });
 

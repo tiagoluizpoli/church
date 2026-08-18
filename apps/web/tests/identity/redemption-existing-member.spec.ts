@@ -160,11 +160,8 @@ interface SignInInput {
   email: string;
 }
 
-/** The route's sign-in view is reached behind a "Sign In" toggle — sign-up is the default view (spec §3 covers suppressing sign-up itself; toggling is unaffected by this ticket). */
+/** `/login` renders the sign-in view only (issue #62) — no toggle to reach it. */
 async function signIn(page: Page, { email }: SignInInput): Promise<void> {
-  await page
-    .getByRole('button', { name: 'Already have an account? Sign In' })
-    .click();
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign In' }).click();

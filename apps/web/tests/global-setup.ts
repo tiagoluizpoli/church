@@ -11,10 +11,20 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
  * Playwright global setup: provisions authenticated role sessions and seeded
  * domain data for scheduling E2E specs.
  *
- *  1. Sign up disposable leader, TeamLeader, and volunteer users.
- *  2. Shell out to the SERVER seed script (frontend stays DB-free).
- *  3. Persist admin/leader/volunteer sessions to `tests/.auth/` so specs opt in
- *     `test.use({ storageState })` — existing unauthenticated specs untouched.
+ *  1. Provision both Churches through the real Church Provisioning operation
+ *     (`e2e-provision-church.ts`), each minting a Church Invitation to its
+ *     first ChurchAdmin.
+ *  2. Redeem every actor's Church Invitation for real (`e2e-redeem-church-
+ *     invitation.ts`) — public sign-up is closed, so no user here is ever
+ *     created any other way. The ChurchAdmin invites TeamLeader/Volunteer
+ *     into Church A as ordinary Church Members before they redeem too
+ *     (`e2e-mint-church-invitation.ts`).
+ *  3. Shell out to the SERVER seed script for the scheduling domain fixture
+ *     (frontend stays DB-free) — Ministry Membership, Roles and Teams are
+ *     still written directly, which spec 024 §3.2 permits for fixture setup.
+ *  4. Persist admin/leader/volunteer sessions to `tests/.auth/` so specs opt
+ *     in `test.use({ storageState })` — existing unauthenticated specs
+ *     untouched.
  *
  * ChurchAdmin and leader states share one session, proving role coexistence
  * once ChurchAdmin authorization is introduced by the foundational phase.
@@ -40,6 +50,12 @@ export const CHURCH_B_ADMIN_STORAGE_STATE = path.resolve(
   '.auth/church-b-admin.json',
 );
 export const E2E_AUTH_META = path.resolve(dirname, '.auth/e2e-users.json');
+
+// Mirrors `apps/server/src/test-support/e2e-seed.ts`'s `E2E_IDS.church` /
+// `E2E_IDS.churchB` — pinned so the domain fixture's hardcoded ids still
+// resolve against the Church this setup provisions.
+const CHURCH_A_ID = 'e2e11111-1111-1111-1111-111111111111';
+const CHURCH_B_ID = 'e2ebbbbb-1111-1111-1111-111111111111';
 
 const LEADER_BASE = {
   password: 'e2e-Password-123',
@@ -83,6 +99,7 @@ interface AuthUserCredentials {
 interface AuthUserInput {
   ctx: Awaited<ReturnType<typeof request.newContext>>;
   creds: AuthUserCredentials;
+  invitationId: string;
 }
 
 interface MakeUniqueEmailInput {
@@ -94,19 +111,99 @@ function makeUniqueEmail({ label }: MakeUniqueEmailInput): string {
   return `${label}-${suffix}@test.com`;
 }
 
-async function authUser({ ctx, creds }: AuthUserInput): Promise<string> {
-  execFileSync(
+interface RunServerScriptInput {
+  scriptPath: string;
+  args: string[];
+}
+
+function runServerScript({ scriptPath, args }: RunServerScriptInput): string {
+  return execFileSync(
     'bun',
-    [
-      '--env-file=../../.env',
-      'run',
-      'src/scripts/e2e-create-user.ts',
-      creds.email,
-      creds.name,
-      creds.password,
-    ],
+    ['--env-file=../../.env', 'run', scriptPath, ...args],
     { cwd: SERVER_DIR },
-  );
+  ).toString();
+}
+
+/** Parses the last non-empty stdout line as JSON — scripts may log incidental lines before it. */
+function parseLastJsonLine<T>(output: string): T {
+  const lastLine = output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .pop();
+  if (!lastLine) {
+    throw new Error(`Expected a JSON line on stdout, got:\n${output}`);
+  }
+  return JSON.parse(lastLine) as T;
+}
+
+interface ProvisionE2eChurchInput {
+  id: string;
+  name: string;
+  slug: string;
+  adminEmail: string;
+}
+
+interface ProvisionE2eChurchResult {
+  churchId: string;
+  invitationId: string;
+}
+
+/** Real Church Provisioning (spec 024 §2) — mints a Church Invitation to the first ChurchAdmin. */
+function provisionE2eChurch(
+  input: ProvisionE2eChurchInput,
+): ProvisionE2eChurchResult {
+  const output = runServerScript({
+    scriptPath: 'src/scripts/e2e-provision-church.ts',
+    args: [input.id, input.name, input.slug, input.adminEmail],
+  });
+  return parseLastJsonLine<ProvisionE2eChurchResult>(output);
+}
+
+interface MintE2eChurchInvitationInput {
+  inviterEmail: string;
+  inviterPassword: string;
+  inviteeEmail: string;
+  organizationId: string;
+  role: 'member' | 'admin';
+}
+
+interface MintE2eChurchInvitationResult {
+  invitationId: string;
+}
+
+/** A real Church Invitation from the ChurchAdmin to an ordinary Church Member. */
+function mintE2eChurchInvitation(
+  input: MintE2eChurchInvitationInput,
+): MintE2eChurchInvitationResult {
+  const output = runServerScript({
+    scriptPath: 'src/scripts/e2e-mint-church-invitation.ts',
+    args: [
+      input.inviterEmail,
+      input.inviterPassword,
+      input.inviteeEmail,
+      input.organizationId,
+      input.role,
+    ],
+  });
+  return parseLastJsonLine<MintE2eChurchInvitationResult>(output);
+}
+
+/**
+ * Redeems a real Church Invitation for `creds` (account creation and
+ * acceptance both happen server-side, in-process — public sign-up is
+ * closed), then signs in over HTTP to give the caller's Playwright `ctx` a
+ * usable session for `storageState()`.
+ */
+async function authUser({
+  ctx,
+  creds,
+  invitationId,
+}: AuthUserInput): Promise<string> {
+  runServerScript({
+    scriptPath: 'src/scripts/e2e-redeem-church-invitation.ts',
+    args: [creds.email, creds.name, creds.password, invitationId],
+  });
   const res = await ctx.post(`${SERVER_URL}/api/auth/sign-in/email`, {
     data: { email: creds.email, password: creds.password },
   });
@@ -145,13 +242,61 @@ export default async function globalSetup(): Promise<void> {
     email: makeUniqueEmail({ label: 'e2e-churchb-admin' }),
   };
 
-  const [leaderId, teamLeaderId, volunteerId, churchBAdminId] =
-    await Promise.all([
-      authUser({ ctx: leaderCtx, creds: leaderCreds }),
-      authUser({ ctx: teamLeaderCtx, creds: teamLeaderCreds }),
-      authUser({ ctx: volunteerCtx, creds: volunteerCreds }),
-      authUser({ ctx: churchBAdminCtx, creds: churchBAdminCreds }),
-    ]);
+  const [churchA, churchB] = [
+    provisionE2eChurch({
+      id: CHURCH_A_ID,
+      name: 'E2E Church',
+      slug: 'e2e-church',
+      adminEmail: leaderCreds.email,
+    }),
+    provisionE2eChurch({
+      id: CHURCH_B_ID,
+      name: 'E2E ChurchB',
+      slug: 'e2e-church-b',
+      adminEmail: churchBAdminCreds.email,
+    }),
+  ];
+
+  const [leaderId, churchBAdminId] = await Promise.all([
+    authUser({
+      ctx: leaderCtx,
+      creds: leaderCreds,
+      invitationId: churchA.invitationId,
+    }),
+    authUser({
+      ctx: churchBAdminCtx,
+      creds: churchBAdminCreds,
+      invitationId: churchB.invitationId,
+    }),
+  ]);
+
+  const teamLeaderInvitation = mintE2eChurchInvitation({
+    inviterEmail: leaderCreds.email,
+    inviterPassword: leaderCreds.password,
+    inviteeEmail: teamLeaderCreds.email,
+    organizationId: churchA.churchId,
+    role: 'member',
+  });
+  const volunteerInvitation = mintE2eChurchInvitation({
+    inviterEmail: leaderCreds.email,
+    inviterPassword: leaderCreds.password,
+    inviteeEmail: volunteerCreds.email,
+    organizationId: churchA.churchId,
+    role: 'member',
+  });
+
+  const [teamLeaderId, volunteerId] = await Promise.all([
+    authUser({
+      ctx: teamLeaderCtx,
+      creds: teamLeaderCreds,
+      invitationId: teamLeaderInvitation.invitationId,
+    }),
+    authUser({
+      ctx: volunteerCtx,
+      creds: volunteerCreds,
+      invitationId: volunteerInvitation.invitationId,
+    }),
+  ]);
 
   execFileSync(
     'bun',

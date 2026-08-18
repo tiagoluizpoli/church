@@ -6,7 +6,6 @@ import {
   assignment,
   availability,
   availabilityCheck,
-  ensureChurch,
   event,
   ministry,
   ministryParticipation,
@@ -243,27 +242,14 @@ export async function seedE2e({
       )
       .onConflictDoNothing();
 
-    await ensureChurch({
-      db,
-      id: E2E_IDS.church,
-      name: 'E2E Church',
-      slug: 'e2e-church',
-      timezone: 'America/New_York',
-    });
-
-    // Church Membership is what admits a person to the Church; volunteering is
-    // additive to it. Every user this seed gives a Volunteer profile gets one,
-    // or the seed produces people holding assignments with no way in.
-    await addChurchMember({
-      db,
-      churchId: E2E_IDS.church,
-      userId: leaderUserId,
-      accessLevel: 'admin',
-    });
-
+    // The Church itself, and leader/teamLeader/volunteer's Church Membership,
+    // are provisioned before this script runs — `apps/web/tests/global-
+    // setup.ts` provisions the Church and has each of them redeem a real
+    // Church Invitation (spec 024 §3.2 permits fixture setup to still write
+    // known state directly for what invitation redemption does not cover:
+    // the pool volunteers below, which are scheduling fixture data, never
+    // real E2E actors).
     for (const memberUserId of [
-      teamLeaderUserId,
-      volunteerUserId,
       ...POOL_VOLUNTEERS.map((poolVolunteer) => poolVolunteer.userId),
       UNQUALIFIED_VOLUNTEER.userId,
     ]) {
@@ -298,22 +284,9 @@ export async function seedE2e({
       ])
       .onConflictDoNothing();
 
-    // Second tenant (DL4-X1 church isolation, cross-cutting spec only).
-    await ensureChurch({
-      db,
-      id: E2E_IDS.churchB,
-      name: 'E2E ChurchB',
-      slug: 'e2e-church-b',
-      timezone: 'America/Chicago',
-    });
-
-    await addChurchMember({
-      db,
-      churchId: E2E_IDS.churchB,
-      userId: churchBAdminUserId,
-      accessLevel: 'admin',
-    });
-
+    // Second tenant (DL4-X1 church isolation, cross-cutting spec only) — also
+    // provisioned by `global-setup.ts`, with the ChurchB admin's Church
+    // Membership already granted by their own invitation redemption.
     const [churchBAdminVolunteerRow] = await db
       .insert(volunteer)
       .values({

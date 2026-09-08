@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 
-test.use({ storageState: LEADER_STORAGE_STATE });
+test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
 test('US2: bell shows unread count, opens dropdown, deep-links, and views full history', async ({
   page,
@@ -11,7 +11,7 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
   const bellTrigger = page.getByRole('button', { name: 'Notifications' });
   await expect(bellTrigger).toBeVisible();
 
-  // Other e2e specs share this leader fixture and may add their own
+  // Other e2e specs share this volunteer fixture and may add their own
   // notifications, so assert "at least one unread" rather than an exact
   // count.
   const badgeText = await bellTrigger

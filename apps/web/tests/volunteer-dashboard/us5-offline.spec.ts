@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 
-test.use({ storageState: LEADER_STORAGE_STATE });
+test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
 test('US5: volunteer keeps cached dashboard data readable across all three tabs after reloading offline', async ({
   page,
@@ -19,7 +19,7 @@ test('US5: volunteer keeps cached dashboard data readable across all three tabs 
       get: () => false,
     });
   });
-  await page.route('**/trpc/**', (route) => route.abort());
+  await page.route('**/api/v1/volunteer/**', (route) => route.abort());
   await page.reload();
 
   await expect(page.getByText('Offline mode', { exact: true })).toBeVisible();

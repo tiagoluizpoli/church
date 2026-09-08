@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 
-test.use({ storageState: LEADER_STORAGE_STATE });
+test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
 const DASHBOARD_URL =
   '/dashboard?section=availability&eventId=e2e66666-6666-6666-6666-666666666661';

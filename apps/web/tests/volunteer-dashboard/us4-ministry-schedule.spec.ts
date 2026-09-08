@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 
-test.use({ storageState: LEADER_STORAGE_STATE });
+test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
 const DASHBOARD_URL = '/dashboard?section=ministry_schedule';
 
@@ -33,6 +33,6 @@ test('US4: volunteer browses ministry schedule and switches ministries when avai
     .click();
 
   await expect(page.getByText('Care Host').first()).toBeVisible();
-  await expect(page.getByText('Volunteer: E2E L.')).toBeVisible();
+  await expect(page.getByText('Volunteer: E2E V.')).toBeVisible();
   await expect(page.getByText('Team: Care Team')).toBeVisible();
 });

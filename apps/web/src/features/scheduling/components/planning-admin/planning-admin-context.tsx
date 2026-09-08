@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useContext } from 'react';
 import type { SelectedPlanningCycle } from './planning-admin.types';
 import {
+  type SelectCycleInput,
   type UsePlanningAdminResult,
   usePlanningAdmin,
 } from './use-planning-admin';
@@ -94,7 +95,7 @@ export function useCreateCycleCard(): CreateCycleCardModel {
 
 export type CycleListCardModel = Pick<
   UsePlanningAdminResult,
-  'cycles' | 'cyclesLoading' | 'handleSelectCycle'
+  'cycles' | 'cyclesLoading' | 'selectedCycleId' | 'handleSelectCycle'
 >;
 
 export function useCycleListCard(): CycleListCardModel {
@@ -103,6 +104,7 @@ export function useCycleListCard(): CycleListCardModel {
   return {
     cycles: context.cycles,
     cyclesLoading: context.cyclesLoading,
+    selectedCycleId: context.selectedCycleId,
     handleSelectCycle: context.handleSelectCycle,
   };
 }
@@ -196,7 +198,7 @@ export function useTemplateApplyDialog(): TemplateApplyDialogModel {
 
 export interface PlanningCycleSelectionModel {
   selectedCycleId: string | null;
-  handleSelectCycle: (input: { cycleId: string }) => void;
+  handleSelectCycle: (input: SelectCycleInput) => void;
   handleClearSelectedCycle: () => void;
 }
 

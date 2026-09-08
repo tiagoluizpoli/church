@@ -40,9 +40,15 @@ const CYCLE_TABLE_COLUMNS = [
 
 export function CycleListCard({
   onSelectCycle,
-  selectedCycleId = null,
+  selectedCycleId: selectedCycleIdOverride,
 }: CycleListCardProps) {
-  const { cycles, cyclesLoading, handleSelectCycle } = useCycleListCard();
+  const {
+    cycles,
+    cyclesLoading,
+    selectedCycleId: selectedCycleIdFromContext,
+    handleSelectCycle,
+  } = useCycleListCard();
+  const selectedCycleId = selectedCycleIdOverride ?? selectedCycleIdFromContext;
 
   return (
     <Card className="surface-panel">
@@ -97,7 +103,20 @@ export function CycleListCard({
             </div>
 
             <div className="hidden md:block">
-              <Table aria-label="Existing cycles">
+              <Table
+                aria-label="Existing cycles"
+                selectionMode="single"
+                selectionBehavior="replace"
+                disallowEmptySelection
+                selectedKeys={selectedCycleId ? [selectedCycleId] : []}
+                onSelectionChange={(keys) => {
+                  if (keys === 'all') return;
+                  const cycleId = keys.values().next().value;
+                  if (typeof cycleId !== 'string') return;
+                  handleSelectCycle({ cycleId });
+                  onSelectCycle?.({ cycleId });
+                }}
+              >
                 <TableHeader columns={CYCLE_TABLE_COLUMNS}>
                   {(column) => (
                     <TableColumn isRowHeader={column.id === 'name'}>
@@ -115,13 +134,7 @@ export function CycleListCard({
                       key={row.id}
                       id={row.id}
                       columns={CYCLE_TABLE_COLUMNS}
-                      className={
-                        selectedCycleId === row.id ? 'bg-accent/45' : undefined
-                      }
-                      onAction={() => {
-                        handleSelectCycle({ cycleId: row.id });
-                        onSelectCycle?.({ cycleId: row.id });
-                      }}
+                      data-testid={`planning-cycle-row-${row.id}`}
                     >
                       {(column) => (
                         <TableCell>

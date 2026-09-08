@@ -17,10 +17,10 @@ vi.mock('@/utils/api-instances', () => ({
   },
 }));
 
-function render() {
+function render(onSelectCycle = vi.fn()) {
   return renderWithProviders(
     <PlanningAdminProvider>
-      <CycleListCard />
+      <CycleListCard onSelectCycle={onSelectCycle} />
     </PlanningAdminProvider>,
   );
 }
@@ -91,6 +91,80 @@ describe('CycleListCard table view (US1)', () => {
     await user.click(row);
 
     expect(getPlanningCycle).toHaveBeenCalled();
+  });
+
+  it('keeps a single selection across clicks and keyboard navigation', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: ['cycle-1', 'cycle-2'].map((id) => ({
+        id,
+        name: id,
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        state: 'draft',
+      })),
+    });
+    getPlanningCycle.mockResolvedValue(undefined);
+    const onSelectCycle = vi.fn();
+    const user = userEvent.setup();
+    render(onSelectCycle);
+
+    const first = await screen.findByTestId('planning-cycle-row-cycle-1');
+    const second = screen.getByTestId('planning-cycle-row-cycle-2');
+    expect(first).toHaveAttribute('aria-selected', 'false');
+    expect(second).toHaveAttribute('aria-selected', 'false');
+
+    await user.click(first);
+    expect(first).toHaveAttribute('aria-selected', 'true');
+    expect(first).toHaveAttribute('data-selected', 'true');
+    expect(first).not.toHaveClass('bg-accent/45');
+    expect(onSelectCycle).toHaveBeenLastCalledWith({ cycleId: 'cycle-1' });
+    expect(getPlanningCycle).toHaveBeenLastCalledWith('cycle-1');
+
+    await user.click(first);
+    expect(first).toHaveAttribute('aria-selected', 'true');
+
+    await user.keyboard('{ArrowDown}');
+    expect(first).toHaveAttribute('aria-selected', 'false');
+    expect(second).toHaveAttribute('aria-selected', 'true');
+    expect(onSelectCycle).toHaveBeenLastCalledWith({ cycleId: 'cycle-2' });
+    expect(getPlanningCycle).toHaveBeenLastCalledWith('cycle-2');
+
+    await user.click(first);
+    expect(first).toHaveAttribute('aria-selected', 'true');
+    expect(second).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getAllByTestId('planning-cycle-option')[0]).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('reflects selection changes supplied by the master-detail pane', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: ['cycle-1', 'cycle-2'].map((id) => ({
+        id,
+        name: id,
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        state: 'draft',
+      })),
+    });
+    const view = renderWithProviders(
+      <PlanningAdminProvider>
+        <CycleListCard selectedCycleId="cycle-1" />
+      </PlanningAdminProvider>,
+    );
+    const first = await screen.findByTestId('planning-cycle-row-cycle-1');
+    const second = screen.getByTestId('planning-cycle-row-cycle-2');
+    expect(first).toHaveAttribute('aria-selected', 'true');
+    expect(second).toHaveAttribute('aria-selected', 'false');
+
+    view.rerender(
+      <PlanningAdminProvider>
+        <CycleListCard selectedCycleId="cycle-2" />
+      </PlanningAdminProvider>,
+    );
+    expect(first).toHaveAttribute('aria-selected', 'false');
+    expect(second).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows the empty-state message instead of an empty table when there are no cycles', async () => {

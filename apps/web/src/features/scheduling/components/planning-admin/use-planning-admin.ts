@@ -30,7 +30,7 @@ import {
 } from './use-planning-admin-mutations';
 import { adminApi } from '@/utils/api-instances';
 
-interface SelectCycleInput {
+export interface SelectCycleInput {
   cycleId: string;
 }
 

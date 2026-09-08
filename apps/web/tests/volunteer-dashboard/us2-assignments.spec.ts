@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 
-test.use({ storageState: LEADER_STORAGE_STATE });
+test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
 const DASHBOARD_URL = '/dashboard?section=assignments';
 
-test('US2: volunteer reviews a pending assignment group and responds within 30 seconds', async ({
+test('US2: volunteer reviews a confirmed assignment group and responds within 30 seconds', async ({
   page,
 }) => {
   const startedAt = Date.now();

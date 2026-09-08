@@ -477,6 +477,15 @@ export async function seedE2e({
           status: 'active',
         },
         {
+          // Dashboard specs authenticate as an ordinary volunteer in both ministries.
+          id: 'e2eccccc-cccc-cccc-cccc-cccccccccca9',
+          churchId: E2E_IDS.church,
+          volunteerId: schedulingVolunteerId,
+          ministryId: E2E_IDS.ministryCare,
+          ministryAccessLevel: 'volunteer',
+          status: 'active',
+        },
+        {
           // TeamLeader of team1 (see ministryVolunteerTeam below) — an
           // ordinary Ministry Member at the ministry level, per CONTEXT.md's
           // TeamLeader being orthogonal to Ministry Access Level.
@@ -523,6 +532,11 @@ export async function seedE2e({
         {
           churchId: E2E_IDS.church,
           ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          teamId: E2E_IDS.careTeam,
+        },
+        {
+          churchId: E2E_IDS.church,
+          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca9',
           teamId: E2E_IDS.careTeam,
         },
         {
@@ -574,6 +588,11 @@ export async function seedE2e({
         {
           churchId: E2E_IDS.church,
           ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          roleId: E2E_IDS.roleCareHost,
+        },
+        {
+          churchId: E2E_IDS.church,
+          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca9',
           roleId: E2E_IDS.roleCareHost,
         },
       ])
@@ -946,7 +965,7 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.careEvent],
           shiftId: SHIFT_IDS[E2E_IDS.careSlot],
-          volunteerId: leaderVolunteerId,
+          volunteerId: schedulingVolunteerId,
           roleId: E2E_IDS.roleCareHost,
           status: 'confirmed',
         },
@@ -978,7 +997,7 @@ export async function seedE2e({
       .values({
         id: 'e2ef1111-1111-1111-1111-111111111111',
         churchId: E2E_IDS.church,
-        volunteerId: leaderVolunteerId,
+        volunteerId: schedulingVolunteerId,
         ministryId: E2E_IDS.ministry,
         eventId: E2E_IDS.declineEvent,
         assignmentId: E2E_IDS.declineAssignment,

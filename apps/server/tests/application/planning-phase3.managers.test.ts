@@ -129,6 +129,19 @@ async function seedEventSlot(input: SeedEventSlotInput) {
   return row;
 }
 
+/**
+ * Flip an event straight to `scheduled` — the state a per-event roster
+ * publish (`assignment-manager-service.markScheduled`) leaves it in — without
+ * standing up the whole rostering flow. Lets tests exercise `cancelEvent`'s
+ * soft-cancel branch, which keys only on `event.status`.
+ */
+async function markEventScheduled(eventId: string): Promise<void> {
+  await schedulingTestDb
+    .update(event)
+    .set({ status: 'scheduled' })
+    .where(eq(event.id, eventId));
+}
+
 describe('Phase 3 planning managers', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
@@ -281,8 +294,8 @@ describe('Phase 3 planning managers', () => {
     const cycle = await cycleManager.createCycle({
       churchId: churchAId,
       name: 'August cycle',
-      startDate: new Date('2026-08-01T00:00:00.000Z'),
-      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      startDate: new Date('2027-08-01T00:00:00.000Z'),
+      endDate: new Date('2027-09-01T00:00:00.000Z'),
     });
 
     await expect(
@@ -290,8 +303,8 @@ describe('Phase 3 planning managers', () => {
         churchId: churchAId,
         cycleId: cycle.id,
         title: 'Outside cycle',
-        startDate: new Date('2026-10-05T12:00:00.000Z'),
-        endDate: new Date('2026-10-05T14:00:00.000Z'),
+        startDate: new Date('2027-10-05T12:00:00.000Z'),
+        endDate: new Date('2027-10-05T14:00:00.000Z'),
       }),
     ).rejects.toThrow(EventOutsidePlanningCycleError);
   });
@@ -456,7 +469,10 @@ describe('Phase 3 planning managers', () => {
     expect(postLockEvent?.status).toBe('scheduled');
   });
 
-  it('cancelEvent cancels a draft event freely, is blocked on a locked cycle unless the event is still draft, and works again after reopen', async () => {
+  it('cancelEvent hard-deletes a draft event, is blocked on a locked cycle unless the event is still draft, and hard-deletes again after reopen', async () => {
+    // BL-020 / issue #12: delete and cancel are split on the event's lifecycle
+    // status. `draft` (never reached `scheduled`) → hard delete; any later
+    // status → soft cancel.
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -481,11 +497,12 @@ describe('Phase 3 planning managers', () => {
       eventId: draftEvent.id,
     });
 
+    // Draft event row is gone, not left wearing a `cancelled` badge.
     const afterCancel = await cycleManager.getCycle({
       churchId: churchAId,
       cycleId: draftCycle.id,
     });
-    expect(afterCancel.events[0]?.event.status).toBe('cancelled');
+    expect(afterCancel.events).toHaveLength(0);
 
     const lockedCycle = await cycleManager.createCycle({
       churchId: churchAId,
@@ -519,6 +536,8 @@ describe('Phase 3 planning managers', () => {
       eventId: lockedEvent.id,
     });
 
+    // Reopen flips the event back to `draft`; cancelling it now hard-deletes,
+    // the same case `reopenEvent` already treats as legitimately mutable.
     await eventManager.cancelEvent({
       churchId: churchAId,
       cycleId: lockedCycle.id,
@@ -529,7 +548,188 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: lockedCycle.id,
     });
-    expect(finalDetails.events[0]?.event.status).toBe('cancelled');
+    expect(finalDetails.events).toHaveLength(0);
+  });
+
+  it('cancelEvent soft-cancels a scheduled event and leaves its row in place', async () => {
+    // The soft-cancel branch: an event already rostered to `scheduled` while
+    // its cycle is still draft. Behaviour is byte-for-byte today's — a silent
+    // status flip, no hard delete.
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+
+    const cycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Soft cancel cycle',
+      startDate: new Date('2027-04-01T00:00:00.000Z'),
+      endDate: new Date('2027-05-01T00:00:00.000Z'),
+    });
+    const scheduledEvent = await eventManager.createEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      title: 'Scheduled service',
+      startDate: new Date('2027-04-05T09:00:00.000Z'),
+      endDate: new Date('2027-04-05T10:00:00.000Z'),
+    });
+    await markEventScheduled(scheduledEvent.id);
+
+    await eventManager.cancelEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      eventId: scheduledEvent.id,
+    });
+
+    const afterCancel = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    expect(afterCancel.events).toHaveLength(1);
+    expect(afterCancel.events[0]?.event.status).toBe('cancelled');
+  });
+
+  it('regenerates events and slots after every generated draft event is deleted, stays idempotent, and never resurrects a soft-cancelled event', async () => {
+    // BL-020 success criteria 1, 2 and 4.
+    const seed = await seedSchedulingPhase3Base();
+    const { cycleManager, eventManager, templateManager } = createManagers();
+    const churchAId = ChurchId.from(seed.churchAId);
+
+    const cycle = await cycleManager.createCycle({
+      churchId: churchAId,
+      name: 'Regenerate after delete',
+      startDate: new Date('2027-06-01T00:00:00.000Z'),
+      endDate: new Date('2027-07-01T00:00:00.000Z'),
+    });
+    const template = await templateManager.createTemplate({
+      churchId: churchAId,
+      name: 'Sunday Service',
+      weekday: 0,
+      blocks: [
+        {
+          label: 'Welcome',
+          startTime: '09:00:00',
+          endTime: '09:30:00',
+          order: 0,
+        },
+        {
+          label: 'Message',
+          startTime: '09:30:00',
+          endTime: '10:30:00',
+          order: 1,
+        },
+      ],
+    });
+
+    const firstRun = await eventManager.generateFromTemplates({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      templateIds: [template.id],
+    });
+    expect(firstRun.generatedEventCount).toBeGreaterThan(0);
+    expect(firstRun.generatedSlotCount).toBeGreaterThan(0);
+
+    // Idempotent while the events are still present.
+    const rerunWithEvents = await eventManager.generateFromTemplates({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      templateIds: [template.id],
+    });
+    expect(rerunWithEvents.generatedEventCount).toBe(0);
+    expect(rerunWithEvents.generatedSlotCount).toBe(0);
+
+    const generated = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    const generatedEvents = generated.events;
+    expect(generatedEvents.length).toBe(firstRun.generatedEventCount);
+
+    // Partial delete: drop the first generated event only, then regenerate.
+    const firstEventId = generatedEvents[0]?.event.id;
+    if (!firstEventId) {
+      throw new Error('Expected at least one generated event');
+    }
+    await eventManager.cancelEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      eventId: firstEventId,
+    });
+
+    const afterPartialDelete = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    expect(afterPartialDelete.events.length).toBe(generatedEvents.length - 1);
+
+    const partialRun = await eventManager.generateFromTemplates({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      templateIds: [template.id],
+    });
+    expect(partialRun.generatedEventCount).toBe(1);
+    expect(partialRun.generatedSlotCount).toBe(2);
+
+    // Delete every remaining generated draft event, then regenerate the lot.
+    const remaining = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    for (const eventGroup of remaining.events) {
+      await eventManager.cancelEvent({
+        churchId: churchAId,
+        cycleId: cycle.id,
+        eventId: eventGroup.event.id,
+      });
+    }
+
+    const emptied = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    expect(emptied.events).toHaveLength(0);
+
+    const fullRegen = await eventManager.generateFromTemplates({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      templateIds: [template.id],
+    });
+    expect(fullRegen.generatedEventCount).toBe(firstRun.generatedEventCount);
+    expect(fullRegen.generatedSlotCount).toBe(firstRun.generatedSlotCount);
+
+    // Non-resurrection: soft-cancel one regenerated event (already rostered to
+    // `scheduled`), then re-apply the template. That date must stay empty.
+    const regenerated = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    const toCancelId = regenerated.events[0]?.event.id;
+    if (!toCancelId) {
+      throw new Error('Expected at least one regenerated event');
+    }
+    await markEventScheduled(toCancelId);
+    await eventManager.cancelEvent({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      eventId: toCancelId,
+    });
+
+    const nonResurrectionRun = await eventManager.generateFromTemplates({
+      churchId: churchAId,
+      cycleId: cycle.id,
+      templateIds: [template.id],
+    });
+    expect(nonResurrectionRun.generatedEventCount).toBe(0);
+    expect(nonResurrectionRun.generatedSlotCount).toBe(0);
+
+    const finalState = await cycleManager.getCycle({
+      churchId: churchAId,
+      cycleId: cycle.id,
+    });
+    expect(
+      finalState.events.filter(
+        (eventGroup) => eventGroup.event.status === 'cancelled',
+      ),
+    ).toHaveLength(1);
   });
 
   it('updateEvent rejects moving a startDate outside its planning cycle', async () => {

@@ -46,6 +46,12 @@ export interface GetPlanningEventInput {
   tx?: TransactionContext;
 }
 
+export interface DeletePlanningEventInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  tx?: TransactionContext;
+}
+
 export interface ListPlanningCycleEventsInput {
   churchId: ChurchId;
   cycleId: PlanningCycleId;
@@ -72,6 +78,14 @@ export interface PlanningEventRepository {
   createEvent(input: CreatePlanningEventInput): Promise<Event>;
   updateEvent(input: UpdatePlanningEventInput): Promise<Event>;
   getEvent(input: GetPlanningEventInput): Promise<Event>;
+  /**
+   * Hard-deletes an event row. The `event → timeSlot → shift → assignment`
+   * (and `assignment → assignmentAudit`) foreign keys all cascade, so slots,
+   * shifts, draft assignments and their audits go with it. Only ever called
+   * for `draft` events — those never reached `scheduled`, so no volunteer has
+   * seen them (see BL-020 / issue #12).
+   */
+  deleteEvent(input: DeletePlanningEventInput): Promise<void>;
   listCycleEvents(
     input: ListPlanningCycleEventsInput,
   ): Promise<EventWithSlots[]>;

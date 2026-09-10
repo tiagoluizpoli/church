@@ -59,6 +59,7 @@ Parked items have no rank and no GitHub issue.
 | [BL-026](./items/BL-026.md) | Volunteer dashboard has no visible state for zero Church access | Volunteer Dashboard | A User reports (or QA observes) a blank dashboard after losing Church access, **or** [#54](https://github.com/tiagoluizpoli/church/issues/54) lands and defines the system-wide no-access presentation. |
 | [BL-027](./items/BL-027.md) | No `AbortSignal` wiring for in-flight requests | Frontend Architecture / Data Layer | A confirmed incident (or reproducible test) where a stale-context request lands after an Active Church switch, **or** a second, unrelated need for true request cancellation shows up. |
 | [BL-028](./items/BL-028.md) | Centralize test trees and make repository rules agent-enforceable | Repository Architecture / Test Infrastructure / Agent Governance | The next planned implementation that adds, moves, or substantially rewrites a unit, component, integration, contract, or test-support file, **or** one additional test file is added beside production code after 2026-08-11. |
+| [BL-029](./items/BL-029.md) | Planning managers read wall-clock `new Date()`, so time-relative tests rot | Test Infrastructure / Scheduling (Planning managers) | A **second** time-rot failure lands on `master` or blocks a PR (a dated test failing only because the wall clock moved past its fixtures), **or** a planned change needs a clock injected into `DbPlanningEventManager` / `DbPlanningCycleManager` for a feature reason. |
 
 ---
 

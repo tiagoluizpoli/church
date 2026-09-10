@@ -1,4 +1,6 @@
 import { NotFoundError } from '@church/core';
+import { shift } from '@church/db';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ChurchId,
@@ -9,6 +11,7 @@ import {
 import { DrizzlePlanningEventRepository } from '../../../src/infrastructure/repositories/drizzle-planning-event.repository';
 import {
   createSchedulingPhase3Cycle,
+  createSchedulingPhase3EventGraph,
   createSchedulingPhase3Template,
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -112,6 +115,69 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
         churchId: ChurchId.from(seed.churchAId),
         eventId: EventId.from('99999999-9999-4999-8999-999999999999'),
         title: 'Nope',
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('deleteEvent removes the event and cascades its time slots and shifts', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const churchId = ChurchId.from(seed.churchAId);
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'August 2026',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Prayer Night',
+      startDate: new Date('2026-08-05T22:00:00.000Z'),
+      endDate: new Date('2026-08-06T00:00:00.000Z'),
+    });
+    await schedulingTestDb.insert(shift).values({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: new Date('2026-08-05T22:00:00.000Z'),
+      endTime: new Date('2026-08-06T00:00:00.000Z'),
+    });
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
+
+    await repo.deleteEvent({
+      churchId,
+      eventId: EventId.from(graph.event.id),
+    });
+
+    await expect(
+      repo.getEvent({ churchId, eventId: EventId.from(graph.event.id) }),
+    ).rejects.toThrow(NotFoundError);
+    const remaining = await repo.listCycleEvents({
+      churchId,
+      cycleId: PlanningCycleId.from(cycle.id),
+    });
+    expect(remaining).toHaveLength(0);
+    const orphanShifts = await schedulingTestDb
+      .select()
+      .from(shift)
+      .where(eq(shift.timeSlotId, graph.slot.id));
+    expect(orphanShifts).toHaveLength(0);
+  });
+
+  it('deleteEvent throws NotFoundError for an invalid uuid and for a missing event', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+
+    await expect(
+      repo.deleteEvent({ churchId, eventId: EventId.from('not-a-uuid') }),
+    ).rejects.toThrow(NotFoundError);
+
+    await expect(
+      repo.deleteEvent({
+        churchId,
+        eventId: EventId.from('99999999-9999-4999-8999-999999999999'),
       }),
     ).rejects.toThrow(NotFoundError);
   });

@@ -12,6 +12,7 @@ import type { TimeSlotId } from '../../domain/branded-ids';
 import type {
   CreatePlanningEventInput,
   CreatePlanningTimeSlotInput,
+  DeletePlanningEventInput,
   GetPlanningEventInput,
   ListPlanningCycleEventsInput,
   PlanningEventRepository,
@@ -92,6 +93,27 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     }
 
     return mapEvent(row);
+  }
+
+  async deleteEvent(input: DeletePlanningEventInput): Promise<void> {
+    if (!isValidUuid(input.eventId)) {
+      throw new NotFoundError(`Event not found: ${input.eventId}`);
+    }
+
+    const db = getClient(this.db, input.tx);
+    const [row] = await db
+      .delete(event)
+      .where(
+        and(
+          eq(event.id, input.eventId),
+          withChurchIsolation(event, input.churchId),
+        ),
+      )
+      .returning();
+
+    if (!row) {
+      throw new NotFoundError(`Event not found: ${input.eventId}`);
+    }
   }
 
   async getEvent(input: GetPlanningEventInput): Promise<Event> {

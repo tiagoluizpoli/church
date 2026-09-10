@@ -27,7 +27,7 @@ For instructions on how to add new backlog items or edit existing ones, see the 
 | Rank | ID | Title | Category | Wave | Blocked by | Issue |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | [BL-021](./items/BL-021.md) | Auth route protection & sign-up suppression | Authentication & Routing | 1 | — | [#18](https://github.com/tiagoluizpoli/church/issues/18) |
-| 2 | [BL-007](./items/BL-007.md) | Volunteer-authenticated E2E specs for the volunteer dashboard | Volunteer Dashboard | 1 | — | [#19](https://github.com/tiagoluizpoli/church/issues/19) |
+| 2 | [BL-007](./items/BL-007.md) | ✅ ~~Volunteer-authenticated E2E specs for the volunteer dashboard~~ — **delivered** (see [Delivered](#delivered)) | Volunteer Dashboard | 1 | — | [#19](https://github.com/tiagoluizpoli/church/issues/19) |
 | 3 | [BL-017](./items/BL-017.md) | `sub_leader` role detection for nav and route guards | Backend Architecture / Auth | 1 | [BL-021](./items/BL-021.md) | [#20](https://github.com/tiagoluizpoli/church/issues/20) |
 | 4 | [BL-020](./items/BL-020.md) | Deleting a draft cycle event must hard-delete, not soft-cancel | Scheduling / Planning (Bug) | 1 | — | [#21](https://github.com/tiagoluizpoli/church/issues/21) |
 | 5 | [BL-022](./items/BL-022.md) | Cycles table: single-selection semantics | Frontend UX/IA | 1 | — | [#22](https://github.com/tiagoluizpoli/church/issues/22) |
@@ -71,6 +71,16 @@ Items that left the active table on 2026-07-25/26. Their files remain in `items/
 | [BL-001](./items/BL-001.md) | Real-time builder updates on availability change | **Already resolved** — shipped | `use-cycle-builder.ts:314-319` sets `refetchInterval: 30_000` + `refetchOnWindowFocus: true` on the whole cycle-builder payload, which carries `eligibleVolunteers` availability status. Polling was one of the item's own named options; badges now self-refresh within 30s with no reload, which is its stated success condition. |
 | [BL-013](./items/BL-013.md) | Split controllers/routes by domain instead of by caller-role | **Absorbed into [BL-011](./items/BL-011.md)** | The two items rewrite the structure of the same six controller files and each invalidates the other's diff. Merged by [Controller cluster (BL-011/012/013): one effort or three?](https://github.com/tiagoluizpoli/church/issues/11); every success criterion carried over. |
 | [BL-018](./items/BL-018.md) | Native `<input type="date">` instead of a shadcn date-picker | **Already resolved** — shipped as asked | `apps/web/src/components/date-picker-field.tsx` is exactly the shared shadcn `Calendar` + `Popover` field requested, and the sweep is complete: **zero** `type="date"` inputs remain in `apps/web/src` or `packages/ui/src`. |
+
+---
+
+## Delivered
+
+Ranked items completed through implementation. The rank ordinal is kept in the table above (struck through) so the queue history stays intact.
+
+| ID | Title | Delivered | Evidence |
+| :--- | :--- | :--- | :--- |
+| [BL-007](./items/BL-007.md) | Volunteer-authenticated E2E specs for the volunteer dashboard | 2026-09-10 | Storage-state swap + seed change shipped in `e3bf3b8`, merged via `8c7cc38`. All five `apps/web/tests/volunteer-dashboard/` specs run under `VOLUNTEER_STORAGE_STATE`; verified **5 passed** under volunteer auth. No authorization defect surfaced — no follow-up tier-1 item. |
 
 ---
 

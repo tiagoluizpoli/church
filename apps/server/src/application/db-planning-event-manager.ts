@@ -656,6 +656,22 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         throw new IllegalStateTransitionError(currentEvent.status, 'cancel');
       }
 
+      // Delete and cancel are distinct operations, split on the event's
+      // lifecycle status (BL-020 / issue #12). A `draft` event has never
+      // reached `scheduled`: its assignments are still `draft` and no
+      // volunteer has seen it, so removing it destroys nothing anyone saw —
+      // hard-delete it (slots/shifts/draft assignments/audits cascade). Any
+      // later status is a silent soft cancel, byte-for-byte the prior
+      // behaviour.
+      if (currentEvent.status === 'draft') {
+        await this.eventRepository.deleteEvent({
+          churchId: input.churchId,
+          eventId: input.eventId,
+          tx,
+        });
+        return;
+      }
+
       await this.eventRepository.updateEvent({
         churchId: input.churchId,
         eventId: input.eventId,

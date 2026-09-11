@@ -98,6 +98,7 @@ export class DrizzleAssignmentAuditRepository
         actorId: assignmentAudit.actorId,
         action: assignmentAudit.action,
         reason: assignmentAudit.reason,
+        correlationId: assignmentAudit.correlationId,
         timestamp: assignmentAudit.timestamp,
       })
       .from(assignmentAudit)

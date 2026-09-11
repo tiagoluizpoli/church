@@ -5,12 +5,15 @@ import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { MinistryInvitationId, UserId } from '../../domain/branded-ids';
 import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
+import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   acceptExistingMemberBodySchema,
   authenticatedInvitationStatusResponseSchema,
+  confirmTransferBodySchema,
+  confirmTransferOutcomeResponseSchema,
   debugVerificationCodeResponseSchema,
   declineOutcomeResponseSchema,
   existingMemberOutcomeResponseSchema,
@@ -19,6 +22,7 @@ import {
   redemptionOutcomeResponseSchema,
   redemptionParamsSchema,
   redemptionPreviewResponseSchema,
+  transferPreviewResponseSchema,
   unauthorizedResponseSchema,
   unavailableRedemptionResponseSchema,
   verificationCodeRequestedResponseSchema,
@@ -53,7 +57,10 @@ interface InvitationPreviewFields {
 
 export interface RedemptionControllerDependencies {
   redemptionManager: RedemptionManager;
+  volunteerTransferManager: VolunteerTransferManager;
 }
+
+type ConfirmTransferBody = z.infer<typeof confirmTransferBodySchema>;
 
 interface RateLimitInput {
   key: string;
@@ -68,11 +75,16 @@ const RATE_MAX_REQUESTS = 30;
 export class RedemptionController implements FastifyController {
   readonly prefix = '/redemption';
 
-  constructor({ redemptionManager }: RedemptionControllerDependencies) {
+  constructor({
+    redemptionManager,
+    volunteerTransferManager,
+  }: RedemptionControllerDependencies) {
     this.redemptionManager = redemptionManager;
+    this.volunteerTransferManager = volunteerTransferManager;
   }
 
   private readonly redemptionManager: RedemptionManager;
+  private readonly volunteerTransferManager: VolunteerTransferManager;
 
   registerRoutes(
     app: FastifyTypedInstance,
@@ -270,6 +282,78 @@ export class RedemptionController implements FastifyController {
         },
       },
       this.handleDecline.bind(this),
+    );
+
+    // Volunteer Transfer (spec §8) — reachable only from a redemption that hit
+    // the cross-Church split (§8.9). Authenticated, no Active Church required.
+    app.get(
+      '/transfer/:invitationId/preview',
+      {
+        schema: {
+          tags: ['redemption'],
+          operationId: 'getVolunteerTransferPreview',
+          params: redemptionParamsSchema,
+          response: {
+            200: transferPreviewResponseSchema,
+            401: unauthorizedResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const redeemer = await this.requireRedeemer({ request, reply });
+        if (!redeemer) return;
+        const params = request.params as RedemptionParams;
+        const preview = await this.volunteerTransferManager.getTransferPreview({
+          ministryInvitationId: MinistryInvitationId.from(params.invitationId),
+          userId: redeemer.userId,
+        });
+        if (preview.kind === 'reviewable') {
+          return reply.send({
+            kind: preview.kind,
+            sourceChurchName: preview.sourceChurchName,
+            destinationChurchName: preview.destinationChurchName,
+            endedMemberships: preview.endedMemberships,
+            withdrawnAssignments: preview.withdrawnAssignments.map(
+              (assignment) => ({
+                eventName: assignment.eventName,
+                timeSlotStart: assignment.timeSlotStart.toISOString(),
+                roleName: assignment.roleName,
+              }),
+            ),
+          });
+        }
+        return reply.send(preview);
+      },
+    );
+
+    app.post(
+      '/transfer/:invitationId/confirm',
+      {
+        schema: {
+          tags: ['redemption'],
+          operationId: 'confirmVolunteerTransfer',
+          params: redemptionParamsSchema,
+          body: confirmTransferBodySchema,
+          response: {
+            200: confirmTransferOutcomeResponseSchema,
+            401: unauthorizedResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const redeemer = await this.requireRedeemer({ request, reply });
+        if (!redeemer) return;
+        const params = request.params as RedemptionParams;
+        const body = request.body as ConfirmTransferBody;
+        const outcome = await this.volunteerTransferManager.confirmTransfer({
+          ministryInvitationId: MinistryInvitationId.from(params.invitationId),
+          userId: redeemer.userId,
+          destinationChurchName: body.destinationChurchName,
+          password: body.password,
+          idempotencyKey: body.idempotencyKey,
+        });
+        return reply.send(outcome);
+      },
     );
 
     if (debugEndpointsEnabled()) {

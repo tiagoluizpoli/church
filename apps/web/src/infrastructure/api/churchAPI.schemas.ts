@@ -2069,6 +2069,10 @@ export type RedeemChurchInvitation200 = {
   volunteerId: string;
 } | {
   kind: 'church-only';
+  sourceChurchName: string;
+  destinationChurchName: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryInvitationId: string;
 } | {
   kind: 'retryable-failure';
   reason: 'MINISTRY_ACCEPTANCE_FAILED';
@@ -2138,6 +2142,12 @@ export type AcceptMinistryInvitation200 = {
   kind: 'full-success';
   volunteerId: string;
 } | {
+  kind: 'church-only';
+  sourceChurchName: string;
+  destinationChurchName: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryInvitationId: string;
+} | {
   kind: 'already-accepted';
   churchId: string;
 } | {
@@ -2180,6 +2190,76 @@ export const DeclineMinistryInvitation401Error = {
 
 export type DeclineMinistryInvitation401 = {
   error: DeclineMinistryInvitation401Error;
+  message: string;
+};
+
+export type GetVolunteerTransferPreview200 = {
+  kind: 'reviewable';
+  sourceChurchName: string;
+  destinationChurchName: string;
+  endedMemberships: {
+  ministryName: string;
+}[];
+  withdrawnAssignments: {
+  eventName: string;
+  timeSlotStart: string;
+  roleName: string;
+}[];
+} | {
+  kind: 'unavailable';
+} | {
+  kind: 'identity-mismatch';
+} | {
+  kind: 'no-transfer-needed';
+};
+
+export type GetVolunteerTransferPreview401Error = typeof GetVolunteerTransferPreview401Error[keyof typeof GetVolunteerTransferPreview401Error];
+
+
+export const GetVolunteerTransferPreview401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type GetVolunteerTransferPreview401 = {
+  error: GetVolunteerTransferPreview401Error;
+  message: string;
+};
+
+export type ConfirmVolunteerTransferBody = {
+  /** @minLength 1 */
+  destinationChurchName: string;
+  /** @minLength 8 */
+  password: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  idempotencyKey: string;
+};
+
+export type ConfirmVolunteerTransfer200 = {
+  kind: 'transferred';
+  destinationVolunteerId: string;
+} | {
+  kind: 'already-transferred';
+  destinationVolunteerId: string;
+} | {
+  kind: 'password-mismatch';
+} | {
+  kind: 'name-mismatch';
+} | {
+  kind: 'identity-mismatch';
+} | {
+  kind: 'terminal-failure';
+  reason: 'INVITATION_UNAVAILABLE' | 'NO_TRANSFER_NEEDED';
+};
+
+export type ConfirmVolunteerTransfer401Error = typeof ConfirmVolunteerTransfer401Error[keyof typeof ConfirmVolunteerTransfer401Error];
+
+
+export const ConfirmVolunteerTransfer401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type ConfirmVolunteerTransfer401 = {
+  error: ConfirmVolunteerTransfer401Error;
   message: string;
 };
 

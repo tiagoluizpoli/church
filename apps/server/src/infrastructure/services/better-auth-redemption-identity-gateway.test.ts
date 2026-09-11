@@ -120,4 +120,38 @@ describe('BetterAuthRedemptionIdentityGateway', () => {
     });
     expect(activeChurchInput?.headers.get('cookie')).toBe(sessionCookie);
   });
+
+  describe('verifyPassword', () => {
+    it('reports success and immediately signs the session it created back out (spec §8.7: no new session survives)', async () => {
+      handler.mockResolvedValueOnce(authenticatedResponse());
+      handler.mockResolvedValueOnce(new Response(null, { status: 200 }));
+      const gateway = new BetterAuthRedemptionIdentityGateway();
+
+      const valid = await gateway.verifyPassword({
+        email: 'dual@example.test',
+        password: 'correct horse battery staple',
+      });
+
+      expect(valid).toBe(true);
+      expect(handler).toHaveBeenCalledTimes(2);
+      const signOutRequest = handler.mock.calls[1]?.[0] as Request;
+      expect(signOutRequest.url).toContain('/sign-out');
+      expect(signOutRequest.headers.get('cookie')).toBe(
+        'session_token=session-token; HttpOnly',
+      );
+    });
+
+    it('reports failure on a wrong password without ever attempting to sign anything out', async () => {
+      handler.mockResolvedValueOnce(new Response('{}', { status: 401 }));
+      const gateway = new BetterAuthRedemptionIdentityGateway();
+
+      const valid = await gateway.verifyPassword({
+        email: 'dual@example.test',
+        password: 'wrong-password',
+      });
+
+      expect(valid).toBe(false);
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+  });
 });

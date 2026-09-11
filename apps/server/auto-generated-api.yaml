@@ -4668,8 +4668,19 @@ paths:
                         type: string
                         enum:
                           - church-only
+                      sourceChurchName:
+                        type: string
+                      destinationChurchName:
+                        type: string
+                      ministryInvitationId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                     required:
                       - kind
+                      - sourceChurchName
+                      - destinationChurchName
+                      - ministryInvitationId
                     additionalProperties: false
                   - type: object
                     properties:
@@ -4929,6 +4940,26 @@ paths:
                       kind:
                         type: string
                         enum:
+                          - church-only
+                      sourceChurchName:
+                        type: string
+                      destinationChurchName:
+                        type: string
+                      ministryInvitationId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - kind
+                      - sourceChurchName
+                      - destinationChurchName
+                      - ministryInvitationId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
                           - already-accepted
                       churchId:
                         type: string
@@ -5042,6 +5073,237 @@ paths:
                           - INVITATION_UNAVAILABLE
                           - VERIFICATION_FAILED
                           - IDENTITY_FAILED
+                    required:
+                      - kind
+                      - reason
+                    additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/redemption/transfer/{invitationId}/preview:
+    get:
+      operationId: getVolunteerTransferPreview
+      tags:
+        - redemption
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - reviewable
+                      sourceChurchName:
+                        type: string
+                      destinationChurchName:
+                        type: string
+                      endedMemberships:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            ministryName:
+                              type: string
+                          required:
+                            - ministryName
+                          additionalProperties: false
+                      withdrawnAssignments:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            eventName:
+                              type: string
+                            timeSlotStart:
+                              type: string
+                            roleName:
+                              type: string
+                          required:
+                            - eventName
+                            - timeSlotStart
+                            - roleName
+                          additionalProperties: false
+                    required:
+                      - kind
+                      - sourceChurchName
+                      - destinationChurchName
+                      - endedMemberships
+                      - withdrawnAssignments
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - unavailable
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - identity-mismatch
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - no-transfer-needed
+                    required:
+                      - kind
+                    additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/redemption/transfer/{invitationId}/confirm:
+    post:
+      operationId: confirmVolunteerTransfer
+      tags:
+        - redemption
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                destinationChurchName:
+                  type: string
+                  minLength: 1
+                password:
+                  type: string
+                  minLength: 8
+                idempotencyKey:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+              required:
+                - destinationChurchName
+                - password
+                - idempotencyKey
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - transferred
+                      destinationVolunteerId:
+                        type: string
+                    required:
+                      - kind
+                      - destinationVolunteerId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - already-transferred
+                      destinationVolunteerId:
+                        type: string
+                    required:
+                      - kind
+                      - destinationVolunteerId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - password-mismatch
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - name-mismatch
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - identity-mismatch
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - terminal-failure
+                      reason:
+                        type: string
+                        enum:
+                          - INVITATION_UNAVAILABLE
+                          - NO_TRANSFER_NEEDED
                     required:
                       - kind
                       - reason

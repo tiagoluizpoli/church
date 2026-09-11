@@ -3,6 +3,7 @@ import {
   createChurch,
   ministry,
   ministryVolunteer,
+  ministryVolunteerRole,
   ministryVolunteerTeam,
   role,
   type TenancyWriter,
@@ -35,7 +36,19 @@ export interface TwoChurchIdentityFixture {
   memberNoVolunteerA: string;
   existingChurchMemberA: string;
   ministryInB: string;
+  roleInMinistryInB: string;
+  teamInB: string;
   adminB: string;
+  /**
+   * A Church Member of *both* A and B whose one active Volunteer profile lives
+   * in Church B. Redeeming a Church A invitation as this User is the
+   * cross-Church split (spec §7.5); Volunteer Transfer (§8) is their way out.
+   */
+  dualMemberAB: string;
+  /** `dualMemberAB`'s active `volunteer` row id, in Church B. */
+  dualMemberABVolunteerInB: string;
+  /** `dualMemberAB`'s `ministry_volunteer` row id, in `ministryInB`. */
+  dualMemberABMembershipInB: string;
 }
 
 /**
@@ -83,6 +96,7 @@ export async function seedTwoChurchIdentityFixture(
   const memberNoVolunteerA = `fixture-member-a-${suffix}`;
   const existingChurchMemberA = `fixture-existing-member-a-${suffix}`;
   const adminB = `fixture-admin-b-${suffix}`;
+  const dualMemberAB = `fixture-dual-member-ab-${suffix}`;
 
   await db.insert(user).values([
     {
@@ -127,6 +141,12 @@ export async function seedTwoChurchIdentityFixture(
       email: `${adminB}@fixture.test`,
       emailVerified: true,
     },
+    {
+      id: dualMemberAB,
+      name: 'Fixture Dual Member AB',
+      email: `${dualMemberAB}@fixture.test`,
+      emailVerified: true,
+    },
   ]);
 
   await addChurchMember({
@@ -162,6 +182,8 @@ export async function seedTwoChurchIdentityFixture(
     userId: adminB,
     accessLevel: 'admin',
   });
+  await addChurchMember({ db, churchId: churchA.id, userId: dualMemberAB });
+  await addChurchMember({ db, churchId: churchB.id, userId: dualMemberAB });
 
   const [ministryOneRow] = await db
     .insert(ministry)
@@ -198,6 +220,26 @@ export async function seedTwoChurchIdentityFixture(
     })
     .returning();
   if (!roleRow) throw new Error('Role fixture insert failed');
+
+  const [teamInBRow] = await db
+    .insert(team)
+    .values({
+      churchId: churchB.id,
+      ministryId: ministryInBRow.id,
+      name: `Greeter Team ${suffix}`,
+    })
+    .returning();
+  const [roleInBRow] = await db
+    .insert(role)
+    .values({
+      churchId: churchB.id,
+      ministryId: ministryInBRow.id,
+      name: `Greeter ${suffix}`,
+    })
+    .returning();
+  if (!teamInBRow || !roleInBRow) {
+    throw new Error('Church B team/role fixture insert failed');
+  }
 
   const [leaderVolunteer] = await db
     .insert(volunteer)
@@ -249,6 +291,40 @@ export async function seedTwoChurchIdentityFixture(
     accessLevel: 'leader',
   });
 
+  // `dualMemberAB`'s one active Volunteer profile lives in Church B, with a
+  // Ministry Membership, a Role qualification and a Team membership there —
+  // the rows a Volunteer Transfer retires or preserves (spec §8.2).
+  const [dualVolunteerInB] = await db
+    .insert(volunteer)
+    .values({ churchId: churchB.id, userId: dualMemberAB })
+    .returning();
+  if (!dualVolunteerInB) {
+    throw new Error('dualMemberAB volunteer fixture insert failed');
+  }
+  const [dualMembershipInB] = await db
+    .insert(ministryVolunteer)
+    .values({
+      churchId: churchB.id,
+      volunteerId: dualVolunteerInB.id,
+      ministryId: ministryInBRow.id,
+      ministryAccessLevel: 'volunteer',
+    })
+    .returning();
+  if (!dualMembershipInB) {
+    throw new Error('dualMemberAB membership fixture insert failed');
+  }
+  await db.insert(ministryVolunteerRole).values({
+    churchId: churchB.id,
+    ministryVolunteerId: dualMembershipInB.id,
+    roleId: roleInBRow.id,
+  });
+  await db.insert(ministryVolunteerTeam).values({
+    churchId: churchB.id,
+    ministryVolunteerId: dualMembershipInB.id,
+    teamId: teamInBRow.id,
+    accessLevel: 'member',
+  });
+
   return {
     churchA,
     churchB,
@@ -263,6 +339,11 @@ export async function seedTwoChurchIdentityFixture(
     memberNoVolunteerA,
     existingChurchMemberA,
     ministryInB: ministryInBRow.id,
+    roleInMinistryInB: roleInBRow.id,
+    teamInB: teamInBRow.id,
     adminB,
+    dualMemberAB,
+    dualMemberABVolunteerInB: dualVolunteerInB.id,
+    dualMemberABMembershipInB: dualMembershipInB.id,
   };
 }

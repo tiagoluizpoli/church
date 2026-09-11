@@ -74,6 +74,9 @@ const unusedIdentityGateway: RedemptionIdentityGateway = {
   async setActiveChurch() {
     throw new Error('Identity gateway is not used by checkpoint-three tests.');
   },
+  async verifyPassword() {
+    throw new Error('Identity gateway is not used by checkpoint-three tests.');
+  },
 };
 
 function createHarness(): RedemptionHarness {
@@ -86,6 +89,7 @@ function createHarness(): RedemptionHarness {
   return {
     verificationCodeManager,
     redemptionManager: new DbRedemptionManager({
+      churchRepository,
       identityGateway: unusedIdentityGateway,
       invitationRepository: ministryInvitationRepository,
       invitationVerificationCodeManager: verificationCodeManager,

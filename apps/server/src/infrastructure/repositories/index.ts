@@ -23,4 +23,5 @@ export { DrizzleTransactionContext } from './drizzle-transaction-context';
 export { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 export { DrizzleVolunteerRepository } from './drizzle-volunteer.repository';
 export { DrizzleVolunteerNotificationRepository } from './drizzle-volunteer-notification.repository';
+export { DrizzleVolunteerTransferRepository } from './drizzle-volunteer-transfer.repository';
 export { getClient, withChurchIsolation } from './helpers';

@@ -14,6 +14,7 @@ import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RedemptionController } from '../../src/api/controllers/redemption-controller';
 import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
+import { DbVolunteerTransferManager } from '../../src/application/db-volunteer-transfer-manager';
 import { InvitationVerificationCodeManager } from '../../src/application/invitation-verification-code-manager';
 import {
   ChurchId,
@@ -25,6 +26,7 @@ import {
 import type {
   AcceptMinistryInvitationInput,
   DeclineMinistryInvitationInput,
+  RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
 } from '../../src/domain/contracts/infrastructure/redemption.repository';
 import type {
@@ -41,6 +43,7 @@ import {
   DrizzleSecurityLogRepository,
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
+  DrizzleVolunteerTransferRepository,
 } from '../../src/infrastructure/repositories';
 import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
 import { createFastify } from '../../src/main/fastify/setup';
@@ -163,6 +166,10 @@ class TestRedemptionIdentityGateway implements RedemptionIdentityGateway {
       .set({ activeOrganizationId: churchId })
       .where(eq(session.token, tokenFromCookie({ sessionCookie })));
   }
+
+  async verifyPassword(): Promise<boolean> {
+    return true;
+  }
 }
 
 interface TokenFromCookieInput {
@@ -201,6 +208,12 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
   ): Promise<void> {
     return this.delegate.declineMinistryInvitation(input);
   }
+
+  async recordChurchOnlyPartialAcceptance(
+    input: RecordChurchOnlyPartialAcceptanceInput,
+  ): Promise<void> {
+    return this.delegate.recordChurchOnlyPartialAcceptance(input);
+  }
 }
 
 interface RedemptionHttpHarness {
@@ -224,16 +237,23 @@ const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({
     db: testDb,
   });
+const volunteerRepository = new DrizzleVolunteerRepository({ db: testDb });
 const drizzleRedemptionRepository = new DrizzleRedemptionRepository({
   db: testDb,
-  volunteerRepository: new DrizzleVolunteerRepository({ db: testDb }),
+  volunteerRepository,
+});
+const volunteerTransferRepository = new DrizzleVolunteerTransferRepository({
+  db: testDb,
 });
 const securityLogRepository = new DrizzleSecurityLogRepository({
   db: testDb,
 });
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
-const { manager: invitationManager, ministryInvitationRepository } =
-  createMinistryInvitationTestHarness({ db: testDb });
+const {
+  manager: invitationManager,
+  ministryInvitationRepository,
+  churchRepository,
+} = createMinistryInvitationTestHarness({ db: testDb });
 
 let app: FastifyTypedInstance | undefined;
 let fixture: TwoChurchIdentityFixture;
@@ -259,6 +279,7 @@ async function createHarness({
     verificationCodeSecret: 'test-secret',
   });
   const redemptionManager = new DbRedemptionManager({
+    churchRepository,
     identityGateway,
     invitationRepository: ministryInvitationRepository,
     invitationVerificationCodeManager: verificationCodeManager,
@@ -266,8 +287,20 @@ async function createHarness({
     securityLogRepository,
     unitOfWork,
   });
+  const volunteerTransferManager = new DbVolunteerTransferManager({
+    churchRepository,
+    identityGateway,
+    invitationRepository: ministryInvitationRepository,
+    securityLogRepository,
+    unitOfWork,
+    volunteerRepository,
+    volunteerTransferRepository,
+  });
   app = await createFastify();
-  const controller = new RedemptionController({ redemptionManager });
+  const controller = new RedemptionController({
+    redemptionManager,
+    volunteerTransferManager,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
@@ -389,7 +422,7 @@ describe('Church invitation redemption HTTP boundary', () => {
     });
     expect(identityGateway.createAccountCalls).toBe(0);
     const users = await testDb.select().from(user);
-    expect(users).toHaveLength(7);
+    expect(users).toHaveLength(8);
   });
 
   it('redeems through Fastify, persists every checkpoint, and returns the authenticated cookie', async () => {

@@ -9,6 +9,7 @@ import type {
   RedemptionIdentityGateway,
   RejectChurchInvitationInput,
   SetActiveRedemptionChurchInput,
+  VerifyPasswordInput,
 } from '../../domain/contracts/infrastructure/redemption-identity-gateway';
 
 const signInResponseSchema = z.object({
@@ -78,6 +79,38 @@ export class BetterAuthRedemptionIdentityGateway
       headers: new Headers({ cookie: sessionCookie }),
       body: { organizationId: churchId },
     });
+  }
+
+  async verifyPassword({
+    email,
+    password,
+  }: VerifyPasswordInput): Promise<boolean> {
+    // Spec §8.7 layer 3: prove the password server-side without leaving a new
+    // session behind. Better Auth's `sign-in/email` is the only credential
+    // check available, and — with the database session strategy this app
+    // uses — it persists a session row as a side effect of success, before
+    // any cookie is returned. Discarding the `set-cookie` only stops the
+    // *caller* from ever holding that session; the row would otherwise sit
+    // valid and unused until it expires. So a successful check immediately
+    // signs that session back out, deleting the row, before reporting true.
+    const response = await auth.handler(
+      new Request('http://localhost/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }),
+    );
+    if (!response.ok) return false;
+    const cookie = response.headers.get('set-cookie');
+    if (cookie) {
+      await auth.handler(
+        new Request('http://localhost/api/auth/sign-out', {
+          method: 'POST',
+          headers: { cookie },
+        }),
+      );
+    }
+    return true;
   }
 
   private async createAuthenticatedSession({

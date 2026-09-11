@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { VolunteerTransferFlow } from '@/features/volunteer-transfer';
 import type {
   AcceptMinistryInvitation200,
   DeclineMinistryInvitation200,
@@ -19,7 +20,10 @@ import type {
   ListActiveChurchOptions200ChurchesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
-import { switchActiveChurch } from '@/shared/utils/active-church-switch';
+import {
+  finishRedemptionAtDashboard,
+  switchActiveChurch,
+} from '@/shared/utils/active-church-switch';
 import { activeChurchApi, redemptionApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -68,7 +72,9 @@ interface AcceptFailureDescription {
 interface DescribeAcceptFailureInput {
   outcome: Exclude<
     AcceptMinistryInvitation200,
-    { kind: 'full-success' } | { kind: 'already-accepted' }
+    | { kind: 'full-success' }
+    | { kind: 'already-accepted' }
+    | { kind: 'church-only' }
   >;
 }
 
@@ -248,6 +254,27 @@ function MinistryInvitationRoute() {
     );
   }
 
+  if (acceptMutation.data?.kind === 'church-only') {
+    const split = acceptMutation.data;
+    const finishAtDashboard = (): Promise<void> =>
+      finishRedemptionAtDashboard({
+        queryClient,
+        getSession: authClient.getSession,
+        navigateToDashboard: () => navigate({ to: '/dashboard' }),
+      });
+    return (
+      <InvitationShell>
+        <VolunteerTransferFlow
+          invitationId={invitationId}
+          sourceChurchName={split.sourceChurchName}
+          destinationChurchName={split.destinationChurchName}
+          onContinueAsMember={finishAtDashboard}
+          onTransferred={finishAtDashboard}
+        />
+      </InvitationShell>
+    );
+  }
+
   return (
     <InvitationShell>
       <RedeemableInvitationCard
@@ -381,7 +408,9 @@ interface RedeemableInvitationCardProps {
   isDeclining: boolean;
   acceptOutcome: Exclude<
     AcceptMinistryInvitation200,
-    { kind: 'full-success' } | { kind: 'already-accepted' }
+    | { kind: 'full-success' }
+    | { kind: 'already-accepted' }
+    | { kind: 'church-only' }
   > | null;
   declineOutcome: Exclude<
     DeclineMinistryInvitation200,

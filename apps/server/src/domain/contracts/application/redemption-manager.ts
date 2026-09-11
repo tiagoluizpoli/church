@@ -57,8 +57,20 @@ export interface FullRedemptionSuccess {
   sessionCookie: string;
 }
 
+/**
+ * Spec §7.5: the redeemer already holds an active Volunteer profile in another
+ * Church. Church Membership succeeded; the Ministry half was refused by name.
+ * Both Churches are named so the result screen can explain the
+ * one-active-Volunteer-profile rule and offer a Volunteer Transfer (§8), which
+ * is why the (still `pending`) `ministryInvitationId` is echoed back.
+ */
 export interface ChurchOnlyRedemptionOutcome {
   kind: 'church-only';
+  /** The Church whose active Volunteer profile blocked the Ministry grant. */
+  sourceChurchName: string;
+  /** The invitation's Church, now the redeemer's Active Church. */
+  destinationChurchName: string;
+  ministryInvitationId: MinistryInvitationId;
 }
 
 export interface RetryableRedemptionFailure {
@@ -136,6 +148,7 @@ export interface ExistingMemberRedemptionSuccess {
 
 export type AcceptExistingMemberOutcome =
   | ExistingMemberRedemptionSuccess
+  | ChurchOnlyRedemptionOutcome
   | AlreadyAcceptedInvitationStatus
   | IdentityMismatchStatus
   | RetryableRedemptionFailure

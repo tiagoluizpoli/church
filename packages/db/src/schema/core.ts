@@ -130,6 +130,12 @@ export const ministryVolunteer = pgTable('ministry_volunteer', {
   joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
     .notNull(),
+  /**
+   * Set when a Volunteer Transfer retires this membership (spec §8.2). The
+   * `ministry_volunteer_role` and `ministry_volunteer_team` rows are left in
+   * place — they record *why* a past Assignment was possible.
+   */
+  leftAt: timestamp('left_at', { withTimezone: true, mode: 'date' }),
 });
 
 export const role = pgTable('role', {

@@ -18,3 +18,4 @@ export * from './time-slot-id';
 export * from './user-id';
 export * from './volunteer-id';
 export * from './volunteer-notification-id';
+export * from './volunteer-transfer-id';

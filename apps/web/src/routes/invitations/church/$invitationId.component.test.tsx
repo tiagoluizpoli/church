@@ -12,6 +12,8 @@ const getActiveChurchStatus = vi
 const previewChurchInvitation = vi.fn();
 const requestChurchInvitationVerificationCode = vi.fn();
 const redeemChurchInvitation = vi.fn();
+const getVolunteerTransferPreview = vi.fn();
+const confirmVolunteerTransfer = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -39,6 +41,10 @@ vi.mock('@/utils/api-instances', () => ({
       requestChurchInvitationVerificationCode(...args),
     redeemChurchInvitation: (...args: unknown[]) =>
       redeemChurchInvitation(...args),
+    getVolunteerTransferPreview: (...args: unknown[]) =>
+      getVolunteerTransferPreview(...args),
+    confirmVolunteerTransfer: (...args: unknown[]) =>
+      confirmVolunteerTransfer(...args),
   },
 }));
 
@@ -301,14 +307,17 @@ describe('the chained-invitation redemption route', () => {
     expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
   });
 
-  it('on a church-only outcome, disables Join and points the caller at their existing account', async () => {
+  async function redeemToSplit() {
     previewChurchInvitation.mockResolvedValue(PREVIEW);
-    redeemChurchInvitation.mockResolvedValue({ kind: 'church-only' });
-
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      ministryInvitationId: 'invitation-1',
+    });
     const { default: userEvent } = await import('@testing-library/user-event');
     renderRoute({ initialPath: '/invitations/church/invitation-1' });
     const user = userEvent.setup();
-
     await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
     await user.type(
       screen.getByLabelText('Password'),
@@ -316,10 +325,122 @@ describe('the chained-invitation redemption route', () => {
     );
     await user.type(screen.getByPlaceholderText('123456'), '123456');
     await user.click(screen.getByRole('button', { name: 'Join' }));
+    return user;
+  }
+
+  it('on the cross-Church split, offers the transfer naming both Churches', async () => {
+    await redeemToSplit();
 
     expect(
-      await screen.findByText("You're already part of this Church"),
+      await screen.findByRole('heading', {
+        name: /You're a member of St\. Peter/,
+      }),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled();
+    expect(screen.getAllByText(/Riverside Fellowship/).length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      screen.getByRole('button', { name: /Move my Volunteer profile/ }),
+    ).toBeVisible();
+  });
+
+  it('walks all three transfer layers and confirms only on an exact name + password', async () => {
+    getVolunteerTransferPreview.mockResolvedValue({
+      kind: 'reviewable',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      endedMemberships: [{ ministryName: 'Hospitality' }],
+      withdrawnAssignments: [
+        {
+          eventName: 'Transfer Sunday',
+          timeSlotStart: '2099-02-01T09:00:00.000Z',
+          roleName: 'Greeter',
+        },
+      ],
+    });
+    confirmVolunteerTransfer.mockResolvedValue({
+      kind: 'transferred',
+      destinationVolunteerId: 'vol-new',
+    });
+    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    getVolunteerDashboard.mockResolvedValue({
+      availabilityTasks: [],
+      upcomingAssignmentGroups: [],
+      unreadNotificationCount: 0,
+      notificationPreview: [],
+      defaultMinistryId: undefined,
+      ministryOptions: [],
+    });
+
+    const user = await redeemToSplit();
+
+    // Layer 1 → 2
+    await user.click(
+      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
+    );
+    expect(await screen.findByText('Hospitality')).toBeVisible();
+    expect(screen.getByText(/Transfer Sunday/)).toBeVisible();
+
+    // Continue is gated on the acknowledgement checkbox.
+    const continueButton = screen.getByRole('button', { name: 'Continue' });
+    expect(continueButton).toBeDisabled();
+    await user.click(screen.getByRole('checkbox'));
+    expect(continueButton).toBeEnabled();
+    await user.click(continueButton);
+
+    // Layer 3 — wrong name keeps Confirm disabled.
+    const confirmButton = await screen.findByRole('button', {
+      name: 'Confirm Volunteer Transfer',
+    });
+    await user.type(screen.getByLabelText('Password'), 'correct-horse-staple');
+    await user.type(
+      screen.getByLabelText(/Type .* to confirm/),
+      'Wrong Church',
+    );
+    expect(confirmButton).toBeDisabled();
+    expect(confirmVolunteerTransfer).not.toHaveBeenCalled();
+
+    // Exact name enables it.
+    await user.clear(screen.getByLabelText(/Type .* to confirm/));
+    await user.type(screen.getByLabelText(/Type .* to confirm/), 'St. Peter');
+    expect(confirmButton).toBeEnabled();
+    await user.click(confirmButton);
+
+    expect(confirmVolunteerTransfer).toHaveBeenCalledWith(
+      'invitation-1',
+      expect.objectContaining({
+        destinationChurchName: 'St. Peter',
+        password: 'correct-horse-staple',
+      }),
+    );
+  });
+
+  it('shows an inline error on a password mismatch and stays on the confirm step', async () => {
+    getVolunteerTransferPreview.mockResolvedValue({
+      kind: 'reviewable',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      endedMemberships: [],
+      withdrawnAssignments: [],
+    });
+    confirmVolunteerTransfer.mockResolvedValue({ kind: 'password-mismatch' });
+
+    const user = await redeemToSplit();
+    await user.click(
+      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
+    );
+    await user.click(await screen.findByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await user.type(screen.getByLabelText('Password'), 'wrong-password');
+    await user.type(screen.getByLabelText(/Type .* to confirm/), 'St. Peter');
+    await user.click(
+      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
+    );
+
+    expect(await screen.findByText(/password did not match/i)).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
+    ).toBeVisible();
   });
 });

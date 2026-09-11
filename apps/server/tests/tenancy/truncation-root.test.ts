@@ -35,6 +35,7 @@ import {
   verification,
   volunteer,
   volunteerNotification,
+  volunteerTransfer,
 } from '@church/db';
 import { sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -382,6 +383,19 @@ async function seedEveryTenantedTable(): Promise<void> {
     actorId: IDS.user,
     event: 'identity_mismatch',
     correlationId: 'truncation-root-security-log',
+  });
+
+  await testDb.insert(volunteerTransfer).values({
+    userId: IDS.user,
+    sourceChurchId: IDS.church,
+    destinationChurchId: IDS.church,
+    sourceVolunteerId: IDS.volunteer,
+    destinationVolunteerId: IDS.volunteer,
+    ministryInvitationId: IDS.ministryInvitation,
+    withdrawnAssignmentCount: 0,
+    endedMembershipCount: 0,
+    confirmedAt: new Date('2026-06-07T09:00:00Z'),
+    correlationId: 'truncation-root-volunteer-transfer',
   });
 }
 

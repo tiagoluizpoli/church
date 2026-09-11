@@ -143,3 +143,26 @@ export async function switchActiveChurch({
     destination: getActiveChurchDestination({ availableAreas, destination }),
   });
 }
+
+interface FinishRedemptionAtDashboardInput {
+  queryClient: QueryClient;
+  /** Typically `authClient.getSession` — refreshes the client's session cache. */
+  getSession: () => Promise<unknown>;
+  navigateToDashboard: () => void;
+}
+
+/**
+ * Shared by every redemption outcome that lands the caller on `/dashboard`
+ * with a fresh session and no stale Church-scoped cache — full success,
+ * "continue as a member" off the cross-Church split, and a completed
+ * Volunteer Transfer alike.
+ */
+export async function finishRedemptionAtDashboard({
+  queryClient,
+  getSession,
+  navigateToDashboard,
+}: FinishRedemptionAtDashboardInput): Promise<void> {
+  await getSession();
+  await clearActiveChurchScopedCache({ queryClient });
+  navigateToDashboard();
+}

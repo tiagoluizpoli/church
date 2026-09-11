@@ -21,7 +21,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
 import {
-  clearActiveChurchScopedCache,
+  finishRedemptionAtDashboard,
   switchActiveChurch,
 } from '@/shared/utils/active-church-switch';
 import { activeChurchApi, redemptionApi } from '@/utils/api-instances';
@@ -256,11 +256,12 @@ function MinistryInvitationRoute() {
 
   if (acceptMutation.data?.kind === 'church-only') {
     const split = acceptMutation.data;
-    const finishAtDashboard = async (): Promise<void> => {
-      await authClient.getSession();
-      await clearActiveChurchScopedCache({ queryClient });
-      navigate({ to: '/dashboard' });
-    };
+    const finishAtDashboard = (): Promise<void> =>
+      finishRedemptionAtDashboard({
+        queryClient,
+        getSession: authClient.getSession,
+        navigateToDashboard: () => navigate({ to: '/dashboard' }),
+      });
     return (
       <InvitationShell>
         <VolunteerTransferFlow

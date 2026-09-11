@@ -4,7 +4,6 @@ import {
   ministryInvitation,
   ministryInvitationRole,
   ministryVolunteer,
-  ministryVolunteerRole,
   outboxMessage,
   role,
   volunteer,
@@ -25,6 +24,10 @@ import type { VolunteerRepository } from '../../domain/contracts/infrastructure/
 import { CrossChurchVolunteerConflictError } from '../../domain/errors/cross-church-volunteer-conflict';
 import { PendingMinistryInvitationNotFoundError } from '../../domain/errors/pending-ministry-invitation-not-found';
 import { getClient, withChurchIsolation } from './helpers';
+import {
+  grantMinistryVolunteerRoles,
+  insertMinistryVolunteerMembership,
+} from './ministry-grant';
 import type { AnyDrizzleDb } from './types';
 
 interface PersistedInvitationGrant {
@@ -170,18 +173,12 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
           ministryAccessLevel: invitationGrant.ministryAccessLevel,
         });
 
-    if (roleIds.length > 0) {
-      await db
-        .insert(ministryVolunteerRole)
-        .values(
-          roleIds.map((roleId) => ({
-            churchId,
-            ministryVolunteerId: membershipId,
-            roleId,
-          })),
-        )
-        .onConflictDoNothing();
-    }
+    await grantMinistryVolunteerRoles({
+      db,
+      churchId,
+      ministryVolunteerId: membershipId,
+      roleIds,
+    });
     const [acceptedInvitation] = await db
       .update(ministryInvitation)
       .set({ status: 'accepted', acceptedAt })
@@ -334,12 +331,13 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     ministryId,
     ministryAccessLevel,
   }: InsertMinistryVolunteerInput): Promise<string> {
-    const [membership] = await db
-      .insert(ministryVolunteer)
-      .values({ churchId, ministryId, volunteerId, ministryAccessLevel })
-      .returning({ id: ministryVolunteer.id });
-    if (!membership) throw new Error('Ministry membership insert failed');
-    return membership.id;
+    return insertMinistryVolunteerMembership({
+      db,
+      churchId,
+      ministryId,
+      volunteerId,
+      ministryAccessLevel,
+    });
   }
 
   private async assertInvitationGrantScope({

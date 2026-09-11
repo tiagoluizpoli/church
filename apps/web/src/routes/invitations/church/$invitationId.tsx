@@ -15,7 +15,7 @@ import type {
   RedeemChurchInvitation200,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
-import { clearActiveChurchScopedCache } from '@/shared/utils/active-church-switch';
+import { finishRedemptionAtDashboard } from '@/shared/utils/active-church-switch';
 import { redemptionApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/invitations/church/$invitationId')({
@@ -139,9 +139,7 @@ function ChurchInvitationRedemptionRoute() {
       }),
     onSuccess: async (outcome) => {
       if (outcome.kind === 'full-success') {
-        await authClient.getSession();
-        await clearActiveChurchScopedCache({ queryClient });
-        navigate({ to: '/dashboard' });
+        await finishAtDashboard();
         return;
       }
       // The cross-Church split renders its own flow, not a form error.
@@ -167,10 +165,12 @@ function ChurchInvitationRedemptionRoute() {
       ? describeRedemptionOutcome({ outcome })
       : null;
 
-  async function finishAtDashboard(): Promise<void> {
-    await authClient.getSession();
-    await clearActiveChurchScopedCache({ queryClient });
-    navigate({ to: '/dashboard' });
+  function finishAtDashboard(): Promise<void> {
+    return finishRedemptionAtDashboard({
+      queryClient,
+      getSession: authClient.getSession,
+      navigateToDashboard: () => navigate({ to: '/dashboard' }),
+    });
   }
 
   if (previewQuery.isLoading) {

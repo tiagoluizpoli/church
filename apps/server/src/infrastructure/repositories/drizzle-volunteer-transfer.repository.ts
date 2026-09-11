@@ -7,7 +7,6 @@ import {
   ministryInvitation,
   ministryInvitationRole,
   ministryVolunteer,
-  ministryVolunteerRole,
   role,
   shift,
   timeSlot,
@@ -28,6 +27,10 @@ import type {
   VolunteerTransferResult,
 } from '../../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { getClient, withChurchIsolation } from './helpers';
+import {
+  grantMinistryVolunteerRoles,
+  insertMinistryVolunteerMembership,
+} from './ministry-grant';
 import type { AnyDrizzleDb } from './types';
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
@@ -123,15 +126,11 @@ export class DrizzleVolunteerTransferRepository
 
     // 1. Idempotent replay short-circuits before anything is read or locked —
     //    the unique (userId, ministryInvitationId) row is the key (§8.6).
-    const [existing] = await db
-      .select()
-      .from(volunteerTransfer)
-      .where(
-        and(
-          eq(volunteerTransfer.userId, userId),
-          eq(volunteerTransfer.ministryInvitationId, ministryInvitationId),
-        ),
-      );
+    const existing = await findExistingTransfer({
+      db,
+      userId,
+      ministryInvitationId,
+    });
     if (existing) {
       return { kind: 'already-transferred', result: toResult(existing) };
     }
@@ -149,6 +148,19 @@ export class DrizzleVolunteerTransferRepository
       )
       .for('update');
     if (!activeProfile) {
+      // A concurrent confirm for this same invitation may have retired this
+      // profile and committed between our step-1 read and this lock: step 1
+      // ran unlocked, so it cannot see a writer still in flight. Re-check
+      // before reporting failure, so the loser of that race also gets the
+      // idempotent replay outcome rather than a false terminal failure.
+      const raced = await findExistingTransfer({
+        db,
+        userId,
+        ministryInvitationId,
+      });
+      if (raced) {
+        return { kind: 'already-transferred', result: toResult(raced) };
+      }
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
     const sourceMemberships = await db
@@ -243,18 +255,13 @@ export class DrizzleVolunteerTransferRepository
       .values({ churchId: destinationChurchId, userId, status: 'active' })
       .returning({ id: volunteer.id });
     if (!newProfile) throw new Error('Destination Volunteer insert failed');
-    const [newMembership] = await db
-      .insert(ministryVolunteer)
-      .values({
-        churchId: destinationChurchId,
-        ministryId: invitationRow.ministryId,
-        volunteerId: newProfile.id,
-        ministryAccessLevel: invitationRow.ministryAccessLevel,
-      })
-      .returning({ id: ministryVolunteer.id });
-    if (!newMembership) {
-      throw new Error('Destination Ministry Membership insert failed');
-    }
+    const newMembershipId = await insertMinistryVolunteerMembership({
+      db,
+      churchId: destinationChurchId,
+      ministryId: invitationRow.ministryId,
+      volunteerId: newProfile.id,
+      ministryAccessLevel: invitationRow.ministryAccessLevel,
+    });
     const invitedRoles = await db
       .select({ roleId: ministryInvitationRole.roleId })
       .from(ministryInvitationRole)
@@ -264,18 +271,12 @@ export class DrizzleVolunteerTransferRepository
           eq(ministryInvitationRole.ministryInvitationId, ministryInvitationId),
         ),
       );
-    if (invitedRoles.length > 0) {
-      await db
-        .insert(ministryVolunteerRole)
-        .values(
-          invitedRoles.map(({ roleId }) => ({
-            churchId: destinationChurchId,
-            ministryVolunteerId: newMembership.id,
-            roleId,
-          })),
-        )
-        .onConflictDoNothing();
-    }
+    await grantMinistryVolunteerRoles({
+      db,
+      churchId: destinationChurchId,
+      ministryVolunteerId: newMembershipId,
+      roleIds: invitedRoles.map(({ roleId }) => roleId),
+    });
 
     // 8. Make the retirement chain walkable without an audit query.
     await db
@@ -337,6 +338,30 @@ interface VolunteerTransferRow {
   destinationVolunteerId: string;
   withdrawnAssignmentCount: number;
   endedMembershipCount: number;
+}
+
+interface FindExistingTransferInput {
+  db: AnyDrizzleDb;
+  userId: ExecuteVolunteerTransferInput['userId'];
+  ministryInvitationId: ExecuteVolunteerTransferInput['ministryInvitationId'];
+}
+
+/** The `(userId, ministryInvitationId)` idempotency key lookup (spec §8.6). */
+async function findExistingTransfer({
+  db,
+  userId,
+  ministryInvitationId,
+}: FindExistingTransferInput): Promise<VolunteerTransferRow | undefined> {
+  const [existing] = await db
+    .select()
+    .from(volunteerTransfer)
+    .where(
+      and(
+        eq(volunteerTransfer.userId, userId),
+        eq(volunteerTransfer.ministryInvitationId, ministryInvitationId),
+      ),
+    );
+  return existing;
 }
 
 function toResult(row: VolunteerTransferRow): VolunteerTransferResult {

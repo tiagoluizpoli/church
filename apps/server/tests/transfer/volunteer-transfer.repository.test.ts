@@ -364,6 +364,36 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     expect(profiles).toHaveLength(2);
   });
 
+  it('is idempotent under real concurrency — a racing confirm gets the original outcome, not a false terminal failure', async () => {
+    // Both calls target the same (userId, ministryInvitationId): the loser
+    // blocks on the FOR UPDATE volunteer-row lock, wakes once the winner
+    // commits, finds `leftAt` already set, and must re-check for the
+    // committed volunteer_transfer row rather than reporting failure.
+    const [first, second] = await Promise.all([runTransfer(), runTransfer()]);
+
+    const kinds = [first.kind, second.kind].sort();
+    expect(kinds).toEqual(['already-transferred', 'transferred']);
+    const winner = first.kind === 'transferred' ? first : second;
+    const loser = first.kind === 'transferred' ? second : first;
+    if (winner.kind !== 'transferred' || loser.kind !== 'already-transferred') {
+      throw new Error('unreachable');
+    }
+    expect(loser.result.destinationVolunteerId).toBe(
+      winner.result.destinationVolunteerId,
+    );
+
+    const transfers = await testDb
+      .select()
+      .from(volunteerTransfer)
+      .where(eq(volunteerTransfer.userId, fixture.dualMemberAB));
+    expect(transfers).toHaveLength(1);
+    const profiles = await testDb
+      .select()
+      .from(volunteer)
+      .where(eq(volunteer.userId, fixture.dualMemberAB));
+    expect(profiles).toHaveLength(2);
+  });
+
   it('is a terminal failure that changes nothing when the invitation is no longer pending', async () => {
     await testDb
       .update(ministryInvitation)

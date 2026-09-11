@@ -290,7 +290,10 @@ function TransferConfirm({
 
   const nameMatches = typedName.trim() === destinationChurchName;
   const outcome = confirmMutation.data;
-  const inlineError = useMemo(() => describeConfirmError(outcome), [outcome]);
+  const inlineError = useMemo(
+    () => describeConfirmError({ outcome }),
+    [outcome],
+  );
 
   return (
     <form
@@ -357,9 +360,13 @@ function TransferConfirm({
   );
 }
 
-function describeConfirmError(
-  outcome: ConfirmVolunteerTransfer200 | undefined,
-): string | null {
+interface DescribeConfirmErrorInput {
+  outcome: ConfirmVolunteerTransfer200 | undefined;
+}
+
+function describeConfirmError({
+  outcome,
+}: DescribeConfirmErrorInput): string | null {
   if (!outcome) return null;
   switch (outcome.kind) {
     case 'password-mismatch':

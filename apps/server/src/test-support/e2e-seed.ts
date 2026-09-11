@@ -105,14 +105,18 @@ export const E2E_IDS = {
   us4CareShift: 'e2e71111-1111-1111-1111-111111111118',
   us4UsherRequirement: 'e2e88888-8888-8888-8888-888888888888',
   us4CareRequirement: 'e2e88888-8888-8888-8888-888888888889',
-  // Second tenant — used only by the cross-cutting church-isolation spec
-  // (DL4-X1). Deliberately minimal: one church, one admin, one locked cycle.
+  // Second tenant — used only by cross-cutting church-isolation specs
+  // (DL4-X1, #68). Deliberately minimal: one church, one admin, one locked
+  // cycle, one Ministry (its own known-valid id for the identity-surface
+  // cross-tenant journey — #68 mints a real Ministry Invitation against it).
   churchB: 'e2ebbbbb-1111-1111-1111-111111111111',
   churchBAdminVolunteer: 'e2ebbbbb-4444-4444-4444-444444444441',
   churchBPlanningCycle: 'e2ebbbbb-2111-1111-1111-111111111111',
+  churchBMinistry: 'e2ebbbbb-3333-3333-3333-333333333331',
 } as const;
 
 export const CHURCH_B_PLANNING_CYCLE_NAME = 'E2E ChurchB Isolated Cycle';
+export const CHURCH_B_MINISTRY_NAME = 'E2E ChurchB Ministry';
 
 const PARTICIPATION_IDS = {
   [E2E_IDS.event]: 'e2e61111-1111-1111-1111-111111111111',
@@ -284,9 +288,10 @@ export async function seedE2e({
       ])
       .onConflictDoNothing();
 
-    // Second tenant (DL4-X1 church isolation, cross-cutting spec only) — also
-    // provisioned by `global-setup.ts`, with the ChurchB admin's Church
-    // Membership already granted by their own invitation redemption.
+    // Second tenant (DL4-X1 / #68 church-isolation specs, cross-cutting
+    // only) — also provisioned by `global-setup.ts`, with the ChurchB
+    // admin's Church Membership already granted by their own invitation
+    // redemption.
     const [churchBAdminVolunteerRow] = await db
       .insert(volunteer)
       .values({
@@ -313,6 +318,16 @@ export async function seedE2e({
         startDate: new Date('2026-12-01T00:00:00Z'),
         endDate: new Date('2027-01-01T00:00:00Z'),
         state: 'locked',
+      })
+      .onConflictDoNothing();
+
+    await db
+      .insert(ministry)
+      .values({
+        id: E2E_IDS.churchBMinistry,
+        churchId: E2E_IDS.churchB,
+        name: CHURCH_B_MINISTRY_NAME,
+        enforcementType: 'soft',
       })
       .onConflictDoNothing();
 

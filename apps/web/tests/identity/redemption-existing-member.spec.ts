@@ -1,12 +1,19 @@
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, type Page, request, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 
-// #58/#107 — an existing Church Member, signed out, opens a Ministry
-// Invitation, signs in, returns to the invitation and accepts it, gaining a
-// Volunteer profile and Ministry access without losing any access they
-// already held. Also proves declining a Ministry-only invitation rejects
-// only that invitation.
+// #64/DL#107 — a Church Member who does not yet volunteer (spec 024 §11.3's
+// `memberOnlyA` — the member-but-not-Volunteer state), signed out, opens a
+// Ministry Invitation, signs in, returns to the invitation and accepts it,
+// gaining a Volunteer profile for the first time together with Ministry
+// access. Also proves declining a Ministry-only invitation rejects only that
+// invitation.
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4101';
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS) — same convention as the other identity/scheduling specs.
@@ -53,39 +60,6 @@ async function mintInvitation({
   return invitation;
 }
 
-interface FetchDebugVerificationCodeInput {
-  invitationId: string;
-}
-
-interface DebugVerificationCodeResponse {
-  code: string;
-}
-
-async function fetchDebugVerificationCode({
-  invitationId,
-}: FetchDebugVerificationCodeInput): Promise<string> {
-  const ctx = await request.newContext({ baseURL: SERVER_URL });
-  const res = await ctx.get(
-    `/api/v1/redemption/church/${invitationId}/debug-code`,
-  );
-  if (!res.ok()) {
-    throw new Error(
-      `No verification code captured for ${invitationId} (${res.status()})`,
-    );
-  }
-  const { code } = (await res.json()) as DebugVerificationCodeResponse;
-  await ctx.dispose();
-  return code;
-}
-
-interface RedeemNewUserOutcome {
-  kind:
-    | 'full-success'
-    | 'church-only'
-    | 'retryable-failure'
-    | 'terminal-failure';
-}
-
 interface AcceptMinistryInvitationOutcome {
   kind: string;
   volunteerId?: string;
@@ -100,55 +74,65 @@ interface VolunteerDashboardMinistryOptions {
   ministryOptions: MinistryOption[];
 }
 
-interface BootstrapExistingChurchMemberInput {
+interface BootstrapChurchMemberOnlyInput {
   email: string;
   name: string;
 }
 
+interface InviteChurchMemberResponse {
+  id: string;
+}
+
 /**
- * Creates a real, redeemed account through the same chained-invitation
- * public API `redemption-new-user.spec.ts` drives through the browser — this
- * spec drives it headlessly instead, since becoming a Church Member is
- * already proven elsewhere and only the resulting account (with a known
- * password) matters here.
+ * A genuine "member-but-not-Volunteer" Church Member (spec 024 §11.3's
+ * `memberOnlyA`): a plain Better Auth Church Membership with no Ministry
+ * Membership and therefore no Volunteer profile at all — the starting state
+ * the browser-driven Ministry Invitation acceptance below must turn into a
+ * first-ever Volunteer profile.
+ *
+ * Mirrors `apps/web/tests/global-setup.ts`'s bootstrap for the
+ * TeamLeader/Volunteer personas: invite through Better Auth's own
+ * `organization` plugin, then redeem in-process via
+ * `e2e-redeem-church-invitation.ts`, since public sign-up is closed at HTTP
+ * and the app has no Church-only redemption UI yet (spec 024 §14).
  */
-async function bootstrapExistingChurchMember({
+async function bootstrapChurchMemberOnly({
   email,
   name,
-}: BootstrapExistingChurchMemberInput): Promise<void> {
-  const invitation = await mintInvitation({
-    ministryId: WORSHIP_MINISTRY_ID,
-    email,
-    roleIds: [USHER_ROLE_ID],
+}: BootstrapChurchMemberOnlyInput): Promise<void> {
+  const adminCtx = await request.newContext({
+    baseURL: SERVER_URL,
+    storageState: CHURCH_ADMIN_STORAGE_STATE,
+    // Better Auth's organization endpoints run an origin-check middleware
+    // that `request.newContext` never satisfies on its own (unlike a real
+    // browser navigation) — trust the same web origin the server's CORS
+    // config trusts for this e2e run (playwright.config.ts's `PW_WEB_URL`).
+    extraHTTPHeaders: { Origin: WEB_URL },
   });
-  expect(invitation.kind).toBe('chained');
+  const res = await adminCtx.post('/api/auth/organization/invite-member', {
+    data: { email, role: 'member', organizationId: CHURCH_ID },
+  });
+  if (!res.ok()) {
+    throw new Error(
+      `Failed to invite Church Member (${res.status()}): ${await res.text()}`,
+    );
+  }
+  const invitation = (await res.json()) as InviteChurchMemberResponse;
+  await adminCtx.dispose();
 
-  const ctx = await request.newContext({ baseURL: SERVER_URL });
-  const codeRes = await ctx.post(
-    `/api/v1/redemption/church/${invitation.id}/code`,
+  execFileSync(
+    'bun',
+    [
+      '--env-file=../../.env',
+      'run',
+      'src/scripts/e2e-redeem-church-invitation.ts',
+      email,
+      name,
+      PASSWORD,
+      invitation.id,
+    ],
+    { cwd: SERVER_DIR },
   );
-  if (!codeRes.ok()) {
-    throw new Error(`Failed to request verification code: ${codeRes.status()}`);
-  }
-  const code = await fetchDebugVerificationCode({
-    invitationId: invitation.id,
-  });
-  const redeemRes = await ctx.post(
-    `/api/v1/redemption/church/${invitation.id}/redeem`,
-    {
-      data: {
-        name,
-        password: PASSWORD,
-        code,
-        idempotencyKey: crypto.randomUUID(),
-      },
-    },
-  );
-  const outcome = (await redeemRes.json()) as RedeemNewUserOutcome;
-  if (outcome.kind !== 'full-success') {
-    throw new Error(`Bootstrap redemption failed: ${outcome.kind}`);
-  }
-  await ctx.dispose();
 }
 
 function uniqueMemberEmail(label: string): string {
@@ -168,16 +152,19 @@ async function signIn(page: Page, { email }: SignInInput): Promise<void> {
 }
 
 test.describe('DL#107 — an existing Church Member redeems a Ministry Invitation', () => {
-  test('signed out, opens the invitation, signs in, returns, and accepts — gaining Ministry access without losing existing access', async ({
+  test('signed out, with Church Membership but no Volunteer profile, opens a Ministry invitation, signs in, returns, and accepts — gaining a Volunteer profile and Ministry access for the first time', async ({
     page,
   }) => {
     const email = uniqueMemberEmail('accept');
-    await bootstrapExistingChurchMember({ email, name: 'E2E Existing Member' });
+    await bootstrapChurchMemberOnly({
+      email,
+      name: 'E2E Non-Volunteer Member',
+    });
 
     const invitation = await mintInvitation({
-      ministryId: CARE_MINISTRY_ID,
+      ministryId: WORSHIP_MINISTRY_ID,
       email,
-      roleIds: [CARE_HOST_ROLE_ID],
+      roleIds: [USHER_ROLE_ID],
     });
     expect(invitation.kind).toBe('ministry-only');
 
@@ -189,7 +176,7 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
       new RegExp(`/invitations/ministry/${invitation.id}$`),
     );
     await expect(
-      page.getByRole('heading', { name: /Join E2E Care/ }),
+      page.getByRole('heading', { name: /Join E2E Worship/ }),
     ).toBeVisible();
 
     const [acceptResponse] = await Promise.all([
@@ -215,16 +202,16 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
     );
     const { ministryOptions } =
       (await dashboardResponse.json()) as VolunteerDashboardMinistryOptions;
-    expect(ministryOptions.map((option) => option.id)).toEqual(
-      expect.arrayContaining([CARE_MINISTRY_ID, WORSHIP_MINISTRY_ID]),
-    );
+    expect(ministryOptions.map((option) => option.id)).toEqual([
+      WORSHIP_MINISTRY_ID,
+    ]);
   });
 
   test('signs in and declines a Ministry-only invitation, which does not grant access', async ({
     page,
   }) => {
     const email = uniqueMemberEmail('decline');
-    await bootstrapExistingChurchMember({
+    await bootstrapChurchMemberOnly({
       email,
       name: 'E2E Declining Member',
     });

@@ -1,11 +1,15 @@
 import { expect, request, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 
-// DL#100 — a person outside the Church follows a chained Ministry
-// Invitation link, verifies a one-time code, and becomes a Volunteer in the
-// invited Ministry with the invitation Church active, landing on
-// /dashboard. Proves the real emailed link (composed by `redemptionPathFor`)
-// resolves against the real redemption API end to end.
+// #63/DL#100 — a person outside the Church (the "outsider" — never before
+// registered) follows a chained Ministry Invitation link, verifies a
+// one-time code read from the capture `EmailSender` (never a log or the
+// database), and becomes a Volunteer in the invited Ministry with the
+// invitation Church active, landing on /dashboard with that Ministry access
+// visible. Proves the real emailed link (composed by `redemptionPathFor`)
+// resolves against the real redemption API end to end. Failure copy, expiry
+// handling and checkpoint atomicity are proved below this seam (L1/L2), not
+// re-asserted here.
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
@@ -83,6 +87,15 @@ type RedeemOutcome =
   | { kind: 'retryable-failure'; reason: string }
   | { kind: 'terminal-failure'; reason: string };
 
+interface MinistryOption {
+  id: string;
+  name: string;
+}
+
+interface VolunteerDashboardMinistryOptions {
+  ministryOptions: MinistryOption[];
+}
+
 function uniqueOutsiderEmail(): string {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `e2e-outsider-${suffix}@test.com`;
@@ -132,5 +145,14 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
       `${SERVER_URL}/api/v1/active-church/status`,
     );
     expect((await statusResponse.json()).churchId).toBe(CHURCH_ID);
+
+    const dashboardResponse = await page.request.get(
+      `${SERVER_URL}/api/v1/volunteer/dashboard`,
+    );
+    const { ministryOptions } =
+      (await dashboardResponse.json()) as VolunteerDashboardMinistryOptions;
+    expect(ministryOptions.map((option) => option.id)).toContain(
+      WORSHIP_MINISTRY_ID,
+    );
   });
 });

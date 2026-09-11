@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { VolunteerTransferFlow } from '@/features/volunteer-transfer';
 import type {
   PreviewChurchInvitation200MinistryAccessLevel,
   RedeemChurchInvitation200,
@@ -61,21 +62,15 @@ interface RedemptionFailureDescription {
 }
 
 interface DescribeRedemptionOutcomeInput {
-  outcome: Exclude<RedeemChurchInvitation200, { kind: 'full-success' }>;
+  outcome: Exclude<
+    RedeemChurchInvitation200,
+    { kind: 'full-success' } | { kind: 'church-only' }
+  >;
 }
 
 function describeRedemptionOutcome({
   outcome,
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
-  if (outcome.kind === 'church-only') {
-    return {
-      title: "You're already part of this Church",
-      description:
-        'Sign in to your existing account to continue, then ask your Ministry leader for a fresh invitation.',
-      canRetry: false,
-      clearCode: false,
-    };
-  }
   if (outcome.kind === 'retryable-failure') {
     return {
       title: 'Something went wrong',
@@ -149,6 +144,8 @@ function ChurchInvitationRedemptionRoute() {
         navigate({ to: '/dashboard' });
         return;
       }
+      // The cross-Church split renders its own flow, not a form error.
+      if (outcome.kind === 'church-only') return;
       if (describeRedemptionOutcome({ outcome }).clearCode) {
         form.setFieldValue('code', '');
       }
@@ -166,9 +163,15 @@ function ChurchInvitationRedemptionRoute() {
   const cooldownSeconds = remainingCooldownSeconds({ codeSentAt, now });
   const outcome = redeemMutation.data;
   const failure =
-    outcome && outcome.kind !== 'full-success'
+    outcome && outcome.kind !== 'full-success' && outcome.kind !== 'church-only'
       ? describeRedemptionOutcome({ outcome })
       : null;
+
+  async function finishAtDashboard(): Promise<void> {
+    await authClient.getSession();
+    await clearActiveChurchScopedCache({ queryClient });
+    navigate({ to: '/dashboard' });
+  }
 
   if (previewQuery.isLoading) {
     return (
@@ -205,6 +208,20 @@ function ChurchInvitationRedemptionRoute() {
         <p className="text-muted-foreground text-sm">
           Welcome! Setting up your account…
         </p>
+      </RedemptionShell>
+    );
+  }
+
+  if (outcome?.kind === 'church-only') {
+    return (
+      <RedemptionShell>
+        <VolunteerTransferFlow
+          invitationId={invitationId}
+          sourceChurchName={outcome.sourceChurchName}
+          destinationChurchName={outcome.destinationChurchName}
+          onContinueAsMember={finishAtDashboard}
+          onTransferred={finishAtDashboard}
+        />
       </RedemptionShell>
     );
   }

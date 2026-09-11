@@ -11,6 +11,8 @@ const signOut = vi.fn();
 const getMinistryInvitationStatus = vi.fn();
 const acceptMinistryInvitation = vi.fn();
 const declineMinistryInvitation = vi.fn();
+const getVolunteerTransferPreview = vi.fn();
+const confirmVolunteerTransfer = vi.fn();
 const listActiveChurchOptions = vi.fn();
 const selectActiveChurch = vi.fn();
 
@@ -30,6 +32,10 @@ vi.mock('@/utils/api-instances', () => ({
       acceptMinistryInvitation(...args),
     declineMinistryInvitation: (...args: unknown[]) =>
       declineMinistryInvitation(...args),
+    getVolunteerTransferPreview: (...args: unknown[]) =>
+      getVolunteerTransferPreview(...args),
+    confirmVolunteerTransfer: (...args: unknown[]) =>
+      confirmVolunteerTransfer(...args),
   },
   activeChurchApi: {
     listActiveChurchOptions: (...args: unknown[]) =>
@@ -106,6 +112,34 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/dashboard');
     });
+  });
+
+  it('on the cross-Church split, renders the Volunteer Transfer flow naming both Churches', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
+    acceptMinistryInvitation.mockResolvedValue({
+      kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      ministryInvitationId: 'invitation-1',
+    });
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /You're a member of St\. Peter/,
+      }),
+    ).toBeVisible();
+    expect(screen.getAllByText(/Riverside Fellowship/).length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      screen.getByRole('button', { name: /Move my Volunteer profile/ }),
+    ).toBeVisible();
   });
 
   it('on a double-submit race where the invitation was already accepted, still continues into the Church rather than stranding the caller', async () => {

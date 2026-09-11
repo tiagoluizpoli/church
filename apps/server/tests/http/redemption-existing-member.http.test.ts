@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import {
+  account,
   invitation as churchInvitation,
   identityAudit,
   member,
@@ -11,7 +12,7 @@ import {
   volunteer,
 } from '@church/db';
 import { env } from '@church/env/server';
-import { makeSignature } from 'better-auth/crypto';
+import { hashPassword, makeSignature } from 'better-auth/crypto';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RedemptionController } from '../../src/api/controllers/redemption-controller';
@@ -413,6 +414,48 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({ kind: 'name-mismatch' });
+    });
+
+    it('on a correct password, completes the transfer and leaves no lingering session behind (spec §8.7: issues no new session)', async () => {
+      const invitationId = await mintTransferInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.dualMemberAB,
+      });
+      await testDb.insert(account).values({
+        id: crypto.randomUUID(),
+        accountId: fixture.dualMemberAB,
+        providerId: 'credential',
+        userId: fixture.dualMemberAB,
+        password: await hashPassword('correct horse battery staple'),
+      });
+      const sessionsBefore = await testDb
+        .select()
+        .from(session)
+        .where(eq(session.userId, fixture.dualMemberAB));
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/transfer/${invitationId}/confirm`,
+        headers: { cookie },
+        payload: {
+          destinationChurchName: fixture.churchA.name,
+          password: 'correct horse battery staple',
+          idempotencyKey: crypto.randomUUID(),
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ kind: 'transferred' });
+      expect(response.headers['set-cookie']).toBeUndefined();
+      // The password check's own sign-in creates a session as a side effect;
+      // it must be signed back out before this returns, leaving the session
+      // table exactly as it was before the call (the raw test-harness
+      // session used to authenticate the HTTP request itself, untouched).
+      const sessionsAfter = await testDb
+        .select()
+        .from(session)
+        .where(eq(session.userId, fixture.dualMemberAB));
+      expect(sessionsAfter).toHaveLength(sessionsBefore.length);
     });
   });
 

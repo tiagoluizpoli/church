@@ -11,3 +11,17 @@ Before changing code, read and follow:
 - `agents.local.md` for project architecture, coding rules, and verification requirements.
 - `CONTEXT.md` for the project's domain language.
 - `.specify/memory/constitution.md` for non-negotiable project governance.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (tiagoluizpoli/church), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical labels (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.

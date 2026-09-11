@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import {
   assignment,
   assignmentAudit,
@@ -6,10 +7,13 @@ import {
   ministry,
   ministryInvitation,
   ministryInvitationRole,
+  ministryParticipation,
   ministryVolunteer,
+  outboxMessage,
   role,
   shift,
   timeSlot,
+  user,
   volunteer,
   volunteerTransfer,
 } from '@church/db';
@@ -21,7 +25,9 @@ import type {
 import type {
   ExecuteVolunteerTransferInput,
   ExecuteVolunteerTransferOutcome,
+  GetTransferDigestDetailsInput,
   GetTransferImpactInput,
+  TransferDigestDetails,
   TransferImpact,
   VolunteerTransferRepository,
   VolunteerTransferResult,
@@ -40,13 +46,16 @@ interface DrizzleVolunteerTransferRepositoryInput {
 }
 
 /**
- * Steps 1–8 and 10–11 of spec §8.5, inside the caller's transaction. The old
+ * Every step of spec §8.5, inside the caller's transaction. The old
  * `volunteer` row is retired (never moved), the destination is born fresh, and
  * only assignments whose **time slot** starts strictly after the commit are
  * cancelled — a slot already under way is protected even inside a still-running
  * event. The `volunteer_transfer` row is the idempotency key: a replay returns
- * the original result and writes nothing. The outbox enqueue (§8.5 step 9) is
- * issue #60 and is deliberately absent here.
+ * the original result and writes nothing (the outbox enqueue is skipped on
+ * replay too, for the same reason). One `outbox_message` row is written per
+ * affected Ministry (§8.8, issue #60): `transfer.ministry-digest` when at
+ * least one active leader remains, `transfer.leaderless-ministry` — addressed
+ * to ChurchAdmins instead — when none does.
  */
 export class DrizzleVolunteerTransferRepository
   implements VolunteerTransferRepository
@@ -164,7 +173,11 @@ export class DrizzleVolunteerTransferRepository
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
     const sourceMemberships = await db
-      .select({ id: ministryVolunteer.id })
+      .select({
+        id: ministryVolunteer.id,
+        ministryId: ministryVolunteer.ministryId,
+        ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
+      })
       .from(ministryVolunteer)
       .where(
         and(
@@ -199,7 +212,7 @@ export class DrizzleVolunteerTransferRepository
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
 
-    // 4. Retire the old profile (successor pointer set in step 8).
+    // 4. Retire the old profile (successor pointer set in step 9).
     await db
       .update(volunteer)
       .set({ leftAt: confirmedAt })
@@ -219,10 +232,17 @@ export class DrizzleVolunteerTransferRepository
     //    (§8.4: the cut is the slot start, not the shift or the event date).
     const reason = `Volunteer Transfer ${correlationId}`;
     const futureAssignments = await db
-      .select({ id: assignment.id })
+      .select({
+        id: assignment.id,
+        ministryId: ministryParticipation.ministryId,
+      })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
       .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shift.participationId),
+      )
       .where(
         and(
           eq(assignment.volunteerId, activeProfile.id),
@@ -249,7 +269,54 @@ export class DrizzleVolunteerTransferRepository
       );
     }
 
-    // 7. Birth the destination profile — fresh, nothing carried over.
+    // 7. Enqueue one notification per affected Ministry (spec §8.8, issue
+    //    #60) — affected meaning a Membership ended there or an Assignment
+    //    was withdrawn there. Escalates to ChurchAdmins *only* when the
+    //    departing Volunteer was themselves an active leader of that Ministry
+    //    and no other active leader remains — not merely because the
+    //    Ministry happens to have none (a pre-existing, unrelated state must
+    //    never turn an ordinary member's departure into an escalation).
+    const wasLeaderByMinistryId = new Map<string, boolean>(
+      sourceMemberships.map(({ ministryId, ministryAccessLevel }) => [
+        ministryId,
+        ministryAccessLevel === 'leader',
+      ]),
+    );
+    const affectedMinistryIds = new Set<string>([
+      ...sourceMemberships.map(({ ministryId }) => ministryId),
+      ...futureAssignments.map(({ ministryId }) => ministryId),
+    ]);
+    for (const affectedMinistryId of affectedMinistryIds) {
+      let kind: 'transfer.ministry-digest' | 'transfer.leaderless-ministry' =
+        'transfer.ministry-digest';
+      if (wasLeaderByMinistryId.get(affectedMinistryId)) {
+        const [remainingLeader] = await db
+          .select({ id: ministryVolunteer.id })
+          .from(ministryVolunteer)
+          .where(
+            and(
+              eq(ministryVolunteer.ministryId, affectedMinistryId),
+              eq(ministryVolunteer.churchId, sourceChurchId),
+              eq(ministryVolunteer.status, 'active'),
+              eq(ministryVolunteer.ministryAccessLevel, 'leader'),
+            ),
+          )
+          .limit(1);
+        if (!remainingLeader) kind = 'transfer.leaderless-ministry';
+      }
+      await db.insert(outboxMessage).values({
+        churchId: sourceChurchId,
+        kind,
+        payload: {
+          ministryId: affectedMinistryId,
+          volunteerId: activeProfile.id,
+        },
+        correlationId,
+        scheduledFor: confirmedAt,
+      });
+    }
+
+    // 8. Birth the destination profile — fresh, nothing carried over.
     const [newProfile] = await db
       .insert(volunteer)
       .values({ churchId: destinationChurchId, userId, status: 'active' })
@@ -278,13 +345,13 @@ export class DrizzleVolunteerTransferRepository
       roleIds: invitedRoles.map(({ roleId }) => roleId),
     });
 
-    // 8. Make the retirement chain walkable without an audit query.
+    // 9. Make the retirement chain walkable without an audit query.
     await db
       .update(volunteer)
       .set({ successorVolunteerId: newProfile.id })
       .where(eq(volunteer.id, activeProfile.id));
 
-    // 9. Accept the Ministry Invitation (guarded on `pending`).
+    // 10. Accept the Ministry Invitation (guarded on `pending`).
     const [accepted] = await db
       .update(ministryInvitation)
       .set({ status: 'accepted', acceptedAt: confirmedAt })
@@ -300,7 +367,7 @@ export class DrizzleVolunteerTransferRepository
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
 
-    // 10. The audit + idempotency row.
+    // 11. The audit + idempotency row.
     const [transferRow] = await db
       .insert(volunteerTransfer)
       .values({
@@ -318,7 +385,7 @@ export class DrizzleVolunteerTransferRepository
       .returning();
     if (!transferRow) throw new Error('volunteer_transfer insert failed');
 
-    // 11. The identity audit act.
+    // 12. The identity audit act.
     await db.insert(identityAudit).values({
       churchId: destinationChurchId,
       ministryInvitationId,
@@ -329,6 +396,78 @@ export class DrizzleVolunteerTransferRepository
     });
 
     return { kind: 'transferred', result: toResult(transferRow) };
+  }
+
+  async getDigestDetails({
+    churchId,
+    ministryId,
+    volunteerId,
+    correlationId,
+  }: GetTransferDigestDetailsInput): Promise<TransferDigestDetails> {
+    const db = getClient(this.db);
+
+    const [ministryRow] = await db
+      .select({ name: ministry.name })
+      .from(ministry)
+      .where(
+        and(
+          eq(ministry.id, ministryId),
+          withChurchIsolation(ministry, churchId),
+        ),
+      );
+    if (!ministryRow) {
+      throw new NotFoundError(
+        `Ministry not found for transfer digest: ${ministryId}`,
+      );
+    }
+
+    // The retired source profile — never deleted, so still resolvable here.
+    const [volunteerRow] = await db
+      .select({ name: user.name })
+      .from(volunteer)
+      .innerJoin(user, eq(user.id, volunteer.userId))
+      .where(
+        and(
+          eq(volunteer.id, volunteerId),
+          withChurchIsolation(volunteer, churchId),
+        ),
+      );
+    if (!volunteerRow) {
+      throw new NotFoundError(
+        `Volunteer not found for transfer digest: ${volunteerId}`,
+      );
+    }
+
+    const withdrawnAssignments = await db
+      .select({
+        eventName: event.title,
+        timeSlotStart: timeSlot.startTime,
+        roleName: role.name,
+      })
+      .from(assignmentAudit)
+      .innerJoin(assignment, eq(assignment.id, assignmentAudit.assignmentId))
+      .innerJoin(shift, eq(shift.id, assignment.shiftId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shift.participationId),
+      )
+      .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId))
+      .innerJoin(event, eq(event.id, timeSlot.eventId))
+      .innerJoin(role, eq(role.id, assignment.roleId))
+      .where(
+        and(
+          eq(assignmentAudit.correlationId, correlationId),
+          eq(assignmentAudit.churchId, churchId),
+          eq(ministryParticipation.ministryId, ministryId),
+        ),
+      )
+      .orderBy(asc(timeSlot.startTime));
+
+    return {
+      ministryName: ministryRow.name,
+      volunteerName: volunteerRow.name,
+      withdrawnAssignments,
+    };
   }
 }
 

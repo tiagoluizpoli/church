@@ -1,5 +1,6 @@
 import type {
   ChurchId,
+  MinistryId,
   MinistryInvitationId,
   UserId,
   VolunteerId,
@@ -64,13 +65,39 @@ export type ExecuteVolunteerTransferOutcome =
   | { kind: 'already-transferred'; result: VolunteerTransferResult }
   | { kind: 'terminal-failure'; reason: 'INVITATION_UNAVAILABLE' };
 
+export interface GetTransferDigestDetailsInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  volunteerId: VolunteerId;
+  correlationId: string;
+}
+
+/**
+ * Rendered at send time (spec §4.3) from the ids an outbox row's payload
+ * carries — `volunteerName` reads the *retired* source profile's User (never
+ * deleted, so still resolvable), and `withdrawnAssignments` is re-derived
+ * from `assignment_audit` by `correlationId`, scoped to this one Ministry, not
+ * duplicated onto the outbox row itself.
+ */
+export interface TransferDigestDetails {
+  ministryName: string;
+  volunteerName: string;
+  withdrawnAssignments: WithdrawnAssignmentPreview[];
+}
+
 export interface VolunteerTransferRepository {
   getTransferImpact(input: GetTransferImpactInput): Promise<TransferImpact>;
   /**
-   * Steps 1–8 and 10–11 of spec §8.5, inside the caller's transaction. The
-   * outbox enqueue (step 9/12) is issue #60 and is deliberately not done here.
+   * Steps 1–9 and 11–12 of spec §8.5, inside the caller's transaction —
+   * including the outbox enqueue (step 9), one row per affected Ministry
+   * (issue #60).
    */
   executeTransfer(
     input: ExecuteVolunteerTransferInput,
   ): Promise<ExecuteVolunteerTransferOutcome>;
+
+  /** Content for a `transfer.ministry-digest` / `transfer.leaderless-ministry` send (issue #60). */
+  getDigestDetails(
+    input: GetTransferDigestDetailsInput,
+  ): Promise<TransferDigestDetails>;
 }

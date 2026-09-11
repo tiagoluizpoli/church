@@ -1,7 +1,8 @@
+import type { WithdrawnAssignmentPreview } from './volunteer-transfer.repository';
+
 /**
- * Typed per-kind email payloads for invitation delivery (issue #56).
- * Volunteer-Transfer notification kinds (`transfer.*` on `outbox_message_kind`)
- * are out of scope here — issue #60 defines their content when it's built.
+ * Typed per-kind email payloads for invitation delivery (issue #56) and
+ * Volunteer Transfer notifications (issue #60).
  *
  * `redemptionUrl` is the one place an absolute URL exists in this feature
  * (spec §6.2): the caller composes it from transport configuration plus the
@@ -42,11 +43,41 @@ export interface RedemptionAcceptedEmail {
   ministryName: string;
 }
 
+/**
+ * One digest per affected Ministry, addressed to every active leader —
+ * `to` is a list because a Ministry may have more than one. Never names the
+ * destination Church (spec §8.8): disclosing where the Volunteer went is not
+ * required to re-roster, and the move is one the former Church cannot veto.
+ * `withdrawnAssignments` reuses the repository layer's own shape (issue #60's
+ * `getDigestDetails` return) rather than redeclaring it here.
+ */
+export interface TransferMinistryDigestEmail {
+  kind: 'transfer.ministry-digest';
+  to: string[];
+  ministryName: string;
+  volunteerName: string;
+  withdrawnAssignments: WithdrawnAssignmentPreview[];
+}
+
+/**
+ * Escalation to every ChurchAdmin when the departure left the Ministry with
+ * no active leader to reach — same content as the digest, flagged leaderless.
+ */
+export interface TransferLeaderlessMinistryEmail {
+  kind: 'transfer.leaderless-ministry';
+  to: string[];
+  ministryName: string;
+  volunteerName: string;
+  withdrawnAssignments: WithdrawnAssignmentPreview[];
+}
+
 export type EmailPayload =
   | MinistryInvitationEmail
   | VerificationCodeEmail
   | ChurchBootstrapInvitationEmail
-  | RedemptionAcceptedEmail;
+  | RedemptionAcceptedEmail
+  | TransferMinistryDigestEmail
+  | TransferLeaderlessMinistryEmail;
 
 export interface SendEmailResult {
   /** Absent for the capture adapter — nothing was actually dispatched. */

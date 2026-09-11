@@ -11,6 +11,7 @@ import {
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
+  outboxMessage,
   planningCycle,
   shift,
   timeSlot,
@@ -21,8 +22,10 @@ import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ChurchId,
+  MinistryId,
   MinistryInvitationId,
   UserId,
+  VolunteerId,
 } from '../../src/domain/branded-ids';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories';
 import { DrizzleVolunteerTransferRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-transfer.repository';
@@ -413,5 +416,202 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     expect(oldProfile?.leftAt).toBeNull();
     const transfers = await testDb.select().from(volunteerTransfer);
     expect(transfers).toHaveLength(0);
+  });
+});
+
+describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (issue #60)', () => {
+  it('enqueues an ordinary Ministry digest — never an escalation — when a non-leader departs, even from a Ministry that already has no leader', async () => {
+    // The fixture's `dualMemberAB` is a plain volunteer in `ministryInB`,
+    // which happens to have no leader at all — but that pre-existing,
+    // unrelated state must never turn a routine departure into a ChurchAdmin
+    // escalation (spec: "Routine departures never reach ChurchAdmins").
+    const outcome = await runTransfer();
+    expect(outcome.kind).toBe('transferred');
+
+    const messages = await testDb.select().from(outboxMessage);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({
+      churchId: fixture.churchB.id,
+      kind: 'transfer.ministry-digest',
+      correlationId: CORRELATION_ID,
+      status: 'pending',
+    });
+    expect(messages[0]?.payload).toMatchObject({
+      ministryId: fixture.ministryInB,
+      volunteerId: fixture.dualMemberABVolunteerInB,
+    });
+  });
+
+  it('enqueues a leaderless-ministry escalation only when the departing Volunteer was themselves the last active leader', async () => {
+    // Elevate the departing member to leader — and leave them the *only*
+    // one — so the departure genuinely leaves the Ministry leaderless.
+    await testDb
+      .update(ministryVolunteer)
+      .set({ ministryAccessLevel: 'leader' })
+      .where(eq(ministryVolunteer.id, fixture.dualMemberABMembershipInB));
+
+    const outcome = await runTransfer();
+    expect(outcome.kind).toBe('transferred');
+
+    const messages = await testDb.select().from(outboxMessage);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({
+      kind: 'transfer.leaderless-ministry',
+      correlationId: CORRELATION_ID,
+    });
+  });
+
+  it('enqueues an ordinary digest, not an escalation, when the departing leader leaves a co-leader behind', async () => {
+    await testDb
+      .update(ministryVolunteer)
+      .set({ ministryAccessLevel: 'leader' })
+      .where(eq(ministryVolunteer.id, fixture.dualMemberABMembershipInB));
+    const [coLeaderVolunteer] = await testDb
+      .insert(volunteer)
+      .values({ churchId: fixture.churchB.id, userId: fixture.adminB })
+      .returning({ id: volunteer.id });
+    await testDb.insert(ministryVolunteer).values({
+      churchId: fixture.churchB.id,
+      volunteerId: coLeaderVolunteer?.id ?? '',
+      ministryId: fixture.ministryInB,
+      ministryAccessLevel: 'leader',
+    });
+
+    const outcome = await runTransfer();
+    expect(outcome.kind).toBe('transferred');
+
+    const messages = await testDb.select().from(outboxMessage);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ kind: 'transfer.ministry-digest' });
+  });
+
+  it('enqueues a ministry-digest addressed to the Ministry when an active leader remains', async () => {
+    // A second, unrelated Volunteer holds active leadership in `ministryInB`,
+    // so the departure is routine and never escalates.
+    const [leaderVolunteer] = await testDb
+      .insert(volunteer)
+      .values({ churchId: fixture.churchB.id, userId: fixture.adminB })
+      .returning({ id: volunteer.id });
+    await testDb.insert(ministryVolunteer).values({
+      churchId: fixture.churchB.id,
+      volunteerId: leaderVolunteer?.id ?? '',
+      ministryId: fixture.ministryInB,
+      ministryAccessLevel: 'leader',
+    });
+
+    const outcome = await runTransfer();
+    expect(outcome.kind).toBe('transferred');
+
+    const messages = await testDb.select().from(outboxMessage);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({
+      kind: 'transfer.ministry-digest',
+      correlationId: CORRELATION_ID,
+    });
+  });
+
+  it('is idempotent — a replay enqueues nothing new', async () => {
+    await runTransfer();
+    const second = await runTransfer();
+    expect(second.kind).toBe('already-transferred');
+
+    const messages = await testDb.select().from(outboxMessage);
+    expect(messages).toHaveLength(1);
+  });
+
+  it('writes one digest per Ministry, not one per withdrawn assignment — twelve vacated shifts must not mean twelve emails', async () => {
+    // Two more future, confirmed assignments in the same Ministry — on top of
+    // the one `seedChurchBSchedule` already seeded (`cancelledAfter`), for
+    // three withdrawn assignments total in this one Ministry.
+    const [cycle] = await testDb
+      .insert(planningCycle)
+      .values({
+        churchId: fixture.churchB.id,
+        name: 'Second Cycle',
+        // Non-overlapping with `seedChurchBSchedule`'s cycle — Planning Cycle
+        // date ranges for a Church must not overlap.
+        startDate: new Date('2027-01-01T00:00:00Z'),
+        endDate: new Date('2027-02-01T00:00:00Z'),
+      })
+      .returning({ id: planningCycle.id });
+    const [extraEvent] = await testDb
+      .insert(event)
+      .values({
+        churchId: fixture.churchB.id,
+        planningCycleId: cycle?.id ?? '',
+        title: 'Extra Assignments Event',
+        startDate: new Date(COMMIT.getTime() - 1000),
+        endDate: new Date(COMMIT.getTime() + 24 * 3_600_000),
+      })
+      .returning({ id: event.id });
+    const [extraParticipation] = await testDb
+      .insert(ministryParticipation)
+      .values({
+        churchId: fixture.churchB.id,
+        ministryId: fixture.ministryInB,
+        eventId: extraEvent?.id ?? '',
+      })
+      .returning({ id: ministryParticipation.id });
+    for (const offsetMs of [2_000, 3_000]) {
+      const start = new Date(COMMIT.getTime() + offsetMs);
+      const [slot] = await testDb
+        .insert(timeSlot)
+        .values({
+          churchId: fixture.churchB.id,
+          eventId: extraEvent?.id ?? '',
+          startTime: start,
+          endTime: new Date(start.getTime() + 3_600_000),
+        })
+        .returning({ id: timeSlot.id });
+      const [slotShift] = await testDb
+        .insert(shift)
+        .values({
+          churchId: fixture.churchB.id,
+          participationId: extraParticipation?.id ?? '',
+          timeSlotId: slot?.id ?? '',
+          startTime: start,
+          endTime: new Date(start.getTime() + 3_600_000),
+        })
+        .returning({ id: shift.id });
+      await testDb.insert(assignment).values({
+        churchId: fixture.churchB.id,
+        participationId: extraParticipation?.id ?? '',
+        shiftId: slotShift?.id ?? '',
+        volunteerId: fixture.dualMemberABVolunteerInB,
+        roleId: fixture.roleInMinistryInB,
+        status: 'confirmed',
+      });
+    }
+
+    const outcome = await runTransfer();
+    if (outcome.kind !== 'transferred') throw new Error('unreachable');
+    expect(outcome.result.withdrawnAssignmentCount).toBe(3);
+
+    const messages = await testDb.select().from(outboxMessage);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.payload).toMatchObject({
+      ministryId: fixture.ministryInB,
+    });
+  });
+});
+
+describe('DrizzleVolunteerTransferRepository.getDigestDetails', () => {
+  it('resolves the Ministry name, the retired Volunteer’s display name, and the withdrawn assignment for this Ministry only', async () => {
+    await runTransfer();
+
+    const details = await repository.getDigestDetails({
+      churchId: ChurchId.from(fixture.churchB.id),
+      ministryId: MinistryId.from(fixture.ministryInB),
+      volunteerId: VolunteerId.from(fixture.dualMemberABVolunteerInB),
+      correlationId: CORRELATION_ID,
+    });
+
+    expect(details.ministryName).toContain('Hospitality');
+    expect(details.volunteerName).toBe('Fixture Dual Member AB');
+    expect(details.withdrawnAssignments).toHaveLength(1);
+    expect(details.withdrawnAssignments[0]).toMatchObject({
+      eventName: 'Transfer Sunday',
+      roleName: expect.stringContaining('Greeter'),
+    });
   });
 });

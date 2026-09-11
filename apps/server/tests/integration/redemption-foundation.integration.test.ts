@@ -54,6 +54,8 @@ const {
   ministryRepository,
   outboxRepository,
   roleRepository,
+  volunteerRepository,
+  volunteerTransferRepository,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
 interface RedemptionHarness {
@@ -113,6 +115,8 @@ function createOutboxDrainer({
     churchRepository,
     ministryRepository,
     roleRepository,
+    volunteerRepository,
+    volunteerTransferRepository,
     emailSender,
     unitOfWork,
   });

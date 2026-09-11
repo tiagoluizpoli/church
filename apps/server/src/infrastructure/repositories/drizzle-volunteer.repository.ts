@@ -17,6 +17,7 @@ import type {
 } from '../../domain/branded-ids';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
+  ListActiveLeaderEmailsInput,
   MinistryMembership,
   TeamAccessLevel,
   VolunteerLeadership,
@@ -393,6 +394,28 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       qualifiedRoleIds: roleIdsByMembership.get(r.id) ?? [],
       ministryAccessLevel: r.ministryAccessLevel as MinistryAccessLevel,
     }));
+  }
+
+  async listActiveLeaderEmails({
+    churchId,
+    ministryId,
+    tx,
+  }: ListActiveLeaderEmailsInput): Promise<string[]> {
+    const db = getClient(this.db, tx);
+    const rows = await db
+      .select({ email: user.email })
+      .from(ministryVolunteer)
+      .innerJoin(volunteer, eq(volunteer.id, ministryVolunteer.volunteerId))
+      .innerJoin(user, eq(user.id, volunteer.userId))
+      .where(
+        and(
+          eq(ministryVolunteer.ministryId, ministryId),
+          eq(ministryVolunteer.churchId, churchId),
+          eq(ministryVolunteer.status, 'active'),
+          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
+        ),
+      );
+    return rows.map((r) => r.email);
   }
 }
 

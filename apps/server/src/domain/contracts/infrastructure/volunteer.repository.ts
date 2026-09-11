@@ -139,4 +139,18 @@ export interface VolunteerRepository {
     ministryId: MinistryId,
     tx?: TransactionContext,
   ): Promise<MinistryMembership[]>;
+
+  /**
+   * Email addresses of every currently-active leader (`ministryAccessLevel
+   * = 'leader'`, `status = 'active'`) of a Ministry — the Volunteer Transfer
+   * digest's addressee list (spec §8.8, issue #60). Empty when the Ministry
+   * has no active leader.
+   */
+  listActiveLeaderEmails(input: ListActiveLeaderEmailsInput): Promise<string[]>;
+}
+
+export interface ListActiveLeaderEmailsInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
 }

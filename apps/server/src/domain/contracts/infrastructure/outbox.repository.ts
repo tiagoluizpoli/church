@@ -72,10 +72,37 @@ export interface RedemptionAcceptedOutboxMessage extends OutboxMessageBase {
   payload: RedemptionAcceptedOutboxPayload;
 }
 
-/** Volunteer Transfer notifications — payload shape not designed yet (issue #60). */
-export interface TransferOutboxMessage extends OutboxMessageBase {
-  kind: 'transfer.ministry-digest' | 'transfer.leaderless-ministry';
-  payload: Record<string, unknown>;
+/**
+ * One row per affected Ministry (spec §8.8): `volunteerId` is the *retired*
+ * source Volunteer profile — it still exists (never deleted), so the
+ * departing Volunteer's display name is reachable at send time. The
+ * withdrawn-assignment list is not duplicated here; it is re-derived at send
+ * time from `assignment_audit` by `correlationId` (the outbox row's own
+ * column) scoped to this `ministryId`, matching the "payload carries ids,
+ * rendered at send time" rule the other kinds already follow. Both transfer
+ * notification kinds carry this same shape — only the addressee resolution
+ * (active leaders vs. ChurchAdmins) differs at send time.
+ */
+export interface TransferOutboxPayload {
+  ministryId: string;
+  volunteerId: string;
+}
+
+export type TransferMinistryDigestOutboxPayload = TransferOutboxPayload;
+
+/** Addressed to the Ministry's active leaders — the routine case. */
+export interface TransferMinistryDigestOutboxMessage extends OutboxMessageBase {
+  kind: 'transfer.ministry-digest';
+  payload: TransferMinistryDigestOutboxPayload;
+}
+
+export type TransferLeaderlessMinistryOutboxPayload = TransferOutboxPayload;
+
+/** Escalated to every ChurchAdmin — the departure left the Ministry with no active leader. */
+export interface TransferLeaderlessMinistryOutboxMessage
+  extends OutboxMessageBase {
+  kind: 'transfer.leaderless-ministry';
+  payload: TransferLeaderlessMinistryOutboxPayload;
 }
 
 export type OutboxMessage =
@@ -83,7 +110,8 @@ export type OutboxMessage =
   | MinistryInvitationOutboxMessage
   | ChurchBootstrapOutboxMessage
   | RedemptionAcceptedOutboxMessage
-  | TransferOutboxMessage;
+  | TransferMinistryDigestOutboxMessage
+  | TransferLeaderlessMinistryOutboxMessage;
 
 export interface ClaimPendingOutboxMessagesInput {
   limit: number;

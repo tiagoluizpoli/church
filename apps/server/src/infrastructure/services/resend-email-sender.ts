@@ -4,6 +4,8 @@ import type {
   EmailSender,
   SendEmailInput,
   SendEmailResult,
+  TransferLeaderlessMinistryEmail,
+  TransferMinistryDigestEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { EmailSendError } from '../../domain/errors/email-send-error';
 
@@ -119,5 +121,38 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
         subject: `Welcome to ${payload.ministryName} at ${payload.churchName}`,
         html: `<p>Your invitation to serve with <strong>${payload.ministryName}</strong> at ${payload.churchName} has been accepted.</p>`,
       };
+    case 'transfer.ministry-digest':
+      return {
+        subject: `${payload.volunteerName} has transferred out of ${payload.ministryName}`,
+        html: renderTransferDigestHtml({ payload }),
+      };
+    case 'transfer.leaderless-ministry':
+      return {
+        subject: `${payload.ministryName} has no active leader`,
+        html: `
+          <p><strong>${payload.ministryName}</strong> has no active leader: ${payload.volunteerName} — its last active leader — has transferred out.</p>
+          ${renderTransferDigestHtml({ payload })}
+        `,
+      };
   }
+}
+
+interface RenderTransferDigestHtmlInput {
+  payload: TransferMinistryDigestEmail | TransferLeaderlessMinistryEmail;
+}
+
+/** Shared body for both transfer notification kinds — only the framing differs. */
+function renderTransferDigestHtml({
+  payload,
+}: RenderTransferDigestHtmlInput): string {
+  const items = payload.withdrawnAssignments
+    .map(
+      (a) =>
+        `<li>${a.eventName} — ${a.timeSlotStart.toLocaleString()} — ${a.roleName}</li>`,
+    )
+    .join('');
+  return `
+    <p>${payload.volunteerName} transferred to another Church and their future assignments in <strong>${payload.ministryName}</strong> were withdrawn:</p>
+    <ul>${items}</ul>
+  `;
 }

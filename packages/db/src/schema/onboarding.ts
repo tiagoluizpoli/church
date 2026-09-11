@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { user } from './auth';
 import { church } from './church';
-import { ministry, role } from './core';
+import { ministry, role, volunteer } from './core';
 import {
   identityAuditActionEnum,
   ministryAccessLevelEnum,
@@ -253,3 +253,53 @@ export const securityLog = pgTable('security_log', {
     .defaultNow()
     .notNull(),
 });
+
+/**
+ * Spec §4.4/§8: both the domain audit record of a Volunteer Transfer **and**
+ * its idempotency key, so a replayed confirm cannot half-exist. The unique
+ * `(userId, ministryInvitationId)` index is what guarantees a second confirm
+ * returns the original outcome rather than re-executing (§8.6) — the
+ * client-supplied idempotency key rides along the redemption API but is not
+ * what makes this correct. Per-assignment detail is not duplicated here; it is
+ * reached through `assignment_audit` by `correlationId`.
+ */
+export const volunteerTransfer = pgTable(
+  'volunteer_transfer',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    sourceChurchId: uuid('source_church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    destinationChurchId: uuid('destination_church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    sourceVolunteerId: uuid('source_volunteer_id')
+      .notNull()
+      .references(() => volunteer.id, { onDelete: 'cascade' }),
+    destinationVolunteerId: uuid('destination_volunteer_id')
+      .notNull()
+      .references(() => volunteer.id, { onDelete: 'cascade' }),
+    ministryInvitationId: uuid('ministry_invitation_id')
+      .notNull()
+      .references(() => ministryInvitation.id, { onDelete: 'cascade' }),
+    withdrawnAssignmentCount: integer('withdrawn_assignment_count').notNull(),
+    endedMembershipCount: integer('ended_membership_count').notNull(),
+    confirmedAt: timestamp('confirmed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    correlationId: text('correlation_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('volunteer_transfer_user_invitation_idx').on(
+      table.userId,
+      table.ministryInvitationId,
+    ),
+  ],
+);

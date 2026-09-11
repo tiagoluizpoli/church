@@ -25,6 +25,7 @@ import {
 import type {
   AcceptMinistryInvitationInput,
   DeclineMinistryInvitationInput,
+  RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
 } from '../../src/domain/contracts/infrastructure/redemption.repository';
 import type {
@@ -201,6 +202,12 @@ class FailOnceAfterCheckpointThreeRepository implements RedemptionRepository {
   ): Promise<void> {
     return this.delegate.declineMinistryInvitation(input);
   }
+
+  async recordChurchOnlyPartialAcceptance(
+    input: RecordChurchOnlyPartialAcceptanceInput,
+  ): Promise<void> {
+    return this.delegate.recordChurchOnlyPartialAcceptance(input);
+  }
 }
 
 interface RedemptionHttpHarness {
@@ -232,8 +239,11 @@ const securityLogRepository = new DrizzleSecurityLogRepository({
   db: testDb,
 });
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
-const { manager: invitationManager, ministryInvitationRepository } =
-  createMinistryInvitationTestHarness({ db: testDb });
+const {
+  manager: invitationManager,
+  ministryInvitationRepository,
+  churchRepository,
+} = createMinistryInvitationTestHarness({ db: testDb });
 
 let app: FastifyTypedInstance | undefined;
 let fixture: TwoChurchIdentityFixture;
@@ -259,6 +269,7 @@ async function createHarness({
     verificationCodeSecret: 'test-secret',
   });
   const redemptionManager = new DbRedemptionManager({
+    churchRepository,
     identityGateway,
     invitationRepository: ministryInvitationRepository,
     invitationVerificationCodeManager: verificationCodeManager,
@@ -389,7 +400,7 @@ describe('Church invitation redemption HTTP boundary', () => {
     });
     expect(identityGateway.createAccountCalls).toBe(0);
     const users = await testDb.select().from(user);
-    expect(users).toHaveLength(7);
+    expect(users).toHaveLength(8);
   });
 
   it('redeems through Fastify, persists every checkpoint, and returns the authenticated cookie', async () => {

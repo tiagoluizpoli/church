@@ -11,12 +11,15 @@ import type {
   AcceptPendingMinistryInvitationInput,
   PublicRedemptionPreview,
 } from '../domain/contracts/application/redemption-manager';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionRepository } from '../domain/contracts/infrastructure/redemption.repository';
 import type { RedemptionIdentityGateway } from '../domain/contracts/infrastructure/redemption-identity-gateway';
 import type { SecurityLogRepository } from '../domain/contracts/infrastructure/security-log.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { Church } from '../domain/entities/church';
+import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { DbRedemptionManager } from './db-redemption-manager';
 
@@ -26,16 +29,19 @@ const MINISTRY_INVITATION_ID = MinistryInvitationId.from(
 );
 const USER_ID = UserId.from('33333333-3333-4333-8333-333333333333');
 const VOLUNTEER_ID = VolunteerId.from('44444444-4444-4444-8444-444444444444');
+const SOURCE_CHURCH_ID = ChurchId.from('77777777-7777-4777-8777-777777777777');
 const IDEMPOTENCY_KEY = '55555555-5555-4555-8555-555555555555';
 
 interface RedemptionManagerHarness {
   acceptedInputs: AcceptPendingMinistryInvitationInput[];
+  churchRepository: ChurchRepository;
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: Pick<
     MinistryInvitationRepository,
     'findPublicRedemptionPreview'
   >;
   manager: DbRedemptionManager;
+  recordChurchOnlyPartialAcceptance: ReturnType<typeof vi.fn>;
   verificationCodeManager: InvitationVerificationCodeManager;
 }
 
@@ -101,6 +107,9 @@ function createHarness({
     setActiveChurch: vi.fn(),
   };
   const acceptedInputs: AcceptPendingMinistryInvitationInput[] = [];
+  const recordChurchOnlyPartialAcceptance = vi
+    .fn()
+    .mockResolvedValue(undefined);
   const redemptionRepository: RedemptionRepository = {
     async acceptPendingMinistryInvitation(input) {
       await persist();
@@ -108,6 +117,7 @@ function createHarness({
       return VOLUNTEER_ID;
     },
     async declineMinistryInvitation() {},
+    recordChurchOnlyPartialAcceptance,
   };
   const unitOfWork: UnitOfWork = {
     async run(fn) {
@@ -118,11 +128,19 @@ function createHarness({
   const securityLogRepository: SecurityLogRepository = {
     recordIdentityMismatch: vi.fn(),
   };
+  const churchRepository: ChurchRepository = {
+    getById: vi
+      .fn()
+      .mockResolvedValue({ name: 'Riverside Fellowship' } as Church),
+    getBySlug: vi.fn(),
+  };
   return {
     acceptedInputs,
+    churchRepository,
     identityGateway,
     invitationRepository,
     manager: new DbRedemptionManager({
+      churchRepository,
       identityGateway,
       invitationRepository:
         invitationRepository as MinistryInvitationRepository,
@@ -131,6 +149,7 @@ function createHarness({
       securityLogRepository,
       unitOfWork,
     }),
+    recordChurchOnlyPartialAcceptance,
     verificationCodeManager,
   };
 }
@@ -253,6 +272,43 @@ describe('DbRedemptionManager', () => {
       kind: 'retryable-failure',
       reason: 'MINISTRY_ACCEPTANCE_FAILED',
     });
+  });
+
+  it('returns the cross-Church split naming both Churches when an active profile blocks the Ministry half', async () => {
+    const { manager, recordChurchOnlyPartialAcceptance, churchRepository } =
+      createHarness({
+        persist: async () => {
+          throw new CrossChurchVolunteerConflictError({
+            sourceChurchId: SOURCE_CHURCH_ID,
+          });
+        },
+      });
+
+    const outcome = await manager.redeemNewUser({
+      ministryInvitationId: MINISTRY_INVITATION_ID,
+      name: 'New Volunteer',
+      password: 'correct-horse-battery-staple',
+      code: '123456',
+      idempotencyKey: IDEMPOTENCY_KEY,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      ministryInvitationId: MINISTRY_INVITATION_ID,
+    });
+    expect(churchRepository.getById).toHaveBeenCalledWith({
+      id: SOURCE_CHURCH_ID,
+    });
+    expect(recordChurchOnlyPartialAcceptance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        churchId: CHURCH_ID,
+        ministryInvitationId: MINISTRY_INVITATION_ID,
+        userId: USER_ID,
+        correlationId: IDEMPOTENCY_KEY,
+      }),
+    );
   });
 
   it('resumes a checkpoint-three retry with the same code request identity', async () => {

@@ -44,9 +44,21 @@ export const debugVerificationCodeResponseSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 });
 
+/**
+ * Spec §7.5's cross-Church split: Church Membership succeeded, the Ministry
+ * half was refused by name, and both Churches are named so the result screen
+ * can offer a Volunteer Transfer against the still-`pending` invitation.
+ */
+export const churchOnlyOutcomeSchema = z.object({
+  kind: z.literal('church-only'),
+  sourceChurchName: z.string(),
+  destinationChurchName: z.string(),
+  ministryInvitationId: z.string().uuid(),
+});
+
 export const redemptionOutcomeResponseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('full-success'), volunteerId: z.string() }),
-  z.object({ kind: z.literal('church-only') }),
+  churchOnlyOutcomeSchema,
   z.object({
     kind: z.literal('retryable-failure'),
     reason: z.literal('MINISTRY_ACCEPTANCE_FAILED'),
@@ -90,6 +102,7 @@ export const existingMemberOutcomeResponseSchema = z.discriminatedUnion(
   'kind',
   [
     z.object({ kind: z.literal('full-success'), volunteerId: z.string() }),
+    churchOnlyOutcomeSchema,
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
     z.object({ kind: z.literal('identity-mismatch') }),
     z.object({

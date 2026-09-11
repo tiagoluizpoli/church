@@ -1,11 +1,14 @@
 import 'reflect-metadata';
 import {
   invitation as churchInvitation,
+  identityAudit,
   member,
   ministryInvitation,
   ministryVolunteer,
+  outboxMessage,
   session,
   user,
+  volunteer,
 } from '@church/db';
 import { env } from '@church/env/server';
 import { makeSignature } from 'better-auth/crypto';
@@ -48,8 +51,11 @@ const securityLogRepository = new DrizzleSecurityLogRepository({
   db: testDb,
 });
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
-const { manager: invitationManager, ministryInvitationRepository } =
-  createMinistryInvitationTestHarness({ db: testDb });
+const {
+  manager: invitationManager,
+  ministryInvitationRepository,
+  churchRepository,
+} = createMinistryInvitationTestHarness({ db: testDb });
 
 let app: FastifyTypedInstance;
 let fixture: TwoChurchIdentityFixture;
@@ -64,6 +70,7 @@ beforeEach(async () => {
     verificationCodeSecret: 'test-secret',
   });
   const redemptionManager = new DbRedemptionManager({
+    churchRepository,
     identityGateway: new BetterAuthRedemptionIdentityGateway(),
     invitationRepository: ministryInvitationRepository,
     invitationVerificationCodeManager: verificationCodeManager,
@@ -233,6 +240,62 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .innerJoin(member, eq(member.userId, fixture.existingChurchMemberA))
         .where(eq(ministryVolunteer.ministryId, fixture.ministryOneA));
       expect(membership).toBeDefined();
+    });
+
+    it('splits when the member already holds an active Volunteer profile in another Church (spec §7.5)', async () => {
+      // dualMemberAB is a Church Member of A and B, active Volunteer in B.
+      const invitation = await invitationManager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email: `${fixture.dualMemberAB}@fixture.test`,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+      });
+      const cookie = await createSessionCookie({
+        userId: fixture.dualMemberAB,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: { idempotencyKey: crypto.randomUUID() },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        kind: 'church-only',
+        sourceChurchName: fixture.churchB.name,
+        destinationChurchName: fixture.churchA.name,
+        ministryInvitationId: invitation.id,
+      });
+
+      // The Ministry half is refused: invitation stays pending, no grant, no
+      // Volunteer profile in Church A, and one church_only_partial_acceptance
+      // audit row and no outbox row.
+      const [stillPending] = await testDb
+        .select({ status: ministryInvitation.status })
+        .from(ministryInvitation)
+        .where(eq(ministryInvitation.id, invitation.id));
+      expect(stillPending?.status).toBe('pending');
+      const dualProfiles = await testDb
+        .select({ churchId: volunteer.churchId })
+        .from(volunteer)
+        .where(eq(volunteer.userId, fixture.dualMemberAB));
+      expect(dualProfiles).toEqual([{ churchId: fixture.churchB.id }]);
+      const audits = await testDb
+        .select({ action: identityAudit.action })
+        .from(identityAudit)
+        .where(eq(identityAudit.ministryInvitationId, invitation.id));
+      expect(audits).toEqual([{ action: 'church_only_partial_acceptance' }]);
+      // The split writes no grant-side outbox row — only the mint's own
+      // delivery row exists.
+      const outboxKinds = await testDb
+        .select({ kind: outboxMessage.kind })
+        .from(outboxMessage)
+        .where(eq(outboxMessage.churchId, fixture.churchA.id));
+      expect(outboxKinds).toEqual([{ kind: 'invitation.ministry' }]);
     });
   });
 

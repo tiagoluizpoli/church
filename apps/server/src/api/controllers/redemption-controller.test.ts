@@ -7,7 +7,11 @@ import {
   it,
   vi,
 } from 'vitest';
-import { ChurchId, VolunteerId } from '../../domain/branded-ids';
+import {
+  ChurchId,
+  MinistryInvitationId,
+  VolunteerId,
+} from '../../domain/branded-ids';
 import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import { createFastify } from '../../main/fastify/setup';
@@ -179,9 +183,12 @@ describe('RedemptionController', () => {
     });
   });
 
-  it('exposes the church-only union member without making it reachable in this flow', async () => {
+  it('passes the cross-Church split outcome through, naming both Churches', async () => {
     vi.mocked(redemptionManager.redeemNewUser).mockResolvedValue({
       kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'Northgate Community Church',
+      ministryInvitationId: MinistryInvitationId.from(INVITATION_ID),
     });
 
     const response = await app.inject({
@@ -196,7 +203,12 @@ describe('RedemptionController', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ kind: 'church-only' });
+    expect(response.json()).toEqual({
+      kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'Northgate Community Church',
+      ministryInvitationId: INVITATION_ID,
+    });
   });
 
   it('returns a typed terminal failure when verification cannot proceed', async () => {

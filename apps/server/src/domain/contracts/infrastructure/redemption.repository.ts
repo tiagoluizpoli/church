@@ -30,6 +30,16 @@ export interface DeclineMinistryInvitationInput {
   tx: TransactionContext;
 }
 
+export interface RecordChurchOnlyPartialAcceptanceInput {
+  /** The invitation's Church — where Church Membership was granted. */
+  churchId: ChurchId;
+  ministryInvitationId: MinistryInvitationId;
+  userId: UserId;
+  correlationId: string;
+  recordedAt: Date;
+  tx: TransactionContext;
+}
+
 export interface RedemptionRepository {
   acceptPendingMinistryInvitation(
     input: AcceptMinistryInvitationInput,
@@ -37,5 +47,13 @@ export interface RedemptionRepository {
   /** Persists the reject + its 'decline' audit row together; throws if the invitation is not `pending`. */
   declineMinistryInvitation(
     input: DeclineMinistryInvitationInput,
+  ): Promise<void>;
+  /**
+   * Spec §7.5/§7.6: one `church_only_partial_acceptance` audit row for the
+   * cross-Church split. Writes nothing else — the Ministry Invitation stays
+   * `pending` and no grant, outbox row or Volunteer profile is created.
+   */
+  recordChurchOnlyPartialAcceptance(
+    input: RecordChurchOnlyPartialAcceptanceInput,
   ): Promise<void>;
 }

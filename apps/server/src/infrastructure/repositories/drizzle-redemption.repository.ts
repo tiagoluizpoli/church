@@ -18,9 +18,11 @@ import type {
 import type {
   AcceptMinistryInvitationInput,
   DeclineMinistryInvitationInput,
+  RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
 } from '../../domain/contracts/infrastructure/redemption.repository';
 import type { VolunteerRepository } from '../../domain/contracts/infrastructure/volunteer.repository';
+import { CrossChurchVolunteerConflictError } from '../../domain/errors/cross-church-volunteer-conflict';
 import { PendingMinistryInvitationNotFoundError } from '../../domain/errors/pending-ministry-invitation-not-found';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -129,6 +131,21 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       userId,
       tx,
     );
+    // Spec §7.5: an active Volunteer profile in another Church makes the
+    // one-active-profile rule refuse the Ministry half. Thrown before any
+    // write, so Church Membership (granted earlier) stands and the invitation
+    // stays `pending` for a later Volunteer Transfer (§8). The partial unique
+    // index on `volunteer(user_id) WHERE left_at IS NULL` is the structural
+    // backstop under this check.
+    if (!existingVolunteer) {
+      const activeElsewhere =
+        await this.volunteerRepository.findByUserIdGlobally(userId, tx);
+      if (activeElsewhere && activeElsewhere.churchId !== churchId) {
+        throw new CrossChurchVolunteerConflictError({
+          sourceChurchId: activeElsewhere.churchId,
+        });
+      }
+    }
     const volunteerId =
       existingVolunteer?.id ??
       (await this.insertVolunteer({ db, churchId, userId }));
@@ -228,6 +245,24 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       action: 'decline',
       correlationId,
       timestamp: declinedAt,
+    });
+  }
+
+  async recordChurchOnlyPartialAcceptance({
+    churchId,
+    ministryInvitationId,
+    userId,
+    correlationId,
+    recordedAt,
+    tx,
+  }: RecordChurchOnlyPartialAcceptanceInput): Promise<void> {
+    await getClient(this.db, tx).insert(identityAudit).values({
+      churchId,
+      ministryInvitationId,
+      actorId: userId,
+      action: 'church_only_partial_acceptance',
+      correlationId,
+      timestamp: recordedAt,
     });
   }
 

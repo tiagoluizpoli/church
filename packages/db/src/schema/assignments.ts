@@ -98,6 +98,12 @@ export const assignmentAudit = pgTable('assignment_audit', {
     .references(() => user.id, { onDelete: 'cascade' }),
   action: auditActionEnum('action').notNull(),
   reason: text('reason'),
+  /**
+   * Correlation id of the wider act that produced this row, when it had one —
+   * e.g. a Volunteer Transfer's cancellations (spec §4.4/§8.4) are reached
+   * through this table by `correlationId`. Null for ordinary rostering edits.
+   */
+  correlationId: text('correlation_id'),
   timestamp: timestamp('timestamp', {
     withTimezone: true,
     mode: 'date',

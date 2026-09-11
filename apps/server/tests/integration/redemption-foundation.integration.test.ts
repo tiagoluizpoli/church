@@ -86,6 +86,7 @@ function createHarness(): RedemptionHarness {
   return {
     verificationCodeManager,
     redemptionManager: new DbRedemptionManager({
+      churchRepository,
       identityGateway: unusedIdentityGateway,
       invitationRepository: ministryInvitationRepository,
       invitationVerificationCodeManager: verificationCodeManager,

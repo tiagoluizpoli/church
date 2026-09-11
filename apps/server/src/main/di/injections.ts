@@ -221,6 +221,7 @@ export function registerInjections(): void {
   container.register(injection.managers.redemptionManager, {
     useFactory: () =>
       new DbRedemptionManager({
+        churchRepository: container.resolve(injection.infra.churchRepository),
         identityGateway: container.resolve(
           injection.infra.redemptionIdentityGateway,
         ),

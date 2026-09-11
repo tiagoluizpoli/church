@@ -6,6 +6,7 @@ import type {
   AcceptExistingMemberOutcome,
   AcceptPendingMinistryInvitationInput,
   AuthenticatedInvitationStatus,
+  ChurchOnlyRedemptionOutcome,
   DeclineInvitationInput,
   DeclineInvitationOutcome,
   GetAuthenticatedInvitationStatusInput,
@@ -17,6 +18,7 @@ import type {
   RedemptionManager,
   RequestRedemptionCodeInput,
 } from '../domain/contracts/application/redemption-manager';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
   MinistryInvitationContext,
   MinistryInvitationRepository,
@@ -30,9 +32,11 @@ import type { SecurityLogRepository } from '../domain/contracts/infrastructure/s
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VerificationCodeInspector } from '../domain/contracts/infrastructure/verification-code-inspector';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
+import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 
 export interface DbRedemptionManagerDependencies {
+  churchRepository: ChurchRepository;
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: MinistryInvitationRepository;
   invitationVerificationCodeManager: InvitationVerificationCodeManager;
@@ -41,6 +45,17 @@ export interface DbRedemptionManagerDependencies {
   unitOfWork: UnitOfWork;
   /** Non-production only — see `getDebugVerificationCode`. */
   verificationCodeInspector?: VerificationCodeInspector;
+}
+
+interface DescribeChurchOnlySplitInput {
+  error: CrossChurchVolunteerConflictError;
+  /** The invitation's Church — where Church Membership was granted. */
+  churchId: AcceptPendingMinistryInvitationInput['churchId'];
+  destinationChurchName: string;
+  ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
+  userId: AcceptPendingMinistryInvitationInput['userId'];
+  correlationId: string;
+  now: Date;
 }
 
 interface ResolveInvitationContextInput {
@@ -65,6 +80,7 @@ type ResolvedInvitationContext =
 @injectable()
 export class DbRedemptionManager implements RedemptionManager {
   constructor({
+    churchRepository,
     identityGateway,
     invitationRepository,
     invitationVerificationCodeManager,
@@ -73,6 +89,7 @@ export class DbRedemptionManager implements RedemptionManager {
     unitOfWork,
     verificationCodeInspector,
   }: DbRedemptionManagerDependencies) {
+    this.churchRepository = churchRepository;
     this.identityGateway = identityGateway;
     this.invitationRepository = invitationRepository;
     this.invitationVerificationCodeManager = invitationVerificationCodeManager;
@@ -82,6 +99,7 @@ export class DbRedemptionManager implements RedemptionManager {
     this.verificationCodeInspector = verificationCodeInspector;
   }
 
+  private readonly churchRepository: ChurchRepository;
   private readonly identityGateway: RedemptionIdentityGateway;
   private readonly invitationRepository: MinistryInvitationRepository;
   private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
@@ -181,12 +199,60 @@ export class DbRedemptionManager implements RedemptionManager {
         volunteerId,
         sessionCookie: account.sessionCookie,
       };
-    } catch {
+    } catch (error) {
+      if (error instanceof CrossChurchVolunteerConflictError) {
+        return this.describeChurchOnlySplit({
+          error,
+          churchId: preview.churchId,
+          destinationChurchName: preview.churchName,
+          ministryInvitationId,
+          userId: account.userId,
+          correlationId: idempotencyKey,
+          now,
+        });
+      }
       return {
         kind: 'retryable-failure',
         reason: 'MINISTRY_ACCEPTANCE_FAILED',
       };
     }
+  }
+
+  /**
+   * Spec §7.5: Church Membership already committed earlier in the checkpoint
+   * sequence; here we record the `church_only_partial_acceptance` audit act
+   * (§7.6) and name both Churches so the caller can offer a Volunteer
+   * Transfer. Nothing else was written — the Ministry Invitation stays
+   * `pending`.
+   */
+  private async describeChurchOnlySplit({
+    error,
+    churchId,
+    destinationChurchName,
+    ministryInvitationId,
+    userId,
+    correlationId,
+    now,
+  }: DescribeChurchOnlySplitInput): Promise<ChurchOnlyRedemptionOutcome> {
+    await this.unitOfWork.run((tx) =>
+      this.redemptionRepository.recordChurchOnlyPartialAcceptance({
+        churchId,
+        ministryInvitationId,
+        userId,
+        correlationId,
+        recordedAt: now,
+        tx,
+      }),
+    );
+    const sourceChurch = await this.churchRepository.getById({
+      id: error.sourceChurchId,
+    });
+    return {
+      kind: 'church-only',
+      sourceChurchName: sourceChurch.name,
+      destinationChurchName,
+      ministryInvitationId,
+    };
   }
 
   async acceptPendingMinistryInvitation({
@@ -342,7 +408,18 @@ export class DbRedemptionManager implements RedemptionManager {
         auditAction: 'ministry_acceptance',
       });
       return { kind: 'full-success', volunteerId };
-    } catch {
+    } catch (error) {
+      if (error instanceof CrossChurchVolunteerConflictError) {
+        return this.describeChurchOnlySplit({
+          error,
+          churchId: ministryInvitation.churchId,
+          destinationChurchName: resolved.context.churchName,
+          ministryInvitationId,
+          userId,
+          correlationId: idempotencyKey,
+          now,
+        });
+      }
       return {
         kind: 'retryable-failure',
         reason: 'MINISTRY_ACCEPTANCE_FAILED',

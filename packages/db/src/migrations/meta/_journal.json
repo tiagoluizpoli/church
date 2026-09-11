@@ -85,6 +85,13 @@
       "when": 1786512649711,
       "tag": "0011_special_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789086294680,
+      "tag": "0012_volunteer-transfer-and-membership-left-at",
+      "breakpoints": true
     }
   ]
 }

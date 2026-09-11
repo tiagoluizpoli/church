@@ -219,6 +219,7 @@ function SelectChurchRoute() {
                   key={church.churchId}
                   type="button"
                   disabled={selectMutation.isPending}
+                  data-testid={`select-church-option-${church.churchId}`}
                   onClick={() =>
                     selectMutation.mutate({
                       availableAreas: church.availableAreas,
@@ -261,6 +262,7 @@ function SelectChurchRoute() {
                     key={church.churchId}
                     type="button"
                     disabled={selectMutation.isPending}
+                    data-testid={`select-church-option-${church.churchId}`}
                     onClick={() =>
                       selectMutation.mutate({
                         availableAreas: church.availableAreas,

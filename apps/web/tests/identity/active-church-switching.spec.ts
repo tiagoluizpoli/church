@@ -2,7 +2,13 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, type Page, request, test } from '@playwright/test';
+import {
+  type APIResponse,
+  expect,
+  type Page,
+  request,
+  test,
+} from '@playwright/test';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   CHURCH_B_ADMIN_STORAGE_STATE,
@@ -31,7 +37,9 @@ const US4_CYCLE_ID = 'e2e21111-2222-2222-2222-222222222222';
 const CHURCH_A_NAME = 'E2E Church';
 const CHURCH_B_NAME = 'E2E ChurchB';
 // Real values that only exist inside Church A — the negative assertion
-// after switching to Church B names these exact strings (spec 024 §11.2).
+// after switching to Church B names these exact strings (spec 024 §11.2
+// rule 2: "name, id and slug", not just an empty-list check).
+const CHURCH_A_SLUG = 'e2e-church';
 const CHURCH_A_DECEMBER_CYCLE_NAME = 'E2E December cycle';
 const CHURCH_A_US4_CYCLE_NAME = 'E2E US4 publish cycle';
 const CHURCH_A_MINISTRY_NAME = 'E2E Worship';
@@ -57,10 +65,21 @@ interface RedeemChurchInvitationInput {
   invitationId: string;
 }
 
+interface AssertOkInput {
+  res: APIResponse;
+  action: string;
+}
+
+/** Fails loudly on a non-2xx response instead of surfacing a confusing downstream error. */
+async function assertOk({ res, action }: AssertOkInput): Promise<void> {
+  if (res.ok()) return;
+  throw new Error(`Failed to ${action} (${res.status()}): ${await res.text()}`);
+}
+
 /**
  * E2E-only stand-in for the still-unbuilt public Church-only redemption
  * journey (#62) — same script every identity spec shells out to. Signs up
- * on the first call and, since the account already exists, signs in and
+ * on the first call and, since the User already exists, signs in and
  * accepts on every call after (issue #67 redeems two Church Invitations for
  * the same dual-membership email).
  */
@@ -111,11 +130,7 @@ async function bootstrapDualMember({
     '/api/auth/organization/invite-member',
     { data: { email, role: 'admin', organizationId: CHURCH_A_ID } },
   );
-  if (!churchAInviteRes.ok()) {
-    throw new Error(
-      `Failed to invite Church A admin (${churchAInviteRes.status()}): ${await churchAInviteRes.text()}`,
-    );
-  }
+  await assertOk({ res: churchAInviteRes, action: 'invite Church A admin' });
   const churchAInvitation =
     (await churchAInviteRes.json()) as InviteChurchMemberResponse;
   redeemChurchInvitation({
@@ -134,11 +149,10 @@ async function bootstrapDualMember({
       },
     },
   );
-  if (!ministryInviteRes.ok()) {
-    throw new Error(
-      `Failed to mint Ministry invitation (${ministryInviteRes.status()}): ${await ministryInviteRes.text()}`,
-    );
-  }
+  await assertOk({
+    res: ministryInviteRes,
+    action: 'mint Ministry invitation',
+  });
   const ministryInvitation =
     (await ministryInviteRes.json()) as MintedMinistryInvitation;
   await churchAAdminCtx.dispose();
@@ -147,20 +161,12 @@ async function bootstrapDualMember({
   const signInRes = await userCtx.post('/api/auth/sign-in/email', {
     data: { email, password: PASSWORD },
   });
-  if (!signInRes.ok()) {
-    throw new Error(
-      `Failed to sign in dual member (${signInRes.status()}): ${await signInRes.text()}`,
-    );
-  }
+  await assertOk({ res: signInRes, action: 'sign in dual member' });
   const acceptRes = await userCtx.post(
     `/api/v1/redemption/ministry/${ministryInvitation.id}/accept`,
     { data: { idempotencyKey: randomUUID() } },
   );
-  if (!acceptRes.ok()) {
-    throw new Error(
-      `Failed to accept Ministry invitation (${acceptRes.status()}): ${await acceptRes.text()}`,
-    );
-  }
+  await assertOk({ res: acceptRes, action: 'accept Ministry invitation' });
   await userCtx.dispose();
 
   const churchBAdminCtx = await request.newContext({
@@ -172,11 +178,7 @@ async function bootstrapDualMember({
     '/api/auth/organization/invite-member',
     { data: { email, role: 'member', organizationId: CHURCH_B_ID } },
   );
-  if (!churchBInviteRes.ok()) {
-    throw new Error(
-      `Failed to invite Church B member (${churchBInviteRes.status()}): ${await churchBInviteRes.text()}`,
-    );
-  }
+  await assertOk({ res: churchBInviteRes, action: 'invite Church B member' });
   const churchBInvitation =
     (await churchBInviteRes.json()) as InviteChurchMemberResponse;
   await churchBAdminCtx.dispose();
@@ -206,20 +208,21 @@ async function signIn(page: Page, { email }: SignInInput): Promise<void> {
 
 interface ChurchOptionRowInput {
   page: Page;
-  churchName: string;
+  churchId: string;
 }
 
 /**
  * Selector C renders every Church twice — a mobile card list (`md:hidden`)
- * and a desktop table (`hidden md:block`) — so a plain text locator is
- * ambiguous even though only one is actually visible at the default desktop
- * viewport. Scope to `:visible` and anchor the match so "E2E Church" never
- * also resolves "E2E ChurchB".
+ * and a desktop table (`hidden md:block`) — both physically present, one
+ * hidden by viewport. `select-church.tsx` keys each row's `data-testid` by
+ * `church.churchId` (matching the `planning-cycle-row-${id}` convention
+ * elsewhere in this app), so `:visible` is still needed to pick the one
+ * layout actually on screen at the default desktop viewport.
  */
-function churchOptionRow({ page, churchName }: ChurchOptionRowInput) {
-  return page.locator('span.font-semibold:visible', {
-    hasText: new RegExp(`^${churchName}$`),
-  });
+function churchOptionRow({ page, churchId }: ChurchOptionRowInput) {
+  return page.locator(
+    `[data-testid="select-church-option-${churchId}"]:visible`,
+  );
 }
 
 test.describe('#67 — Active Church selection and switching', () => {
@@ -235,13 +238,13 @@ test.describe('#67 — Active Church selection and switching', () => {
     // AC2 — several Church Memberships and no Active Church shows selector C.
     await expect(page).toHaveURL(/\/select-church(\?.*)?$/);
     await expect(
-      churchOptionRow({ page, churchName: CHURCH_A_NAME }),
-    ).toBeVisible();
+      churchOptionRow({ page, churchId: CHURCH_A_ID }),
+    ).toContainText(CHURCH_A_NAME);
     await expect(
-      churchOptionRow({ page, churchName: CHURCH_B_NAME }),
-    ).toBeVisible();
+      churchOptionRow({ page, churchId: CHURCH_B_ID }),
+    ).toContainText(CHURCH_B_NAME);
 
-    await churchOptionRow({ page, churchName: CHURCH_A_NAME }).click();
+    await churchOptionRow({ page, churchId: CHURCH_A_ID }).click();
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
 
     const statusAfterA = await page.request.get(
@@ -261,14 +264,14 @@ test.describe('#67 — Active Church selection and switching', () => {
     ).toContainText(CHURCH_A_US4_CYCLE_NAME);
 
     // The sidebar switcher (#54) — spec 024 §1.5 places it above the
-    // Church-scoped nav, not inside the account menu.
+    // Church-scoped nav, not inside `UserMenu` (the User-identity menu).
     await page
       .getByTestId('sidebar')
       .getByRole('button', { name: 'Switch Church' })
       .click();
     await expect(page).toHaveURL(/\/select-church(\?.*)?$/);
 
-    await churchOptionRow({ page, churchName: CHURCH_B_NAME }).click();
+    await churchOptionRow({ page, churchId: CHURCH_B_ID }).click();
     // Church B has no scheduling access, so the "preserve" route policy
     // falls back to the dashboard (spec 024 §1.5) once the switch commits.
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
@@ -279,16 +282,24 @@ test.describe('#67 — Active Church selection and switching', () => {
     expect((await statusAfterB.json()).churchId).toBe(CHURCH_B_ID);
 
     // AC3 — Church A's real name/identifiers appear nowhere in the
-    // rendered page. `/dashboard` never renders a cycle/Ministry name for
-    // any Church, so an empty-list-style check here would pass even against
-    // a switch that never cleared Church-scoped cache (spec 024 §11.2 rule
-    // 2 warns against exactly that trivial pass). The real proof is
-    // re-visiting the *same* route that rendered Church A's real cycle
-    // names a moment ago: this dual member has no Ministry access in
-    // Church B, so its own route guard (`planning-cycles.tsx` `beforeLoad`)
-    // bounces straight back to `/dashboard` on the resulting 401 — never
-    // rendering, let alone leaking, a stale Church A cycle list.
-    await page.goto('/scheduling/planning-cycles');
+    // rendered page. Nothing in this test has reloaded the page since
+    // `/login`, so the client-side query cache built while Church A was
+    // active is still live in memory — a `page.goto` here would wipe it and
+    // prove nothing (TanStack Query's `ensureQueryData`, which
+    // `planning-cycles.tsx`'s `beforeLoad` calls, returns an existing cache
+    // entry immediately without a network request whenever one is present,
+    // stale or not: see `ensureQueryData` in
+    // `@tanstack/query-core/src/queryClient.ts`). Re-entering the route via
+    // a real in-app link click is the only way this check can actually fail
+    // against a broken `clearActiveChurchScopedCache` that left Church A's
+    // `['planning-cycles']` entry behind. This dual member also has no
+    // Ministry access in Church B, so a correctly-cleared cache/session
+    // makes this route's own guard bounce straight back to `/dashboard` —
+    // never rendering, let alone leaking, Church A's cycle list.
+    await page
+      .getByTestId('sidebar')
+      .getByRole('link', { name: 'Cycles' })
+      .click();
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
 
     const bodyText = await page.locator('body').innerText();
@@ -296,5 +307,6 @@ test.describe('#67 — Active Church selection and switching', () => {
     expect(bodyText).not.toContain(CHURCH_A_US4_CYCLE_NAME);
     expect(bodyText).not.toContain(CHURCH_A_MINISTRY_NAME);
     expect(bodyText).not.toContain(CHURCH_A_ID);
+    expect(bodyText).not.toContain(CHURCH_A_SLUG);
   });
 });

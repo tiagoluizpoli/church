@@ -1,4 +1,4 @@
-import { expect, request, test } from '@playwright/test';
+import { expect, type Page, request, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 
 // #63/DL#100 — a person outside the Church (the "outsider" — never before
@@ -18,6 +18,12 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 const CHURCH_ID = 'e2e11111-1111-1111-1111-111111111111';
 const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
 const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
+// The second tenant `global-setup.ts` provisions alongside CHURCH_ID — the
+// "two-Church" half of the environment this outsider redeems into. Naming
+// its real id/name lets the isolation assertion below prove absence, not
+// just an empty-looking list (spec 024 §11.2).
+const CHURCH_B_ID = 'e2ebbbbb-1111-1111-1111-111111111111';
+const CHURCH_B_NAME = 'E2E ChurchB';
 
 interface MintedInvitation {
   id: string;
@@ -96,6 +102,34 @@ interface VolunteerDashboardMinistryOptions {
   ministryOptions: MinistryOption[];
 }
 
+interface ActiveChurchStatusResponse {
+  churchId: string;
+}
+
+interface ChurchSelectionOption {
+  churchId: string;
+  name: string;
+}
+
+interface ChurchOptionsResponse {
+  churches: ChurchSelectionOption[];
+}
+
+interface FetchJsonInput {
+  page: Page;
+  url: string;
+}
+
+async function fetchJson<T>({ page, url }: FetchJsonInput): Promise<T> {
+  const response = await page.request.get(url);
+  if (!response.ok()) {
+    throw new Error(
+      `GET ${url} failed (${response.status()}): ${await response.text()}`,
+    );
+  }
+  return (await response.json()) as T;
+}
+
 function uniqueOutsiderEmail(): string {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `e2e-outsider-${suffix}@test.com`;
@@ -141,18 +175,33 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
 
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
 
-    const statusResponse = await page.request.get(
-      `${SERVER_URL}/api/v1/active-church/status`,
-    );
-    expect((await statusResponse.json()).churchId).toBe(CHURCH_ID);
+    const status = await fetchJson<ActiveChurchStatusResponse>({
+      page,
+      url: `${SERVER_URL}/api/v1/active-church/status`,
+    });
+    expect(status.churchId).toBe(CHURCH_ID);
 
-    const dashboardResponse = await page.request.get(
-      `${SERVER_URL}/api/v1/volunteer/dashboard`,
-    );
     const { ministryOptions } =
-      (await dashboardResponse.json()) as VolunteerDashboardMinistryOptions;
+      await fetchJson<VolunteerDashboardMinistryOptions>({
+        page,
+        url: `${SERVER_URL}/api/v1/volunteer/dashboard`,
+      });
     expect(ministryOptions.map((option) => option.id)).toContain(
       WORSHIP_MINISTRY_ID,
+    );
+
+    // Two-Church isolation: this outsider redeemed into exactly the
+    // inviting Church, never touching the environment's other real tenant.
+    const { churches } = await fetchJson<ChurchOptionsResponse>({
+      page,
+      url: `${SERVER_URL}/api/v1/active-church/options`,
+    });
+    expect(churches.map((church) => church.churchId)).toEqual([CHURCH_ID]);
+    expect(churches.some((church) => church.churchId === CHURCH_B_ID)).toBe(
+      false,
+    );
+    expect(churches.some((church) => church.name === CHURCH_B_NAME)).toBe(
+      false,
     );
   });
 });

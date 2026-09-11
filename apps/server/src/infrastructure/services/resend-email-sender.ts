@@ -4,6 +4,8 @@ import type {
   EmailSender,
   SendEmailInput,
   SendEmailResult,
+  TransferLeaderlessMinistryEmail,
+  TransferMinistryDigestEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { EmailSendError } from '../../domain/errors/email-send-error';
 
@@ -135,14 +137,14 @@ function composeEmail({ payload }: ComposeEmailInput): ComposedEmail {
   }
 }
 
+interface RenderTransferDigestHtmlInput {
+  payload: TransferMinistryDigestEmail | TransferLeaderlessMinistryEmail;
+}
+
 /** Shared body for both transfer notification kinds — only the framing differs. */
-function renderTransferDigestHtml({ payload }: ComposeEmailInput): string {
-  if (
-    payload.kind !== 'transfer.ministry-digest' &&
-    payload.kind !== 'transfer.leaderless-ministry'
-  ) {
-    return '';
-  }
+function renderTransferDigestHtml({
+  payload,
+}: RenderTransferDigestHtmlInput): string {
   const items = payload.withdrawnAssignments
     .map(
       (a) =>

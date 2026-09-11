@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import {
   assignment,
   assignmentAudit,
@@ -415,7 +416,9 @@ export class DrizzleVolunteerTransferRepository
         ),
       );
     if (!ministryRow) {
-      throw new Error(`Ministry not found for transfer digest: ${ministryId}`);
+      throw new NotFoundError(
+        `Ministry not found for transfer digest: ${ministryId}`,
+      );
     }
 
     // The retired source profile — never deleted, so still resolvable here.
@@ -430,7 +433,7 @@ export class DrizzleVolunteerTransferRepository
         ),
       );
     if (!volunteerRow) {
-      throw new Error(
+      throw new NotFoundError(
         `Volunteer not found for transfer digest: ${volunteerId}`,
       );
     }

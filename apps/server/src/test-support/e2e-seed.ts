@@ -106,13 +106,16 @@ export const E2E_IDS = {
   us4UsherRequirement: 'e2e88888-8888-8888-8888-888888888888',
   us4CareRequirement: 'e2e88888-8888-8888-8888-888888888889',
   // Second tenant — used only by cross-cutting church-isolation specs
-  // (DL4-X1, #68). Deliberately minimal: one church, one admin, one locked
+  // (DL4-X1, #68) and the volunteer-transfer journey (#65, which needs a real
+  // assignable Role to seat the dual-membership fixture before it transfers
+  // away). Deliberately minimal otherwise: one church, one admin, one locked
   // cycle, one Ministry (its own known-valid id for the identity-surface
   // cross-tenant journey — #68 mints a real Ministry Invitation against it).
   churchB: 'e2ebbbbb-1111-1111-1111-111111111111',
   churchBAdminVolunteer: 'e2ebbbbb-4444-4444-4444-444444444441',
   churchBPlanningCycle: 'e2ebbbbb-2111-1111-1111-111111111111',
   churchBMinistry: 'e2ebbbbb-3333-3333-3333-333333333331',
+  churchBRoleUsher: 'e2ebbbbb-5555-5555-5555-555555555551',
 } as const;
 
 export const CHURCH_B_PLANNING_CYCLE_NAME = 'E2E ChurchB Isolated Cycle';
@@ -388,6 +391,14 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           ministryId: E2E_IDS.ministryCare,
           name: 'Care Host',
+        },
+        {
+          // #65 — the Role the volunteer-transfer journey grants and assigns
+          // in Church B before proving the transfer withdraws it.
+          id: E2E_IDS.churchBRoleUsher,
+          churchId: E2E_IDS.churchB,
+          ministryId: E2E_IDS.churchBMinistry,
+          name: 'E2E ChurchB Usher',
         },
       ])
       .onConflictDoNothing();

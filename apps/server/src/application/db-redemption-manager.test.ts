@@ -105,6 +105,7 @@ function createHarness({
     acceptChurchInvitation: vi.fn().mockImplementation(accept),
     rejectChurchInvitation: vi.fn(),
     setActiveChurch: vi.fn(),
+    verifyPassword: vi.fn().mockResolvedValue(true),
   };
   const acceptedInputs: AcceptPendingMinistryInvitationInput[] = [];
   const recordChurchOnlyPartialAcceptance = vi

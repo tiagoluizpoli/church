@@ -13,6 +13,7 @@ import {
   VolunteerId,
 } from '../../domain/branded-ids';
 import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
+import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import { createFastify } from '../../main/fastify/setup';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -42,11 +43,19 @@ const redemptionManager: RedemptionManager = {
   getDebugVerificationCode: vi.fn(),
 };
 
+const volunteerTransferManager: VolunteerTransferManager = {
+  getTransferPreview: vi.fn(),
+  confirmTransfer: vi.fn(),
+};
+
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new RedemptionController({ redemptionManager });
+  const controller = new RedemptionController({
+    redemptionManager,
+    volunteerTransferManager,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
@@ -507,6 +516,106 @@ describe('decline endpoints', () => {
       ministryInvitationId: INVITATION_ID,
       userId: USER_ID,
       sessionCookie: AUTH_COOKIE,
+    });
+  });
+
+  it('GET /redemption/transfer/:invitationId/preview returns 401 without a session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/transfer/${INVITATION_ID}/preview`,
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('GET /redemption/transfer/:invitationId/preview serializes the reviewable impact for the authenticated User', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(volunteerTransferManager.getTransferPreview).mockResolvedValue({
+      kind: 'reviewable',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'Northgate Community Church',
+      endedMemberships: [{ ministryName: 'Hospitality' }],
+      withdrawnAssignments: [
+        {
+          eventName: 'Transfer Sunday',
+          timeSlotStart: new Date('2026-09-20T09:00:00.000Z'),
+          roleName: 'Greeter',
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/transfer/${INVITATION_ID}/preview`,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      kind: 'reviewable',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'Northgate Community Church',
+      endedMemberships: [{ ministryName: 'Hospitality' }],
+      withdrawnAssignments: [
+        {
+          eventName: 'Transfer Sunday',
+          timeSlotStart: '2026-09-20T09:00:00.000Z',
+          roleName: 'Greeter',
+        },
+      ],
+    });
+  });
+
+  it('POST /redemption/transfer/:invitationId/confirm returns 401 without a session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/transfer/${INVITATION_ID}/confirm`,
+      payload: {
+        destinationChurchName: 'Northgate Community Church',
+        password: 'correct-horse-battery-staple',
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('POST /redemption/transfer/:invitationId/confirm forwards the layer-3 inputs and returns the outcome without a session cookie', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: { id: USER_ID },
+      session: { activeOrganizationId: null },
+    } as never);
+    vi.mocked(volunteerTransferManager.confirmTransfer).mockResolvedValue({
+      kind: 'password-mismatch',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/redemption/transfer/${INVITATION_ID}/confirm`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: {
+        destinationChurchName: 'Northgate Community Church',
+        password: 'wrong-password-here',
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ kind: 'password-mismatch' });
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(volunteerTransferManager.confirmTransfer).toHaveBeenCalledWith({
+      ministryInvitationId: INVITATION_ID,
+      userId: USER_ID,
+      destinationChurchName: 'Northgate Community Church',
+      password: 'wrong-password-here',
+      idempotencyKey: '55555555-5555-4555-8555-555555555555',
     });
   });
 });

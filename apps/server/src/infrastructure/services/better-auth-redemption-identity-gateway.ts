@@ -9,6 +9,7 @@ import type {
   RedemptionIdentityGateway,
   RejectChurchInvitationInput,
   SetActiveRedemptionChurchInput,
+  VerifyPasswordInput,
 } from '../../domain/contracts/infrastructure/redemption-identity-gateway';
 
 const signInResponseSchema = z.object({
@@ -78,6 +79,23 @@ export class BetterAuthRedemptionIdentityGateway
       headers: new Headers({ cookie: sessionCookie }),
       body: { organizationId: churchId },
     });
+  }
+
+  async verifyPassword({
+    email,
+    password,
+  }: VerifyPasswordInput): Promise<boolean> {
+    // Spec §8.7 layer 3: prove the password server-side without minting a
+    // session — Better Auth's `sign-in/email` is the only credential check
+    // available, so its `set-cookie` is deliberately read and discarded.
+    const response = await auth.handler(
+      new Request('http://localhost/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }),
+    );
+    return response.ok;
   }
 
   private async createAuthenticatedSession({

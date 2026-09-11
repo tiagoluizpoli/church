@@ -7,9 +7,12 @@
 import type {
   AcceptMinistryInvitation200,
   AcceptMinistryInvitationBody,
+  ConfirmVolunteerTransfer200,
+  ConfirmVolunteerTransferBody,
   DeclineChurchInvitation200,
   DeclineMinistryInvitation200,
   GetMinistryInvitationStatus200,
+  GetVolunteerTransferPreview200,
   PreviewChurchInvitation200,
   RedeemChurchInvitation200,
   RedeemChurchInvitationBody,
@@ -84,7 +87,26 @@ const previewChurchInvitation = (
     },
       );
     }
-  return {previewChurchInvitation,requestChurchInvitationVerificationCode,redeemChurchInvitation,declineChurchInvitation,getMinistryInvitationStatus,acceptMinistryInvitation,declineMinistryInvitation}};
+  const getVolunteerTransferPreview = (
+    invitationId: string,
+ ) => {
+      return apiClient<GetVolunteerTransferPreview200>(
+      {url: `/api/v1/redemption/transfer/${invitationId}/preview`, method: 'GET'
+    },
+      );
+    }
+  const confirmVolunteerTransfer = (
+    invitationId: string,
+    confirmVolunteerTransferBody: ConfirmVolunteerTransferBody,
+ ) => {
+      return apiClient<ConfirmVolunteerTransfer200>(
+      {url: `/api/v1/redemption/transfer/${invitationId}/confirm`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: confirmVolunteerTransferBody
+    },
+      );
+    }
+  return {previewChurchInvitation,requestChurchInvitationVerificationCode,redeemChurchInvitation,declineChurchInvitation,getMinistryInvitationStatus,acceptMinistryInvitation,declineMinistryInvitation,getVolunteerTransferPreview,confirmVolunteerTransfer}};
 export type PreviewChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['previewChurchInvitation']>>>
 export type RequestChurchInvitationVerificationCodeResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['requestChurchInvitationVerificationCode']>>>
 export type RedeemChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['redeemChurchInvitation']>>>
@@ -92,3 +114,5 @@ export type DeclineChurchInvitationResult = NonNullable<Awaited<ReturnType<Retur
 export type GetMinistryInvitationStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['getMinistryInvitationStatus']>>>
 export type AcceptMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['acceptMinistryInvitation']>>>
 export type DeclineMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['declineMinistryInvitation']>>>
+export type GetVolunteerTransferPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['getVolunteerTransferPreview']>>>
+export type ConfirmVolunteerTransferResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['confirmVolunteerTransfer']>>>

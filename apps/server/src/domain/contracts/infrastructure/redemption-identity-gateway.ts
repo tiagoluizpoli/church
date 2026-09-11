@@ -27,6 +27,11 @@ export interface SetActiveRedemptionChurchInput {
   sessionCookie: string;
 }
 
+export interface VerifyPasswordInput {
+  email: string;
+  password: string;
+}
+
 export interface RedemptionIdentityGateway {
   createAccount(
     input: CreateRedemptionAccountInput,
@@ -34,4 +39,10 @@ export interface RedemptionIdentityGateway {
   acceptChurchInvitation(input: AcceptChurchInvitationInput): Promise<void>;
   rejectChurchInvitation(input: RejectChurchInvitationInput): Promise<void>;
   setActiveChurch(input: SetActiveRedemptionChurchInput): Promise<void>;
+  /**
+   * Spec §8.7 layer 3: server-side password check that issues **no** new
+   * session — any cookie Better Auth returns is discarded. `true` only when
+   * the credentials are valid.
+   */
+  verifyPassword(input: VerifyPasswordInput): Promise<boolean>;
 }

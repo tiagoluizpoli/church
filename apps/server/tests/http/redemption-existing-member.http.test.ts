@@ -16,6 +16,7 @@ import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RedemptionController } from '../../src/api/controllers/redemption-controller';
 import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
+import { DbVolunteerTransferManager } from '../../src/application/db-volunteer-transfer-manager';
 import { InvitationVerificationCodeManager } from '../../src/application/invitation-verification-code-manager';
 import {
   ChurchId,
@@ -29,6 +30,7 @@ import {
   DrizzleSecurityLogRepository,
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
+  DrizzleVolunteerTransferRepository,
 } from '../../src/infrastructure/repositories';
 import { BetterAuthRedemptionIdentityGateway } from '../../src/infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
@@ -43,9 +45,13 @@ import { testDb, truncateAll } from '../integration/repositories/setup';
 
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({ db: testDb });
+const volunteerRepository = new DrizzleVolunteerRepository({ db: testDb });
 const redemptionRepository = new DrizzleRedemptionRepository({
   db: testDb,
-  volunteerRepository: new DrizzleVolunteerRepository({ db: testDb }),
+  volunteerRepository,
+});
+const volunteerTransferRepository = new DrizzleVolunteerTransferRepository({
+  db: testDb,
 });
 const securityLogRepository = new DrizzleSecurityLogRepository({
   db: testDb,
@@ -69,17 +75,30 @@ beforeEach(async () => {
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
   });
+  const identityGateway = new BetterAuthRedemptionIdentityGateway();
   const redemptionManager = new DbRedemptionManager({
     churchRepository,
-    identityGateway: new BetterAuthRedemptionIdentityGateway(),
+    identityGateway,
     invitationRepository: ministryInvitationRepository,
     invitationVerificationCodeManager: verificationCodeManager,
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
   });
+  const volunteerTransferManager = new DbVolunteerTransferManager({
+    churchRepository,
+    identityGateway,
+    invitationRepository: ministryInvitationRepository,
+    securityLogRepository,
+    unitOfWork,
+    volunteerRepository,
+    volunteerTransferRepository,
+  });
   app = await createFastify();
-  const controller = new RedemptionController({ redemptionManager });
+  const controller = new RedemptionController({
+    redemptionManager,
+    volunteerTransferManager,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
@@ -296,6 +315,104 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .from(outboxMessage)
         .where(eq(outboxMessage.churchId, fixture.churchA.id));
       expect(outboxKinds).toEqual([{ kind: 'invitation.ministry' }]);
+    });
+  });
+
+  describe('Volunteer Transfer routes', () => {
+    async function mintTransferInvitation() {
+      const [invitation] = await testDb
+        .insert(ministryInvitation)
+        .values({
+          churchId: fixture.churchA.id,
+          ministryId: fixture.ministryOneA,
+          inviteeUserId: fixture.dualMemberAB,
+          ministryAccessLevel: 'volunteer',
+          inviterId: fixture.adminA,
+          expiresAt: new Date('2026-12-01T00:00:00Z'),
+        })
+        .returning({ id: ministryInvitation.id });
+      return invitation?.id ?? '';
+    }
+
+    it('GET /redemption/transfer/:invitationId/preview returns 401 without a session', async () => {
+      const invitationId = await mintTransferInvitation();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/transfer/${invitationId}/preview`,
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('GET /redemption/transfer/:invitationId/preview names both Churches and lists the real memberships', async () => {
+      const invitationId = await mintTransferInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.dualMemberAB,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/transfer/${invitationId}/preview`,
+        headers: { cookie },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        kind: 'reviewable',
+        sourceChurchName: fixture.churchB.name,
+        destinationChurchName: fixture.churchA.name,
+        endedMemberships: [{ ministryName: expect.any(String) }],
+      });
+    });
+
+    it('POST /redemption/transfer/:invitationId/confirm rejects a wrong password, issuing no session cookie', async () => {
+      const invitationId = await mintTransferInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.dualMemberAB,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/transfer/${invitationId}/confirm`,
+        headers: { cookie },
+        payload: {
+          destinationChurchName: fixture.churchA.name,
+          password: 'not-the-real-password',
+          idempotencyKey: crypto.randomUUID(),
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ kind: 'password-mismatch' });
+      expect(response.headers['set-cookie']).toBeUndefined();
+      // Nothing changed: the source profile is still active.
+      const [profile] = await testDb
+        .select({ leftAt: volunteer.leftAt })
+        .from(volunteer)
+        .where(eq(volunteer.id, fixture.dualMemberABVolunteerInB));
+      expect(profile?.leftAt).toBeNull();
+    });
+
+    it('POST /redemption/transfer/:invitationId/confirm rejects a wrong destination name', async () => {
+      const invitationId = await mintTransferInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.dualMemberAB,
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/transfer/${invitationId}/confirm`,
+        headers: { cookie },
+        payload: {
+          destinationChurchName: 'Some Other Church',
+          password: 'not-the-real-password',
+          idempotencyKey: crypto.randomUUID(),
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ kind: 'name-mismatch' });
     });
   });
 

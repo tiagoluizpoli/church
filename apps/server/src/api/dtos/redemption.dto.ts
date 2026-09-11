@@ -125,3 +125,57 @@ export const declineOutcomeResponseSchema = z.discriminatedUnion('kind', [
     reason: z.enum(terminalFailureReasons),
   }),
 ]);
+
+/* ── Volunteer Transfer (spec §8) ─────────────────────────────────────── */
+
+/** Layer 2 review data — the actual affected rows (spec §8.7). */
+export const transferPreviewResponseSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('reviewable'),
+    sourceChurchName: z.string(),
+    destinationChurchName: z.string(),
+    endedMemberships: z.array(z.object({ ministryName: z.string() })),
+    withdrawnAssignments: z.array(
+      z.object({
+        eventName: z.string(),
+        timeSlotStart: z.string(),
+        roleName: z.string(),
+      }),
+    ),
+  }),
+  z.object({ kind: z.literal('unavailable') }),
+  z.object({ kind: z.literal('identity-mismatch') }),
+  z.object({ kind: z.literal('no-transfer-needed') }),
+]);
+
+export const confirmTransferBodySchema = z.object({
+  destinationChurchName: z.string().min(1),
+  password: z.string().min(8),
+  idempotencyKey: z.string().uuid(),
+});
+
+const transferTerminalReasons = [
+  'INVITATION_UNAVAILABLE',
+  'NO_TRANSFER_NEEDED',
+] as const;
+
+export const confirmTransferOutcomeResponseSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.object({
+      kind: z.literal('transferred'),
+      destinationVolunteerId: z.string(),
+    }),
+    z.object({
+      kind: z.literal('already-transferred'),
+      destinationVolunteerId: z.string(),
+    }),
+    z.object({ kind: z.literal('password-mismatch') }),
+    z.object({ kind: z.literal('name-mismatch') }),
+    z.object({ kind: z.literal('identity-mismatch') }),
+    z.object({
+      kind: z.literal('terminal-failure'),
+      reason: z.enum(transferTerminalReasons),
+    }),
+  ],
+);

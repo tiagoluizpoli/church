@@ -29,6 +29,7 @@ import { DbPlanningCycleManager } from '../../application/db-planning-cycle-mana
 import { DbPlanningEventManager } from '../../application/db-planning-event-manager';
 import { DbRedemptionManager } from '../../application/db-redemption-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
+import { DbVolunteerTransferManager } from '../../application/db-volunteer-transfer-manager';
 import { InvitationVerificationCodeManager } from '../../application/invitation-verification-code-manager';
 import { DrizzleAuthorityActorResolver } from '../../infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '../../infrastructure/auth/drizzle-church-membership-repository';
@@ -58,6 +59,7 @@ import {
   DrizzleUnitOfWork,
   DrizzleVolunteerNotificationRepository,
   DrizzleVolunteerRepository,
+  DrizzleVolunteerTransferRepository,
 } from '../../infrastructure/repositories';
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
@@ -141,6 +143,9 @@ export function registerInjections(): void {
           injection.infra.volunteerRepository,
         ),
       }),
+  });
+  container.register(injection.infra.volunteerTransferRepository, {
+    useFactory: () => new DrizzleVolunteerTransferRepository({ db }),
   });
   container.register(injection.infra.securityLogRepository, {
     useFactory: () => new DrizzleSecurityLogRepository({ db }),
@@ -243,6 +248,28 @@ export function registerInjections(): void {
           : undefined,
       }),
   });
+  container.register(injection.managers.volunteerTransferManager, {
+    useFactory: () =>
+      new DbVolunteerTransferManager({
+        churchRepository: container.resolve(injection.infra.churchRepository),
+        identityGateway: container.resolve(
+          injection.infra.redemptionIdentityGateway,
+        ),
+        invitationRepository: container.resolve(
+          injection.infra.ministryInvitationRepository,
+        ),
+        securityLogRepository: container.resolve(
+          injection.infra.securityLogRepository,
+        ),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+        volunteerRepository: container.resolve(
+          injection.infra.volunteerRepository,
+        ),
+        volunteerTransferRepository: container.resolve(
+          injection.infra.volunteerTransferRepository,
+        ),
+      }),
+  });
   container.register(injection.managers.outboxDrainer, {
     useFactory: () =>
       new DbOutboxDrainer({
@@ -311,6 +338,9 @@ export function registerInjections(): void {
       new RedemptionController({
         redemptionManager: container.resolve(
           injection.managers.redemptionManager,
+        ),
+        volunteerTransferManager: container.resolve(
+          injection.managers.volunteerTransferManager,
         ),
       }),
   });

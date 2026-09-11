@@ -11,6 +11,8 @@ import {
   DrizzleRoleRepository,
   DrizzleTimeSlotRepository,
   DrizzleUnitOfWork,
+  DrizzleVolunteerRepository,
+  DrizzleVolunteerTransferRepository,
 } from '../infrastructure/repositories';
 import type { AnyDrizzleDb } from '../infrastructure/repositories/types';
 
@@ -33,6 +35,10 @@ export function createMinistryInvitationTestHarness({
   const ministryRepository = new DrizzleMinistryRepository({ db });
   const churchRepository = new DrizzleChurchRepository({ db });
   const outboxRepository = new DrizzleOutboxRepository({ db });
+  const volunteerRepository = new DrizzleVolunteerRepository({ db });
+  const volunteerTransferRepository = new DrizzleVolunteerTransferRepository({
+    db,
+  });
   const authorityManager = new DbAuthorityManager(
     new DrizzleAuthorityActorResolver({ db }),
     new DrizzleSchedulingScopeResolver({ db }),
@@ -55,6 +61,8 @@ export function createMinistryInvitationTestHarness({
     ministryRepository,
     churchRepository,
     outboxRepository,
+    volunteerRepository,
+    volunteerTransferRepository,
     authorityManager,
     unitOfWork,
     manager,

@@ -282,6 +282,12 @@ export function registerInjections(): void {
           injection.infra.ministryRepository,
         ),
         roleRepository: container.resolve(injection.infra.roleRepository),
+        volunteerRepository: container.resolve(
+          injection.infra.volunteerRepository,
+        ),
+        volunteerTransferRepository: container.resolve(
+          injection.infra.volunteerTransferRepository,
+        ),
         emailSender: container.resolve(injection.infra.emailSender),
         unitOfWork: container.resolve(injection.infra.unitOfWork),
       }),

@@ -13,7 +13,8 @@ import type {
   OutboxMessageStatus,
   OutboxRepository,
   RedemptionAcceptedOutboxMessage,
-  TransferOutboxMessage,
+  TransferLeaderlessMinistryOutboxMessage,
+  TransferMinistryDigestOutboxMessage,
 } from '../../domain/contracts/infrastructure/outbox.repository';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -143,11 +144,17 @@ function mapOutboxMessage(row: OutboxMessageRow): OutboxMessage {
         payload: row.payload as RedemptionAcceptedOutboxMessage['payload'],
       };
     case 'transfer.ministry-digest':
+      return {
+        ...base,
+        kind: row.kind,
+        payload: row.payload as TransferMinistryDigestOutboxMessage['payload'],
+      };
     case 'transfer.leaderless-ministry':
       return {
         ...base,
         kind: row.kind,
-        payload: row.payload as TransferOutboxMessage['payload'],
+        payload:
+          row.payload as TransferLeaderlessMinistryOutboxMessage['payload'],
       };
   }
 }

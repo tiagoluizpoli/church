@@ -3,6 +3,8 @@ import type {
   ChurchBootstrapInvitationEmail,
   EmailPayload,
   MinistryInvitationEmail,
+  TransferLeaderlessMinistryEmail,
+  TransferMinistryDigestEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
 
 const sendMock = vi.fn();
@@ -34,6 +36,32 @@ function buildBootstrapPayload(): ChurchBootstrapInvitationEmail {
     to: 'admin@example.com',
     churchName: 'Grace Church',
     redemptionUrl: 'https://app.church.test/invitations/church/xyz',
+  };
+}
+
+function buildDigestPayload(): TransferMinistryDigestEmail {
+  return {
+    kind: 'transfer.ministry-digest',
+    to: ['leader-one@example.com', 'leader-two@example.com'],
+    ministryName: 'Hospitality',
+    volunteerName: 'Jamie Rivera',
+    withdrawnAssignments: [
+      {
+        eventName: 'Sunday Gathering',
+        timeSlotStart: new Date('2026-09-20T10:00:00Z'),
+        roleName: 'Greeter',
+      },
+    ],
+  };
+}
+
+function buildLeaderlessPayload(): TransferLeaderlessMinistryEmail {
+  return {
+    kind: 'transfer.leaderless-ministry',
+    to: ['admin@example.com'],
+    ministryName: 'Hospitality',
+    volunteerName: 'Jamie Rivera',
+    withdrawnAssignments: [],
   };
 }
 
@@ -91,6 +119,38 @@ describe('ResendEmailSender', () => {
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({ html: expect.not.stringContaining('Roles:') }),
+    );
+  });
+
+  it('composes a Ministry digest addressed to every leader, listing the withdrawn assignment', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email-3' }, error: null });
+    const sender = makeSender();
+
+    await sender.send({ payload: buildDigestPayload() });
+
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: ['leader-one@example.com', 'leader-two@example.com'],
+        subject: expect.stringContaining('Hospitality'),
+        html: expect.stringContaining('Greeter'),
+      }),
+    );
+    // The destination Church is never named (spec §8.8).
+    expect(sendMock.mock.calls[0]?.[0].html).not.toContain('destination');
+  });
+
+  it('composes a leaderless-Ministry escalation addressed to admins', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email-4' }, error: null });
+    const sender = makeSender();
+
+    await sender.send({ payload: buildLeaderlessPayload() });
+
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: ['admin@example.com'],
+        subject: expect.stringContaining('no active leader'),
+        html: expect.stringContaining('Jamie Rivera'),
+      }),
     );
   });
 

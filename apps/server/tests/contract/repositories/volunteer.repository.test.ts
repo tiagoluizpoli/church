@@ -202,6 +202,10 @@ class MockVolunteerRepository implements VolunteerRepository {
   async isChurchAdmin(): Promise<boolean> {
     return false;
   }
+
+  async listActiveLeaderEmails(): Promise<string[]> {
+    return [];
+  }
 }
 
 runVolunteerRepositoryContractTests(

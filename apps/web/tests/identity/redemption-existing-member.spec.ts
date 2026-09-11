@@ -107,8 +107,8 @@ interface BootstrapExistingChurchMemberInput {
 
 /**
  * Creates a real, redeemed account through the same chained-invitation
- * public API `us1-chained-new-person.spec.ts` drives through the browser —
- * this spec drives it headlessly instead, since becoming a Church Member is
+ * public API `redemption-new-user.spec.ts` drives through the browser — this
+ * spec drives it headlessly instead, since becoming a Church Member is
  * already proven elsewhere and only the resulting account (with a known
  * password) matters here.
  */

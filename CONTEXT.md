@@ -89,21 +89,41 @@ The self-directed move of a User's Volunteer participation from one Church to an
 _Avoid_: Volunteer reassignment, Church-approved transfer
 
 **Event**:
-A scheduled gathering owned by the Church (e.g., "Sunday Service" or a multi-day retreat). An Event belongs to exactly one PlanningCycle and may be hourly-based or day-based. Many Ministries participate in a single Event; the Event itself is not owned by any one Ministry. Its lifecycle is `draft → scheduled` (its cycle locked) `→ cancelled` / `→ past`; an Event is never "published" — publishing is per MinistryParticipation, not per Event.
+A scheduled gathering owned by the Church (e.g., "Sunday Service" or a multi-day retreat). An Event belongs to exactly one PlanningCycle and may be hourly-based or day-based. Its start and end are always Instants — a day-based Event runs church-local midnight to end of day — and it belongs to the CalendarDay its start falls on, so a gathering running from 22:00 Friday to 01:00 Saturday is a Friday Event. Many Ministries participate in a single Event; the Event itself is not owned by any one Ministry. Its lifecycle is `draft → scheduled` (its cycle locked) `→ cancelled` / `→ past`; an Event is never "published" — publishing is per MinistryParticipation, not per Event.
 _Avoid_: Gathering, service
+
+## Time
+
+Three kinds of time exist in this context, and every date bug so far has come from confusing them. They meet in one direction only: **TimeOfDay + CalendarDay + Church Timezone → Instant**. An Instant may be read back as a CalendarDay, but only through the Church Timezone.
+
+**Instant**:
+A single absolute moment, the same moment for every observer. Everything a Volunteer physically shows up for is an Instant — Event start and end, TimeSlot and Shift bounds — as is every audited moment.
+_Avoid_: Timestamp, datetime, UTC time, date
+
+**CalendarDay**:
+A labelled day such as `2027-01-04`, carrying no time and no offset. It is never a point on the timeline, so it compares only to another CalendarDay: an Instant must be converted through the Church Timezone before it can meet one. PlanningCycle bounds are CalendarDays, as is the planning grid a leader arranges Events on.
+_Avoid_: Date, day key, local date
+
+**TimeOfDay**:
+A wall-clock time such as `10:30`, naming an hour and minute with no day and no offset, and therefore no position on the timeline. It is what an EventTemplate's TimeBlocks are authored in, before any date exists.
+_Avoid_: Time, local time, clock time
+
+**Church Timezone**:
+The single IANA timezone name a Church keeps time in, and the only lens under which an Instant and a CalendarDay may be compared. There is no viewer's day and no viewer's clock in this context: every CalendarDay, every displayed time, and every grouping resolves in the Church Timezone, wherever the viewer happens to be.
+_Avoid_: Local timezone, user timezone, home timezone, offset
 
 ## Planning Lifecycle
 
 **PlanningCycle**:
-A church-scoped planning window over an arbitrary **date** range (a week, a month, a quarter — presets are UI sugar over `startDate`/`endDate`). Boundaries are dates only, never a time-of-day, resolved in the Church's timezone. It is the aggregate an administrator drafts and then locks; it parents the Events planned within it. Cycle date ranges for a Church must not overlap, though gaps between cycles are allowed. An Event belongs to the cycle of its **start date** (hour ignored) and may leak past that cycle's end date into later dates.
+A church-scoped planning window over an arbitrary **CalendarDay** range (a week, a month, a quarter — presets are UI sugar over `startDate`/`endDate`). Boundaries are CalendarDays, never a TimeOfDay and never Instants, so they carry no offset of their own. It is the aggregate an administrator drafts and then locks; it parents the Events planned within it. Cycle date ranges for a Church must not overlap, though gaps between cycles are allowed. An Event belongs to the cycle containing the CalendarDay its start Instant falls on in the Church Timezone, and may leak past that cycle's last day into later ones.
 _Avoid_: Month, MonthlyPlan, schedule, cycle (bare)
 
 **EventTemplate**:
-A church-owned, ChurchAdmin-configured blueprint for recurring single-day gatherings on a given weekday (services or any weekly non-service gathering). Holds ordered TimeBlocks. Applying it to a PlanningCycle creates one Event per matching date in the cycle, with one TimeSlot per TimeBlock. Multi-day and one-off dynamic Events are created manually, not from a template.
+A church-owned, ChurchAdmin-configured blueprint for recurring single-day gatherings on a given weekday (services or any weekly non-service gathering). Holds ordered TimeBlocks. Applying it to a PlanningCycle creates one Event per matching CalendarDay in the cycle, with one TimeSlot per TimeBlock — the point at which the template's TimeOfDay values become Instants. Multi-day and one-off dynamic Events are created manually, not from a template.
 _Avoid_: ServiceTemplate, WeekdayTemplate, RecurringEvent
 
 **TimeBlock**:
-One labelled `{ label, startTime, endTime }` entry within an EventTemplate, carrying a stable id. Generating an Event copies each TimeBlock into a TimeSlot that records its `sourceTemplateBlockId`. That id is the hinge a MinistryServingProfile matches on to auto-seed inclusions.
+One labelled `{ label, startTime, endTime }` entry within an EventTemplate, carrying a stable id. Its bounds are TimeOfDay values, so it names an hour and not a moment; an end earlier than its start means the block crosses midnight and resolves onto the following CalendarDay. Generating an Event copies each TimeBlock into a TimeSlot that records its `sourceTemplateBlockId`. That id is the hinge a MinistryServingProfile matches on to auto-seed inclusions.
 _Avoid_: Period, shift, slot
 
 **MinistryServingProfile**:
@@ -115,11 +135,11 @@ A single Ministry's tailoring of a locked Event — the set of TimeSlots that Mi
 _Avoid_: Participation, involvement, ministry event
 
 **TimeSlot**:
-A church-level block of time within an Event — a shared service block (e.g. the 10:30 service) or an overall span — that Ministries opt into or out of. It is the same for every Ministry; per-Ministry subdivision happens below it in Shifts.
+A church-level block of time within an Event — a shared service block (e.g. the 10:30 service) or an overall span — that Ministries opt into or out of. Its bounds are Instants. It is the same for every Ministry; per-Ministry subdivision happens below it in Shifts.
 _Avoid_: Period
 
 **Shift**:
-A Ministry's subdivision of a TimeSlot inside its MinistryParticipation — the actual piece it staffs. Two Ministries may split the same TimeSlot differently (projection 2×4h, kids 4×2h). Default is one Shift equal to the whole TimeSlot (no split). A Shift must lie entirely within its parent TimeSlot's bounds — enforced as a domain invariant and by the creation form. Shifts are created either by dividing the slot into N equal parts or by setting times manually (unequal parts allowed). SlotRequirements, Assignments, and Availability marks all attach to a Shift, not the TimeSlot.
+A Ministry's subdivision of a TimeSlot inside its MinistryParticipation — the actual piece it staffs, bounded by Instants. Two Ministries may split the same TimeSlot differently (projection 2×4h, kids 4×2h). Default is one Shift equal to the whole TimeSlot (no split). A Shift must lie entirely within its parent TimeSlot's bounds — enforced as a domain invariant and by the creation form. Shifts are created either by dividing the slot into N equal parts or by setting times manually (unequal parts allowed). SlotRequirements, Assignments, and Availability marks all attach to a Shift, not the TimeSlot.
 _Avoid_: Sub-slot, block, period
 
 **SlotRequirement**:
@@ -147,7 +167,7 @@ A message to a Volunteer, scoped to a **PlanningCycle** (the package), not to a 
 _Avoid_: Alert, message, ping
 
 **Availability**:
-A Volunteer is available by default; an Availability record is an **unavailability mark** the Volunteer records as an exception, hanging off an AvailabilityCheck. Its atomic unit is a single **Shift** (a "whole day" action just marks every Shift on that date). Because a Ministry splits a long TimeSlot into multiple Shifts, per-Shift marks express partial availability (serve the first block, not the second) with no extra concept.
+A Volunteer is available by default; an Availability record is an **unavailability mark** the Volunteer records as an exception, hanging off an AvailabilityCheck. Its atomic unit is a single **Shift** (a "whole day" action just marks every Shift falling on that CalendarDay in the Church Timezone). Because a Ministry splits a long TimeSlot into multiple Shifts, per-Shift marks express partial availability (serve the first block, not the second) with no extra concept.
 _Avoid_: Blockout, schedule
 
 ## Example Dialogue

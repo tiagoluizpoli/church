@@ -30,12 +30,12 @@ For instructions on how to add new backlog items or edit existing ones, see the 
 | 2 | [BL-007](./items/BL-007.md) | ✅ ~~Volunteer-authenticated E2E specs for the volunteer dashboard~~ — **delivered** (see [Delivered](#delivered)) | Volunteer Dashboard | 1 | — | [#19](https://github.com/tiagoluizpoli/church/issues/19) |
 | 3 | [BL-017](./items/BL-017.md) | `sub_leader` role detection for nav and route guards | Backend Architecture / Auth | 1 | [BL-021](./items/BL-021.md) | [#20](https://github.com/tiagoluizpoli/church/issues/20) |
 | 4 | [BL-020](./items/BL-020.md) | ✅ ~~Deleting a draft cycle event must hard-delete, not soft-cancel~~ — **delivered** (see [Delivered](#delivered)) | Scheduling / Planning (Bug) | 1 | — | [#21](https://github.com/tiagoluizpoli/church/issues/21) |
-| 5 | [BL-022](./items/BL-022.md) | Cycles table: single-selection semantics | Frontend UX/IA | 1 | — | [#22](https://github.com/tiagoluizpoli/church/issues/22) |
+| 5 | [BL-022](./items/BL-022.md) | ✅ ~~Cycles table: single-selection semantics~~ — **delivered** (see [Delivered](#delivered)) | Frontend UX/IA | 1 | — | [#22](https://github.com/tiagoluizpoli/church/issues/22) |
 | 6 | [BL-011](./items/BL-011.md) | Restructure controller auth and route ownership | Backend Architecture | 2 | — | [#23](https://github.com/tiagoluizpoli/church/issues/23) |
 | 7 | [BL-012](./items/BL-012.md) | OpenAPI `summary`/`description` metadata across controller routes | API Documentation | 2 | [BL-011](./items/BL-011.md) | [#24](https://github.com/tiagoluizpoli/church/issues/24) |
-| 8 | [BL-023](./items/BL-023.md) | `DataTable` convention wrapper over the react-aria table | Frontend Architecture | 2 | [BL-022](./items/BL-022.md) | [#25](https://github.com/tiagoluizpoli/church/issues/25) |
+| 8 | [BL-023](./items/BL-023.md) | `DataTable` convention wrapper over the react-aria table | Frontend Architecture | 2 | ~~BL-022~~ — delivered, unblocked | [#25](https://github.com/tiagoluizpoli/church/issues/25) |
 | 9 | [BL-024](./items/BL-024.md) | `WorkspaceHeader` primitive + Cycles header parity | Frontend Architecture | 2 | — | [#26](https://github.com/tiagoluizpoli/church/issues/26) |
-| 10 | [BL-016](./items/BL-016.md) | Day/event-level forced-override editing on locked planning cycles | Scheduling / Planning | 3 | [BL-020](./items/BL-020.md) | [#27](https://github.com/tiagoluizpoli/church/issues/27) |
+| 10 | [BL-016](./items/BL-016.md) | Day/event-level forced-override editing on locked planning cycles | Scheduling / Planning | 3 | ~~BL-020~~ — delivered, unblocked | [#27](https://github.com/tiagoluizpoli/church/issues/27) |
 | 11 | [BL-015](./items/BL-015.md) | Church-wide time-format configuration | Frontend UX/IA | 3 | — | [#28](https://github.com/tiagoluizpoli/church/issues/28) |
 
 ---
@@ -83,6 +83,7 @@ Ranked items completed through implementation. The rank ordinal is kept in the t
 | :--- | :--- | :--- | :--- |
 | [BL-007](./items/BL-007.md) | Volunteer-authenticated E2E specs for the volunteer dashboard | 2026-09-10 | Storage-state swap + seed change shipped in `e3bf3b8`, merged via `8c7cc38`. All five `apps/web/tests/volunteer-dashboard/` specs run under `VOLUNTEER_STORAGE_STATE`; verified **5 passed** under volunteer auth. No authorization defect surfaced — no follow-up tier-1 item. |
 | [BL-020](./items/BL-020.md) | Deleting a draft cycle event must hard-delete, not soft-cancel | 2026-09-10 | Decided delete/cancel split shipped in `230e308`, merged via #113 / `1c2b943`. `cancelEvent` hard-deletes on `status === 'draft'` through the new `PlanningEventRepository.deleteEvent` (cascade-safe), soft-cancels otherwise; generator untouched. Regression tests cover delete-then-regenerate, idempotent re-run, partial delete, non-resurrection; `validate:affected` + full unit/integration green. Unblocks [BL-016](./items/BL-016.md); time-rot cause parked as [BL-029](./items/BL-029.md). |
+| [BL-022](./items/BL-022.md) | Cycles table: single-selection semantics | 2026-09-10 | Shipped in `49071b0`, merged via `283d59e`. `cycle-list-card.tsx` desktop table uses react-aria's native `selectionMode="single"` / `selectionBehavior="replace"` / `disallowEmptySelection`; hand-rolled highlight and whole-row `onAction` removed. Cycle rows gained `data-testid="planning-cycle-row-${id}"`. Covered by `cycle-list-card.component.test.tsx` (5 passing). Unblocks [BL-023](./items/BL-023.md). |
 
 ---
 

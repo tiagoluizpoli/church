@@ -60,6 +60,8 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     env: { NODE_ENV: 'test' },
+    // Inherited by every project below.
+    setupFiles: ['./tests/setup/clock.ts'],
     projects: [
       {
         extends: true,

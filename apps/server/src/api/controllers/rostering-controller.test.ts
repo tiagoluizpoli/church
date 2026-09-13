@@ -38,6 +38,7 @@ const assignmentManager = {
   createParticipationAssignment: vi.fn(),
   deleteAssignment: vi.fn(),
   reassignParticipationAssignment: vi.fn(),
+  listAuditLogForCycle: vi.fn(),
 };
 
 const activeChurchResolver = {
@@ -344,6 +345,32 @@ describe('Rostering routes', () => {
     const denied = await app.inject({
       method: 'GET',
       url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: 'Not a leader of this ministry',
+    });
+  });
+
+  it('GET /api/v1/rostering/cycles/:id/audit allows a Ministry leader and denies a non-leader', async () => {
+    assignmentManager.listAuditLogForCycle.mockResolvedValue([]);
+
+    const allowed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+    expect(allowed.statusCode).toBe(200);
+    expect(assignmentManager.listAuditLogForCycle).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      cycleId: '11111111-1111-1111-8111-111111111111',
+      ministryId: '22222222-2222-2222-8222-222222222222',
+    });
+
+    authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
+    const denied = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
     });
     expect(denied.statusCode).toBe(403);
     expect(denied.json()).toEqual({

@@ -2,19 +2,11 @@ import { parseTime } from '@internationalized/date';
 import { createFileRoute } from '@tanstack/react-router';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
-import {
-  TimeField as AriaTimeField,
-  DateInput,
-  DateSegment,
-} from 'react-aria-components';
+import { useEffect, useRef, useState } from 'react';
 import { DatePickerField } from '@/components/date-picker-field';
 import { PrototypeSwitcher } from '@/components/prototype-switcher';
 import { Button } from '@/components/ui/button';
-import {
-  FormControlSizeProvider,
-  useFormControlSize,
-} from '@/components/ui/form-control-size';
+import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -22,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { TimeField, TimeInput } from '@/components/ui/time-field';
 import { cn } from '@/lib/utils';
 
 // THROWAWAY PROTOTYPE — answers issue #133, "Pick the time-entry direction".
@@ -251,11 +244,10 @@ function SegmentedTimeControl({
   onChange,
   trailing,
 }: TimeControlProps & { trailing?: ReactNode }) {
-  const size = useFormControlSize();
   const parts = partsOf(value);
 
   return (
-    <AriaTimeField
+    <TimeField
       aria-labelledby={`${id}-label`}
       hourCycle={24}
       shouldForceLeadingZeros
@@ -263,41 +255,35 @@ function SegmentedTimeControl({
       value={parts ? parseTime(value) : null}
       onChange={(next) => onChange(next ? toHHmm(next.hour, next.minute) : '')}
     >
-      <DateInput
-        className={cn(
-          'radius-control relative inline-flex w-full items-center border border-input bg-transparent px-2.5 py-1 tabular-nums transition-colors',
-          'focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50',
-          size === 'touch' ? 'h-11 px-3 text-base' : 'h-8 text-sm',
-          // The segments only need ~5ch; the rest of the field is dead space,
-          // which is where the list affordance goes rather than beside the box.
-          trailing && 'pe-8',
-        )}
-      >
-        {(segment) => (
-          <DateSegment
-            segment={segment}
-            className={cn(
-              'rounded px-0.5 outline-none',
-              'focus:bg-primary focus:text-primary-foreground',
-              'data-placeholder:text-muted-foreground',
-            )}
-          />
-        )}
-      </DateInput>
-      {trailing}
-    </AriaTimeField>
+      <TimeInput trailing={trailing} />
+    </TimeField>
   );
 }
 
 /** B — A, plus a chevron *inside* the field opening the 15-minute list. The
  * list is the fast path for the common case; the segments still take 18:21,
- * still step with the arrow keys, and still refuse an impossible minute. */
+ * still step with the arrow keys, and still refuse an impossible minute.
+ *
+ * The list narrows as the hour is typed, which is the one thing the type-ahead
+ * did better: with the hour set to 18, only 18:00/18:15/18:30/18:45 remain, so
+ * the common case is two keystrokes and one Enter. */
 function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [fieldWidth, setFieldWidth] = useState<number>();
+
+  // The popover portals out of the field, so it cannot inherit its width from
+  // the DOM. Measure on open so the list is exactly as wide as the control it
+  // belongs to, rather than a narrow slab hanging off one edge.
+  useEffect(() => {
+    if (open) {
+      setFieldWidth(triggerRef.current?.getBoundingClientRect().width);
+    }
+  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div className="relative">
+      <div ref={triggerRef} className="relative">
         <SegmentedTimeControl
           id={id}
           value={value}
@@ -319,7 +305,16 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
           }
         />
       </div>
-      <PopoverContent align="end" className="w-auto p-0">
+      {/* Anchored on the chevron, which is the trigger — so `end` is what puts
+          the list's right edge on the field's right edge. `start` would hang it
+          off the chevron's left edge, a slab floating past the control. The
+          offset cancels the chevron's own `right-1` inset. */}
+      <PopoverContent
+        align="end"
+        alignOffset={-4}
+        className="p-0"
+        style={fieldWidth ? { width: fieldWidth } : undefined}
+      >
         <QuarterHourList
           value={value}
           onPick={(picked) => {
@@ -533,19 +528,29 @@ interface QuarterHourListProps {
 
 /** A listbox, not a stack of buttons: the whole point of the segmented field
  * is that everything steps with the arrow keys, so the list it opens has to
- * as well. Up/Down move the selection, Home/End jump to either end of the day,
- * Enter commits, Escape closes without changing anything. */
+ * as well. Up/Down move the selection, PageUp/PageDown move an hour, Home/End
+ * jump to either end of the day, Enter commits, Escape closes.
+ *
+ * The list also narrows to the hour already held — with 18 in the field, only
+ * 18:00/18:15/18:30/18:45 remain. That is the type-ahead's best trait without
+ * its worst one: the hour can only ever be a real hour, because the segment
+ * refuses anything else. */
 function QuarterHourList({ value, onPick, onDismiss }: QuarterHourListProps) {
-  const nearest = nearestQuarter(value);
+  const parts = partsOf(value);
+  const options = parts
+    ? QUARTER_OPTIONS.filter((option) =>
+        option.startsWith(`${pad(parts.hour)}:`),
+      )
+    : QUARTER_OPTIONS;
+  const nearest = options.includes(nearestQuarter(value))
+    ? nearestQuarter(value)
+    : (options[0] ?? QUARTER_OPTIONS[0]);
   const [activeIndex, setActiveIndex] = useState(() =>
-    Math.max(0, QUARTER_OPTIONS.indexOf(nearest)),
+    Math.max(0, options.indexOf(nearest)),
   );
 
   const move = (nextIndex: number, container: HTMLElement | null) => {
-    const clamped = Math.min(
-      Math.max(nextIndex, 0),
-      QUARTER_OPTIONS.length - 1,
-    );
+    const clamped = Math.min(Math.max(nextIndex, 0), options.length - 1);
     setActiveIndex(clamped);
     container
       ?.querySelector(`[data-index="${clamped}"]`)
@@ -559,7 +564,7 @@ function QuarterHourList({ value, onPick, onDismiss }: QuarterHourListProps) {
       aria-label="Common times"
       aria-activedescendant={`quarter-${activeIndex}`}
       tabIndex={0}
-      className="max-h-64 w-32 overflow-auto p-1 outline-none"
+      className="max-h-64 overflow-auto p-1 outline-none"
       onKeyDown={(event) => {
         const container = event.currentTarget;
         if (event.key === 'ArrowDown') {
@@ -579,10 +584,10 @@ function QuarterHourList({ value, onPick, onDismiss }: QuarterHourListProps) {
           move(0, container);
         } else if (event.key === 'End') {
           event.preventDefault();
-          move(QUARTER_OPTIONS.length - 1, container);
+          move(options.length - 1, container);
         } else if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          const picked = QUARTER_OPTIONS[activeIndex];
+          const picked = options[activeIndex];
           if (picked) {
             onPick(picked);
           }
@@ -592,7 +597,7 @@ function QuarterHourList({ value, onPick, onDismiss }: QuarterHourListProps) {
         }
       }}
     >
-      {QUARTER_OPTIONS.map((option, index) => (
+      {options.map((option, index) => (
         // The container owns focus and points at the active row with
         // aria-activedescendant — which is the listbox pattern, and is exactly
         // why an option must NOT be focusable or carry its own key handler.
@@ -627,12 +632,16 @@ const CONTROLS: Record<VariantKey, (props: TimeControlProps) => ReactNode> = {
   D: TouchStepperControl,
 };
 
-interface TimeFieldProps extends TimeControlProps {
+interface LabelledTimeFieldProps extends TimeControlProps {
   label: string;
   variant: VariantKey;
 }
 
-function TimeField({ label, variant, ...props }: TimeFieldProps) {
+function LabelledTimeField({
+  label,
+  variant,
+  ...props
+}: LabelledTimeFieldProps) {
   const Control = CONTROLS[variant];
   return (
     <div className="space-y-1">
@@ -670,14 +679,14 @@ function TemplateBlocksScenario({ variant }: ScenarioProps) {
         <Input defaultValue="Welcome" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <TimeField
+        <LabelledTimeField
           id="block-start"
           label="Start time"
           variant={variant}
           value={start}
           onChange={setStart}
         />
-        <TimeField
+        <LabelledTimeField
           id="block-end"
           label="End time"
           variant={variant}
@@ -714,14 +723,14 @@ function SlotBoundsScenario({ variant }: ScenarioProps) {
         <DatePickerField value={day} onChange={setDay} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <TimeField
+        <LabelledTimeField
           id="slot-start"
           label="Start"
           variant={variant}
           value={start}
           onChange={setStart}
         />
-        <TimeField
+        <LabelledTimeField
           id="slot-end"
           label="End"
           variant={variant}
@@ -755,14 +764,14 @@ function OvernightShiftScenario({ variant }: ScenarioProps) {
         <DatePickerField value={day} onChange={setDay} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <TimeField
+        <LabelledTimeField
           id="shift-start"
           label="Shift start"
           variant={variant}
           value={start}
           onChange={setStart}
         />
-        <TimeField
+        <LabelledTimeField
           id="shift-end"
           label="Shift end"
           variant={variant}
@@ -797,7 +806,7 @@ function FilterScenario({ variant }: ScenarioProps) {
           <Input defaultValue="Between" readOnly />
         </div>
         <div className="min-w-32 flex-1">
-          <TimeField
+          <LabelledTimeField
             id="filter-start"
             label="From"
             variant={variant}
@@ -806,7 +815,7 @@ function FilterScenario({ variant }: ScenarioProps) {
           />
         </div>
         <div className="min-w-32 flex-1">
-          <TimeField
+          <LabelledTimeField
             id="filter-end"
             label="To"
             variant={variant}

@@ -17,13 +17,49 @@ the date & time map [#126](https://github.com/tiagoluizpoli/church/issues/126).
 an implementation reference. It exists to pick a direction; #133 records the
 answer, and this branch is the only copy that needs to survive.
 
+**The control is the shadcn registry component, not a hand-roll.** `shadcn add
+@intentui/time-field` — shadcn's own registry has no time component at all, and
+`@intentui` is the registry `components.json` already declares. See "shadcn
+reality check" below for what the install actually does.
+
 B was refined during the session in response to driving it:
 
 - the chevron moved **inside** the field, into the dead space after the
   segments, rather than sitting beside it as a second box;
 - the list became a real **listbox**: Up/Down move the selection, PageUp/Down
   move an hour, Home/End jump to either end of the day, Enter commits, Escape
-  closes. Mouse-only scrolling was the gap that made C feel better than it is.
+  closes. Mouse-only scrolling was the gap that made C feel better than it is;
+- the list is **exactly as wide as the field** and left-aligned with it. It
+  anchors on the chevron (the trigger), so `align="end"` with a −4 offset is
+  what puts it over the control rather than hanging off one edge;
+- the list **narrows to the hour already held** — with 18 in the field only
+  `18:00/18:15/18:30/18:45` remain. This is the type-ahead's best trait without
+  its worst one: the hour can only ever be a real hour, because the segment
+  refuses anything else.
+
+## shadcn reality check
+
+"Use shadcn" resolves to this direction, but not as a drop-in:
+
+- **shadcn's own registry has no time component.** Searching it for a time
+  picker returns nothing. Its "Date and Time Picker" block is the native input
+  plus CSS — so "use shadcn's" *is* the broken status quo.
+- **`@intentui/time-field` is a shadcn-CLI registry item** (`registry-item.json`
+  schema, `type: registry:ui`, installs to `components/ui/`) and is a thin
+  wrapper over `react-aria-components/TimeField` — the same primitive this
+  prototype chose independently.
+- **Its tokens do not exist in this project.** The installed files use
+  intentui's palette (`text-fg`, `muted-fg`, `primary-subtle`, `danger-subtle`);
+  DESIGN.md uses shadcn's (`foreground`, `muted-foreground`, `primary`,
+  `destructive`). Left as installed, the field renders unstyled. It also pulls
+  `cn@0.3.0`, redundant beside the existing `clsx` + `tailwind-merge`.
+- So the file was **retokened after install**, which is the normal shadcn
+  workflow — `components/ui/*` is owned, editable source, not a locked library.
+  `date-field.tsx` and the `cn` dependency were dropped; only `TimeInput` is
+  needed, and it is defined locally.
+- **Pre-existing finding, unrelated to this ticket:**
+  `components/ui/field.tsx` is already an intentui component with the same
+  absent tokens and has **zero importers** anywhere in the app. Dead code.
 
 C was rejected on evidence from driving it: as a free text box it accepts
 `12121:12312`, and its value cannot be stepped with the arrow keys. The

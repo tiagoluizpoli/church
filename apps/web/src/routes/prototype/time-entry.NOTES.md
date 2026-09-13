@@ -227,10 +227,26 @@ Two more facts that shaped the scenarios:
   base-ui resets `scrollTop` once the open animation settles, so the scroll has
   to be re-applied until it sticks. Real implementation cost for B and C.
 
-## The question the prototype cannot answer
+## Mobile keyboard: already handled, at no cost
 
 Carried in from the survey ([#130](https://github.com/tiagoluizpoli/church/issues/130))
-and still open: **how the segmented field behaves in an older leader's hand on
-a phone.** React Aria renders focusable `div`s, so it summons a numeric keyboard
-rather than the OS wheel picker. Screenshots cannot settle whether that reads as
-better or worse for the audience — it needs the prototype on a real device.
+and now closed. React Aria renders segments as focusable `div`s, so the worry
+was which keyboard a phone would raise. It puts the answer on the segment
+itself:
+
+```
+inputmode="numeric"                 number pad, not the full keyboard
+contenteditable="true"              what makes a keyboard appear on a div at all
+enterkeyhint="next"                 the mobile Enter reads "next", advances to the minute
+autocorrect="off" spellcheck="false"
+style="caret-color: transparent"
+```
+
+Nothing to enforce and nothing to add — it is the library default, and it
+survives this project's override of what the segment renders. No OS wheel
+picker either, which the survey had already disqualified on WCAG 2.2 target
+size.
+
+What remains is a five-minute sanity check on a real handset during
+implementation, not a decision: the mechanism is the standard one and the
+direction does not depend on the outcome.

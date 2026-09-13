@@ -18,19 +18,20 @@ const TimezoneContext = createContext<TimezoneContextType | undefined>(
 
 const STORAGE_KEY = 'church_timezone_mode';
 
+interface TimezoneProviderProps {
+  children: React.ReactNode;
+  /** IANA Church Timezone of the Active Church, from the entry gate. */
+  churchTimezone: string;
+}
+
 export function TimezoneProvider({
   children,
-  initialChurchTimezone = 'UTC',
-}: {
-  children: React.ReactNode;
-  initialChurchTimezone?: string;
-}) {
+  churchTimezone,
+}: TimezoneProviderProps) {
   const [mode, setModeState] = useState<TimezoneMode>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return (saved as TimezoneMode) || 'church';
   });
-
-  const [churchTimezone] = useState(initialChurchTimezone);
 
   const setMode = (newMode: TimezoneMode) => {
     setModeState(newMode);

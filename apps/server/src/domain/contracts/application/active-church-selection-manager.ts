@@ -25,6 +25,10 @@ export interface SelectActiveChurchInput {
   churchId: ChurchId;
 }
 
+export interface GetChurchTimezoneInput {
+  churchId: ChurchId;
+}
+
 /**
  * Read and write sides of the compare-access selector (spec.md §1.5): lists
  * every Church Membership a User can choose between, and records an explicit
@@ -40,4 +44,6 @@ export interface IActiveChurchSelectionManager {
   selectActiveChurch(
     input: SelectActiveChurchInput,
   ): Promise<ActiveChurchResolution>;
+  /** The resolved Church's IANA Church Timezone, for the entry gate to hand the client once (ADR-0003). */
+  getChurchTimezone(input: GetChurchTimezoneInput): Promise<string>;
 }

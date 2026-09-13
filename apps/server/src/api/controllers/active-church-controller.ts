@@ -4,7 +4,10 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import { ChurchId, UserId } from '../../domain/branded-ids';
-import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type {
+  ActiveChurchResolution,
+  IActiveChurchResolver,
+} from '../../domain/contracts/application/active-church-resolver';
 import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { resolveActiveChurchAndPersist } from '../auth/resolve-active-church-and-persist';
@@ -21,6 +24,10 @@ const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
+
+interface TimezoneForInput {
+  resolution: ActiveChurchResolution;
+}
 
 interface AuthenticatedSession {
   userId: string;
@@ -99,7 +106,12 @@ export class ActiveChurchController implements FastifyController {
             ? ChurchId.from(session.activeOrganizationId)
             : null,
         });
-        return reply.send(activeChurchMapper.toStatusResponse(resolution));
+        return reply.send(
+          activeChurchMapper.toStatusResponse({
+            resolution,
+            timezone: await this.timezoneFor({ resolution }),
+          }),
+        );
       },
     );
 
@@ -177,8 +189,22 @@ export class ActiveChurchController implements FastifyController {
             );
           });
 
-        return reply.send(activeChurchMapper.toStatusResponse(resolution));
+        return reply.send(
+          activeChurchMapper.toStatusResponse({
+            resolution,
+            timezone: await this.timezoneFor({ resolution }),
+          }),
+        );
       },
     );
+  }
+
+  private async timezoneFor({
+    resolution,
+  }: TimezoneForInput): Promise<string | undefined> {
+    if (resolution.status !== 'resolved') return undefined;
+    return this.selectionManager.getChurchTimezone({
+      churchId: resolution.churchId,
+    });
   }
 }

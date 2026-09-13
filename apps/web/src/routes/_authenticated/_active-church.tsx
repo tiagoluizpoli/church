@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
+import { TimezoneProvider } from '@/shared/components/timezone-provider';
 import {
   extractRequestedChurchId,
   resolveCrossChurchDeepLink,
@@ -16,7 +17,7 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     // server-side on every load and covers every branch — an already-set
     // Church that no longer checks out, several Memberships with none active,
     // and no Membership at all — rather than only the first of those.
-    const { status, churchId, membershipRemovedFrom } =
+    const { status, churchId, membershipRemovedFrom, timezone } =
       await activeChurchApi.getActiveChurchStatus();
 
     const requestedChurchId = extractRequestedChurchId({ search });
@@ -39,10 +40,10 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
         // No existing context is being displaced, so the target Church
         // becomes Active silently and the originally requested destination
         // loads normally below — spec.md §1.5.
-        await activeChurchApi.selectActiveChurch({
+        const selected = await activeChurchApi.selectActiveChurch({
           churchId: decision.churchId,
         });
-        return;
+        return { churchTimezone: selected.timezone ?? DEFAULT_CHURCH_TIMEZONE };
       }
 
       if (decision.kind === 'needs-confirmation') {
@@ -86,10 +87,20 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
         search: { removedFrom: membershipRemovedFrom },
       });
     }
+
+    // Resolved through `beforeLoad`, which blocks: every route under the
+    // layout renders with the right zone on first paint, and a church switch
+    // remounts with the new one (ADR-0003, #150).
+    return { churchTimezone: timezone ?? DEFAULT_CHURCH_TIMEZONE };
   },
 });
 
+/** A resolved status always carries the Church Timezone; new churches default
+ * to UTC server-side, so the same fallback never shifts a real schedule. */
+const DEFAULT_CHURCH_TIMEZONE = 'UTC';
+
 function ActiveChurchLayout() {
+  const { churchTimezone } = Route.useRouteContext();
   const planningCycleBreadcrumb = usePlanningCycleBreadcrumb();
   const ministryBreadcrumb = useMinistryBreadcrumb();
   const overrides = [planningCycleBreadcrumb, ministryBreadcrumb].filter(
@@ -98,8 +109,10 @@ function ActiveChurchLayout() {
   const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;
 
   return (
-    <AppShell breadcrumbOverrides={breadcrumbOverrides}>
-      <Outlet />
-    </AppShell>
+    <TimezoneProvider churchTimezone={churchTimezone}>
+      <AppShell breadcrumbOverrides={breadcrumbOverrides}>
+        <Outlet />
+      </AppShell>
+    </TimezoneProvider>
   );
 }

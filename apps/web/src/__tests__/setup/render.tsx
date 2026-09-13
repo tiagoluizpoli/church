@@ -26,9 +26,7 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <TimezoneProvider
-          initialChurchTimezone={options.churchTimezone ?? 'UTC'}
-        >
+        <TimezoneProvider churchTimezone={options.churchTimezone ?? 'UTC'}>
           {children}
         </TimezoneProvider>
       </QueryClientProvider>

@@ -14,12 +14,14 @@ const membershipRepository = {
 };
 const authorityManager = { hasSchedulingAccess: vi.fn() };
 const activeChurchResolver = { resolve: vi.fn() };
+const churchRepository = { getById: vi.fn() };
 
 function createManager(): DbActiveChurchSelectionManager {
   return new DbActiveChurchSelectionManager(
     membershipRepository as never,
     authorityManager as never,
     activeChurchResolver as never,
+    churchRepository as never,
   );
 }
 
@@ -136,6 +138,20 @@ describe('DbActiveChurchSelectionManager', () => {
 
       expect(result).toEqual({ status: 'no_membership' });
       expect(membershipRepository.touchOpened).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getChurchTimezone', () => {
+    it("returns the Church's IANA timezone", async () => {
+      churchRepository.getById.mockResolvedValueOnce({
+        timezone: 'America/Sao_Paulo',
+      } as never);
+      const manager = createManager();
+
+      await expect(
+        manager.getChurchTimezone({ churchId: churchAId }),
+      ).resolves.toBe('America/Sao_Paulo');
+      expect(churchRepository.getById).toHaveBeenCalledWith({ id: churchAId });
     });
   });
 });

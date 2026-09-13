@@ -17,6 +17,7 @@ export type GetActiveChurchStatus200 = {
   status: GetActiveChurchStatus200Status;
   churchId?: string;
   membershipRemovedFrom?: string;
+  timezone?: string;
 };
 
 export type GetActiveChurchStatus401 = {
@@ -76,6 +77,7 @@ export type SelectActiveChurch200 = {
   status: SelectActiveChurch200Status;
   churchId?: string;
   membershipRemovedFrom?: string;
+  timezone?: string;
 };
 
 export type SelectActiveChurch401 = {

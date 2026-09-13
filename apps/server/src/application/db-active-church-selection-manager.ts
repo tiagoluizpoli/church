@@ -7,11 +7,13 @@ import type {
 import type {
   ApplicationArea,
   ChurchSelectionOption,
+  GetChurchTimezoneInput,
   IActiveChurchSelectionManager,
   ListSelectableChurchesInput,
   SelectActiveChurchInput,
 } from '../domain/contracts/application/active-church-selection-manager';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
   ChurchMembershipComparison,
   ChurchMembershipRepository,
@@ -52,6 +54,8 @@ export class DbActiveChurchSelectionManager
     private readonly authorityManager: IAuthorityManager,
     @inject('IActiveChurchResolver')
     private readonly activeChurchResolver: IActiveChurchResolver,
+    @inject('IChurchRepository')
+    private readonly churchRepository: ChurchRepository,
   ) {}
 
   async listSelectableChurches(
@@ -88,6 +92,15 @@ export class DbActiveChurchSelectionManager
     }
 
     return resolution;
+  }
+
+  /**
+   * The Church Timezone the client resolves every CalendarDay and displayed
+   * time through (ADR-0003). Read once by the entry gate, not per request.
+   */
+  async getChurchTimezone(input: GetChurchTimezoneInput): Promise<string> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    return church.timezone;
   }
 
   /**

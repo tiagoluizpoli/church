@@ -15,9 +15,7 @@ function render(
   { churchTimezone = 'UTC' }: RenderInput = {},
 ) {
   return rtlRender(
-    <TimezoneProvider initialChurchTimezone={churchTimezone}>
-      {ui}
-    </TimezoneProvider>,
+    <TimezoneProvider churchTimezone={churchTimezone}>{ui}</TimezoneProvider>,
   );
 }
 
@@ -224,7 +222,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     // Simulate the mutation going pending: dialog must stay open, not close
     // synchronously in the click handler.
     rerender(
-      <TimezoneProvider initialChurchTimezone="UTC">
+      <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
           row={twoSlotRow()}
           isReadOnly={false}
@@ -240,7 +238,7 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     // Mutation settles: dialog auto-closes.
     rerender(
-      <TimezoneProvider initialChurchTimezone="UTC">
+      <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />
       </TimezoneProvider>,
     );
@@ -264,7 +262,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     );
 
     rerender(
-      <TimezoneProvider initialChurchTimezone="UTC">
+      <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
           row={twoSlotRow()}
           isReadOnly={false}
@@ -278,7 +276,7 @@ describe('PlanningEventCard affordances (US1)', () => {
     expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
 
     rerender(
-      <TimezoneProvider initialChurchTimezone="UTC">
+      <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard row={twoSlotRow()} isReadOnly={false} {...props} />
       </TimezoneProvider>,
     );

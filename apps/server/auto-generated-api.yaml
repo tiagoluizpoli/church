@@ -43,6 +43,8 @@ paths:
                     type: string
                   membershipRemovedFrom:
                     type: string
+                  timezone:
+                    type: string
                 required:
                   - status
                 additionalProperties: false
@@ -165,6 +167,8 @@ paths:
                   churchId:
                     type: string
                   membershipRemovedFrom:
+                    type: string
+                  timezone:
                     type: string
                 required:
                   - status

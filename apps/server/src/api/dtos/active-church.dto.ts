@@ -7,6 +7,8 @@ export const activeChurchStatusResponseSchema = z.object({
   churchId: z.string().optional(),
   /** Name of the Church the caller's Membership was just found removed from, when that's why this status resolved. */
   membershipRemovedFrom: z.string().optional(),
+  /** IANA Church Timezone of the resolved Church — every displayed time and CalendarDay resolves through it (ADR-0003). */
+  timezone: z.string().optional(),
 });
 export type ActiveChurchStatusResponse = z.infer<
   typeof activeChurchStatusResponseSchema
@@ -35,15 +37,22 @@ export type SelectActiveChurchBody = z.infer<
   typeof selectActiveChurchBodySchema
 >;
 
+export interface ToStatusResponseInput {
+  resolution: ActiveChurchResolution;
+  /** Present only for a resolved Church. */
+  timezone?: string;
+}
+
 export const activeChurchMapper = {
-  toStatusResponse(
-    resolution: ActiveChurchResolution,
-  ): ActiveChurchStatusResponse {
+  toStatusResponse({
+    resolution,
+    timezone,
+  }: ToStatusResponseInput): ActiveChurchStatusResponse {
     return {
       status: resolution.status,
       membershipRemovedFrom: resolution.membershipRemovedFrom,
       ...(resolution.status === 'resolved'
-        ? { churchId: resolution.churchId }
+        ? { churchId: resolution.churchId, timezone }
         : {}),
     };
   },

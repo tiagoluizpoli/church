@@ -29,9 +29,20 @@ vi.mock('@/utils/api-instances', () => ({
   },
 }));
 
-vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
-}));
+vi.mock('@/components/app-shell', async () => {
+  const { useTimezone } = await import('@/shared/hooks/use-timezone');
+  function AppShellProbe({ children }: { children: ReactNode }) {
+    return (
+      <>
+        <span data-testid="church-timezone">
+          {useTimezone().churchTimezone}
+        </span>
+        {children}
+      </>
+    );
+  }
+  return { AppShell: AppShellProbe };
+});
 
 vi.mock('@/components/theme-provider', () => ({
   ThemeProvider: ({ children }: { children: ReactNode }) => children,
@@ -49,6 +60,27 @@ describe('the Active Church guard (_active-church)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listActiveChurchOptions.mockResolvedValue({ churches: [] });
+  });
+
+  it('provides the resolved Church Timezone to everything under the layout (#150)', async () => {
+    getSession.mockResolvedValue({
+      data: {
+        user: { id: 'u1' },
+        session: { activeOrganizationId: 'church-1' },
+      },
+    });
+    getActiveChurchStatus.mockResolvedValue({
+      status: 'resolved',
+      churchId: 'church-1',
+      timezone: 'America/Sao_Paulo',
+    });
+    listPlanningCycles.mockResolvedValue({ cycles: [] });
+
+    renderPlanningCycles();
+
+    expect(await screen.findByTestId('church-timezone')).toHaveTextContent(
+      'America/Sao_Paulo',
+    );
   });
 
   it('mounts the shell when the entry gate resolves an Active Church', async () => {

@@ -6,7 +6,6 @@ import {
 } from '@tanstack/react-router';
 import { type RenderResult, render } from '@testing-library/react';
 import { routeTree } from '@/routeTree.gen';
-import { TimezoneProvider } from '@/shared/components/timezone-provider';
 
 interface RenderRouteOptions {
   initialPath: string;
@@ -42,9 +41,7 @@ export function renderRoute({
 
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <TimezoneProvider initialChurchTimezone="UTC">
-        <RouterProvider router={router} />
-      </TimezoneProvider>
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
 

@@ -1,7 +1,13 @@
 import { getActiveChurch } from '@/infrastructure/api/active-church';
-import { getAdmin } from '@/infrastructure/api/admin';
+import { getAssignments } from '@/infrastructure/api/assignments';
+import { getEvents } from '@/infrastructure/api/events';
 import { getFeatureFlags as createFeatureFlagsApi } from '@/infrastructure/api/feature-flags';
+import { getMinistries } from '@/infrastructure/api/ministries';
+import { getPlanning } from '@/infrastructure/api/planning';
 import { getRedemption } from '@/infrastructure/api/redemption';
+import { getRostering } from '@/infrastructure/api/rostering';
+import { getTailoring } from '@/infrastructure/api/tailoring';
+import { getTimeSlots } from '@/infrastructure/api/time-slots';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
 
 interface LegacyCreateEventBody {
@@ -27,11 +33,16 @@ interface LegacyRoleTemplateListResult {
   items: LegacyRoleTemplateSummary[];
 }
 
-const generatedAdminApi = getAdmin();
 const generatedVolunteerApi = getVolunteer();
 
 export const adminApi = {
-  ...generatedAdminApi,
+  ...getEvents(),
+  ...getTimeSlots(),
+  ...getAssignments(),
+  ...getMinistries(),
+  ...getPlanning(),
+  ...getTailoring(),
+  ...getRostering(),
   async createEvent(
     _body: LegacyCreateEventBody,
   ): Promise<LegacyCreateEventResult> {

@@ -35,7 +35,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   const month = createPlanningMonth();
 
   const ministriesResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/admin/ministries`,
+    `${SERVER_URL}/api/v1/ministries`,
   );
   expect(ministriesResponse.ok()).toBeTruthy();
   const ministriesBody = (await ministriesResponse.json()) as {
@@ -48,7 +48,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   expect(ministryId).toBeTruthy();
 
   const existingEventsResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/admin/events`,
+    `${SERVER_URL}/api/v1/events`,
     {
       params: { ministryId },
     },
@@ -64,7 +64,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   expect(existingEventId).toBeTruthy();
 
   const builderDataResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/admin/schedule-builder`,
+    `${SERVER_URL}/api/v1/events/schedule-builder`,
     {
       params: { eventId: existingEventId },
     },
@@ -166,7 +166,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   // same data the page renders from so locators match real ids instead of
   // guessing at row order or display text.
   const participationResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/leader/cycles/${cycleBody.id}/participation`,
+    `${SERVER_URL}/api/v1/tailoring/cycles/${cycleBody.id}/participation`,
     { params: { ministryId } },
   );
   expect(participationResponse.ok()).toBeTruthy();

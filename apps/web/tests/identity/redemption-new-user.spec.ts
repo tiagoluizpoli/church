@@ -43,7 +43,7 @@ async function mintChainedInvitation({
     storageState: CHURCH_ADMIN_STORAGE_STATE,
   });
   const res = await adminCtx.post(
-    `/api/v1/admin/ministries/${WORSHIP_MINISTRY_ID}/invitations`,
+    `/api/v1/ministries/${WORSHIP_MINISTRY_ID}/invitations`,
     {
       data: {
         email,

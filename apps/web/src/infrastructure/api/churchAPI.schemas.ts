@@ -88,559 +88,6 @@ export type SelectActiveChurch403 = {
   message: string;
 };
 
-export type ListMinistries200MinistriesItemEnforcementType = typeof ListMinistries200MinistriesItemEnforcementType[keyof typeof ListMinistries200MinistriesItemEnforcementType];
-
-
-export const ListMinistries200MinistriesItemEnforcementType = {
-  soft: 'soft',
-  hard: 'hard',
-} as const;
-
-export type ListMinistries200MinistriesItemDefaultDirection = typeof ListMinistries200MinistriesItemDefaultDirection[keyof typeof ListMinistries200MinistriesItemDefaultDirection];
-
-
-export const ListMinistries200MinistriesItemDefaultDirection = {
-  all_in: 'all_in',
-  all_out: 'all_out',
-} as const;
-
-export type ListMinistries200MinistriesItem = {
-  id: string;
-  churchId: string;
-  name: string;
-  description?: string;
-  enforcementType: ListMinistries200MinistriesItemEnforcementType;
-  defaultDirection: ListMinistries200MinistriesItemDefaultDirection;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ListMinistries200 = {
-  ministries: ListMinistries200MinistriesItem[];
-};
-
-export type ListMinistries401 = {
-  error: string;
-  message: string;
-};
-
-export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
-
-
-export const MintMinistryInvitationBodyMinistryAccessLevel = {
-  leader: 'leader',
-  volunteer: 'volunteer',
-} as const;
-
-export type MintMinistryInvitationBody = {
-  /** @pattern ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
-  email: string;
-  ministryAccessLevel: MintMinistryInvitationBodyMinistryAccessLevel;
-  roleIds: string[];
-};
-
-export type MintMinistryInvitation201Kind = typeof MintMinistryInvitation201Kind[keyof typeof MintMinistryInvitation201Kind];
-
-
-export const MintMinistryInvitation201Kind = {
-  'ministry-only': 'ministry-only',
-  chained: 'chained',
-} as const;
-
-export type MintMinistryInvitation201Status = typeof MintMinistryInvitation201Status[keyof typeof MintMinistryInvitation201Status];
-
-
-export const MintMinistryInvitation201Status = {
-  pending: 'pending',
-  accepted: 'accepted',
-  rejected: 'rejected',
-  canceled: 'canceled',
-} as const;
-
-export type MintMinistryInvitation201DeliveryStatus = typeof MintMinistryInvitation201DeliveryStatus[keyof typeof MintMinistryInvitation201DeliveryStatus];
-
-
-export const MintMinistryInvitation201DeliveryStatus = {
-  pending: 'pending',
-  sent: 'sent',
-  failed: 'failed',
-} as const;
-
-export type MintMinistryInvitation201 = {
-  id: string;
-  kind: MintMinistryInvitation201Kind;
-  status: MintMinistryInvitation201Status;
-  expiresAt: string;
-  redemptionPath: string;
-  deliveryStatus: MintMinistryInvitation201DeliveryStatus;
-};
-
-export type MintMinistryInvitation404 = {
-  error: string;
-  message: string;
-};
-
-export type ResendMinistryInvitation200Kind = typeof ResendMinistryInvitation200Kind[keyof typeof ResendMinistryInvitation200Kind];
-
-
-export const ResendMinistryInvitation200Kind = {
-  'ministry-only': 'ministry-only',
-  chained: 'chained',
-} as const;
-
-export type ResendMinistryInvitation200Status = typeof ResendMinistryInvitation200Status[keyof typeof ResendMinistryInvitation200Status];
-
-
-export const ResendMinistryInvitation200Status = {
-  pending: 'pending',
-  accepted: 'accepted',
-  rejected: 'rejected',
-  canceled: 'canceled',
-} as const;
-
-export type ResendMinistryInvitation200DeliveryStatus = typeof ResendMinistryInvitation200DeliveryStatus[keyof typeof ResendMinistryInvitation200DeliveryStatus];
-
-
-export const ResendMinistryInvitation200DeliveryStatus = {
-  pending: 'pending',
-  sent: 'sent',
-  failed: 'failed',
-} as const;
-
-export type ResendMinistryInvitation200 = {
-  id: string;
-  kind: ResendMinistryInvitation200Kind;
-  status: ResendMinistryInvitation200Status;
-  expiresAt: string;
-  redemptionPath: string;
-  deliveryStatus: ResendMinistryInvitation200DeliveryStatus;
-};
-
-export type ResendMinistryInvitation404 = {
-  error: string;
-  message: string;
-};
-
-export type GetScheduleBuilderDataParams = {
-eventId: string;
-ministryId?: string;
-};
-
-export type GetScheduleBuilderData200EventsItemEventStatus = typeof GetScheduleBuilderData200EventsItemEventStatus[keyof typeof GetScheduleBuilderData200EventsItemEventStatus];
-
-
-export const GetScheduleBuilderData200EventsItemEventStatus = {
-  draft: 'draft',
-  scheduled: 'scheduled',
-  cancelled: 'cancelled',
-  past: 'past',
-} as const;
-
-export type GetScheduleBuilderData200EventsItemEventEventType = typeof GetScheduleBuilderData200EventsItemEventEventType[keyof typeof GetScheduleBuilderData200EventsItemEventEventType];
-
-
-export const GetScheduleBuilderData200EventsItemEventEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
-export type GetScheduleBuilderData200EventsItemEvent = {
-  id: string;
-  churchId: string;
-  planningCycleId: string;
-  sourceTemplateId?: string;
-  title: string;
-  description?: string;
-  location?: string;
-  startDate: string;
-  endDate: string;
-  status: GetScheduleBuilderData200EventsItemEventStatus;
-  eventType: GetScheduleBuilderData200EventsItemEventEventType;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type GetScheduleBuilderData200EventsItemSlotsItemStatus = typeof GetScheduleBuilderData200EventsItemSlotsItemStatus[keyof typeof GetScheduleBuilderData200EventsItemSlotsItemStatus];
-
-
-export const GetScheduleBuilderData200EventsItemSlotsItemStatus = {
-  active: 'active',
-  cancelled: 'cancelled',
-} as const;
-
-export type GetScheduleBuilderData200EventsItemSlotsItemRequirementsItem = {
-  id: string;
-  slotId: string;
-  roleId: string;
-  teamId?: string;
-  requiredCount: number;
-  notes?: string;
-};
-
-export type GetScheduleBuilderData200EventsItemSlotsItem = {
-  id: string;
-  churchId: string;
-  eventId: string;
-  startTime: string;
-  endTime: string;
-  label?: string;
-  status: GetScheduleBuilderData200EventsItemSlotsItemStatus;
-  requirements: GetScheduleBuilderData200EventsItemSlotsItemRequirementsItem[];
-};
-
-export type GetScheduleBuilderData200EventsItem = {
-  event: GetScheduleBuilderData200EventsItemEvent;
-  slots: GetScheduleBuilderData200EventsItemSlotsItem[];
-};
-
-export type GetScheduleBuilderData200AssignmentsItemStatus = typeof GetScheduleBuilderData200AssignmentsItemStatus[keyof typeof GetScheduleBuilderData200AssignmentsItemStatus];
-
-
-export const GetScheduleBuilderData200AssignmentsItemStatus = {
-  draft: 'draft',
-  pending: 'pending',
-  confirmed: 'confirmed',
-  declined: 'declined',
-  cancelled: 'cancelled',
-} as const;
-
-export type GetScheduleBuilderData200AssignmentsItem = {
-  id: string;
-  churchId: string;
-  slotId: string;
-  participationId?: string;
-  shiftId?: string;
-  volunteerId: string;
-  roleId: string;
-  status: GetScheduleBuilderData200AssignmentsItemStatus;
-  reason?: string;
-  assignedAt: string;
-  assignedBy?: string;
-};
-
-export type GetScheduleBuilderData200AvailabilityItemType = typeof GetScheduleBuilderData200AvailabilityItemType[keyof typeof GetScheduleBuilderData200AvailabilityItemType];
-
-
-export const GetScheduleBuilderData200AvailabilityItemType = {
-  available: 'available',
-  unavailable: 'unavailable',
-} as const;
-
-export type GetScheduleBuilderData200AvailabilityItem = {
-  id: string;
-  volunteerId: string;
-  type: GetScheduleBuilderData200AvailabilityItemType;
-  startTime: string;
-  endTime: string;
-  isAllDay: boolean;
-};
-
-export type GetScheduleBuilderData200VolunteersItemMinistryAccessLevel = typeof GetScheduleBuilderData200VolunteersItemMinistryAccessLevel[keyof typeof GetScheduleBuilderData200VolunteersItemMinistryAccessLevel];
-
-
-export const GetScheduleBuilderData200VolunteersItemMinistryAccessLevel = {
-  leader: 'leader',
-  volunteer: 'volunteer',
-} as const;
-
-export type GetScheduleBuilderData200VolunteersItem = {
-  id: string;
-  name: string;
-  ministryAccessLevel: GetScheduleBuilderData200VolunteersItemMinistryAccessLevel;
-  qualifiedRoleIds: string[];
-  teamIds: string[];
-  leadTeamIds: string[];
-};
-
-export type GetScheduleBuilderData200RolesItem = {
-  id: string;
-  name: string;
-};
-
-export type GetScheduleBuilderData200 = {
-  events: GetScheduleBuilderData200EventsItem[];
-  assignments: GetScheduleBuilderData200AssignmentsItem[];
-  availability: GetScheduleBuilderData200AvailabilityItem[];
-  volunteers: GetScheduleBuilderData200VolunteersItem[];
-  roles: GetScheduleBuilderData200RolesItem[];
-  /** @nullable */
-  callerTeamIds: string[] | null;
-};
-
-export type GetScheduleBuilderData401 = {
-  error: string;
-  message: string;
-};
-
-export type ListEventsParams = {
-ministryId: string;
-status?: ListEventsStatus;
-};
-
-export type ListEventsStatus = typeof ListEventsStatus[keyof typeof ListEventsStatus];
-
-
-export const ListEventsStatus = {
-  draft: 'draft',
-  scheduled: 'scheduled',
-  cancelled: 'cancelled',
-  past: 'past',
-} as const;
-
-export type ListEvents200EventsItemStatus = typeof ListEvents200EventsItemStatus[keyof typeof ListEvents200EventsItemStatus];
-
-
-export const ListEvents200EventsItemStatus = {
-  draft: 'draft',
-  scheduled: 'scheduled',
-  cancelled: 'cancelled',
-  past: 'past',
-} as const;
-
-export type ListEvents200EventsItemEventType = typeof ListEvents200EventsItemEventType[keyof typeof ListEvents200EventsItemEventType];
-
-
-export const ListEvents200EventsItemEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
-export type ListEvents200EventsItem = {
-  id: string;
-  churchId: string;
-  planningCycleId: string;
-  sourceTemplateId?: string;
-  title: string;
-  description?: string;
-  location?: string;
-  startDate: string;
-  endDate: string;
-  status: ListEvents200EventsItemStatus;
-  eventType: ListEvents200EventsItemEventType;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ListEvents200 = {
-  events: ListEvents200EventsItem[];
-};
-
-export type CreateSlotBody = {
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  startTime: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  endTime: string;
-  label?: string;
-};
-
-export type CreateSlot201Status = typeof CreateSlot201Status[keyof typeof CreateSlot201Status];
-
-
-export const CreateSlot201Status = {
-  active: 'active',
-  cancelled: 'cancelled',
-} as const;
-
-export type CreateSlot201RequirementsItem = {
-  id: string;
-  slotId: string;
-  roleId: string;
-  teamId?: string;
-  requiredCount: number;
-  notes?: string;
-};
-
-export type CreateSlot201 = {
-  id: string;
-  churchId: string;
-  eventId: string;
-  startTime: string;
-  endTime: string;
-  label?: string;
-  status: CreateSlot201Status;
-  requirements: CreateSlot201RequirementsItem[];
-};
-
-export type UpdateSlotBody = {
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  startTime?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  endTime?: string;
-  label?: string;
-};
-
-export type UpdateSlot200Status = typeof UpdateSlot200Status[keyof typeof UpdateSlot200Status];
-
-
-export const UpdateSlot200Status = {
-  active: 'active',
-  cancelled: 'cancelled',
-} as const;
-
-export type UpdateSlot200RequirementsItem = {
-  id: string;
-  slotId: string;
-  roleId: string;
-  teamId?: string;
-  requiredCount: number;
-  notes?: string;
-};
-
-export type UpdateSlot200 = {
-  id: string;
-  churchId: string;
-  eventId: string;
-  startTime: string;
-  endTime: string;
-  label?: string;
-  status: UpdateSlot200Status;
-  requirements: UpdateSlot200RequirementsItem[];
-};
-
-export type OverrideAssignmentBody = {
-  /** @minLength 10 */
-  reason: string;
-};
-
-export type OverrideAssignment201 = {
-  overridden: true;
-};
-
-export type GenerateSlotsBodyStrategy = {
-  kind: 'equal-split';
-  /** @maximum 9007199254740991 */
-  slotDurationMinutes: number;
-} | {
-  kind: 'template-based';
-  periods: ({
-  label: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  startTime: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
-  endTime: string;
-  requirements?: {
-  roleId: string;
-  teamId?: string;
-  /** @maximum 9007199254740991 */
-  requiredCount: number;
-  notes?: string;
-}[];
-})[];
-};
-
-export type GenerateSlotsBody = {
-  strategy: GenerateSlotsBodyStrategy;
-};
-
-export type GenerateSlots201SlotsItemStatus = typeof GenerateSlots201SlotsItemStatus[keyof typeof GenerateSlots201SlotsItemStatus];
-
-
-export const GenerateSlots201SlotsItemStatus = {
-  active: 'active',
-  cancelled: 'cancelled',
-} as const;
-
-export type GenerateSlots201SlotsItemRequirementsItem = {
-  id: string;
-  slotId: string;
-  roleId: string;
-  teamId?: string;
-  requiredCount: number;
-  notes?: string;
-};
-
-export type GenerateSlots201SlotsItem = {
-  id: string;
-  churchId: string;
-  eventId: string;
-  startTime: string;
-  endTime: string;
-  label?: string;
-  status: GenerateSlots201SlotsItemStatus;
-  requirements: GenerateSlots201SlotsItemRequirementsItem[];
-};
-
-export type GenerateSlots201 = {
-  slots: GenerateSlots201SlotsItem[];
-};
-
-export type UpsertSlotRequirementBody = {
-  roleId: string;
-  teamId?: string;
-  /**
-     * @minimum 1
-     * @maximum 9007199254740991
-     */
-  requiredCount: number;
-  notes?: string;
-};
-
-export type UpsertSlotRequirement200 = {
-  id: string;
-  slotId: string;
-  roleId: string;
-  teamId?: string;
-  requiredCount: number;
-  notes?: string;
-};
-
-export type CreateAssignmentBody = {
-  slotId: string;
-  volunteerId: string;
-  roleId: string;
-  reason?: string;
-};
-
-export type CreateAssignment201Status = typeof CreateAssignment201Status[keyof typeof CreateAssignment201Status];
-
-
-export const CreateAssignment201Status = {
-  draft: 'draft',
-  pending: 'pending',
-  confirmed: 'confirmed',
-  declined: 'declined',
-  cancelled: 'cancelled',
-} as const;
-
-export type CreateAssignment201 = {
-  id: string;
-  churchId: string;
-  slotId: string;
-  participationId?: string;
-  shiftId?: string;
-  volunteerId: string;
-  roleId: string;
-  status: CreateAssignment201Status;
-  reason?: string;
-  assignedAt: string;
-  assignedBy?: string;
-};
-
-export type GetAssignmentAudit200ItemsItemAction = typeof GetAssignmentAudit200ItemsItemAction[keyof typeof GetAssignmentAudit200ItemsItemAction];
-
-
-export const GetAssignmentAudit200ItemsItemAction = {
-  created: 'created',
-  updated: 'updated',
-  deleted: 'deleted',
-  status_change: 'status_change',
-  event_published: 'event_published',
-  event_cancelled: 'event_cancelled',
-} as const;
-
-export type GetAssignmentAudit200ItemsItem = {
-  id: string;
-  assignmentId: string;
-  actorId: string;
-  action: GetAssignmentAudit200ItemsItemAction;
-  reason?: string;
-  timestamp: string;
-};
-
-export type GetAssignmentAudit200 = {
-  items: GetAssignmentAudit200ItemsItem[];
-};
-
 export type CreatePlanningCycleBody = {
   /** @minLength 1 */
   name: string;
@@ -1261,6 +708,559 @@ export type SetMinistryDefaultDirection200 = {
   defaultDirection: SetMinistryDefaultDirection200DefaultDirection;
   createdAt: string;
   updatedAt: string;
+};
+
+export type GetScheduleBuilderDataParams = {
+eventId: string;
+ministryId?: string;
+};
+
+export type GetScheduleBuilderData200EventsItemEventStatus = typeof GetScheduleBuilderData200EventsItemEventStatus[keyof typeof GetScheduleBuilderData200EventsItemEventStatus];
+
+
+export const GetScheduleBuilderData200EventsItemEventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type GetScheduleBuilderData200EventsItemEventEventType = typeof GetScheduleBuilderData200EventsItemEventEventType[keyof typeof GetScheduleBuilderData200EventsItemEventEventType];
+
+
+export const GetScheduleBuilderData200EventsItemEventEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type GetScheduleBuilderData200EventsItemEvent = {
+  id: string;
+  churchId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  status: GetScheduleBuilderData200EventsItemEventStatus;
+  eventType: GetScheduleBuilderData200EventsItemEventEventType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GetScheduleBuilderData200EventsItemSlotsItemStatus = typeof GetScheduleBuilderData200EventsItemSlotsItemStatus[keyof typeof GetScheduleBuilderData200EventsItemSlotsItemStatus];
+
+
+export const GetScheduleBuilderData200EventsItemSlotsItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetScheduleBuilderData200EventsItemSlotsItemRequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type GetScheduleBuilderData200EventsItemSlotsItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: GetScheduleBuilderData200EventsItemSlotsItemStatus;
+  requirements: GetScheduleBuilderData200EventsItemSlotsItemRequirementsItem[];
+};
+
+export type GetScheduleBuilderData200EventsItem = {
+  event: GetScheduleBuilderData200EventsItemEvent;
+  slots: GetScheduleBuilderData200EventsItemSlotsItem[];
+};
+
+export type GetScheduleBuilderData200AssignmentsItemStatus = typeof GetScheduleBuilderData200AssignmentsItemStatus[keyof typeof GetScheduleBuilderData200AssignmentsItemStatus];
+
+
+export const GetScheduleBuilderData200AssignmentsItemStatus = {
+  draft: 'draft',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetScheduleBuilderData200AssignmentsItem = {
+  id: string;
+  churchId: string;
+  slotId: string;
+  participationId?: string;
+  shiftId?: string;
+  volunteerId: string;
+  roleId: string;
+  status: GetScheduleBuilderData200AssignmentsItemStatus;
+  reason?: string;
+  assignedAt: string;
+  assignedBy?: string;
+};
+
+export type GetScheduleBuilderData200AvailabilityItemType = typeof GetScheduleBuilderData200AvailabilityItemType[keyof typeof GetScheduleBuilderData200AvailabilityItemType];
+
+
+export const GetScheduleBuilderData200AvailabilityItemType = {
+  available: 'available',
+  unavailable: 'unavailable',
+} as const;
+
+export type GetScheduleBuilderData200AvailabilityItem = {
+  id: string;
+  volunteerId: string;
+  type: GetScheduleBuilderData200AvailabilityItemType;
+  startTime: string;
+  endTime: string;
+  isAllDay: boolean;
+};
+
+export type GetScheduleBuilderData200VolunteersItemMinistryAccessLevel = typeof GetScheduleBuilderData200VolunteersItemMinistryAccessLevel[keyof typeof GetScheduleBuilderData200VolunteersItemMinistryAccessLevel];
+
+
+export const GetScheduleBuilderData200VolunteersItemMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type GetScheduleBuilderData200VolunteersItem = {
+  id: string;
+  name: string;
+  ministryAccessLevel: GetScheduleBuilderData200VolunteersItemMinistryAccessLevel;
+  qualifiedRoleIds: string[];
+  teamIds: string[];
+  leadTeamIds: string[];
+};
+
+export type GetScheduleBuilderData200RolesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetScheduleBuilderData200 = {
+  events: GetScheduleBuilderData200EventsItem[];
+  assignments: GetScheduleBuilderData200AssignmentsItem[];
+  availability: GetScheduleBuilderData200AvailabilityItem[];
+  volunteers: GetScheduleBuilderData200VolunteersItem[];
+  roles: GetScheduleBuilderData200RolesItem[];
+  /** @nullable */
+  callerTeamIds: string[] | null;
+};
+
+export type GetScheduleBuilderData401 = {
+  error: string;
+  message: string;
+};
+
+export type ListEventsParams = {
+ministryId: string;
+status?: ListEventsStatus;
+};
+
+export type ListEventsStatus = typeof ListEventsStatus[keyof typeof ListEventsStatus];
+
+
+export const ListEventsStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type ListEvents200EventsItemStatus = typeof ListEvents200EventsItemStatus[keyof typeof ListEvents200EventsItemStatus];
+
+
+export const ListEvents200EventsItemStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type ListEvents200EventsItemEventType = typeof ListEvents200EventsItemEventType[keyof typeof ListEvents200EventsItemEventType];
+
+
+export const ListEvents200EventsItemEventType = {
+  hourly: 'hourly',
+  day_based: 'day_based',
+} as const;
+
+export type ListEvents200EventsItem = {
+  id: string;
+  churchId: string;
+  planningCycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
+  status: ListEvents200EventsItemStatus;
+  eventType: ListEvents200EventsItemEventType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListEvents200 = {
+  events: ListEvents200EventsItem[];
+};
+
+export type CreateSlotBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+};
+
+export type CreateSlot201Status = typeof CreateSlot201Status[keyof typeof CreateSlot201Status];
+
+
+export const CreateSlot201Status = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type CreateSlot201RequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type CreateSlot201 = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: CreateSlot201Status;
+  requirements: CreateSlot201RequirementsItem[];
+};
+
+export type UpdateSlotBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startTime?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endTime?: string;
+  label?: string;
+};
+
+export type UpdateSlot200Status = typeof UpdateSlot200Status[keyof typeof UpdateSlot200Status];
+
+
+export const UpdateSlot200Status = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type UpdateSlot200RequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type UpdateSlot200 = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: UpdateSlot200Status;
+  requirements: UpdateSlot200RequirementsItem[];
+};
+
+export type GenerateSlotsBodyStrategy = {
+  kind: 'equal-split';
+  /** @maximum 9007199254740991 */
+  slotDurationMinutes: number;
+} | {
+  kind: 'template-based';
+  periods: ({
+  label: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
+  endTime: string;
+  requirements?: {
+  roleId: string;
+  teamId?: string;
+  /** @maximum 9007199254740991 */
+  requiredCount: number;
+  notes?: string;
+}[];
+})[];
+};
+
+export type GenerateSlotsBody = {
+  strategy: GenerateSlotsBodyStrategy;
+};
+
+export type GenerateSlots201SlotsItemStatus = typeof GenerateSlots201SlotsItemStatus[keyof typeof GenerateSlots201SlotsItemStatus];
+
+
+export const GenerateSlots201SlotsItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type GenerateSlots201SlotsItemRequirementsItem = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type GenerateSlots201SlotsItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  label?: string;
+  status: GenerateSlots201SlotsItemStatus;
+  requirements: GenerateSlots201SlotsItemRequirementsItem[];
+};
+
+export type GenerateSlots201 = {
+  slots: GenerateSlots201SlotsItem[];
+};
+
+export type UpsertSlotRequirementBody = {
+  roleId: string;
+  teamId?: string;
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  requiredCount: number;
+  notes?: string;
+};
+
+export type UpsertSlotRequirement200 = {
+  id: string;
+  slotId: string;
+  roleId: string;
+  teamId?: string;
+  requiredCount: number;
+  notes?: string;
+};
+
+export type CreateAssignmentBody = {
+  slotId: string;
+  volunteerId: string;
+  roleId: string;
+  reason?: string;
+};
+
+export type CreateAssignment201Status = typeof CreateAssignment201Status[keyof typeof CreateAssignment201Status];
+
+
+export const CreateAssignment201Status = {
+  draft: 'draft',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export type CreateAssignment201 = {
+  id: string;
+  churchId: string;
+  slotId: string;
+  participationId?: string;
+  shiftId?: string;
+  volunteerId: string;
+  roleId: string;
+  status: CreateAssignment201Status;
+  reason?: string;
+  assignedAt: string;
+  assignedBy?: string;
+};
+
+export type OverrideAssignmentBody = {
+  /** @minLength 10 */
+  reason: string;
+};
+
+export type OverrideAssignment201 = {
+  overridden: true;
+};
+
+export type GetAssignmentAudit200ItemsItemAction = typeof GetAssignmentAudit200ItemsItemAction[keyof typeof GetAssignmentAudit200ItemsItemAction];
+
+
+export const GetAssignmentAudit200ItemsItemAction = {
+  created: 'created',
+  updated: 'updated',
+  deleted: 'deleted',
+  status_change: 'status_change',
+  event_published: 'event_published',
+  event_cancelled: 'event_cancelled',
+} as const;
+
+export type GetAssignmentAudit200ItemsItem = {
+  id: string;
+  assignmentId: string;
+  actorId: string;
+  action: GetAssignmentAudit200ItemsItemAction;
+  reason?: string;
+  timestamp: string;
+};
+
+export type GetAssignmentAudit200 = {
+  items: GetAssignmentAudit200ItemsItem[];
+};
+
+export type ListMinistries200MinistriesItemEnforcementType = typeof ListMinistries200MinistriesItemEnforcementType[keyof typeof ListMinistries200MinistriesItemEnforcementType];
+
+
+export const ListMinistries200MinistriesItemEnforcementType = {
+  soft: 'soft',
+  hard: 'hard',
+} as const;
+
+export type ListMinistries200MinistriesItemDefaultDirection = typeof ListMinistries200MinistriesItemDefaultDirection[keyof typeof ListMinistries200MinistriesItemDefaultDirection];
+
+
+export const ListMinistries200MinistriesItemDefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type ListMinistries200MinistriesItem = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  enforcementType: ListMinistries200MinistriesItemEnforcementType;
+  defaultDirection: ListMinistries200MinistriesItemDefaultDirection;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListMinistries200 = {
+  ministries: ListMinistries200MinistriesItem[];
+};
+
+export type ListMinistries401 = {
+  error: string;
+  message: string;
+};
+
+export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
+
+
+export const MintMinistryInvitationBodyMinistryAccessLevel = {
+  leader: 'leader',
+  volunteer: 'volunteer',
+} as const;
+
+export type MintMinistryInvitationBody = {
+  /** @pattern ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
+  email: string;
+  ministryAccessLevel: MintMinistryInvitationBodyMinistryAccessLevel;
+  roleIds: string[];
+};
+
+export type MintMinistryInvitation201Kind = typeof MintMinistryInvitation201Kind[keyof typeof MintMinistryInvitation201Kind];
+
+
+export const MintMinistryInvitation201Kind = {
+  'ministry-only': 'ministry-only',
+  chained: 'chained',
+} as const;
+
+export type MintMinistryInvitation201Status = typeof MintMinistryInvitation201Status[keyof typeof MintMinistryInvitation201Status];
+
+
+export const MintMinistryInvitation201Status = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+  canceled: 'canceled',
+} as const;
+
+export type MintMinistryInvitation201DeliveryStatus = typeof MintMinistryInvitation201DeliveryStatus[keyof typeof MintMinistryInvitation201DeliveryStatus];
+
+
+export const MintMinistryInvitation201DeliveryStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
+export type MintMinistryInvitation201 = {
+  id: string;
+  kind: MintMinistryInvitation201Kind;
+  status: MintMinistryInvitation201Status;
+  expiresAt: string;
+  redemptionPath: string;
+  deliveryStatus: MintMinistryInvitation201DeliveryStatus;
+};
+
+export type MintMinistryInvitation404 = {
+  error: string;
+  message: string;
+};
+
+export type ResendMinistryInvitation200Kind = typeof ResendMinistryInvitation200Kind[keyof typeof ResendMinistryInvitation200Kind];
+
+
+export const ResendMinistryInvitation200Kind = {
+  'ministry-only': 'ministry-only',
+  chained: 'chained',
+} as const;
+
+export type ResendMinistryInvitation200Status = typeof ResendMinistryInvitation200Status[keyof typeof ResendMinistryInvitation200Status];
+
+
+export const ResendMinistryInvitation200Status = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+  canceled: 'canceled',
+} as const;
+
+export type ResendMinistryInvitation200DeliveryStatus = typeof ResendMinistryInvitation200DeliveryStatus[keyof typeof ResendMinistryInvitation200DeliveryStatus];
+
+
+export const ResendMinistryInvitation200DeliveryStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
+export type ResendMinistryInvitation200 = {
+  id: string;
+  kind: ResendMinistryInvitation200Kind;
+  status: ResendMinistryInvitation200Status;
+  expiresAt: string;
+  redemptionPath: string;
+  deliveryStatus: ResendMinistryInvitation200DeliveryStatus;
+};
+
+export type ResendMinistryInvitation404 = {
+  error: string;
+  message: string;
 };
 
 export type ListFeatureFlags200Flags = {[key: string]: boolean};

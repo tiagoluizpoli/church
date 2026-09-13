@@ -212,7 +212,7 @@ async function setUpLiveChanges({
   expect(lockResponse.ok()).toBeTruthy();
 
   const participationResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/leader/cycles/${cycle.id}/participation`,
+    `${SERVER_URL}/api/v1/tailoring/cycles/${cycle.id}/participation`,
     { params: { ministryId: WORSHIP_MINISTRY_ID } },
   );
   expect(participationResponse.ok()).toBeTruthy();
@@ -224,7 +224,7 @@ async function setUpLiveChanges({
   }
 
   const fireResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/leader/participations/${eventView.participation.id}/fire-availability`,
+    `${SERVER_URL}/api/v1/tailoring/participations/${eventView.participation.id}/fire-availability`,
   );
   expect(fireResponse.ok()).toBeTruthy();
 
@@ -253,7 +253,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
   const fixture = await setUpLiveChanges({ page });
 
   const eligibleResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/leader/shifts/${fixture.firstShiftId}/eligible-volunteers`,
+    `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/eligible-volunteers`,
   );
   expect(eligibleResponse.ok()).toBeTruthy();
   const eligible =
@@ -266,7 +266,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
   }
 
   const usherResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/leader/shifts/${fixture.firstShiftId}/assignments`,
+    `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/assignments`,
     { data: { volunteerId: owner.volunteerId, roleId: USHER_ROLE_ID } },
   );
   expect(usherResponse.ok()).toBeTruthy();
@@ -274,7 +274,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
     .assignment;
 
   const secondResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/leader/shifts/${fixture.secondShiftId}/assignments`,
+    `${SERVER_URL}/api/v1/rostering/shifts/${fixture.secondShiftId}/assignments`,
     { data: { volunteerId: owner.volunteerId, roleId: USHER_ROLE_ID } },
   );
   expect(secondResponse.ok()).toBeTruthy();
@@ -282,7 +282,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
     .assignment;
 
   const publishResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/leader/participations/${fixture.participationId}/publish`,
+    `${SERVER_URL}/api/v1/rostering/participations/${fixture.participationId}/publish`,
     { data: {} },
   );
   expect(publishResponse.ok()).toBeTruthy();
@@ -340,7 +340,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
 
   // The Usher slot reopens — completion drops from 2/2 to 1/2 (DL2-LC-01/03).
   const completionResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/leader/participations/${fixture.participationId}/completion`,
+    `${SERVER_URL}/api/v1/rostering/participations/${fixture.participationId}/completion`,
   );
   expect(completionResponse.ok()).toBeTruthy();
   const completion = (await completionResponse.json()) as CompletionResponse;
@@ -372,7 +372,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
   // The leader reassigns the still-open second Usher assignment mid-cycle
   // (DL2-RS-08, FR-029).
   const reassignResponse = await page.request.patch(
-    `${SERVER_URL}/api/v1/leader/assignments/${secondAssignment.id}/reassign`,
+    `${SERVER_URL}/api/v1/rostering/assignments/${secondAssignment.id}/reassign`,
     {
       data: {
         volunteerId: TEAM_LEADER_VOLUNTEER_ID,

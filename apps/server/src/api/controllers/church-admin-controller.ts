@@ -139,7 +139,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'createPlanningCycle',
           body: createPlanningCycleBodySchema,
           response: { 201: planningCycleResponseSchema },
@@ -163,7 +163,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'listPlanningCycles',
           query: listPlanningCyclesQuerySchema,
           response: { 200: planningCycleListResponseSchema },
@@ -185,7 +185,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles/:cycleId',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'getPlanningCycle',
           response: { 200: planningCycleDetailsResponseSchema },
         },
@@ -202,7 +202,7 @@ export class ChurchAdminController implements FastifyController {
 
     app.post(
       '/planning-cycles/:cycleId/lock',
-      { schema: { tags: ['admin'], operationId: 'lockPlanningCycle' } },
+      { schema: { tags: ['planning'], operationId: 'lockPlanningCycle' } },
       async (request, reply) => {
         const { cycleId } = request.params as PlanningCycleRouteParams;
         await this.planningCycleManager.lockCycle({
@@ -215,7 +215,7 @@ export class ChurchAdminController implements FastifyController {
 
     app.post(
       '/planning-cycles/:cycleId/events/:eventId/reopen',
-      { schema: { tags: ['admin'], operationId: 'reopenPlanningEvent' } },
+      { schema: { tags: ['planning'], operationId: 'reopenPlanningEvent' } },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         await this.planningCycleManager.reopenEvent({
@@ -231,7 +231,7 @@ export class ChurchAdminController implements FastifyController {
       '/event-templates',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'createEventTemplate',
           body: createEventTemplateBodySchema,
           response: { 201: eventTemplateResponseSchema },
@@ -255,7 +255,7 @@ export class ChurchAdminController implements FastifyController {
       '/event-templates',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'listEventTemplates',
           response: { 200: eventTemplateListResponseSchema },
         },
@@ -272,7 +272,7 @@ export class ChurchAdminController implements FastifyController {
       '/event-templates/:templateId',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'updateEventTemplate',
           body: createEventTemplateBodySchema,
           response: { 200: eventTemplateResponseSchema },
@@ -296,7 +296,7 @@ export class ChurchAdminController implements FastifyController {
 
     app.delete(
       '/event-templates/:templateId',
-      { schema: { tags: ['admin'], operationId: 'deleteEventTemplate' } },
+      { schema: { tags: ['planning'], operationId: 'deleteEventTemplate' } },
       async (request, reply) => {
         const { templateId } = request.params as EventTemplateRouteParams;
         await this.eventTemplateManager.deleteTemplate({
@@ -311,7 +311,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles/:cycleId/apply-templates',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'applyPlanningTemplates',
           body: applyTemplatesBodySchema,
           response: { 201: generatedPlanningCountsResponseSchema },
@@ -333,7 +333,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles/:cycleId/events',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'createPlanningEvent',
           body: manualPlanningEventBodySchema,
           response: { 201: eventResponseSchema },
@@ -361,7 +361,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles/:cycleId/events/:eventId',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'updatePlanningEvent',
           body: updatePlanningEventBodySchema,
           response: { 200: eventResponseSchema },
@@ -386,7 +386,7 @@ export class ChurchAdminController implements FastifyController {
 
     app.post(
       '/planning-cycles/:cycleId/events/:eventId/cancel',
-      { schema: { tags: ['admin'], operationId: 'cancelPlanningEvent' } },
+      { schema: { tags: ['planning'], operationId: 'cancelPlanningEvent' } },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         await this.planningEventManager.cancelEvent({
@@ -402,7 +402,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles/:cycleId/events/:eventId/slots',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'createPlanningEventSlot',
           body: createSlotBodySchema,
           response: { 201: timeSlotResponseSchema },
@@ -427,7 +427,7 @@ export class ChurchAdminController implements FastifyController {
       '/planning-cycles/:cycleId/events/:eventId/slots/:slotId',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'updatePlanningEventSlot',
           body: updateSlotBodySchema,
           response: { 200: timeSlotResponseSchema },
@@ -452,7 +452,9 @@ export class ChurchAdminController implements FastifyController {
 
     app.delete(
       '/planning-cycles/:cycleId/events/:eventId/slots/:slotId',
-      { schema: { tags: ['admin'], operationId: 'deletePlanningEventSlot' } },
+      {
+        schema: { tags: ['planning'], operationId: 'deletePlanningEventSlot' },
+      },
       async (request, reply) => {
         const { cycleId, eventId, slotId } =
           request.params as PlanningEventSlotRouteParams;
@@ -470,7 +472,7 @@ export class ChurchAdminController implements FastifyController {
       '/ministries/:ministryId/serving-profile',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'getMinistryServingProfile',
           summary: 'getMinistryServingProfile',
           description:
@@ -492,7 +494,7 @@ export class ChurchAdminController implements FastifyController {
       '/ministries/:ministryId/serving-profile',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'upsertMinistryServingProfile',
           body: upsertServingProfileBodySchema,
           response: { 200: servingProfileResponseSchema },
@@ -527,7 +529,7 @@ export class ChurchAdminController implements FastifyController {
       '/ministries/:ministryId/default-direction',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['planning'],
           operationId: 'setMinistryDefaultDirection',
           body: setDefaultDirectionBodySchema,
           response: { 200: ministryResponseSchema },

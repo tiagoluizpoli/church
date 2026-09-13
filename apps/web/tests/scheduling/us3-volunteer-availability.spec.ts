@@ -84,7 +84,7 @@ async function fireAvailabilityForMinistry({
   ministryId,
 }: FireAvailabilityForMinistryParams): Promise<void> {
   const participationResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/leader/cycles/${cycleId}/participation`,
+    `${SERVER_URL}/api/v1/tailoring/cycles/${cycleId}/participation`,
     { params: { ministryId } },
   );
   expect(participationResponse.ok()).toBeTruthy();
@@ -97,7 +97,7 @@ async function fireAvailabilityForMinistry({
 
   for (const eventView of participation.events) {
     const fireResponse = await page.request.post(
-      `${SERVER_URL}/api/v1/leader/participations/${eventView.participation.id}/fire-availability`,
+      `${SERVER_URL}/api/v1/tailoring/participations/${eventView.participation.id}/fire-availability`,
     );
     expect(fireResponse.ok()).toBeTruthy();
   }

@@ -7,11 +7,11 @@ import {
   it,
   vi,
 } from 'vitest';
-import { LeaderRosteringController } from '../../src/api/controllers/leader-rostering-controller';
-import { Assignment } from '../../src/domain/entities/assignment';
-import { BelowFullPublishError } from '../../src/domain/errors/below-full-publish';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { Assignment } from '../../domain/entities/assignment';
+import { BelowFullPublishError } from '../../domain/errors/below-full-publish';
+import { createFastify } from '../../main/fastify/setup';
+import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { LeaderRosteringController } from './leader-rostering-controller';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -29,6 +29,8 @@ const participationManager = {
   listEligibleVolunteers: vi.fn(),
   getCompletion: vi.fn(),
   publish: vi.fn(),
+  getCycleBuilderData: vi.fn(),
+  publishCycle: vi.fn(),
 };
 
 const assignmentManager = {
@@ -42,9 +44,10 @@ const activeChurchResolver = {
   resolve: vi.fn(),
 };
 
-const rbacGuard = {
+const authorityGuard = {
   canManageParticipation: vi.fn(),
   canManageShift: vi.fn(),
+  canManageMinistry: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -55,7 +58,7 @@ beforeAll(async () => {
     participationManager as never,
     assignmentManager as never,
     activeChurchResolver as never,
-    rbacGuard as never,
+    authorityGuard as never,
   );
   await app.register(
     async (instance) => {
@@ -84,15 +87,28 @@ beforeEach(() => {
     volunteerId: '44444444-4444-4444-8444-444444444444',
     autoSelected: false,
   });
-  rbacGuard.canManageParticipation.mockResolvedValue(true);
-  rbacGuard.canManageShift.mockResolvedValue(true);
+  authorityGuard.canManageParticipation.mockResolvedValue(true);
+  authorityGuard.canManageShift.mockResolvedValue(true);
+  authorityGuard.canManageMinistry.mockResolvedValue(true);
   assignmentManager.getAssignment.mockResolvedValue({
     shiftId: '66666666-6666-6666-8666-666666666666',
   });
 });
 
-describe('Leader rostering routes', () => {
-  it('GET /api/v1/leader/shifts/:id/eligible-volunteers returns ranked volunteers', async () => {
+describe('Rostering routes', () => {
+  it('returns 401 for any route when there is no session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(participationManager.listEligibleVolunteers).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/v1/rostering/shifts/:id/eligible-volunteers returns ranked volunteers', async () => {
     participationManager.listEligibleVolunteers.mockResolvedValue([
       {
         volunteerId: 'vol-1',
@@ -108,7 +124,7 @@ describe('Leader rostering routes', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/leader/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
+      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
     });
 
     expect(response.statusCode).toBe(200);
@@ -128,7 +144,7 @@ describe('Leader rostering routes', () => {
     });
   });
 
-  it('POST /api/v1/leader/shifts/:id/assignments returns 201 with warnings', async () => {
+  it('POST /api/v1/rostering/shifts/:id/assignments returns 201 with warnings', async () => {
     assignmentManager.createParticipationAssignment.mockResolvedValue({
       assignment: new Assignment(
         {
@@ -153,7 +169,7 @@ describe('Leader rostering routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: {
         volunteerId: 'vol-1',
         roleId: 'role-1',
@@ -184,10 +200,10 @@ describe('Leader rostering routes', () => {
     });
   });
 
-  it('POST /api/v1/leader/participations/:id/publish returns 204 and 409 below-full without confirm', async () => {
+  it('POST /api/v1/rostering/participations/:id/publish returns 204 and 409 below-full without confirm', async () => {
     const okResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/participations/22222222-2222-2222-8222-222222222222/publish',
+      url: '/api/v1/rostering/participations/22222222-2222-2222-8222-222222222222/publish',
       payload: { confirmBelowFull: true },
     });
 
@@ -199,7 +215,7 @@ describe('Leader rostering routes', () => {
 
     const blockedResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/participations/22222222-2222-2222-8222-222222222222/publish',
+      url: '/api/v1/rostering/participations/22222222-2222-2222-8222-222222222222/publish',
       payload: {},
     });
 
@@ -210,7 +226,7 @@ describe('Leader rostering routes', () => {
     });
   });
 
-  it('PATCH /api/v1/leader/assignments/:id/reassign returns 200 with the new assignment', async () => {
+  it('PATCH /api/v1/rostering/assignments/:id/reassign returns 200 with the new assignment', async () => {
     assignmentManager.reassignParticipationAssignment.mockResolvedValue(
       new Assignment(
         {
@@ -228,7 +244,7 @@ describe('Leader rostering routes', () => {
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/leader/assignments/assign-1/reassign',
+      url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
         reason: 'Original volunteer became unavailable',
@@ -249,12 +265,12 @@ describe('Leader rostering routes', () => {
     });
   });
 
-  it('PATCH /api/v1/leader/assignments/:id/reassign returns 403 for another ministry scope', async () => {
-    rbacGuard.canManageShift.mockResolvedValue(false);
+  it('PATCH /api/v1/rostering/assignments/:id/reassign returns 403 for another ministry scope', async () => {
+    authorityGuard.canManageShift.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/leader/assignments/assign-1/reassign',
+      url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
         reason: 'Original volunteer became unavailable',
@@ -271,12 +287,12 @@ describe('Leader rostering routes', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/leader/shifts/:id/assignments returns 403 for another ministry scope', async () => {
-    rbacGuard.canManageShift.mockResolvedValue(false);
+  it('POST /api/v1/rostering/shifts/:id/assignments returns 403 for another ministry scope', async () => {
+    authorityGuard.canManageShift.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: {
         volunteerId: 'vol-1',
         roleId: 'role-1',
@@ -293,12 +309,12 @@ describe('Leader rostering routes', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('PATCH /api/v1/leader/assignments/:id/reassign denies when the Assignment has no Shift scope', async () => {
+  it('PATCH /api/v1/rostering/assignments/:id/reassign denies when the Assignment has no Shift scope', async () => {
     assignmentManager.getAssignment.mockResolvedValue({ shiftId: undefined });
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/leader/assignments/assign-1/reassign',
+      url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
         reason: 'Original volunteer became unavailable',
@@ -306,9 +322,50 @@ describe('Leader rostering routes', () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(rbacGuard.canManageShift).not.toHaveBeenCalled();
+    expect(authorityGuard.canManageShift).not.toHaveBeenCalled();
     expect(
       assignmentManager.reassignParticipationAssignment,
     ).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/v1/rostering/cycles/:id/builder allows a Ministry leader and denies a non-leader', async () => {
+    participationManager.getCycleBuilderData.mockResolvedValue({
+      events: [],
+      roles: [],
+    });
+
+    const allowed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+    expect(allowed.statusCode).toBe(200);
+
+    authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
+    const denied = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: 'Not a leader of this ministry',
+    });
+  });
+
+  it('POST /api/v1/rostering/cycles/:id/publish denies a non-leader of the ministry', async () => {
+    authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/publish?ministryId=22222222-2222-2222-8222-222222222222',
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: 'Not a leader of this ministry',
+    });
+    expect(participationManager.publishCycle).not.toHaveBeenCalled();
   });
 });

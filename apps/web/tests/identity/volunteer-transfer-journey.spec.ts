@@ -147,10 +147,9 @@ async function mintMinistryInvitation({
   email,
   roleIds,
 }: MintMinistryInvitationInput): Promise<MintedMinistryInvitation> {
-  const res = await ctx.post(
-    `/api/v1/admin/ministries/${ministryId}/invitations`,
-    { data: { email, ministryAccessLevel: 'volunteer', roleIds } },
-  );
+  const res = await ctx.post(`/api/v1/ministries/${ministryId}/invitations`, {
+    data: { email, ministryAccessLevel: 'volunteer', roleIds },
+  });
   await assertOk({ res, action: `mint a Ministry invitation for ${email}` });
   return (await res.json()) as MintedMinistryInvitation;
 }
@@ -275,7 +274,7 @@ async function makeChurchBAssignableSeat({
   // for this event the first time it is read — there is no separate "create
   // participation" endpoint (data-model.md, 023-event-builder).
   const builderRes = await churchBAdminCtx.get(
-    `/api/v1/leader/cycles/${cycleId}/builder?ministryId=${CHURCH_B_MINISTRY_ID}`,
+    `/api/v1/rostering/cycles/${cycleId}/builder?ministryId=${CHURCH_B_MINISTRY_ID}`,
   );
   await assertOk({ res: builderRes, action: 'read Church B cycle builder' });
   const builderBefore = (await builderRes.json()) as CycleBuilderResponse;
@@ -286,13 +285,13 @@ async function makeChurchBAssignableSeat({
     throw new Error('Church B event missing from the builder read.');
 
   const inclusionRes = await churchBAdminCtx.put(
-    `/api/v1/leader/participations/${eventView.participation.id}/inclusions`,
+    `/api/v1/tailoring/participations/${eventView.participation.id}/inclusions`,
     { data: { timeSlotIds: [slotId] } },
   );
   await assertOk({ res: inclusionRes, action: 'include Church B time slot' });
 
   const builderAfterRes = await churchBAdminCtx.get(
-    `/api/v1/leader/cycles/${cycleId}/builder?ministryId=${CHURCH_B_MINISTRY_ID}`,
+    `/api/v1/rostering/cycles/${cycleId}/builder?ministryId=${CHURCH_B_MINISTRY_ID}`,
   );
   await assertOk({
     res: builderAfterRes,
@@ -303,7 +302,7 @@ async function makeChurchBAssignableSeat({
   if (!shiftId) throw new Error('Church B shift was not auto-created.');
 
   const requirementRes = await churchBAdminCtx.put(
-    `/api/v1/leader/shifts/${shiftId}/requirements`,
+    `/api/v1/tailoring/shifts/${shiftId}/requirements`,
     { data: { roleId: CHURCH_B_ROLE_USHER_ID, requiredCount: 1 } },
   );
   await assertOk({ res: requirementRes, action: 'set Church B requirement' });
@@ -383,7 +382,7 @@ async function bootstrapDualMember({
   }
 
   const assignmentRes = await churchBAdminCtx.post(
-    `/api/v1/leader/shifts/${churchBShiftId}/assignments`,
+    `/api/v1/rostering/shifts/${churchBShiftId}/assignments`,
     {
       data: { volunteerId: churchBVolunteerId, roleId: CHURCH_B_ROLE_USHER_ID },
     },

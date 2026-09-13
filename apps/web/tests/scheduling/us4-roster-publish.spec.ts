@@ -91,11 +91,11 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(
-      `${SERVER_URL}/api/v1/leader/cycles/${PLANNING_CYCLE_ID}/participation`,
+      `${SERVER_URL}/api/v1/tailoring/cycles/${PLANNING_CYCLE_ID}/participation`,
       { params: { ministryId: WORSHIP_MINISTRY_ID } },
     ),
     page.request.get(
-      `${SERVER_URL}/api/v1/leader/cycles/${PLANNING_CYCLE_ID}/participation`,
+      `${SERVER_URL}/api/v1/tailoring/cycles/${PLANNING_CYCLE_ID}/participation`,
       { params: { ministryId: CARE_MINISTRY_ID } },
     ),
   ]);

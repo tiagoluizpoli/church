@@ -22,26 +22,14 @@ afterAll(async () => {
   await app.close();
 });
 
-const UNAUTH_ROUTES: Array<{
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  url: string;
-}> = [
-  { method: 'GET', url: '/api/v1/admin/schedule-builder' },
-  { method: 'GET', url: '/api/v1/admin/events' },
-  { method: 'POST', url: '/api/v1/admin/events/some-id/cancel' },
-  { method: 'POST', url: '/api/v1/admin/events/some-id/reminders' },
-  { method: 'POST', url: '/api/v1/admin/events/some-id/slots' },
-  { method: 'PATCH', url: '/api/v1/admin/events/some-id/slots/slot-id' },
-  { method: 'DELETE', url: '/api/v1/admin/events/some-id/slots/slot-id' },
-  { method: 'POST', url: '/api/v1/admin/events/some-id/slots/generate' },
-  {
-    method: 'PUT',
-    url: '/api/v1/admin/events/some-id/slots/slot-id/requirements',
-  },
+const ROUTES: Array<{ method: 'GET' | 'POST' | 'DELETE'; url: string }> = [
+  { method: 'POST', url: '/api/v1/assignments' },
+  { method: 'DELETE', url: '/api/v1/assignments/some-id' },
+  { method: 'GET', url: '/api/v1/assignments/some-id/audit' },
 ];
 
-describe('Admin event routes authentication (T056)', () => {
-  for (const { method, url } of UNAUTH_ROUTES) {
+describe('Assignment routes authentication (T064)', () => {
+  for (const { method, url } of ROUTES) {
     it(`${method} ${url} returns 401 without auth`, async () => {
       const res = await app.inject({ method, url });
       expect(res.statusCode).toBe(401);

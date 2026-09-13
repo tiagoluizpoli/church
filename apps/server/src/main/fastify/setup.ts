@@ -94,7 +94,25 @@ export async function createFastify() {
     openapi: {
       info: { title: 'Church API', version: '1.0.0' },
       tags: [
-        { name: 'admin', description: 'Admin and leader endpoints' },
+        { name: 'events', description: 'Event management endpoints' },
+        { name: 'time-slots', description: 'Event TimeSlot endpoints' },
+        { name: 'assignments', description: 'Assignment endpoints' },
+        {
+          name: 'ministries',
+          description: 'Ministry and invitation endpoints',
+        },
+        {
+          name: 'planning',
+          description: 'Church-administration planning endpoints',
+        },
+        {
+          name: 'tailoring',
+          description: 'MinistryParticipation tailoring endpoints',
+        },
+        {
+          name: 'rostering',
+          description: 'Cycle and shift rostering endpoints',
+        },
         { name: 'volunteer', description: 'Volunteer-facing endpoints' },
         { name: 'feature-flags', description: 'Feature flag endpoints' },
       ],

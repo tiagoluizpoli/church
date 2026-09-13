@@ -104,7 +104,7 @@ interface DenyShiftScopeInput {
 
 @injectable()
 export class LeaderRosteringController implements FastifyController {
-  readonly prefix = '/leader';
+  readonly prefix = '/rostering';
 
   constructor(
     @inject('IParticipationManager')
@@ -130,7 +130,7 @@ export class LeaderRosteringController implements FastifyController {
       '/cycles/:cycleId/builder',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'getCycleBuilderData',
           querystring: cycleMinistryQuerySchema,
           response: {
@@ -169,7 +169,7 @@ export class LeaderRosteringController implements FastifyController {
       '/cycles/:cycleId/audit',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'getCycleAuditLog',
           querystring: cycleMinistryQuerySchema,
           response: {
@@ -207,7 +207,7 @@ export class LeaderRosteringController implements FastifyController {
       '/cycles/:cycleId/publish',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'publishCycle',
           querystring: cycleMinistryQuerySchema,
           body: publishCycleBodySchema,
@@ -249,7 +249,7 @@ export class LeaderRosteringController implements FastifyController {
       '/shifts/:shiftId/eligible-volunteers',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'listEligibleVolunteers',
           response: {
             200: eligibleVolunteerListResponseSchema,
@@ -277,7 +277,7 @@ export class LeaderRosteringController implements FastifyController {
       '/shifts/:shiftId/assignments',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'createParticipationAssignment',
           body: createParticipationAssignmentBodySchema,
           response: {
@@ -312,7 +312,7 @@ export class LeaderRosteringController implements FastifyController {
       '/assignments/:assignmentId',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'deleteParticipationAssignment',
           response: { 204: z.null(), 403: errorResponseSchema },
         },
@@ -339,7 +339,7 @@ export class LeaderRosteringController implements FastifyController {
       '/assignments/:assignmentId/reassign',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'reassignParticipationAssignment',
           body: reassignAssignmentBodySchema,
           response: {
@@ -374,7 +374,7 @@ export class LeaderRosteringController implements FastifyController {
       '/participations/:participationId/completion',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'getParticipationCompletion',
           response: {
             200: participationCompletionResponseSchema,
@@ -403,7 +403,7 @@ export class LeaderRosteringController implements FastifyController {
       '/participations/:participationId/publish',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'publishParticipation',
           body: publishParticipationBodySchema,
           response: { 204: z.null(), 403: errorResponseSchema },

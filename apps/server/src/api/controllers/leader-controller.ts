@@ -89,7 +89,7 @@ const errorResponseSchema = z.object({
 
 @injectable()
 export class LeaderController implements FastifyController {
-  readonly prefix = '/leader';
+  readonly prefix = '/tailoring';
 
   constructor(
     @inject('IParticipationManager')
@@ -115,7 +115,7 @@ export class LeaderController implements FastifyController {
       '/cycles/:cycleId/participation',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'getCycleParticipation',
           querystring: cycleParticipationQuerySchema,
           response: {
@@ -153,7 +153,7 @@ export class LeaderController implements FastifyController {
       '/ministries/:ministryId/cycles-summary',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'listMinistryCycleSummaries',
           response: {
             200: ministryCycleSummaryListResponseSchema,
@@ -192,7 +192,7 @@ export class LeaderController implements FastifyController {
       '/participations/:participationId/inclusions',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'setParticipationInclusions',
           body: setInclusionsBodySchema,
         },
@@ -220,7 +220,7 @@ export class LeaderController implements FastifyController {
       '/participations/:participationId/slots/:timeSlotId/shifts',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'splitParticipationShifts',
           body: splitShiftsBodySchema,
           response: { 201: shiftListResponseSchema },
@@ -253,7 +253,7 @@ export class LeaderController implements FastifyController {
       '/shifts/:shiftId',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'updateShift',
           body: updateShiftBodySchema,
           response: { 200: shiftResponseSchema },
@@ -278,7 +278,7 @@ export class LeaderController implements FastifyController {
 
     app.delete(
       '/shifts/:shiftId',
-      { schema: { tags: ['admin'], operationId: 'deleteShift' } },
+      { schema: { tags: ['tailoring'], operationId: 'deleteShift' } },
       async (request, reply) => {
         const { shiftId } = request.params as ShiftRouteParams;
         const denied = await this.denyShiftScope({ request, reply, shiftId });
@@ -296,7 +296,7 @@ export class LeaderController implements FastifyController {
       '/shifts/:shiftId/requirements',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'upsertShiftRequirement',
           body: shiftRequirementBodySchema,
           response: { 200: shiftRequirementResponseSchema },
@@ -326,7 +326,7 @@ export class LeaderController implements FastifyController {
       '/participations/:participationId/fire-availability',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'fireAvailability',
           response: { 202: fireAvailabilityResponseSchema },
         },
@@ -352,7 +352,7 @@ export class LeaderController implements FastifyController {
       '/cycles/:cycleId/availability-status',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'getCycleAvailabilityStatus',
           querystring: cycleParticipationQuerySchema,
           response: {
@@ -398,7 +398,7 @@ export class LeaderController implements FastifyController {
       '/participations/:participationId/availability-status',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'getAvailabilityStatus',
           response: { 200: availabilityStatusResponseSchema },
         },
@@ -431,7 +431,7 @@ export class LeaderController implements FastifyController {
       '/participations/:participationId/resend-availability',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['tailoring'],
           operationId: 'resendAvailabilityReminder',
         },
       },

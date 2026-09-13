@@ -7,12 +7,12 @@ import {
   it,
   vi,
 } from 'vitest';
-import { LeaderController } from '../../src/api/controllers/leader-controller';
-import { Shift } from '../../src/domain/entities/shift';
-import { IllegalStateTransitionError } from '../../src/domain/errors/illegal-state-transition';
-import { ShiftOutOfBoundsError } from '../../src/domain/errors/shift-out-of-bounds';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { Shift } from '../../domain/entities/shift';
+import { IllegalStateTransitionError } from '../../domain/errors/illegal-state-transition';
+import { ShiftOutOfBoundsError } from '../../domain/errors/shift-out-of-bounds';
+import { createFastify } from '../../main/fastify/setup';
+import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { LeaderController } from './leader-controller';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -46,7 +46,7 @@ const activeChurchResolver = {
   resolve: vi.fn(),
 };
 
-const rbacGuard = {
+const authorityGuard = {
   canManageMinistry: vi.fn(),
   canManageParticipation: vi.fn(),
   canManageShift: vi.fn(),
@@ -87,7 +87,7 @@ beforeAll(async () => {
     participationManager as never,
     availabilityCheckManager as never,
     activeChurchResolver as never,
-    rbacGuard as never,
+    authorityGuard as never,
   );
   await app.register(
     async (instance) => {
@@ -113,18 +113,30 @@ beforeEach(() => {
   activeChurchResolver.resolve.mockResolvedValue(
     createActiveChurchResolution(),
   );
-  rbacGuard.canManageMinistry.mockResolvedValue(true);
-  rbacGuard.canManageParticipation.mockResolvedValue(true);
-  rbacGuard.canManageShift.mockResolvedValue(true);
+  authorityGuard.canManageMinistry.mockResolvedValue(true);
+  authorityGuard.canManageParticipation.mockResolvedValue(true);
+  authorityGuard.canManageShift.mockResolvedValue(true);
 });
 
-describe('Leader participation routes', () => {
-  it('POST /api/v1/leader/participations/:id/slots/:slotId/shifts returns 201', async () => {
+describe('Tailoring participation routes', () => {
+  it('returns 401 for any route when there is no session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tailoring/participations/22222222-2222-2222-8222-222222222222/fire-availability',
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(availabilityCheckManager.fireAvailability).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/v1/tailoring/participations/:id/slots/:slotId/shifts returns 201', async () => {
     participationManager.splitShifts.mockResolvedValue([createShift()]);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
+      url: '/api/v1/tailoring/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
       payload: {
         strategy: {
           kind: 'equal-n',
@@ -148,14 +160,14 @@ describe('Leader participation routes', () => {
     });
   });
 
-  it('POST /api/v1/leader/participations/:id/slots/:slotId/shifts returns 409 for out-of-bounds splits', async () => {
+  it('POST /api/v1/tailoring/participations/:id/slots/:slotId/shifts returns 409 for out-of-bounds splits', async () => {
     participationManager.splitShifts.mockRejectedValue(
       new ShiftOutOfBoundsError(),
     );
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
+      url: '/api/v1/tailoring/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
       payload: {
         strategy: {
           kind: 'manual',
@@ -176,12 +188,12 @@ describe('Leader participation routes', () => {
     });
   });
 
-  it('POST /api/v1/leader/participations/:id/slots/:slotId/shifts returns 403 for another ministry scope', async () => {
-    rbacGuard.canManageParticipation.mockResolvedValue(false);
+  it('POST /api/v1/tailoring/participations/:id/slots/:slotId/shifts returns 403 for another ministry scope', async () => {
+    authorityGuard.canManageParticipation.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
+      url: '/api/v1/tailoring/participations/22222222-2222-2222-8222-222222222222/slots/33333333-3333-3333-8333-333333333333/shifts',
       payload: {
         strategy: {
           kind: 'equal-n',
@@ -198,7 +210,7 @@ describe('Leader participation routes', () => {
     expect(participationManager.splitShifts).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/leader/participations/:id/fire-availability returns 202', async () => {
+  it('POST /api/v1/tailoring/participations/:id/fire-availability returns 202', async () => {
     availabilityCheckManager.fireAvailability.mockResolvedValue({
       createdCheckCount: 4,
       notifiedVolunteerCount: 4,
@@ -206,7 +218,7 @@ describe('Leader participation routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/participations/22222222-2222-2222-8222-222222222222/fire-availability',
+      url: '/api/v1/tailoring/participations/22222222-2222-2222-8222-222222222222/fire-availability',
     });
 
     expect(response.statusCode).toBe(202);
@@ -216,14 +228,14 @@ describe('Leader participation routes', () => {
     });
   });
 
-  it('POST /api/v1/leader/participations/:id/fire-availability returns 409 for wrong state', async () => {
+  it('POST /api/v1/tailoring/participations/:id/fire-availability returns 409 for wrong state', async () => {
     availabilityCheckManager.fireAvailability.mockRejectedValue(
       new IllegalStateTransitionError('availability_fired', 'fire'),
     );
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/leader/participations/22222222-2222-2222-8222-222222222222/fire-availability',
+      url: '/api/v1/tailoring/participations/22222222-2222-2222-8222-222222222222/fire-availability',
     });
 
     expect(response.statusCode).toBe(409);
@@ -233,7 +245,7 @@ describe('Leader participation routes', () => {
     });
   });
 
-  it('GET /api/v1/leader/cycles/:id/availability-status returns 200', async () => {
+  it('GET /api/v1/tailoring/cycles/:id/availability-status returns 200', async () => {
     availabilityCheckManager.listCycleCheckStatuses.mockResolvedValue([
       {
         volunteerId: 'vol-1',
@@ -249,7 +261,7 @@ describe('Leader participation routes', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/leader/cycles/11111111-1111-1111-8111-111111111111/availability-status?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/tailoring/cycles/11111111-1111-1111-8111-111111111111/availability-status?ministryId=22222222-2222-2222-8222-222222222222',
     });
 
     expect(response.statusCode).toBe(200);
@@ -269,7 +281,7 @@ describe('Leader participation routes', () => {
     });
   });
 
-  it('GET /api/v1/leader/ministries/:ministryId/cycles-summary returns 200 matching the DTO schema', async () => {
+  it('GET /api/v1/tailoring/ministries/:ministryId/cycles-summary returns 200 matching the DTO schema', async () => {
     participationManager.listMinistryCycleSummaries.mockResolvedValue([
       {
         cycleId: '11111111-1111-1111-8111-111111111111',
@@ -287,7 +299,7 @@ describe('Leader participation routes', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/leader/ministries/22222222-2222-2222-8222-222222222222/cycles-summary',
+      url: '/api/v1/tailoring/ministries/22222222-2222-2222-8222-222222222222/cycles-summary',
     });
 
     expect(response.statusCode).toBe(200);
@@ -315,12 +327,12 @@ describe('Leader participation routes', () => {
     });
   });
 
-  it('GET /api/v1/leader/ministries/:ministryId/cycles-summary returns 403 for a non-leader of the ministry', async () => {
-    rbacGuard.canManageMinistry.mockResolvedValue(false);
+  it('GET /api/v1/tailoring/ministries/:ministryId/cycles-summary returns 403 for a non-leader of the ministry', async () => {
+    authorityGuard.canManageMinistry.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/leader/ministries/22222222-2222-2222-8222-222222222222/cycles-summary',
+      url: '/api/v1/tailoring/ministries/22222222-2222-2222-8222-222222222222/cycles-summary',
     });
 
     expect(response.statusCode).toBe(403);

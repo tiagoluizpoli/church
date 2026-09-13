@@ -47,7 +47,7 @@ async function mintInvitation({
     storageState: CHURCH_ADMIN_STORAGE_STATE,
   });
   const res = await adminCtx.post(
-    `/api/v1/admin/ministries/${ministryId}/invitations`,
+    `/api/v1/ministries/${ministryId}/invitations`,
     { data: { email, ministryAccessLevel: 'volunteer', roleIds } },
   );
   if (!res.ok()) {

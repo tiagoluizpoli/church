@@ -90,6 +90,9 @@ export class EventController implements FastifyController {
         schema: {
           tags: ['events'],
           operationId: 'getScheduleBuilderData',
+          summary: 'Get schedule builder data for an Event',
+          description:
+            'Get the TimeSlots, Shifts, and eligible Volunteers needed to build a schedule for an Event.',
           query: z.object({
             eventId: z.string(),
             ministryId: z.string().optional(),
@@ -124,6 +127,9 @@ export class EventController implements FastifyController {
         schema: {
           tags: ['events'],
           operationId: 'listEvents',
+          summary: "List a Ministry's Events",
+          description:
+            'List Events for a Ministry, optionally filtered by status.',
           query: listEventsQuerySchema,
           response: { 200: eventListResponseSchema },
         },
@@ -148,7 +154,14 @@ export class EventController implements FastifyController {
 
     app.post(
       '/:eventId/cancel',
-      { schema: { tags: ['events'], operationId: 'cancelEvent' } },
+      {
+        schema: {
+          tags: ['events'],
+          operationId: 'cancelEvent',
+          summary: 'Cancel an Event',
+          description: 'Cancel an Event.',
+        },
+      },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
         const denied = await denyEventScope({
@@ -169,7 +182,15 @@ export class EventController implements FastifyController {
 
     app.post(
       '/:eventId/reminders',
-      { schema: { tags: ['events'], operationId: 'sendReminders' } },
+      {
+        schema: {
+          tags: ['events'],
+          operationId: 'sendReminders',
+          summary: 'Send Event reminders',
+          description:
+            'Send an availability reminder VolunteerNotification for an Event.',
+        },
+      },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
         const denied = await denyEventScope({

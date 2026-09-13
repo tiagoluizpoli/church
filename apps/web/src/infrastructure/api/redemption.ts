@@ -25,6 +25,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getRedemption = () => {
+/**
+ * Get the public, unauthenticated preview of a Church Invitation for an unregistered recipient.
+ * @summary Preview a Church Invitation
+ */
 const previewChurchInvitation = (
     invitationId: string,
  ) => {
@@ -33,7 +37,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const requestChurchInvitationVerificationCode = (
+  /**
+ * Send a one-time verification code to the invited recipient's email so they can redeem their Church Invitation.
+ * @summary Request a Church Invitation verification code
+ */
+const requestChurchInvitationVerificationCode = (
     invitationId: string,
  ) => {
       return apiClient<RequestChurchInvitationVerificationCode200>(
@@ -41,7 +49,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const redeemChurchInvitation = (
+  /**
+ * Verify the code and create a new User account that redeems a Church Invitation, admitting it as a Church Member.
+ * @summary Redeem a Church Invitation as a new User
+ */
+const redeemChurchInvitation = (
     invitationId: string,
     redeemChurchInvitationBody: RedeemChurchInvitationBody,
  ) => {
@@ -52,7 +64,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const declineChurchInvitation = (
+  /**
+ * Decline a Church Invitation as its authenticated recipient, also declining a chained Ministry Invitation if one is paired with it.
+ * @summary Decline a Church Invitation
+ */
+const declineChurchInvitation = (
     invitationId: string,
  ) => {
       return apiClient<DeclineChurchInvitation200>(
@@ -60,7 +76,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const getMinistryInvitationStatus = (
+  /**
+ * Get an authenticated User's redeemable status and preview for a Ministry Invitation.
+ * @summary Get a Ministry Invitation status
+ */
+const getMinistryInvitationStatus = (
     invitationId: string,
  ) => {
       return apiClient<GetMinistryInvitationStatus200>(
@@ -68,7 +88,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const acceptMinistryInvitation = (
+  /**
+ * Accept a Ministry Invitation as an already-authenticated existing Church Member, granting the stated Ministry Access Level and Roles.
+ * @summary Accept a Ministry Invitation as an existing Church Member
+ */
+const acceptMinistryInvitation = (
     invitationId: string,
     acceptMinistryInvitationBody: AcceptMinistryInvitationBody,
  ) => {
@@ -79,7 +103,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const declineMinistryInvitation = (
+  /**
+ * Decline a Ministry Invitation as its authenticated recipient, also declining a chained Church Invitation if one is paired with it.
+ * @summary Decline a Ministry Invitation
+ */
+const declineMinistryInvitation = (
     invitationId: string,
  ) => {
       return apiClient<DeclineMinistryInvitation200>(
@@ -87,7 +115,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const getVolunteerTransferPreview = (
+  /**
+ * Preview the effect of a Volunteer Transfer triggered by a cross-Church Ministry Invitation redemption: the Church Memberships that would end and the Assignments that would be withdrawn.
+ * @summary Preview a Volunteer Transfer
+ */
+const getVolunteerTransferPreview = (
     invitationId: string,
  ) => {
       return apiClient<GetVolunteerTransferPreview200>(
@@ -95,7 +127,11 @@ const previewChurchInvitation = (
     },
       );
     }
-  const confirmVolunteerTransfer = (
+  /**
+ * Confirm the Volunteer Transfer, retiring the User's Volunteer profile in the source Church and creating a fresh one in the destination Church.
+ * @summary Confirm a Volunteer Transfer
+ */
+const confirmVolunteerTransfer = (
     invitationId: string,
     confirmVolunteerTransferBody: ConfirmVolunteerTransferBody,
  ) => {

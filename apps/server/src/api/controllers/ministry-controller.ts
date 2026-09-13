@@ -83,6 +83,9 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'listMinistries',
+          summary: "List the caller's led Ministries",
+          description:
+            'List the Ministries the current Volunteer leads within the Active Church.',
           response: {
             200: ministryListResponseSchema,
             401: errorResponseSchema,
@@ -119,6 +122,9 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'mintMinistryInvitation',
+          summary: 'Mint a Ministry Invitation',
+          description:
+            'Create a Ministry Invitation granting a Ministry Access Level and Roles to an emailed recipient.',
           body: mintMinistryInvitationBodySchema,
           response: {
             201: ministryInvitationResponseSchema,
@@ -160,6 +166,8 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'resendMinistryInvitation',
+          summary: 'Resend a Ministry Invitation',
+          description: 'Resend the delivery email for a Ministry Invitation.',
           response: {
             200: ministryInvitationResponseSchema,
             404: errorResponseSchema,

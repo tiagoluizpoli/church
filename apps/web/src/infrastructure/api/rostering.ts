@@ -29,6 +29,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getRostering = () => {
+/**
+ * Get a Ministry's roster-building view of a PlanningCycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.
+ * @summary Get cycle builder data for a Ministry
+ */
 const getCycleBuilderData = (
     cycleId: string,
     params: GetCycleBuilderDataParams,
@@ -39,7 +43,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const getCycleAuditLog = (
+  /**
+ * List a Ministry's Assignment audit entries across an entire PlanningCycle.
+ * @summary Get a Ministry's Assignment audit log for a cycle
+ */
+const getCycleAuditLog = (
     cycleId: string,
     params: GetCycleAuditLogParams,
  ) => {
@@ -49,7 +57,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const publishCycle = (
+  /**
+ * Publish every eligible MinistryParticipation in a PlanningCycle for a Ministry in one batch, making its rosters visible to Volunteers.
+ * @summary Publish a Ministry's roster for a cycle
+ */
+const publishCycle = (
     cycleId: string,
     publishCycleBody: PublishCycleBody,
     params: PublishCycleParams,
@@ -62,7 +74,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const listEligibleVolunteers = (
+  /**
+ * List the Volunteers eligible to be assigned to a Shift, for the roster builder.
+ * @summary List eligible Volunteers for a Shift
+ */
+const listEligibleVolunteers = (
     shiftId: string,
  ) => {
       return apiClient<ListEligibleVolunteers200>(
@@ -70,7 +86,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const createParticipationAssignment = (
+  /**
+ * Assign a Volunteer to a Role (and optional Team) within a Shift, optionally overriding a detected conflict.
+ * @summary Assign a Volunteer to a Shift
+ */
+const createParticipationAssignment = (
     shiftId: string,
     createParticipationAssignmentBody: CreateParticipationAssignmentBody,
  ) => {
@@ -81,7 +101,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const deleteParticipationAssignment = (
+  /**
+ * Remove a Volunteer Assignment from its Shift.
+ * @summary Delete an Assignment
+ */
+const deleteParticipationAssignment = (
     assignmentId: string,
  ) => {
       return apiClient<DeleteParticipationAssignment204>(
@@ -89,7 +113,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const reassignParticipationAssignment = (
+  /**
+ * Replace the Volunteer on an existing Assignment, keeping its Shift and Role, and record the reason.
+ * @summary Reassign an Assignment to another Volunteer
+ */
+const reassignParticipationAssignment = (
     assignmentId: string,
     reassignParticipationAssignmentBody: ReassignParticipationAssignmentBody,
  ) => {
@@ -100,7 +128,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const getParticipationCompletion = (
+  /**
+ * Get how fully a MinistryParticipation is staffed against its SlotRequirements.
+ * @summary Get a MinistryParticipation's staffing completion
+ */
+const getParticipationCompletion = (
     participationId: string,
  ) => {
       return apiClient<GetParticipationCompletion200>(
@@ -108,7 +140,11 @@ const getCycleBuilderData = (
     },
       );
     }
-  const publishParticipation = (
+  /**
+ * Publish one Ministry's roster for an Event, making its slice of the schedule visible to its Volunteers.
+ * @summary Publish a single MinistryParticipation
+ */
+const publishParticipation = (
     participationId: string,
     publishParticipationBody: PublishParticipationBody,
  ) => {

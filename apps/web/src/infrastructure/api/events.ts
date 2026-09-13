@@ -17,6 +17,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getEvents = () => {
+/**
+ * Get the TimeSlots, Shifts, and eligible Volunteers needed to build a schedule for an Event.
+ * @summary Get schedule builder data for an Event
+ */
 const getScheduleBuilderData = (
     params: GetScheduleBuilderDataParams,
  ) => {
@@ -26,7 +30,11 @@ const getScheduleBuilderData = (
     },
       );
     }
-  const listEvents = (
+  /**
+ * List Events for a Ministry, optionally filtered by status.
+ * @summary List a Ministry's Events
+ */
+const listEvents = (
     params: ListEventsParams,
  ) => {
       return apiClient<ListEvents200>(
@@ -35,7 +43,11 @@ const getScheduleBuilderData = (
     },
       );
     }
-  const cancelEvent = (
+  /**
+ * Cancel an Event.
+ * @summary Cancel an Event
+ */
+const cancelEvent = (
     eventId: string,
  ) => {
       return apiClient<void>(
@@ -43,7 +55,11 @@ const getScheduleBuilderData = (
     },
       );
     }
-  const sendReminders = (
+  /**
+ * Send an availability reminder VolunteerNotification for an Event.
+ * @summary Send Event reminders
+ */
+const sendReminders = (
     eventId: string,
  ) => {
       return apiClient<void>(

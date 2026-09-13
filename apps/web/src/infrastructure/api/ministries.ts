@@ -17,6 +17,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getMinistries = () => {
+/**
+ * List the Ministries the current Volunteer leads within the Active Church.
+ * @summary List the caller's led Ministries
+ */
 const listMinistries = (
 
  ) => {
@@ -25,7 +29,11 @@ const listMinistries = (
     },
       );
     }
-  const mintMinistryInvitation = (
+  /**
+ * Create a Ministry Invitation granting a Ministry Access Level and Roles to an emailed recipient.
+ * @summary Mint a Ministry Invitation
+ */
+const mintMinistryInvitation = (
     ministryId: string,
     mintMinistryInvitationBody: MintMinistryInvitationBody,
  ) => {
@@ -36,7 +44,11 @@ const listMinistries = (
     },
       );
     }
-  const resendMinistryInvitation = (
+  /**
+ * Resend the delivery email for a Ministry Invitation.
+ * @summary Resend a Ministry Invitation
+ */
+const resendMinistryInvitation = (
     ministryId: string,
     invitationId: string,
  ) => {

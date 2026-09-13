@@ -27,6 +27,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getVolunteer = () => {
+/**
+ * Get the current Volunteer's dashboard summary for the Active Church.
+ * @summary Get the caller's Volunteer dashboard
+ */
 const getVolunteerDashboard = (
 
  ) => {
@@ -35,7 +39,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const getMyAssignments = (
+  /**
+ * List the current Volunteer's upcoming Assignments.
+ * @summary Get the caller's upcoming Assignments
+ */
+const getMyAssignments = (
 
  ) => {
       return apiClient<GetMyAssignments200>(
@@ -43,7 +51,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const getMinistrySchedule = (
+  /**
+ * Get the current Volunteer's published schedule within one Ministry.
+ * @summary Get the caller's published Ministry schedule
+ */
+const getMinistrySchedule = (
     ministryId: string,
  ) => {
       return apiClient<GetMinistrySchedule200>(
@@ -51,7 +63,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const listAvailabilityChecks = (
+  /**
+ * List the current Volunteer's AvailabilityChecks.
+ * @summary List the caller's AvailabilityChecks
+ */
+const listAvailabilityChecks = (
 
  ) => {
       return apiClient<ListAvailabilityChecks200>(
@@ -59,7 +75,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const getAvailabilityCheck = (
+  /**
+ * Get the detail of a single AvailabilityCheck belonging to the current Volunteer.
+ * @summary Get one of the caller's AvailabilityChecks
+ */
+const getAvailabilityCheck = (
     checkId: string,
  ) => {
       return apiClient<GetAvailabilityCheck200>(
@@ -67,7 +87,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const setUnavailabilityMarks = (
+  /**
+ * Record the current Volunteer's unavailability marks — by Shift or by whole CalendarDay — against an AvailabilityCheck.
+ * @summary Set unavailability marks on an AvailabilityCheck
+ */
+const setUnavailabilityMarks = (
     checkId: string,
     setUnavailabilityMarksBody: SetUnavailabilityMarksBody,
  ) => {
@@ -78,7 +102,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const confirmAvailabilityCheck = (
+  /**
+ * Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no marks were left.
+ * @summary Confirm an AvailabilityCheck
+ */
+const confirmAvailabilityCheck = (
     checkId: string,
  ) => {
       return apiClient<void>(
@@ -86,7 +114,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const respondToAssignment = (
+  /**
+ * Record the current Volunteer's accept/decline response to one of their own Assignments.
+ * @summary Respond to an Assignment
+ */
+const respondToAssignment = (
     assignmentId: string,
     respondToAssignmentBody: RespondToAssignmentBody,
  ) => {
@@ -97,7 +129,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const cancelOwnAssignment = (
+  /**
+ * Cancel one of the current Volunteer's own Assignments.
+ * @summary Cancel one of the caller's Assignments
+ */
+const cancelOwnAssignment = (
     assignmentId: string,
  ) => {
       return apiClient<CancelOwnAssignment204>(
@@ -105,7 +141,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const getNotifications = (
+  /**
+ * List the current Volunteer's VolunteerNotifications, paginated by cursor.
+ * @summary List the caller's VolunteerNotifications
+ */
+const getNotifications = (
     params?: GetNotificationsParams,
  ) => {
       return apiClient<GetNotifications200>(
@@ -114,7 +154,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const markNotificationRead = (
+  /**
+ * Mark one of the current Volunteer's VolunteerNotifications as read.
+ * @summary Mark a VolunteerNotification read
+ */
+const markNotificationRead = (
     notificationId: string,
  ) => {
       return apiClient<MarkNotificationRead200>(
@@ -122,7 +166,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const markAllNotificationsRead = (
+  /**
+ * Mark every one of the current Volunteer's VolunteerNotifications as read.
+ * @summary Mark all VolunteerNotifications read
+ */
+const markAllNotificationsRead = (
 
  ) => {
       return apiClient<void>(
@@ -130,7 +178,11 @@ const getVolunteerDashboard = (
     },
       );
     }
-  const getPublishedVolunteerSchedule = (
+  /**
+ * List the current Volunteer's Assignments from published MinistryParticipations.
+ * @summary Get the caller's published schedule
+ */
+const getPublishedVolunteerSchedule = (
 
  ) => {
       return apiClient<GetPublishedVolunteerSchedule200>(

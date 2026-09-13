@@ -18,6 +18,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getAssignments = () => {
+/**
+ * Assign a Volunteer to a Role within a TimeSlot, rejecting the request if the caller does not manage that TimeSlot.
+ * @summary Create an Assignment
+ */
 const createAssignment = (
     createAssignmentBody: CreateAssignmentBody,
  ) => {
@@ -28,7 +32,11 @@ const createAssignment = (
     },
       );
     }
-  const overrideAssignment = (
+  /**
+ * Record an override reason against an existing Assignment in its audit log.
+ * @summary Override an Assignment
+ */
+const overrideAssignment = (
     assignmentId: string,
     overrideAssignmentBody: OverrideAssignmentBody,
  ) => {
@@ -39,7 +47,11 @@ const createAssignment = (
     },
       );
     }
-  const deleteAssignment = (
+  /**
+ * Remove a Volunteer Assignment from its TimeSlot.
+ * @summary Delete an Assignment
+ */
+const deleteAssignment = (
     assignmentId: string,
  ) => {
       return apiClient<void>(
@@ -47,7 +59,11 @@ const createAssignment = (
     },
       );
     }
-  const getAssignmentAudit = (
+  /**
+ * List the recorded audit entries for a single Assignment.
+ * @summary Get an Assignment's audit log
+ */
+const getAssignmentAudit = (
     assignmentId: string,
  ) => {
       return apiClient<GetAssignmentAudit200>(

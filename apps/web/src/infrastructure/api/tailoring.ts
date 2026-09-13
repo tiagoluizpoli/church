@@ -27,6 +27,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getTailoring = () => {
+/**
+ * Get a Ministry's MinistryParticipation tailoring state across every Event in a PlanningCycle.
+ * @summary Get a Ministry's tailoring view of a cycle
+ */
 const getCycleParticipation = (
     cycleId: string,
     params: GetCycleParticipationParams,
@@ -37,7 +41,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const listMinistryCycleSummaries = (
+  /**
+ * List summaries of a Ministry's MinistryParticipation tailoring progress across its PlanningCycles.
+ * @summary List a Ministry's cycle tailoring summaries
+ */
+const listMinistryCycleSummaries = (
     ministryId: string,
  ) => {
       return apiClient<ListMinistryCycleSummaries200>(
@@ -45,7 +53,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const setParticipationInclusions = (
+  /**
+ * Replace the set of TimeSlots a Ministry is opted into for a MinistryParticipation.
+ * @summary Set a MinistryParticipation's included TimeSlots
+ */
+const setParticipationInclusions = (
     participationId: string,
     setParticipationInclusionsBody: SetParticipationInclusionsBody,
  ) => {
@@ -56,7 +68,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const splitParticipationShifts = (
+  /**
+ * Split a MinistryParticipation's TimeSlot into Shifts, either into equal parts or by manually-set spans.
+ * @summary Split a TimeSlot into Shifts
+ */
+const splitParticipationShifts = (
     participationId: string,
     timeSlotId: string,
     splitParticipationShiftsBody: SplitParticipationShiftsBody,
@@ -68,7 +84,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const updateShift = (
+  /**
+ * Update a Shift's bounds or label.
+ * @summary Update a Shift
+ */
+const updateShift = (
     shiftId: string,
     updateShiftBody: UpdateShiftBody,
  ) => {
@@ -79,7 +99,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const deleteShift = (
+  /**
+ * Delete a Shift from its MinistryParticipation.
+ * @summary Delete a Shift
+ */
+const deleteShift = (
     shiftId: string,
  ) => {
       return apiClient<void>(
@@ -87,7 +111,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const upsertShiftRequirement = (
+  /**
+ * Set the SlotRequirement headcount for a Role (and optional Team) within a Shift.
+ * @summary Set a Shift staffing requirement
+ */
+const upsertShiftRequirement = (
     shiftId: string,
     upsertShiftRequirementBody: UpsertShiftRequirementBody,
  ) => {
@@ -98,7 +126,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const fireAvailability = (
+  /**
+ * Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_fired.
+ * @summary Fire availability for a MinistryParticipation
+ */
+const fireAvailability = (
     participationId: string,
  ) => {
       return apiClient<FireAvailability202>(
@@ -106,7 +138,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const getCycleAvailabilityStatus = (
+  /**
+ * List a Ministry's Volunteers' AvailabilityCheck states across a PlanningCycle.
+ * @summary Get a Ministry's AvailabilityCheck status for a cycle
+ */
+const getCycleAvailabilityStatus = (
     cycleId: string,
     params: GetCycleAvailabilityStatusParams,
  ) => {
@@ -116,7 +152,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const getAvailabilityStatus = (
+  /**
+ * List the AvailabilityCheck states of a MinistryParticipation's Volunteers.
+ * @summary Get a MinistryParticipation's AvailabilityCheck status
+ */
+const getAvailabilityStatus = (
     participationId: string,
  ) => {
       return apiClient<GetAvailabilityStatus200>(
@@ -124,7 +164,11 @@ const getCycleParticipation = (
     },
       );
     }
-  const resendAvailabilityReminder = (
+  /**
+ * Resend the availability reminder VolunteerNotification to a MinistryParticipation's unconfirmed Volunteers.
+ * @summary Resend an availability reminder
+ */
+const resendAvailabilityReminder = (
     participationId: string,
  ) => {
       return apiClient<void>(

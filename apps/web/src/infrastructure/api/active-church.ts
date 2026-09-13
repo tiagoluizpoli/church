@@ -17,6 +17,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getActiveChurch = () => {
+/**
+ * Resolve the session Active Church, returning its status or a selection_required result when none is set yet.
+ * @summary Get the Active Church status
+ */
 const getActiveChurchStatus = (
 
  ) => {
@@ -25,7 +29,11 @@ const getActiveChurchStatus = (
     },
       );
     }
-  const listActiveChurchOptions = (
+  /**
+ * List the Churches the current User holds Church Membership in and may select as their Active Church.
+ * @summary List selectable Churches
+ */
+const listActiveChurchOptions = (
 
  ) => {
       return apiClient<ListActiveChurchOptions200>(
@@ -33,7 +41,11 @@ const getActiveChurchStatus = (
     },
       );
     }
-  const selectActiveChurch = (
+  /**
+ * Set the session's Active Church to a Church the current User holds Church Membership in.
+ * @summary Select the Active Church
+ */
+const selectActiveChurch = (
     selectActiveChurchBody: SelectActiveChurchBody,
  ) => {
       return apiClient<SelectActiveChurch200>(

@@ -115,6 +115,19 @@ export async function createFastify() {
         },
         { name: 'volunteer', description: 'Volunteer-facing endpoints' },
         { name: 'feature-flags', description: 'Feature flag endpoints' },
+        {
+          name: 'active-church',
+          description: 'Active Church selection endpoints',
+        },
+        {
+          name: 'redemption',
+          description: 'Church and Ministry Invitation redemption endpoints',
+        },
+        {
+          name: 'redemption-debug',
+          description:
+            'Non-production debug endpoints for invitation redemption',
+        },
       ],
     },
     transform: jsonSchemaTransform,

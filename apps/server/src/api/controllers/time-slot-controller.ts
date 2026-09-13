@@ -65,6 +65,8 @@ export class TimeSlotController implements FastifyController {
         schema: {
           tags: ['time-slots'],
           operationId: 'createSlot',
+          summary: 'Create a TimeSlot on an Event',
+          description: 'Create a TimeSlot within an Event.',
           body: createSlotBodySchema,
           response: { 201: timeSlotResponseSchema },
         },
@@ -97,6 +99,8 @@ export class TimeSlotController implements FastifyController {
         schema: {
           tags: ['time-slots'],
           operationId: 'updateSlot',
+          summary: 'Update a TimeSlot',
+          description: "Update a TimeSlot's bounds or label.",
           body: updateSlotBodySchema,
           response: { 200: timeSlotResponseSchema },
         },
@@ -125,7 +129,14 @@ export class TimeSlotController implements FastifyController {
 
     app.delete(
       '/:eventId/slots/:slotId',
-      { schema: { tags: ['time-slots'], operationId: 'deleteSlot' } },
+      {
+        schema: {
+          tags: ['time-slots'],
+          operationId: 'deleteSlot',
+          summary: 'Delete a TimeSlot',
+          description: 'Delete a TimeSlot from an Event.',
+        },
+      },
       async (request, reply) => {
         const { eventId, slotId } = request.params as EventSlotRouteParams;
         const denied = await denyEventScope({
@@ -150,6 +161,9 @@ export class TimeSlotController implements FastifyController {
         schema: {
           tags: ['time-slots'],
           operationId: 'generateSlots',
+          summary: 'Generate TimeSlots for an Event',
+          description:
+            'Generate TimeSlots for an Event, either as an equal split or from a set of manually labelled TimeSlots with their own requirements.',
           body: generateSlotsBodySchema,
           response: { 201: timeSlotListResponseSchema },
         },
@@ -194,6 +208,9 @@ export class TimeSlotController implements FastifyController {
         schema: {
           tags: ['time-slots'],
           operationId: 'upsertSlotRequirement',
+          summary: 'Set a TimeSlot staffing requirement',
+          description:
+            'Set the staffing headcount for a Role (and optional Team) within a TimeSlot.',
           body: slotRequirementBodySchema,
           response: { 200: slotRequirementResponseSchema },
         },

@@ -14,6 +14,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getFeatureFlags = () => {
+/**
+ * Get the resolved feature flag values for the current session, evaluated against the caller's User and Church context where available.
+ * @summary List feature flags
+ */
 const listFeatureFlags = (
 
  ) => {

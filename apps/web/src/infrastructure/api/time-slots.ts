@@ -21,6 +21,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getTimeSlots = () => {
+/**
+ * Create a TimeSlot within an Event.
+ * @summary Create a TimeSlot on an Event
+ */
 const createSlot = (
     eventId: string,
     createSlotBody: CreateSlotBody,
@@ -32,7 +36,11 @@ const createSlot = (
     },
       );
     }
-  const updateSlot = (
+  /**
+ * Update a TimeSlot's bounds or label.
+ * @summary Update a TimeSlot
+ */
+const updateSlot = (
     eventId: string,
     slotId: string,
     updateSlotBody: UpdateSlotBody,
@@ -44,7 +52,11 @@ const createSlot = (
     },
       );
     }
-  const deleteSlot = (
+  /**
+ * Delete a TimeSlot from an Event.
+ * @summary Delete a TimeSlot
+ */
+const deleteSlot = (
     eventId: string,
     slotId: string,
  ) => {
@@ -53,7 +65,11 @@ const createSlot = (
     },
       );
     }
-  const generateSlots = (
+  /**
+ * Generate TimeSlots for an Event, either as an equal split or from a set of manually labelled TimeSlots with their own requirements.
+ * @summary Generate TimeSlots for an Event
+ */
+const generateSlots = (
     eventId: string,
     generateSlotsBody: GenerateSlotsBody,
  ) => {
@@ -64,7 +80,11 @@ const createSlot = (
     },
       );
     }
-  const upsertSlotRequirement = (
+  /**
+ * Set the staffing headcount for a Role (and optional Team) within a TimeSlot.
+ * @summary Set a TimeSlot staffing requirement
+ */
+const upsertSlotRequirement = (
     eventId: string,
     slotId: string,
     upsertSlotRequirementBody: UpsertSlotRequirementBody,

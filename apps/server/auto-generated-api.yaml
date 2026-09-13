@@ -20,8 +20,11 @@ paths:
   /api/v1/active-church/status:
     get:
       operationId: getActiveChurchStatus
+      summary: Get the Active Church status
       tags:
         - active-church
+      description: Resolve the session Active Church, returning its status or a
+        selection_required result when none is set yet.
       responses:
         "200":
           description: Default Response
@@ -61,8 +64,11 @@ paths:
   /api/v1/active-church/options:
     get:
       operationId: listActiveChurchOptions
+      summary: List selectable Churches
       tags:
         - active-church
+      description: List the Churches the current User holds Church Membership in and
+        may select as their Active Church.
       responses:
         "200":
           description: Default Response
@@ -126,8 +132,11 @@ paths:
   /api/v1/active-church/select:
     post:
       operationId: selectActiveChurch
+      summary: Select the Active Church
       tags:
         - active-church
+      description: Set the session's Active Church to a Church the current User holds
+        Church Membership in.
       requestBody:
         required: true
         content:
@@ -193,8 +202,10 @@ paths:
   /api/v1/admin/planning-cycles:
     post:
       operationId: createPlanningCycle
+      summary: Create a PlanningCycle
       tags:
         - planning
+      description: Create a new PlanningCycle spanning a CalendarDay range for the Church.
       requestBody:
         required: true
         content:
@@ -257,8 +268,10 @@ paths:
                 additionalProperties: false
     get:
       operationId: listPlanningCycles
+      summary: List PlanningCycles
       tags:
         - planning
+      description: List the Church PlanningCycles, optionally filtered by state.
       parameters:
         - schema:
             type: string
@@ -318,8 +331,10 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}:
     get:
       operationId: getPlanningCycle
+      summary: Get a PlanningCycle
       tags:
         - planning
+      description: Get the details of a single PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -486,8 +501,10 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/lock:
     post:
       operationId: lockPlanningCycle
+      summary: Lock a PlanningCycle
       tags:
         - planning
+      description: Lock a PlanningCycle, transitioning its Events from draft to scheduled.
       parameters:
         - schema:
             type: string
@@ -500,8 +517,11 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/reopen:
     post:
       operationId: reopenPlanningEvent
+      summary: Reopen an Event for editing
       tags:
         - planning
+      description: Move a scheduled Event in a locked PlanningCycle back to draft so
+        it can be edited.
       parameters:
         - schema:
             type: string
@@ -519,8 +539,11 @@ paths:
   /api/v1/admin/event-templates:
     post:
       operationId: createEventTemplate
+      summary: Create an EventTemplate
       tags:
         - planning
+      description: Create a church-owned EventTemplate with its ordered TimeBlocks for
+        a given weekday.
       requestBody:
         required: true
         content:
@@ -621,8 +644,10 @@ paths:
                 additionalProperties: false
     get:
       operationId: listEventTemplates
+      summary: List EventTemplates
       tags:
         - planning
+      description: List the Church EventTemplates.
       responses:
         "200":
           description: Default Response
@@ -691,8 +716,10 @@ paths:
   /api/v1/admin/event-templates/{templateId}:
     patch:
       operationId: updateEventTemplate
+      summary: Update an EventTemplate
       tags:
         - planning
+      description: Replace an EventTemplate's name, weekday, and TimeBlocks.
       requestBody:
         required: true
         content:
@@ -799,8 +826,10 @@ paths:
                 additionalProperties: false
     delete:
       operationId: deleteEventTemplate
+      summary: Delete an EventTemplate
       tags:
         - planning
+      description: Delete an EventTemplate from the Church.
       parameters:
         - schema:
             type: string
@@ -813,8 +842,11 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/apply-templates:
     post:
       operationId: applyPlanningTemplates
+      summary: Apply EventTemplates to a PlanningCycle
       tags:
         - planning
+      description: Generate one Event per matching CalendarDay in the PlanningCycle
+        for each selected EventTemplate, with one TimeSlot per TimeBlock.
       requestBody:
         required: true
         content:
@@ -854,8 +886,11 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/events:
     post:
       operationId: createPlanningEvent
+      summary: Create a manual Event
       tags:
         - planning
+      description: Create a one-off Event within a PlanningCycle without using an
+        EventTemplate.
       requestBody:
         required: true
         content:
@@ -950,8 +985,10 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}:
     patch:
       operationId: updatePlanningEvent
+      summary: Update an Event
       tags:
         - planning
+      description: Update an Event's title, description, location, or scheduled Instants.
       requestBody:
         required: true
         content:
@@ -1047,8 +1084,10 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/cancel:
     post:
       operationId: cancelPlanningEvent
+      summary: Cancel an Event
       tags:
         - planning
+      description: Cancel an Event within its PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -1066,8 +1105,10 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots:
     post:
       operationId: createPlanningEventSlot
+      summary: Create a TimeSlot on an Event
       tags:
         - planning
+      description: Create a church-level TimeSlot within an Event.
       requestBody:
         required: true
         content:
@@ -1159,8 +1200,10 @@ paths:
   /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots/{slotId}:
     patch:
       operationId: updatePlanningEventSlot
+      summary: Update a TimeSlot
       tags:
         - planning
+      description: Update a TimeSlot's bounds or label.
       requestBody:
         required: true
         content:
@@ -1253,8 +1296,10 @@ paths:
                 additionalProperties: false
     delete:
       operationId: deletePlanningEventSlot
+      summary: Delete a TimeSlot
       tags:
         - planning
+      description: Delete a TimeSlot from an Event.
       parameters:
         - schema:
             type: string
@@ -1277,11 +1322,11 @@ paths:
   /api/v1/admin/ministries/{ministryId}/serving-profile:
     get:
       operationId: getMinistryServingProfile
-      summary: getMinistryServingProfile
+      summary: Get a Ministry's serving profile
       tags:
         - planning
-      description: Get the serving profile for a specific ministry, including roles
-        and teams.
+      description: Get a Ministry's MinistryServingProfile, the standing rule
+        declaring which EventTemplate TimeBlocks it always serves.
       parameters:
         - schema:
             type: string
@@ -1382,8 +1427,11 @@ paths:
                 additionalProperties: false
     put:
       operationId: upsertMinistryServingProfile
+      summary: Set a Ministry's serving profile
       tags:
         - planning
+      description: Replace a Ministry's MinistryServingProfile entries, including
+        which TimeBlocks it serves, its Shift split, and headcounts.
       requestBody:
         required: true
         content:
@@ -1564,8 +1612,11 @@ paths:
   /api/v1/admin/ministries/{ministryId}/default-direction:
     patch:
       operationId: setMinistryDefaultDirection
+      summary: Set a Ministry's default direction
       tags:
         - planning
+      description: Set a Ministry's defaultDirection (all-in or all-out), deciding
+        whether it starts opted into every TimeSlot of a cycle by default.
       requestBody:
         required: true
         content:
@@ -1628,8 +1679,11 @@ paths:
   /api/v1/events/schedule-builder:
     get:
       operationId: getScheduleBuilderData
+      summary: Get schedule builder data for an Event
       tags:
         - events
+      description: Get the TimeSlots, Shifts, and eligible Volunteers needed to build
+        a schedule for an Event.
       parameters:
         - schema:
             type: string
@@ -1909,8 +1963,10 @@ paths:
   /api/v1/events/:
     get:
       operationId: listEvents
+      summary: List a Ministry's Events
       tags:
         - events
+      description: List Events for a Ministry, optionally filtered by status.
       parameters:
         - schema:
             type: string
@@ -1992,8 +2048,10 @@ paths:
   /api/v1/events/{eventId}/cancel:
     post:
       operationId: cancelEvent
+      summary: Cancel an Event
       tags:
         - events
+      description: Cancel an Event.
       parameters:
         - schema:
             type: string
@@ -2006,8 +2064,10 @@ paths:
   /api/v1/events/{eventId}/reminders:
     post:
       operationId: sendReminders
+      summary: Send Event reminders
       tags:
         - events
+      description: Send an availability reminder VolunteerNotification for an Event.
       parameters:
         - schema:
             type: string
@@ -2020,8 +2080,10 @@ paths:
   /api/v1/events/{eventId}/slots:
     post:
       operationId: createSlot
+      summary: Create a TimeSlot on an Event
       tags:
         - time-slots
+      description: Create a TimeSlot within an Event.
       requestBody:
         required: true
         content:
@@ -2108,8 +2170,10 @@ paths:
   /api/v1/events/{eventId}/slots/{slotId}:
     patch:
       operationId: updateSlot
+      summary: Update a TimeSlot
       tags:
         - time-slots
+      description: Update a TimeSlot's bounds or label.
       requestBody:
         required: true
         content:
@@ -2197,8 +2261,10 @@ paths:
                 additionalProperties: false
     delete:
       operationId: deleteSlot
+      summary: Delete a TimeSlot
       tags:
         - time-slots
+      description: Delete a TimeSlot from an Event.
       parameters:
         - schema:
             type: string
@@ -2216,8 +2282,11 @@ paths:
   /api/v1/events/{eventId}/slots/generate:
     post:
       operationId: generateSlots
+      summary: Generate TimeSlots for an Event
       tags:
         - time-slots
+      description: Generate TimeSlots for an Event, either as an equal split or from a
+        set of manually labelled TimeSlots with their own requirements.
       requestBody:
         required: true
         content:
@@ -2362,8 +2431,11 @@ paths:
   /api/v1/events/{eventId}/slots/{slotId}/requirements:
     put:
       operationId: upsertSlotRequirement
+      summary: Set a TimeSlot staffing requirement
       tags:
         - time-slots
+      description: Set the staffing headcount for a Role (and optional Team) within a
+        TimeSlot.
       requestBody:
         required: true
         content:
@@ -2424,8 +2496,11 @@ paths:
   /api/v1/assignments/:
     post:
       operationId: createAssignment
+      summary: Create an Assignment
       tags:
         - assignments
+      description: Assign a Volunteer to a Role within a TimeSlot, rejecting the
+        request if the caller does not manage that TimeSlot.
       requestBody:
         required: true
         content:
@@ -2493,8 +2568,11 @@ paths:
   /api/v1/assignments/{assignmentId}/override:
     post:
       operationId: overrideAssignment
+      summary: Override an Assignment
       tags:
         - assignments
+      description: Record an override reason against an existing Assignment in its
+        audit log.
       requestBody:
         required: true
         content:
@@ -2531,8 +2609,10 @@ paths:
   /api/v1/assignments/{assignmentId}:
     delete:
       operationId: deleteAssignment
+      summary: Delete an Assignment
       tags:
         - assignments
+      description: Remove a Volunteer Assignment from its TimeSlot.
       parameters:
         - schema:
             type: string
@@ -2545,8 +2625,10 @@ paths:
   /api/v1/assignments/{assignmentId}/audit:
     get:
       operationId: getAssignmentAudit
+      summary: Get an Assignment's audit log
       tags:
         - assignments
+      description: List the recorded audit entries for a single Assignment.
       parameters:
         - schema:
             type: string
@@ -2598,8 +2680,10 @@ paths:
   /api/v1/ministries/:
     get:
       operationId: listMinistries
+      summary: List the caller's led Ministries
       tags:
         - ministries
+      description: List the Ministries the current Volunteer leads within the Active Church.
       responses:
         "200":
           description: Default Response
@@ -2665,8 +2749,11 @@ paths:
   /api/v1/ministries/{ministryId}/invitations:
     post:
       operationId: mintMinistryInvitation
+      summary: Mint a Ministry Invitation
       tags:
         - ministries
+      description: Create a Ministry Invitation granting a Ministry Access Level and
+        Roles to an emailed recipient.
       requestBody:
         required: true
         content:
@@ -2755,8 +2842,10 @@ paths:
   /api/v1/ministries/{ministryId}/invitations/{invitationId}/resend:
     post:
       operationId: resendMinistryInvitation
+      summary: Resend a Ministry Invitation
       tags:
         - ministries
+      description: Resend the delivery email for a Ministry Invitation.
       parameters:
         - schema:
             type: string
@@ -2826,8 +2915,11 @@ paths:
   /api/v1/feature-flags/:
     get:
       operationId: listFeatureFlags
+      summary: List feature flags
       tags:
         - feature-flags
+      description: Get the resolved feature flag values for the current session,
+        evaluated against the caller's User and Church context where available.
       responses:
         "200":
           description: Default Response
@@ -2846,8 +2938,11 @@ paths:
   /api/v1/tailoring/cycles/{cycleId}/participation:
     get:
       operationId: getCycleParticipation
+      summary: Get a Ministry's tailoring view of a cycle
       tags:
         - tailoring
+      description: Get a Ministry's MinistryParticipation tailoring state across every
+        Event in a PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -3087,8 +3182,11 @@ paths:
   /api/v1/tailoring/ministries/{ministryId}/cycles-summary:
     get:
       operationId: listMinistryCycleSummaries
+      summary: List a Ministry's cycle tailoring summaries
       tags:
         - tailoring
+      description: List summaries of a Ministry's MinistryParticipation tailoring
+        progress across its PlanningCycles.
       parameters:
         - schema:
             type: string
@@ -3165,8 +3263,11 @@ paths:
   /api/v1/tailoring/participations/{participationId}/inclusions:
     put:
       operationId: setParticipationInclusions
+      summary: Set a MinistryParticipation's included TimeSlots
       tags:
         - tailoring
+      description: Replace the set of TimeSlots a Ministry is opted into for a
+        MinistryParticipation.
       requestBody:
         required: true
         content:
@@ -3192,8 +3293,11 @@ paths:
   /api/v1/tailoring/participations/{participationId}/slots/{timeSlotId}/shifts:
     post:
       operationId: splitParticipationShifts
+      summary: Split a TimeSlot into Shifts
       tags:
         - tailoring
+      description: Split a MinistryParticipation's TimeSlot into Shifts, either into
+        equal parts or by manually-set spans.
       requestBody:
         required: true
         content:
@@ -3295,8 +3399,10 @@ paths:
   /api/v1/tailoring/shifts/{shiftId}:
     patch:
       operationId: updateShift
+      summary: Update a Shift
       tags:
         - tailoring
+      description: Update a Shift's bounds or label.
       requestBody:
         required: true
         content:
@@ -3349,8 +3455,10 @@ paths:
                 additionalProperties: false
     delete:
       operationId: deleteShift
+      summary: Delete a Shift
       tags:
         - tailoring
+      description: Delete a Shift from its MinistryParticipation.
       parameters:
         - schema:
             type: string
@@ -3363,8 +3471,11 @@ paths:
   /api/v1/tailoring/shifts/{shiftId}/requirements:
     put:
       operationId: upsertShiftRequirement
+      summary: Set a Shift staffing requirement
       tags:
         - tailoring
+      description: Set the SlotRequirement headcount for a Role (and optional Team)
+        within a Shift.
       requestBody:
         required: true
         content:
@@ -3423,8 +3534,11 @@ paths:
   /api/v1/tailoring/participations/{participationId}/fire-availability:
     post:
       operationId: fireAvailability
+      summary: Fire availability for a MinistryParticipation
       tags:
         - tailoring
+      description: Spawn AvailabilityChecks for a MinistryParticipation's Volunteers
+        and move it into availability_fired.
       parameters:
         - schema:
             type: string
@@ -3450,8 +3564,11 @@ paths:
   /api/v1/tailoring/cycles/{cycleId}/availability-status:
     get:
       operationId: getCycleAvailabilityStatus
+      summary: Get a Ministry's AvailabilityCheck status for a cycle
       tags:
         - tailoring
+      description: List a Ministry's Volunteers' AvailabilityCheck states across a
+        PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -3512,8 +3629,11 @@ paths:
   /api/v1/tailoring/participations/{participationId}/availability-status:
     get:
       operationId: getAvailabilityStatus
+      summary: Get a MinistryParticipation's AvailabilityCheck status
       tags:
         - tailoring
+      description: List the AvailabilityCheck states of a MinistryParticipation's
+        Volunteers.
       parameters:
         - schema:
             type: string
@@ -3554,8 +3674,11 @@ paths:
   /api/v1/tailoring/participations/{participationId}/resend-availability:
     post:
       operationId: resendAvailabilityReminder
+      summary: Resend an availability reminder
       tags:
         - tailoring
+      description: Resend the availability reminder VolunteerNotification to a
+        MinistryParticipation's unconfirmed Volunteers.
       parameters:
         - schema:
             type: string
@@ -3568,8 +3691,11 @@ paths:
   /api/v1/rostering/cycles/{cycleId}/builder:
     get:
       operationId: getCycleBuilderData
+      summary: Get cycle builder data for a Ministry
       tags:
         - rostering
+      description: "Get a Ministry's roster-building view of a PlanningCycle: its
+        MinistryParticipations, Shifts, SlotRequirements, and Assignments."
       parameters:
         - schema:
             type: string
@@ -3910,8 +4036,11 @@ paths:
   /api/v1/rostering/cycles/{cycleId}/audit:
     get:
       operationId: getCycleAuditLog
+      summary: Get a Ministry's Assignment audit log for a cycle
       tags:
         - rostering
+      description: List a Ministry's Assignment audit entries across an entire
+        PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -3983,8 +4112,11 @@ paths:
   /api/v1/rostering/cycles/{cycleId}/publish:
     post:
       operationId: publishCycle
+      summary: Publish a Ministry's roster for a cycle
       tags:
         - rostering
+      description: Publish every eligible MinistryParticipation in a PlanningCycle for
+        a Ministry in one batch, making its rosters visible to Volunteers.
       requestBody:
         required: true
         content:
@@ -4064,8 +4196,11 @@ paths:
   /api/v1/rostering/shifts/{shiftId}/eligible-volunteers:
     get:
       operationId: listEligibleVolunteers
+      summary: List eligible Volunteers for a Shift
       tags:
         - rostering
+      description: List the Volunteers eligible to be assigned to a Shift, for the
+        roster builder.
       parameters:
         - schema:
             type: string
@@ -4138,8 +4273,11 @@ paths:
   /api/v1/rostering/shifts/{shiftId}/assignments:
     post:
       operationId: createParticipationAssignment
+      summary: Assign a Volunteer to a Shift
       tags:
         - rostering
+      description: Assign a Volunteer to a Role (and optional Team) within a Shift,
+        optionally overriding a detected conflict.
       requestBody:
         required: true
         content:
@@ -4260,8 +4398,10 @@ paths:
   /api/v1/rostering/assignments/{assignmentId}:
     delete:
       operationId: deleteParticipationAssignment
+      summary: Delete an Assignment
       tags:
         - rostering
+      description: Remove a Volunteer Assignment from its Shift.
       parameters:
         - schema:
             type: string
@@ -4296,8 +4436,11 @@ paths:
   /api/v1/rostering/assignments/{assignmentId}/reassign:
     patch:
       operationId: reassignParticipationAssignment
+      summary: Reassign an Assignment to another Volunteer
       tags:
         - rostering
+      description: Replace the Volunteer on an existing Assignment, keeping its Shift
+        and Role, and record the reason.
       requestBody:
         required: true
         content:
@@ -4382,8 +4525,11 @@ paths:
   /api/v1/rostering/participations/{participationId}/completion:
     get:
       operationId: getParticipationCompletion
+      summary: Get a MinistryParticipation's staffing completion
       tags:
         - rostering
+      description: Get how fully a MinistryParticipation is staffed against its
+        SlotRequirements.
       parameters:
         - schema:
             type: string
@@ -4430,8 +4576,11 @@ paths:
   /api/v1/rostering/participations/{participationId}/publish:
     post:
       operationId: publishParticipation
+      summary: Publish a single MinistryParticipation
       tags:
         - rostering
+      description: Publish one Ministry's roster for an Event, making its slice of the
+        schedule visible to its Volunteers.
       requestBody:
         required: true
         content:
@@ -4475,8 +4624,11 @@ paths:
   /api/v1/redemption/church/{invitationId}:
     get:
       operationId: previewChurchInvitation
+      summary: Preview a Church Invitation
       tags:
         - redemption
+      description: Get the public, unauthenticated preview of a Church Invitation for
+        an unregistered recipient.
       parameters:
         - schema:
             type: string
@@ -4551,8 +4703,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/code:
     post:
       operationId: requestChurchInvitationVerificationCode
+      summary: Request a Church Invitation verification code
       tags:
         - redemption
+      description: Send a one-time verification code to the invited recipient's email
+        so they can redeem their Church Invitation.
       parameters:
         - schema:
             type: string
@@ -4607,8 +4762,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/redeem:
     post:
       operationId: redeemChurchInvitation
+      summary: Redeem a Church Invitation as a new User
       tags:
         - redemption
+      description: Verify the code and create a new User account that redeems a Church
+        Invitation, admitting it as a Church Member.
       requestBody:
         required: true
         content:
@@ -4715,8 +4873,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/decline:
     post:
       operationId: declineChurchInvitation
+      summary: Decline a Church Invitation
       tags:
         - redemption
+      description: Decline a Church Invitation as its authenticated recipient, also
+        declining a chained Ministry Invitation if one is paired with it.
       parameters:
         - schema:
             type: string
@@ -4786,8 +4947,11 @@ paths:
   /api/v1/redemption/ministry/{invitationId}:
     get:
       operationId: getMinistryInvitationStatus
+      summary: Get a Ministry Invitation status
       tags:
         - redemption
+      description: Get an authenticated User's redeemable status and preview for a
+        Ministry Invitation.
       parameters:
         - schema:
             type: string
@@ -4893,8 +5057,11 @@ paths:
   /api/v1/redemption/ministry/{invitationId}/accept:
     post:
       operationId: acceptMinistryInvitation
+      summary: Accept a Ministry Invitation as an existing Church Member
       tags:
         - redemption
+      description: Accept a Ministry Invitation as an already-authenticated existing
+        Church Member, granting the stated Ministry Access Level and Roles.
       requestBody:
         required: true
         content:
@@ -5026,8 +5193,11 @@ paths:
   /api/v1/redemption/ministry/{invitationId}/decline:
     post:
       operationId: declineMinistryInvitation
+      summary: Decline a Ministry Invitation
       tags:
         - redemption
+      description: Decline a Ministry Invitation as its authenticated recipient, also
+        declining a chained Church Invitation if one is paired with it.
       parameters:
         - schema:
             type: string
@@ -5097,8 +5267,12 @@ paths:
   /api/v1/redemption/transfer/{invitationId}/preview:
     get:
       operationId: getVolunteerTransferPreview
+      summary: Preview a Volunteer Transfer
       tags:
         - redemption
+      description: "Preview the effect of a Volunteer Transfer triggered by a
+        cross-Church Ministry Invitation redemption: the Church Memberships that
+        would end and the Assignments that would be withdrawn."
       parameters:
         - schema:
             type: string
@@ -5204,8 +5378,12 @@ paths:
   /api/v1/redemption/transfer/{invitationId}/confirm:
     post:
       operationId: confirmVolunteerTransfer
+      summary: Confirm a Volunteer Transfer
       tags:
         - redemption
+      description: Confirm the Volunteer Transfer, retiring the User's Volunteer
+        profile in the source Church and creating a fresh one in the destination
+        Church.
       requestBody:
         required: true
         content:
@@ -5328,8 +5506,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/debug-code:
     get:
       operationId: debugGetChurchInvitationVerificationCode
+      summary: Get a Church Invitation verification code (debug)
       tags:
         - redemption-debug
+      description: "Non-production only: read back the verification code sent for a
+        Church Invitation, bypassing email delivery."
       parameters:
         - schema:
             type: string
@@ -5369,8 +5550,10 @@ paths:
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard
+      summary: Get the caller's Volunteer dashboard
       tags:
         - volunteer
+      description: Get the current Volunteer's dashboard summary for the Active Church.
       responses:
         "200":
           description: Default Response
@@ -5553,8 +5736,10 @@ paths:
   /api/v1/volunteer/assignments:
     get:
       operationId: getMyAssignments
+      summary: Get the caller's upcoming Assignments
       tags:
         - volunteer
+      description: List the current Volunteer's upcoming Assignments.
       responses:
         "200":
           description: Default Response
@@ -5611,8 +5796,10 @@ paths:
   /api/v1/volunteer/ministries/{ministryId}/schedule:
     get:
       operationId: getMinistrySchedule
+      summary: Get the caller's published Ministry schedule
       tags:
         - volunteer
+      description: Get the current Volunteer's published schedule within one Ministry.
       parameters:
         - schema:
             type: string
@@ -5690,8 +5877,10 @@ paths:
   /api/v1/volunteer/availability-checks:
     get:
       operationId: listAvailabilityChecks
+      summary: List the caller's AvailabilityChecks
       tags:
         - volunteer
+      description: List the current Volunteer's AvailabilityChecks.
       responses:
         "200":
           description: Default Response
@@ -5742,8 +5931,11 @@ paths:
   /api/v1/volunteer/availability-checks/{checkId}:
     get:
       operationId: getAvailabilityCheck
+      summary: Get one of the caller's AvailabilityChecks
       tags:
         - volunteer
+      description: Get the detail of a single AvailabilityCheck belonging to the
+        current Volunteer.
       parameters:
         - schema:
             type: string
@@ -5814,8 +6006,11 @@ paths:
   /api/v1/volunteer/availability-checks/{checkId}/marks:
     put:
       operationId: setUnavailabilityMarks
+      summary: Set unavailability marks on an AvailabilityCheck
       tags:
         - volunteer
+      description: Record the current Volunteer's unavailability marks — by Shift or
+        by whole CalendarDay — against an AvailabilityCheck.
       requestBody:
         required: true
         content:
@@ -5904,8 +6099,11 @@ paths:
   /api/v1/volunteer/availability-checks/{checkId}/confirm:
     post:
       operationId: confirmAvailabilityCheck
+      summary: Confirm an AvailabilityCheck
       tags:
         - volunteer
+      description: Confirm the current Volunteer's AvailabilityCheck, recording
+        confirmedAt even when no marks were left.
       parameters:
         - schema:
             type: string
@@ -5918,8 +6116,11 @@ paths:
   /api/v1/volunteer/assignments/{assignmentId}:
     patch:
       operationId: respondToAssignment
+      summary: Respond to an Assignment
       tags:
         - volunteer
+      description: Record the current Volunteer's accept/decline response to one of
+        their own Assignments.
       requestBody:
         required: true
         content:
@@ -5990,8 +6191,10 @@ paths:
   /api/v1/volunteer/assignments/{assignmentId}/cancel:
     post:
       operationId: cancelOwnAssignment
+      summary: Cancel one of the caller's Assignments
       tags:
         - volunteer
+      description: Cancel one of the current Volunteer's own Assignments.
       parameters:
         - schema:
             type: string
@@ -6011,8 +6214,10 @@ paths:
   /api/v1/volunteer/notifications:
     get:
       operationId: getNotifications
+      summary: List the caller's VolunteerNotifications
       tags:
         - volunteer
+      description: List the current Volunteer's VolunteerNotifications, paginated by cursor.
       parameters:
         - schema:
             type: string
@@ -6087,8 +6292,10 @@ paths:
   /api/v1/volunteer/notifications/{notificationId}:
     patch:
       operationId: markNotificationRead
+      summary: Mark a VolunteerNotification read
       tags:
         - volunteer
+      description: Mark one of the current Volunteer's VolunteerNotifications as read.
       parameters:
         - schema:
             type: string
@@ -6111,16 +6318,21 @@ paths:
   /api/v1/volunteer/notifications/read-all:
     post:
       operationId: markAllNotificationsRead
+      summary: Mark all VolunteerNotifications read
       tags:
         - volunteer
+      description: Mark every one of the current Volunteer's VolunteerNotifications as read.
       responses:
         "200":
           description: Default Response
   /api/v1/volunteer/schedule:
     get:
       operationId: getPublishedVolunteerSchedule
+      summary: Get the caller's published schedule
       tags:
         - volunteer
+      description: List the current Volunteer's Assignments from published
+        MinistryParticipations.
       responses:
         "200":
           description: Default Response
@@ -6193,3 +6405,9 @@ tags:
     description: Volunteer-facing endpoints
   - name: feature-flags
     description: Feature flag endpoints
+  - name: active-church
+    description: Active Church selection endpoints
+  - name: redemption
+    description: Church and Ministry Invitation redemption endpoints
+  - name: redemption-debug
+    description: Non-production debug endpoints for invitation redemption

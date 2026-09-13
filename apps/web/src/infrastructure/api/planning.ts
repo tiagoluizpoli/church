@@ -38,6 +38,10 @@ import { apiClient } from '../../utils/api-client';
 
 
   export const getPlanning = () => {
+/**
+ * Create a new PlanningCycle spanning a CalendarDay range for the Church.
+ * @summary Create a PlanningCycle
+ */
 const createPlanningCycle = (
     createPlanningCycleBody: CreatePlanningCycleBody,
  ) => {
@@ -48,7 +52,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const listPlanningCycles = (
+  /**
+ * List the Church PlanningCycles, optionally filtered by state.
+ * @summary List PlanningCycles
+ */
+const listPlanningCycles = (
     params?: ListPlanningCyclesParams,
  ) => {
       return apiClient<ListPlanningCycles200>(
@@ -57,7 +65,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const getPlanningCycle = (
+  /**
+ * Get the details of a single PlanningCycle.
+ * @summary Get a PlanningCycle
+ */
+const getPlanningCycle = (
     cycleId: string,
  ) => {
       return apiClient<GetPlanningCycle200>(
@@ -65,7 +77,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const lockPlanningCycle = (
+  /**
+ * Lock a PlanningCycle, transitioning its Events from draft to scheduled.
+ * @summary Lock a PlanningCycle
+ */
+const lockPlanningCycle = (
     cycleId: string,
  ) => {
       return apiClient<void>(
@@ -73,7 +89,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const reopenPlanningEvent = (
+  /**
+ * Move a scheduled Event in a locked PlanningCycle back to draft so it can be edited.
+ * @summary Reopen an Event for editing
+ */
+const reopenPlanningEvent = (
     cycleId: string,
     eventId: string,
  ) => {
@@ -82,7 +102,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const createEventTemplate = (
+  /**
+ * Create a church-owned EventTemplate with its ordered TimeBlocks for a given weekday.
+ * @summary Create an EventTemplate
+ */
+const createEventTemplate = (
     createEventTemplateBody: CreateEventTemplateBody,
  ) => {
       return apiClient<CreateEventTemplate201>(
@@ -92,7 +116,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const listEventTemplates = (
+  /**
+ * List the Church EventTemplates.
+ * @summary List EventTemplates
+ */
+const listEventTemplates = (
 
  ) => {
       return apiClient<ListEventTemplates200>(
@@ -100,7 +128,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const updateEventTemplate = (
+  /**
+ * Replace an EventTemplate's name, weekday, and TimeBlocks.
+ * @summary Update an EventTemplate
+ */
+const updateEventTemplate = (
     templateId: string,
     updateEventTemplateBody: UpdateEventTemplateBody,
  ) => {
@@ -111,7 +143,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const deleteEventTemplate = (
+  /**
+ * Delete an EventTemplate from the Church.
+ * @summary Delete an EventTemplate
+ */
+const deleteEventTemplate = (
     templateId: string,
  ) => {
       return apiClient<void>(
@@ -119,7 +155,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const applyPlanningTemplates = (
+  /**
+ * Generate one Event per matching CalendarDay in the PlanningCycle for each selected EventTemplate, with one TimeSlot per TimeBlock.
+ * @summary Apply EventTemplates to a PlanningCycle
+ */
+const applyPlanningTemplates = (
     cycleId: string,
     applyPlanningTemplatesBody: ApplyPlanningTemplatesBody,
  ) => {
@@ -130,7 +170,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const createPlanningEvent = (
+  /**
+ * Create a one-off Event within a PlanningCycle without using an EventTemplate.
+ * @summary Create a manual Event
+ */
+const createPlanningEvent = (
     cycleId: string,
     createPlanningEventBody: CreatePlanningEventBody,
  ) => {
@@ -141,7 +185,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const updatePlanningEvent = (
+  /**
+ * Update an Event's title, description, location, or scheduled Instants.
+ * @summary Update an Event
+ */
+const updatePlanningEvent = (
     cycleId: string,
     eventId: string,
     updatePlanningEventBody: UpdatePlanningEventBody,
@@ -153,7 +201,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const cancelPlanningEvent = (
+  /**
+ * Cancel an Event within its PlanningCycle.
+ * @summary Cancel an Event
+ */
+const cancelPlanningEvent = (
     cycleId: string,
     eventId: string,
  ) => {
@@ -162,7 +214,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const createPlanningEventSlot = (
+  /**
+ * Create a church-level TimeSlot within an Event.
+ * @summary Create a TimeSlot on an Event
+ */
+const createPlanningEventSlot = (
     cycleId: string,
     eventId: string,
     createPlanningEventSlotBody: CreatePlanningEventSlotBody,
@@ -174,7 +230,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const updatePlanningEventSlot = (
+  /**
+ * Update a TimeSlot's bounds or label.
+ * @summary Update a TimeSlot
+ */
+const updatePlanningEventSlot = (
     cycleId: string,
     eventId: string,
     slotId: string,
@@ -187,7 +247,11 @@ const createPlanningCycle = (
     },
       );
     }
-  const deletePlanningEventSlot = (
+  /**
+ * Delete a TimeSlot from an Event.
+ * @summary Delete a TimeSlot
+ */
+const deletePlanningEventSlot = (
     cycleId: string,
     eventId: string,
     slotId: string,
@@ -198,8 +262,8 @@ const createPlanningCycle = (
       );
     }
   /**
- * Get the serving profile for a specific ministry, including roles and teams.
- * @summary getMinistryServingProfile
+ * Get a Ministry's MinistryServingProfile, the standing rule declaring which EventTemplate TimeBlocks it always serves.
+ * @summary Get a Ministry's serving profile
  */
 const getMinistryServingProfile = (
     ministryId: string,
@@ -209,7 +273,11 @@ const getMinistryServingProfile = (
     },
       );
     }
-  const upsertMinistryServingProfile = (
+  /**
+ * Replace a Ministry's MinistryServingProfile entries, including which TimeBlocks it serves, its Shift split, and headcounts.
+ * @summary Set a Ministry's serving profile
+ */
+const upsertMinistryServingProfile = (
     ministryId: string,
     upsertMinistryServingProfileBody: UpsertMinistryServingProfileBody,
  ) => {
@@ -220,7 +288,11 @@ const getMinistryServingProfile = (
     },
       );
     }
-  const setMinistryDefaultDirection = (
+  /**
+ * Set a Ministry's defaultDirection (all-in or all-out), deciding whether it starts opted into every TimeSlot of a cycle by default.
+ * @summary Set a Ministry's default direction
+ */
+const setMinistryDefaultDirection = (
     ministryId: string,
     setMinistryDefaultDirectionBody: SetMinistryDefaultDirectionBody,
  ) => {

@@ -70,6 +70,9 @@ export class AssignmentController implements FastifyController {
         schema: {
           tags: ['assignments'],
           operationId: 'createAssignment',
+          summary: 'Create an Assignment',
+          description:
+            'Assign a Volunteer to a Role within a TimeSlot, rejecting the request if the caller does not manage that TimeSlot.',
           body: createAssignmentBodySchema,
           response: { 201: assignmentResponseSchema },
         },
@@ -101,6 +104,9 @@ export class AssignmentController implements FastifyController {
         schema: {
           tags: ['assignments'],
           operationId: 'overrideAssignment',
+          summary: 'Override an Assignment',
+          description:
+            'Record an override reason against an existing Assignment in its audit log.',
           body: overrideAssignmentBodySchema,
           response: { 201: z.object({ overridden: z.literal(true) }) },
         },
@@ -129,7 +135,14 @@ export class AssignmentController implements FastifyController {
 
     app.delete(
       '/:assignmentId',
-      { schema: { tags: ['assignments'], operationId: 'deleteAssignment' } },
+      {
+        schema: {
+          tags: ['assignments'],
+          operationId: 'deleteAssignment',
+          summary: 'Delete an Assignment',
+          description: 'Remove a Volunteer Assignment from its TimeSlot.',
+        },
+      },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
         const denied = await this.denyAssignmentScope({
@@ -154,6 +167,9 @@ export class AssignmentController implements FastifyController {
         schema: {
           tags: ['assignments'],
           operationId: 'getAssignmentAudit',
+          summary: "Get an Assignment's audit log",
+          description:
+            'List the recorded audit entries for a single Assignment.',
           response: { 200: auditListResponseSchema },
         },
       },

@@ -2,6 +2,7 @@
 **Feature Branch**: `004-timezone-date-policy`  
 **Created**: 2026-05-07  
 **Status**: Draft  
+**Amended by**: [ADR-0003](../../docs/adr/0003-date-time-seam-church-timezone-truth.md) — the core storage policy below still holds; see that ADR for what changed (day/instant vocabulary, church-timezone plumbing, the enforced seam, time format, time-entry direction) and a line-by-line disposition of every requirement, entity, and success criterion here.  
 **Input**: User description: "Establish a strict, system-wide policy for timezone and date management to ensure deterministic scheduling and avoid common date-related bugs."
 
 ## Clarifications

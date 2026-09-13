@@ -68,15 +68,40 @@ Escape                     closes; ArrowUp then steps the segment again
 Tab                        closes
 ```
 
+Keyboard path through a form, which is the whole point of the segments:
+
+```
+field 1 hour -> field 1 minute -> field 2 hour -> field 2 minute
+```
+
+The chevron is deliberately **out of the tab order** (`tabIndex={-1}`). It is a
+mouse affordance and everything it offers is reachable by typing, so leaving it
+tabbable only meant Tab out of the minute landed *inside* the control the
+leader had just finished instead of on the next field.
+
 Edge cases checked rather than assumed:
 
 ```
-hour "9"     09:00 ...        only 09, since no hour starts 9x
-hour "2"     02:00 + 20-23    both readings stay live
-hour "25"    -> 05:00         the segment rejects 25; 5 restarts the hour
-minute "9"   -> 12:09         list empty, correctly - no quarter at :09
-click a row  commits, caret never leaves the field
+hour "9"      09:00 ...       only 09, since no hour starts 9x
+hour "2"      02:00 + 20-23   both readings stay live
+hour "25"     -> 05:00        the segment rejects 25; 5 restarts the hour
+minute "9"    -> 12:09        list empty, correctly - no quarter at :09
+10:30 then 1  -> 10:1-        a digit in a full segment restarts it
+10:30 then 4  -> 10:4-  10:45
+11 then 04    -> 11:04        list closed, correctly
+click a row   commits, caret never leaves the field
 ```
+
+Two bugs worth remembering, because both came from the same buffer:
+
+- **A digit typed into a full segment must restart it**, as React Aria does to
+  the value. Appending blindly turned a minute on `30` into the buffer `301`,
+  which matches no time — so the list silently emptied *and* the half-typed
+  dash stopped rendering. One line, two symptoms.
+- **Picking a row must wipe the pending digits.** The value committed to
+  `11:15` correctly while the field went on showing `11:1-`, because the digits
+  lived inside the field and nothing told it the value had changed underneath.
+  Submitted value and visible value disagreeing is worse than a dead key.
 
 **A half-typed segment renders as `1-`, not `01`.** React Aria pads the moment
 a digit lands, so typing a single `1` leaves the field reading `01:00` — a

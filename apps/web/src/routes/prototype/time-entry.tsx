@@ -480,6 +480,11 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
             size="icon-xs"
             aria-label="Pick a common time"
             aria-expanded={open}
+            // Out of the tab order on purpose: it is a mouse affordance, and
+            // everything it offers is already reachable by typing. Leaving it
+            // tabbable only means Tab out of the minute lands *inside* the
+            // control just finished, rather than on the next field.
+            tabIndex={-1}
             className="absolute top-1/2 right-1 -translate-y-1/2"
             // Keep the caret in the segments — a plain click would blur them.
             onMouseDown={(event) => event.preventDefault()}

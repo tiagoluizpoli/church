@@ -1,4 +1,9 @@
-import { type Instant, InvalidTimeValueError } from './brands';
+import {
+  type Instant,
+  InvalidTimeValueError,
+  isTimeOfDay,
+  type TimeOfDay,
+} from './brands';
 
 export interface ToDateInput {
   instant: Instant;
@@ -14,10 +19,28 @@ export function toDate({ instant }: ToDateInput): Date {
   return new Date(instant);
 }
 
-/** `Date` → Instant, for rows read back from the driver. */
+/** `Date` → Instant, for rows read back from the driver. Also the package's own
+ * `Date` → Instant step, so every Instant built from a `Date` is validated. */
 export function fromDate({ date }: FromDateInput): Instant {
   if (Number.isNaN(date.getTime())) {
     throw new InvalidTimeValueError({ kind: 'Instant', value: String(date) });
   }
   return date.toISOString() as Instant;
+}
+
+export interface FromTimeColumnInput {
+  value: string;
+}
+
+const TIME_COLUMN_PATTERN = /^(\d{2}:\d{2}):00$/;
+
+/** Postgres `time` column → TimeOfDay. The driver returns `HH:mm:ss`; a
+ * TimeOfDay has no seconds, so only `:00` is accepted and dropped. Kept apart
+ * from `parseTimeOfDay` so the brand constructor stays strictly `HH:mm`. */
+export function fromTimeColumn({ value }: FromTimeColumnInput): TimeOfDay {
+  const hourAndMinute = TIME_COLUMN_PATTERN.exec(value)?.[1];
+  if (hourAndMinute === undefined || !isTimeOfDay({ value: hourAndMinute })) {
+    throw new InvalidTimeValueError({ kind: 'TimeOfDay', value });
+  }
+  return hourAndMinute as TimeOfDay;
 }

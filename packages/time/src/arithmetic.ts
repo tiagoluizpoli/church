@@ -1,11 +1,6 @@
 import type { CalendarDay, Instant } from './brands';
 import { fromDate } from './persistence';
-
-const MINUTE_MS = 60_000;
-
-function dayAtUtcMidnight(day: CalendarDay): Date {
-  return new Date(`${day}T00:00:00.000Z`);
-}
+import { DAY_MS, MINUTE_MS, utcMidnightOf } from './utc-calendar';
 
 export interface AddMinutesInput {
   instant: Instant;
@@ -13,9 +8,7 @@ export interface AddMinutesInput {
 }
 
 export function addMinutes({ instant, minutes }: AddMinutesInput): Instant {
-  return fromDate({
-    date: new Date(Date.parse(instant) + minutes * MINUTE_MS),
-  });
+  return addMilliseconds({ instant, milliseconds: minutes * MINUTE_MS });
 }
 
 export interface InstantRangeInput {
@@ -23,9 +16,12 @@ export interface InstantRangeInput {
   end: Instant;
 }
 
-/** Whole minutes from `start` to `end`; negative when `end` is earlier. */
+/** Whole minutes from `start` to `end`, truncated toward zero; negative when
+ * `end` is earlier. */
 export function minutesBetween({ start, end }: InstantRangeInput): number {
-  return Math.round((Date.parse(end) - Date.parse(start)) / MINUTE_MS);
+  const minutes = millisecondsBetween({ start, end }) / MINUTE_MS;
+  // `+ 0` turns the `-0` a sub-minute negative span truncates to into `0`.
+  return Math.trunc(minutes) + 0;
 }
 
 export interface AddCalendarDaysInput {
@@ -37,7 +33,7 @@ export function addCalendarDays({
   day,
   days,
 }: AddCalendarDaysInput): CalendarDay {
-  const date = dayAtUtcMidnight(day);
+  const date = utcMidnightOf({ day });
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10) as CalendarDay;
 }
@@ -65,7 +61,7 @@ export interface WeekdayIndexInput {
 
 /** 0 (Sunday) … 6 (Saturday). */
 export function weekdayIndex({ day }: WeekdayIndexInput): number {
-  return dayAtUtcMidnight(day).getUTCDay();
+  return utcMidnightOf({ day }).getUTCDay();
 }
 
 export interface AddMillisecondsInput {
@@ -85,15 +81,14 @@ export function millisecondsBetween({ start, end }: InstantRangeInput): number {
   return Date.parse(end) - Date.parse(start);
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /** Whole CalendarDays from `start` to `end`; negative when `end` is earlier. */
 export function calendarDaysBetween({
   start,
   end,
 }: CalendarDayRangeInput): number {
   return Math.round(
-    (dayAtUtcMidnight(end).getTime() - dayAtUtcMidnight(start).getTime()) /
+    (utcMidnightOf({ day: end }).getTime() -
+      utcMidnightOf({ day: start }).getTime()) /
       DAY_MS,
   );
 }

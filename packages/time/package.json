@@ -10,7 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test:unit": "vitest run",
+    "test:unit": "TZ=Pacific/Auckland vitest run",
     "test": "bun run test:unit"
   },
   "dependencies": {

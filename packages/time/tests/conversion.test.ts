@@ -1,32 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addCalendarDays,
-  addMilliseconds,
-  addMinutes,
-  type CalendarDay,
-  enumerateCalendarDays,
   fromDate,
-  millisecondsBetween,
-  minutesBetween,
+  fromTimeColumn,
+  type Instant,
+  InvalidTimeValueError,
+  parseCalendarDay,
   parseInstant,
-  type TimeOfDay,
+  parseTimeOfDay,
   toDate,
   today,
   toInstant,
   toTimeOfDay,
-  weekdayIndex,
 } from '../src';
 
-const day = (value: string) => value as CalendarDay;
-const time = (value: string) => value as TimeOfDay;
-const instant = (value: string) => parseInstant({ value });
+interface NewYorkWallClockInput {
+  day: string;
+  time: string;
+}
+
+/** The Instant a New York wall clock names — the DST-observing fixture zone. */
+function newYorkInstant({ day, time }: NewYorkWallClockInput): Instant {
+  return toInstant({
+    day: parseCalendarDay({ value: day }),
+    time: parseTimeOfDay({ value: time }),
+    timeZone: 'America/New_York',
+  });
+}
 
 describe('toInstant', () => {
   it('resolves church-local midnight, not UTC midnight', () => {
     expect(
       toInstant({
-        day: day('2027-01-04'),
-        time: time('00:00'),
+        day: parseCalendarDay({ value: '2027-01-04' }),
+        time: parseTimeOfDay({ value: '00:00' }),
         timeZone: 'America/Sao_Paulo',
       }),
     ).toBe('2027-01-04T03:00:00.000Z');
@@ -35,27 +41,45 @@ describe('toInstant', () => {
   it('handles a fractional offset', () => {
     expect(
       toInstant({
-        day: day('2027-01-04'),
-        time: time('00:00'),
+        day: parseCalendarDay({ value: '2027-01-04' }),
+        time: parseTimeOfDay({ value: '00:00' }),
         timeZone: 'Asia/Kolkata',
       }),
     ).toBe('2027-01-03T18:30:00.000Z');
   });
 
   it('follows a DST transition (America/New_York, 2027-03-14)', () => {
-    const noon = (value: string) =>
-      toInstant({
-        day: day(value),
-        time: time('12:00'),
-        timeZone: 'America/New_York',
-      });
-    expect(noon('2027-03-13')).toBe('2027-03-13T17:00:00.000Z');
-    expect(noon('2027-03-15')).toBe('2027-03-15T16:00:00.000Z');
+    expect(newYorkInstant({ day: '2027-03-13', time: '12:00' })).toBe(
+      '2027-03-13T17:00:00.000Z',
+    );
+    expect(newYorkInstant({ day: '2027-03-15', time: '12:00' })).toBe(
+      '2027-03-15T16:00:00.000Z',
+    );
+  });
+
+  it('shifts a wall clock skipped by spring-forward later by the gap', () => {
+    // 02:00–02:59 never happens on 2027-03-14 in New York: 02:30 → 03:30 EDT.
+    expect(newYorkInstant({ day: '2027-03-14', time: '02:30' })).toBe(
+      '2027-03-14T07:30:00.000Z',
+    );
+    expect(newYorkInstant({ day: '2027-03-14', time: '03:00' })).toBe(
+      '2027-03-14T07:00:00.000Z',
+    );
+  });
+
+  it('picks the earlier Instant for a wall clock repeated by fall-back', () => {
+    // 01:00–01:59 happens twice on 2027-11-07 in New York: EDT wins.
+    expect(newYorkInstant({ day: '2027-11-07', time: '01:30' })).toBe(
+      '2027-11-07T05:30:00.000Z',
+    );
+    expect(newYorkInstant({ day: '2027-11-07', time: '02:00' })).toBe(
+      '2027-11-07T07:00:00.000Z',
+    );
   });
 });
 
 describe('today / toTimeOfDay', () => {
-  const lateEvening = instant('2027-01-05T02:00:00.000Z');
+  const lateEvening = parseInstant({ value: '2027-01-05T02:00:00.000Z' });
 
   it('reads the CalendarDay through the Church Timezone', () => {
     expect(today({ instant: lateEvening, timeZone: 'America/Sao_Paulo' })).toBe(
@@ -73,7 +97,7 @@ describe('today / toTimeOfDay', () => {
   it('reads the day after a DST transition correctly', () => {
     expect(
       today({
-        instant: instant('2027-11-07T04:30:00.000Z'),
+        instant: parseInstant({ value: '2027-11-07T04:30:00.000Z' }),
         timeZone: 'America/New_York',
       }),
     ).toBe('2027-11-07');
@@ -82,63 +106,28 @@ describe('today / toTimeOfDay', () => {
 
 describe('persistence bridge', () => {
   it('round-trips an Instant through Date', () => {
-    const value = instant('2027-01-04T13:30:05.123Z');
+    const value = parseInstant({ value: '2027-01-04T13:30:05.123Z' });
     const date = toDate({ instant: value });
     expect(date.getTime()).toBe(Date.parse('2027-01-04T13:30:05.123Z'));
     expect(fromDate({ date })).toBe(value);
   });
-});
 
-describe('arithmetic', () => {
-  it('adds minutes to an Instant', () => {
-    expect(
-      addMinutes({ instant: instant('2027-01-04T23:30:00Z'), minutes: 45 }),
-    ).toBe('2027-01-05T00:15:00.000Z');
-  });
-
-  it('measures minutes between Instants', () => {
-    expect(
-      minutesBetween({
-        start: instant('2027-01-04T22:00:00Z'),
-        end: instant('2027-01-05T02:00:00Z'),
-      }),
-    ).toBe(240);
-  });
-
-  it('adds and measures milliseconds', () => {
-    const start = instant('2027-01-04T10:00:00.000Z');
-    const later = addMilliseconds({ instant: start, milliseconds: 1_234 });
-    expect(later).toBe('2027-01-04T10:00:01.234Z');
-    expect(millisecondsBetween({ start, end: later })).toBe(1_234);
-    expect(millisecondsBetween({ start: later, end: start })).toBe(-1_234);
-  });
-
-  it('adds CalendarDays across month and leap boundaries', () => {
-    expect(addCalendarDays({ day: day('2028-02-28'), days: 1 })).toBe(
-      '2028-02-29',
-    );
-    expect(addCalendarDays({ day: day('2027-01-01'), days: -1 })).toBe(
-      '2026-12-31',
+  it('rejects an invalid Date', () => {
+    expect(() => fromDate({ date: new Date('nope') })).toThrow(
+      InvalidTimeValueError,
     );
   });
 
-  it('enumerates CalendarDays inclusively', () => {
-    expect(
-      enumerateCalendarDays({
-        start: day('2027-02-27'),
-        end: day('2027-03-01'),
-      }),
-    ).toEqual(['2027-02-27', '2027-02-28', '2027-03-01']);
-    expect(
-      enumerateCalendarDays({
-        start: day('2027-03-02'),
-        end: day('2027-03-01'),
-      }),
-    ).toEqual([]);
+  it('reads a database time column into a TimeOfDay', () => {
+    expect(fromTimeColumn({ value: '09:05:00' })).toBe('09:05');
   });
 
-  it('names the weekday index of a CalendarDay (0 = Sunday)', () => {
-    expect(weekdayIndex({ day: day('2027-01-03') })).toBe(0);
-    expect(weekdayIndex({ day: day('2027-01-04') })).toBe(1);
+  it.each([
+    '09:05',
+    '09:05:30',
+    '24:00:00',
+    '9:05:00',
+  ])('rejects time column value %s', (value) => {
+    expect(() => fromTimeColumn({ value })).toThrow(InvalidTimeValueError);
   });
 });

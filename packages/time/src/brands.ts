@@ -1,6 +1,10 @@
+import { utcMidnightOf } from './utc-calendar';
+
 declare const timeBrand: unique symbol;
 
-type TimeBrand<Kind extends string> = string & {
+export type TimeKind = 'Instant' | 'CalendarDay' | 'TimeOfDay';
+
+type TimeBrand<Kind extends TimeKind> = string & {
   readonly [timeBrand]: Kind;
 };
 
@@ -13,8 +17,6 @@ export type CalendarDay = TimeBrand<'CalendarDay'>;
 
 /** A wall-clock hour and minute, `HH:mm`, with no day and no offset. */
 export type TimeOfDay = TimeBrand<'TimeOfDay'>;
-
-export type TimeKind = 'Instant' | 'CalendarDay' | 'TimeOfDay';
 
 interface InvalidTimeValueErrorInput {
   kind: TimeKind;
@@ -38,25 +40,27 @@ export interface TimeValueInput {
 }
 
 const CALENDAR_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d(:00)?$/;
-// An explicit offset is required: a wall clock without one names no moment.
+const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+// UTC only (`Z`), whole seconds, optional milliseconds. Offsets are refused, not
+// normalised: a non-UTC string reaching the seam is a bug upstream.
 const INSTANT_PATTERN =
-  /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/;
+  /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{3})?Z$/;
 
 export function isCalendarDay({ value }: TimeValueInput): boolean {
   if (!CALENDAR_DAY_PATTERN.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
+  const date = utcMidnightOf({ day: value });
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
+/** Strictly `HH:mm`. Database `time` columns read through `fromTimeColumn`. */
 export function isTimeOfDay({ value }: TimeValueInput): boolean {
   return TIME_OF_DAY_PATTERN.test(value);
 }
 
+/** `yyyy-MM-ddTHH:mm:ssZ` or `yyyy-MM-ddTHH:mm:ss.sssZ` on a real day. */
 export function isInstant({ value }: TimeValueInput): boolean {
-  const match = INSTANT_PATTERN.exec(value);
-  if (!match?.[1] || !isCalendarDay({ value: match[1] })) return false;
-  return !Number.isNaN(Date.parse(value));
+  const day = INSTANT_PATTERN.exec(value)?.[1];
+  return day !== undefined && isCalendarDay({ value: day });
 }
 
 export function parseCalendarDay({ value }: TimeValueInput): CalendarDay {
@@ -70,9 +74,10 @@ export function parseTimeOfDay({ value }: TimeValueInput): TimeOfDay {
   if (!isTimeOfDay({ value })) {
     throw new InvalidTimeValueError({ kind: 'TimeOfDay', value });
   }
-  return value.slice(0, 5) as TimeOfDay;
+  return value as TimeOfDay;
 }
 
+/** Accepts what `isInstant` accepts; always returns the millisecond form. */
 export function parseInstant({ value }: TimeValueInput): Instant {
   if (!isInstant({ value })) {
     throw new InvalidTimeValueError({ kind: 'Instant', value });

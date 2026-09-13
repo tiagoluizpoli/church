@@ -255,56 +255,113 @@ function SegmentedTimeControl({
   );
 }
 
-/** Which quarter-hours are still reachable from what has been typed so far.
+/** What the two segments currently hold, and which one the caret is in. Read
+ * from the DOM rather than tracked in parallel state: React Aria owns the
+ * segments, only emits a value once *both* are filled, and is the authority on
+ * where the caret went after a digit completed one. */
+interface SegmentReading {
+  hour: number | null;
+  minute: number | null;
+  focused: 'hour' | 'minute' | null;
+}
+
+function readSegments(root: HTMLElement | null): SegmentReading {
+  const reading: SegmentReading = { hour: null, minute: null, focused: null };
+  for (const segment of root?.querySelectorAll('[role="spinbutton"]') ?? []) {
+    const type = segment.getAttribute('data-type');
+    const raw = segment.getAttribute('aria-valuenow');
+    const parsed = raw === null || raw === '' ? null : Number(raw);
+    if (type === 'hour') {
+      reading.hour = parsed;
+    }
+    if (type === 'minute') {
+      reading.minute = parsed;
+    }
+    if (
+      segment === document.activeElement &&
+      (type === 'hour' || type === 'minute')
+    ) {
+      reading.focused = type;
+    }
+  }
+  return reading;
+}
+
+/** Which quarter-hours are still reachable, given where the caret is and what
+ * has been typed into *that* segment since it took focus.
  *
- * One digit is ambiguous exactly the way the segment itself treats it: `1`
- * could still become `01` or any of `10`-`19`, so all of those stay in the
- * list, chronologically. Two digits fix the hour. Beyond that the minute
- * narrows too. With nothing typed, the list falls back to the hour already
- * held, and to the whole day when the field is empty. */
-function optionsFor(value: string, typed: string): string[] {
-  if (typed !== '') {
-    const reachable = new Set(
-      QUARTER_OPTIONS.filter((option) =>
-        option.replace(':', '').startsWith(typed),
-      ),
+ * In the **minute**, the hour is already settled, so the list never leaves it:
+ * `10` then a `1` means `10:15`, and a `3` means `10:30`. The previous version
+ * filtered on a flat digit buffer with no idea which segment a digit landed
+ * in, so typing `11` then `04` searched `04` as if it were an *hour*.
+ *
+ * In the **hour**, a single digit is ambiguous the way the segment itself
+ * treats it — `1` may still become `01` or any of `10`-`19` — so all of those
+ * stay, chronologically. A second digit settles it. */
+function optionsFor(reading: SegmentReading, digits: string): string[] {
+  const { hour, focused } = reading;
+
+  if (focused === 'minute' && hour !== null) {
+    const withinHour = QUARTER_OPTIONS.filter((option) =>
+      option.startsWith(`${pad(hour)}:`),
     );
-    if (typed.length === 1) {
-      for (const option of QUARTER_OPTIONS) {
-        if (option.startsWith(`0${typed}:`)) {
-          reachable.add(option);
-        }
+    return digits === ''
+      ? withinHour
+      : withinHour.filter((option) => option.slice(3).startsWith(digits));
+  }
+
+  if (digits === '') {
+    return hour === null
+      ? QUARTER_OPTIONS
+      : QUARTER_OPTIONS.filter((option) => option.startsWith(`${pad(hour)}:`));
+  }
+
+  if (digits.length === 1) {
+    const reachable = new Set<string>([pad(Number(digits))]);
+    for (let candidate = 0; candidate <= 23; candidate += 1) {
+      if (pad(candidate).startsWith(digits)) {
+        reachable.add(pad(candidate));
       }
     }
-    return QUARTER_OPTIONS.filter((option) => reachable.has(option));
+    return QUARTER_OPTIONS.filter((option) =>
+      reachable.has(option.slice(0, 2)),
+    );
   }
-  const parts = partsOf(value);
-  return parts
-    ? QUARTER_OPTIONS.filter((option) =>
-        option.startsWith(`${pad(parts.hour)}:`),
-      )
-    : QUARTER_OPTIONS;
+
+  return QUARTER_OPTIONS.filter((option) => option.startsWith(`${digits}:`));
 }
 
 /** B — A, plus a list that behaves like a combobox rather than a popup.
  *
  * Focus never leaves the segments. The list opens on its own when the field is
- * empty or as soon as a digit is typed, narrows to what is still reachable,
- * and Up/Down walk it *without* moving the caret — so a leader can type `1`,
- * see their time two rows down, and press Enter. Escape closes the list and
- * hands the arrow keys straight back to the segments, where they step the
- * number the way they always did.
+ * empty or as soon as a digit is typed, narrows to what is still reachable
+ * *in the segment being typed*, and Up/Down walk it without moving the caret —
+ * so a leader can type `10`, see the hour's four quarters, and press Enter.
+ * Escape closes the list and hands the arrow keys straight back to the
+ * segments, where they step the number the way they always did.
  *
  * The list is rendered inline rather than in a Popover on purpose: base-ui
  * moves focus into the popup on open, which is exactly what must not happen
- * when the input is still being typed into. */
+ * while the field is still being typed into. */
 function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
   const [open, setOpen] = useState(false);
-  const [typed, setTyped] = useState('');
+  const [digits, setDigits] = useState('');
+  const [reading, setReading] = useState<SegmentReading>({
+    hour: null,
+    minute: null,
+    focused: null,
+  });
   const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const options = optionsFor(value, typed);
+  // React Aria updates the segments *after* the keystroke it is handling, so
+  // the DOM is only authoritative a frame later.
+  const syncFromSegments = () => {
+    requestAnimationFrame(() => setReading(readSegments(rootRef.current)));
+  };
+
+  const options = optionsFor(reading, digits);
   const active = Math.min(activeIndex, Math.max(0, options.length - 1));
 
   const moveTo = (next: number) => {
@@ -317,7 +374,7 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
 
   const close = () => {
     setOpen(false);
-    setTyped('');
+    setDigits('');
   };
 
   const commit = (picked: string | undefined) => {
@@ -329,11 +386,17 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
 
   return (
     <div
+      ref={rootRef}
       className="relative"
+      // A digit that completes the hour moves the caret to the minute, and the
+      // count of digits typed has to restart with it — otherwise the minute
+      // inherits the hour's keystrokes, which is the bug this replaces.
       onFocusCapture={() => {
+        setDigits('');
+        setActiveIndex(0);
+        syncFromSegments();
         if (value === '') {
           setOpen(true);
-          setActiveIndex(0);
         }
       }}
       onBlurCapture={(event) => {
@@ -371,12 +434,23 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
             return;
           }
         }
+        // Tab means "done here" even though it lands on the chevron, which is
+        // still inside this wrapper and so never triggers the blur handler.
+        if (event.key === 'Tab') {
+          close();
+          return;
+        }
         if (/^[0-9]$/.test(event.key)) {
-          setTyped((current) =>
-            current.length >= 4 ? event.key : current + event.key,
-          );
+          setDigits((current) => current + event.key);
           setActiveIndex(0);
           setOpen(true);
+          syncFromSegments();
+          return;
+        }
+        if (event.key === 'Backspace' || event.key === 'Delete') {
+          setDigits('');
+          setActiveIndex(0);
+          syncFromSegments();
         }
       }}
     >
@@ -399,7 +473,9 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
                 close();
                 return;
               }
+              setDigits('');
               setActiveIndex(0);
+              setReading(readSegments(rootRef.current));
               setOpen(true);
             }}
           >

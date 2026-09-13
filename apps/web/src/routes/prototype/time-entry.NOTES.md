@@ -39,24 +39,52 @@ B was refined during the session in response to driving it:
   the segments, where they step the number as before. Rendered inline, not in a
   Popover, because base-ui moves focus into a popup on open — which is exactly
   what must not happen while the field is still being typed into;
-- the list **narrows to what is still reachable as you type**. One digit is
-  ambiguous the way the segment itself treats it — `1` could still become `01`
-  or any of `10`-`19`, so all of those stay, chronologically. Two digits fix the
-  hour: `18` leaves only `18:00/18:15/18:30/18:45`. This is the type-ahead's
-  best trait without its worst one: the hour can only ever be a real hour,
-  because the segment refuses anything else.
+- the list **narrows to what is still reachable in the segment being typed**.
+  The filter reads the segments from the DOM (`data-type`, `aria-valuenow`,
+  which one holds the caret) rather than keeping a parallel digit buffer — the
+  buffer version had no idea which segment a digit landed in, so typing `11`
+  then `04` searched `04` as if it were an *hour*. In the hour, one digit is
+  ambiguous the way the segment treats it (`1` may still become `01` or any of
+  `10`-`19`, so all stay, chronologically); two digits settle it. In the minute
+  the hour is already fixed and the list never leaves it: `10` then `1` gives
+  `10:15`, `3` gives `10:30`. This is the type-ahead's best trait without its
+  worst one: the hour can only ever be a real hour, because the segment refuses
+  anything else.
 
 Verified end to end:
 
 ```
-type "1"          list opens by itself
-                  01:00 01:15 01:30 01:45 10:00 ... 19:45
-ArrowDown x2      highlights 01:30, field value untouched
-Enter             commits 01:30, list closes
-type "18"         18:00 18:15 18:30 18:45
-Escape            list closes
-ArrowUp           steps the segment again
+type "1"     field 01:00   01:00 01:15 01:30 01:45 10:00 ... 19:45
+type "11"    field 11:00   11:00 11:15 11:30 11:45
+type "111"   field 11:01   11:15
+type "113"   field 11:03   11:30
+type "10"    field 10:00   10:00 10:15 10:30 10:45
+type "101"   field 10:01   10:15
+type "103"   field 10:03   10:30
+type "1104"  field 11:04   (none - no quarter falls at :04)
+ArrowDown x2               moves the highlight, field value untouched
+Enter                      commits the highlighted row
+Escape                     closes; ArrowUp then steps the segment again
+Tab                        closes
 ```
+
+Edge cases checked rather than assumed:
+
+```
+hour "9"     09:00 ...        only 09, since no hour starts 9x
+hour "2"     02:00 + 20-23    both readings stay live
+hour "25"    -> 05:00         the segment rejects 25; 5 restarts the hour
+minute "9"   -> 12:09         list empty, correctly - no quarter at :09
+click a row  commits, caret never leaves the field
+```
+
+**Not achievable, and it does not matter.** Showing a bare `1` in the hour
+while typing (rather than `01`) is not available: two-digit hours are intrinsic
+to React Aria's `hourCycle={24}` formatting, and removing
+`shouldForceLeadingZeros` does not change it. The reason it was wanted — making
+the search work from a bare digit — is already satisfied, because the filter
+counts the digits typed into the focused segment independently of what the
+segment renders.
 
 ## shadcn reality check
 

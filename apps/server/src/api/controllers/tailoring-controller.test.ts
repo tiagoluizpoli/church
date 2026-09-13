@@ -12,7 +12,7 @@ import { IllegalStateTransitionError } from '../../domain/errors/illegal-state-t
 import { ShiftOutOfBoundsError } from '../../domain/errors/shift-out-of-bounds';
 import { createFastify } from '../../main/fastify/setup';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
-import { LeaderController } from './leader-controller';
+import { TailoringController } from './tailoring-controller';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -83,7 +83,7 @@ function createShift(): Shift {
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new LeaderController(
+  const controller = new TailoringController(
     participationManager as never,
     availabilityCheckManager as never,
     activeChurchResolver as never,

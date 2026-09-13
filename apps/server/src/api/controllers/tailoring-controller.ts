@@ -88,7 +88,7 @@ const errorResponseSchema = z.object({
 });
 
 @injectable()
-export class LeaderController implements FastifyController {
+export class TailoringController implements FastifyController {
   readonly prefix = '/tailoring';
 
   constructor(

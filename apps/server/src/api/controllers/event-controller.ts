@@ -15,6 +15,7 @@ import type { EventStatus } from '../../domain/entities/event';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
+import { denyEventScope } from '../auth/deny-event-scope';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   eventListResponseSchema,
@@ -51,12 +52,6 @@ interface DenyMinistryScopeInput {
   request: FastifyRequest;
   reply: FastifyReply;
   ministryId: string;
-}
-
-interface DenyEventScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  eventId: string;
 }
 
 @injectable()
@@ -156,7 +151,12 @@ export class EventController implements FastifyController {
       { schema: { tags: ['events'], operationId: 'cancelEvent' } },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
-        const denied = await this.denyEventScope({ request, reply, eventId });
+        const denied = await denyEventScope({
+          request,
+          reply,
+          eventId,
+          authorityGuard: this.authorityGuard,
+        });
         if (denied) return;
 
         await this.eventManager.cancelEvent({
@@ -172,7 +172,12 @@ export class EventController implements FastifyController {
       { schema: { tags: ['events'], operationId: 'sendReminders' } },
       async (request, reply) => {
         const { eventId } = request.params as EventRouteParams;
-        const denied = await this.denyEventScope({ request, reply, eventId });
+        const denied = await denyEventScope({
+          request,
+          reply,
+          eventId,
+          authorityGuard: this.authorityGuard,
+        });
         if (denied) return;
 
         await this.eventManager.sendReminder({
@@ -227,25 +232,6 @@ export class EventController implements FastifyController {
     reply.status(403).send({
       error: 'FORBIDDEN',
       message: 'Not a leader of this ministry',
-    });
-    return true;
-  }
-
-  private async denyEventScope({
-    request,
-    reply,
-    eventId,
-  }: DenyEventScopeInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.canManageEvent({
-      churchId: ChurchId.from(request.churchId),
-      eventId: EventId.from(eventId),
-      userId: UserId.from(request.userId),
-    });
-    if (allowed) return false;
-
-    reply.status(403).send({
-      error: 'FORBIDDEN',
-      message: 'Not a leader of this event',
     });
     return true;
   }

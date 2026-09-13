@@ -103,7 +103,7 @@ interface DenyShiftScopeInput {
 }
 
 @injectable()
-export class LeaderRosteringController implements FastifyController {
+export class RosteringController implements FastifyController {
   readonly prefix = '/rostering';
 
   constructor(

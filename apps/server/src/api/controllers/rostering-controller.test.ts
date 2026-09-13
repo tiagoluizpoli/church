@@ -11,7 +11,7 @@ import { Assignment } from '../../domain/entities/assignment';
 import { BelowFullPublishError } from '../../domain/errors/below-full-publish';
 import { createFastify } from '../../main/fastify/setup';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
-import { LeaderRosteringController } from './leader-rostering-controller';
+import { RosteringController } from './rostering-controller';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -54,7 +54,7 @@ let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new LeaderRosteringController(
+  const controller = new RosteringController(
     participationManager as never,
     assignmentManager as never,
     activeChurchResolver as never,

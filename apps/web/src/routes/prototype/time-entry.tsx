@@ -238,9 +238,11 @@ function SegmentedTimeControl({
   value,
   onChange,
   trailing,
+  pendingDigits,
   onPendingDigitsChange,
 }: TimeControlProps & {
   trailing?: ReactNode;
+  pendingDigits?: string;
   onPendingDigitsChange?: (digits: string) => void;
 }) {
   const parts = partsOf(value);
@@ -256,6 +258,7 @@ function SegmentedTimeControl({
     >
       <TimeInput
         trailing={trailing}
+        pendingDigits={pendingDigits}
         onPendingDigitsChange={onPendingDigitsChange}
       />
     </TimeField>
@@ -462,8 +465,10 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
         id={id}
         value={value}
         onChange={onChange}
-        // The field owns the pending digits: it is the thing the caret is in,
-        // and it already needs them to render a half-typed segment as `1-`.
+        // Driven from here rather than left inside the field: picking a row
+        // has to wipe them, or the field goes on rendering `11:1-` after the
+        // value has already become 11:15.
+        pendingDigits={digits}
         onPendingDigitsChange={(next) => {
           setDigits(next);
           syncFromSegments();

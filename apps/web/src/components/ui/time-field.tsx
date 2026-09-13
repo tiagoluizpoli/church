@@ -46,6 +46,10 @@ export interface TimeInputProps {
    * time the caret moves. Reported upward so a combobox built on this field can
    * filter on what is *being* typed rather than on what is already committed. */
   onPendingDigitsChange?: (digits: string) => void;
+  /** Supply this to drive the pending digits from outside — needed when
+   * something other than typing changes the value, such as picking from a
+   * list, which must clear them. Uncontrolled when omitted. */
+  pendingDigits?: string;
 }
 
 /** Matches `ui/input.tsx` box for box, so a time field and a text field line up
@@ -61,12 +65,14 @@ export function TimeInput({
   className,
   trailing,
   onPendingDigitsChange,
+  pendingDigits,
 }: TimeInputProps) {
   const size = useFormControlSize();
-  const [pending, setPending] = useState('');
+  const [uncontrolled, setUncontrolled] = useState('');
+  const pending = pendingDigits ?? uncontrolled;
 
   const report = (digits: string) => {
-    setPending(digits);
+    setUncontrolled(digits);
     onPendingDigitsChange?.(digits);
   };
 
@@ -82,7 +88,11 @@ export function TimeInput({
       onBlurCapture={() => report('')}
       onKeyDownCapture={(event) => {
         if (/^[0-9]$/.test(event.key)) {
-          report(pending + event.key);
+          // A digit typed into an already-full segment starts it over, which is
+          // what React Aria does to the value — append blindly and a minute
+          // sitting on 30 turns the buffer into `301`, which matches no time at
+          // all and silently empties the list.
+          report(pending.length >= 2 ? event.key : pending + event.key);
           return;
         }
         if (event.key !== 'Tab' && event.key !== 'Shift') {

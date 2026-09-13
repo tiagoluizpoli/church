@@ -238,7 +238,11 @@ function SegmentedTimeControl({
   value,
   onChange,
   trailing,
-}: TimeControlProps & { trailing?: ReactNode }) {
+  onPendingDigitsChange,
+}: TimeControlProps & {
+  trailing?: ReactNode;
+  onPendingDigitsChange?: (digits: string) => void;
+}) {
   const parts = partsOf(value);
 
   return (
@@ -250,7 +254,10 @@ function SegmentedTimeControl({
       value={parts ? parseTime(value) : null}
       onChange={(next) => onChange(next ? toHHmm(next.hour, next.minute) : '')}
     >
-      <TimeInput trailing={trailing} />
+      <TimeInput
+        trailing={trailing}
+        onPendingDigitsChange={onPendingDigitsChange}
+      />
     </TimeField>
   );
 }
@@ -392,7 +399,6 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
       // count of digits typed has to restart with it — otherwise the minute
       // inherits the hour's keystrokes, which is the bug this replaces.
       onFocusCapture={() => {
-        setDigits('');
         setActiveIndex(0);
         syncFromSegments();
         if (value === '') {
@@ -441,14 +447,12 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
           return;
         }
         if (/^[0-9]$/.test(event.key)) {
-          setDigits((current) => current + event.key);
           setActiveIndex(0);
           setOpen(true);
           syncFromSegments();
           return;
         }
         if (event.key === 'Backspace' || event.key === 'Delete') {
-          setDigits('');
           setActiveIndex(0);
           syncFromSegments();
         }
@@ -458,6 +462,12 @@ function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
         id={id}
         value={value}
         onChange={onChange}
+        // The field owns the pending digits: it is the thing the caret is in,
+        // and it already needs them to render a half-typed segment as `1-`.
+        onPendingDigitsChange={(next) => {
+          setDigits(next);
+          syncFromSegments();
+        }}
         trailing={
           <Button
             type="button"
@@ -780,7 +790,24 @@ function TemplateBlocksScenario({ variant }: ScenarioProps) {
           onChange={setEnd}
         />
       </div>
-      {span ? <SpanConfirmation span={span} /> : null}
+      <div className="flex items-center gap-2">
+        {span ? <SpanConfirmation span={span} /> : null}
+        {/* A real template starts with no times at all. Worth being able to
+            reach, since an empty field is where the `--` placeholders and the
+            half-typed `1-` display are actually seen together. */}
+        <Button
+          type="button"
+          size="xs"
+          variant="ghost"
+          className="ml-auto"
+          onClick={() => {
+            setStart('');
+            setEnd('');
+          }}
+        >
+          Clear (new row)
+        </Button>
+      </div>
     </ScenarioFrame>
   );
 }

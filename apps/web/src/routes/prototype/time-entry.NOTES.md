@@ -78,13 +78,21 @@ minute "9"   -> 12:09         list empty, correctly - no quarter at :09
 click a row  commits, caret never leaves the field
 ```
 
-**Not achievable, and it does not matter.** Showing a bare `1` in the hour
-while typing (rather than `01`) is not available: two-digit hours are intrinsic
-to React Aria's `hourCycle={24}` formatting, and removing
-`shouldForceLeadingZeros` does not change it. The reason it was wanted — making
-the search work from a bare digit — is already satisfied, because the filter
-counts the digits typed into the focused segment independently of what the
-segment renders.
+**A half-typed segment renders as `1-`, not `01`.** React Aria pads the moment
+a digit lands, so typing a single `1` leaves the field reading `01:00` — a
+complete, valid and *wrong* time that looks committed. On an empty field the
+whole control now reads `1-:––`, which says plainly that nothing is settled yet.
+
+Dropping the leading zero outright is not available — two-digit hours are
+intrinsic to `hourCycle={24}` formatting, and removing `shouldForceLeadingZeros`
+changes nothing. Overriding what the segment *renders* is available:
+`DateSegment` takes a render function with `text` / `isFocused` /
+`isPlaceholder`, so the dash is display only and the padded form returns the
+moment the segment is settled or the caret leaves.
+
+This lives in `ui/time-field.tsx`, not in the combobox: the field is the thing
+the caret is in, so it owns the pending digits and reports them upward for the
+list to filter on. One source, two consumers.
 
 ## shadcn reality check
 

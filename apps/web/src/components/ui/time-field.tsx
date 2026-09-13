@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   DateInput as DateInputPrimitive,
   DateSegment,
@@ -41,15 +42,54 @@ export interface TimeInputProps {
   /** Rendered inside the field, after the segments — the segments need about
    * 5ch, so the rest of the control is dead space worth using. */
   trailing?: React.ReactNode;
+  /** Digits typed into the segment that currently holds the caret, reset every
+   * time the caret moves. Reported upward so a combobox built on this field can
+   * filter on what is *being* typed rather than on what is already committed. */
+  onPendingDigitsChange?: (digits: string) => void;
 }
 
 /** Matches `ui/input.tsx` box for box, so a time field and a text field line up
- * in the same form row and respond to the same touch-size context. */
-export function TimeInput({ className, trailing }: TimeInputProps) {
+ * in the same form row and respond to the same touch-size context.
+ *
+ * Renders a **half-typed segment as `1-` rather than `01`**. React Aria pads
+ * the moment a digit lands, so typing a single `1` leaves the field reading
+ * `01:00` — a complete, valid, and wrong time that looks committed. The dash
+ * says the segment is still waiting for its second digit. The underlying value
+ * is untouched; this is display only, and the padded form returns as soon as
+ * the segment is settled. */
+export function TimeInput({
+  className,
+  trailing,
+  onPendingDigitsChange,
+}: TimeInputProps) {
   const size = useFormControlSize();
+  const [pending, setPending] = useState('');
+
+  const report = (digits: string) => {
+    setPending(digits);
+    onPendingDigitsChange?.(digits);
+  };
 
   return (
-    <>
+    // `contents` so this wrapper carries the listeners without adding a box —
+    // DateInputProps takes no capture handlers of its own, and the trailing
+    // slot still positions against the TimeField above it.
+    <span
+      className="contents"
+      // Focus moves between segments inside this element, so focusin both
+      // fires here and tells us the caret has moved on to a fresh segment.
+      onFocusCapture={() => report('')}
+      onBlurCapture={() => report('')}
+      onKeyDownCapture={(event) => {
+        if (/^[0-9]$/.test(event.key)) {
+          report(pending + event.key);
+          return;
+        }
+        if (event.key !== 'Tab' && event.key !== 'Shift') {
+          report('');
+        }
+      }}
+    >
       <DateInputPrimitive
         className={cn(
           'radius-control relative inline-flex w-full items-center border border-input bg-transparent px-2.5 py-1 tabular-nums transition-colors',
@@ -69,10 +109,19 @@ export function TimeInput({ className, trailing }: TimeInputProps) {
               'focus:bg-primary focus:text-primary-foreground',
               'data-placeholder:text-muted-foreground',
             )}
-          />
+          >
+            {({ text, isFocused, isPlaceholder }) =>
+              isFocused &&
+              !isPlaceholder &&
+              pending.length === 1 &&
+              text.length === 2
+                ? `${pending}-`
+                : text
+            }
+          </DateSegment>
         )}
       </DateInputPrimitive>
       {trailing}
-    </>
+    </span>
   );
 }

@@ -9,11 +9,6 @@ import { Button } from '@/components/ui/button';
 import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { TimeField, TimeInput } from '@/components/ui/time-field';
 import { cn } from '@/lib/utils';
 
@@ -260,71 +255,191 @@ function SegmentedTimeControl({
   );
 }
 
-/** B — A, plus a chevron *inside* the field opening the 15-minute list. The
- * list is the fast path for the common case; the segments still take 18:21,
- * still step with the arrow keys, and still refuse an impossible minute.
+/** Which quarter-hours are still reachable from what has been typed so far.
  *
- * The list narrows as the hour is typed, which is the one thing the type-ahead
- * did better: with the hour set to 18, only 18:00/18:15/18:30/18:45 remain, so
- * the common case is two keystrokes and one Enter. */
+ * One digit is ambiguous exactly the way the segment itself treats it: `1`
+ * could still become `01` or any of `10`-`19`, so all of those stay in the
+ * list, chronologically. Two digits fix the hour. Beyond that the minute
+ * narrows too. With nothing typed, the list falls back to the hour already
+ * held, and to the whole day when the field is empty. */
+function optionsFor(value: string, typed: string): string[] {
+  if (typed !== '') {
+    const reachable = new Set(
+      QUARTER_OPTIONS.filter((option) =>
+        option.replace(':', '').startsWith(typed),
+      ),
+    );
+    if (typed.length === 1) {
+      for (const option of QUARTER_OPTIONS) {
+        if (option.startsWith(`0${typed}:`)) {
+          reachable.add(option);
+        }
+      }
+    }
+    return QUARTER_OPTIONS.filter((option) => reachable.has(option));
+  }
+  const parts = partsOf(value);
+  return parts
+    ? QUARTER_OPTIONS.filter((option) =>
+        option.startsWith(`${pad(parts.hour)}:`),
+      )
+    : QUARTER_OPTIONS;
+}
+
+/** B — A, plus a list that behaves like a combobox rather than a popup.
+ *
+ * Focus never leaves the segments. The list opens on its own when the field is
+ * empty or as soon as a digit is typed, narrows to what is still reachable,
+ * and Up/Down walk it *without* moving the caret — so a leader can type `1`,
+ * see their time two rows down, and press Enter. Escape closes the list and
+ * hands the arrow keys straight back to the segments, where they step the
+ * number the way they always did.
+ *
+ * The list is rendered inline rather than in a Popover on purpose: base-ui
+ * moves focus into the popup on open, which is exactly what must not happen
+ * when the input is still being typed into. */
 function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const [fieldWidth, setFieldWidth] = useState<number>();
+  const [typed, setTyped] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  // The popover portals out of the field, so it cannot inherit its width from
-  // the DOM. Measure on open so the list is exactly as wide as the control it
-  // belongs to, rather than a narrow slab hanging off one edge.
-  useEffect(() => {
-    if (open) {
-      setFieldWidth(triggerRef.current?.getBoundingClientRect().width);
+  const options = optionsFor(value, typed);
+  const active = Math.min(activeIndex, Math.max(0, options.length - 1));
+
+  const moveTo = (next: number) => {
+    const clamped = Math.min(Math.max(next, 0), options.length - 1);
+    setActiveIndex(clamped);
+    listRef.current
+      ?.querySelector(`[data-index="${clamped}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  };
+
+  const close = () => {
+    setOpen(false);
+    setTyped('');
+  };
+
+  const commit = (picked: string | undefined) => {
+    if (picked) {
+      onChange(picked);
     }
-  }, [open]);
+    close();
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <div ref={triggerRef} className="relative">
-        <SegmentedTimeControl
-          id={id}
-          value={value}
-          onChange={onChange}
-          trailing={
-            <PopoverTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="Pick a common time"
-                  className="absolute top-1/2 right-1 -translate-y-1/2"
-                />
-              }
-            >
-              <ChevronDown className="opacity-60" />
-            </PopoverTrigger>
+    <div
+      className="relative"
+      onFocusCapture={() => {
+        if (value === '') {
+          setOpen(true);
+          setActiveIndex(0);
+        }
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          close();
+        }
+      }}
+      // Capture phase: React Aria's segments handle Up/Down themselves, so the
+      // list has to claim those keys *before* they reach the segment — but only
+      // while it is open. Closed, they fall through and step the number.
+      onKeyDownCapture={(event) => {
+        if (open) {
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            event.stopPropagation();
+            moveTo(active + 1);
+            return;
           }
-        />
-      </div>
-      {/* Anchored on the chevron, which is the trigger — so `end` is what puts
-          the list's right edge on the field's right edge. `start` would hang it
-          off the chevron's left edge, a slab floating past the control. The
-          offset cancels the chevron's own `right-1` inset. */}
-      <PopoverContent
-        align="end"
-        alignOffset={-4}
-        className="p-0"
-        style={fieldWidth ? { width: fieldWidth } : undefined}
-      >
-        <QuarterHourList
-          value={value}
-          onPick={(picked) => {
-            onChange(picked);
-            setOpen(false);
-          }}
-          onDismiss={() => setOpen(false)}
-        />
-      </PopoverContent>
-    </Popover>
+          if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            event.stopPropagation();
+            moveTo(active - 1);
+            return;
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            commit(options[active]);
+            return;
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+            return;
+          }
+        }
+        if (/^[0-9]$/.test(event.key)) {
+          setTyped((current) =>
+            current.length >= 4 ? event.key : current + event.key,
+          );
+          setActiveIndex(0);
+          setOpen(true);
+        }
+      }}
+    >
+      <SegmentedTimeControl
+        id={id}
+        value={value}
+        onChange={onChange}
+        trailing={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Pick a common time"
+            aria-expanded={open}
+            className="absolute top-1/2 right-1 -translate-y-1/2"
+            // Keep the caret in the segments — a plain click would blur them.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              if (open) {
+                close();
+                return;
+              }
+              setActiveIndex(0);
+              setOpen(true);
+            }}
+          >
+            <ChevronDown className="opacity-60" />
+          </Button>
+        }
+      />
+      {open && options.length > 0 ? (
+        <div
+          ref={listRef}
+          role="listbox"
+          aria-label="Common times"
+          className="radius-control absolute top-full right-0 left-0 z-50 mt-1 max-h-56 overflow-auto border border-border bg-popover p-1 shadow-md"
+        >
+          {options.map((option, index) => (
+            // Focus stays on the segments throughout, so these rows are never
+            // focusable and never carry their own key handler.
+            // biome-ignore lint/a11y/useFocusableInteractive: see above
+            // biome-ignore lint/a11y/useKeyWithClickEvents: see above
+            <div
+              key={option}
+              role="option"
+              aria-selected={option === value}
+              data-index={index}
+              data-nearest={index === 0}
+              className={cn(
+                'cursor-pointer rounded px-2 py-1.5 text-left text-sm tabular-nums hover:bg-accent',
+                index === active && 'bg-accent',
+                option === value && 'font-medium',
+              )}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => commit(option)}
+              onMouseEnter={() => setActiveIndex(index)}
+            >
+              {option}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -516,111 +631,6 @@ function StepperColumn({ unit, display, onStep }: StepperColumnProps) {
       >
         <Minus />
       </Button>
-    </div>
-  );
-}
-
-interface QuarterHourListProps {
-  value: string;
-  onPick: (value: string) => void;
-  onDismiss: () => void;
-}
-
-/** A listbox, not a stack of buttons: the whole point of the segmented field
- * is that everything steps with the arrow keys, so the list it opens has to
- * as well. Up/Down move the selection, PageUp/PageDown move an hour, Home/End
- * jump to either end of the day, Enter commits, Escape closes.
- *
- * The list also narrows to the hour already held — with 18 in the field, only
- * 18:00/18:15/18:30/18:45 remain. That is the type-ahead's best trait without
- * its worst one: the hour can only ever be a real hour, because the segment
- * refuses anything else. */
-function QuarterHourList({ value, onPick, onDismiss }: QuarterHourListProps) {
-  const parts = partsOf(value);
-  const options = parts
-    ? QUARTER_OPTIONS.filter((option) =>
-        option.startsWith(`${pad(parts.hour)}:`),
-      )
-    : QUARTER_OPTIONS;
-  const nearest = options.includes(nearestQuarter(value))
-    ? nearestQuarter(value)
-    : (options[0] ?? QUARTER_OPTIONS[0]);
-  const [activeIndex, setActiveIndex] = useState(() =>
-    Math.max(0, options.indexOf(nearest)),
-  );
-
-  const move = (nextIndex: number, container: HTMLElement | null) => {
-    const clamped = Math.min(Math.max(nextIndex, 0), options.length - 1);
-    setActiveIndex(clamped);
-    container
-      ?.querySelector(`[data-index="${clamped}"]`)
-      ?.scrollIntoView({ block: 'nearest' });
-  };
-
-  return (
-    <div
-      ref={centreNearestRow}
-      role="listbox"
-      aria-label="Common times"
-      aria-activedescendant={`quarter-${activeIndex}`}
-      tabIndex={0}
-      className="max-h-64 overflow-auto p-1 outline-none"
-      onKeyDown={(event) => {
-        const container = event.currentTarget;
-        if (event.key === 'ArrowDown') {
-          event.preventDefault();
-          move(activeIndex + 1, container);
-        } else if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          move(activeIndex - 1, container);
-        } else if (event.key === 'PageDown') {
-          event.preventDefault();
-          move(activeIndex + 4, container);
-        } else if (event.key === 'PageUp') {
-          event.preventDefault();
-          move(activeIndex - 4, container);
-        } else if (event.key === 'Home') {
-          event.preventDefault();
-          move(0, container);
-        } else if (event.key === 'End') {
-          event.preventDefault();
-          move(options.length - 1, container);
-        } else if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          const picked = options[activeIndex];
-          if (picked) {
-            onPick(picked);
-          }
-        } else if (event.key === 'Escape') {
-          event.preventDefault();
-          onDismiss();
-        }
-      }}
-    >
-      {options.map((option, index) => (
-        // The container owns focus and points at the active row with
-        // aria-activedescendant — which is the listbox pattern, and is exactly
-        // why an option must NOT be focusable or carry its own key handler.
-        // biome-ignore lint/a11y/useFocusableInteractive: see above
-        // biome-ignore lint/a11y/useKeyWithClickEvents: see above
-        <div
-          key={option}
-          id={`quarter-${index}`}
-          role="option"
-          aria-selected={option === value}
-          data-index={index}
-          data-nearest={option === nearest}
-          className={cn(
-            'cursor-pointer rounded px-2 py-1.5 text-left text-sm tabular-nums hover:bg-accent',
-            index === activeIndex && 'bg-accent',
-            option === value && 'font-medium',
-          )}
-          onClick={() => onPick(option)}
-          onMouseEnter={() => setActiveIndex(index)}
-        >
-          {option}
-        </div>
-      ))}
     </div>
   );
 }

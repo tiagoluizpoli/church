@@ -32,10 +32,31 @@ B was refined during the session in response to driving it:
 - the list is **exactly as wide as the field** and left-aligned with it. It
   anchors on the chevron (the trigger), so `align="end"` with a −4 offset is
   what puts it over the control rather than hanging off one edge;
-- the list **narrows to the hour already held** — with 18 in the field only
-  `18:00/18:15/18:30/18:45` remain. This is the type-ahead's best trait without
-  its worst one: the hour can only ever be a real hour, because the segment
-  refuses anything else.
+- the list became a **combobox rather than a popup**. It opens by itself when
+  the field is empty or the moment a digit is typed; Up/Down walk the list
+  *without moving the caret*, so focus never leaves the segments; Enter commits
+  the highlighted row; Escape closes and hands the arrow keys straight back to
+  the segments, where they step the number as before. Rendered inline, not in a
+  Popover, because base-ui moves focus into a popup on open — which is exactly
+  what must not happen while the field is still being typed into;
+- the list **narrows to what is still reachable as you type**. One digit is
+  ambiguous the way the segment itself treats it — `1` could still become `01`
+  or any of `10`-`19`, so all of those stay, chronologically. Two digits fix the
+  hour: `18` leaves only `18:00/18:15/18:30/18:45`. This is the type-ahead's
+  best trait without its worst one: the hour can only ever be a real hour,
+  because the segment refuses anything else.
+
+Verified end to end:
+
+```
+type "1"          list opens by itself
+                  01:00 01:15 01:30 01:45 10:00 ... 19:45
+ArrowDown x2      highlights 01:30, field value untouched
+Enter             commits 01:30, list closes
+type "18"         18:00 18:15 18:30 18:45
+Escape            list closes
+ArrowUp           steps the segment again
+```
 
 ## shadcn reality check
 

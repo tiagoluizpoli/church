@@ -5,12 +5,16 @@ import Loader from './components/loader';
 import { routeTree } from './routeTree.gen';
 import { queryClient } from './utils/api';
 
+interface WrapComponentProps {
+  children: React.ReactNode;
+}
+
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   defaultPendingComponent: () => <Loader />,
   context: { queryClient },
-  Wrap: function WrapComponent({ children }: { children: React.ReactNode }) {
+  Wrap: function WrapComponent({ children }: WrapComponentProps) {
     return (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );

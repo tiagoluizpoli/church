@@ -7,6 +7,10 @@ const userId = 'usr_1' as UserId;
 const churchAId = 'chu_a' as ChurchId;
 const churchBId = 'chu_b' as ChurchId;
 
+interface SchedulingAccessQuery {
+  churchId: ChurchId;
+}
+
 const membershipRepository = {
   listByUserId: vi.fn(),
   listComparisonsByUserId: vi.fn(),
@@ -49,7 +53,7 @@ describe('DbActiveChurchSelectionManager', () => {
         },
       ]);
       authorityManager.hasSchedulingAccess.mockImplementation(
-        async ({ churchId }: { churchId: ChurchId }) => churchId === churchAId,
+        async ({ churchId }: SchedulingAccessQuery) => churchId === churchAId,
       );
       const manager = createManager();
 

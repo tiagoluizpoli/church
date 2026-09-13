@@ -2,6 +2,10 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
+import type {
+  GetActiveChurchStatus200,
+  SelectActiveChurch200,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 import {
   extractRequestedChurchId,
@@ -10,6 +14,30 @@ import {
 } from '@/shared/utils/cross-church-link';
 import { activeChurchApi } from '@/utils/api-instances';
 
+interface ToChurchTimezoneContextInput {
+  status: GetActiveChurchStatus200 | SelectActiveChurch200;
+}
+
+interface ChurchTimezoneContext {
+  churchTimezone: string;
+}
+
+/**
+ * A resolved status always carries its Church Timezone (ADR-0003). One
+ * without it is a broken contract, and guessing a zone would silently shift
+ * every time on screen (#150) — so the route fails instead.
+ */
+function toChurchTimezoneContext({
+  status,
+}: ToChurchTimezoneContextInput): ChurchTimezoneContext {
+  if (status.status !== 'resolved' || !status.timezone) {
+    throw new Error(
+      'The Active Church status did not resolve with a Church Timezone',
+    );
+  }
+  return { churchTimezone: status.timezone };
+}
+
 export const Route = createFileRoute('/_authenticated/_active-church')({
   component: ActiveChurchLayout,
   beforeLoad: async ({ search, location, context }) => {
@@ -17,11 +45,12 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     // server-side on every load and covers every branch — an already-set
     // Church that no longer checks out, several Memberships with none active,
     // and no Membership at all — rather than only the first of those.
-    const { status, churchId, membershipRemovedFrom, timezone } =
-      await activeChurchApi.getActiveChurchStatus();
+    const status = await activeChurchApi.getActiveChurchStatus();
+    const { membershipRemovedFrom } = status;
 
     const requestedChurchId = extractRequestedChurchId({ search });
-    const currentChurchId = status === 'resolved' ? (churchId ?? null) : null;
+    const currentChurchId =
+      status.status === 'resolved' ? status.churchId : null;
     if (requestedChurchId && requestedChurchId !== currentChurchId) {
       // Cached under the query key /select-church and /switch-church-confirm
       // already read from, so a redirect to either shows this list instantly
@@ -43,7 +72,7 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
         const selected = await activeChurchApi.selectActiveChurch({
           churchId: decision.churchId,
         });
-        return { churchTimezone: selected.timezone ?? DEFAULT_CHURCH_TIMEZONE };
+        return toChurchTimezoneContext({ status: selected });
       }
 
       if (decision.kind === 'needs-confirmation') {
@@ -66,13 +95,13 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       }
     }
 
-    if (status === 'selection_required') {
+    if (status.status === 'selection_required') {
       throw redirect({
         to: '/select-church',
         search: { removedFrom: membershipRemovedFrom },
       });
     }
-    if (status === 'no_membership') {
+    if (status.status === 'no_membership') {
       throw redirect({
         to: '/no-access',
         search: { removedFrom: membershipRemovedFrom },
@@ -91,13 +120,9 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     // Resolved through `beforeLoad`, which blocks: every route under the
     // layout renders with the right zone on first paint, and a church switch
     // remounts with the new one (ADR-0003, #150).
-    return { churchTimezone: timezone ?? DEFAULT_CHURCH_TIMEZONE };
+    return toChurchTimezoneContext({ status });
   },
 });
-
-/** A resolved status always carries the Church Timezone; new churches default
- * to UTC server-side, so the same fallback never shifts a real schedule. */
-const DEFAULT_CHURCH_TIMEZONE = 'UTC';
 
 function ActiveChurchLayout() {
   const { churchTimezone } = Route.useRouteContext();

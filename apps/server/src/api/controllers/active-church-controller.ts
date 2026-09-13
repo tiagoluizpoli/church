@@ -13,6 +13,7 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { resolveActiveChurchAndPersist } from '../auth/resolve-active-church-and-persist';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  type ActiveChurchStatusResponse,
   activeChurchMapper,
   activeChurchStatusResponseSchema,
   churchSelectionListResponseSchema,
@@ -25,7 +26,7 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
-interface TimezoneForInput {
+interface BuildStatusResponseInput {
   resolution: ActiveChurchResolution;
 }
 
@@ -106,12 +107,7 @@ export class ActiveChurchController implements FastifyController {
             ? ChurchId.from(session.activeOrganizationId)
             : null,
         });
-        return reply.send(
-          activeChurchMapper.toStatusResponse({
-            resolution,
-            timezone: await this.timezoneFor({ resolution }),
-          }),
-        );
+        return reply.send(await this.buildStatusResponse({ resolution }));
       },
     );
 
@@ -189,22 +185,28 @@ export class ActiveChurchController implements FastifyController {
             );
           });
 
-        return reply.send(
-          activeChurchMapper.toStatusResponse({
-            resolution,
-            timezone: await this.timezoneFor({ resolution }),
-          }),
-        );
+        return reply.send(await this.buildStatusResponse({ resolution }));
       },
     );
   }
 
-  private async timezoneFor({
+  /**
+   * The one status shape both entry-gate routes return. Only a resolved
+   * Church has a Church Timezone to look up, so the lookup lives on that
+   * branch alone.
+   */
+  private async buildStatusResponse({
     resolution,
-  }: TimezoneForInput): Promise<string | undefined> {
-    if (resolution.status !== 'resolved') return undefined;
-    return this.selectionManager.getChurchTimezone({
+  }: BuildStatusResponseInput): Promise<ActiveChurchStatusResponse> {
+    if (resolution.status !== 'resolved') {
+      return activeChurchMapper.toUnresolvedStatusResponse(resolution);
+    }
+    const timezone = await this.selectionManager.getChurchTimezone({
       churchId: resolution.churchId,
+    });
+    return activeChurchMapper.toResolvedStatusResponse({
+      resolution,
+      timezone,
     });
   }
 }

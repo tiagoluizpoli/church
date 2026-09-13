@@ -1,15 +1,32 @@
 import { z } from 'zod';
-import type { ActiveChurchResolution } from '../../domain/contracts/application/active-church-resolver';
+import type {
+  ActiveChurchSelectionRequired,
+  NoChurchMembership,
+  ResolvedActiveChurch,
+} from '../../domain/contracts/application/active-church-resolver';
 import type { ChurchSelectionOption } from '../../domain/contracts/application/active-church-selection-manager';
 
-export const activeChurchStatusResponseSchema = z.object({
-  status: z.enum(['resolved', 'selection_required', 'no_membership']),
-  churchId: z.string().optional(),
-  /** Name of the Church the caller's Membership was just found removed from, when that's why this status resolved. */
-  membershipRemovedFrom: z.string().optional(),
+/** Name of the Church the caller's Membership was just found removed from, when that's why this status resolved. */
+const membershipRemovedFromSchema = z.string().optional();
+
+const resolvedActiveChurchStatusSchema = z.object({
+  status: z.literal('resolved'),
+  churchId: z.string(),
+  membershipRemovedFrom: membershipRemovedFromSchema,
   /** IANA Church Timezone of the resolved Church — every displayed time and CalendarDay resolves through it (ADR-0003). */
-  timezone: z.string().optional(),
+  timezone: z.string(),
 });
+
+const unresolvedActiveChurchStatusSchema = z.object({
+  status: z.enum(['selection_required', 'no_membership']),
+  membershipRemovedFrom: membershipRemovedFromSchema,
+});
+
+/** A resolved status always names its Church and that Church's Timezone; the others carry neither. */
+export const activeChurchStatusResponseSchema = z.discriminatedUnion('status', [
+  resolvedActiveChurchStatusSchema,
+  unresolvedActiveChurchStatusSchema,
+]);
 export type ActiveChurchStatusResponse = z.infer<
   typeof activeChurchStatusResponseSchema
 >;
@@ -37,23 +54,35 @@ export type SelectActiveChurchBody = z.infer<
   typeof selectActiveChurchBodySchema
 >;
 
-export interface ToStatusResponseInput {
-  resolution: ActiveChurchResolution;
-  /** Present only for a resolved Church. */
-  timezone?: string;
+export interface ToResolvedStatusResponseInput {
+  resolution: ResolvedActiveChurch;
+  /** IANA Church Timezone of `resolution.churchId`. */
+  timezone: string;
 }
 
+export type UnresolvedActiveChurch =
+  | NoChurchMembership
+  | ActiveChurchSelectionRequired;
+
 export const activeChurchMapper = {
-  toStatusResponse({
+  toResolvedStatusResponse({
     resolution,
     timezone,
-  }: ToStatusResponseInput): ActiveChurchStatusResponse {
+  }: ToResolvedStatusResponseInput): ActiveChurchStatusResponse {
+    return {
+      status: resolution.status,
+      churchId: resolution.churchId,
+      membershipRemovedFrom: resolution.membershipRemovedFrom,
+      timezone,
+    };
+  },
+
+  toUnresolvedStatusResponse(
+    resolution: UnresolvedActiveChurch,
+  ): ActiveChurchStatusResponse {
     return {
       status: resolution.status,
       membershipRemovedFrom: resolution.membershipRemovedFrom,
-      ...(resolution.status === 'resolved'
-        ? { churchId: resolution.churchId, timezone }
-        : {}),
     };
   },
 

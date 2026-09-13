@@ -181,6 +181,7 @@ describe('GET /api/v1/active-church/status', () => {
       volunteerId: null,
       autoSelected: true,
     });
+    selectionManager.getChurchTimezone.mockResolvedValueOnce('UTC');
     mockSetActiveOrganization.mockResolvedValueOnce(undefined as never);
 
     const response = await app.inject({
@@ -189,6 +190,11 @@ describe('GET /api/v1/active-church/status', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      status: 'resolved',
+      churchId: CHURCH_ID,
+      timezone: 'UTC',
+    });
     expect(mockSetActiveOrganization).toHaveBeenCalledWith(
       expect.objectContaining({ body: { organizationId: CHURCH_ID } }),
     );

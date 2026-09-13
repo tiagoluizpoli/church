@@ -22,11 +22,11 @@ afterAll(async () => {
   await app.close();
 });
 
-describe('GET /api/v1/admin/ministries (T038)', () => {
+describe('GET /api/v1/ministries (T038)', () => {
   it('returns 401 when not authenticated', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/v1/admin/ministries',
+      url: '/api/v1/ministries',
     });
     expect(res.statusCode).toBe(401);
   });
@@ -34,7 +34,7 @@ describe('GET /api/v1/admin/ministries (T038)', () => {
   it('returns 401 when session is invalid', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/v1/admin/ministries',
+      url: '/api/v1/ministries',
       headers: { cookie: 'better-auth.session_token=invalid-token' },
     });
     expect(res.statusCode).toBe(401);

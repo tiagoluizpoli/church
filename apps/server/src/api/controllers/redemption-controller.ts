@@ -96,6 +96,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'previewChurchInvitation',
+          summary: 'Preview a Church Invitation',
+          description:
+            'Get the public, unauthenticated preview of a Church Invitation for an unregistered recipient.',
           params: redemptionParamsSchema,
           response: {
             200: redemptionPreviewResponseSchema,
@@ -123,6 +126,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'requestChurchInvitationVerificationCode',
+          summary: 'Request a Church Invitation verification code',
+          description:
+            "Send a one-time verification code to the invited recipient's email so they can redeem their Church Invitation.",
           params: redemptionParamsSchema,
           response: {
             200: verificationCodeRequestedResponseSchema,
@@ -160,6 +166,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'redeemChurchInvitation',
+          summary: 'Redeem a Church Invitation as a new User',
+          description:
+            'Verify the code and create a new User account that redeems a Church Invitation, admitting it as a Church Member.',
           params: redemptionParamsSchema,
           body: redeemNewUserBodySchema,
           response: {
@@ -194,6 +203,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'declineChurchInvitation',
+          summary: 'Decline a Church Invitation',
+          description:
+            'Decline a Church Invitation as its authenticated recipient, also declining a chained Ministry Invitation if one is paired with it.',
           params: redemptionParamsSchema,
           response: {
             200: declineOutcomeResponseSchema,
@@ -210,6 +222,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'getMinistryInvitationStatus',
+          summary: 'Get a Ministry Invitation status',
+          description:
+            "Get an authenticated User's redeemable status and preview for a Ministry Invitation.",
           params: redemptionParamsSchema,
           response: {
             200: authenticatedInvitationStatusResponseSchema,
@@ -245,6 +260,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'acceptMinistryInvitation',
+          summary: 'Accept a Ministry Invitation as an existing Church Member',
+          description:
+            'Accept a Ministry Invitation as an already-authenticated existing Church Member, granting the stated Ministry Access Level and Roles.',
           params: redemptionParamsSchema,
           body: acceptExistingMemberBodySchema,
           response: {
@@ -274,6 +292,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'declineMinistryInvitation',
+          summary: 'Decline a Ministry Invitation',
+          description:
+            'Decline a Ministry Invitation as its authenticated recipient, also declining a chained Church Invitation if one is paired with it.',
           params: redemptionParamsSchema,
           response: {
             200: declineOutcomeResponseSchema,
@@ -292,6 +313,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'getVolunteerTransferPreview',
+          summary: 'Preview a Volunteer Transfer',
+          description:
+            'Preview the effect of a Volunteer Transfer triggered by a cross-Church Ministry Invitation redemption: the Church Memberships that would end and the Assignments that would be withdrawn.',
           params: redemptionParamsSchema,
           response: {
             200: transferPreviewResponseSchema,
@@ -332,6 +356,9 @@ export class RedemptionController implements FastifyController {
         schema: {
           tags: ['redemption'],
           operationId: 'confirmVolunteerTransfer',
+          summary: 'Confirm a Volunteer Transfer',
+          description:
+            "Confirm the Volunteer Transfer, retiring the User's Volunteer profile in the source Church and creating a fresh one in the destination Church.",
           params: redemptionParamsSchema,
           body: confirmTransferBodySchema,
           response: {
@@ -363,6 +390,9 @@ export class RedemptionController implements FastifyController {
           schema: {
             tags: ['redemption-debug'],
             operationId: 'debugGetChurchInvitationVerificationCode',
+            summary: 'Get a Church Invitation verification code (debug)',
+            description:
+              'Non-production only: read back the verification code sent for a Church Invitation, bypassing email delivery.',
             params: redemptionParamsSchema,
             response: {
               200: debugVerificationCodeResponseSchema,

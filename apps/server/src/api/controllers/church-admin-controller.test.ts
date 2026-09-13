@@ -8,15 +8,15 @@ import {
   it,
   vi,
 } from 'vitest';
-import { ChurchAdminController } from '../../src/api/controllers/church-admin-controller';
-import { RoleId } from '../../src/domain/branded-ids';
-import { Ministry } from '../../src/domain/entities/ministry';
-import { MinistryServingProfile } from '../../src/domain/entities/ministry-serving-profile';
-import { IllegalStateTransitionError } from '../../src/domain/errors/illegal-state-transition';
-import { LastRemainingSlotError } from '../../src/domain/errors/last-remaining-slot-error';
-import { OverlappingCycleError } from '../../src/domain/errors/overlapping-cycle';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { RoleId } from '../../domain/branded-ids';
+import { Ministry } from '../../domain/entities/ministry';
+import { MinistryServingProfile } from '../../domain/entities/ministry-serving-profile';
+import { IllegalStateTransitionError } from '../../domain/errors/illegal-state-transition';
+import { LastRemainingSlotError } from '../../domain/errors/last-remaining-slot-error';
+import { OverlappingCycleError } from '../../domain/errors/overlapping-cycle';
+import { createFastify } from '../../main/fastify/setup';
+import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { ChurchAdminController } from './church-admin-controller';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -155,6 +155,18 @@ beforeEach(() => {
 });
 
 describe('Church admin planning routes', () => {
+  it('returns 401 for any route when there is no session', async () => {
+    mockGetSession.mockResolvedValueOnce(null as never);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/planning-cycles',
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(cycleManager.listCycles).not.toHaveBeenCalled();
+  });
+
   it('POST /api/v1/admin/planning-cycles returns 201 and 409 for overlap conflicts', async () => {
     cycleManager.createCycle.mockResolvedValue({
       id: '22222222-2222-2222-2222-222222222222',

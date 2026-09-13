@@ -85,6 +85,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getVolunteerDashboard',
+          summary: "Get the caller's Volunteer dashboard",
+          description:
+            "Get the current Volunteer's dashboard summary for the Active Church.",
           response: { 200: dashboardResponseSchema },
         },
       },
@@ -103,6 +106,8 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getMyAssignments',
+          summary: "Get the caller's upcoming Assignments",
+          description: "List the current Volunteer's upcoming Assignments.",
           response: { 200: assignmentListResponseSchema },
         },
       },
@@ -121,6 +126,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getMinistrySchedule',
+          summary: "Get the caller's published Ministry schedule",
+          description:
+            "Get the current Volunteer's published schedule within one Ministry.",
           response: { 200: ministryScheduleResponseSchema },
         },
       },
@@ -141,6 +149,8 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'listAvailabilityChecks',
+          summary: "List the caller's AvailabilityChecks",
+          description: "List the current Volunteer's AvailabilityChecks.",
           response: { 200: availabilityCheckListResponseSchema },
         },
       },
@@ -161,6 +171,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getAvailabilityCheck',
+          summary: "Get one of the caller's AvailabilityChecks",
+          description:
+            'Get the detail of a single AvailabilityCheck belonging to the current Volunteer.',
           response: { 200: availabilityCheckDetailResponseSchema },
         },
       },
@@ -183,6 +196,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'setUnavailabilityMarks',
+          summary: 'Set unavailability marks on an AvailabilityCheck',
+          description:
+            "Record the current Volunteer's unavailability marks — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
           body: setUnavailabilityMarksBodySchema,
           response: { 200: availabilityCheckDetailResponseSchema },
         },
@@ -211,6 +227,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'confirmAvailabilityCheck',
+          summary: 'Confirm an AvailabilityCheck',
+          description:
+            "Confirm the current Volunteer's AvailabilityCheck, recording confirmedAt even when no marks were left.",
         },
       },
       async (request, reply) => {
@@ -230,6 +249,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'respondToAssignment',
+          summary: 'Respond to an Assignment',
+          description:
+            "Record the current Volunteer's accept/decline response to one of their own Assignments.",
           body: respondToAssignmentBodySchema,
           response: { 200: assignmentResponseSchema },
         },
@@ -256,6 +278,8 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'cancelOwnAssignment',
+          summary: "Cancel one of the caller's Assignments",
+          description: "Cancel one of the current Volunteer's own Assignments.",
           response: { 204: z.null() },
         },
       },
@@ -276,6 +300,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getNotifications',
+          summary: "List the caller's VolunteerNotifications",
+          description:
+            "List the current Volunteer's VolunteerNotifications, paginated by cursor.",
           querystring: getNotificationsQuerystringSchema,
           response: { 200: notificationListResponseSchema },
         },
@@ -300,6 +327,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'markNotificationRead',
+          summary: 'Mark a VolunteerNotification read',
+          description:
+            "Mark one of the current Volunteer's VolunteerNotifications as read.",
           response: { 200: z.object({ marked: z.boolean() }) },
         },
       },
@@ -320,6 +350,9 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'markAllNotificationsRead',
+          summary: 'Mark all VolunteerNotifications read',
+          description:
+            "Mark every one of the current Volunteer's VolunteerNotifications as read.",
         },
       },
       async (request, reply) => {

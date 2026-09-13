@@ -103,8 +103,8 @@ interface DenyShiftScopeInput {
 }
 
 @injectable()
-export class LeaderRosteringController implements FastifyController {
-  readonly prefix = '/leader';
+export class RosteringController implements FastifyController {
+  readonly prefix = '/rostering';
 
   constructor(
     @inject('IParticipationManager')
@@ -130,8 +130,11 @@ export class LeaderRosteringController implements FastifyController {
       '/cycles/:cycleId/builder',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'getCycleBuilderData',
+          summary: 'Get cycle builder data for a Ministry',
+          description:
+            "Get a Ministry's roster-building view of a PlanningCycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.",
           querystring: cycleMinistryQuerySchema,
           response: {
             200: cycleBuilderResponseSchema,
@@ -169,8 +172,11 @@ export class LeaderRosteringController implements FastifyController {
       '/cycles/:cycleId/audit',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'getCycleAuditLog',
+          summary: "Get a Ministry's Assignment audit log for a cycle",
+          description:
+            "List a Ministry's Assignment audit entries across an entire PlanningCycle.",
           querystring: cycleMinistryQuerySchema,
           response: {
             200: auditListResponseSchema,
@@ -207,8 +213,11 @@ export class LeaderRosteringController implements FastifyController {
       '/cycles/:cycleId/publish',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'publishCycle',
+          summary: "Publish a Ministry's roster for a cycle",
+          description:
+            'Publish every eligible MinistryParticipation in a PlanningCycle for a Ministry in one batch, making its rosters visible to Volunteers.',
           querystring: cycleMinistryQuerySchema,
           body: publishCycleBodySchema,
           response: {
@@ -249,8 +258,11 @@ export class LeaderRosteringController implements FastifyController {
       '/shifts/:shiftId/eligible-volunteers',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'listEligibleVolunteers',
+          summary: 'List eligible Volunteers for a Shift',
+          description:
+            'List the Volunteers eligible to be assigned to a Shift, for the roster builder.',
           response: {
             200: eligibleVolunteerListResponseSchema,
             403: errorResponseSchema,
@@ -277,8 +289,11 @@ export class LeaderRosteringController implements FastifyController {
       '/shifts/:shiftId/assignments',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'createParticipationAssignment',
+          summary: 'Assign a Volunteer to a Shift',
+          description:
+            'Assign a Volunteer to a Role (and optional Team) within a Shift, optionally overriding a detected conflict.',
           body: createParticipationAssignmentBodySchema,
           response: {
             201: createParticipationAssignmentResponseSchema,
@@ -312,8 +327,10 @@ export class LeaderRosteringController implements FastifyController {
       '/assignments/:assignmentId',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'deleteParticipationAssignment',
+          summary: 'Delete an Assignment',
+          description: 'Remove a Volunteer Assignment from its Shift.',
           response: { 204: z.null(), 403: errorResponseSchema },
         },
       },
@@ -339,8 +356,11 @@ export class LeaderRosteringController implements FastifyController {
       '/assignments/:assignmentId/reassign',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'reassignParticipationAssignment',
+          summary: 'Reassign an Assignment to another Volunteer',
+          description:
+            'Replace the Volunteer on an existing Assignment, keeping its Shift and Role, and record the reason.',
           body: reassignAssignmentBodySchema,
           response: {
             200: assignmentResponseSchema,
@@ -374,8 +394,11 @@ export class LeaderRosteringController implements FastifyController {
       '/participations/:participationId/completion',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'getParticipationCompletion',
+          summary: "Get a MinistryParticipation's staffing completion",
+          description:
+            'Get how fully a MinistryParticipation is staffed against its SlotRequirements.',
           response: {
             200: participationCompletionResponseSchema,
             403: errorResponseSchema,
@@ -403,8 +426,11 @@ export class LeaderRosteringController implements FastifyController {
       '/participations/:participationId/publish',
       {
         schema: {
-          tags: ['admin'],
+          tags: ['rostering'],
           operationId: 'publishParticipation',
+          summary: 'Publish a single MinistryParticipation',
+          description:
+            "Publish one Ministry's roster for an Event, making its slice of the schedule visible to its Volunteers.",
           body: publishParticipationBodySchema,
           response: { 204: z.null(), 403: errorResponseSchema },
         },

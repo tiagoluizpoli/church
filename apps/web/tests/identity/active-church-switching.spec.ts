@@ -140,7 +140,7 @@ async function bootstrapDualMember({
   });
 
   const ministryInviteRes = await churchAAdminCtx.post(
-    `/api/v1/admin/ministries/${WORSHIP_MINISTRY_ID}/invitations`,
+    `/api/v1/ministries/${WORSHIP_MINISTRY_ID}/invitations`,
     {
       data: {
         email,

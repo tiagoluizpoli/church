@@ -78,6 +78,9 @@ export class ActiveChurchController implements FastifyController {
         schema: {
           tags: ['active-church'],
           operationId: 'getActiveChurchStatus',
+          summary: 'Get the Active Church status',
+          description:
+            'Resolve the session Active Church, returning its status or a selection_required result when none is set yet.',
           response: {
             200: activeChurchStatusResponseSchema,
             401: errorResponseSchema,
@@ -106,6 +109,9 @@ export class ActiveChurchController implements FastifyController {
         schema: {
           tags: ['active-church'],
           operationId: 'listActiveChurchOptions',
+          summary: 'List selectable Churches',
+          description:
+            'List the Churches the current User holds Church Membership in and may select as their Active Church.',
           response: {
             200: churchSelectionListResponseSchema,
             401: errorResponseSchema,
@@ -129,6 +135,9 @@ export class ActiveChurchController implements FastifyController {
         schema: {
           tags: ['active-church'],
           operationId: 'selectActiveChurch',
+          summary: 'Select the Active Church',
+          description:
+            "Set the session's Active Church to a Church the current User holds Church Membership in.",
           body: selectActiveChurchBodySchema,
           response: {
             200: activeChurchStatusResponseSchema,

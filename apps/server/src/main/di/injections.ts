@@ -4,12 +4,15 @@ import { env } from '@church/env/server';
 import { container } from 'tsyringe';
 import { AuthorityGuard } from '../../api/auth/authority-guard';
 import { ActiveChurchController } from '../../api/controllers/active-church-controller';
-import { AdminLeaderController } from '../../api/controllers/admin-leader-controller';
+import { AssignmentController } from '../../api/controllers/assignment-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
+import { EventController } from '../../api/controllers/event-controller';
 import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
-import { LeaderController } from '../../api/controllers/leader-controller';
-import { LeaderRosteringController } from '../../api/controllers/leader-rostering-controller';
+import { MinistryController } from '../../api/controllers/ministry-controller';
 import { RedemptionController } from '../../api/controllers/redemption-controller';
+import { RosteringController } from '../../api/controllers/rostering-controller';
+import { TailoringController } from '../../api/controllers/tailoring-controller';
+import { TimeSlotController } from '../../api/controllers/time-slot-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
@@ -324,20 +327,32 @@ export function registerInjections(): void {
   );
   container.registerSingleton(
     injection.controllers.fastify,
-    AdminLeaderController,
+    ChurchAdminController,
+  );
+  container.registerSingleton(injection.controllers.fastify, EventController);
+  container.registerSingleton(
+    injection.controllers.fastify,
+    TimeSlotController,
   );
   container.registerSingleton(
     injection.controllers.fastify,
-    ChurchAdminController,
+    AssignmentController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
+    MinistryController,
   );
   container.registerSingleton(
     injection.controllers.fastify,
     FeatureFlagController,
   );
-  container.registerSingleton(injection.controllers.fastify, LeaderController);
   container.registerSingleton(
     injection.controllers.fastify,
-    LeaderRosteringController,
+    TailoringController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
+    RosteringController,
   );
   container.register(injection.controllers.fastify, {
     useFactory: () =>

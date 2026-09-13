@@ -40,6 +40,9 @@ export class VolunteerScheduleController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getPublishedVolunteerSchedule',
+          summary: "Get the caller's published schedule",
+          description:
+            "List the current Volunteer's Assignments from published MinistryParticipations.",
           response: { 200: assignmentListResponseSchema },
         },
       },

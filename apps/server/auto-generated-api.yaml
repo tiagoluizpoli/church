@@ -20,8 +20,11 @@ paths:
   /api/v1/active-church/status:
     get:
       operationId: getActiveChurchStatus
+      summary: Get the Active Church status
       tags:
         - active-church
+      description: Resolve the session Active Church, returning its status or a
+        selection_required result when none is set yet.
       responses:
         "200":
           description: Default Response
@@ -61,8 +64,11 @@ paths:
   /api/v1/active-church/options:
     get:
       operationId: listActiveChurchOptions
+      summary: List selectable Churches
       tags:
         - active-church
+      description: List the Churches the current User holds Church Membership in and
+        may select as their Active Church.
       responses:
         "200":
           description: Default Response
@@ -126,8 +132,11 @@ paths:
   /api/v1/active-church/select:
     post:
       operationId: selectActiveChurch
+      summary: Select the Active Church
       tags:
         - active-church
+      description: Set the session's Active Church to a Church the current User holds
+        Church Membership in.
       requestBody:
         required: true
         content:
@@ -190,11 +199,89 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/admin/ministries:
-    get:
-      operationId: listMinistries
+  /api/v1/admin/planning-cycles:
+    post:
+      operationId: createPlanningCycle
+      summary: Create a PlanningCycle
       tags:
-        - admin
+        - planning
+      description: Create a new PlanningCycle spanning a CalendarDay range for the Church.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                startDate:
+                  type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                endDate:
+                  type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+              required:
+                - name
+                - startDate
+                - endDate
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  name:
+                    type: string
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
+                  state:
+                    type: string
+                    enum:
+                      - draft
+                      - locked
+                      - archived
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - name
+                  - startDate
+                  - endDate
+                  - state
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+    get:
+      operationId: listPlanningCycles
+      summary: List PlanningCycles
+      tags:
+        - planning
+      description: List the Church PlanningCycles, optionally filtered by state.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - draft
+              - locked
+              - archived
+          in: query
+          name: state
+          required: false
       responses:
         "200":
           description: Default Response
@@ -203,7 +290,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  ministries:
+                  cycles:
                     type: array
                     items:
                       type: object
@@ -214,18 +301,16 @@ paths:
                           type: string
                         name:
                           type: string
-                        description:
+                        startDate:
                           type: string
-                        enforcementType:
+                        endDate:
                           type: string
-                          enum:
-                            - soft
-                            - hard
-                        defaultDirection:
+                        state:
                           type: string
                           enum:
-                            - all_in
-                            - all_out
+                            - draft
+                            - locked
+                            - archived
                         createdAt:
                           type: string
                         updatedAt:
@@ -234,34 +319,231 @@ paths:
                         - id
                         - churchId
                         - name
-                        - enforcementType
-                        - defaultDirection
+                        - startDate
+                        - endDate
+                        - state
                         - createdAt
                         - updatedAt
                       additionalProperties: false
                 required:
-                  - ministries
+                  - cycles
                 additionalProperties: false
-        "401":
+  /api/v1/admin/planning-cycles/{cycleId}:
+    get:
+      operationId: getPlanningCycle
+      summary: Get a PlanningCycle
+      tags:
+        - planning
+      description: Get the details of a single PlanningCycle.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
           description: Default Response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
+                  cycle:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      churchId:
+                        type: string
+                      name:
+                        type: string
+                      startDate:
+                        type: string
+                      endDate:
+                        type: string
+                      state:
+                        type: string
+                        enum:
+                          - draft
+                          - locked
+                          - archived
+                      createdAt:
+                        type: string
+                      updatedAt:
+                        type: string
+                    required:
+                      - id
+                      - churchId
+                      - name
+                      - startDate
+                      - endDate
+                      - state
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        event:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            churchId:
+                              type: string
+                            planningCycleId:
+                              type: string
+                            sourceTemplateId:
+                              type: string
+                            title:
+                              type: string
+                            description:
+                              type: string
+                            location:
+                              type: string
+                            startDate:
+                              type: string
+                            endDate:
+                              type: string
+                            status:
+                              type: string
+                              enum:
+                                - draft
+                                - scheduled
+                                - cancelled
+                                - past
+                            eventType:
+                              type: string
+                              enum:
+                                - hourly
+                                - day_based
+                            createdAt:
+                              type: string
+                            updatedAt:
+                              type: string
+                          required:
+                            - id
+                            - churchId
+                            - planningCycleId
+                            - title
+                            - startDate
+                            - endDate
+                            - status
+                            - eventType
+                            - createdAt
+                            - updatedAt
+                          additionalProperties: false
+                        slots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              churchId:
+                                type: string
+                              eventId:
+                                type: string
+                              startTime:
+                                type: string
+                              endTime:
+                                type: string
+                              label:
+                                type: string
+                              status:
+                                type: string
+                                enum:
+                                  - active
+                                  - cancelled
+                              requirements:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                    slotId:
+                                      type: string
+                                    roleId:
+                                      type: string
+                                    teamId:
+                                      type: string
+                                    requiredCount:
+                                      type: number
+                                    notes:
+                                      type: string
+                                  required:
+                                    - id
+                                    - slotId
+                                    - roleId
+                                    - requiredCount
+                                  additionalProperties: false
+                            required:
+                              - id
+                              - churchId
+                              - eventId
+                              - startTime
+                              - endTime
+                              - status
+                              - requirements
+                            additionalProperties: false
+                      required:
+                        - event
+                        - slots
+                      additionalProperties: false
                 required:
-                  - error
-                  - message
+                  - cycle
+                  - events
                 additionalProperties: false
-  /api/v1/admin/ministries/{ministryId}/invitations:
+  /api/v1/admin/planning-cycles/{cycleId}/lock:
     post:
-      operationId: mintMinistryInvitation
+      operationId: lockPlanningCycle
+      summary: Lock a PlanningCycle
       tags:
-        - admin
+        - planning
+      description: Lock a PlanningCycle, transitioning its Events from draft to scheduled.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/reopen:
+    post:
+      operationId: reopenPlanningEvent
+      summary: Reopen an Event for editing
+      tags:
+        - planning
+      description: Move a scheduled Event in a locked PlanningCycle back to draft so
+        it can be edited.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/event-templates:
+    post:
+      operationId: createEventTemplate
+      summary: Create an EventTemplate
+      tags:
+        - planning
+      description: Create a church-owned EventTemplate with its ordered TimeBlocks for
+        a given weekday.
       requestBody:
         required: true
         content:
@@ -269,28 +551,382 @@ paths:
             schema:
               type: object
               properties:
-                email:
+                name:
                   type: string
-                  format: email
-                  pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
-                ministryAccessLevel:
-                  type: string
-                  enum:
-                    - leader
-                    - volunteer
-                roleIds:
+                  minLength: 1
+                weekday:
+                  type: integer
+                  minimum: 0
+                  maximum: 6
+                blocks:
                   type: array
                   items:
-                    type: string
+                    type: object
+                    properties:
+                      label:
+                        type: string
+                        minLength: 1
+                      startTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      endTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      order:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - label
+                      - startTime
+                      - endTime
+                      - order
               required:
-                - email
-                - ministryAccessLevel
-                - roleIds
+                - name
+                - weekday
+                - blocks
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  name:
+                    type: string
+                  weekday:
+                    type: number
+                  blocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        templateId:
+                          type: string
+                        label:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        order:
+                          type: number
+                      required:
+                        - id
+                        - churchId
+                        - templateId
+                        - label
+                        - startTime
+                        - endTime
+                        - order
+                      additionalProperties: false
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - name
+                  - weekday
+                  - blocks
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+    get:
+      operationId: listEventTemplates
+      summary: List EventTemplates
+      tags:
+        - planning
+      description: List the Church EventTemplates.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        name:
+                          type: string
+                        weekday:
+                          type: number
+                        blocks:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              churchId:
+                                type: string
+                              templateId:
+                                type: string
+                              label:
+                                type: string
+                              startTime:
+                                type: string
+                              endTime:
+                                type: string
+                              order:
+                                type: number
+                            required:
+                              - id
+                              - churchId
+                              - templateId
+                              - label
+                              - startTime
+                              - endTime
+                              - order
+                            additionalProperties: false
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - churchId
+                        - name
+                        - weekday
+                        - blocks
+                        - createdAt
+                        - updatedAt
+                      additionalProperties: false
+                required:
+                  - templates
+                additionalProperties: false
+  /api/v1/admin/event-templates/{templateId}:
+    patch:
+      operationId: updateEventTemplate
+      summary: Update an EventTemplate
+      tags:
+        - planning
+      description: Replace an EventTemplate's name, weekday, and TimeBlocks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                weekday:
+                  type: integer
+                  minimum: 0
+                  maximum: 6
+                blocks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      label:
+                        type: string
+                        minLength: 1
+                      startTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      endTime:
+                        type: string
+                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      order:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - label
+                      - startTime
+                      - endTime
+                      - order
+              required:
+                - name
+                - weekday
+                - blocks
       parameters:
         - schema:
             type: string
           in: path
-          name: ministryId
+          name: templateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  name:
+                    type: string
+                  weekday:
+                    type: number
+                  blocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        templateId:
+                          type: string
+                        label:
+                          type: string
+                        startTime:
+                          type: string
+                        endTime:
+                          type: string
+                        order:
+                          type: number
+                      required:
+                        - id
+                        - churchId
+                        - templateId
+                        - label
+                        - startTime
+                        - endTime
+                        - order
+                      additionalProperties: false
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - name
+                  - weekday
+                  - blocks
+                  - createdAt
+                  - updatedAt
+                additionalProperties: false
+    delete:
+      operationId: deleteEventTemplate
+      summary: Delete an EventTemplate
+      tags:
+        - planning
+      description: Delete an EventTemplate from the Church.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: templateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/planning-cycles/{cycleId}/apply-templates:
+    post:
+      operationId: applyPlanningTemplates
+      summary: Apply EventTemplates to a PlanningCycle
+      tags:
+        - planning
+      description: Generate one Event per matching CalendarDay in the PlanningCycle
+        for each selected EventTemplate, with one TimeSlot per TimeBlock.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                templateIds:
+                  minItems: 1
+                  type: array
+                  items:
+                    type: string
+              required:
+                - templateIds
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generatedEventCount:
+                    type: number
+                  generatedSlotCount:
+                    type: number
+                required:
+                  - generatedEventCount
+                  - generatedSlotCount
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}/events:
+    post:
+      operationId: createPlanningEvent
+      summary: Create a manual Event
+      tags:
+        - planning
+      description: Create a one-off Event within a PlanningCycle without using an
+        EventTemplate.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                description:
+                  type: string
+                location:
+                  type: string
+                startDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                eventType:
+                  type: string
+                  enum:
+                    - hourly
+                    - day_based
+              required:
+                - title
+                - startDate
+                - endDate
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
           required: true
       responses:
         "201":
@@ -302,66 +938,94 @@ paths:
                 properties:
                   id:
                     type: string
-                  kind:
+                  churchId:
                     type: string
-                    enum:
-                      - ministry-only
-                      - chained
+                  planningCycleId:
+                    type: string
+                  sourceTemplateId:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  location:
+                    type: string
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
                   status:
                     type: string
                     enum:
-                      - pending
-                      - accepted
-                      - rejected
-                      - canceled
-                  expiresAt:
-                    type: string
-                  redemptionPath:
-                    type: string
-                  deliveryStatus:
+                      - draft
+                      - scheduled
+                      - cancelled
+                      - past
+                  eventType:
                     type: string
                     enum:
-                      - pending
-                      - sent
-                      - failed
+                      - hourly
+                      - day_based
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
                 required:
                   - id
-                  - kind
+                  - churchId
+                  - planningCycleId
+                  - title
+                  - startDate
+                  - endDate
                   - status
-                  - expiresAt
-                  - redemptionPath
-                  - deliveryStatus
+                  - eventType
+                  - createdAt
+                  - updatedAt
                 additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-  /api/v1/admin/ministries/{ministryId}/invitations/{invitationId}/resend:
-    post:
-      operationId: resendMinistryInvitation
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}:
+    patch:
+      operationId: updatePlanningEvent
+      summary: Update an Event
       tags:
-        - admin
+        - planning
+      description: Update an Event's title, description, location, or scheduled Instants.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                description:
+                  type: string
+                location:
+                  type: string
+                startDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endDate:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                eventType:
+                  type: string
+                  enum:
+                    - hourly
+                    - day_based
       parameters:
         - schema:
             type: string
           in: path
-          name: ministryId
+          name: cycleId
           required: true
         - schema:
             type: string
           in: path
-          name: invitationId
+          name: eventId
           required: true
       responses:
         "200":
@@ -373,56 +1037,653 @@ paths:
                 properties:
                   id:
                     type: string
-                  kind:
+                  churchId:
                     type: string
-                    enum:
-                      - ministry-only
-                      - chained
+                  planningCycleId:
+                    type: string
+                  sourceTemplateId:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  location:
+                    type: string
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
                   status:
                     type: string
                     enum:
-                      - pending
-                      - accepted
-                      - rejected
-                      - canceled
-                  expiresAt:
-                    type: string
-                  redemptionPath:
-                    type: string
-                  deliveryStatus:
+                      - draft
+                      - scheduled
+                      - cancelled
+                      - past
+                  eventType:
                     type: string
                     enum:
-                      - pending
-                      - sent
-                      - failed
+                      - hourly
+                      - day_based
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
                 required:
                   - id
-                  - kind
+                  - churchId
+                  - planningCycleId
+                  - title
+                  - startDate
+                  - endDate
                   - status
-                  - expiresAt
-                  - redemptionPath
-                  - deliveryStatus
+                  - eventType
+                  - createdAt
+                  - updatedAt
                 additionalProperties: false
-        "404":
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/cancel:
+    post:
+      operationId: cancelPlanningEvent
+      summary: Cancel an Event
+      tags:
+        - planning
+      description: Cancel an Event within its PlanningCycle.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots:
+    post:
+      operationId: createPlanningEventSlot
+      summary: Create a TimeSlot on an Event
+      tags:
+        - planning
+      description: Create a church-level TimeSlot within an Event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                label:
+                  type: string
+              required:
+                - startTime
+                - endTime
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "201":
           description: Default Response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  error:
+                  id:
                     type: string
-                  message:
+                  churchId:
+                    type: string
+                  eventId:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  label:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - cancelled
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        slotId:
+                          type: string
+                        roleId:
+                          type: string
+                        teamId:
+                          type: string
+                        requiredCount:
+                          type: number
+                        notes:
+                          type: string
+                      required:
+                        - id
+                        - slotId
+                        - roleId
+                        - requiredCount
+                      additionalProperties: false
+                required:
+                  - id
+                  - churchId
+                  - eventId
+                  - startTime
+                  - endTime
+                  - status
+                  - requirements
+                additionalProperties: false
+  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots/{slotId}:
+    patch:
+      operationId: updatePlanningEventSlot
+      summary: Update a TimeSlot
+      tags:
+        - planning
+      description: Update a TimeSlot's bounds or label.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                endTime:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                label:
+                  type: string
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: slotId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  eventId:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  label:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - cancelled
+                  requirements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        slotId:
+                          type: string
+                        roleId:
+                          type: string
+                        teamId:
+                          type: string
+                        requiredCount:
+                          type: number
+                        notes:
+                          type: string
+                      required:
+                        - id
+                        - slotId
+                        - roleId
+                        - requiredCount
+                      additionalProperties: false
+                required:
+                  - id
+                  - churchId
+                  - eventId
+                  - startTime
+                  - endTime
+                  - status
+                  - requirements
+                additionalProperties: false
+    delete:
+      operationId: deletePlanningEventSlot
+      summary: Delete a TimeSlot
+      tags:
+        - planning
+      description: Delete a TimeSlot from an Event.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: slotId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/v1/admin/ministries/{ministryId}/serving-profile:
+    get:
+      operationId: getMinistryServingProfile
+      summary: Get a Ministry's serving profile
+      tags:
+        - planning
+      description: Get a Ministry's MinistryServingProfile, the standing rule
+        declaring which EventTemplate TimeBlocks it always serves.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ministryId:
+                          type: string
+                        sourceTemplateBlockId:
+                          type: string
+                        serves:
+                          type: boolean
+                        shiftSplit:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - equal
+                                count:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 9007199254740991
+                              required:
+                                - kind
+                                - count
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - manual
+                                spans:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      label:
+                                        type: string
+                                      startTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                      endTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                    required:
+                                      - startTime
+                                      - endTime
+                                    additionalProperties: false
+                              required:
+                                - kind
+                                - spans
+                              additionalProperties: false
+                        headcounts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              roleId:
+                                type: string
+                              teamId:
+                                type: string
+                              count:
+                                type: integer
+                                minimum: 1
+                                maximum: 9007199254740991
+                            required:
+                              - roleId
+                              - count
+                            additionalProperties: false
+                      required:
+                        - id
+                        - ministryId
+                        - sourceTemplateBlockId
+                        - serves
+                        - shiftSplit
+                        - headcounts
+                      additionalProperties: false
+                required:
+                  - entries
+                additionalProperties: false
+    put:
+      operationId: upsertMinistryServingProfile
+      summary: Set a Ministry's serving profile
+      tags:
+        - planning
+      description: Replace a Ministry's MinistryServingProfile entries, including
+        which TimeBlocks it serves, its Shift split, and headcounts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entries:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      sourceTemplateBlockId:
+                        type: string
+                      serves:
+                        type: boolean
+                      shiftSplit:
+                        oneOf:
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - equal
+                              count:
+                                type: integer
+                                minimum: 1
+                                maximum: 9007199254740991
+                            required:
+                              - kind
+                              - count
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - manual
+                              spans:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    label:
+                                      type: string
+                                    startTime:
+                                      type: string
+                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                    endTime:
+                                      type: string
+                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                  required:
+                                    - startTime
+                                    - endTime
+                            required:
+                              - kind
+                              - spans
+                      headcounts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            roleId:
+                              type: string
+                            teamId:
+                              type: string
+                            count:
+                              type: integer
+                              minimum: 1
+                              maximum: 9007199254740991
+                          required:
+                            - roleId
+                            - count
+                    required:
+                      - sourceTemplateBlockId
+                      - serves
+                      - shiftSplit
+                      - headcounts
+              required:
+                - entries
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ministryId:
+                          type: string
+                        sourceTemplateBlockId:
+                          type: string
+                        serves:
+                          type: boolean
+                        shiftSplit:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - equal
+                                count:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 9007199254740991
+                              required:
+                                - kind
+                                - count
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - manual
+                                spans:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      label:
+                                        type: string
+                                      startTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                      endTime:
+                                        type: string
+                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
+                                    required:
+                                      - startTime
+                                      - endTime
+                                    additionalProperties: false
+                              required:
+                                - kind
+                                - spans
+                              additionalProperties: false
+                        headcounts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              roleId:
+                                type: string
+                              teamId:
+                                type: string
+                              count:
+                                type: integer
+                                minimum: 1
+                                maximum: 9007199254740991
+                            required:
+                              - roleId
+                              - count
+                            additionalProperties: false
+                      required:
+                        - id
+                        - ministryId
+                        - sourceTemplateBlockId
+                        - serves
+                        - shiftSplit
+                        - headcounts
+                      additionalProperties: false
+                required:
+                  - entries
+                additionalProperties: false
+  /api/v1/admin/ministries/{ministryId}/default-direction:
+    patch:
+      operationId: setMinistryDefaultDirection
+      summary: Set a Ministry's default direction
+      tags:
+        - planning
+      description: Set a Ministry's defaultDirection (all-in or all-out), deciding
+        whether it starts opted into every TimeSlot of a cycle by default.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                defaultDirection:
+                  type: string
+                  enum:
+                    - all_in
+                    - all_out
+              required:
+                - defaultDirection
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  enforcementType:
+                    type: string
+                    enum:
+                      - soft
+                      - hard
+                  defaultDirection:
+                    type: string
+                    enum:
+                      - all_in
+                      - all_out
+                  createdAt:
+                    type: string
+                  updatedAt:
                     type: string
                 required:
-                  - error
-                  - message
+                  - id
+                  - churchId
+                  - name
+                  - enforcementType
+                  - defaultDirection
+                  - createdAt
+                  - updatedAt
                 additionalProperties: false
-  /api/v1/admin/schedule-builder:
+  /api/v1/events/schedule-builder:
     get:
       operationId: getScheduleBuilderData
+      summary: Get schedule builder data for an Event
       tags:
-        - admin
+        - events
+      description: Get the TimeSlots, Shifts, and eligible Volunteers needed to build
+        a schedule for an Event.
       parameters:
         - schema:
             type: string
@@ -699,11 +1960,13 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/admin/events:
+  /api/v1/events/:
     get:
       operationId: listEvents
+      summary: List a Ministry's Events
       tags:
-        - admin
+        - events
+      description: List Events for a Ministry, optionally filtered by status.
       parameters:
         - schema:
             type: string
@@ -782,11 +2045,13 @@ paths:
                 required:
                   - events
                 additionalProperties: false
-  /api/v1/admin/events/{eventId}/cancel:
+  /api/v1/events/{eventId}/cancel:
     post:
       operationId: cancelEvent
+      summary: Cancel an Event
       tags:
-        - admin
+        - events
+      description: Cancel an Event.
       parameters:
         - schema:
             type: string
@@ -796,11 +2061,13 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/admin/events/{eventId}/reminders:
+  /api/v1/events/{eventId}/reminders:
     post:
       operationId: sendReminders
+      summary: Send Event reminders
       tags:
-        - admin
+        - events
+      description: Send an availability reminder VolunteerNotification for an Event.
       parameters:
         - schema:
             type: string
@@ -810,11 +2077,13 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/admin/events/{eventId}/slots:
+  /api/v1/events/{eventId}/slots:
     post:
       operationId: createSlot
+      summary: Create a TimeSlot on an Event
       tags:
-        - admin
+        - time-slots
+      description: Create a TimeSlot within an Event.
       requestBody:
         required: true
         content:
@@ -898,11 +2167,13 @@ paths:
                   - status
                   - requirements
                 additionalProperties: false
-  /api/v1/admin/events/{eventId}/slots/{slotId}:
+  /api/v1/events/{eventId}/slots/{slotId}:
     patch:
       operationId: updateSlot
+      summary: Update a TimeSlot
       tags:
-        - admin
+        - time-slots
+      description: Update a TimeSlot's bounds or label.
       requestBody:
         required: true
         content:
@@ -990,8 +2261,10 @@ paths:
                 additionalProperties: false
     delete:
       operationId: deleteSlot
+      summary: Delete a TimeSlot
       tags:
-        - admin
+        - time-slots
+      description: Delete a TimeSlot from an Event.
       parameters:
         - schema:
             type: string
@@ -1006,49 +2279,14 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/admin/assignments/{assignmentId}/override:
-    post:
-      operationId: overrideAssignment
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                reason:
-                  type: string
-                  minLength: 10
-              required:
-                - reason
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: assignmentId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  overridden:
-                    type: boolean
-                    enum:
-                      - true
-                required:
-                  - overridden
-                additionalProperties: false
-  /api/v1/admin/events/{eventId}/slots/generate:
+  /api/v1/events/{eventId}/slots/generate:
     post:
       operationId: generateSlots
+      summary: Generate TimeSlots for an Event
       tags:
-        - admin
+        - time-slots
+      description: Generate TimeSlots for an Event, either as an equal split or from a
+        set of manually labelled TimeSlots with their own requirements.
       requestBody:
         required: true
         content:
@@ -1190,11 +2428,14 @@ paths:
                 required:
                   - slots
                 additionalProperties: false
-  /api/v1/admin/events/{eventId}/slots/{slotId}/requirements:
+  /api/v1/events/{eventId}/slots/{slotId}/requirements:
     put:
       operationId: upsertSlotRequirement
+      summary: Set a TimeSlot staffing requirement
       tags:
-        - admin
+        - time-slots
+      description: Set the staffing headcount for a Role (and optional Team) within a
+        TimeSlot.
       requestBody:
         required: true
         content:
@@ -1252,11 +2493,14 @@ paths:
                   - roleId
                   - requiredCount
                 additionalProperties: false
-  /api/v1/admin/assignments:
+  /api/v1/assignments/:
     post:
       operationId: createAssignment
+      summary: Create an Assignment
       tags:
-        - admin
+        - assignments
+      description: Assign a Volunteer to a Role within a TimeSlot, rejecting the
+        request if the caller does not manage that TimeSlot.
       requestBody:
         required: true
         content:
@@ -1321,11 +2565,54 @@ paths:
                   - status
                   - assignedAt
                 additionalProperties: false
-  /api/v1/admin/assignments/{assignmentId}:
+  /api/v1/assignments/{assignmentId}/override:
+    post:
+      operationId: overrideAssignment
+      summary: Override an Assignment
+      tags:
+        - assignments
+      description: Record an override reason against an existing Assignment in its
+        audit log.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 10
+              required:
+                - reason
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overridden:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - overridden
+                additionalProperties: false
+  /api/v1/assignments/{assignmentId}:
     delete:
       operationId: deleteAssignment
+      summary: Delete an Assignment
       tags:
-        - admin
+        - assignments
+      description: Remove a Volunteer Assignment from its TimeSlot.
       parameters:
         - schema:
             type: string
@@ -1335,11 +2622,13 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/admin/assignments/{assignmentId}/audit:
+  /api/v1/assignments/{assignmentId}/audit:
     get:
       operationId: getAssignmentAudit
+      summary: Get an Assignment's audit log
       tags:
-        - admin
+        - assignments
+      description: List the recorded audit entries for a single Assignment.
       parameters:
         - schema:
             type: string
@@ -1388,85 +2677,13 @@ paths:
                 required:
                   - items
                 additionalProperties: false
-  /api/v1/admin/planning-cycles:
-    post:
-      operationId: createPlanningCycle
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  minLength: 1
-                startDate:
-                  type: string
-                  format: date
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
-                endDate:
-                  type: string
-                  format: date
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
-              required:
-                - name
-                - startDate
-                - endDate
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  name:
-                    type: string
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-                  state:
-                    type: string
-                    enum:
-                      - draft
-                      - locked
-                      - archived
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - name
-                  - startDate
-                  - endDate
-                  - state
-                  - createdAt
-                  - updatedAt
-                additionalProperties: false
+  /api/v1/ministries/:
     get:
-      operationId: listPlanningCycles
+      operationId: listMinistries
+      summary: List the caller's led Ministries
       tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-            enum:
-              - draft
-              - locked
-              - archived
-          in: query
-          name: state
-          required: false
+        - ministries
+      description: List the Ministries the current Volunteer leads within the Active Church.
       responses:
         "200":
           description: Default Response
@@ -1475,7 +2692,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  cycles:
+                  ministries:
                     type: array
                     items:
                       type: object
@@ -1486,16 +2703,18 @@ paths:
                           type: string
                         name:
                           type: string
-                        startDate:
+                        description:
                           type: string
-                        endDate:
-                          type: string
-                        state:
+                        enforcementType:
                           type: string
                           enum:
-                            - draft
-                            - locked
-                            - archived
+                            - soft
+                            - hard
+                        defaultDirection:
+                          type: string
+                          enum:
+                            - all_in
+                            - all_out
                         createdAt:
                           type: string
                         updatedAt:
@@ -1504,221 +2723,37 @@ paths:
                         - id
                         - churchId
                         - name
-                        - startDate
-                        - endDate
-                        - state
+                        - enforcementType
+                        - defaultDirection
                         - createdAt
                         - updatedAt
                       additionalProperties: false
                 required:
-                  - cycles
+                  - ministries
                 additionalProperties: false
-  /api/v1/admin/planning-cycles/{cycleId}:
-    get:
-      operationId: getPlanningCycle
-      tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-      responses:
-        "200":
+        "401":
           description: Default Response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  cycle:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      churchId:
-                        type: string
-                      name:
-                        type: string
-                      startDate:
-                        type: string
-                      endDate:
-                        type: string
-                      state:
-                        type: string
-                        enum:
-                          - draft
-                          - locked
-                          - archived
-                      createdAt:
-                        type: string
-                      updatedAt:
-                        type: string
-                    required:
-                      - id
-                      - churchId
-                      - name
-                      - startDate
-                      - endDate
-                      - state
-                      - createdAt
-                      - updatedAt
-                    additionalProperties: false
-                  events:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        event:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            churchId:
-                              type: string
-                            planningCycleId:
-                              type: string
-                            sourceTemplateId:
-                              type: string
-                            title:
-                              type: string
-                            description:
-                              type: string
-                            location:
-                              type: string
-                            startDate:
-                              type: string
-                            endDate:
-                              type: string
-                            status:
-                              type: string
-                              enum:
-                                - draft
-                                - scheduled
-                                - cancelled
-                                - past
-                            eventType:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
-                            createdAt:
-                              type: string
-                            updatedAt:
-                              type: string
-                          required:
-                            - id
-                            - churchId
-                            - planningCycleId
-                            - title
-                            - startDate
-                            - endDate
-                            - status
-                            - eventType
-                            - createdAt
-                            - updatedAt
-                          additionalProperties: false
-                        slots:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              churchId:
-                                type: string
-                              eventId:
-                                type: string
-                              startTime:
-                                type: string
-                              endTime:
-                                type: string
-                              label:
-                                type: string
-                              status:
-                                type: string
-                                enum:
-                                  - active
-                                  - cancelled
-                              requirements:
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    id:
-                                      type: string
-                                    slotId:
-                                      type: string
-                                    roleId:
-                                      type: string
-                                    teamId:
-                                      type: string
-                                    requiredCount:
-                                      type: number
-                                    notes:
-                                      type: string
-                                  required:
-                                    - id
-                                    - slotId
-                                    - roleId
-                                    - requiredCount
-                                  additionalProperties: false
-                            required:
-                              - id
-                              - churchId
-                              - eventId
-                              - startTime
-                              - endTime
-                              - status
-                              - requirements
-                            additionalProperties: false
-                      required:
-                        - event
-                        - slots
-                      additionalProperties: false
+                  error:
+                    type: string
+                  message:
+                    type: string
                 required:
-                  - cycle
-                  - events
+                  - error
+                  - message
                 additionalProperties: false
-  /api/v1/admin/planning-cycles/{cycleId}/lock:
+  /api/v1/ministries/{ministryId}/invitations:
     post:
-      operationId: lockPlanningCycle
+      operationId: mintMinistryInvitation
+      summary: Mint a Ministry Invitation
       tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/reopen:
-    post:
-      operationId: reopenPlanningEvent
-      tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/admin/event-templates:
-    post:
-      operationId: createEventTemplate
-      tags:
-        - admin
+        - ministries
+      description: Create a Ministry Invitation granting a Ministry Access Level and
+        Roles to an emailed recipient.
       requestBody:
         required: true
         content:
@@ -1726,760 +2761,23 @@ paths:
             schema:
               type: object
               properties:
-                name:
+                email:
                   type: string
-                  minLength: 1
-                weekday:
-                  type: integer
-                  minimum: 0
-                  maximum: 6
-                blocks:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      label:
-                        type: string
-                        minLength: 1
-                      startTime:
-                        type: string
-                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                      endTime:
-                        type: string
-                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                      order:
-                        type: integer
-                        minimum: 0
-                        maximum: 9007199254740991
-                    required:
-                      - label
-                      - startTime
-                      - endTime
-                      - order
-              required:
-                - name
-                - weekday
-                - blocks
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  name:
-                    type: string
-                  weekday:
-                    type: number
-                  blocks:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        churchId:
-                          type: string
-                        templateId:
-                          type: string
-                        label:
-                          type: string
-                        startTime:
-                          type: string
-                        endTime:
-                          type: string
-                        order:
-                          type: number
-                      required:
-                        - id
-                        - churchId
-                        - templateId
-                        - label
-                        - startTime
-                        - endTime
-                        - order
-                      additionalProperties: false
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - name
-                  - weekday
-                  - blocks
-                  - createdAt
-                  - updatedAt
-                additionalProperties: false
-    get:
-      operationId: listEventTemplates
-      tags:
-        - admin
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  templates:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        churchId:
-                          type: string
-                        name:
-                          type: string
-                        weekday:
-                          type: number
-                        blocks:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              churchId:
-                                type: string
-                              templateId:
-                                type: string
-                              label:
-                                type: string
-                              startTime:
-                                type: string
-                              endTime:
-                                type: string
-                              order:
-                                type: number
-                            required:
-                              - id
-                              - churchId
-                              - templateId
-                              - label
-                              - startTime
-                              - endTime
-                              - order
-                            additionalProperties: false
-                        createdAt:
-                          type: string
-                        updatedAt:
-                          type: string
-                      required:
-                        - id
-                        - churchId
-                        - name
-                        - weekday
-                        - blocks
-                        - createdAt
-                        - updatedAt
-                      additionalProperties: false
-                required:
-                  - templates
-                additionalProperties: false
-  /api/v1/admin/event-templates/{templateId}:
-    patch:
-      operationId: updateEventTemplate
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  minLength: 1
-                weekday:
-                  type: integer
-                  minimum: 0
-                  maximum: 6
-                blocks:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      label:
-                        type: string
-                        minLength: 1
-                      startTime:
-                        type: string
-                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                      endTime:
-                        type: string
-                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                      order:
-                        type: integer
-                        minimum: 0
-                        maximum: 9007199254740991
-                    required:
-                      - label
-                      - startTime
-                      - endTime
-                      - order
-              required:
-                - name
-                - weekday
-                - blocks
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: templateId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  name:
-                    type: string
-                  weekday:
-                    type: number
-                  blocks:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        churchId:
-                          type: string
-                        templateId:
-                          type: string
-                        label:
-                          type: string
-                        startTime:
-                          type: string
-                        endTime:
-                          type: string
-                        order:
-                          type: number
-                      required:
-                        - id
-                        - churchId
-                        - templateId
-                        - label
-                        - startTime
-                        - endTime
-                        - order
-                      additionalProperties: false
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - name
-                  - weekday
-                  - blocks
-                  - createdAt
-                  - updatedAt
-                additionalProperties: false
-    delete:
-      operationId: deleteEventTemplate
-      tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: templateId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/admin/planning-cycles/{cycleId}/apply-templates:
-    post:
-      operationId: applyPlanningTemplates
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                templateIds:
-                  minItems: 1
-                  type: array
-                  items:
-                    type: string
-              required:
-                - templateIds
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  generatedEventCount:
-                    type: number
-                  generatedSlotCount:
-                    type: number
-                required:
-                  - generatedEventCount
-                  - generatedSlotCount
-                additionalProperties: false
-  /api/v1/admin/planning-cycles/{cycleId}/events:
-    post:
-      operationId: createPlanningEvent
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  minLength: 1
-                description:
-                  type: string
-                location:
-                  type: string
-                startDate:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endDate:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                eventType:
+                  format: email
+                  pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+                ministryAccessLevel:
                   type: string
                   enum:
-                    - hourly
-                    - day_based
+                    - leader
+                    - volunteer
+                roleIds:
+                  type: array
+                  items:
+                    type: string
               required:
-                - title
-                - startDate
-                - endDate
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  planningCycleId:
-                    type: string
-                  sourceTemplateId:
-                    type: string
-                  title:
-                    type: string
-                  description:
-                    type: string
-                  location:
-                    type: string
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - scheduled
-                      - cancelled
-                      - past
-                  eventType:
-                    type: string
-                    enum:
-                      - hourly
-                      - day_based
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - planningCycleId
-                  - title
-                  - startDate
-                  - endDate
-                  - status
-                  - eventType
-                  - createdAt
-                  - updatedAt
-                additionalProperties: false
-  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}:
-    patch:
-      operationId: updatePlanningEvent
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                  minLength: 1
-                description:
-                  type: string
-                location:
-                  type: string
-                startDate:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endDate:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                eventType:
-                  type: string
-                  enum:
-                    - hourly
-                    - day_based
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  planningCycleId:
-                    type: string
-                  sourceTemplateId:
-                    type: string
-                  title:
-                    type: string
-                  description:
-                    type: string
-                  location:
-                    type: string
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - scheduled
-                      - cancelled
-                      - past
-                  eventType:
-                    type: string
-                    enum:
-                      - hourly
-                      - day_based
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - planningCycleId
-                  - title
-                  - startDate
-                  - endDate
-                  - status
-                  - eventType
-                  - createdAt
-                  - updatedAt
-                additionalProperties: false
-  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/cancel:
-    post:
-      operationId: cancelPlanningEvent
-      tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots:
-    post:
-      operationId: createPlanningEventSlot
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                startTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                label:
-                  type: string
-              required:
-                - startTime
-                - endTime
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  eventId:
-                    type: string
-                  startTime:
-                    type: string
-                  endTime:
-                    type: string
-                  label:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - active
-                      - cancelled
-                  requirements:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        slotId:
-                          type: string
-                        roleId:
-                          type: string
-                        teamId:
-                          type: string
-                        requiredCount:
-                          type: number
-                        notes:
-                          type: string
-                      required:
-                        - id
-                        - slotId
-                        - roleId
-                        - requiredCount
-                      additionalProperties: false
-                required:
-                  - id
-                  - churchId
-                  - eventId
-                  - startTime
-                  - endTime
-                  - status
-                  - requirements
-                additionalProperties: false
-  /api/v1/admin/planning-cycles/{cycleId}/events/{eventId}/slots/{slotId}:
-    patch:
-      operationId: updatePlanningEventSlot
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                startTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                label:
-                  type: string
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: slotId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  eventId:
-                    type: string
-                  startTime:
-                    type: string
-                  endTime:
-                    type: string
-                  label:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - active
-                      - cancelled
-                  requirements:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        slotId:
-                          type: string
-                        roleId:
-                          type: string
-                        teamId:
-                          type: string
-                        requiredCount:
-                          type: number
-                        notes:
-                          type: string
-                      required:
-                        - id
-                        - slotId
-                        - roleId
-                        - requiredCount
-                      additionalProperties: false
-                required:
-                  - id
-                  - churchId
-                  - eventId
-                  - startTime
-                  - endTime
-                  - status
-                  - requirements
-                additionalProperties: false
-    delete:
-      operationId: deletePlanningEventSlot
-      tags:
-        - admin
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: slotId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/admin/ministries/{ministryId}/serving-profile:
-    get:
-      operationId: getMinistryServingProfile
-      summary: getMinistryServingProfile
-      tags:
-        - admin
-      description: Get the serving profile for a specific ministry, including roles
-        and teams.
+                - email
+                - ministryAccessLevel
+                - roleIds
       parameters:
         - schema:
             type: string
@@ -2487,302 +2785,77 @@ paths:
           name: ministryId
           required: true
       responses:
-        "200":
+        "201":
           description: Default Response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  entries:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        ministryId:
-                          type: string
-                        sourceTemplateBlockId:
-                          type: string
-                        serves:
-                          type: boolean
-                        shiftSplit:
-                          oneOf:
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - equal
-                                count:
-                                  type: integer
-                                  minimum: 1
-                                  maximum: 9007199254740991
-                              required:
-                                - kind
-                                - count
-                              additionalProperties: false
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - manual
-                                spans:
-                                  type: array
-                                  items:
-                                    type: object
-                                    properties:
-                                      label:
-                                        type: string
-                                      startTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                      endTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                    required:
-                                      - startTime
-                                      - endTime
-                                    additionalProperties: false
-                              required:
-                                - kind
-                                - spans
-                              additionalProperties: false
-                        headcounts:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              roleId:
-                                type: string
-                              teamId:
-                                type: string
-                              count:
-                                type: integer
-                                minimum: 1
-                                maximum: 9007199254740991
-                            required:
-                              - roleId
-                              - count
-                            additionalProperties: false
-                      required:
-                        - id
-                        - ministryId
-                        - sourceTemplateBlockId
-                        - serves
-                        - shiftSplit
-                        - headcounts
-                      additionalProperties: false
+                  id:
+                    type: string
+                  kind:
+                    type: string
+                    enum:
+                      - ministry-only
+                      - chained
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - accepted
+                      - rejected
+                      - canceled
+                  expiresAt:
+                    type: string
+                  redemptionPath:
+                    type: string
+                  deliveryStatus:
+                    type: string
+                    enum:
+                      - pending
+                      - sent
+                      - failed
                 required:
-                  - entries
+                  - id
+                  - kind
+                  - status
+                  - expiresAt
+                  - redemptionPath
+                  - deliveryStatus
                 additionalProperties: false
-    put:
-      operationId: upsertMinistryServingProfile
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/invitations/{invitationId}/resend:
+    post:
+      operationId: resendMinistryInvitation
+      summary: Resend a Ministry Invitation
       tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                entries:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      sourceTemplateBlockId:
-                        type: string
-                      serves:
-                        type: boolean
-                      shiftSplit:
-                        oneOf:
-                          - type: object
-                            properties:
-                              kind:
-                                type: string
-                                enum:
-                                  - equal
-                              count:
-                                type: integer
-                                minimum: 1
-                                maximum: 9007199254740991
-                            required:
-                              - kind
-                              - count
-                          - type: object
-                            properties:
-                              kind:
-                                type: string
-                                enum:
-                                  - manual
-                              spans:
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    label:
-                                      type: string
-                                    startTime:
-                                      type: string
-                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                    endTime:
-                                      type: string
-                                      pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                  required:
-                                    - startTime
-                                    - endTime
-                            required:
-                              - kind
-                              - spans
-                      headcounts:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            roleId:
-                              type: string
-                            teamId:
-                              type: string
-                            count:
-                              type: integer
-                              minimum: 1
-                              maximum: 9007199254740991
-                          required:
-                            - roleId
-                            - count
-                    required:
-                      - sourceTemplateBlockId
-                      - serves
-                      - shiftSplit
-                      - headcounts
-              required:
-                - entries
+        - ministries
+      description: Resend the delivery email for a Ministry Invitation.
       parameters:
         - schema:
             type: string
           in: path
           name: ministryId
           required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  entries:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        ministryId:
-                          type: string
-                        sourceTemplateBlockId:
-                          type: string
-                        serves:
-                          type: boolean
-                        shiftSplit:
-                          oneOf:
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - equal
-                                count:
-                                  type: integer
-                                  minimum: 1
-                                  maximum: 9007199254740991
-                              required:
-                                - kind
-                                - count
-                              additionalProperties: false
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - manual
-                                spans:
-                                  type: array
-                                  items:
-                                    type: object
-                                    properties:
-                                      label:
-                                        type: string
-                                      startTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                      endTime:
-                                        type: string
-                                        pattern: ^\d{2}:\d{2}(:\d{2})?$
-                                    required:
-                                      - startTime
-                                      - endTime
-                                    additionalProperties: false
-                              required:
-                                - kind
-                                - spans
-                              additionalProperties: false
-                        headcounts:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              roleId:
-                                type: string
-                              teamId:
-                                type: string
-                              count:
-                                type: integer
-                                minimum: 1
-                                maximum: 9007199254740991
-                            required:
-                              - roleId
-                              - count
-                            additionalProperties: false
-                      required:
-                        - id
-                        - ministryId
-                        - sourceTemplateBlockId
-                        - serves
-                        - shiftSplit
-                        - headcounts
-                      additionalProperties: false
-                required:
-                  - entries
-                additionalProperties: false
-  /api/v1/admin/ministries/{ministryId}/default-direction:
-    patch:
-      operationId: setMinistryDefaultDirection
-      tags:
-        - admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                defaultDirection:
-                  type: string
-                  enum:
-                    - all_in
-                    - all_out
-              required:
-                - defaultDirection
-      parameters:
         - schema:
             type: string
           in: path
-          name: ministryId
+          name: invitationId
           required: true
       responses:
         "200":
@@ -2794,40 +2867,59 @@ paths:
                 properties:
                   id:
                     type: string
-                  churchId:
-                    type: string
-                  name:
-                    type: string
-                  description:
-                    type: string
-                  enforcementType:
+                  kind:
                     type: string
                     enum:
-                      - soft
-                      - hard
-                  defaultDirection:
+                      - ministry-only
+                      - chained
+                  status:
                     type: string
                     enum:
-                      - all_in
-                      - all_out
-                  createdAt:
+                      - pending
+                      - accepted
+                      - rejected
+                      - canceled
+                  expiresAt:
                     type: string
-                  updatedAt:
+                  redemptionPath:
                     type: string
+                  deliveryStatus:
+                    type: string
+                    enum:
+                      - pending
+                      - sent
+                      - failed
                 required:
                   - id
-                  - churchId
-                  - name
-                  - enforcementType
-                  - defaultDirection
-                  - createdAt
-                  - updatedAt
+                  - kind
+                  - status
+                  - expiresAt
+                  - redemptionPath
+                  - deliveryStatus
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/feature-flags/:
     get:
       operationId: listFeatureFlags
+      summary: List feature flags
       tags:
         - feature-flags
+      description: Get the resolved feature flag values for the current session,
+        evaluated against the caller's User and Church context where available.
       responses:
         "200":
           description: Default Response
@@ -2843,11 +2935,14 @@ paths:
                 required:
                   - flags
                 additionalProperties: false
-  /api/v1/leader/cycles/{cycleId}/participation:
+  /api/v1/tailoring/cycles/{cycleId}/participation:
     get:
       operationId: getCycleParticipation
+      summary: Get a Ministry's tailoring view of a cycle
       tags:
-        - admin
+        - tailoring
+      description: Get a Ministry's MinistryParticipation tailoring state across every
+        Event in a PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -3084,11 +3179,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/ministries/{ministryId}/cycles-summary:
+  /api/v1/tailoring/ministries/{ministryId}/cycles-summary:
     get:
       operationId: listMinistryCycleSummaries
+      summary: List a Ministry's cycle tailoring summaries
       tags:
-        - admin
+        - tailoring
+      description: List summaries of a Ministry's MinistryParticipation tailoring
+        progress across its PlanningCycles.
       parameters:
         - schema:
             type: string
@@ -3162,11 +3260,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/participations/{participationId}/inclusions:
+  /api/v1/tailoring/participations/{participationId}/inclusions:
     put:
       operationId: setParticipationInclusions
+      summary: Set a MinistryParticipation's included TimeSlots
       tags:
-        - admin
+        - tailoring
+      description: Replace the set of TimeSlots a Ministry is opted into for a
+        MinistryParticipation.
       requestBody:
         required: true
         content:
@@ -3189,11 +3290,14 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/leader/participations/{participationId}/slots/{timeSlotId}/shifts:
+  /api/v1/tailoring/participations/{participationId}/slots/{timeSlotId}/shifts:
     post:
       operationId: splitParticipationShifts
+      summary: Split a TimeSlot into Shifts
       tags:
-        - admin
+        - tailoring
+      description: Split a MinistryParticipation's TimeSlot into Shifts, either into
+        equal parts or by manually-set spans.
       requestBody:
         required: true
         content:
@@ -3292,11 +3396,13 @@ paths:
                 required:
                   - shifts
                 additionalProperties: false
-  /api/v1/leader/shifts/{shiftId}:
+  /api/v1/tailoring/shifts/{shiftId}:
     patch:
       operationId: updateShift
+      summary: Update a Shift
       tags:
-        - admin
+        - tailoring
+      description: Update a Shift's bounds or label.
       requestBody:
         required: true
         content:
@@ -3349,8 +3455,10 @@ paths:
                 additionalProperties: false
     delete:
       operationId: deleteShift
+      summary: Delete a Shift
       tags:
-        - admin
+        - tailoring
+      description: Delete a Shift from its MinistryParticipation.
       parameters:
         - schema:
             type: string
@@ -3360,11 +3468,14 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/leader/shifts/{shiftId}/requirements:
+  /api/v1/tailoring/shifts/{shiftId}/requirements:
     put:
       operationId: upsertShiftRequirement
+      summary: Set a Shift staffing requirement
       tags:
-        - admin
+        - tailoring
+      description: Set the SlotRequirement headcount for a Role (and optional Team)
+        within a Shift.
       requestBody:
         required: true
         content:
@@ -3420,11 +3531,14 @@ paths:
                   - roleId
                   - requiredCount
                 additionalProperties: false
-  /api/v1/leader/participations/{participationId}/fire-availability:
+  /api/v1/tailoring/participations/{participationId}/fire-availability:
     post:
       operationId: fireAvailability
+      summary: Fire availability for a MinistryParticipation
       tags:
-        - admin
+        - tailoring
+      description: Spawn AvailabilityChecks for a MinistryParticipation's Volunteers
+        and move it into availability_fired.
       parameters:
         - schema:
             type: string
@@ -3447,11 +3561,14 @@ paths:
                   - createdCheckCount
                   - notifiedVolunteerCount
                 additionalProperties: false
-  /api/v1/leader/cycles/{cycleId}/availability-status:
+  /api/v1/tailoring/cycles/{cycleId}/availability-status:
     get:
       operationId: getCycleAvailabilityStatus
+      summary: Get a Ministry's AvailabilityCheck status for a cycle
       tags:
-        - admin
+        - tailoring
+      description: List a Ministry's Volunteers' AvailabilityCheck states across a
+        PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -3509,11 +3626,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/participations/{participationId}/availability-status:
+  /api/v1/tailoring/participations/{participationId}/availability-status:
     get:
       operationId: getAvailabilityStatus
+      summary: Get a MinistryParticipation's AvailabilityCheck status
       tags:
-        - admin
+        - tailoring
+      description: List the AvailabilityCheck states of a MinistryParticipation's
+        Volunteers.
       parameters:
         - schema:
             type: string
@@ -3551,11 +3671,14 @@ paths:
                 required:
                   - statuses
                 additionalProperties: false
-  /api/v1/leader/participations/{participationId}/resend-availability:
+  /api/v1/tailoring/participations/{participationId}/resend-availability:
     post:
       operationId: resendAvailabilityReminder
+      summary: Resend an availability reminder
       tags:
-        - admin
+        - tailoring
+      description: Resend the availability reminder VolunteerNotification to a
+        MinistryParticipation's unconfirmed Volunteers.
       parameters:
         - schema:
             type: string
@@ -3565,11 +3688,14 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/leader/cycles/{cycleId}/builder:
+  /api/v1/rostering/cycles/{cycleId}/builder:
     get:
       operationId: getCycleBuilderData
+      summary: Get cycle builder data for a Ministry
       tags:
-        - admin
+        - rostering
+      description: "Get a Ministry's roster-building view of a PlanningCycle: its
+        MinistryParticipations, Shifts, SlotRequirements, and Assignments."
       parameters:
         - schema:
             type: string
@@ -3907,11 +4033,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/cycles/{cycleId}/audit:
+  /api/v1/rostering/cycles/{cycleId}/audit:
     get:
       operationId: getCycleAuditLog
+      summary: Get a Ministry's Assignment audit log for a cycle
       tags:
-        - admin
+        - rostering
+      description: List a Ministry's Assignment audit entries across an entire
+        PlanningCycle.
       parameters:
         - schema:
             type: string
@@ -3980,11 +4109,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/cycles/{cycleId}/publish:
+  /api/v1/rostering/cycles/{cycleId}/publish:
     post:
       operationId: publishCycle
+      summary: Publish a Ministry's roster for a cycle
       tags:
-        - admin
+        - rostering
+      description: Publish every eligible MinistryParticipation in a PlanningCycle for
+        a Ministry in one batch, making its rosters visible to Volunteers.
       requestBody:
         required: true
         content:
@@ -4061,11 +4193,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/shifts/{shiftId}/eligible-volunteers:
+  /api/v1/rostering/shifts/{shiftId}/eligible-volunteers:
     get:
       operationId: listEligibleVolunteers
+      summary: List eligible Volunteers for a Shift
       tags:
-        - admin
+        - rostering
+      description: List the Volunteers eligible to be assigned to a Shift, for the
+        roster builder.
       parameters:
         - schema:
             type: string
@@ -4135,11 +4270,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/shifts/{shiftId}/assignments:
+  /api/v1/rostering/shifts/{shiftId}/assignments:
     post:
       operationId: createParticipationAssignment
+      summary: Assign a Volunteer to a Shift
       tags:
-        - admin
+        - rostering
+      description: Assign a Volunteer to a Role (and optional Team) within a Shift,
+        optionally overriding a detected conflict.
       requestBody:
         required: true
         content:
@@ -4257,11 +4395,13 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/assignments/{assignmentId}:
+  /api/v1/rostering/assignments/{assignmentId}:
     delete:
       operationId: deleteParticipationAssignment
+      summary: Delete an Assignment
       tags:
-        - admin
+        - rostering
+      description: Remove a Volunteer Assignment from its Shift.
       parameters:
         - schema:
             type: string
@@ -4293,11 +4433,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/assignments/{assignmentId}/reassign:
+  /api/v1/rostering/assignments/{assignmentId}/reassign:
     patch:
       operationId: reassignParticipationAssignment
+      summary: Reassign an Assignment to another Volunteer
       tags:
-        - admin
+        - rostering
+      description: Replace the Volunteer on an existing Assignment, keeping its Shift
+        and Role, and record the reason.
       requestBody:
         required: true
         content:
@@ -4379,11 +4522,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/participations/{participationId}/completion:
+  /api/v1/rostering/participations/{participationId}/completion:
     get:
       operationId: getParticipationCompletion
+      summary: Get a MinistryParticipation's staffing completion
       tags:
-        - admin
+        - rostering
+      description: Get how fully a MinistryParticipation is staffed against its
+        SlotRequirements.
       parameters:
         - schema:
             type: string
@@ -4427,11 +4573,14 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/leader/participations/{participationId}/publish:
+  /api/v1/rostering/participations/{participationId}/publish:
     post:
       operationId: publishParticipation
+      summary: Publish a single MinistryParticipation
       tags:
-        - admin
+        - rostering
+      description: Publish one Ministry's roster for an Event, making its slice of the
+        schedule visible to its Volunteers.
       requestBody:
         required: true
         content:
@@ -4475,8 +4624,11 @@ paths:
   /api/v1/redemption/church/{invitationId}:
     get:
       operationId: previewChurchInvitation
+      summary: Preview a Church Invitation
       tags:
         - redemption
+      description: Get the public, unauthenticated preview of a Church Invitation for
+        an unregistered recipient.
       parameters:
         - schema:
             type: string
@@ -4551,8 +4703,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/code:
     post:
       operationId: requestChurchInvitationVerificationCode
+      summary: Request a Church Invitation verification code
       tags:
         - redemption
+      description: Send a one-time verification code to the invited recipient's email
+        so they can redeem their Church Invitation.
       parameters:
         - schema:
             type: string
@@ -4607,8 +4762,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/redeem:
     post:
       operationId: redeemChurchInvitation
+      summary: Redeem a Church Invitation as a new User
       tags:
         - redemption
+      description: Verify the code and create a new User account that redeems a Church
+        Invitation, admitting it as a Church Member.
       requestBody:
         required: true
         content:
@@ -4715,8 +4873,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/decline:
     post:
       operationId: declineChurchInvitation
+      summary: Decline a Church Invitation
       tags:
         - redemption
+      description: Decline a Church Invitation as its authenticated recipient, also
+        declining a chained Ministry Invitation if one is paired with it.
       parameters:
         - schema:
             type: string
@@ -4786,8 +4947,11 @@ paths:
   /api/v1/redemption/ministry/{invitationId}:
     get:
       operationId: getMinistryInvitationStatus
+      summary: Get a Ministry Invitation status
       tags:
         - redemption
+      description: Get an authenticated User's redeemable status and preview for a
+        Ministry Invitation.
       parameters:
         - schema:
             type: string
@@ -4893,8 +5057,11 @@ paths:
   /api/v1/redemption/ministry/{invitationId}/accept:
     post:
       operationId: acceptMinistryInvitation
+      summary: Accept a Ministry Invitation as an existing Church Member
       tags:
         - redemption
+      description: Accept a Ministry Invitation as an already-authenticated existing
+        Church Member, granting the stated Ministry Access Level and Roles.
       requestBody:
         required: true
         content:
@@ -5026,8 +5193,11 @@ paths:
   /api/v1/redemption/ministry/{invitationId}/decline:
     post:
       operationId: declineMinistryInvitation
+      summary: Decline a Ministry Invitation
       tags:
         - redemption
+      description: Decline a Ministry Invitation as its authenticated recipient, also
+        declining a chained Church Invitation if one is paired with it.
       parameters:
         - schema:
             type: string
@@ -5097,8 +5267,12 @@ paths:
   /api/v1/redemption/transfer/{invitationId}/preview:
     get:
       operationId: getVolunteerTransferPreview
+      summary: Preview a Volunteer Transfer
       tags:
         - redemption
+      description: "Preview the effect of a Volunteer Transfer triggered by a
+        cross-Church Ministry Invitation redemption: the Church Memberships that
+        would end and the Assignments that would be withdrawn."
       parameters:
         - schema:
             type: string
@@ -5204,8 +5378,12 @@ paths:
   /api/v1/redemption/transfer/{invitationId}/confirm:
     post:
       operationId: confirmVolunteerTransfer
+      summary: Confirm a Volunteer Transfer
       tags:
         - redemption
+      description: Confirm the Volunteer Transfer, retiring the User's Volunteer
+        profile in the source Church and creating a fresh one in the destination
+        Church.
       requestBody:
         required: true
         content:
@@ -5328,8 +5506,11 @@ paths:
   /api/v1/redemption/church/{invitationId}/debug-code:
     get:
       operationId: debugGetChurchInvitationVerificationCode
+      summary: Get a Church Invitation verification code (debug)
       tags:
         - redemption-debug
+      description: "Non-production only: read back the verification code sent for a
+        Church Invitation, bypassing email delivery."
       parameters:
         - schema:
             type: string
@@ -5369,8 +5550,10 @@ paths:
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard
+      summary: Get the caller's Volunteer dashboard
       tags:
         - volunteer
+      description: Get the current Volunteer's dashboard summary for the Active Church.
       responses:
         "200":
           description: Default Response
@@ -5553,8 +5736,10 @@ paths:
   /api/v1/volunteer/assignments:
     get:
       operationId: getMyAssignments
+      summary: Get the caller's upcoming Assignments
       tags:
         - volunteer
+      description: List the current Volunteer's upcoming Assignments.
       responses:
         "200":
           description: Default Response
@@ -5611,8 +5796,10 @@ paths:
   /api/v1/volunteer/ministries/{ministryId}/schedule:
     get:
       operationId: getMinistrySchedule
+      summary: Get the caller's published Ministry schedule
       tags:
         - volunteer
+      description: Get the current Volunteer's published schedule within one Ministry.
       parameters:
         - schema:
             type: string
@@ -5690,8 +5877,10 @@ paths:
   /api/v1/volunteer/availability-checks:
     get:
       operationId: listAvailabilityChecks
+      summary: List the caller's AvailabilityChecks
       tags:
         - volunteer
+      description: List the current Volunteer's AvailabilityChecks.
       responses:
         "200":
           description: Default Response
@@ -5742,8 +5931,11 @@ paths:
   /api/v1/volunteer/availability-checks/{checkId}:
     get:
       operationId: getAvailabilityCheck
+      summary: Get one of the caller's AvailabilityChecks
       tags:
         - volunteer
+      description: Get the detail of a single AvailabilityCheck belonging to the
+        current Volunteer.
       parameters:
         - schema:
             type: string
@@ -5814,8 +6006,11 @@ paths:
   /api/v1/volunteer/availability-checks/{checkId}/marks:
     put:
       operationId: setUnavailabilityMarks
+      summary: Set unavailability marks on an AvailabilityCheck
       tags:
         - volunteer
+      description: Record the current Volunteer's unavailability marks — by Shift or
+        by whole CalendarDay — against an AvailabilityCheck.
       requestBody:
         required: true
         content:
@@ -5904,8 +6099,11 @@ paths:
   /api/v1/volunteer/availability-checks/{checkId}/confirm:
     post:
       operationId: confirmAvailabilityCheck
+      summary: Confirm an AvailabilityCheck
       tags:
         - volunteer
+      description: Confirm the current Volunteer's AvailabilityCheck, recording
+        confirmedAt even when no marks were left.
       parameters:
         - schema:
             type: string
@@ -5918,8 +6116,11 @@ paths:
   /api/v1/volunteer/assignments/{assignmentId}:
     patch:
       operationId: respondToAssignment
+      summary: Respond to an Assignment
       tags:
         - volunteer
+      description: Record the current Volunteer's accept/decline response to one of
+        their own Assignments.
       requestBody:
         required: true
         content:
@@ -5990,8 +6191,10 @@ paths:
   /api/v1/volunteer/assignments/{assignmentId}/cancel:
     post:
       operationId: cancelOwnAssignment
+      summary: Cancel one of the caller's Assignments
       tags:
         - volunteer
+      description: Cancel one of the current Volunteer's own Assignments.
       parameters:
         - schema:
             type: string
@@ -6011,8 +6214,10 @@ paths:
   /api/v1/volunteer/notifications:
     get:
       operationId: getNotifications
+      summary: List the caller's VolunteerNotifications
       tags:
         - volunteer
+      description: List the current Volunteer's VolunteerNotifications, paginated by cursor.
       parameters:
         - schema:
             type: string
@@ -6087,8 +6292,10 @@ paths:
   /api/v1/volunteer/notifications/{notificationId}:
     patch:
       operationId: markNotificationRead
+      summary: Mark a VolunteerNotification read
       tags:
         - volunteer
+      description: Mark one of the current Volunteer's VolunteerNotifications as read.
       parameters:
         - schema:
             type: string
@@ -6111,16 +6318,21 @@ paths:
   /api/v1/volunteer/notifications/read-all:
     post:
       operationId: markAllNotificationsRead
+      summary: Mark all VolunteerNotifications read
       tags:
         - volunteer
+      description: Mark every one of the current Volunteer's VolunteerNotifications as read.
       responses:
         "200":
           description: Default Response
   /api/v1/volunteer/schedule:
     get:
       operationId: getPublishedVolunteerSchedule
+      summary: Get the caller's published schedule
       tags:
         - volunteer
+      description: List the current Volunteer's Assignments from published
+        MinistryParticipations.
       responses:
         "200":
           description: Default Response
@@ -6175,9 +6387,27 @@ paths:
                   - assignments
                 additionalProperties: false
 tags:
-  - name: admin
-    description: Admin and leader endpoints
+  - name: events
+    description: Event management endpoints
+  - name: time-slots
+    description: Event TimeSlot endpoints
+  - name: assignments
+    description: Assignment endpoints
+  - name: ministries
+    description: Ministry and invitation endpoints
+  - name: planning
+    description: Church-administration planning endpoints
+  - name: tailoring
+    description: MinistryParticipation tailoring endpoints
+  - name: rostering
+    description: Cycle and shift rostering endpoints
   - name: volunteer
     description: Volunteer-facing endpoints
   - name: feature-flags
     description: Feature flag endpoints
+  - name: active-church
+    description: Active Church selection endpoints
+  - name: redemption
+    description: Church and Ministry Invitation redemption endpoints
+  - name: redemption-debug
+    description: Non-production debug endpoints for invitation redemption

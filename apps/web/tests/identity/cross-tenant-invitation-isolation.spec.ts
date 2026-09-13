@@ -52,7 +52,7 @@ test.describe('#68 — cross-tenant isolation of the identity surface', () => {
     page,
   }) => {
     const res = await page.request.post(
-      `${SERVER_URL}/api/v1/admin/ministries/${CHURCH_B_MINISTRY_ID}/invitations`,
+      `${SERVER_URL}/api/v1/ministries/${CHURCH_B_MINISTRY_ID}/invitations`,
       {
         data: {
           email: 'e2e-cross-tenant-probe@test.com',
@@ -79,7 +79,7 @@ test.describe('#68 — cross-tenant isolation of the identity surface', () => {
       storageState: CHURCH_B_ADMIN_STORAGE_STATE,
     });
     const mintRes = await churchBCtx.post(
-      `/api/v1/admin/ministries/${CHURCH_B_MINISTRY_ID}/invitations`,
+      `/api/v1/ministries/${CHURCH_B_MINISTRY_ID}/invitations`,
       {
         data: {
           email: 'e2e-cross-tenant-target@test.com',
@@ -97,7 +97,7 @@ test.describe('#68 — cross-tenant isolation of the identity surface', () => {
     await churchBCtx.dispose();
 
     const res = await page.request.post(
-      `${SERVER_URL}/api/v1/admin/ministries/${CHURCH_B_MINISTRY_ID}/invitations/${invitation.id}/resend`,
+      `${SERVER_URL}/api/v1/ministries/${CHURCH_B_MINISTRY_ID}/invitations/${invitation.id}/resend`,
     );
 
     expect(res.status()).toBe(404);

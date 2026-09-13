@@ -26,6 +26,9 @@ export class FeatureFlagController implements FastifyController {
         schema: {
           tags: ['feature-flags'],
           operationId: 'listFeatureFlags',
+          summary: 'List feature flags',
+          description:
+            "Get the resolved feature flag values for the current session, evaluated against the caller's User and Church context where available.",
           response: { 200: featureFlagsResponseSchema },
         },
       },

@@ -7,7 +7,13 @@ export default defineConfig({
       filters: {
         mode: 'include',
         tags: [
-          'admin',
+          'events',
+          'time-slots',
+          'assignments',
+          'ministries',
+          'planning',
+          'tailoring',
+          'rostering',
           'volunteer',
           'feature-flags',
           'active-church',

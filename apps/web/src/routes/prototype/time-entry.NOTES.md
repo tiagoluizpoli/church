@@ -13,14 +13,36 @@ the date & time map [#126](https://github.com/tiagoluizpoli/church/issues/126).
 
 **Direction chosen: B — segmented field plus quick list.**
 
-**Throwaway.** Unlike the active-church prototype, nothing here is retained as
-an implementation reference. It exists to pick a direction; #133 records the
-answer, and this branch is the only copy that needs to survive.
+**Retained as an implementation reference. Do not delete it merely because a
+direction has been selected.** This started as a throwaway and stopped being
+one: nine commits in, it carries a working component and four solved bugs that
+would otherwise be rediscovered from scratch.
 
-**The control is the shadcn registry component, not a hand-roll.** `shadcn add
-@intentui/time-field` — shadcn's own registry has no time component at all, and
-`@intentui` is the registry `components.json` already declares. See "shadcn
-reality check" below for what the install actually does.
+### What is reusable, and what is not
+
+| Path | Status |
+| --- | --- |
+| `components/ui/time-field.tsx` | **Production code.** Copy it as-is. |
+| `routes/prototype/time-entry.tsx` | **Reference only.** Read the `B` control and the helpers; the scenarios and variant switching are scaffolding. |
+| `time-entry.NOTES.md` | Reference. |
+
+`components/ui/time-field.tsx` is the `@intentui/time-field` registry component
+**retokened** to this project's DESIGN.md vocabulary, plus the half-typed `1-`
+rendering. Rebuilding it means running `shadcn add @intentui/time-field` again,
+getting intentui's absent tokens, and rediscovering why the field renders
+unstyled. Three commits shaped it, so it is easier to copy the file than to
+cherry-pick: `b75cd5b` (install and retoken), `bb7b7ab` (the `1-` rendering),
+`0ec1385` (restarting a full segment).
+
+From `routes/prototype/time-entry.tsx`, the parts worth lifting into the real
+components are `SegmentedWithListControl`, `readSegments`, `optionsFor` and
+`describeSpan`. Everything else — the four scenarios, the variant switcher, the
+state panel — exists to make the decision drivable and should not ship.
+
+**The decision itself does not depend on this branch.** It lives in
+[#133](https://github.com/tiagoluizpoli/church/issues/133) and on the map
+[#126](https://github.com/tiagoluizpoli/church/issues/126), both on GitHub. What
+lives here is the head start.
 
 B was refined during the session in response to driving it:
 

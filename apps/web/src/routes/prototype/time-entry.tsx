@@ -12,11 +12,13 @@ import { Label } from '@/components/ui/label';
 import { TimeField, TimeInput } from '@/components/ui/time-field';
 import { cn } from '@/lib/utils';
 
-// THROWAWAY PROTOTYPE — answers issue #133, "Pick the time-entry direction".
-// Four takes on the TimeOfDay control that replaces the nine native
-// <input type="time"> / <input type="datetime-local"> boxes in scheduling.
-// Nothing here is production code. Run from the repo root:
-//   bun run dev:web   ->  http://localhost:3001/prototype/time-entry
+// RETAINED PROTOTYPE — implementation reference for issue #133, "Pick the
+// time-entry direction". Variant B is the accepted direction. Keep this route
+// until the production time entry has been built from it; see
+// time-entry.NOTES.md for which parts are reusable and which are scaffolding.
+// components/ui/time-field.tsx, on this same branch, is production code.
+// Run from the repo root:
+//   bun run dev:web   ->  /prototype/time-entry?variant=B
 //
 // Decisions already locked on the map (#126), baked into every variant:
 //   - 24h always. Never locale-derived. (#132)

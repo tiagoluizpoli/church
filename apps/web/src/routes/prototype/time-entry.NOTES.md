@@ -11,9 +11,24 @@ the date & time map [#126](https://github.com/tiagoluizpoli/church/issues/126).
 
 ## Status
 
+**Direction chosen: B — segmented field plus quick list.**
+
 **Throwaway.** Unlike the active-church prototype, nothing here is retained as
-an implementation reference. It exists to pick a direction; once #133 records
-the answer, the branch is the only copy that needs to survive.
+an implementation reference. It exists to pick a direction; #133 records the
+answer, and this branch is the only copy that needs to survive.
+
+B was refined during the session in response to driving it:
+
+- the chevron moved **inside** the field, into the dead space after the
+  segments, rather than sitting beside it as a second box;
+- the list became a real **listbox**: Up/Down move the selection, PageUp/Down
+  move an hour, Home/End jump to either end of the day, Enter commits, Escape
+  closes. Mouse-only scrolling was the gap that made C feel better than it is.
+
+C was rejected on evidence from driving it: as a free text box it accepts
+`12121:12312`, and its value cannot be stepped with the arrow keys. The
+segmented field refuses an impossible value by construction — typing `99` into
+the hour yields `09:09`, never anything invalid — and steps every part.
 
 ## What the prototype is deciding
 

@@ -245,7 +245,12 @@ interface TimeControlProps {
 /** A — React Aria `TimeField`. Hour and minute are separate spinbuttons:
  * type over them, or arrow up/down. No popup, no list, nothing to scroll.
  * Already a direct dependency; `hourCycle={24}` is the whole 24h fix. */
-function SegmentedTimeControl({ id, value, onChange }: TimeControlProps) {
+function SegmentedTimeControl({
+  id,
+  value,
+  onChange,
+  trailing,
+}: TimeControlProps & { trailing?: ReactNode }) {
   const size = useFormControlSize();
   const parts = partsOf(value);
 
@@ -260,9 +265,12 @@ function SegmentedTimeControl({ id, value, onChange }: TimeControlProps) {
     >
       <DateInput
         className={cn(
-          'radius-control inline-flex w-full items-center border border-input bg-transparent px-2.5 py-1 tabular-nums transition-colors',
+          'radius-control relative inline-flex w-full items-center border border-input bg-transparent px-2.5 py-1 tabular-nums transition-colors',
           'focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50',
           size === 'touch' ? 'h-11 px-3 text-base' : 'h-8 text-sm',
+          // The segments only need ~5ch; the rest of the field is dead space,
+          // which is where the list affordance goes rather than beside the box.
+          trailing && 'pe-8',
         )}
       >
         {(segment) => (
@@ -271,50 +279,57 @@ function SegmentedTimeControl({ id, value, onChange }: TimeControlProps) {
             className={cn(
               'rounded px-0.5 outline-none',
               'focus:bg-primary focus:text-primary-foreground',
-              'data-[placeholder]:text-muted-foreground',
+              'data-placeholder:text-muted-foreground',
             )}
           />
         )}
       </DateInput>
+      {trailing}
     </AriaTimeField>
   );
 }
 
-/** B — A, plus a chevron opening the 15-minute list. The list is the fast
- * path for the 100% case; the segments underneath still take 18:21. */
+/** B — A, plus a chevron *inside* the field opening the 15-minute list. The
+ * list is the fast path for the common case; the segments still take 18:21,
+ * still step with the arrow keys, and still refuse an impossible minute. */
 function SegmentedWithListControl({ id, value, onChange }: TimeControlProps) {
   const [open, setOpen] = useState(false);
-  const size = useFormControlSize();
 
   return (
-    <div className="flex items-stretch gap-1.5">
-      <div className="min-w-0 flex-1">
-        <SegmentedTimeControl id={id} value={value} onChange={onChange} />
-      </div>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              aria-label="Pick a common time"
-              className={cn('shrink-0 px-2', size === 'touch' ? 'h-11' : 'h-8')}
-            />
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative">
+        <SegmentedTimeControl
+          id={id}
+          value={value}
+          onChange={onChange}
+          trailing={
+            <PopoverTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Pick a common time"
+                  className="absolute top-1/2 right-1 -translate-y-1/2"
+                />
+              }
+            >
+              <ChevronDown className="opacity-60" />
+            </PopoverTrigger>
           }
-        >
-          <ChevronDown className="opacity-60" />
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-auto p-0">
-          <QuarterHourList
-            value={value}
-            onPick={(picked) => {
-              onChange(picked);
-              setOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+        />
+      </div>
+      <PopoverContent align="end" className="w-auto p-0">
+        <QuarterHourList
+          value={value}
+          onPick={(picked) => {
+            onChange(picked);
+            setOpen(false);
+          }}
+          onDismiss={() => setOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -513,26 +528,93 @@ function StepperColumn({ unit, display, onStep }: StepperColumnProps) {
 interface QuarterHourListProps {
   value: string;
   onPick: (value: string) => void;
+  onDismiss: () => void;
 }
 
-function QuarterHourList({ value, onPick }: QuarterHourListProps) {
+/** A listbox, not a stack of buttons: the whole point of the segmented field
+ * is that everything steps with the arrow keys, so the list it opens has to
+ * as well. Up/Down move the selection, Home/End jump to either end of the day,
+ * Enter commits, Escape closes without changing anything. */
+function QuarterHourList({ value, onPick, onDismiss }: QuarterHourListProps) {
   const nearest = nearestQuarter(value);
+  const [activeIndex, setActiveIndex] = useState(() =>
+    Math.max(0, QUARTER_OPTIONS.indexOf(nearest)),
+  );
+
+  const move = (nextIndex: number, container: HTMLElement | null) => {
+    const clamped = Math.min(
+      Math.max(nextIndex, 0),
+      QUARTER_OPTIONS.length - 1,
+    );
+    setActiveIndex(clamped);
+    container
+      ?.querySelector(`[data-index="${clamped}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  };
 
   return (
-    <div ref={centreNearestRow} className="max-h-64 w-32 overflow-auto p-1">
-      {QUARTER_OPTIONS.map((option) => (
-        <button
+    <div
+      ref={centreNearestRow}
+      role="listbox"
+      aria-label="Common times"
+      aria-activedescendant={`quarter-${activeIndex}`}
+      tabIndex={0}
+      className="max-h-64 w-32 overflow-auto p-1 outline-none"
+      onKeyDown={(event) => {
+        const container = event.currentTarget;
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          move(activeIndex + 1, container);
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          move(activeIndex - 1, container);
+        } else if (event.key === 'PageDown') {
+          event.preventDefault();
+          move(activeIndex + 4, container);
+        } else if (event.key === 'PageUp') {
+          event.preventDefault();
+          move(activeIndex - 4, container);
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          move(0, container);
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          move(QUARTER_OPTIONS.length - 1, container);
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          const picked = QUARTER_OPTIONS[activeIndex];
+          if (picked) {
+            onPick(picked);
+          }
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          onDismiss();
+        }
+      }}
+    >
+      {QUARTER_OPTIONS.map((option, index) => (
+        // The container owns focus and points at the active row with
+        // aria-activedescendant — which is the listbox pattern, and is exactly
+        // why an option must NOT be focusable or carry its own key handler.
+        // biome-ignore lint/a11y/useFocusableInteractive: see above
+        // biome-ignore lint/a11y/useKeyWithClickEvents: see above
+        <div
           key={option}
-          type="button"
+          id={`quarter-${index}`}
+          role="option"
+          aria-selected={option === value}
+          data-index={index}
           data-nearest={option === nearest}
           className={cn(
-            'block w-full rounded px-2 py-1.5 text-left text-sm tabular-nums hover:bg-accent',
-            option === value && 'bg-accent font-medium',
+            'cursor-pointer rounded px-2 py-1.5 text-left text-sm tabular-nums hover:bg-accent',
+            index === activeIndex && 'bg-accent',
+            option === value && 'font-medium',
           )}
           onClick={() => onPick(option)}
+          onMouseEnter={() => setActiveIndex(index)}
         >
           {option}
-        </button>
+        </div>
       ))}
     </div>
   );

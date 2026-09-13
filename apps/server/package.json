@@ -29,6 +29,7 @@
     "@church/core": "workspace:*",
     "@church/db": "workspace:*",
     "@church/env": "workspace:*",
+    "@church/time": "workspace:*",
     "@fastify/cors": "^11.0.1",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^6.0.0",

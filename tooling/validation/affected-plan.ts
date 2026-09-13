@@ -53,6 +53,7 @@ const WORKSPACES: Workspace[] = [
   { name: '@church/db', path: 'packages/db/' },
   { name: '@church/env', path: 'packages/env/' },
   { name: '@church/config', path: 'packages/config/' },
+  { name: '@church/time', path: 'packages/time/' },
 ];
 
 const DEPENDENTS: Record<string, string[]> = {
@@ -62,10 +63,12 @@ const DEPENDENTS: Record<string, string[]> = {
     '@church/core',
     '@church/db',
     '@church/env',
+    '@church/time',
     'server',
     'web',
   ],
   '@church/core': ['server'],
+  '@church/time': ['@church/db', 'server', 'web'],
   '@church/db': ['@church/auth', 'server'],
   '@church/env': ['@church/auth', '@church/db', 'server', 'web'],
   server: [],

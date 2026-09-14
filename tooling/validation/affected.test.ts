@@ -21,6 +21,21 @@ describe('classifyChanges', () => {
     expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
   });
 
+  it('selects transitive dependents of the time seam', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/time/src/conversion.ts'],
+    });
+
+    // @church/auth depends on @church/db, which depends on @church/time.
+    expect(plan.workspaceNames).toEqual([
+      '@church/auth',
+      '@church/db',
+      '@church/time',
+      'server',
+      'web',
+    ]);
+  });
+
   it('requires the complete E2E suite for Playwright infrastructure changes', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/playwright.config.ts'],

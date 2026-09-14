@@ -68,7 +68,7 @@ const DEPENDENTS: Record<string, string[]> = {
     'web',
   ],
   '@church/core': ['server'],
-  '@church/time': ['@church/db', 'server', 'web'],
+  '@church/time': ['@church/auth', '@church/db', 'server', 'web'],
   '@church/db': ['@church/auth', 'server'],
   '@church/env': ['@church/auth', '@church/db', 'server', 'web'],
   server: [],

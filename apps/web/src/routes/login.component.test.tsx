@@ -1,15 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
 const getSession = vi.fn();
 const getVolunteerDashboard = vi.fn();
-const getActiveChurchStatus = vi.fn().mockResolvedValue({
-  status: 'resolved',
-  churchId: 'church-1',
-  timezone: 'UTC',
-});
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -21,23 +16,21 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/utils/api-instances', () => ({
+vi.mock('@/utils/api-instances', async () => ({
   volunteerApi: {
     getVolunteerDashboard: (...args: unknown[]) =>
       getVolunteerDashboard(...args),
   },
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -52,7 +45,10 @@ describe('the sign-in route (login)', () => {
   it('renders standalone for an unauthenticated visitor, with no redirect', async () => {
     getSession.mockResolvedValue({ data: null });
 
-    const { router } = renderRoute({ initialPath: '/login' });
+    const { router } = renderRoute({
+      initialPath: '/login',
+      churchTimezone: 'UTC',
+    });
 
     expect(await screen.findByText('Welcome Back')).toBeVisible();
     expect(screen.getByText(/access is invitation-only/i)).toBeVisible();
@@ -74,7 +70,10 @@ describe('the sign-in route (login)', () => {
       ministryOptions: [],
     });
 
-    const { router } = renderRoute({ initialPath: '/login' });
+    const { router } = renderRoute({
+      initialPath: '/login',
+      churchTimezone: 'UTC',
+    });
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/dashboard');
@@ -86,6 +85,7 @@ describe('the sign-in route (login)', () => {
 
     const { router } = renderRoute({
       initialPath: '/login?redirect=%2Fno-access',
+      churchTimezone: 'UTC',
     });
 
     await waitFor(() => {
@@ -107,6 +107,7 @@ describe('the sign-in route (login)', () => {
 
     const { router } = renderRoute({
       initialPath: '/login?redirect=https%3A%2F%2Fevil.example%2Fx',
+      churchTimezone: 'UTC',
     });
 
     await waitFor(() => {

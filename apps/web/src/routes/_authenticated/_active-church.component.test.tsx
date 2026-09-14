@@ -1,13 +1,13 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  activeChurchApiMock,
+  resolvedActiveChurchStatus,
+} from '@/__tests__/setup/active-church';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 import { formatInTZ, getBrowserTimezone } from '@/shared/utils/date';
-
-interface ChildrenProps {
-  children: ReactNode;
-}
 
 /**
  * 12:00 UTC — 09:00 in São Paulo, 21:00 in Tokyo, and already 5 Jan 01:00 in
@@ -17,10 +17,9 @@ const PROBE_INSTANT = '2027-01-04T12:00:00.000Z';
 const PROBE_FORMAT = 'yyyy-MM-dd HH:mm';
 
 const getSession = vi.fn();
-const getActiveChurchStatus = vi.fn();
+const { getActiveChurchStatus, listActiveChurchOptions, selectActiveChurch } =
+  activeChurchApiMock;
 const listPlanningCycles = vi.fn();
-const listActiveChurchOptions = vi.fn();
-const selectActiveChurch = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -29,17 +28,12 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/utils/api-instances', () => ({
+vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
   },
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-    listActiveChurchOptions: (...args: unknown[]) =>
-      listActiveChurchOptions(...args),
-    selectActiveChurch: (...args: unknown[]) => selectActiveChurch(...args),
-  },
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 // The shell sits under the layout's TimezoneProvider like every real
@@ -97,13 +91,12 @@ describe('the Active Church guard (_active-church)', () => {
       expect(
         formatInTZ(PROBE_INSTANT, getBrowserTimezone(), PROBE_FORMAT),
       ).not.toBe('2027-01-04 09:00');
-      getActiveChurchStatus.mockResolvedValue({
-        status: 'resolved',
-        churchId: 'church-1',
-        timezone: 'America/Sao_Paulo',
+      // Seeded through the route-render helper: the zone reaches the layout's
+      // TimezoneProvider only via the entry gate, as in the real app.
+      renderRoute({
+        initialPath: '/scheduling/planning-cycles',
+        churchTimezone: 'America/Sao_Paulo',
       });
-
-      renderPlanningCycles();
 
       expect(await screen.findByTestId('church-time')).toHaveTextContent(
         '2027-01-04 09:00',
@@ -112,16 +105,16 @@ describe('the Active Church guard (_active-church)', () => {
 
     it('renders times in the new zone after switching to a Church elsewhere', async () => {
       const user = userEvent.setup();
-      const tokyoStatus = {
-        status: 'resolved',
+      const tokyoStatus = resolvedActiveChurchStatus({
         churchId: 'church-2',
         timezone: 'Asia/Tokyo',
-      };
-      getActiveChurchStatus.mockResolvedValue({
-        status: 'resolved',
-        churchId: 'church-1',
-        timezone: 'America/Sao_Paulo',
       });
+      getActiveChurchStatus.mockResolvedValue(
+        resolvedActiveChurchStatus({
+          churchId: 'church-1',
+          timezone: 'America/Sao_Paulo',
+        }),
+      );
       listActiveChurchOptions.mockResolvedValue({
         churches: [
           {
@@ -205,11 +198,9 @@ describe('the Active Church guard (_active-church)', () => {
         session: { activeOrganizationId: 'church-1' },
       },
     });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-1',
-      timezone: 'UTC',
-    });
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-1' }),
+    );
     listPlanningCycles.mockResolvedValue({ cycles: [] });
 
     renderPlanningCycles();
@@ -296,20 +287,16 @@ describe('the Active Church guard (_active-church)', () => {
       },
     });
     getActiveChurchStatus
-      .mockResolvedValueOnce({
-        status: 'resolved',
-        churchId: 'church-2',
-        membershipRemovedFrom: 'Old Church',
-        timezone: 'UTC',
-      })
+      .mockResolvedValueOnce(
+        resolvedActiveChurchStatus({
+          churchId: 'church-2',
+          membershipRemovedFrom: 'Old Church',
+        }),
+      )
       // The redirect to /dashboard re-enters this same layout's beforeLoad —
       // by then the session's active organization is the newly auto-selected
       // Church, so the real endpoint would no longer report a removal.
-      .mockResolvedValue({
-        status: 'resolved',
-        churchId: 'church-2',
-        timezone: 'UTC',
-      });
+      .mockResolvedValue(resolvedActiveChurchStatus({ churchId: 'church-2' }));
 
     const { router } = renderPlanningCycles();
 
@@ -324,11 +311,9 @@ describe('the Active Church guard (_active-church)', () => {
     getSession.mockResolvedValue({
       data: { user: { id: 'u1' }, session: { activeOrganizationId: null } },
     });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-1',
-      timezone: 'UTC',
-    });
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-1' }),
+    );
     listPlanningCycles.mockResolvedValue({ cycles: [] });
 
     renderPlanningCycles();
@@ -350,11 +335,9 @@ describe('the Active Church guard (_active-church)', () => {
           session: { activeOrganizationId: 'church-1' },
         },
       });
-      getActiveChurchStatus.mockResolvedValue({
-        status: 'resolved',
-        churchId: 'church-1',
-        timezone: 'UTC',
-      });
+      getActiveChurchStatus.mockResolvedValue(
+        resolvedActiveChurchStatus({ churchId: 'church-1' }),
+      );
       listPlanningCycles.mockResolvedValue({ cycles: [] });
 
       const { router } = renderWithChurchParam('church-1');
@@ -373,11 +356,9 @@ describe('the Active Church guard (_active-church)', () => {
           session: { activeOrganizationId: 'church-1' },
         },
       });
-      getActiveChurchStatus.mockResolvedValue({
-        status: 'resolved',
-        churchId: 'church-1',
-        timezone: 'UTC',
-      });
+      getActiveChurchStatus.mockResolvedValue(
+        resolvedActiveChurchStatus({ churchId: 'church-1' }),
+      );
       listActiveChurchOptions.mockResolvedValue({
         churches: [
           { churchId: 'church-1', name: 'Igreja Central' },
@@ -410,11 +391,9 @@ describe('the Active Church guard (_active-church)', () => {
           { churchId: 'church-2', name: 'Comunidade Esperança' },
         ],
       });
-      selectActiveChurch.mockResolvedValue({
-        status: 'resolved',
-        churchId: 'church-2',
-        timezone: 'UTC',
-      });
+      selectActiveChurch.mockResolvedValue(
+        resolvedActiveChurchStatus({ churchId: 'church-2' }),
+      );
       listPlanningCycles.mockResolvedValue({ cycles: [] });
 
       const { router } = renderWithChurchParam('church-2');
@@ -461,11 +440,9 @@ describe('the Active Church guard (_active-church)', () => {
           session: { activeOrganizationId: 'church-1' },
         },
       });
-      getActiveChurchStatus.mockResolvedValue({
-        status: 'resolved',
-        churchId: 'church-1',
-        timezone: 'UTC',
-      });
+      getActiveChurchStatus.mockResolvedValue(
+        resolvedActiveChurchStatus({ churchId: 'church-1' }),
+      );
       listActiveChurchOptions.mockResolvedValue({
         churches: [{ churchId: 'church-1', name: 'Igreja Central' }],
       });

@@ -4,9 +4,13 @@ import { getBrowserTimezone } from '../utils/date';
 
 export type TimezoneMode = 'church' | 'user';
 
+interface SetTimezoneModeInput {
+  mode: TimezoneMode;
+}
+
 interface TimezoneContextType {
   mode: TimezoneMode;
-  setMode: (mode: TimezoneMode) => void;
+  setMode: (input: SetTimezoneModeInput) => void;
   churchTimezone: string;
   effectiveTimezone: string;
   toggleMode: () => void;
@@ -33,13 +37,13 @@ export function TimezoneProvider({
     return (saved as TimezoneMode) || 'church';
   });
 
-  const setMode = (newMode: TimezoneMode) => {
+  const setMode = ({ mode: newMode }: SetTimezoneModeInput) => {
     setModeState(newMode);
     localStorage.setItem(STORAGE_KEY, newMode);
   };
 
   const toggleMode = () => {
-    setMode(mode === 'church' ? 'user' : 'church');
+    setMode({ mode: mode === 'church' ? 'user' : 'church' });
   };
 
   const effectiveTimezone =

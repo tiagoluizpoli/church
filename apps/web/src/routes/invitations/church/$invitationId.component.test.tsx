@@ -1,16 +1,11 @@
 import { screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
 const getSession = vi.fn();
 const getVolunteerDashboard = vi.fn();
-const getActiveChurchStatus = vi.fn().mockResolvedValue({
-  status: 'resolved',
-  churchId: 'church-1',
-  timezone: 'UTC',
-});
 const previewChurchInvitation = vi.fn();
 const requestChurchInvitationVerificationCode = vi.fn();
 const redeemChurchInvitation = vi.fn();
@@ -27,15 +22,13 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/utils/api-instances', () => ({
+vi.mock('@/utils/api-instances', async () => ({
   volunteerApi: {
     getVolunteerDashboard: (...args: unknown[]) =>
       getVolunteerDashboard(...args),
   },
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
   redemptionApi: {
     previewChurchInvitation: (...args: unknown[]) =>
       previewChurchInvitation(...args),
@@ -51,11 +44,11 @@ vi.mock('@/utils/api-instances', () => ({
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -86,7 +79,10 @@ describe('the chained-invitation redemption route', () => {
   it('renders only the permitted preview fields with the email read-only', async () => {
     previewChurchInvitation.mockResolvedValue(PREVIEW);
 
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
 
     expect(await screen.findByText('Join St. Peter')).toBeVisible();
     expect(screen.getByText(/Worship/)).toBeVisible();
@@ -98,7 +94,10 @@ describe('the chained-invitation redemption route', () => {
   it('shows an unavailable message for an expired or unknown invitation', async () => {
     previewChurchInvitation.mockRejectedValue(notFoundError());
 
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
 
     expect(await screen.findByText(/no longer available/i)).toBeVisible();
   });
@@ -110,7 +109,10 @@ describe('the chained-invitation redemption route', () => {
       status: 'sent',
     });
 
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
     const user = userEvent.setup();
 
     const sendButton = await screen.findByRole('button', {
@@ -150,6 +152,7 @@ describe('the chained-invitation redemption route', () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const { router } = renderRoute({
       initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
     });
     const user = userEvent.setup();
 
@@ -192,6 +195,7 @@ describe('the chained-invitation redemption route', () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const { router } = renderRoute({
       initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
     });
     const user = userEvent.setup();
 
@@ -217,7 +221,10 @@ describe('the chained-invitation redemption route', () => {
     });
 
     const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
@@ -242,7 +249,10 @@ describe('the chained-invitation redemption route', () => {
     });
 
     const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
@@ -267,7 +277,10 @@ describe('the chained-invitation redemption route', () => {
     });
 
     const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
@@ -292,7 +305,10 @@ describe('the chained-invitation redemption route', () => {
     });
 
     const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
@@ -318,7 +334,10 @@ describe('the chained-invitation redemption route', () => {
       ministryInvitationId: 'invitation-1',
     });
     const { default: userEvent } = await import('@testing-library/user-event');
-    renderRoute({ initialPath: '/invitations/church/invitation-1' });
+    renderRoute({
+      initialPath: '/invitations/church/invitation-1',
+      churchTimezone: 'UTC',
+    });
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText('Name'), 'New Volunteer');
     await user.type(

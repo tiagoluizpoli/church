@@ -54,6 +54,9 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     // and no Membership at all — rather than only the first of those.
     const status = await activeChurchApi.getActiveChurchStatus();
     const { membershipRemovedFrom } = status;
+    // Every redirect below carries it, so the destination can explain a
+    // just-removed Church Membership.
+    const removalSearch = { removedFrom: membershipRemovedFrom };
 
     const requestedChurchId = extractRequestedChurchId({ search });
     const currentChurchId =
@@ -109,12 +112,12 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       if (status.status === 'selection_required') {
         throw redirect({
           to: '/select-church',
-          search: { removedFrom: membershipRemovedFrom },
+          search: removalSearch,
         });
       }
       throw redirect({
         to: '/no-access',
-        search: { removedFrom: membershipRemovedFrom },
+        search: removalSearch,
       });
     }
     if (membershipRemovedFrom) {
@@ -123,7 +126,7 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       // explanation has a stable, always-reachable place to show.
       throw redirect({
         to: '/dashboard',
-        search: { removedFrom: membershipRemovedFrom },
+        search: removalSearch,
       });
     }
 

@@ -21,7 +21,8 @@ test.describe('Timezone Policy', () => {
       name: /Church Time|Local Time/,
     });
 
-    // Initial state: Church Time (America/New_York is configured in main.tsx)
+    // Initial state: Church Time — the Active Church's own Church Timezone,
+    // resolved by the _active-church entry gate and mounted at its layout
     await expect(toggleButton).toContainText('Church Time');
 
     // Toggle to Local Time (London)

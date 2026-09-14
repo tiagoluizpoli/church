@@ -1,5 +1,6 @@
 export * from './arithmetic';
 export * from './brands';
 export * from './clock';
+export * from './comparison';
 export * from './conversion';
 export * from './persistence';

@@ -1,8 +1,7 @@
 import { z } from 'zod';
 import type {
-  ActiveChurchSelectionRequired,
-  NoChurchMembership,
   ResolvedActiveChurch,
+  UnresolvedActiveChurch,
 } from '../../domain/contracts/application/active-church-resolver';
 import type { ChurchSelectionOption } from '../../domain/contracts/application/active-church-selection-manager';
 
@@ -59,10 +58,6 @@ export interface ToResolvedStatusResponseInput {
   /** IANA Church Timezone of `resolution.churchId`. */
   timezone: string;
 }
-
-export type UnresolvedActiveChurch =
-  | NoChurchMembership
-  | ActiveChurchSelectionRequired;
 
 export interface ToUnresolvedStatusResponseInput {
   resolution: UnresolvedActiveChurch;

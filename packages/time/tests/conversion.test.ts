@@ -4,6 +4,9 @@ import {
   fromTimeColumn,
   type Instant,
   InvalidTimeValueError,
+  isCalendarDay,
+  isInstant,
+  isTimeOfDay,
   parseCalendarDay,
   parseInstant,
   parseTimeOfDay,
@@ -101,6 +104,80 @@ describe('today / toTimeOfDay', () => {
         timeZone: 'America/New_York',
       }),
     ).toBe('2027-11-07');
+  });
+
+  it('reads the CalendarDay through a fractional offset', () => {
+    const at = (value: string) => parseInstant({ value });
+    // Asia/Kolkata is +05:30; Asia/Kathmandu is +05:45.
+    expect(
+      today({ instant: at('2027-01-04T18:29:00Z'), timeZone: 'Asia/Kolkata' }),
+    ).toBe('2027-01-04');
+    expect(
+      today({ instant: at('2027-01-04T18:30:00Z'), timeZone: 'Asia/Kolkata' }),
+    ).toBe('2027-01-05');
+    expect(
+      today({
+        instant: at('2027-01-04T18:14:00Z'),
+        timeZone: 'Asia/Kathmandu',
+      }),
+    ).toBe('2027-01-04');
+    expect(
+      today({
+        instant: at('2027-01-04T18:15:00Z'),
+        timeZone: 'Asia/Kathmandu',
+      }),
+    ).toBe('2027-01-05');
+  });
+
+  it('reads the day after spring-forward on the new offset', () => {
+    // 00:30 EDT on 2027-03-15; still EST it would be 23:30 on 2027-03-14.
+    expect(
+      today({
+        instant: parseInstant({ value: '2027-03-15T04:30:00.000Z' }),
+        timeZone: 'America/New_York',
+      }),
+    ).toBe('2027-03-15');
+  });
+});
+
+describe('Church Timezone validation', () => {
+  const day = parseCalendarDay({ value: '2027-01-04' });
+  const time = parseTimeOfDay({ value: '10:00' });
+  const instant = parseInstant({ value: '2027-01-04T10:00:00Z' });
+
+  it.each([
+    'UTC',
+    'Etc/UTC',
+    'America/Sao_Paulo',
+    'Asia/Kolkata',
+    'Asia/Kathmandu',
+    'Pacific/Chatham',
+  ])('accepts the IANA name %s', (timeZone) => {
+    expect(isInstant({ value: toInstant({ day, time, timeZone }) })).toBe(true);
+    expect(isCalendarDay({ value: today({ instant, timeZone }) })).toBe(true);
+    expect(isTimeOfDay({ value: toTimeOfDay({ instant, timeZone }) })).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    '',
+    ' ',
+    '+05:30',
+    '-03:00',
+    '+0530',
+    'Z',
+    'UTC+3',
+    'Nope/Zone',
+    ' America/Sao_Paulo',
+  ])('rejects %j in every function that takes a timeZone', (timeZone) => {
+    const message = `Invalid TimeZone: "${timeZone}"`;
+    expect(() => toInstant({ day, time, timeZone })).toThrow(
+      InvalidTimeValueError,
+    );
+    expect(() => toInstant({ day, time, timeZone })).toThrow(message);
+    expect(() => today({ instant, timeZone })).toThrow(message);
+    expect(() => toTimeOfDay({ instant, timeZone })).toThrow(message);
   });
 });
 

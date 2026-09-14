@@ -18,13 +18,17 @@ export type CalendarDay = TimeBrand<'CalendarDay'>;
 /** A wall-clock hour and minute, `HH:mm`, with no day and no offset. */
 export type TimeOfDay = TimeBrand<'TimeOfDay'>;
 
+/** What an `InvalidTimeValueError` rejected: a kind of time, or the Church
+ * Timezone name used to relate them. */
+export type InvalidTimeValueKind = TimeKind | 'TimeZone';
+
 interface InvalidTimeValueErrorInput {
-  kind: TimeKind;
+  kind: InvalidTimeValueKind;
   value: string;
 }
 
 export class InvalidTimeValueError extends Error {
-  readonly kind: TimeKind;
+  readonly kind: InvalidTimeValueKind;
   readonly value: string;
 
   constructor({ kind, value }: InvalidTimeValueErrorInput) {

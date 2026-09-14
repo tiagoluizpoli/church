@@ -1,6 +1,7 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import type { CalendarDay, Instant, TimeOfDay } from './brands';
 import { fromDate, toDate } from './persistence';
+import { assertTimeZone } from './time-zone';
 import { DAY_MS, MINUTE_MS, utcMidnightOf } from './utc-calendar';
 
 interface ZoneOffsetInput {
@@ -42,6 +43,7 @@ export interface ToInstantInput {
  * repeated wall clock depends on the process TZ.
  */
 export function toInstant({ day, time, timeZone }: ToInstantInput): Instant {
+  assertTimeZone({ timeZone });
   const hours = Number(time.slice(0, 2));
   const minutes = Number(time.slice(3, 5));
   // The wall clock read as if it were UTC; subtracting an offset gives a moment.
@@ -77,6 +79,7 @@ export function today({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): CalendarDay {
+  assertTimeZone({ timeZone });
   return formatInTimeZone(
     toDate({ instant }),
     timeZone,
@@ -89,5 +92,6 @@ export function toTimeOfDay({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): TimeOfDay {
+  assertTimeZone({ timeZone });
   return formatInTimeZone(toDate({ instant }), timeZone, 'HH:mm') as TimeOfDay;
 }

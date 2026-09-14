@@ -96,7 +96,9 @@ export class DbActiveChurchSelectionManager
 
   /**
    * The Church Timezone the client resolves every CalendarDay and displayed
-   * time through (ADR-0003). Read once by the entry gate, not per request.
+   * time through (ADR-0003). Read on every resolved status/select call — the
+   * entry gate runs on each navigation under the Active Church layout, so a
+   * changed Church Timezone reaches the client on its next navigation.
    */
   async getChurchTimezone(input: GetChurchTimezoneInput): Promise<string> {
     const church = await this.churchRepository.getById({ id: input.churchId });

@@ -64,6 +64,10 @@ export type UnresolvedActiveChurch =
   | NoChurchMembership
   | ActiveChurchSelectionRequired;
 
+export interface ToUnresolvedStatusResponseInput {
+  resolution: UnresolvedActiveChurch;
+}
+
 export const activeChurchMapper = {
   toResolvedStatusResponse({
     resolution,
@@ -77,9 +81,9 @@ export const activeChurchMapper = {
     };
   },
 
-  toUnresolvedStatusResponse(
-    resolution: UnresolvedActiveChurch,
-  ): ActiveChurchStatusResponse {
+  toUnresolvedStatusResponse({
+    resolution,
+  }: ToUnresolvedStatusResponseInput): ActiveChurchStatusResponse {
     return {
       status: resolution.status,
       membershipRemovedFrom: resolution.membershipRemovedFrom,

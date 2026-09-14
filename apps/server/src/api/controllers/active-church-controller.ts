@@ -199,7 +199,7 @@ export class ActiveChurchController implements FastifyController {
     resolution,
   }: BuildStatusResponseInput): Promise<ActiveChurchStatusResponse> {
     if (resolution.status !== 'resolved') {
-      return activeChurchMapper.toUnresolvedStatusResponse(resolution);
+      return activeChurchMapper.toUnresolvedStatusResponse({ resolution });
     }
     const timezone = await this.selectionManager.getChurchTimezone({
       churchId: resolution.churchId,

@@ -78,6 +78,7 @@ describe('switch-church-confirm route', () => {
     getActiveChurchStatus.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-a',
+      timezone: 'UTC',
     });
     listPlanningCycles.mockResolvedValue({ cycles: [] });
   });
@@ -99,10 +100,12 @@ describe('switch-church-confirm route', () => {
     selectActiveChurch.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-b',
+      timezone: 'UTC',
     });
     getActiveChurchStatus.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-b',
+      timezone: 'UTC',
     });
 
     const { router } = renderConfirm(
@@ -134,10 +137,12 @@ describe('switch-church-confirm route', () => {
     selectActiveChurch.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-b',
+      timezone: 'UTC',
     });
     getActiveChurchStatus.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-b',
+      timezone: 'UTC',
     });
 
     const { router } = renderConfirm(

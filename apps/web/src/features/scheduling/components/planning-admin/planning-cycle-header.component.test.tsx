@@ -50,6 +50,11 @@ async function selectTheOnlyCycle() {
   return user;
 }
 
+// Period bounds are fixed UTC instants, not bare `yyyy-MM-dd` days: the header
+// formats them as instants in the effective zone, and a bare day parses at
+// the runner's local midnight — which made the rendered day depend on the
+// ambient TZ the suite pins (vitest.config.ts). CalendarDay rendering itself
+// is reworked with the Church/Local Time toggle's retirement (#155).
 describe('PlanningCycleHeader (T058)', () => {
   it('renders nothing when no cycle is selected', () => {
     listPlanningCycles.mockResolvedValue({ cycles: [] });
@@ -70,8 +75,8 @@ describe('PlanningCycleHeader (T058)', () => {
         {
           id: 'cycle-1',
           name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
+          startDate: '2026-08-01T00:00:00.000Z',
+          endDate: '2026-08-31T00:00:00.000Z',
           state: 'locked',
         },
       ],
@@ -80,8 +85,8 @@ describe('PlanningCycleHeader (T058)', () => {
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
-        startDate: '2026-08-01',
-        endDate: '2026-08-31',
+        startDate: '2026-08-01T00:00:00.000Z',
+        endDate: '2026-08-31T00:00:00.000Z',
         state: 'locked',
       },
       events: [],
@@ -113,8 +118,8 @@ describe('PlanningCycleHeader (T058)', () => {
         {
           id: 'cycle-1',
           name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
+          startDate: '2026-08-01T00:00:00.000Z',
+          endDate: '2026-08-31T00:00:00.000Z',
           state: 'draft',
         },
       ],
@@ -123,8 +128,8 @@ describe('PlanningCycleHeader (T058)', () => {
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
-        startDate: '2026-08-01',
-        endDate: '2026-08-31',
+        startDate: '2026-08-01T00:00:00.000Z',
+        endDate: '2026-08-31T00:00:00.000Z',
         state: 'draft',
       },
       events: [
@@ -191,8 +196,8 @@ describe('PlanningCycleHeader (T058)', () => {
         {
           id: 'cycle-1',
           name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
+          startDate: '2026-08-01T00:00:00.000Z',
+          endDate: '2026-08-31T00:00:00.000Z',
           state: 'draft',
         },
       ],
@@ -201,8 +206,8 @@ describe('PlanningCycleHeader (T058)', () => {
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
-        startDate: '2026-08-01',
-        endDate: '2026-08-31',
+        startDate: '2026-08-01T00:00:00.000Z',
+        endDate: '2026-08-31T00:00:00.000Z',
         state: 'draft',
       },
       events: [],

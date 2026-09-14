@@ -6,9 +6,11 @@ import { renderRoute } from '@/__tests__/setup/render-route';
 
 const getSession = vi.fn();
 const getVolunteerDashboard = vi.fn();
-const getActiveChurchStatus = vi
-  .fn()
-  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
+const getActiveChurchStatus = vi.fn().mockResolvedValue({
+  status: 'resolved',
+  churchId: 'church-1',
+  timezone: 'UTC',
+});
 const previewChurchInvitation = vi.fn();
 const requestChurchInvitationVerificationCode = vi.fn();
 const redeemChurchInvitation = vi.fn();

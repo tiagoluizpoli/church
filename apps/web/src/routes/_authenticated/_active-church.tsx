@@ -2,10 +2,7 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
-import type {
-  GetActiveChurchStatus200,
-  SelectActiveChurch200,
-} from '@/infrastructure/api/churchAPI.schemas';
+import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 import {
   extractRequestedChurchId,
@@ -14,8 +11,18 @@ import {
 } from '@/shared/utils/cross-church-link';
 import { activeChurchApi } from '@/utils/api-instances';
 
-interface ToChurchTimezoneContextInput {
-  status: GetActiveChurchStatus200 | SelectActiveChurch200;
+interface ResolvedStatusDiscriminant {
+  status: 'resolved';
+}
+
+/** The resolved entry-gate status — the same shape the status and select calls both return. */
+type ResolvedActiveChurchStatus = Extract<
+  GetActiveChurchStatus200,
+  ResolvedStatusDiscriminant
+>;
+
+interface RequireChurchTimezoneInput {
+  status: ResolvedActiveChurchStatus;
 }
 
 interface ChurchTimezoneContext {
@@ -25,12 +32,12 @@ interface ChurchTimezoneContext {
 /**
  * A resolved status always carries its Church Timezone (ADR-0003). One
  * without it is a broken contract, and guessing a zone would silently shift
- * every time on screen (#150) — so the route fails instead.
+ * every time on screen (#150) — so this throws and the route fails instead.
  */
-function toChurchTimezoneContext({
+function requireChurchTimezone({
   status,
-}: ToChurchTimezoneContextInput): ChurchTimezoneContext {
-  if (status.status !== 'resolved' || !status.timezone) {
+}: RequireChurchTimezoneInput): ChurchTimezoneContext {
+  if (!status.timezone) {
     throw new Error(
       'The Active Church status did not resolve with a Church Timezone',
     );
@@ -72,7 +79,10 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
         const selected = await activeChurchApi.selectActiveChurch({
           churchId: decision.churchId,
         });
-        return toChurchTimezoneContext({ status: selected });
+        if (selected.status === 'resolved') {
+          return requireChurchTimezone({ status: selected });
+        }
+        // Not selected after all: the unresolved-status redirects below apply.
       }
 
       if (decision.kind === 'needs-confirmation') {
@@ -95,13 +105,13 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       }
     }
 
-    if (status.status === 'selection_required') {
-      throw redirect({
-        to: '/select-church',
-        search: { removedFrom: membershipRemovedFrom },
-      });
-    }
-    if (status.status === 'no_membership') {
+    if (status.status !== 'resolved') {
+      if (status.status === 'selection_required') {
+        throw redirect({
+          to: '/select-church',
+          search: { removedFrom: membershipRemovedFrom },
+        });
+      }
       throw redirect({
         to: '/no-access',
         search: { removedFrom: membershipRemovedFrom },
@@ -119,8 +129,8 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
 
     // Resolved through `beforeLoad`, which blocks: every route under the
     // layout renders with the right zone on first paint, and a church switch
-    // remounts with the new one (ADR-0003, #150).
-    return toChurchTimezoneContext({ status });
+    // re-runs this gate and hands the layout the new one (ADR-0003, #150).
+    return requireChurchTimezone({ status });
   },
 });
 

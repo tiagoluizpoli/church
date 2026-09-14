@@ -99,10 +99,12 @@ describe('select-church route (compare-access selector)', () => {
     selectActiveChurch.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-a',
+      timezone: 'UTC',
     });
     getActiveChurchStatus.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-a',
+      timezone: 'UTC',
     });
 
     const { router } = renderSelectChurch();
@@ -163,10 +165,12 @@ describe('select-church route (compare-access selector)', () => {
     selectActiveChurch.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-a',
+      timezone: 'UTC',
     });
     getActiveChurchStatus.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-a',
+      timezone: 'UTC',
     });
 
     const { router } = renderSelectChurch(
@@ -199,10 +203,12 @@ describe('select-church route (compare-access selector)', () => {
     selectActiveChurch.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-b',
+      timezone: 'UTC',
     });
     getActiveChurchStatus.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-b',
+      timezone: 'UTC',
     });
 
     const { router } = renderSelectChurch(

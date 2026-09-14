@@ -11,7 +11,14 @@ import { defineConfig } from 'vitest/config';
  *
  * `envDir` points at this package so `apps/web/.env` (VITE_SERVER_URL) loads,
  * which `@church/env/web` validates at import time.
+ *
+ * Ambient timezone: pinned to a far-from-UTC zone (unless `TZ` is already
+ * set) before any worker starts, so tests that render in a Church Timezone
+ * prove it on every machine and in CI instead of passing by coincidence on a
+ * UTC runner. Set `TZ` explicitly to check the suite under another zone.
  */
+process.env.TZ ||= 'Pacific/Auckland';
+
 export default defineConfig({
   plugins: [react()],
   envDir: path.resolve(__dirname),

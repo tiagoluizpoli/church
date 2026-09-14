@@ -55,6 +55,7 @@ describe('dashboard route', () => {
     getActiveChurchStatus.mockResolvedValue({
       status: 'resolved',
       churchId: 'church-1',
+      timezone: 'UTC',
     });
   });
 

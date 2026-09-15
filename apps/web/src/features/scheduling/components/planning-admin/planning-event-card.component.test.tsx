@@ -1,7 +1,7 @@
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import { PlanningEventCard } from './planning-event-card';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -63,10 +63,6 @@ function oneSlotRow(): CycleCalendarTableRow {
     ],
   };
 }
-
-beforeEach(() => {
-  localStorage.clear();
-});
 
 function baseProps() {
   return {
@@ -315,44 +311,32 @@ describe('PlanningEventCard timezone-aware formatting (US2)', () => {
     expect(within(card).queryByText(/→/)).not.toBeInTheDocument();
   });
 
-  it('changes the displayed date/time when the timezone mode toggles between church and local', () => {
-    // The church renders in UTC, so "local differs from church" only means
-    // anything when the viewer's zone is not itself UTC. Pin one rather than
-    // inheriting the test runner's — under a UTC runner both sides format
-    // identically and this asserts nothing.
-    const originalTimezone = process.env.TZ;
-    process.env.TZ = 'America/Sao_Paulo';
+  it('changes the displayed date/time with the Church Timezone', () => {
+    render(
+      <PlanningEventCard
+        row={twoSlotRow()}
+        isReadOnly={false}
+        {...baseProps()}
+      />,
+      { churchTimezone: 'UTC' },
+    );
+    const utcSlotTime = within(
+      screen.getByTestId('planning-event-card'),
+    ).getAllByText(isTimeRangeText)[0].textContent;
 
-    try {
-      render(
-        <PlanningEventCard
-          row={twoSlotRow()}
-          isReadOnly={false}
-          {...baseProps()}
-        />,
-        { churchTimezone: 'UTC' },
-      );
-      const churchModeSlotTime = within(
-        screen.getByTestId('planning-event-card'),
-      ).getAllByText(isTimeRangeText)[0].textContent;
+    render(
+      <PlanningEventCard
+        row={twoSlotRow()}
+        isReadOnly={false}
+        {...baseProps()}
+      />,
+      { churchTimezone: 'Pacific/Kiritimati' },
+    );
+    const cards = screen.getAllByTestId('planning-event-card');
+    const kiritimatiSlotTime = within(cards[cards.length - 1]).getAllByText(
+      isTimeRangeText,
+    )[0].textContent;
 
-      localStorage.setItem('church_timezone_mode', 'user');
-      render(
-        <PlanningEventCard
-          row={twoSlotRow()}
-          isReadOnly={false}
-          {...baseProps()}
-        />,
-        { churchTimezone: 'UTC' },
-      );
-      const cards = screen.getAllByTestId('planning-event-card');
-      const localModeSlotTime = within(cards[cards.length - 1]).getAllByText(
-        isTimeRangeText,
-      )[0].textContent;
-
-      expect(localModeSlotTime).not.toBe(churchModeSlotTime);
-    } finally {
-      process.env.TZ = originalTimezone;
-    }
+    expect(kiritimatiSlotTime).not.toBe(utcSlotTime);
   });
 });

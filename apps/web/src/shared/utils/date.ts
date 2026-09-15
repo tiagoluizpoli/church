@@ -30,13 +30,6 @@ export function fromTZ(wallClock: string, timeZone: string): Date {
   return fromZonedTime(wallClock, timeZone);
 }
 
-/**
- * Gets the current browser timezone.
- */
-export function getBrowserTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
 /** A calendar day, `yyyy-MM-dd`, carrying no time and no offset. */
 export type CalendarDayKey = string;
 

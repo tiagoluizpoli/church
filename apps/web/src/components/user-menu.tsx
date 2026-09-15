@@ -1,5 +1,4 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { TimezoneToggle } from '../shared/components/timezone-toggle';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMediaQuery } from '@/hooks/use-media-query';
 import { authClient } from '@/lib/auth-client';
 
 interface GetInitialsInput {
@@ -30,7 +28,6 @@ function getInitials({ name }: GetInitialsInput): string {
 
 export default function UserMenu() {
   const navigate = useNavigate();
-  const isDesktop = useMediaQuery('(min-width: 768px)');
   const { data: session, isPending } = authClient.useSession();
 
   if (isPending) {
@@ -72,18 +69,6 @@ export default function UserMenu() {
               {session.user.email}
             </span>
           </DropdownMenuLabel>
-          {isDesktop ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                closeOnClick={false}
-                className="flex items-center justify-between gap-3"
-              >
-                <span>Church time</span>
-                <TimezoneToggle variant="ghost" size="xs" />
-              </DropdownMenuItem>
-            </>
-          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"

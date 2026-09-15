@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface AvailabilityFormProps {
   event: AvailabilityEventViewModel;
@@ -66,12 +68,6 @@ function buildInitialResponses(
   ) as SlotResponseMap;
 }
 
-function formatSlotRange(slot: AvailabilitySlotViewModel): string {
-  return `${new Date(slot.startTime).toLocaleString()} - ${new Date(
-    slot.endTime,
-  ).toLocaleTimeString()}`;
-}
-
 function hasAnsweredEverySlot(
   slots: AvailabilitySlotViewModel[],
   responses: SlotResponseMap,
@@ -87,6 +83,7 @@ export function AvailabilityForm({
   onSave,
   saveState,
 }: AvailabilityFormProps) {
+  const { churchTimezone } = useTimezone();
   const [responses, setResponses] = useState<SlotResponseMap>(() =>
     buildInitialResponses(slots),
   );
@@ -164,7 +161,11 @@ export function AvailabilityForm({
                         {slot.label}
                       </Label>
                       <p className="text-muted-foreground text-sm">
-                        {formatSlotRange(slot)}
+                        {formatInstantRangeOf({
+                          start: slot.startTime,
+                          end: slot.endTime,
+                          timeZone: churchTimezone,
+                        })}
                       </p>
                     </div>
                     <Badge variant={response ? 'secondary' : 'outline'}>

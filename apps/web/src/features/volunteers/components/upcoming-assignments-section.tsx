@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatInstantOf } from '@/shared/utils/church-time';
 
 export interface AssignmentResponseInput {
   assignmentId: string;
@@ -79,6 +81,7 @@ export function UpcomingAssignmentsSection({
   onRespond,
   onCancel,
 }: UpcomingAssignmentsSectionProps) {
+  const { churchTimezone } = useTimezone();
   const isSaving = responseState === 'saving';
   const isCancelling = cancelState === 'saving';
   const [pendingDeclineAssignment, setPendingDeclineAssignment] = useState<
@@ -140,7 +143,10 @@ export function UpcomingAssignmentsSection({
                       {group.ministryName}
                     </div>
                     <div className="text-muted-foreground">
-                      {new Date(group.eventStart).toLocaleString()}
+                      {formatInstantOf({
+                        value: group.eventStart,
+                        timeZone: churchTimezone,
+                      })}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -179,7 +185,10 @@ export function UpcomingAssignmentsSection({
                                 {assignment.roleName}
                               </div>
                               <div className="text-muted-foreground">
-                                {formatAssignmentWindow(assignment)}
+                                {formatAssignmentWindow({
+                                  assignment: assignment,
+                                  timeZone: churchTimezone,
+                                })}
                               </div>
                               {assignment.timingState === 'in_progress' ? (
                                 <div className="text-muted-foreground">
@@ -279,7 +288,10 @@ export function UpcomingAssignmentsSection({
                   {pendingDeclineAssignment.roleName}
                 </div>
                 <div className="text-muted-foreground">
-                  {formatAssignmentWindow(pendingDeclineAssignment)}
+                  {formatAssignmentWindow({
+                    assignment: pendingDeclineAssignment,
+                    timeZone: churchTimezone,
+                  })}
                 </div>
               </div>
 

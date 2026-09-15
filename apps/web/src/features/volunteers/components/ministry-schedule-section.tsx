@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface MinistryScheduleSectionProps {
   ministries: DashboardMinistryOption[];
@@ -56,6 +58,7 @@ export function MinistryScheduleSection({
   isLoading,
   onSelectMinistry,
 }: MinistryScheduleSectionProps) {
+  const { churchTimezone } = useTimezone();
   const [expandedEventId, setExpandedEventId] = useState<string | undefined>();
 
   useEffect(() => {
@@ -135,8 +138,11 @@ export function MinistryScheduleSection({
                     <div className="space-y-1">
                       <div className="font-medium">{event.title}</div>
                       <div className="text-muted-foreground">
-                        {new Date(event.startDate).toLocaleString()} -{' '}
-                        {new Date(event.endDate).toLocaleString()}
+                        {formatInstantRangeOf({
+                          start: event.startDate,
+                          end: event.endDate,
+                          timeZone: churchTimezone,
+                        })}
                       </div>
                     </div>
 

@@ -1,14 +1,15 @@
 import { DndContext } from '@dnd-kit/core';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { PoolVolunteer } from '../../../hooks/use-volunteer-pool';
 import type { AssignableFitTier } from '../../../utils/builder/cycle-builder-fit.utils';
 import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
+import { renderWithProviders } from '@/__tests__/setup/render';
 
 function renderSidebar(ui: ReactElement) {
-  return render(<DndContext>{ui}</DndContext>);
+  return renderWithProviders(<DndContext>{ui}</DndContext>);
 }
 
 const volunteers: PoolVolunteer[] = [

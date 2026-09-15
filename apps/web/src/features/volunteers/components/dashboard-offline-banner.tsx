@@ -2,6 +2,8 @@ import { CloudOff, RefreshCw } from 'lucide-react';
 import type { DashboardRefreshState } from '../hooks/use-dashboard-refresh';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatInstantOf } from '@/shared/utils/church-time';
 
 export interface DashboardOfflineBannerProps {
   isOffline: boolean;
@@ -11,16 +13,6 @@ export interface DashboardOfflineBannerProps {
   refreshState: DashboardRefreshState;
 }
 
-function formatLastUpdated(
-  lastUpdatedAt: string | undefined,
-): string | undefined {
-  if (!lastUpdatedAt) {
-    return undefined;
-  }
-
-  return new Date(lastUpdatedAt).toLocaleString();
-}
-
 export function DashboardOfflineBanner({
   isOffline,
   isUsingCachedData,
@@ -28,11 +20,14 @@ export function DashboardOfflineBanner({
   onRefresh,
   refreshState,
 }: DashboardOfflineBannerProps) {
+  const { churchTimezone } = useTimezone();
   if (!isOffline && !isUsingCachedData && refreshState !== 'error') {
     return null;
   }
 
-  const lastUpdatedLabel = formatLastUpdated(lastUpdatedAt);
+  const lastUpdatedLabel = lastUpdatedAt
+    ? formatInstantOf({ value: lastUpdatedAt, timeZone: churchTimezone })
+    : undefined;
 
   return (
     <Alert variant={isOffline ? 'destructive' : 'default'}>

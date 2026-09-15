@@ -1,3 +1,4 @@
+import { now } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -57,7 +58,7 @@ export function useVolunteerDashboard({
         notificationPreview: result.notificationPreview,
         defaultMinistryId: result.defaultMinistryId,
         ministryOptions: result.ministryOptions,
-        fetchedAt: new Date().toISOString(),
+        fetchedAt: now(),
       };
     },
     ...getDashboardSnapshotQueryConfig(isOnline),

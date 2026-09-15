@@ -2,6 +2,7 @@ import type {
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
 } from './dashboard-mappers';
+import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export function getInitialExpandedAssignmentGroupId(
   groups: DashboardAssignmentGroup[],
@@ -12,12 +13,20 @@ export function getInitialExpandedAssignmentGroupId(
   );
 }
 
-export function formatAssignmentWindow(
-  assignment: DashboardAssignmentItem,
-): string {
-  return `${new Date(assignment.startTime).toLocaleString()} - ${new Date(
-    assignment.endTime,
-  ).toLocaleString()}`;
+export interface FormatAssignmentWindowInput {
+  assignment: DashboardAssignmentItem;
+  timeZone: string;
+}
+
+export function formatAssignmentWindow({
+  assignment,
+  timeZone,
+}: FormatAssignmentWindowInput): string {
+  return formatInstantRangeOf({
+    start: assignment.startTime,
+    end: assignment.endTime,
+    timeZone,
+  });
 }
 
 export function getAggregateResponseLabel(

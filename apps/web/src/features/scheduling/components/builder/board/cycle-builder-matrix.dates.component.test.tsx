@@ -205,7 +205,7 @@ describe.each([
           participationId: 'participation-late-friday',
           state: 'rostering',
           eventId: 'event-late-friday',
-          title: 'vigília',
+          title: 'vigília noturna',
           startDate: '2027-01-09T01:00:00.000Z',
           endDate: '2027-01-09T04:00:00.000Z',
           status: 'scheduled',
@@ -265,5 +265,14 @@ describe.each([
     expect(
       screen.queryAllByTestId('cycle-requirement-shift-vigilia-role-1'),
     ).toHaveLength(1);
+
+    // The event's own card/title is the AC2 regression this guards against:
+    // a range-check `eventOccursOnDay` rendered the whole event card a
+    // second time under Saturday, not just the shift inside it.
+    expect(await screen.findAllByText('vigília noturna')).toHaveLength(1);
+    expect(
+      within(fridayColumn).getByText('vigília noturna'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Sat, 09/01')).not.toBeInTheDocument();
   });
 });

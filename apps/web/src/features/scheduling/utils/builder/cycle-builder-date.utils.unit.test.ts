@@ -237,11 +237,52 @@ describe('eventOccursOnDay', () => {
     ).toBe(false);
   });
 
-  it('claims every day of a genuinely multi-day event', () => {
-    const event = makeEvent({ endDate: '2027-01-06T02:59:59.999Z' });
+  it('claims every day of a genuinely multi-day event that has a slot there', () => {
+    // "Genuinely multi-day" means slots on both days — an event whose bounds
+    // merely span two days but which only has a slot on the first must not
+    // claim the second (that shape is the phantom-day bug this guards
+    // against; see the Friday/Saturday case below).
+    const event = makeEvent({
+      endDate: '2027-01-06T02:59:59.999Z',
+      slots: [
+        makeSlot({ slotId: 'day-1', startTime: '2027-01-04T12:00:00.000Z' }),
+        makeSlot({ slotId: 'day-2', startTime: '2027-01-05T12:00:00.000Z' }),
+      ],
+    });
     expect(
       eventOccursOnDay({ event, day: '2027-01-05', timeZone: CHURCH_TIMEZONE }),
     ).toBe(true);
+  });
+
+  it('claims only Friday for a 22:00 Friday → 01:00 Saturday event, never the phantom Saturday', () => {
+    // Regression for the bug a raw [start, end] bounds check let through: the
+    // event's own startDate/endDate cross church-local midnight, but it must
+    // still resolve to exactly one day — its start day — not both.
+    const lateFridaySlot = makeSlot({
+      slotId: 'late-friday',
+      startTime: '2027-01-09T01:00:00.000Z',
+      endTime: '2027-01-09T04:00:00.000Z',
+      shifts: [
+        makeShift({
+          shiftId: 'shift-late-friday',
+          startTime: '2027-01-09T01:00:00.000Z',
+          endTime: '2027-01-09T04:00:00.000Z',
+        }),
+      ],
+    });
+    const event = makeEvent({
+      eventId: 'late-friday-event',
+      startDate: '2027-01-09T01:00:00.000Z',
+      endDate: '2027-01-09T04:00:00.000Z',
+      slots: [lateFridaySlot],
+    });
+
+    expect(
+      eventOccursOnDay({ event, day: '2027-01-08', timeZone: CHURCH_TIMEZONE }),
+    ).toBe(true);
+    expect(
+      eventOccursOnDay({ event, day: '2027-01-09', timeZone: CHURCH_TIMEZONE }),
+    ).toBe(false);
   });
 });
 

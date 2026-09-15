@@ -943,6 +943,11 @@ describe('CycleBuilderMatrix', () => {
         endDate: '2026-08-09T11:00:00.000Z',
         requiredCount: 2,
         assignedCount: 1,
+        // Slots would otherwise still carry boardData's Aug 2 startTime,
+        // so `eventOccursOnDay` (start-day-only, not a raw bounds check)
+        // would never place the event under its own Aug 9 column.
+        slotCount: 0,
+        slots: [],
       };
       const emptyEvent: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
@@ -953,6 +958,8 @@ describe('CycleBuilderMatrix', () => {
         endDate: '2026-08-16T11:00:00.000Z',
         requiredCount: 2,
         assignedCount: 0,
+        slotCount: 0,
+        slots: [],
       };
 
       renderWithProviders(
@@ -996,6 +1003,11 @@ describe('CycleBuilderMatrix', () => {
         endDate: '2026-08-23T11:00:00.000Z',
         requiredCount: 0,
         assignedCount: 0,
+        // See the partial/empty fixtures above: without this, the stale
+        // Aug 2 slot would keep `eventOccursOnDay` from placing the event
+        // under its own Aug 23 column.
+        slotCount: 0,
+        slots: [],
       };
 
       renderWithProviders(

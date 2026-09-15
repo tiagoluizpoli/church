@@ -115,22 +115,6 @@ export function deriveEventDates({
   return [...result].sort();
 }
 
-interface EventOccursOnDayInput {
-  event: CycleBuilderEventSummary;
-  day: string;
-  timeZone: string;
-}
-
-export function eventOccursOnDay({
-  event,
-  day,
-  timeZone,
-}: EventOccursOnDayInput): boolean {
-  const start = churchDayOf({ value: event.startDate, timeZone });
-  const end = churchDayOf({ value: event.endDate, timeZone });
-  return start <= day && day <= end;
-}
-
 interface EventSlotsOnDayInput {
   event: CycleBuilderEventSummary;
   day: string;
@@ -152,6 +136,35 @@ export function eventSlotsOnDay({
   return event.slots.filter(
     (slot) => churchDayOf({ value: slot.startTime, timeZone }) === day,
   );
+}
+
+interface EventOccursOnDayInput {
+  event: CycleBuilderEventSummary;
+  day: string;
+  timeZone: string;
+}
+
+/**
+ * Whether the event has real content to place under this day: a slot
+ * starting there, or — for an event with no slots yet — its own start day,
+ * so it still has somewhere to build.
+ *
+ * This is deliberately narrower than a raw `[start, end]` bounds check: an
+ * Event's own bounds can cross church-local midnight (a 22:00 Friday → 01:00
+ * Saturday session) without the Event earning a second, empty card on the far
+ * side — it renders only under its start CalendarDay (US4, #151). A genuinely
+ * multi-day event still earns a card on every day it has a slot on, via
+ * `eventSlotsOnDay`.
+ */
+export function eventOccursOnDay({
+  event,
+  day,
+  timeZone,
+}: EventOccursOnDayInput): boolean {
+  if (event.slots.length === 0) {
+    return churchDayOf({ value: event.startDate, timeZone }) === day;
+  }
+  return eventSlotsOnDay({ event, day, timeZone }).length > 0;
 }
 
 interface EnumerateDatesInput {

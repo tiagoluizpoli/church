@@ -5,3 +5,4 @@ export * from './comparison';
 export * from './conversion';
 export * from './display';
 export * from './persistence';
+export * from './span';

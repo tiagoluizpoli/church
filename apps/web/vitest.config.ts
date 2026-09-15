@@ -29,6 +29,8 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Inherited by every project below; a project's own `setupFiles` add to it.
+    setupFiles: ['./src/__tests__/setup/clock.ts'],
     projects: [
       {
         extends: true,

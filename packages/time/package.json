@@ -1,0 +1,25 @@
+{
+  "name": "@church/time",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:unit": "TZ=Pacific/Auckland vitest run",
+    "test": "bun run test:unit"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0"
+  },
+  "devDependencies": {
+    "@church/config": "workspace:*",
+    "typescript": "^5",
+    "vitest": "catalog:"
+  }
+}

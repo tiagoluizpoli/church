@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calendarDayBounds,
   fromDate,
   fromTimeColumn,
   type Instant,
@@ -206,5 +207,73 @@ describe('persistence bridge', () => {
     '9:05:00',
   ])('rejects time column value %s', (value) => {
     expect(() => fromTimeColumn({ value })).toThrow(InvalidTimeValueError);
+  });
+});
+
+describe('calendarDayBounds', () => {
+  interface BoundsCase {
+    day: string;
+    timeZone: string;
+    start: string;
+    end: string;
+  }
+
+  it.each<BoundsCase>([
+    {
+      day: '2027-01-04',
+      timeZone: 'America/Sao_Paulo',
+      start: '2027-01-04T03:00:00.000Z',
+      end: '2027-01-05T03:00:00.000Z',
+    },
+    {
+      day: '2027-01-04',
+      timeZone: 'Asia/Kathmandu',
+      start: '2027-01-03T18:15:00.000Z',
+      end: '2027-01-04T18:15:00.000Z',
+    },
+    // Spring-forward: a 23-hour church day.
+    {
+      day: '2027-03-14',
+      timeZone: 'America/New_York',
+      start: '2027-03-14T05:00:00.000Z',
+      end: '2027-03-15T04:00:00.000Z',
+    },
+    // Fall-back: a 25-hour church day.
+    {
+      day: '2027-11-07',
+      timeZone: 'America/New_York',
+      start: '2027-11-07T04:00:00.000Z',
+      end: '2027-11-08T05:00:00.000Z',
+    },
+    // Midnight itself was skipped: the day starts at the first real Instant.
+    {
+      day: '2018-11-04',
+      timeZone: 'America/Sao_Paulo',
+      start: '2018-11-04T03:00:00.000Z',
+      end: '2018-11-05T02:00:00.000Z',
+    },
+  ])('spans $day in $timeZone as [start, end)', ({
+    day,
+    timeZone,
+    start,
+    end,
+  }) => {
+    expect(
+      calendarDayBounds({ day: parseCalendarDay({ value: day }), timeZone }),
+    ).toEqual({ start, end });
+  });
+});
+
+describe('Church Timezone spelling', () => {
+  it.each([
+    'utc',
+    'america/sao_paulo',
+  ])('rejects the wrongly cased name %s', (timeZone) => {
+    expect(() =>
+      today({
+        instant: parseInstant({ value: '2027-01-04T12:00:00Z' }),
+        timeZone,
+      }),
+    ).toThrow(new InvalidTimeValueError({ kind: 'TimeZone', value: timeZone }));
   });
 });

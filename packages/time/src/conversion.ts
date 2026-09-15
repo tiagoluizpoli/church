@@ -1,5 +1,11 @@
 import { formatInTimeZone } from 'date-fns-tz';
-import type { CalendarDay, Instant, TimeOfDay } from './brands';
+import { addCalendarDays } from './arithmetic';
+import {
+  type CalendarDay,
+  type Instant,
+  parseTimeOfDay,
+  type TimeOfDay,
+} from './brands';
 import { fromDate, toDate } from './persistence';
 import { assertTimeZone } from './time-zone';
 import { DAY_MS, MINUTE_MS, utcMidnightOf } from './utc-calendar';
@@ -67,6 +73,38 @@ export function toInstant({ day, time, timeZone }: ToInstantInput): Instant {
   const resolvedMs =
     matches.length > 0 ? Math.min(...matches) : wallClockMs - offsetBefore;
   return fromDate({ date: new Date(resolvedMs) });
+}
+
+export interface CalendarDayInTimeZoneInput {
+  day: CalendarDay;
+  timeZone: string;
+}
+
+/** Half-open `[start, end)`: `end` is the next church-local midnight. */
+export interface InstantBounds {
+  start: Instant;
+  end: Instant;
+}
+
+const MIDNIGHT = parseTimeOfDay({ value: '00:00' });
+
+/**
+ * The Instants a CalendarDay covers in the Church Timezone: church-local
+ * midnight up to (not including) the next one. A DST day spans 23 or 25 hours;
+ * a skipped midnight starts at the first real Instant, per `toInstant`.
+ */
+export function calendarDayBounds({
+  day,
+  timeZone,
+}: CalendarDayInTimeZoneInput): InstantBounds {
+  return {
+    start: toInstant({ day, time: MIDNIGHT, timeZone }),
+    end: toInstant({
+      day: addCalendarDays({ day, days: 1 }),
+      time: MIDNIGHT,
+      timeZone,
+    }),
+  };
 }
 
 export interface InstantInTimeZoneInput {

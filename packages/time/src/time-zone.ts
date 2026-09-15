@@ -16,19 +16,36 @@ const IANA_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/;
 // knows, so remember the names that passed to keep repeat calls cheap.
 const knownTimeZones = new Set<string>();
 
-/** Throws unless `timeZone` is an IANA name the runtime knows. */
+/** Throws unless `timeZone` is an IANA name the runtime knows, spelled in its
+ * canonical case. */
 export function assertTimeZone({ timeZone }: AssertTimeZoneInput): void {
   if (knownTimeZones.has(timeZone)) return;
-  if (!IANA_NAME_PATTERN.test(timeZone) || !isKnownToRuntime({ timeZone })) {
+  if (
+    !IANA_NAME_PATTERN.test(timeZone) ||
+    !isCanonicalRuntimeName({ name: timeZone })
+  ) {
     throw new InvalidTimeValueError({ kind: 'TimeZone', value: timeZone });
   }
   knownTimeZones.add(timeZone);
 }
 
-function isKnownToRuntime({ timeZone }: AssertTimeZoneInput): boolean {
+interface RuntimeZoneNameInput {
+  name: string;
+}
+
+/**
+ * `Intl` matches zone names case-insensitively, so `utc` would pass. A name that
+ * resolves to itself in another case is a misspelling; an alias that resolves to
+ * a different name (`Etc/UTC` → `UTC`, `Asia/Calcutta` → `Asia/Kolkata`) is not.
+ * Limit: an alias in the wrong case (`ASIA/KOLKATA`) resolves elsewhere and still
+ * passes — Intl gives no way to tell it from a real alias.
+ */
+function isCanonicalRuntimeName({ name }: RuntimeZoneNameInput): boolean {
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone });
-    return true;
+    const resolved = new Intl.DateTimeFormat('en-US', {
+      timeZone: name,
+    }).resolvedOptions().timeZone;
+    return resolved === name || resolved.toLowerCase() !== name.toLowerCase();
   } catch {
     return false;
   }

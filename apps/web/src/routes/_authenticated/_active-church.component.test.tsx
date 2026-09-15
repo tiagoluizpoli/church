@@ -7,7 +7,7 @@ import {
 } from '@/__tests__/setup/active-church';
 import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
-import { formatInTZ, getBrowserTimezone } from '@/shared/utils/date';
+import { formatInTZ } from '@/shared/utils/date';
 
 /**
  * 12:00 UTC — 09:00 in São Paulo, 21:00 in Tokyo, and already 5 Jan 01:00 in
@@ -68,9 +68,6 @@ function renderPlanningCycles() {
 describe('the Active Church guard (_active-church)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // The Church/Local Time toggle persists its mode; Local Time would read
-    // the ambient zone and hide whether the Church Timezone was applied.
-    localStorage.clear();
     listActiveChurchOptions.mockResolvedValue({ churches: [] });
   });
 
@@ -88,9 +85,10 @@ describe('the Active Church guard (_active-church)', () => {
     it("renders times in the Active Church's zone, not the ambient one", async () => {
       // Guards the premise: were the ambient zone São Paulo, this test could
       // pass without the Church Timezone ever being applied.
-      expect(
-        formatInTZ(PROBE_INSTANT, getBrowserTimezone(), PROBE_FORMAT),
-      ).not.toBe('2027-01-04 09:00');
+      const ambientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      expect(formatInTZ(PROBE_INSTANT, ambientTimezone, PROBE_FORMAT)).not.toBe(
+        '2027-01-04 09:00',
+      );
       // Seeded through the route-render helper: the zone reaches the layout's
       // TimezoneProvider only via the entry gate, as in the real app.
       renderRoute({

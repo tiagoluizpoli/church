@@ -12,7 +12,6 @@ import {
   UsersRound,
 } from 'lucide-react';
 import * as React from 'react';
-import { TimezoneToggle } from '../shared/components/timezone-toggle';
 import { useCallerRoles } from '../shared/hooks/use-caller-roles';
 import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
 import { CommandPalette } from './command-palette';
@@ -672,10 +671,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
                 Move between your core workflows.
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <TimezoneToggle />
-              <ModeToggle />
-            </div>
+            <ModeToggle />
           </div>
 
           <button

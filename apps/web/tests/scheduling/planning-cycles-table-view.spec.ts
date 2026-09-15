@@ -599,8 +599,12 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
 
 test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
+  // The e2e-provisioned Church's timezone is UTC (no timezone passed to
+  // `provisionChurch`). Europe/London is UTC+1 in May, so a card rendering
+  // the browser's zone instead of the Church's would show 10:00 AM here.
+  test.use({ timezoneId: 'Europe/London' });
 
-  test('toggling church/local time from the mobile nav drawer updates every visible date/time on the card list', async ({
+  test('the card list shows the Worship block at its Church Timezone (UTC) time, not the browser zone', async ({
     page,
   }) => {
     await createCycleWithSundayTemplateApplied({ page });
@@ -610,14 +614,11 @@ test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
     await expect(mobileList.getByText(/Z/)).toHaveCount(0);
 
     const firstCard = mobileList.getByTestId('planning-event-card').first();
-    const timeBefore = await firstCard.textContent();
-
-    await page.getByTestId('mobile-drawer-trigger').click();
-    await page.getByRole('button', { name: /Church Time|Local Time/ }).click();
-    await page.keyboard.press('Escape');
-
-    await expect.poll(() => firstCard.textContent()).not.toBe(timeBefore);
-    await expect(mobileList.getByText(/Z/)).toHaveCount(0);
+    // The Worship block is entered as 09:00-10:00; a card rendering the
+    // browser's zone instead of the Church's (UTC) would shift this whole
+    // range an hour later.
+    await expect(firstCard).toContainText('9:00 AM – 10:00 AM');
+    await expect(firstCard).not.toContainText('10:00 AM – 11:00 AM');
   });
 });
 

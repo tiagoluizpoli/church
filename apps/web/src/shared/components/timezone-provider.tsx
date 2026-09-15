@@ -1,26 +1,13 @@
 import type React from 'react';
-import { createContext, useContext, useState } from 'react';
-import { getBrowserTimezone } from '../utils/date';
-
-export type TimezoneMode = 'church' | 'user';
-
-interface SetTimezoneModeInput {
-  mode: TimezoneMode;
-}
+import { createContext, useContext } from 'react';
 
 interface TimezoneContextType {
-  mode: TimezoneMode;
-  setMode: (input: SetTimezoneModeInput) => void;
   churchTimezone: string;
-  effectiveTimezone: string;
-  toggleMode: () => void;
 }
 
 const TimezoneContext = createContext<TimezoneContextType | undefined>(
   undefined,
 );
-
-const STORAGE_KEY = 'church_timezone_mode';
 
 interface TimezoneProviderProps {
   children: React.ReactNode;
@@ -32,33 +19,8 @@ export function TimezoneProvider({
   children,
   churchTimezone,
 }: TimezoneProviderProps) {
-  const [mode, setModeState] = useState<TimezoneMode>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return (saved as TimezoneMode) || 'church';
-  });
-
-  const setMode = ({ mode: newMode }: SetTimezoneModeInput) => {
-    setModeState(newMode);
-    localStorage.setItem(STORAGE_KEY, newMode);
-  };
-
-  const toggleMode = () => {
-    setMode({ mode: mode === 'church' ? 'user' : 'church' });
-  };
-
-  const effectiveTimezone =
-    mode === 'church' ? churchTimezone : getBrowserTimezone();
-
   return (
-    <TimezoneContext.Provider
-      value={{
-        mode,
-        setMode,
-        churchTimezone,
-        effectiveTimezone,
-        toggleMode,
-      }}
-    >
+    <TimezoneContext.Provider value={{ churchTimezone }}>
       {children}
     </TimezoneContext.Provider>
   );

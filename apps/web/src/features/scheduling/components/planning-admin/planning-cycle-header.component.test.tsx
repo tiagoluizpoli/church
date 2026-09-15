@@ -1,6 +1,6 @@
 import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from './cycle-list-card';
 import { PlanningAdminProvider } from './planning-admin-context';
 import { PlanningCycleHeader } from './planning-cycle-header';
@@ -18,14 +18,6 @@ vi.mock('@/utils/api-instances', () => ({
   },
 }));
 
-vi.mock('@/shared/utils/date', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/shared/utils/date')>();
-  return {
-    ...actual,
-    getBrowserTimezone: () => 'America/New_York',
-  };
-});
-
 interface RenderPlanningCycleHeaderInput {
   churchTimezone?: string;
 }
@@ -40,10 +32,6 @@ function render({ churchTimezone }: RenderPlanningCycleHeaderInput = {}) {
   );
 }
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
 async function selectTheOnlyCycle() {
   const user = userEvent.setup();
   await user.click(await screen.findByTestId('planning-cycle-option'));
@@ -51,10 +39,9 @@ async function selectTheOnlyCycle() {
 }
 
 // Period bounds are fixed UTC instants, not bare `yyyy-MM-dd` days: the header
-// formats them as instants in the effective zone, and a bare day parses at
+// formats them as instants in the Church Timezone, and a bare day parses at
 // the runner's local midnight — which made the rendered day depend on the
-// ambient TZ the suite pins (vitest.config.ts). CalendarDay rendering itself
-// is reworked with the Church/Local Time toggle's retirement (#155).
+// ambient TZ the suite pins (vitest.config.ts).
 describe('PlanningCycleHeader (T058)', () => {
   it('renders nothing when no cycle is selected', () => {
     listPlanningCycles.mockResolvedValue({ cycles: [] });
@@ -190,44 +177,33 @@ describe('PlanningCycleHeader (T058)', () => {
     expect(slotCountChip).toHaveTextContent('3');
   });
 
-  it('changes the window chip dates when the timezone mode toggles between church and local', async () => {
-    listPlanningCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01T00:00:00.000Z',
-          endDate: '2026-08-31T00:00:00.000Z',
-          state: 'draft',
-        },
-      ],
-    });
-    getPlanningCycle.mockResolvedValue({
-      cycle: {
-        id: 'cycle-1',
-        name: 'August 2026',
-        startDate: '2026-08-01T00:00:00.000Z',
-        endDate: '2026-08-31T00:00:00.000Z',
-        state: 'draft',
-      },
-      events: [],
-    });
+  it('changes the window chip dates with the Church Timezone', async () => {
+    const cycle = {
+      id: 'cycle-1',
+      name: 'August 2026',
+      startDate: '2026-08-01T00:00:00.000Z',
+      endDate: '2026-08-31T00:00:00.000Z',
+      state: 'draft' as const,
+    };
+    listPlanningCycles.mockResolvedValue({ cycles: [cycle] });
+    getPlanningCycle.mockResolvedValue({ cycle, events: [] });
 
     render({ churchTimezone: 'UTC' });
     await selectTheOnlyCycle();
-    const churchModePeriodText = (
+    const utcPeriodText = (
       await screen.findByTestId('planning-cycle-period-chip')
     ).textContent;
 
     cleanup();
-    localStorage.setItem('church_timezone_mode', 'user');
 
-    render({ churchTimezone: 'UTC' });
+    // Niue is UTC-11: the fixed instants above (Aug 1/31 00:00 UTC) read as
+    // the previous CalendarDay there, unlike Kiritimati (UTC+14, same day).
+    render({ churchTimezone: 'Pacific/Niue' });
     await selectTheOnlyCycle();
-    const localModePeriodText = (
+    const niuePeriodText = (
       await screen.findByTestId('planning-cycle-period-chip')
     ).textContent;
 
-    expect(localModePeriodText).not.toBe(churchModePeriodText);
+    expect(niuePeriodText).not.toBe(utcPeriodText);
   });
 });

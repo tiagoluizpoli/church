@@ -3,8 +3,8 @@
 // the Node global. Node >= 22 defines its own experimental `localStorage` on
 // `globalThis` — inert without the `--localstorage-file` flag, resolving to
 // `undefined` and emitting an ExperimentalWarning on first access — so vitest
-// skips the copy and every component test that touches storage (e.g.
-// `TimezoneProvider` via `localStorage.getItem`) throws on `undefined`.
+// skips the copy and every component test that touches storage (e.g. the
+// volunteer dashboard's `localStorage.getItem`) throws on `undefined`.
 //
 // This module installs a minimal in-memory Web Storage over that global. It is
 // its own file, imported first by `component.ts`, so it runs before any other

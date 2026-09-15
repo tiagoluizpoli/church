@@ -2,26 +2,20 @@ import { useTimezoneContext } from '../components/timezone-provider';
 import { formatInTZ } from '../utils/date';
 
 /**
- * Hook to access timezone context and formatting utilities.
+ * Hook to access the Church Timezone and formatting utilities.
  */
 export function useTimezone() {
-  const { mode, toggleMode, effectiveTimezone, churchTimezone } =
-    useTimezoneContext();
+  const { churchTimezone } = useTimezoneContext();
 
   /**
-   * Formats a date using the currently active timezone (Church or User).
+   * Formats a date in the Church Timezone.
    */
   const format = (date: Date | string | number, formatStr = 'PPpp') => {
-    return formatInTZ(date, effectiveTimezone, formatStr);
+    return formatInTZ(date, churchTimezone, formatStr);
   };
 
   return {
-    mode,
-    toggleMode,
-    effectiveTimezone,
     churchTimezone,
     format,
-    isChurchTime: mode === 'church',
-    isUserTime: mode === 'user',
   };
 }

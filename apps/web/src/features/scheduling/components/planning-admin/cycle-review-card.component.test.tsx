@@ -6,7 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from './cycle-list-card';
 import { CycleReviewCard } from './cycle-review-card';
 import { PlanningAdminProvider } from './planning-admin-context';
@@ -39,14 +39,6 @@ vi.mock('@/utils/api-instances', () => ({
       deletePlanningEventSlot(...args),
   },
 }));
-
-vi.mock('@/shared/utils/date', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/shared/utils/date')>();
-  return {
-    ...actual,
-    getBrowserTimezone: () => 'America/New_York',
-  };
-});
 
 interface RenderCycleReviewCardInput {
   isReadOnly?: boolean;
@@ -81,10 +73,6 @@ function isTimeRangeText(content: string): boolean {
     content,
   );
 }
-
-beforeEach(() => {
-  localStorage.clear();
-});
 
 interface TwoEventCycleResponseInput {
   state: 'draft' | 'locked';
@@ -224,7 +212,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     }
   });
 
-  it('changes every displayed date/time when the timezone mode toggles between church and local', async () => {
+  it('changes every displayed date/time with the Church Timezone', async () => {
     listPlanningCycles.mockResolvedValue({
       cycles: [
         {
@@ -247,23 +235,22 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
-    const churchModeSlotTime =
+    const utcSlotTime =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
 
     cleanup();
-    localStorage.setItem('church_timezone_mode', 'user');
 
-    render({ churchTimezone: 'UTC' });
+    render({ churchTimezone: 'Pacific/Kiritimati' });
     await selectTheOnlyCycle();
     table = await screen.findByRole('grid', { name: 'Calendar review' });
     user = userEvent.setup();
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
-    const localModeSlotTime =
+    const kiritimatiSlotTime =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
 
-    expect(localModeSlotTime).not.toBe(churchModeSlotTime);
+    expect(kiritimatiSlotTime).not.toBe(utcSlotTime);
   });
 });
 

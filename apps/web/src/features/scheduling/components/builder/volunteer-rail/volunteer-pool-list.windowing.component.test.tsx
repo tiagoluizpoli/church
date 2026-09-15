@@ -1,8 +1,9 @@
 import { DndContext } from '@dnd-kit/core';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PoolVolunteer } from '../../../hooks/use-volunteer-pool';
 import { VolunteerPoolSidebar } from './volunteer-pool-sidebar';
+import { renderWithProviders } from '@/__tests__/setup/render';
 
 // jsdom has no layout, so the virtualizer measures a zero-height viewport and
 // renders nothing. @tanstack/react-virtual sizes the scroll viewport from
@@ -80,7 +81,7 @@ describe('VolunteerPoolList windowing (B-6.b)', () => {
     // The sidebar hands the viewport to the list through a state-backed
     // callback ref, so attaching it re-renders and the virtualizer measures the
     // real element — no manual second render needed.
-    render(<Rail />);
+    renderWithProviders(<Rail />);
 
     const mounted = screen.getAllByTestId('volunteer-card');
     // A 600px viewport over 96px rows plus overscan is a couple dozen cards —

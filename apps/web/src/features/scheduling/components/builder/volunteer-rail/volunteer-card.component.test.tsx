@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { VolunteerCard } from './volunteer-card';
+import { renderWithProviders } from '@/__tests__/setup/render';
 import type { VolunteerPoolItem } from '@/features/scheduling/hooks/use-volunteer-pool';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
@@ -34,7 +35,7 @@ function noop() {
 
 describe('VolunteerCard (T048)', () => {
   it('renders a role badge distinguishing a ministry Leader from a Team Leader who truncate identically', () => {
-    render(
+    renderWithProviders(
       <div>
         <VolunteerCard
           volunteer={buildVolunteer({
@@ -63,7 +64,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('shows no Team Leader badge when the rail has no team context, even though the volunteer leads a team elsewhere (regression guard)', () => {
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({
           membership: membership({ leadTeamIds: ['team-a'] }),
@@ -75,7 +76,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('shows no Team Leader badge when the rail is scoped to a different team than the one this volunteer leads', () => {
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({
           membership: membership({ leadTeamIds: ['team-a'] }),
@@ -88,7 +89,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('renders no role badge for a plain volunteer', () => {
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({ membership: membership({}) })}
       />,
@@ -98,13 +99,15 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('renders no role badge when membership is not provided', () => {
-    render(<VolunteerCard volunteer={buildVolunteer({})} />);
+    renderWithProviders(<VolunteerCard volunteer={buildVolunteer({})} />);
 
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 
   it('hides the pointer-only drag grip from assistive tech instead of announcing a keyboard drag that does not exist (B-3)', () => {
-    render(<VolunteerCard volunteer={buildVolunteer({})} onSelect={noop} />);
+    renderWithProviders(
+      <VolunteerCard volunteer={buildVolunteer({})} onSelect={noop} />,
+    );
 
     // dnd-kit registers no KeyboardSensor, and its `{...attributes}` announce
     // "to pick up a draggable item, press the space bar". Spreading them here
@@ -117,7 +120,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('names the keyboard action after the volunteer, with the role, not just the truncated visible text (FR-013)', () => {
-    render(
+    renderWithProviders(
       <div>
         <VolunteerCard
           volunteer={buildVolunteer({
@@ -149,7 +152,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('falls back to the full name when there is no role to disambiguate', () => {
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({
           volunteerName: 'John Doe',
@@ -165,7 +168,9 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('renders the recency block as two separate facts, with a never-served fallback', () => {
-    render(<VolunteerCard volunteer={buildVolunteer({ workloadCount: 2 })} />);
+    renderWithProviders(
+      <VolunteerCard volunteer={buildVolunteer({ workloadCount: 2 })} />,
+    );
 
     expect(screen.getByText('never served')).toBeInTheDocument();
     expect(screen.getByText('2 this cycle')).toBeInTheDocument();
@@ -176,7 +181,7 @@ describe('VolunteerCard (T048)', () => {
       Date.now() - 35 * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({ lastServedAt: fiveWeeksAgo })}
       />,
@@ -186,7 +191,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('badges only the ideal pick', () => {
-    render(
+    renderWithProviders(
       <div>
         <VolunteerCard
           volunteer={buildVolunteer({ volunteerId: 'ideal-1' })}
@@ -200,7 +205,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('exposes the Select-slot button as a pressed toggle when selected', () => {
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({})}
         isSelected
@@ -214,7 +219,9 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('drops the grip in overlay mode so the drag ghost carries no second drag target', () => {
-    render(<VolunteerCard volunteer={buildVolunteer({})} isOverlay />);
+    renderWithProviders(
+      <VolunteerCard volunteer={buildVolunteer({})} isOverlay />,
+    );
 
     expect(screen.queryByTestId('volunteer-card-grip')).not.toBeInTheDocument();
   });
@@ -222,7 +229,7 @@ describe('VolunteerCard (T048)', () => {
   it('swaps Select slot for Pick me while a slot is focused and this card is assignable', async () => {
     const onAssignToFocused = vi.fn();
     const onSelect = vi.fn();
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({})}
         onSelect={onSelect}
@@ -243,7 +250,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('warns on Pick me when availability will demand a reason', () => {
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({})}
         onSelect={noop}
@@ -262,7 +269,7 @@ describe('VolunteerCard (T048)', () => {
   });
 
   it('keeps Select slot when the card is not assignable to the focused slot', () => {
-    render(
+    renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({})}
         onSelect={noop}

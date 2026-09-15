@@ -1,3 +1,4 @@
+import { type CalendarDay, formatCalendarDay } from '@church/time';
 import {
   type AvailabilityMarkDraft,
   getShiftDate,
@@ -15,52 +16,19 @@ import type {
   GetAvailabilityCheck200,
   GetAvailabilityCheck200ShiftsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface AvailabilityCheckDetailProps {
   check: GetAvailabilityCheck200;
   markDraft: AvailabilityMarkDraft;
   onToggleShift: (shiftId: string) => void;
-  onToggleWholeDay: (date: string) => void;
+  onToggleWholeDay: (date: CalendarDay) => void;
   onSaveMarks: () => void;
   onConfirm: () => void;
   isSavingMarks: boolean;
   isConfirming: boolean;
   overlapWarningVisible: boolean;
-}
-
-interface FormatShiftTimeRangeInput {
-  start: string;
-  end: string;
-}
-
-interface FormatShiftDateInput {
-  date: string;
-}
-
-function formatShiftTimeRange({
-  start,
-  end,
-}: FormatShiftTimeRangeInput): string {
-  const dateFormatter = new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
-  const timeFormatter = new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-
-  return `${dateFormatter.format(startDate)} · ${timeFormatter.format(startDate)} - ${timeFormatter.format(endDate)}`;
-}
-
-function formatShiftDate({ date }: FormatShiftDateInput): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(`${date}T00:00:00`));
 }
 
 interface ShiftAvailabilityRowProps {
@@ -69,7 +37,7 @@ interface ShiftAvailabilityRowProps {
   isWholeDayMarked: boolean;
   isEditable: boolean;
   onToggleShift: (shiftId: string) => void;
-  onToggleWholeDay: (date: string) => void;
+  onToggleWholeDay: (date: CalendarDay) => void;
 }
 
 function ShiftAvailabilityRow({
@@ -80,7 +48,8 @@ function ShiftAvailabilityRow({
   onToggleShift,
   onToggleWholeDay,
 }: ShiftAvailabilityRowProps) {
-  const date = getShiftDate(shift);
+  const { churchTimezone } = useTimezone();
+  const date = getShiftDate({ shift, timeZone: churchTimezone });
 
   return (
     <div
@@ -90,7 +59,11 @@ function ShiftAvailabilityRow({
       <div className="space-y-1">
         <div className="font-medium">{shift.eventTitle}</div>
         <div className="text-muted-foreground text-sm">
-          {formatShiftTimeRange({ start: shift.startTime, end: shift.endTime })}
+          {formatInstantRangeOf({
+            start: shift.startTime,
+            end: shift.endTime,
+            timeZone: churchTimezone,
+          })}
         </div>
         {shift.label ? (
           <div className="text-muted-foreground text-xs">{shift.label}</div>
@@ -116,7 +89,7 @@ function ShiftAvailabilityRow({
             disabled={!isEditable}
             onChange={() => onToggleWholeDay(date)}
           />
-          Whole day ({formatShiftDate({ date })})
+          Whole day ({formatCalendarDay({ day: date })})
         </label>
       </div>
     </div>
@@ -134,6 +107,7 @@ export function AvailabilityCheckDetail({
   isConfirming,
   overlapWarningVisible,
 }: AvailabilityCheckDetailProps) {
+  const { churchTimezone } = useTimezone();
   const isEditable = check.state !== 'confirmed';
 
   return (
@@ -157,7 +131,7 @@ export function AvailabilityCheckDetail({
               shift={shift}
               isMarkedUnavailable={markDraft.markedShiftIds.has(shift.shiftId)}
               isWholeDayMarked={markDraft.wholeDayDates.has(
-                getShiftDate(shift),
+                getShiftDate({ shift, timeZone: churchTimezone }),
               )}
               isEditable={isEditable}
               onToggleShift={onToggleShift}
@@ -201,7 +175,7 @@ export function AvailabilityCheckDetail({
           <p className="text-muted-foreground text-sm">
             Confirmed
             {check.confirmedAt
-              ? ` on ${formatShiftDate({ date: check.confirmedAt.slice(0, 10) })}`
+              ? ` on ${formatDayOf({ value: check.confirmedAt, timeZone: churchTimezone })}`
               : ''}
             .
           </p>

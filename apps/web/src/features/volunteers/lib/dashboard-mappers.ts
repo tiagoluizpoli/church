@@ -3,6 +3,7 @@ import type {
   AvailabilitySlotViewModel,
 } from '../components/availability-form';
 import type { AvailabilityTaskViewModel } from '../components/availability-needed-section';
+import { formatInstantOf } from '@/shared/utils/church-time';
 
 export interface DashboardAvailabilityTask {
   eventId: string;
@@ -90,16 +91,22 @@ export interface DashboardSnapshot {
   fetchedAt: string;
 }
 
-export function mapAvailabilityTask(
-  task: DashboardAvailabilityTask,
-): AvailabilityTaskViewModel {
+export interface MapAvailabilityTaskInput {
+  task: DashboardAvailabilityTask;
+  timeZone: string;
+}
+
+export function mapAvailabilityTask({
+  task,
+  timeZone,
+}: MapAvailabilityTaskInput): AvailabilityTaskViewModel {
   return {
     eventId: task.eventId,
     eventTitle: task.eventTitle,
     ministryName: task.ministryName,
     eventType: task.eventType,
-    eventStartLabel: new Date(task.eventStart).toLocaleString(),
-    eventEndLabel: new Date(task.eventEnd).toLocaleString(),
+    eventStartLabel: formatInstantOf({ value: task.eventStart, timeZone }),
+    eventEndLabel: formatInstantOf({ value: task.eventEnd, timeZone }),
     completionState: task.completionState,
   };
 }

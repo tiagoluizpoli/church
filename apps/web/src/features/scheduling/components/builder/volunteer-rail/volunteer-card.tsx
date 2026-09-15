@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatAssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 import { formatLastServed } from '@/utils/format-last-served';
 import { formatVolunteerInitials } from '@/utils/format-volunteer-initials';
@@ -225,6 +226,7 @@ export function VolunteerCard({
   onAssignToFocused,
   contextTeamId,
 }: VolunteerCardProps) {
+  const { churchTimezone } = useTimezone();
   const isTouch = useFormControlSize() === 'touch';
   // `attributes` is deliberately dropped below: it announces dnd-kit's keyboard
   // instructions, and no `KeyboardSensor` is registered.
@@ -379,7 +381,10 @@ export function VolunteerCard({
           <ClockIcon className="mt-0.5 size-3 shrink-0" />
           <span className="flex min-w-0 flex-col">
             <span className="truncate">
-              {formatLastServed({ lastServedAt: volunteer.lastServedAt })}
+              {formatLastServed({
+                lastServedAt: volunteer.lastServedAt,
+                timeZone: churchTimezone,
+              })}
             </span>
             <WorkloadLine workloadCount={volunteer.workloadCount} />
           </span>

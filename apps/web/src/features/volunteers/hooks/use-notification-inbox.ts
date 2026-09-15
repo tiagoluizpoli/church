@@ -11,7 +11,12 @@ import {
   writeCachedNotificationInbox,
 } from '../lib/dashboard-query-options';
 import { useOnlineState } from './use-online-state';
-import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetNotifications200,
+  GetNotifications200ItemsItem,
+} from '@/infrastructure/api/churchAPI.schemas';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatDayOf, formatInstantOf } from '@/shared/utils/church-time';
 import { queryClient } from '@/utils/api';
 import { volunteerApi } from '@/utils/api-instances';
 
@@ -25,14 +30,6 @@ export interface NotificationDeepLink {
 export interface NotificationInboxItem extends NotificationItemViewModel {
   createdAt: string;
   deepLink: NotificationDeepLink;
-}
-
-function formatDateBucket(createdAt: string): string {
-  return new Date(createdAt).toLocaleDateString(undefined, {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function typeToSection(type: string): NotificationDeepLink['section'] {
@@ -50,16 +47,22 @@ function typeToSection(type: string): NotificationDeepLink['section'] {
   return 'none';
 }
 
-function mapNotificationItem(
-  item: GetNotifications200ItemsItem,
-): NotificationInboxItem {
+interface MapNotificationItemInput {
+  item: GetNotifications200ItemsItem;
+  timeZone: string;
+}
+
+function mapNotificationItem({
+  item,
+  timeZone,
+}: MapNotificationItemInput): NotificationInboxItem {
   return {
     id: item.id,
     title: item.title,
     body: item.body,
     type: item.type.replaceAll('_', ' '),
     createdAt: item.createdAt,
-    createdAtLabel: new Date(item.createdAt).toLocaleString(),
+    createdAtLabel: formatInstantOf({ value: item.createdAt, timeZone }),
     isUnread: item.readAt == null,
     deepLink: {
       section: typeToSection(item.type),
@@ -70,19 +73,32 @@ function mapNotificationItem(
   };
 }
 
-function mapNotificationPage(page: {
-  items: GetNotifications200ItemsItem[];
-}): NotificationInboxItem[] {
-  return page.items.map(mapNotificationItem);
+interface MapNotificationPageInput {
+  page: GetNotifications200;
+  timeZone: string;
 }
 
-function buildViewPages(
-  items: NotificationInboxItem[],
-): NotificationPageViewModel[] {
+function mapNotificationPage({
+  page,
+  timeZone,
+}: MapNotificationPageInput): NotificationInboxItem[] {
+  return page.items.map((item) => mapNotificationItem({ item, timeZone }));
+}
+
+interface BuildViewPagesInput {
+  items: NotificationInboxItem[];
+  timeZone: string;
+}
+
+/** Buckets notifications by the Church-Timezone day they were created on. */
+function buildViewPages({
+  items,
+  timeZone,
+}: BuildViewPagesInput): NotificationPageViewModel[] {
   const grouped = new Map<string, NotificationInboxItem[]>();
 
   for (const item of items) {
-    const key = formatDateBucket(item.createdAt);
+    const key = formatDayOf({ value: item.createdAt, timeZone });
     const current = grouped.get(key) ?? [];
     current.push(item);
     grouped.set(key, current);
@@ -116,6 +132,7 @@ interface NotificationInboxPagingState {
 }
 
 export function useNotificationInbox(initialUnreadCount: number) {
+  const { churchTimezone } = useTimezone();
   const isOnline = useOnlineState();
   const cachedInboxState = readCachedNotificationInbox();
   const firstPageQuery = useQuery({
@@ -140,7 +157,10 @@ export function useNotificationInbox(initialUnreadCount: number) {
     }
 
     const firstPageData = firstPageQuery.data;
-    const firstPageItems = mapNotificationPage(firstPageData);
+    const firstPageItems = mapNotificationPage({
+      page: firstPageData,
+      timeZone: churchTimezone,
+    });
     setPagingState((current) => {
       const hasAdditionalPages = current.pages.length > 1;
       return {
@@ -152,7 +172,7 @@ export function useNotificationInbox(initialUnreadCount: number) {
           : firstPageData.nextCursor,
       };
     });
-  }, [firstPageQuery.data]);
+  }, [firstPageQuery.data, churchTimezone]);
 
   useEffect(() => {
     if (pagingState.pages.length === 0) {
@@ -209,7 +229,10 @@ export function useNotificationInbox(initialUnreadCount: number) {
     try {
       const page = await volunteerApi.getNotifications({ cursor: nextCursor });
       setPagingState((current) => ({
-        pages: [...current.pages, mapNotificationPage(page)],
+        pages: [
+          ...current.pages,
+          mapNotificationPage({ page, timeZone: churchTimezone }),
+        ],
         nextCursor: page.nextCursor,
       }));
     } finally {
@@ -240,7 +263,7 @@ export function useNotificationInbox(initialUnreadCount: number) {
       }
       setSelectedNotificationId(notificationId);
     },
-    pages: buildViewPages(items),
+    pages: buildViewPages({ items: items, timeZone: churchTimezone }),
     refresh: refetchNotificationQueries,
     loadMore,
     selectedNotification,

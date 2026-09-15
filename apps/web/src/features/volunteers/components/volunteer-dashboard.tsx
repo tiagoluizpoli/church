@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export type DashboardTabId =
   | 'upcoming-assignments'
@@ -62,6 +63,7 @@ export function VolunteerDashboard({
   initialAssignmentId,
   initialMinistryId,
 }: VolunteerDashboardProps) {
+  const { churchTimezone } = useTimezone();
   const dashboard = useVolunteerDashboard({
     initialSection,
     initialEventId,
@@ -134,7 +136,9 @@ export function VolunteerDashboard({
 
         <TabsContent value="availability-needed">
           <AvailabilityNeededSection
-            tasks={dashboard.availabilityTasks.map(mapAvailabilityTask)}
+            tasks={dashboard.availabilityTasks.map((task) =>
+              mapAvailabilityTask({ task, timeZone: churchTimezone }),
+            )}
             onOpenEvent={dashboard.setSelectedEventId}
           />
         </TabsContent>

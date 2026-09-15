@@ -1,3 +1,4 @@
+import type { CalendarDay } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
@@ -9,6 +10,7 @@ import {
   toggleShiftMark,
   toggleWholeDayMark,
 } from '../lib/availability-marks';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 import { volunteerApi } from '@/utils/api-instances';
 
 const AVAILABILITY_CHECKS_QUERY_KEY = ['availability-checks'];
@@ -42,6 +44,7 @@ function isOverlapConflict({ error }: IsOverlapConflictInput): boolean {
 }
 
 export function useVolunteerAvailability() {
+  const { churchTimezone } = useTimezone();
   const queryClient = useQueryClient();
   const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null);
   const [markDraft, setMarkDraft] =
@@ -65,8 +68,13 @@ export function useVolunteerAvailability() {
 
   useEffect(() => {
     if (!detail) return;
-    setMarkDraft(createInitialMarkDraft({ shifts: detail.shifts }));
-  }, [detail]);
+    setMarkDraft(
+      createInitialMarkDraft({
+        shifts: detail.shifts,
+        timeZone: churchTimezone,
+      }),
+    );
+  }, [detail, churchTimezone]);
 
   const invalidateChecks = async () => {
     await queryClient.invalidateQueries({
@@ -87,14 +95,24 @@ export function useVolunteerAvailability() {
   const toggleShift = (shiftId: string) => {
     if (!detail) return;
     setMarkDraft((current) =>
-      toggleShiftMark({ draft: current, shifts: detail.shifts, shiftId }),
+      toggleShiftMark({
+        draft: current,
+        shifts: detail.shifts,
+        shiftId,
+        timeZone: churchTimezone,
+      }),
     );
   };
 
-  const toggleWholeDay = (date: string) => {
+  const toggleWholeDay = (date: CalendarDay) => {
     if (!detail) return;
     setMarkDraft((current) =>
-      toggleWholeDayMark({ draft: current, shifts: detail.shifts, date }),
+      toggleWholeDayMark({
+        draft: current,
+        shifts: detail.shifts,
+        date,
+        timeZone: churchTimezone,
+      }),
     );
   };
 

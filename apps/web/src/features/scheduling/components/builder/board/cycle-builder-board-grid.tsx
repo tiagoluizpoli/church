@@ -69,6 +69,8 @@ function BoardEmptyState({ isFiltered, onClearFilters }: BoardEmptyStateProps) {
 
 interface CycleBuilderBoardGridProps {
   data: CycleBuilderData;
+  /** Church Timezone from the active-church status — never the browser's. */
+  timeZone: string;
   columns: string[];
   eventsForDate: Map<string, CycleBuilderEventSummary[]>;
   cellDerivedByKey: Map<string, CellDerived>;
@@ -97,6 +99,7 @@ interface CycleBuilderBoardGridProps {
  */
 export function CycleBuilderBoardGrid({
   data,
+  timeZone,
   columns,
   eventsForDate,
   cellDerivedByKey,
@@ -157,7 +160,7 @@ export function CycleBuilderBoardGrid({
                 >
                   <header className="border-b px-3 py-2">
                     <p className="font-semibold text-foreground text-sm">
-                      {dateLabel(date)}
+                      {dateLabel({ day: date })}
                     </p>
                     <p className="mt-0.5 text-muted-foreground text-xs">
                       {(eventsForDate.get(date) ?? []).length} event
@@ -185,7 +188,7 @@ export function CycleBuilderBoardGrid({
                             {Math.round(event.fillRatio * 100)}%
                           </Badge>
                         </div>
-                        {eventSlotsOnDay({ event, day: date })
+                        {eventSlotsOnDay({ event, day: date, timeZone })
                           .filter((slot) => slot.included)
                           .map((slot) => (
                             <section
@@ -203,7 +206,7 @@ export function CycleBuilderBoardGrid({
                                   >
                                     <p className="text-muted-foreground text-xs">
                                       {shift.label ??
-                                        `${timeLabel(shift.startTime)} – ${timeLabel(shift.endTime)}`}
+                                        `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`}
                                     </p>
                                     <div className="space-y-2">
                                       {shift.requirements.map((requirement) => {
@@ -243,7 +246,9 @@ export function CycleBuilderBoardGrid({
                                               slotLabel:
                                                 slot.label ?? 'this shift',
                                               eventTitle: event.title,
-                                              dateText: dateLabel(date),
+                                              dateText: dateLabel({
+                                                day: date,
+                                              }),
                                             }),
                                             shiftId: shift.shiftId,
                                             roleId: requirement.roleId,

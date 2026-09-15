@@ -141,7 +141,7 @@ function makeData(overrides: Partial<CycleBuilderData> = {}): CycleBuilderData {
 
 /** The real index, built the way the board builds it. */
 function indexFor(data: CycleBuilderData) {
-  return buildShiftAssignmentIndex({ data });
+  return buildShiftAssignmentIndex({ data, timeZone: 'America/Sao_Paulo' });
 }
 
 describe('buildShiftAssignmentIndex', () => {
@@ -160,7 +160,10 @@ describe('buildShiftAssignmentIndex', () => {
       ],
     });
 
-    const { workload } = buildShiftAssignmentIndex({ data });
+    const { workload } = buildShiftAssignmentIndex({
+      data,
+      timeZone: 'America/Sao_Paulo',
+    });
 
     expect(workload.get('ana')).toBe(2);
     expect(workload.has('bruno')).toBe(false);
@@ -186,6 +189,7 @@ describe('buildShiftAssignmentIndex', () => {
 
     const { activeAssignmentsByVolunteerId } = buildShiftAssignmentIndex({
       data,
+      timeZone: 'America/Sao_Paulo',
     });
 
     const anaContexts = activeAssignmentsByVolunteerId.get('ana');
@@ -203,7 +207,10 @@ describe('buildShiftAssignmentIndex', () => {
       ],
     });
 
-    const index = buildShiftAssignmentIndex({ data });
+    const index = buildShiftAssignmentIndex({
+      data,
+      timeZone: 'America/Sao_Paulo',
+    });
 
     expect(index.workload.get('ana')).toBe(1);
     expect(index.activeAssignmentsByVolunteerId.has('ana')).toBe(false);

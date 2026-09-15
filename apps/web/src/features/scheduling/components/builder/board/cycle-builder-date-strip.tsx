@@ -45,7 +45,7 @@ export function CycleBuilderDateStrip({
           <button
             type="button"
             data-testid="cycle-date-strip-focus"
-            aria-label={`Showing ${dateLabel(selectedDate)} only — clear to show all dates`}
+            aria-label={`Showing ${dateLabel({ day: selectedDate })} only — clear to show all dates`}
             onClick={() => onSelectedDateChange(null)}
             className={cn(
               DATE_STRIP_FOCUS_CLASS,
@@ -54,7 +54,7 @@ export function CycleBuilderDateStrip({
           >
             <XIcon className="size-4" />
             <span className="font-semibold text-foreground">
-              {dateLabel(selectedDate)}
+              {dateLabel({ day: selectedDate })}
             </span>
             <span className="text-muted-foreground text-xs leading-tight">
               Show all dates
@@ -119,12 +119,12 @@ export function CycleBuilderDateStrip({
                     aria-label={
                       selected
                         ? 'Show all dates'
-                        : `Show only ${dateLabel(date)}`
+                        : `Show only ${dateLabel({ day: date })}`
                     }
                     onClick={() => onSelectedDateChange(selected ? null : date)}
                     className="-my-1 -ml-1 flex items-center gap-1.5 rounded-md p-1 text-foreground hover:bg-muted aria-pressed:text-primary"
                   >
-                    {dateLabel(date)}
+                    {dateLabel({ day: date })}
                     <LocateFixed className="size-3.5 text-muted-foreground" />
                   </button>
                   <span

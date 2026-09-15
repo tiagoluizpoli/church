@@ -30,7 +30,7 @@ describe('formatCycleDateRange (B-4)', () => {
         startDate: '2026-08-01',
         endDate: '2026-08-31',
       }),
-    ).toBe('Aug 1 – Aug 31, 2026');
+    ).toBe('01/08 – 31/08/2026');
   });
 
   it('says nothing when either boundary is missing', () => {
@@ -54,7 +54,7 @@ describe('CycleBuilderHeader (B-4)', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Julho 2026',
     );
-    expect(screen.getByText('Jul 1 – Jul 31, 2026')).toBeVisible();
+    expect(screen.getByText('01/07 – 31/07/2026')).toBeVisible();
     // The banned tiny colored eyebrow and the landing-page promise are gone.
     expect(
       screen.queryByText(/Map the cycle, then place with confidence/),

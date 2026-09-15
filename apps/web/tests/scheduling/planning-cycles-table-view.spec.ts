@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
+import { fillTimeOfDayField } from './time-field.helpers';
 
 test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
 
@@ -70,8 +71,14 @@ async function createCycleWithSundayTemplateApplied({
   await page.getByTestId('template-weekday-option-0').click();
   const block = createTemplateDialog.getByTestId('template-block-row').first();
   await block.getByTestId('template-block-label-input').fill('Worship');
-  await block.getByTestId('template-block-start-time-input').fill('09:00');
-  await block.getByTestId('template-block-end-time-input').fill('10:00');
+  await fillTimeOfDayField({
+    field: block.getByTestId('template-block-start-time-input'),
+    time: '09:00',
+  });
+  await fillTimeOfDayField({
+    field: block.getByTestId('template-block-end-time-input'),
+    time: '10:00',
+  });
   await createTemplateDialog.getByTestId('create-template-button').click();
   await expect(createTemplateDialog).not.toBeAttached();
 
@@ -308,21 +315,27 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
       .getByTestId('template-block-row')
       .first();
     await firstBlock.getByTestId('template-block-label-input').fill('Worship');
-    await firstBlock
-      .getByTestId('template-block-start-time-input')
-      .fill('09:00');
-    await firstBlock.getByTestId('template-block-end-time-input').fill('10:00');
+    await fillTimeOfDayField({
+      field: firstBlock.getByTestId('template-block-start-time-input'),
+      time: '09:00',
+    });
+    await fillTimeOfDayField({
+      field: firstBlock.getByTestId('template-block-end-time-input'),
+      time: '10:00',
+    });
     await createTemplateDialog.getByTestId('add-template-block-button').click();
     const secondBlock = createTemplateDialog
       .getByTestId('template-block-row')
       .nth(1);
     await secondBlock.getByTestId('template-block-label-input').fill('Message');
-    await secondBlock
-      .getByTestId('template-block-start-time-input')
-      .fill('10:00');
-    await secondBlock
-      .getByTestId('template-block-end-time-input')
-      .fill('11:00');
+    await fillTimeOfDayField({
+      field: secondBlock.getByTestId('template-block-start-time-input'),
+      time: '10:00',
+    });
+    await fillTimeOfDayField({
+      field: secondBlock.getByTestId('template-block-end-time-input'),
+      time: '11:00',
+    });
     await createTemplateDialog.getByTestId('create-template-button').click();
     await expect(createTemplateDialog).not.toBeAttached();
 
@@ -489,8 +502,14 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     await templatedCard.getByRole('button', { name: /^Add slot to/ }).click();
     const addSlotDialog = page.getByRole('dialog', { name: 'Add slot' });
     await addSlotDialog.getByLabel('Label').fill('Prayer');
-    await addSlotDialog.getByLabel('Start').fill('08:00');
-    await addSlotDialog.getByLabel('End').fill('08:30');
+    await fillTimeOfDayField({
+      field: addSlotDialog.getByTestId('create-slot-start-time-field'),
+      time: '08:00',
+    });
+    await fillTimeOfDayField({
+      field: addSlotDialog.getByTestId('create-slot-end-time-field'),
+      time: '08:30',
+    });
     await addSlotDialog.getByRole('button', { name: 'Add slot' }).click();
     await expect(addSlotDialog).not.toBeAttached();
     await expect(templatedCard.getByText('Prayer')).toBeVisible();

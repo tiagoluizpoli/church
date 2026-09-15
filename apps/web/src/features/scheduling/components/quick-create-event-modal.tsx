@@ -1,3 +1,8 @@
+import {
+  addMilliseconds,
+  calendarDayBounds,
+  parseCalendarDay,
+} from '@church/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -8,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 import { adminApi } from '@/utils/api-instances';
 
 export type QuickCreateEventModalTarget =
@@ -30,20 +36,40 @@ interface CreateEventFormValues {
   eventType: EventType;
 }
 
-interface ToDayBoundsInput {
-  date: string;
+interface ToDayRangeBoundsInput {
+  startDate: string;
+  endDate: string;
+  timeZone: string;
 }
 
-/** A day's full span, per the event's own calendar day (FR: hourly events
- * carry all their slots within one day; day-based events span the full
- * start-to-end date range). Start is that day's midnight; end is the last
- * millisecond of the final day. */
-function toDayStartIso({ date }: ToDayBoundsInput): string {
-  return new Date(`${date}T00:00:00.000Z`).toISOString();
+interface DayRangeBounds {
+  startDate: string;
+  endDate: string;
 }
 
-function toDayEndIso({ date }: ToDayBoundsInput): string {
-  return new Date(`${date}T23:59:59.999Z`).toISOString();
+/** A day range's full span, per the event's own calendar days (FR: hourly
+ * events carry all their slots within one day; day-based events span the
+ * full start-to-end date range) — read in the Church Timezone, not UTC
+ * (#149). Start is `startDate`'s church-local midnight; end is the last
+ * millisecond before church-local midnight after `endDate`. */
+function toDayRangeBounds({
+  startDate,
+  endDate,
+  timeZone,
+}: ToDayRangeBoundsInput): DayRangeBounds {
+  return {
+    startDate: calendarDayBounds({
+      day: parseCalendarDay({ value: startDate }),
+      timeZone,
+    }).start,
+    endDate: addMilliseconds({
+      instant: calendarDayBounds({
+        day: parseCalendarDay({ value: endDate }),
+        timeZone,
+      }).end,
+      milliseconds: -1,
+    }),
+  };
 }
 
 export function QuickCreateEventModal({
@@ -52,6 +78,7 @@ export function QuickCreateEventModal({
   target,
   onCreated,
 }: QuickCreateEventModalProps) {
+  const { churchTimezone } = useTimezone();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
@@ -83,11 +110,16 @@ export function QuickCreateEventModal({
 
   const handleSubmit = async () => {
     if (!startDate || !effectiveEndDate) return;
+    const bounds = toDayRangeBounds({
+      startDate,
+      endDate: effectiveEndDate,
+      timeZone: churchTimezone,
+    });
     try {
       await create.mutateAsync({
         title,
-        startDate: toDayStartIso({ date: startDate }),
-        endDate: toDayEndIso({ date: effectiveEndDate }),
+        startDate: bounds.startDate,
+        endDate: bounds.endDate,
         eventType,
       });
       onCreated();

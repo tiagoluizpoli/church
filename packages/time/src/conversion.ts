@@ -112,17 +112,33 @@ export interface InstantInTimeZoneInput {
   timeZone: string;
 }
 
+interface WallClockPartInput {
+  instant: Instant;
+  timeZone: string;
+  pattern: string;
+}
+
+/** Every read of an Instant's Church Timezone wall clock funnels through
+ * here, so `assertTimeZone` and the `Date` bridge are paid once. */
+function wallClockPart({
+  instant,
+  timeZone,
+  pattern,
+}: WallClockPartInput): string {
+  assertTimeZone({ timeZone });
+  return formatInTimeZone(toDate({ instant }), timeZone, pattern);
+}
+
 /** The CalendarDay an Instant falls on in the Church Timezone. */
 export function today({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): CalendarDay {
-  assertTimeZone({ timeZone });
-  return formatInTimeZone(
-    toDate({ instant }),
+  return wallClockPart({
+    instant,
     timeZone,
-    'yyyy-MM-dd',
-  ) as CalendarDay;
+    pattern: 'yyyy-MM-dd',
+  }) as CalendarDay;
 }
 
 /** The TimeOfDay an Instant reads as on the Church Timezone's wall clock. */
@@ -130,6 +146,14 @@ export function toTimeOfDay({
   instant,
   timeZone,
 }: InstantInTimeZoneInput): TimeOfDay {
-  assertTimeZone({ timeZone });
-  return formatInTimeZone(toDate({ instant }), timeZone, 'HH:mm') as TimeOfDay;
+  return wallClockPart({ instant, timeZone, pattern: 'HH:mm' }) as TimeOfDay;
+}
+
+/** `HH:mm:ss` on the Church Timezone's wall clock. Not a TimeOfDay: that
+ * brand is strictly `HH:mm`. For the seam's second-precision presentation. */
+export function toTimeOfDaySeconds({
+  instant,
+  timeZone,
+}: InstantInTimeZoneInput): string {
+  return wallClockPart({ instant, timeZone, pattern: 'HH:mm:ss' });
 }

@@ -90,7 +90,11 @@ function daysFromNow({ instant, timeZone }: InstantFormatInput): number {
   return calendarDaysBetween({ start: nowDay, end: day });
 }
 
-function relativeDayPhrase(dayDiff: number): string {
+interface RelativeDayPhraseInput {
+  dayDiff: number;
+}
+
+function relativeDayPhrase({ dayDiff }: RelativeDayPhraseInput): string {
   if (dayDiff === 0) return 'today';
   if (dayDiff === 1) return 'tomorrow';
   if (dayDiff === -1) return 'yesterday';
@@ -105,7 +109,7 @@ export function formatRelative({
   instant,
   timeZone,
 }: InstantFormatInput): string {
-  return relativeDayPhrase(daysFromNow({ instant, timeZone }));
+  return relativeDayPhrase({ dayDiff: daysFromNow({ instant, timeZone }) });
 }
 
 /**
@@ -118,7 +122,7 @@ export function formatRecency({
   timeZone,
 }: InstantFormatInput): string {
   const dayDiff = daysFromNow({ instant, timeZone });
-  if (Math.abs(dayDiff) < 7) return relativeDayPhrase(dayDiff);
+  if (Math.abs(dayDiff) < 7) return relativeDayPhrase({ dayDiff });
   return formatCalendarDay({ day: today({ instant, timeZone }) });
 }
 
@@ -134,15 +138,19 @@ export interface TimeOfDaySpanInput {
 
 const MINUTES_PER_DAY = 24 * 60;
 
-function timeOfDayMinutes(time: TimeOfDay): number {
+interface TimeOfDayMinutesInput {
+  time: TimeOfDay;
+}
+
+function timeOfDayMinutes({ time }: TimeOfDayMinutesInput): number {
   return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 }
 
 /** Duration and midnight-crossing for a wall-clock TimeBlock pair: an end
  * earlier than its start crosses onto the next CalendarDay, per `CONTEXT.md`. */
 export function timeOfDaySpan({ start, end }: TimeOfDaySpanInput): Span {
-  const startMinutes = timeOfDayMinutes(start);
-  const endMinutes = timeOfDayMinutes(end);
+  const startMinutes = timeOfDayMinutes({ time: start });
+  const endMinutes = timeOfDayMinutes({ time: end });
   const crossesToNextDay = endMinutes < startMinutes;
   const durationMinutes = crossesToNextDay
     ? MINUTES_PER_DAY - startMinutes + endMinutes

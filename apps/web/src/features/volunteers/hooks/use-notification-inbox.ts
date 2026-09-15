@@ -11,7 +11,10 @@ import {
   writeCachedNotificationInbox,
 } from '../lib/dashboard-query-options';
 import { useOnlineState } from './use-online-state';
-import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetNotifications200,
+  GetNotifications200ItemsItem,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatDayOf, formatInstantOf } from '@/shared/utils/church-time';
 import { queryClient } from '@/utils/api';
@@ -71,7 +74,7 @@ function mapNotificationItem({
 }
 
 interface MapNotificationPageInput {
-  page: { items: GetNotifications200ItemsItem[] };
+  page: GetNotifications200;
   timeZone: string;
 }
 

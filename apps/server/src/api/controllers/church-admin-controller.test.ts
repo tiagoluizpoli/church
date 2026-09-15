@@ -9,6 +9,7 @@ import {
   vi,
 } from 'vitest';
 import { RoleId } from '../../domain/branded-ids';
+import { Event } from '../../domain/entities/event';
 import { Ministry } from '../../domain/entities/ministry';
 import { MinistryServingProfile } from '../../domain/entities/ministry-serving-profile';
 import { IllegalStateTransitionError } from '../../domain/errors/illegal-state-transition';
@@ -262,6 +263,55 @@ describe('Church admin planning routes', () => {
     });
 
     expect(invalid.statusCode).toBe(422);
+  });
+
+  it('POST /api/v1/admin/planning-cycles/:id/events stores the client-computed church-local Instants as given (#149)', async () => {
+    // Quick-create sends already church-local bounds; the controller no
+    // longer reinterprets them (no datesRepresentChurchCalendarDays flag).
+    // The church-timezone day-placement proof itself (a real church, a real
+    // DB) lives at the manager layer in
+    // tests/application/planning-phase3.managers.test.ts — this test's job
+    // is only to confirm the HTTP layer doesn't reintroduce reinterpretation
+    // between the wire and the manager call.
+    planningEventManager.createEvent.mockResolvedValue(
+      new Event(
+        {
+          churchId: '11111111-1111-1111-1111-111111111111',
+          planningCycleId: '22222222-2222-2222-2222-222222222222',
+          title: 'Domingo',
+          startDate: new Date('2026-06-28T03:00:00.000Z'),
+          endDate: new Date('2026-06-29T02:59:59.999Z'),
+          eventType: 'hourly',
+        },
+        '33333333-3333-3333-3333-333333333333',
+        new Date('2026-06-01T00:00:00.000Z'),
+        new Date('2026-06-01T00:00:00.000Z'),
+      ),
+    );
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/events',
+      payload: {
+        title: 'Domingo',
+        startDate: '2026-06-28T03:00:00.000Z',
+        endDate: '2026-06-29T02:59:59.999Z',
+        eventType: 'hourly',
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(planningEventManager.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startDate: new Date('2026-06-28T03:00:00.000Z'),
+        endDate: new Date('2026-06-29T02:59:59.999Z'),
+      }),
+    );
+    expect(planningEventManager.createEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        datesRepresentChurchCalendarDays: expect.anything(),
+      }),
+    );
   });
 
   it('serves ministry profile routes and returns updated default direction', async () => {

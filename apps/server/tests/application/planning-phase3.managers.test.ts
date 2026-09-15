@@ -9,7 +9,7 @@ import {
   slotRequirement,
   timeSlot,
 } from '@church/db';
-import { formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
@@ -320,13 +320,13 @@ describe('Phase 3 planning managers', () => {
       endDate: new Date('2026-12-01T00:00:00.000Z'),
     });
 
+    // Quick-create sends the picked day as church-local midnight bounds.
     const created = await eventManager.createEvent({
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'November first',
-      startDate: new Date('2026-11-01T00:00:00.000Z'),
-      endDate: new Date('2026-11-01T23:59:59.999Z'),
-      datesRepresentChurchCalendarDays: true,
+      startDate: fromZonedTime('2026-11-01T00:00:00.000', seed.churchATimezone),
+      endDate: fromZonedTime('2026-11-01T23:59:59.999', seed.churchATimezone),
     });
 
     expect(

@@ -20,6 +20,7 @@ import {
   buildShiftAssignmentIndex,
 } from '../../../utils/builder/cycle-builder-assignment-index.utils';
 import {
+  churchDayOf,
   type DateMode,
   type DateSpanMode,
   dateLabel,
@@ -60,6 +61,7 @@ import { CycleBuilderDateFilters } from './cycle-builder-date-filters';
 import { CycleBuilderDateStrip } from './cycle-builder-date-strip';
 import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 import { toCycleDayKey } from '@/shared/utils/date';
 
 interface Props {
@@ -82,6 +84,7 @@ interface Props {
 
 export function CycleBuilderMatrix(props: Props) {
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const { churchTimezone } = useTimezone();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
@@ -102,14 +105,16 @@ export function CycleBuilderMatrix(props: Props) {
     null,
   );
   const eventDates = useMemo(
-    () => deriveEventDates({ events: props.data.events }),
-    [props.data.events],
+    () =>
+      deriveEventDates({ events: props.data.events, timeZone: churchTimezone }),
+    [props.data.events, churchTimezone],
   );
   // Built once per query payload and read by every cell's picker; see
   // `buildShiftAssignmentIndex` for why this used to run per role per column.
   const shiftAssignmentIndex = useMemo(
-    () => buildShiftAssignmentIndex({ data: props.data }),
-    [props.data],
+    () =>
+      buildShiftAssignmentIndex({ data: props.data, timeZone: churchTimezone }),
+    [props.data, churchTimezone],
   );
   // `candidates()`/`recommendations()` are pure functions of a shift×role plus
   // this index, so — like the index itself — they only need recomputing when
@@ -149,7 +154,7 @@ export function CycleBuilderMatrix(props: Props) {
         date,
         props.data.events.filter(
           (event) =>
-            eventOccursOnDay({ event, day: date }) &&
+            eventOccursOnDay({ event, day: date, timeZone: churchTimezone }) &&
             (!query || event.title.toLocaleLowerCase().includes(query)) &&
             (dateMode !== 'event_dates' ||
               eventMatchesDateSpan({
@@ -157,12 +162,14 @@ export function CycleBuilderMatrix(props: Props) {
                 mode: dateSpanMode,
                 rangeStart,
                 rangeEnd,
+                timeZone: churchTimezone,
               })),
         ),
       ]),
     );
   }, [
     allCycleDates,
+    churchTimezone,
     dateMode,
     dateSpanMode,
     eventDates,
@@ -396,7 +403,12 @@ export function CycleBuilderMatrix(props: Props) {
                     roleLabel,
                     slotLabel,
                     eventTitle: shiftContext.event.title,
-                    dateText: dateLabel(shiftContext.event.startDate),
+                    dateText: dateLabel({
+                      day: churchDayOf({
+                        value: shiftContext.event.startDate,
+                        timeZone: churchTimezone,
+                      }),
+                    }),
                   }),
                   shiftId: target.shiftId,
                   roleId: target.roleId,
@@ -440,6 +452,7 @@ export function CycleBuilderMatrix(props: Props) {
           <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
             <CycleBuilderBoardGrid
               data={props.data}
+              timeZone={churchTimezone}
               columns={columns}
               eventsForDate={eventsForDate}
               cellDerivedByKey={cellDerivedByKey}

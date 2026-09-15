@@ -773,7 +773,7 @@ describe('CycleBuilderMatrix', () => {
         screen.getByRole('region', { name: 'Cycle dates' }),
       );
       const focusButton = dateStrip.getByRole('button', {
-        name: /Show only.*Aug 2/,
+        name: /Show only.*02\/08/,
       });
       const viewport = screen.getByTestId('cycle-date-strip-viewport');
 
@@ -802,7 +802,7 @@ describe('CycleBuilderMatrix', () => {
       expect(
         within(screen.getByRole('region', { name: 'Cycle dates' })).getByRole(
           'button',
-          { name: /Show only.*Aug 2/ },
+          { name: /Show only.*02\/08/ },
         ),
       ).toBeVisible();
 
@@ -841,7 +841,7 @@ describe('CycleBuilderMatrix', () => {
         screen.getByRole('region', { name: 'Cycle dates' }),
       );
       const focusButton = dateStrip.getByRole('button', {
-        name: /Show only.*Aug 2/,
+        name: /Show only.*02\/08/,
       });
       const viewport = screen.getByTestId('cycle-date-strip-viewport');
 

@@ -1,4 +1,9 @@
 import {
+  formatCalendarDay,
+  formatDayAndMonth,
+  parseCalendarDay,
+} from '@church/time';
+import {
   type CycleCountsSummary,
   type CycleStaffingSummary,
   staffingStatusClasses,
@@ -14,25 +19,20 @@ interface FormatCycleDateRangeInput {
 }
 
 /**
- * The cycle's own window, read as dates rather than instants — a cycle boundary
- * is a date in the church's timezone, never a time of day, so it is parsed at
- * local noon like every other day key on this board.
+ * The cycle's own window, read as dates rather than instants — a cycle
+ * boundary is a CalendarDay, never a time of day, so no timezone conversion
+ * applies here (unlike Event/slot/shift bounds, which do need the Church
+ * Timezone). Formatted through the seam's own CalendarDay formatters, never a
+ * raw `Date` or the browser locale.
  */
 export function formatCycleDateRange({
   startDate,
   endDate,
 }: FormatCycleDateRangeInput): string | undefined {
   if (!(startDate && endDate)) return undefined;
-  const start = new Date(`${toCycleDayKey(startDate)}T12:00:00`);
-  const end = new Date(`${toCycleDayKey(endDate)}T12:00:00`);
-  return `${start.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  })} – ${end.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })}`;
+  const start = parseCalendarDay({ value: toCycleDayKey(startDate) });
+  const end = parseCalendarDay({ value: toCycleDayKey(endDate) });
+  return `${formatDayAndMonth({ day: start })} – ${formatCalendarDay({ day: end })}`;
 }
 
 interface CycleBuilderHeaderProps {

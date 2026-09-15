@@ -102,7 +102,7 @@ describe('CycleBuilder header (B-4)', () => {
 
     const header = screen.getByTestId('cycle-builder-header');
     expect(header).toHaveTextContent('Agosto 2026');
-    expect(header).toHaveTextContent('Aug 1 – Aug 31, 2026');
+    expect(header).toHaveTextContent('01/08 – 31/08/2026');
     // One shift, one required role, nobody on it yet — read straight off the
     // builder data, so it tracks every write the board applies.
     expect(header).toHaveTextContent('0 of 1 assignments filled');

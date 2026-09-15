@@ -8,7 +8,7 @@ import type {
   ServingAssignmentContext,
   SuggestedVolunteer,
 } from './cycle-builder-candidate.types';
-import { dateLabel, timeLabel } from './cycle-builder-date.utils';
+import { churchDayOf, dateLabel, timeLabel } from './cycle-builder-date.utils';
 import {
   type AssignableFitTier,
   isRecommendableFit,
@@ -30,6 +30,7 @@ export interface ShiftAssignmentIndex {
 
 interface BuildShiftAssignmentIndexInput {
   data: CycleBuilderData;
+  timeZone: string;
 }
 
 interface AssignedVolunteerIdsForShiftInput {
@@ -45,20 +46,24 @@ interface AssignedVolunteerIdsForShiftInput {
  */
 export function buildShiftAssignmentIndex({
   data,
+  timeZone,
 }: BuildShiftAssignmentIndexInput): ShiftAssignmentIndex {
   const shiftContextById = new Map<string, ServingAssignmentContext>();
   const roleNameById = new Map(data.roles.map((role) => [role.id, role.name]));
   for (const event of data.events) {
+    const eventDayLabel = dateLabel({
+      day: churchDayOf({ value: event.startDate, timeZone }),
+    });
     for (const slot of event.slots) {
       for (const candidateShift of slot.shifts) {
-        const timeRange = `${timeLabel(candidateShift.startTime)}–${timeLabel(candidateShift.endTime)}`;
+        const timeRange = `${timeLabel({ instant: candidateShift.startTime, timeZone })}–${timeLabel({ instant: candidateShift.endTime, timeZone })}`;
         const shiftLabel =
           candidateShift.label != null
             ? `${candidateShift.label} · ${timeRange}`
             : timeRange;
         shiftContextById.set(candidateShift.shiftId, {
-          summary: `${dateLabel(event.startDate)} · ${shiftLabel}`,
-          detail: `${event.title} · ${dateLabel(event.startDate)} · ${shiftLabel}`,
+          summary: `${eventDayLabel} · ${shiftLabel}`,
+          detail: `${event.title} · ${eventDayLabel} · ${shiftLabel}`,
         });
       }
     }

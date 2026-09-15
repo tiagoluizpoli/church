@@ -52,7 +52,7 @@ describe('availability marks', () => {
     const draft = toggleWholeDayMark({
       draft: createInitialMarkDraft({ shifts: SHIFTS, timeZone: SAO_PAULO }),
       shifts: SHIFTS,
-      date: '2027-01-04',
+      date: parseCalendarDay({ value: '2027-01-04' }),
       timeZone: SAO_PAULO,
     });
 
@@ -118,7 +118,7 @@ describe('availability marks', () => {
     const draft = toggleWholeDayMark({
       draft: createInitialMarkDraft({ shifts, timeZone }),
       shifts,
-      date: '2027-01-04',
+      date: day,
       timeZone,
     });
 

@@ -1,4 +1,4 @@
-import { formatCalendarDay } from '@church/time';
+import { type CalendarDay, formatCalendarDay } from '@church/time';
 import {
   type AvailabilityMarkDraft,
   getShiftDate,
@@ -23,7 +23,7 @@ export interface AvailabilityCheckDetailProps {
   check: GetAvailabilityCheck200;
   markDraft: AvailabilityMarkDraft;
   onToggleShift: (shiftId: string) => void;
-  onToggleWholeDay: (date: string) => void;
+  onToggleWholeDay: (date: CalendarDay) => void;
   onSaveMarks: () => void;
   onConfirm: () => void;
   isSavingMarks: boolean;
@@ -37,7 +37,7 @@ interface ShiftAvailabilityRowProps {
   isWholeDayMarked: boolean;
   isEditable: boolean;
   onToggleShift: (shiftId: string) => void;
-  onToggleWholeDay: (date: string) => void;
+  onToggleWholeDay: (date: CalendarDay) => void;
 }
 
 function ShiftAvailabilityRow({

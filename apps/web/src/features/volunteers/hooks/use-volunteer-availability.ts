@@ -1,3 +1,4 @@
+import type { CalendarDay } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
@@ -103,7 +104,7 @@ export function useVolunteerAvailability() {
     );
   };
 
-  const toggleWholeDay = (date: string) => {
+  const toggleWholeDay = (date: CalendarDay) => {
     if (!detail) return;
     setMarkDraft((current) =>
       toggleWholeDayMark({

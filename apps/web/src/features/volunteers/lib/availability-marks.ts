@@ -25,7 +25,7 @@ export interface ToggleShiftMarkInput {
 export interface ToggleWholeDayMarkInput {
   draft: AvailabilityMarkDraft;
   shifts: GetAvailabilityCheck200ShiftsItem[];
-  date: string;
+  date: CalendarDay;
   timeZone: string;
 }
 
@@ -35,13 +35,13 @@ export interface BuildMarksBodyInput {
 
 interface ShiftsOnDateInput {
   shifts: GetAvailabilityCheck200ShiftsItem[];
-  date: string;
+  date: CalendarDay;
   timeZone: string;
 }
 
 interface IsWholeDateMarkedInput {
   shifts: GetAvailabilityCheck200ShiftsItem[];
-  date: string;
+  date: CalendarDay;
   markedShiftIds: Set<string>;
   timeZone: string;
 }

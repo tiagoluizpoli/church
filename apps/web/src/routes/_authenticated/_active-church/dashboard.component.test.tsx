@@ -1,11 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 import { CROSS_CHURCH_ACCESS_DENIED_MESSAGE } from '@/shared/utils/cross-church-link';
 
 const getSession = vi.fn();
-const getActiveChurchStatus = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -14,19 +13,17 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/utils/api-instances', () => ({
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+vi.mock('@/utils/api-instances', async () => ({
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -43,7 +40,7 @@ vi.mock('sonner', () => ({
 }));
 
 function renderDashboard(initialPath = '/dashboard') {
-  return renderRoute({ initialPath });
+  return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
 describe('dashboard route', () => {
@@ -51,10 +48,6 @@ describe('dashboard route', () => {
     vi.clearAllMocks();
     getSession.mockResolvedValue({
       data: { user: { id: 'u1', name: 'Dual Member' }, session: {} },
-    });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-1',
     });
   });
 

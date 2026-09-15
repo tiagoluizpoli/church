@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
 const listMinistries = vi.fn();
@@ -9,11 +9,8 @@ const listPlanningCycles = vi.fn();
 const listEvents = vi.fn();
 const getCycleParticipation = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
-const getActiveChurchStatus = vi
-  .fn()
-  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
 
-vi.mock('@/utils/api-instances', () => ({
+vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
@@ -21,10 +18,8 @@ vi.mock('@/utils/api-instances', () => ({
     getCycleParticipation: (...args: unknown[]) =>
       getCycleParticipation(...args),
   },
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -34,11 +29,11 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -46,7 +41,10 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 function renderTailoringIndex() {
-  return renderRoute({ initialPath: '/scheduling/tailoring' });
+  return renderRoute({
+    initialPath: '/scheduling/tailoring',
+    churchTimezone: 'UTC',
+  });
 }
 
 describe('Tailoring ministry list route (US1/T013)', () => {

@@ -7,6 +7,10 @@ interface ProviderOptions {
   churchTimezone?: string;
 }
 
+interface WrapperProps {
+  children: ReactNode;
+}
+
 /**
  * Renders a component inside the providers builder components depend on:
  * a fresh TanStack QueryClient (retries off) and the TimezoneProvider.
@@ -23,12 +27,10 @@ export function renderWithProviders(
     },
   });
 
-  function Wrapper({ children }: { children: ReactNode }) {
+  function Wrapper({ children }: WrapperProps) {
     return (
       <QueryClientProvider client={queryClient}>
-        <TimezoneProvider
-          initialChurchTimezone={options.churchTimezone ?? 'UTC'}
-        >
+        <TimezoneProvider churchTimezone={options.churchTimezone ?? 'UTC'}>
           {children}
         </TimezoneProvider>
       </QueryClientProvider>

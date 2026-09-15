@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
 beforeEach(() => {
@@ -18,11 +18,8 @@ const upsertShiftRequirement = vi.fn();
 const fireAvailability = vi.fn();
 const resendAvailabilityReminder = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
-const getActiveChurchStatus = vi
-  .fn()
-  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
 
-vi.mock('@/utils/api-instances', () => ({
+vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
     listMinistries: (...args: unknown[]) => listMinistries(...args),
@@ -40,10 +37,8 @@ vi.mock('@/utils/api-instances', () => ({
     resendAvailabilityReminder: (...args: unknown[]) =>
       resendAvailabilityReminder(...args),
   },
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -53,20 +48,25 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
+interface ShiftRequirementBody {
+  roleId: string;
+}
+
 function renderWorkspace() {
   return renderRoute({
     initialPath: '/scheduling/tailoring/ministry-1/cycle-1',
+    churchTimezone: 'UTC',
   });
 }
 
@@ -408,7 +408,7 @@ describe('Tailoring workspace headcount save partial-failure isolation (Iteratio
       callerTeamIds: null,
     });
     upsertShiftRequirement.mockImplementation(
-      (_shiftId: string, body: { roleId: string }) =>
+      (_shiftId: string, body: ShiftRequirementBody) =>
         body.roleId === 'role-1'
           ? Promise.reject(new Error('network error'))
           : Promise.resolve({}),

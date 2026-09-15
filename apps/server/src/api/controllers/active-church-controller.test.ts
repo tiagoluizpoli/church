@@ -31,6 +31,7 @@ const activeChurchResolver = { resolve: vi.fn() };
 const selectionManager = {
   listSelectableChurches: vi.fn(),
   selectActiveChurch: vi.fn(),
+  getChurchTimezone: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -75,7 +76,7 @@ describe('GET /api/v1/active-church/status', () => {
     expect(activeChurchResolver.resolve).not.toHaveBeenCalled();
   });
 
-  it('surfaces "resolved" with the churchId', async () => {
+  it('surfaces "resolved" with the churchId and the Church Timezone', async () => {
     mockGetSession.mockResolvedValueOnce({
       user: { id: 'usr_1' },
       session: { activeOrganizationId: CHURCH_ID },
@@ -86,6 +87,9 @@ describe('GET /api/v1/active-church/status', () => {
       volunteerId: null,
       autoSelected: false,
     });
+    selectionManager.getChurchTimezone.mockResolvedValueOnce(
+      'America/Sao_Paulo',
+    );
 
     const response = await app.inject({
       method: 'GET',
@@ -95,6 +99,10 @@ describe('GET /api/v1/active-church/status', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       status: 'resolved',
+      churchId: CHURCH_ID,
+      timezone: 'America/Sao_Paulo',
+    });
+    expect(selectionManager.getChurchTimezone).toHaveBeenCalledWith({
       churchId: CHURCH_ID,
     });
   });
@@ -115,6 +123,7 @@ describe('GET /api/v1/active-church/status', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'selection_required' });
+    expect(selectionManager.getChurchTimezone).not.toHaveBeenCalled();
   });
 
   it('surfaces "no_membership"', async () => {
@@ -172,6 +181,7 @@ describe('GET /api/v1/active-church/status', () => {
       volunteerId: null,
       autoSelected: true,
     });
+    selectionManager.getChurchTimezone.mockResolvedValueOnce('UTC');
     mockSetActiveOrganization.mockResolvedValueOnce(undefined as never);
 
     const response = await app.inject({
@@ -180,6 +190,11 @@ describe('GET /api/v1/active-church/status', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      status: 'resolved',
+      churchId: CHURCH_ID,
+      timezone: 'UTC',
+    });
     expect(mockSetActiveOrganization).toHaveBeenCalledWith(
       expect.objectContaining({ body: { organizationId: CHURCH_ID } }),
     );
@@ -299,6 +314,9 @@ describe('POST /api/v1/active-church/select', () => {
       volunteerId: null,
       autoSelected: false,
     });
+    selectionManager.getChurchTimezone.mockResolvedValueOnce(
+      'America/Sao_Paulo',
+    );
     mockSetActiveOrganization.mockResolvedValueOnce(undefined as never);
 
     const response = await app.inject({
@@ -310,6 +328,10 @@ describe('POST /api/v1/active-church/select', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       status: 'resolved',
+      churchId: CHURCH_ID,
+      timezone: 'America/Sao_Paulo',
+    });
+    expect(selectionManager.getChurchTimezone).toHaveBeenCalledWith({
       churchId: CHURCH_ID,
     });
     expect(selectionManager.selectActiveChurch).toHaveBeenCalledWith({

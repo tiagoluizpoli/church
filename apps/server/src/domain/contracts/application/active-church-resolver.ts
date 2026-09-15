@@ -40,10 +40,14 @@ export interface ActiveChurchSelectionRequired extends MembershipRemovalNotice {
   status: 'selection_required';
 }
 
-export type ActiveChurchResolution =
-  | ResolvedActiveChurch
+/** Any resolution that names no Active Church — so carries no Church Timezone either. */
+export type UnresolvedActiveChurch =
   | NoChurchMembership
   | ActiveChurchSelectionRequired;
+
+export type ActiveChurchResolution =
+  | ResolvedActiveChurch
+  | UnresolvedActiveChurch;
 
 /**
  * Resolves the Church a protected request runs against from the session's

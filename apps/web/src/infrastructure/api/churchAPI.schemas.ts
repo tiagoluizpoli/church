@@ -4,18 +4,13 @@
  * Church API
  * OpenAPI spec version: 1.0.0
  */
-export type GetActiveChurchStatus200Status = typeof GetActiveChurchStatus200Status[keyof typeof GetActiveChurchStatus200Status];
-
-
-export const GetActiveChurchStatus200Status = {
-  resolved: 'resolved',
-  selection_required: 'selection_required',
-  no_membership: 'no_membership',
-} as const;
-
 export type GetActiveChurchStatus200 = {
-  status: GetActiveChurchStatus200Status;
-  churchId?: string;
+  status: 'resolved';
+  churchId: string;
+  membershipRemovedFrom?: string;
+  timezone: string;
+} | {
+  status: 'selection_required' | 'no_membership';
   membershipRemovedFrom?: string;
 };
 
@@ -63,18 +58,13 @@ export type SelectActiveChurchBody = {
   churchId: string;
 };
 
-export type SelectActiveChurch200Status = typeof SelectActiveChurch200Status[keyof typeof SelectActiveChurch200Status];
-
-
-export const SelectActiveChurch200Status = {
-  resolved: 'resolved',
-  selection_required: 'selection_required',
-  no_membership: 'no_membership',
-} as const;
-
 export type SelectActiveChurch200 = {
-  status: SelectActiveChurch200Status;
-  churchId?: string;
+  status: 'resolved';
+  churchId: string;
+  membershipRemovedFrom?: string;
+  timezone: string;
+} | {
+  status: 'selection_required' | 'no_membership';
   membershipRemovedFrom?: string;
 };
 

@@ -27,7 +27,7 @@ function renderCycleList(ui: ReactElement) {
 
   return render(
     <RouterContextProvider router={router}>
-      <TimezoneProvider initialChurchTimezone="UTC">{ui}</TimezoneProvider>
+      <TimezoneProvider churchTimezone="UTC">{ui}</TimezoneProvider>
     </RouterContextProvider>,
   );
 }

@@ -1,13 +1,16 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  activeChurchApiMock,
+  resolvedActiveChurchStatus,
+} from '@/__tests__/setup/active-church';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
 const getSession = vi.fn();
-const getActiveChurchStatus = vi.fn();
-const listActiveChurchOptions = vi.fn();
-const selectActiveChurch = vi.fn();
+const { getActiveChurchStatus, listActiveChurchOptions, selectActiveChurch } =
+  activeChurchApiMock;
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -16,22 +19,17 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/utils/api-instances', () => ({
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-    listActiveChurchOptions: (...args: unknown[]) =>
-      listActiveChurchOptions(...args),
-    selectActiveChurch: (...args: unknown[]) => selectActiveChurch(...args),
-  },
+vi.mock('@/utils/api-instances', async () => ({
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -96,14 +94,12 @@ describe('select-church route (compare-access selector)', () => {
         },
       ],
     });
-    selectActiveChurch.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-a',
-    });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-a',
-    });
+    selectActiveChurch.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-a' }),
+    );
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-a' }),
+    );
 
     const { router } = renderSelectChurch();
     const options = await screen.findAllByText('Igreja Central');
@@ -160,14 +156,12 @@ describe('select-church route (compare-access selector)', () => {
         },
       ],
     });
-    selectActiveChurch.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-a',
-    });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-a',
-    });
+    selectActiveChurch.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-a' }),
+    );
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-a' }),
+    );
 
     const { router } = renderSelectChurch(
       '/select-church?redirect=%2Fscheduling%2Fplanning-cycles',
@@ -196,14 +190,12 @@ describe('select-church route (compare-access selector)', () => {
         },
       ],
     });
-    selectActiveChurch.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-b',
-    });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-b',
-    });
+    selectActiveChurch.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
 
     const { router } = renderSelectChurch(
       '/select-church?redirect=%2Fscheduling%2Fplanning-cycles',

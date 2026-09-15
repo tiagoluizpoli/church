@@ -1,13 +1,16 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  activeChurchApiMock,
+  resolvedActiveChurchStatus,
+} from '@/__tests__/setup/active-church';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
 const getSession = vi.fn();
-const listActiveChurchOptions = vi.fn();
-const selectActiveChurch = vi.fn();
-const getActiveChurchStatus = vi.fn();
+const { getActiveChurchStatus, listActiveChurchOptions, selectActiveChurch } =
+  activeChurchApiMock;
 const listPlanningCycles = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
@@ -17,25 +20,20 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-vi.mock('@/utils/api-instances', () => ({
-  activeChurchApi: {
-    listActiveChurchOptions: (...args: unknown[]) =>
-      listActiveChurchOptions(...args),
-    selectActiveChurch: (...args: unknown[]) => selectActiveChurch(...args),
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+vi.mock('@/utils/api-instances', async () => ({
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
   adminApi: {
     listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
   },
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -75,10 +73,9 @@ describe('switch-church-confirm route', () => {
       },
     });
     listActiveChurchOptions.mockResolvedValue({ churches: CHURCHES });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-a',
-    });
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-a' }),
+    );
     listPlanningCycles.mockResolvedValue({ cycles: [] });
   });
 
@@ -96,14 +93,12 @@ describe('switch-church-confirm route', () => {
 
   it('switches to the target Church and lands on the exact requested destination on confirm', async () => {
     const user = userEvent.setup();
-    selectActiveChurch.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-b',
-    });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-b',
-    });
+    selectActiveChurch.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
 
     const { router } = renderConfirm(
       '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
@@ -131,14 +126,12 @@ describe('switch-church-confirm route', () => {
     // always falls back — the id belonged to the *former* Church's data,
     // so it isn't safe to replay verbatim under the new one.
     const user = userEvent.setup();
-    selectActiveChurch.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-b',
-    });
-    getActiveChurchStatus.mockResolvedValue({
-      status: 'resolved',
-      churchId: 'church-b',
-    });
+    selectActiveChurch.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
+    getActiveChurchStatus.mockResolvedValue(
+      resolvedActiveChurchStatus({ churchId: 'church-b' }),
+    );
 
     const { router } = renderConfirm(
       '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles%2Fcycle-1',

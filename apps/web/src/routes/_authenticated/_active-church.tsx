@@ -2,12 +2,48 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
 import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
+import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
+import { TimezoneProvider } from '@/shared/components/timezone-provider';
 import {
   extractRequestedChurchId,
   resolveCrossChurchDeepLink,
   stripCrossChurchLinkParam,
 } from '@/shared/utils/cross-church-link';
 import { activeChurchApi } from '@/utils/api-instances';
+
+interface ResolvedStatusDiscriminant {
+  status: 'resolved';
+}
+
+/** The resolved entry-gate status — the same shape the status and select calls both return. */
+type ResolvedActiveChurchStatus = Extract<
+  GetActiveChurchStatus200,
+  ResolvedStatusDiscriminant
+>;
+
+interface RequireChurchTimezoneInput {
+  status: ResolvedActiveChurchStatus;
+}
+
+interface ChurchTimezoneContext {
+  churchTimezone: string;
+}
+
+/**
+ * A resolved status always carries its Church Timezone (ADR-0003). One
+ * without it is a broken contract, and guessing a zone would silently shift
+ * every time on screen (#150) — so this throws and the route fails instead.
+ */
+function requireChurchTimezone({
+  status,
+}: RequireChurchTimezoneInput): ChurchTimezoneContext {
+  if (!status.timezone) {
+    throw new Error(
+      'The Active Church status did not resolve with a Church Timezone',
+    );
+  }
+  return { churchTimezone: status.timezone };
+}
 
 export const Route = createFileRoute('/_authenticated/_active-church')({
   component: ActiveChurchLayout,
@@ -16,11 +52,15 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     // server-side on every load and covers every branch — an already-set
     // Church that no longer checks out, several Memberships with none active,
     // and no Membership at all — rather than only the first of those.
-    const { status, churchId, membershipRemovedFrom } =
-      await activeChurchApi.getActiveChurchStatus();
+    const status = await activeChurchApi.getActiveChurchStatus();
+    const { membershipRemovedFrom } = status;
+    // Every redirect below carries it, so the destination can explain a
+    // just-removed Church Membership.
+    const removalSearch = { removedFrom: membershipRemovedFrom };
 
     const requestedChurchId = extractRequestedChurchId({ search });
-    const currentChurchId = status === 'resolved' ? (churchId ?? null) : null;
+    const currentChurchId =
+      status.status === 'resolved' ? status.churchId : null;
     if (requestedChurchId && requestedChurchId !== currentChurchId) {
       // Cached under the query key /select-church and /switch-church-confirm
       // already read from, so a redirect to either shows this list instantly
@@ -39,10 +79,13 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
         // No existing context is being displaced, so the target Church
         // becomes Active silently and the originally requested destination
         // loads normally below — spec.md §1.5.
-        await activeChurchApi.selectActiveChurch({
+        const selected = await activeChurchApi.selectActiveChurch({
           churchId: decision.churchId,
         });
-        return;
+        if (selected.status === 'resolved') {
+          return requireChurchTimezone({ status: selected });
+        }
+        // Not selected after all: the unresolved-status redirects below apply.
       }
 
       if (decision.kind === 'needs-confirmation') {
@@ -65,16 +108,16 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       }
     }
 
-    if (status === 'selection_required') {
-      throw redirect({
-        to: '/select-church',
-        search: { removedFrom: membershipRemovedFrom },
-      });
-    }
-    if (status === 'no_membership') {
+    if (status.status !== 'resolved') {
+      if (status.status === 'selection_required') {
+        throw redirect({
+          to: '/select-church',
+          search: removalSearch,
+        });
+      }
       throw redirect({
         to: '/no-access',
-        search: { removedFrom: membershipRemovedFrom },
+        search: removalSearch,
       });
     }
     if (membershipRemovedFrom) {
@@ -83,13 +126,19 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       // explanation has a stable, always-reachable place to show.
       throw redirect({
         to: '/dashboard',
-        search: { removedFrom: membershipRemovedFrom },
+        search: removalSearch,
       });
     }
+
+    // Resolved through `beforeLoad`, which blocks: every route under the
+    // layout renders with the right zone on first paint, and a church switch
+    // re-runs this gate and hands the layout the new one (ADR-0003, #150).
+    return requireChurchTimezone({ status });
   },
 });
 
 function ActiveChurchLayout() {
+  const { churchTimezone } = Route.useRouteContext();
   const planningCycleBreadcrumb = usePlanningCycleBreadcrumb();
   const ministryBreadcrumb = useMinistryBreadcrumb();
   const overrides = [planningCycleBreadcrumb, ministryBreadcrumb].filter(
@@ -98,8 +147,10 @@ function ActiveChurchLayout() {
   const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;
 
   return (
-    <AppShell breadcrumbOverrides={breadcrumbOverrides}>
-      <Outlet />
-    </AppShell>
+    <TimezoneProvider churchTimezone={churchTimezone}>
+      <AppShell breadcrumbOverrides={breadcrumbOverrides}>
+        <Outlet />
+      </AppShell>
+    </TimezoneProvider>
   );
 }

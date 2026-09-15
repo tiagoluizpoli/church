@@ -1,9 +1,9 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from './planning-admin/cycle-list-card';
 import { PlanningAdminProvider } from './planning-admin/planning-admin-context';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderWithProviders } from '@/__tests__/setup/render';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
@@ -12,11 +12,8 @@ const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getPlanningCycle = vi.fn();
 const applyPlanningTemplates = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
-const getActiveChurchStatus = vi
-  .fn()
-  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
 
-vi.mock('@/utils/api-instances', () => ({
+vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
@@ -24,10 +21,8 @@ vi.mock('@/utils/api-instances', () => ({
     applyPlanningTemplates: (...args: unknown[]) =>
       applyPlanningTemplates(...args),
   },
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -37,11 +32,11 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -49,7 +44,7 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 function renderPlanningCycles(initialPath = '/scheduling/planning-cycles') {
-  return renderRoute({ initialPath });
+  return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
 describe('Planning cycles routes step-sequence gating (T038, T056)', () => {

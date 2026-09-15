@@ -31,21 +31,36 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - resolved
-                      - selection_required
-                      - no_membership
-                  churchId:
-                    type: string
-                  membershipRemovedFrom:
-                    type: string
-                required:
-                  - status
-                additionalProperties: false
+                oneOf:
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - resolved
+                      churchId:
+                        type: string
+                      membershipRemovedFrom:
+                        type: string
+                      timezone:
+                        type: string
+                    required:
+                      - status
+                      - churchId
+                      - timezone
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - selection_required
+                          - no_membership
+                      membershipRemovedFrom:
+                        type: string
+                    required:
+                      - status
+                    additionalProperties: false
         "401":
           description: Default Response
           content:
@@ -154,21 +169,36 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - resolved
-                      - selection_required
-                      - no_membership
-                  churchId:
-                    type: string
-                  membershipRemovedFrom:
-                    type: string
-                required:
-                  - status
-                additionalProperties: false
+                oneOf:
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - resolved
+                      churchId:
+                        type: string
+                      membershipRemovedFrom:
+                        type: string
+                      timezone:
+                        type: string
+                    required:
+                      - status
+                      - churchId
+                      - timezone
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - selection_required
+                          - no_membership
+                      membershipRemovedFrom:
+                        type: string
+                    required:
+                      - status
+                    additionalProperties: false
         "401":
           description: Default Response
           content:

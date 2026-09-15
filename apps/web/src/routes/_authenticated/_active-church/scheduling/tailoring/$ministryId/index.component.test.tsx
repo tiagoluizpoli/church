@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { pickCalendarDate } from '@/__tests__/setup/date-picker';
 import { renderRoute } from '@/__tests__/setup/render-route';
 import type { ListMinistryCycleSummaries200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
@@ -9,20 +9,15 @@ import type { ListMinistryCycleSummaries200CyclesItem } from '@/infrastructure/a
 const listMinistryCycleSummaries = vi.fn();
 const listMinistries = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
-const getActiveChurchStatus = vi
-  .fn()
-  .mockResolvedValue({ status: 'resolved', churchId: 'church-1' });
 
-vi.mock('@/utils/api-instances', () => ({
+vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listMinistryCycleSummaries: (...args: unknown[]) =>
       listMinistryCycleSummaries(...args),
     listMinistries: (...args: unknown[]) => listMinistries(...args),
   },
-  activeChurchApi: {
-    getActiveChurchStatus: (...args: unknown[]) =>
-      getActiveChurchStatus(...args),
-  },
+  activeChurchApi: (await import('@/__tests__/setup/active-church'))
+    .activeChurchApiMock,
 }));
 
 vi.mock('@/lib/auth-client', () => ({
@@ -32,11 +27,11 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 vi.mock('@/components/app-shell', () => ({
-  AppShell: ({ children }: { children: ReactNode }) => children,
+  AppShell: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/theme-provider', () => ({
-  ThemeProvider: ({ children }: { children: ReactNode }) => children,
+  ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -53,7 +48,10 @@ beforeEach(() => {
 });
 
 function renderMinistryCycleList() {
-  return renderRoute({ initialPath: '/scheduling/tailoring/ministry-1' });
+  return renderRoute({
+    initialPath: '/scheduling/tailoring/ministry-1',
+    churchTimezone: 'UTC',
+  });
 }
 
 function makeCycle(
@@ -124,6 +122,7 @@ describe('Tailoring ministry cycle-list route (US2/T015a, amended Iteration 3)',
 
     const { router } = renderRoute({
       initialPath: '/scheduling/tailoring/ministry-1?browse=true',
+      churchTimezone: 'UTC',
     });
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
@@ -294,6 +293,7 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
     listMinistryCycleSummaries.mockClear();
     const fresh = renderRoute({
       initialPath: '/scheduling/tailoring/ministry-1?involvement=not_part_of',
+      churchTimezone: 'UTC',
     });
     const freshTable = await screen.findAllByRole('grid', { name: 'Cycles' });
     expect(freshTable.at(-1)).toHaveTextContent('August (not part of)');

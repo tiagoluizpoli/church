@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from './cycle-list-card';
@@ -12,6 +6,7 @@ import { CycleReviewCard } from './cycle-review-card';
 import { PlanningAdminProvider } from './planning-admin-context';
 import { pickCalendarDate } from '@/__tests__/setup/date-picker';
 import { renderWithProviders } from '@/__tests__/setup/render';
+import { fillTimeOfDayField } from '@/__tests__/setup/time-of-day';
 
 const listPlanningCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
@@ -748,11 +743,15 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
-    fireEvent.change(within(dialog).getByLabelText('Start'), {
-      target: { value: '08:30' },
+    await fillTimeOfDayField({
+      user,
+      field: within(dialog).getByTestId('edit-slot-start-time-field'),
+      time: '08:30',
     });
-    fireEvent.change(within(dialog).getByLabelText('End'), {
-      target: { value: '09:30' },
+    await fillTimeOfDayField({
+      user,
+      field: within(dialog).getByTestId('edit-slot-end-time-field'),
+      time: '09:30',
     });
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
@@ -880,7 +879,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     );
   }
 
-  it('shows time-only inputs (no date field) in the Add slot dialog for a single-day event', async () => {
+  it('shows time-only fields (no date field) in the Add slot dialog for a single-day event', async () => {
     mockSingleAndMultiDayCycle();
 
     render();
@@ -893,14 +892,12 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'Add slot' });
-    expect(within(dialog).getByLabelText('Start')).toHaveAttribute(
-      'type',
-      'time',
-    );
-    expect(within(dialog).getByLabelText('End')).toHaveAttribute(
-      'type',
-      'time',
-    );
+    expect(
+      within(dialog).getByTestId('create-slot-start-time-field'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('create-slot-end-time-field'),
+    ).toBeInTheDocument();
   });
 
   it('shows date+time inputs in the Add slot dialog for a multi-day event', async () => {
@@ -928,7 +925,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     );
   });
 
-  it('shows time-only inputs in the Edit slot dialog for a single-day event slot', async () => {
+  it('shows time-only fields in the Edit slot dialog for a single-day event slot', async () => {
     mockSingleAndMultiDayCycle();
 
     render();
@@ -944,14 +941,12 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
-    expect(within(dialog).getByLabelText('Start')).toHaveAttribute(
-      'type',
-      'time',
-    );
-    expect(within(dialog).getByLabelText('End')).toHaveAttribute(
-      'type',
-      'time',
-    );
+    expect(
+      within(dialog).getByTestId('edit-slot-start-time-field'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('edit-slot-end-time-field'),
+    ).toBeInTheDocument();
   });
 
   it('shows date+time inputs in the Edit slot dialog for a multi-day event slot', async () => {

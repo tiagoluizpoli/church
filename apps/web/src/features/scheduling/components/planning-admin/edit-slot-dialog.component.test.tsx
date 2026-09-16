@@ -8,8 +8,8 @@ const editingSlot: EditingSlotState = {
   eventId: 'event-1',
   slotId: 'slot-1',
   label: 'Worship',
-  startTimeLocal: '09:00',
-  endTimeLocal: '10:00',
+  startTimeLocal: '2025-01-05T09:00',
+  endTimeLocal: '2025-01-05T10:00',
   isMultiDayEvent: false,
 };
 
@@ -39,8 +39,8 @@ describe('EditSlotDialog', () => {
       <EditSlotDialog
         editingSlot={{
           ...editingSlot,
-          startTimeLocal: '10:00',
-          endTimeLocal: '09:00',
+          startTimeLocal: '2025-01-05T10:00',
+          endTimeLocal: '2025-01-05T09:00',
         }}
         updateSlotPending={false}
         onChange={vi.fn()}

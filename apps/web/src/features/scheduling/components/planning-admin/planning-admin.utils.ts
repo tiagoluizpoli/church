@@ -1,3 +1,4 @@
+import { fromTimeColumn } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   CycleCalendarSlotRow,
@@ -108,8 +109,8 @@ export function createEmptyTemplateBlock(): TemplateBlockDraft {
   return {
     id: `template-block-${templateBlockDraftCounter}`,
     label: '',
-    startTime: '',
-    endTime: '',
+    startTime: null,
+    endTime: null,
   };
 }
 
@@ -132,8 +133,8 @@ export function createTemplateFormFromTemplate({
       .map((block) => ({
         id: block.id,
         label: block.label,
-        startTime: block.startTime,
-        endTime: block.endTime,
+        startTime: fromTimeColumn({ value: block.startTime }),
+        endTime: fromTimeColumn({ value: block.endTime }),
       })),
   };
 }
@@ -197,12 +198,18 @@ export function describeTemplate({ template }: DescribeTemplateInput): string {
 export function sortTemplateBlocks({
   blocks,
 }: SortTemplateBlocksInput): CreateEventTemplateBody['blocks'] {
-  return blocks.map((block, index) => ({
-    label: block.label.trim(),
-    startTime: block.startTime,
-    endTime: block.endTime,
-    order: index,
-  }));
+  return blocks.map((block, index) => {
+    if (!block.startTime || !block.endTime) {
+      throw new Error('Block is missing a start or end time');
+    }
+
+    return {
+      label: block.label.trim(),
+      startTime: block.startTime,
+      endTime: block.endTime,
+      order: index,
+    };
+  });
 }
 
 export function stateBadgeVariant({
@@ -279,8 +286,8 @@ export function canCreateTemplate({
     templateForm.blocks.every(
       (block) =>
         block.label.trim() !== '' &&
-        block.startTime !== '' &&
-        block.endTime !== '' &&
+        block.startTime !== null &&
+        block.endTime !== null &&
         block.startTime < block.endTime,
     )
   );

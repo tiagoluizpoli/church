@@ -1,7 +1,10 @@
+import { XIcon } from 'lucide-react';
 import type {
   TimeWindowFilter,
   TimeWindowMode,
 } from '../participation-tailoring.utils';
+import { TimeOfDayField } from '@/components/time-of-day-field';
+import { Button } from '@/components/ui/button';
 import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -82,35 +85,69 @@ export function TailoringFilters({
               </SelectContent>
             </Select>
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <Input
-                className="min-w-0 flex-1"
-                data-testid="tailoring-time-start-filter"
-                type="time"
-                aria-label="From"
-                value={timeWindowFilter.start ?? ''}
-                onChange={(event) =>
-                  onTimeWindowFilterChange({
-                    ...timeWindowFilter,
-                    start: event.target.value || undefined,
-                  })
-                }
-              />
+              <div className="min-w-0 flex-1">
+                <TimeOfDayField
+                  aria-label="From"
+                  data-testid="tailoring-time-start-filter"
+                  value={timeWindowFilter.start ?? null}
+                  onChange={(value) =>
+                    onTimeWindowFilterChange({
+                      ...timeWindowFilter,
+                      start: value,
+                    })
+                  }
+                />
+              </div>
+              {timeWindowFilter.start ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Clear from time"
+                  data-testid="tailoring-time-start-filter-clear"
+                  onClick={() =>
+                    onTimeWindowFilterChange({
+                      ...timeWindowFilter,
+                      start: undefined,
+                    })
+                  }
+                >
+                  <XIcon />
+                </Button>
+              ) : null}
               <span className="shrink-0 text-muted-foreground text-xs">
                 and
               </span>
-              <Input
-                className="min-w-0 flex-1"
-                data-testid="tailoring-time-end-filter"
-                type="time"
-                aria-label="To"
-                value={timeWindowFilter.end ?? ''}
-                onChange={(event) =>
-                  onTimeWindowFilterChange({
-                    ...timeWindowFilter,
-                    end: event.target.value || undefined,
-                  })
-                }
-              />
+              <div className="min-w-0 flex-1">
+                <TimeOfDayField
+                  aria-label="To"
+                  data-testid="tailoring-time-end-filter"
+                  value={timeWindowFilter.end ?? null}
+                  onChange={(value) =>
+                    onTimeWindowFilterChange({
+                      ...timeWindowFilter,
+                      end: value,
+                    })
+                  }
+                />
+              </div>
+              {timeWindowFilter.end ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Clear to time"
+                  data-testid="tailoring-time-end-filter-clear"
+                  onClick={() =>
+                    onTimeWindowFilterChange({
+                      ...timeWindowFilter,
+                      end: undefined,
+                    })
+                  }
+                >
+                  <XIcon />
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>

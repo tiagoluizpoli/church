@@ -1,3 +1,4 @@
+import type { TimeOfDay } from '@church/time';
 import type {
   GetPlanningCycle200Cycle,
   GetPlanningCycle200EventsItem,
@@ -14,8 +15,8 @@ export interface CycleFormState {
 export interface TemplateBlockDraft {
   id: string;
   label: string;
-  startTime: string;
-  endTime: string;
+  startTime: TimeOfDay | null;
+  endTime: TimeOfDay | null;
 }
 
 export interface TemplateFormState {

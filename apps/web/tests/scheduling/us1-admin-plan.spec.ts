@@ -5,6 +5,7 @@ import {
   VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
+import { fillTimeOfDayField } from './time-field.helpers';
 
 interface PlanningMonth {
   cycleName: string;
@@ -205,38 +206,38 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
     .nth(0)
     .getByTestId('template-block-label-input')
     .fill('Welcome');
-  await sundayBlocks
-    .nth(0)
-    .getByTestId('template-block-start-time-input')
-    .fill('09:00');
-  await sundayBlocks
-    .nth(0)
-    .getByTestId('template-block-end-time-input')
-    .fill('09:30');
+  await fillTimeOfDayField({
+    field: sundayBlocks.nth(0).getByTestId('template-block-start-time-input'),
+    time: '09:00',
+  });
+  await fillTimeOfDayField({
+    field: sundayBlocks.nth(0).getByTestId('template-block-end-time-input'),
+    time: '09:30',
+  });
   await sundayBlocks
     .nth(1)
     .getByTestId('template-block-label-input')
     .fill('Message');
-  await sundayBlocks
-    .nth(1)
-    .getByTestId('template-block-start-time-input')
-    .fill('09:30');
-  await sundayBlocks
-    .nth(1)
-    .getByTestId('template-block-end-time-input')
-    .fill('10:30');
+  await fillTimeOfDayField({
+    field: sundayBlocks.nth(1).getByTestId('template-block-start-time-input'),
+    time: '09:30',
+  });
+  await fillTimeOfDayField({
+    field: sundayBlocks.nth(1).getByTestId('template-block-end-time-input'),
+    time: '10:30',
+  });
   await sundayBlocks
     .nth(2)
     .getByTestId('template-block-label-input')
     .fill('Prayer');
-  await sundayBlocks
-    .nth(2)
-    .getByTestId('template-block-start-time-input')
-    .fill('10:30');
-  await sundayBlocks
-    .nth(2)
-    .getByTestId('template-block-end-time-input')
-    .fill('11:00');
+  await fillTimeOfDayField({
+    field: sundayBlocks.nth(2).getByTestId('template-block-start-time-input'),
+    time: '10:30',
+  });
+  await fillTimeOfDayField({
+    field: sundayBlocks.nth(2).getByTestId('template-block-end-time-input'),
+    time: '11:00',
+  });
   await createTemplateDialog.getByTestId('create-template-button').click();
 
   await expect(
@@ -261,12 +262,14 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await wednesdayBlock
     .getByTestId('template-block-label-input')
     .fill('Midweek');
-  await wednesdayBlock
-    .getByTestId('template-block-start-time-input')
-    .fill('19:00');
-  await wednesdayBlock
-    .getByTestId('template-block-end-time-input')
-    .fill('20:00');
+  await fillTimeOfDayField({
+    field: wednesdayBlock.getByTestId('template-block-start-time-input'),
+    time: '19:00',
+  });
+  await fillTimeOfDayField({
+    field: wednesdayBlock.getByTestId('template-block-end-time-input'),
+    time: '20:00',
+  });
   await secondTemplateDialog.getByTestId('create-template-button').click();
 
   await expect(

@@ -1,3 +1,4 @@
+import type { TimeOfDay } from '@church/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
@@ -50,11 +51,21 @@ interface TemplateWeekdayChangeInput {
   weekday: string;
 }
 
-interface TemplateBlockChangeInput {
+interface TemplateBlockLabelChangeInput {
   blockId: string;
-  field: 'label' | 'startTime' | 'endTime';
+  field: 'label';
   value: string;
 }
+
+interface TemplateBlockTimeChangeInput {
+  blockId: string;
+  field: 'startTime' | 'endTime';
+  value: TimeOfDay;
+}
+
+type TemplateBlockChangeInput =
+  | TemplateBlockLabelChangeInput
+  | TemplateBlockTimeChangeInput;
 
 interface RemoveTemplateBlockInput {
   blockId: string;
@@ -288,16 +299,20 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
       setTemplateForm((currentForm) => ({ ...currentForm, name })),
     handleTemplateWeekdayChange: ({ weekday }: TemplateWeekdayChangeInput) =>
       setTemplateForm((currentForm) => ({ ...currentForm, weekday })),
-    handleTemplateBlockChange: ({
-      blockId,
-      field,
-      value,
-    }: TemplateBlockChangeInput) =>
+    handleTemplateBlockChange: (input: TemplateBlockChangeInput) =>
       setTemplateForm((currentForm) => ({
         ...currentForm,
-        blocks: currentForm.blocks.map((block) =>
-          block.id === blockId ? { ...block, [field]: value } : block,
-        ),
+        blocks: currentForm.blocks.map((block) => {
+          if (block.id !== input.blockId) {
+            return block;
+          }
+
+          if (input.field === 'label') {
+            return { ...block, label: input.value };
+          }
+
+          return { ...block, [input.field]: input.value };
+        }),
       })),
     handleRemoveTemplateBlock: ({ blockId }: RemoveTemplateBlockInput) =>
       setTemplateForm((currentForm) => ({

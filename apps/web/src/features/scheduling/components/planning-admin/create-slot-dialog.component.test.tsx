@@ -7,8 +7,8 @@ import type { CreatingSlotState } from './planning-admin.types';
 const creatingSlot: CreatingSlotState = {
   eventId: 'event-1',
   label: 'Worship',
-  startTimeLocal: '09:00',
-  endTimeLocal: '10:00',
+  startTimeLocal: '2025-01-05T09:00',
+  endTimeLocal: '2025-01-05T10:00',
   isMultiDayEvent: false,
 };
 
@@ -38,8 +38,8 @@ describe('CreateSlotDialog', () => {
       <CreateSlotDialog
         creatingSlot={{
           ...creatingSlot,
-          startTimeLocal: '10:00',
-          endTimeLocal: '09:00',
+          startTimeLocal: '2025-01-05T10:00',
+          endTimeLocal: '2025-01-05T09:00',
         }}
         createSlotPending={false}
         onChange={vi.fn()}

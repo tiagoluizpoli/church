@@ -1,13 +1,23 @@
+import type { TimeOfDay } from '@church/time';
 import type { TemplateBlockDraft } from './planning-admin.types';
+import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-interface BlockChangeInput {
+interface LabelChangeInput {
   blockId: string;
-  field: 'label' | 'startTime' | 'endTime';
+  field: 'label';
   value: string;
 }
+
+interface TimeChangeInput {
+  blockId: string;
+  field: 'startTime' | 'endTime';
+  value: TimeOfDay;
+}
+
+type BlockChangeInput = LabelChangeInput | TimeChangeInput;
 
 interface RemoveBlockInput {
   blockId: string;
@@ -63,35 +73,31 @@ export function TemplateBlockRow({
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <Label>Start time</Label>
-          <Input
+          <Label id={`${block.id}-start-time-label`}>Start time</Label>
+          <TimeOfDayField
+            aria-labelledby={`${block.id}-start-time-label`}
             data-testid="template-block-start-time-input"
-            type="time"
-            step={60}
-            lang="pt-BR"
             value={block.startTime}
-            onChange={(event) =>
+            onChange={(value) =>
               onBlockChange({
                 blockId: block.id,
                 field: 'startTime',
-                value: event.target.value,
+                value,
               })
             }
           />
         </div>
         <div className="space-y-1">
-          <Label>End time</Label>
-          <Input
+          <Label id={`${block.id}-end-time-label`}>End time</Label>
+          <TimeOfDayField
+            aria-labelledby={`${block.id}-end-time-label`}
             data-testid="template-block-end-time-input"
-            type="time"
-            step={60}
-            lang="pt-BR"
             value={block.endTime}
-            onChange={(event) =>
+            onChange={(value) =>
               onBlockChange({
                 blockId: block.id,
                 field: 'endTime',
-                value: event.target.value,
+                value,
               })
             }
           />

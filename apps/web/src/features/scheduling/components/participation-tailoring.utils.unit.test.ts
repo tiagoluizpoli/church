@@ -1,3 +1,4 @@
+import { parseTimeOfDay } from '@church/time';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   buildMinistryTailoringSummary,
@@ -409,7 +410,11 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('mode "starts": keeps only slots whose start time falls in [start, end]', () => {
       const filtered = filterSlotsByTimeOfDay({
         events: [morningAndEvening()],
-        filter: { mode: 'starts', start: '18:00', end: '23:00' },
+        filter: {
+          mode: 'starts',
+          start: parseTimeOfDay({ value: '18:00' }),
+          end: parseTimeOfDay({ value: '23:00' }),
+        },
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['evening']);
@@ -439,7 +444,11 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
 
       const filtered = filterSlotsByTimeOfDay({
         events,
-        filter: { mode: 'ends', start: '11:00', end: '12:00' },
+        filter: {
+          mode: 'ends',
+          start: parseTimeOfDay({ value: '11:00' }),
+          end: parseTimeOfDay({ value: '12:00' }),
+        },
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['long']);
@@ -469,7 +478,11 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
 
       const filtered = filterSlotsByTimeOfDay({
         events,
-        filter: { mode: 'within', start: '17:00', end: '20:00' },
+        filter: {
+          mode: 'within',
+          start: parseTimeOfDay({ value: '17:00' }),
+          end: parseTimeOfDay({ value: '20:00' }),
+        },
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['fits']);
@@ -478,7 +491,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('supports an open-ended window (only start bound given)', () => {
       const filtered = filterSlotsByTimeOfDay({
         events: [morningAndEvening()],
-        filter: { mode: 'starts', start: '12:00' },
+        filter: { mode: 'starts', start: parseTimeOfDay({ value: '12:00' }) },
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['evening']);
@@ -487,7 +500,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('supports an open-ended window (only end bound given)', () => {
       const filtered = filterSlotsByTimeOfDay({
         events: [morningAndEvening()],
-        filter: { mode: 'starts', end: '12:00' },
+        filter: { mode: 'starts', end: parseTimeOfDay({ value: '12:00' }) },
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['morning']);
@@ -507,7 +520,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
       expect(
         filterSlotsByTimeOfDay({
           events,
-          filter: { mode: 'starts', start: '23:00' },
+          filter: { mode: 'starts', start: parseTimeOfDay({ value: '23:00' }) },
         }),
       ).toEqual([]);
     });
@@ -530,7 +543,11 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
       expect(
         filterSlotsByTimeOfDay({
           events,
-          filter: { mode: 'starts', start: '09:00', end: '09:00' },
+          filter: {
+            mode: 'starts',
+            start: parseTimeOfDay({ value: '09:00' }),
+            end: parseTimeOfDay({ value: '09:00' }),
+          },
         })[0]?.slots,
       ).toHaveLength(1);
     });
@@ -543,7 +560,12 @@ describe('isTimeWindowFilterEmpty', () => {
   });
 
   it('is false when either bound is set', () => {
-    expect(isTimeWindowFilterEmpty({ mode: 'ends', end: '20:00' })).toBe(false);
+    expect(
+      isTimeWindowFilterEmpty({
+        mode: 'ends',
+        end: parseTimeOfDay({ value: '20:00' }),
+      }),
+    ).toBe(false);
   });
 });
 

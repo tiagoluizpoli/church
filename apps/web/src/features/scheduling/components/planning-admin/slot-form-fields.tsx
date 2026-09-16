@@ -1,4 +1,6 @@
+import { parseTimeOfDay, type TimeOfDay } from '@church/time';
 import { timePartOf, withUpdatedTime } from './planning-admin.utils';
+import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -42,50 +44,70 @@ export function SlotFormFields({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor={`${idPrefix}-start`}>Start</Label>
-        <Input
-          id={`${idPrefix}-start`}
-          type={values.isMultiDayEvent ? 'datetime-local' : 'time'}
-          value={
-            values.isMultiDayEvent
-              ? values.startTimeLocal
-              : timePartOf({ value: values.startTimeLocal })
-          }
-          onChange={(e) =>
-            onChange({
-              ...values,
-              startTimeLocal: values.isMultiDayEvent
-                ? e.target.value
-                : withUpdatedTime({
-                    value: values.startTimeLocal,
-                    time: e.target.value,
-                  }),
-            })
-          }
-        />
+        <Label htmlFor={`${idPrefix}-start`} id={`${idPrefix}-start-label`}>
+          Start
+        </Label>
+        {values.isMultiDayEvent ? (
+          <Input
+            id={`${idPrefix}-start`}
+            type="datetime-local"
+            value={values.startTimeLocal}
+            onChange={(e) =>
+              onChange({ ...values, startTimeLocal: e.target.value })
+            }
+          />
+        ) : (
+          <TimeOfDayField
+            id={`${idPrefix}-start`}
+            aria-labelledby={`${idPrefix}-start-label`}
+            data-testid={`${idPrefix}-start-time-field`}
+            value={parseTimeOfDay({
+              value: timePartOf({ value: values.startTimeLocal }),
+            })}
+            onChange={(time: TimeOfDay) =>
+              onChange({
+                ...values,
+                startTimeLocal: withUpdatedTime({
+                  value: values.startTimeLocal,
+                  time,
+                }),
+              })
+            }
+          />
+        )}
       </div>
       <div className="space-y-1">
-        <Label htmlFor={`${idPrefix}-end`}>End</Label>
-        <Input
-          id={`${idPrefix}-end`}
-          type={values.isMultiDayEvent ? 'datetime-local' : 'time'}
-          value={
-            values.isMultiDayEvent
-              ? values.endTimeLocal
-              : timePartOf({ value: values.endTimeLocal })
-          }
-          onChange={(e) =>
-            onChange({
-              ...values,
-              endTimeLocal: values.isMultiDayEvent
-                ? e.target.value
-                : withUpdatedTime({
-                    value: values.endTimeLocal,
-                    time: e.target.value,
-                  }),
-            })
-          }
-        />
+        <Label htmlFor={`${idPrefix}-end`} id={`${idPrefix}-end-label`}>
+          End
+        </Label>
+        {values.isMultiDayEvent ? (
+          <Input
+            id={`${idPrefix}-end`}
+            type="datetime-local"
+            value={values.endTimeLocal}
+            onChange={(e) =>
+              onChange({ ...values, endTimeLocal: e.target.value })
+            }
+          />
+        ) : (
+          <TimeOfDayField
+            id={`${idPrefix}-end`}
+            aria-labelledby={`${idPrefix}-end-label`}
+            data-testid={`${idPrefix}-end-time-field`}
+            value={parseTimeOfDay({
+              value: timePartOf({ value: values.endTimeLocal }),
+            })}
+            onChange={(time: TimeOfDay) =>
+              onChange({
+                ...values,
+                endTimeLocal: withUpdatedTime({
+                  value: values.endTimeLocal,
+                  time,
+                }),
+              })
+            }
+          />
+        )}
         {isInvalidRange ? (
           <p className="text-destructive text-xs">End must be after start.</p>
         ) : null}

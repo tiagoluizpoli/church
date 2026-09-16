@@ -1,3 +1,4 @@
+import type { TimeOfDay } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
@@ -400,8 +401,8 @@ export type TimeWindowMode = 'starts' | 'ends' | 'within';
  * window. Either bound may be omitted to leave that side open-ended. */
 export interface TimeWindowFilter {
   mode: TimeWindowMode;
-  start?: string;
-  end?: string;
+  start?: TimeOfDay;
+  end?: TimeOfDay;
 }
 
 function toMinutesSinceMidnight(hhmm: string): number {

@@ -4,6 +4,7 @@ import { LEADER_STORAGE_STATE, VOLUNTEER_STORAGE_STATE } from './global-setup';
 test.describe('Desktop Layout Shell', () => {
   // Enforce desktop viewport
   test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({ storageState: LEADER_STORAGE_STATE });
 
   test('should expand and collapse sidebar, and show breadcrumbs', async ({
     page,

@@ -1,5 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE, VOLUNTEER_STORAGE_STATE } from '../global-setup';
+import {
+  LEADER_STORAGE_STATE,
+  TEAM_LEADER_STORAGE_STATE,
+} from '../global-setup';
 
 // DL4-US3 (P2, test-plan.md): a volunteer who belongs to two ministries opens
 // their availability checks (one per ministry for the locked cycle), marks a
@@ -315,32 +318,39 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap', async
   // A single-ministry volunteer's clean confirm still exercises the
   // underlying availability-confirm flow, even though the leader-facing
   // verification that used to follow it is gone — see the note below.
-  const volunteerContext = await browser.newContext({
-    storageState: VOLUNTEER_STORAGE_STATE,
+  // Uses the team-leader identity (Worship-only) rather than
+  // VOLUNTEER_STORAGE_STATE: e3bf3b8 gave the latter Care membership too,
+  // so it's no longer single-ministry and would hit the same overlap.
+  const singleMinistryActorContext = await browser.newContext({
+    storageState: TEAM_LEADER_STORAGE_STATE,
   });
-  const volunteerPage = await volunteerContext.newPage();
-  await volunteerPage.goto('/volunteer/availability');
+  const singleMinistryActorPage = await singleMinistryActorContext.newPage();
+  await singleMinistryActorPage.goto('/volunteer/availability');
 
-  const cleanVolunteerCard = volunteerPage
+  const cleanVolunteerCard = singleMinistryActorPage
     .getByTestId('availability-check-card')
     .filter({ hasText: cycleName })
     .filter({ hasText: 'E2E Worship' });
   await expect(cleanVolunteerCard).toHaveCount(1);
   await cleanVolunteerCard.click();
   await expect(
-    volunteerPage.getByTestId('availability-check-detail'),
+    singleMinistryActorPage.getByTestId('availability-check-detail'),
   ).toBeVisible();
 
-  const volunteerConfirmResponsePromise = volunteerPage.waitForResponse(
-    (response) =>
-      response.url().includes('/availability-checks/') &&
-      response.url().endsWith('/confirm') &&
-      response.request().method() === 'POST',
-  );
-  await volunteerPage.getByTestId('confirm-availability-button').click();
-  const volunteerConfirmResponse = await volunteerConfirmResponsePromise;
-  expect(volunteerConfirmResponse.status()).toBe(204);
-  await volunteerContext.close();
+  const singleMinistryConfirmResponsePromise =
+    singleMinistryActorPage.waitForResponse(
+      (response) =>
+        response.url().includes('/availability-checks/') &&
+        response.url().endsWith('/confirm') &&
+        response.request().method() === 'POST',
+    );
+  await singleMinistryActorPage
+    .getByTestId('confirm-availability-button')
+    .click();
+  const singleMinistryConfirmResponse =
+    await singleMinistryConfirmResponsePromise;
+  expect(singleMinistryConfirmResponse.status()).toBe(204);
+  await singleMinistryActorContext.close();
 
   // KNOWN GAP: this test used to finish with the leader opening the
   // tailoring workspace to check a per-volunteer Acknowledged/Not-looked

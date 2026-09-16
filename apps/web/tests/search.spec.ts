@@ -12,6 +12,10 @@ test.describe('Global Search Command Palette', () => {
     const palette = page.getByTestId('command-palette');
     await expect(palette).not.toBeVisible();
 
+    // The shell's Ctrl+K listener attaches in a useEffect after paint — wait
+    // for a stable shell element so the shortcut isn't sent before it's live.
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
+
     // 1. Trigger via keyboard shortcut (Control+k)
     await page.keyboard.press('Control+k');
     await expect(palette).toBeVisible();

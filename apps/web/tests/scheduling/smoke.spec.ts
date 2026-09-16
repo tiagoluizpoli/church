@@ -78,6 +78,33 @@ test('a draft assignment persists through publish and can be reassigned', async 
     'cycle-requirement-e2e71111-1111-1111-1111-111111111114-e2e55555-5555-5555-5555-555555555552',
   );
 
+  // The picker's first option is whichever candidate the ranking surfaces —
+  // under the full suite, other specs may have already assigned that same
+  // volunteer elsewhere in this shared cycle, which raises the "Volunteer
+  // already assigned" collision dialog instead of assigning immediately.
+  // "Assign to both" keeps the seeded fixture that other specs depend on
+  // intact while still staffing this shift. `.or()` races the two outcomes
+  // instead of polling for the dialog first, so the common (no-collision)
+  // path isn't slowed down waiting out a timeout.
+  interface AwaitAssignmentOrResolveCollisionInput {
+    chip: ReturnType<typeof page.getByTestId>;
+  }
+
+  const awaitAssignmentOrResolveCollision = async ({
+    chip,
+  }: AwaitAssignmentOrResolveCollisionInput): Promise<void> => {
+    const collisionDialog = page.getByRole('dialog', {
+      name: 'Volunteer already assigned',
+    });
+    await expect(chip.or(collisionDialog)).toBeVisible();
+    if (await collisionDialog.isVisible()) {
+      await collisionDialog
+        .getByRole('button', { name: 'Assign to both' })
+        .click();
+      await expect(chip).toBeVisible();
+    }
+  };
+
   await page.goto(BUILDER_URL);
   await page.getByRole('button', { name: /^Show only .*\b25\b/i }).click();
   await expect(firstRequirement).toBeVisible();
@@ -87,7 +114,13 @@ test('a draft assignment persists through publish and can be reassigned', async 
     .getByTestId('picker-option')
     .first()
     .click();
-  await expect(firstRequirement.getByTestId('assignment-chip')).toBeVisible();
+  // This requirement needs 2 Ushers and is shared with another spec that
+  // fills one via its own suggestion-accept flow — under the full suite that
+  // slot may already be staffed, so scope to the newly-appended chip rather
+  // than assuming this is the only one.
+  await awaitAssignmentOrResolveCollision({
+    chip: firstRequirement.getByTestId('assignment-chip').last(),
+  });
 
   await page.getByRole('button', { name: /^Show only .*\b28\b/i }).click();
   await expect(requirement).toBeVisible();
@@ -96,7 +129,9 @@ test('a draft assignment persists through publish and can be reassigned', async 
   const picker = page.getByTestId('assignment-picker');
   await expect(picker).toBeVisible();
   await picker.getByTestId('picker-option').first().click();
-  await expect(requirement.getByTestId('assignment-chip')).toBeVisible();
+  await awaitAssignmentOrResolveCollision({
+    chip: requirement.getByTestId('assignment-chip'),
+  });
 
   await page.getByRole('button', { name: 'Publish cycle' }).first().click();
   await page.getByRole('button', { name: 'Publish cycle' }).last().click();

@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from './global-setup';
 
 test.describe('Theme Provider and Toggling', () => {
+  test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
+
   test('should toggle theme between light and dark and apply appropriate classes', async ({
     page,
   }) => {

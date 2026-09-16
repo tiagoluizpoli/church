@@ -124,7 +124,13 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   });
   const volunteerPage = await volunteerContext.newPage();
 
-  await volunteerPage.goto('/dashboard?section=ministry_schedule');
+  // This volunteer also has an earlier confirmed assignment on the Care
+  // ministry's own published event (see e2e-seed.ts's careAssignment), which
+  // would otherwise win the "earliest upcoming assignment" default — name
+  // the Worship ministry explicitly so this assertion targets our cycle.
+  await volunteerPage.goto(
+    `/dashboard?section=ministry_schedule&ministryId=${WORSHIP_MINISTRY_ID}`,
+  );
   await expect(
     volunteerPage.getByRole('tab', { name: 'Ministry Schedule' }),
   ).toHaveAttribute('aria-selected', 'true');

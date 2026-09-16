@@ -29,6 +29,11 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Matches server/db/auth: caps Vitest to one worker instead of forking
+    // per CPU core. Turbo already runs multiple packages concurrently
+    // (--concurrency=2 for test:unit), so uncapped per-package forking
+    // multiplies fast on a shared/constrained host.
+    fileParallelism: false,
     // Inherited by every project below; a project's own `setupFiles` add to it.
     setupFiles: ['./src/__tests__/setup/clock.ts'],
     projects: [

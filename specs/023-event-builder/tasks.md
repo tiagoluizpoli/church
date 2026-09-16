@@ -206,7 +206,7 @@ Each backend endpoint threads four layers following the `getCycleParticipation`/
 
 - [X] T056 [P] Run [quickstart.md](./quickstart.md) validation end to end (build order + per-story smoke)
 - [X] T057 [P] Update any docs/legacy references pointing at the retired `/scheduling/builder-events` flow
-- [ ] T058 Full safeguard suite (`bun run check` / `check-types` / `test` / `test:e2e`) green + final `/review` across the whole diff
+- [X] T058 Full safeguard suite (`bun run check` / `check-types` / `test` / `test:e2e`) green + final `/review` across the whole diff
 
 ---
 

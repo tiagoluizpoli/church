@@ -29,11 +29,19 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    // Matches server/db/auth: caps Vitest to one worker instead of forking
-    // per CPU core. Turbo already runs multiple packages concurrently
-    // (--concurrency=2 for test:unit), so uncapped per-package forking
-    // multiplies fast on a shared/constrained host.
-    fileParallelism: false,
+    // Caps Vitest's worker count instead of forking per CPU core. Turbo
+    // already runs multiple packages concurrently (--concurrency=2 for
+    // test:unit), so uncapped per-package forking multiplies fast on a
+    // shared/constrained host — confirmed by real OOM kills at the default.
+    // Measured via `bun run validate` with a memory sampler running
+    // alongside: uncapped got OOM-killed 3x; server/db/auth's
+    // fileParallelism: false (1 worker) fixed that but roughly doubled the
+    // test:unit stage (~4m47s -> ~8m28s); 2-4 workers all ran that stage in
+    // ~4m20-47s (no further speedup past 2, since the stage is bottlenecked
+    // by the slowest of Turbo's concurrent packages, not this file's worker
+    // count) but 3-4 pinned host CPU above 80%. 2 avoids that while costing
+    // nothing measurable versus 3 or 4.
+    maxWorkers: 2,
     // Inherited by every project below; a project's own `setupFiles` add to it.
     setupFiles: ['./src/__tests__/setup/clock.ts'],
     projects: [

@@ -1,5 +1,6 @@
 import type { TimeOfDay } from '@church/time';
 import type { TemplateBlockDraft } from './planning-admin.types';
+import { describeTimeBlockSpan } from './planning-admin.utils';
 import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,6 +104,17 @@ export function TemplateBlockRow({
           />
         </div>
       </div>
+      {block.startTime && block.endTime && block.startTime !== block.endTime ? (
+        <p
+          className="text-muted-foreground text-xs"
+          data-testid="template-block-span"
+        >
+          {describeTimeBlockSpan({
+            startTime: block.startTime,
+            endTime: block.endTime,
+          })}
+        </p>
+      ) : null}
     </div>
   );
 }

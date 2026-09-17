@@ -177,6 +177,48 @@ describe('CycleEventGenerator', () => {
     expect(plan.slots[0]?.sourceTemplateBlockId).toBe(blockBId);
   });
 
+  it('resolves an overnight block onto the following CalendarDay', () => {
+    const overnightBlockId =
+      '33333333-3333-3333-3333-333333333333' as TimeBlockId;
+    const overnightTemplateId =
+      '22222222-2222-2222-2222-222222222223' as EventTemplateId;
+    const overnightTemplate = new EventTemplate({
+      props: {
+        churchId,
+        name: 'Overnight Watch',
+        weekday: 3,
+        blocks: [
+          new TimeBlock({
+            props: {
+              churchId,
+              templateId: overnightTemplateId,
+              label: 'Vigil',
+              startTime: '22:00',
+              endTime: '02:00',
+              order: 1,
+            },
+            id: overnightBlockId,
+          }),
+        ],
+      },
+      id: overnightTemplateId,
+    });
+
+    const plans = generator.generate({
+      cycle: createCycle(),
+      templates: [overnightTemplate],
+      existingEvents: [],
+      existingFingerprints: [],
+      timeZone,
+    });
+
+    const [first] = plans as GeneratedCycleCreateEventPlan[];
+    expect(first?.slots[0]).toMatchObject({
+      startTime: new Date('2026-07-01T22:00:00.000Z'),
+      endTime: new Date('2026-07-02T02:00:00.000Z'),
+    });
+  });
+
   it('returns no plans when there are no matching weekdays in the cycle', () => {
     const mondayTemplate = new EventTemplate({
       props: {

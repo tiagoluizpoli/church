@@ -62,4 +62,45 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     });
     expect(result).toEqual([]);
   });
+
+  it('accepts a time block whose end is before its start (crosses midnight)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzleEventTemplateRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+
+    const template = await repo.create({
+      churchId,
+      name: 'Overnight Watch',
+      weekday: 3,
+      blocks: [
+        { label: 'Vigil', startTime: '22:00', endTime: '02:00', order: 1 },
+      ],
+    });
+
+    expect(template.blocks).toHaveLength(1);
+    expect(template.blocks[0]?.startTime).toBe('22:00:00');
+    expect(template.blocks[0]?.endTime).toBe('02:00:00');
+  });
+
+  it('rejects a time block whose start and end are equal', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzleEventTemplateRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+
+    await expect(
+      repo.create({
+        churchId,
+        name: 'Broken',
+        weekday: 3,
+        blocks: [
+          {
+            label: 'Zero-length',
+            startTime: '10:00',
+            endTime: '10:00',
+            order: 1,
+          },
+        ],
+      }),
+    ).rejects.toThrow();
+  });
 });

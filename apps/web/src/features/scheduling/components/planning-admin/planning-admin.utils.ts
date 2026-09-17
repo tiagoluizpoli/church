@@ -1,4 +1,4 @@
-import { fromTimeColumn } from '@church/time';
+import { fromTimeColumn, type TimeOfDay, timeOfDaySpan } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   CycleCalendarSlotRow,
@@ -192,6 +192,39 @@ export function describeTemplate({ template }: DescribeTemplateInput): string {
   return `${WEEKDAYS[template.weekday] ?? 'Unknown'} · ${template.blocks.length} block${template.blocks.length === 1 ? '' : 's'}`;
 }
 
+export interface DescribeTimeBlockSpanInput {
+  startTime: TimeOfDay;
+  endTime: TimeOfDay;
+}
+
+function formatSpanDuration({ durationMinutes }: { durationMinutes: number }) {
+  const hours = Math.floor(durationMinutes / 60);
+  const minutes = durationMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+
+  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+}
+
+/** `Runs 4h · ends next day` for a block whose end crosses midnight, or
+ * `Runs 30m` for a same-day span (ADR-0003's computed-span confirmation). */
+export function describeTimeBlockSpan({
+  startTime,
+  endTime,
+}: DescribeTimeBlockSpanInput): string {
+  const { durationMinutes, crossesToNextDay } = timeOfDaySpan({
+    start: startTime,
+    end: endTime,
+  });
+  const duration = formatSpanDuration({ durationMinutes });
+
+  return crossesToNextDay
+    ? `Runs ${duration} · ends next day`
+    : `Runs ${duration}`;
+}
+
 export function sortTemplateBlocks({
   blocks,
 }: SortTemplateBlocksInput): CreateEventTemplateBody['blocks'] {
@@ -285,7 +318,9 @@ export function canCreateTemplate({
         block.label.trim() !== '' &&
         block.startTime !== null &&
         block.endTime !== null &&
-        block.startTime < block.endTime,
+        // An end before its start crosses midnight (ADR-0003); only a
+        // zero-length block (equal start and end) is invalid.
+        block.startTime !== block.endTime,
     )
   );
 }

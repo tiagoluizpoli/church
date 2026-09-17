@@ -1,6 +1,14 @@
-import { format, parse } from 'date-fns';
+import {
+  formatCalendarDay,
+  fromPickerDate,
+  now,
+  parseCalendarDay,
+  today,
+  toPickerDate,
+} from '@church/time';
 import { CalendarIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
+import type { DateAfter, DateBefore } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { useFormControlSize } from '@/components/ui/form-control-size';
@@ -11,9 +19,24 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-const DATE_VALUE_FORMAT = 'yyyy-MM-dd';
-const CALENDAR_START_MONTH = new Date(new Date().getFullYear() - 10, 0, 1);
-const CALENDAR_END_MONTH = new Date(3000, 11, 31);
+const CALENDAR_START_YEAR =
+  Number(today({ instant: now(), timeZone: 'UTC' }).slice(0, 4)) - 10;
+const CALENDAR_START_MONTH = toPickerDate({
+  day: parseCalendarDay({ value: `${CALENDAR_START_YEAR}-01-01` }),
+});
+const CALENDAR_END_MONTH = toPickerDate({
+  day: parseCalendarDay({ value: '3000-12-31' }),
+});
+
+interface PickerDateOfInput {
+  /** `yyyy-MM-dd` */
+  value: string;
+}
+
+/** The widget-local Date react-day-picker models this CalendarDay with. */
+function pickerDateOf({ value }: PickerDateOfInput): Date {
+  return toPickerDate({ day: parseCalendarDay({ value }) });
+}
 
 export interface DatePickerFieldProps {
   id?: string;
@@ -51,13 +74,15 @@ export function DatePickerField({
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
   const formControlSize = useFormControlSize();
-  const selected = value
-    ? parse(value, DATE_VALUE_FORMAT, new Date())
-    : undefined;
+  const selected = value ? pickerDateOf({ value }) : undefined;
   const showClear = Boolean(onClear && value && !disabled);
-  const disabledMatchers = [
-    minDate ? { before: parse(minDate, DATE_VALUE_FORMAT, new Date()) } : null,
-    maxDate ? { after: parse(maxDate, DATE_VALUE_FORMAT, new Date()) } : null,
+  const disabledMatchers: (DateBefore | DateAfter)[] = [
+    minDate
+      ? ({ before: pickerDateOf({ value: minDate }) } satisfies DateBefore)
+      : null,
+    maxDate
+      ? ({ after: pickerDateOf({ value: maxDate }) } satisfies DateAfter)
+      : null,
   ].filter((matcher) => matcher !== null);
 
   return (
@@ -101,7 +126,9 @@ export function DatePickerField({
             }
           >
             <CalendarIcon className="opacity-60" />
-            {selected ? format(selected, 'dd/MM/yyyy') : placeholder}
+            {value
+              ? formatCalendarDay({ day: parseCalendarDay({ value }) })
+              : placeholder}
           </PopoverTrigger>
           {showClear ? (
             <Button
@@ -133,7 +160,7 @@ export function DatePickerField({
             }
             onSelect={(date) => {
               if (date) {
-                onChange(format(date, DATE_VALUE_FORMAT));
+                onChange(fromPickerDate({ date }));
                 setOpen(false);
               }
             }}

@@ -1,4 +1,9 @@
-import type { TimeOfDay } from '@church/time';
+import {
+  compareInstants,
+  type Instant,
+  parseInstant,
+  type TimeOfDay,
+} from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
@@ -12,6 +17,7 @@ import {
   formatInstantRangeOf,
 } from '@/shared/utils/church-time';
 import { toCycleDayKey } from '@/shared/utils/date';
+import { isInvalidInstantRange } from '@/shared/utils/span-description';
 
 export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
 
@@ -38,8 +44,8 @@ export interface SplitFormState {
 }
 
 export interface ManualSpanDraft {
-  startTime: string;
-  endTime: string;
+  startTime: Instant;
+  endTime: Instant;
   label: string;
 }
 
@@ -95,14 +101,14 @@ export function createInitialSplitForms(
         manualSpans:
           slotView.shifts.length > 0
             ? slotView.shifts.map((shift) => ({
-                startTime: toLocalDateTimeValue(shift.startTime),
-                endTime: toLocalDateTimeValue(shift.endTime),
+                startTime: parseInstant({ value: shift.startTime }),
+                endTime: parseInstant({ value: shift.endTime }),
                 label: shift.label ?? '',
               }))
             : [
                 {
-                  startTime: toLocalDateTimeValue(slotView.slot.startTime),
-                  endTime: toLocalDateTimeValue(slotView.slot.endTime),
+                  startTime: parseInstant({ value: slotView.slot.startTime }),
+                  endTime: parseInstant({ value: slotView.slot.endTime }),
                   label: slotView.slot.label ?? '',
                 },
               ],
@@ -149,20 +155,6 @@ export function getSlotRoleOptions({
   }));
 }
 
-export function toLocalDateTimeValue(isoValue: string): string {
-  const date = new Date(isoValue);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hour = String(date.getHours()).padStart(2, '0');
-  const minute = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hour}:${minute}`;
-}
-
-export function toIsoString(localValue: string): string {
-  return new Date(localValue).toISOString();
-}
-
 export function validateManualSpans({
   slotView,
   spans,
@@ -170,39 +162,40 @@ export function validateManualSpans({
   slotView: GetCycleParticipation200EventsItemSlotsItem;
   spans: ManualSpanDraft[];
 }): string | null {
-  const slotStart = new Date(slotView.slot.startTime);
-  const slotEnd = new Date(slotView.slot.endTime);
-  const parsed = spans.map((span) => ({
-    ...span,
-    start: new Date(span.startTime),
-    end: new Date(span.endTime),
-  }));
+  const slotStart = parseInstant({ value: slotView.slot.startTime });
+  const slotEnd = parseInstant({ value: slotView.slot.endTime });
 
   if (
-    parsed.some(
-      (span) =>
-        Number.isNaN(span.start.getTime()) || Number.isNaN(span.end.getTime()),
+    spans.some((span) =>
+      isInvalidInstantRange({ start: span.startTime, end: span.endTime }),
     )
   ) {
-    return 'Fill every manual shift time before saving.';
-  }
-
-  if (parsed.some((span) => span.start >= span.end)) {
     return 'Each manual shift must end after it starts.';
   }
 
-  if (parsed.some((span) => span.start < slotStart || span.end > slotEnd)) {
+  if (
+    spans.some(
+      (span) =>
+        compareInstants({ left: span.startTime, right: slotStart }) === -1 ||
+        compareInstants({ left: span.endTime, right: slotEnd }) === 1,
+    )
+  ) {
     return 'Manual shifts must stay within the parent slot bounds.';
   }
 
-  const ordered = [...parsed].sort(
-    (left, right) => left.start.getTime() - right.start.getTime(),
+  const ordered = [...spans].sort((left, right) =>
+    compareInstants({ left: left.startTime, right: right.startTime }),
   );
 
   for (let index = 1; index < ordered.length; index += 1) {
     const previous = ordered[index - 1];
     const current = ordered[index];
-    if (previous && current && previous.end > current.start) {
+    if (
+      previous &&
+      current &&
+      compareInstants({ left: previous.endTime, right: current.startTime }) ===
+        1
+    ) {
       return 'Manual shifts cannot overlap.';
     }
   }

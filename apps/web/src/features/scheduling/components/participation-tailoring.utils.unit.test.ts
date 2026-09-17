@@ -1,4 +1,4 @@
-import { parseTimeOfDay } from '@church/time';
+import { parseInstant, parseTimeOfDay } from '@church/time';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   buildMinistryTailoringSummary,
@@ -19,8 +19,8 @@ const SLOT_VIEW: GetCycleParticipation200EventsItem['slots'][number] = {
     id: 'slot-1',
     churchId: 'church-1',
     eventId: 'event-1',
-    startTime: '2026-07-12T09:00:00',
-    endTime: '2026-07-12T11:00:00',
+    startTime: '2026-07-12T09:00:00Z',
+    endTime: '2026-07-12T11:00:00Z',
     label: 'Greeter',
     status: 'active',
     requirements: [],
@@ -57,12 +57,12 @@ function makeEventView(
       churchId: 'church-1',
       planningCycleId: 'cycle-1',
       title: 'Sunday Service',
-      startDate: '2026-07-12T09:00:00',
-      endDate: '2026-07-12T11:00:00',
+      startDate: '2026-07-12T09:00:00Z',
+      endDate: '2026-07-12T11:00:00Z',
       status: 'scheduled',
       eventType: 'hourly',
-      createdAt: '2026-07-01T00:00:00',
-      updatedAt: '2026-07-01T00:00:00',
+      createdAt: '2026-07-01T00:00:00Z',
+      updatedAt: '2026-07-01T00:00:00Z',
     },
     slots: (
       slotOverrides ?? [
@@ -71,8 +71,8 @@ function makeEventView(
             id: 'slot-1',
             churchId: 'church-1',
             eventId: 'event-1',
-            startTime: '2026-07-12T09:00:00',
-            endTime: '2026-07-12T10:00:00',
+            startTime: '2026-07-12T09:00:00Z',
+            endTime: '2026-07-12T10:00:00Z',
             label: 'Greeter',
             status: 'active',
             requirements: [],
@@ -87,8 +87,8 @@ function makeEventView(
         id: 'slot-1',
         churchId: 'church-1',
         eventId: 'event-1',
-        startTime: '2026-07-12T09:00:00',
-        endTime: '2026-07-12T10:00:00',
+        startTime: '2026-07-12T09:00:00Z',
+        endTime: '2026-07-12T10:00:00Z',
         label: 'Greeter',
         status: 'active',
         requirements: [],
@@ -625,13 +625,13 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T09:00:00',
-              endTime: '2026-07-12T10:00:00',
+              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
               label: '',
             },
             {
-              startTime: '2026-07-12T10:00:00',
-              endTime: '2026-07-12T11:00:00',
+              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               label: '',
             },
           ],
@@ -645,13 +645,13 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T10:00:00',
-              endTime: '2026-07-12T11:00:00',
+              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               label: '',
             },
             {
-              startTime: '2026-07-12T09:00:00',
-              endTime: '2026-07-12T10:00:00',
+              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
               label: '',
             },
           ],
@@ -667,8 +667,8 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T09:00:00',
-              endTime: '2026-07-12T09:00:00',
+              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
               label: '',
             },
           ],
@@ -682,8 +682,8 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T10:00:00',
-              endTime: '2026-07-12T09:00:00',
+              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
               label: '',
             },
           ],
@@ -697,8 +697,8 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T08:00:00',
-              endTime: '2026-07-12T10:00:00',
+              startTime: parseInstant({ value: '2026-07-12T08:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
               label: '',
             },
           ],
@@ -712,8 +712,8 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T09:00:00',
-              endTime: '2026-07-12T12:00:00',
+              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T12:00:00Z' }),
               label: '',
             },
           ],
@@ -727,13 +727,13 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T09:00:00',
-              endTime: '2026-07-12T10:30:00',
+              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T10:30:00Z' }),
               label: '',
             },
             {
-              startTime: '2026-07-12T10:00:00',
-              endTime: '2026-07-12T11:00:00',
+              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               label: '',
             },
           ],
@@ -747,31 +747,77 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
           slotView: SLOT_VIEW,
           spans: [
             {
-              startTime: '2026-07-12T09:00:00',
-              endTime: '2026-07-12T10:00:00',
+              startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
               label: '',
             },
             {
-              startTime: '2026-07-12T10:00:00',
-              endTime: '2026-07-12T11:00:00',
+              startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               label: '',
             },
           ],
         }),
       ).toBeNull();
     });
+
+    it('accepts manual spans within a parent TimeSlot whose own bounds cross midnight', () => {
+      const overnightSlotView: GetCycleParticipation200EventsItem['slots'][number] =
+        {
+          ...SLOT_VIEW,
+          slot: {
+            ...SLOT_VIEW.slot,
+            startTime: '2026-07-12T22:00:00Z',
+            endTime: '2026-07-13T02:00:00Z',
+          },
+        };
+
+      expect(
+        validateManualSpans({
+          slotView: overnightSlotView,
+          spans: [
+            {
+              startTime: parseInstant({ value: '2026-07-12T22:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-13T00:00:00Z' }),
+              label: '',
+            },
+            {
+              startTime: parseInstant({ value: '2026-07-13T00:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-13T02:00:00Z' }),
+              label: '',
+            },
+          ],
+        }),
+      ).toBeNull();
+    });
+
+    it('rejects a manual span that starts before an overnight parent TimeSlot even though its wall-clock time reads later in the day', () => {
+      const overnightSlotView: GetCycleParticipation200EventsItem['slots'][number] =
+        {
+          ...SLOT_VIEW,
+          slot: {
+            ...SLOT_VIEW.slot,
+            startTime: '2026-07-12T22:00:00Z',
+            endTime: '2026-07-13T02:00:00Z',
+          },
+        };
+
+      expect(
+        validateManualSpans({
+          slotView: overnightSlotView,
+          spans: [
+            {
+              startTime: parseInstant({ value: '2026-07-12T20:00:00Z' }),
+              endTime: parseInstant({ value: '2026-07-13T01:00:00Z' }),
+              label: '',
+            },
+          ],
+        }),
+      ).toBe('Manual shifts must stay within the parent slot bounds.');
+    });
   });
 
   describe('Invalid / Empty Input', () => {
-    it('rejects a span with an unparseable time', () => {
-      expect(
-        validateManualSpans({
-          slotView: SLOT_VIEW,
-          spans: [{ startTime: '', endTime: '2026-07-12T10:00:00', label: '' }],
-        }),
-      ).toBe('Fill every manual shift time before saving.');
-    });
-
     it('accepts zero spans (nothing to validate yet)', () => {
       expect(
         validateManualSpans({ slotView: SLOT_VIEW, spans: [] }),
@@ -792,8 +838,8 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
                 id: 'shift-1',
                 participationId: 'participation-1',
                 timeSlotId: 'slot-1',
-                startTime: '2026-07-12T09:00:00',
-                endTime: '2026-07-12T11:00:00',
+                startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+                endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               },
             ],
           },
@@ -823,22 +869,22 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
                 id: 'shift-1',
                 participationId: 'participation-1',
                 timeSlotId: 'slot-1',
-                startTime: '2026-07-12T09:00:00',
-                endTime: '2026-07-12T10:00:00',
+                startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+                endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
               },
               {
                 id: 'shift-2',
                 participationId: 'participation-1',
                 timeSlotId: 'slot-1',
-                startTime: '2026-07-12T10:00:00',
-                endTime: '2026-07-12T11:00:00',
+                startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+                endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               },
               {
                 id: 'shift-3',
                 participationId: 'participation-1',
                 timeSlotId: 'slot-1',
-                startTime: '2026-07-12T11:00:00',
-                endTime: '2026-07-12T12:00:00',
+                startTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
+                endTime: parseInstant({ value: '2026-07-12T12:00:00Z' }),
               },
             ],
           },

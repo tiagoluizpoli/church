@@ -1,4 +1,4 @@
-import type { TimeOfDay } from '@church/time';
+import type { Instant, TimeOfDay } from '@church/time';
 import type {
   GetPlanningCycle200Cycle,
   GetPlanningCycle200EventsItem,
@@ -70,7 +70,7 @@ export interface EditingEventState {
   title: string;
   description: string;
   location: string;
-  startDateTimeLocal: string;
+  start: Instant;
   originalStartDate: string;
   originalEndDate: string;
 }
@@ -79,15 +79,15 @@ export interface EditingSlotState {
   eventId: string;
   slotId: string;
   label: string;
-  startTimeLocal: string;
-  endTimeLocal: string;
+  start: Instant;
+  end: Instant;
   isMultiDayEvent: boolean;
 }
 
 export interface CreatingSlotState {
   eventId: string;
   label: string;
-  startTimeLocal: string;
-  endTimeLocal: string;
+  start: Instant;
+  end: Instant;
   isMultiDayEvent: boolean;
 }

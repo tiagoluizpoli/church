@@ -1,4 +1,5 @@
 import type { EditingEventState } from './planning-admin.types';
+import { InstantField } from '@/components/instant-field';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 export interface EditEventDialogProps {
   editingEvent: EditingEventState | null;
   updateEventPending: boolean;
+  timeZone: string;
   onChange: (event: EditingEventState) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
@@ -19,6 +21,7 @@ export interface EditEventDialogProps {
 export function EditEventDialog({
   editingEvent,
   updateEventPending,
+  timeZone,
   onChange,
   onOpenChange,
   onSubmit,
@@ -80,17 +83,14 @@ export function EditEventDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="edit-event-start">Start</Label>
-            <Input
-              id="edit-event-start"
-              type="datetime-local"
-              value={editingEvent.startDateTimeLocal}
-              onChange={(e) =>
-                onChange({
-                  ...editingEvent,
-                  startDateTimeLocal: e.target.value,
-                })
-              }
+            <Label id="edit-event-start-label">Start</Label>
+            <InstantField
+              idPrefix="edit-event-start"
+              value={editingEvent.start}
+              timeZone={timeZone}
+              aria-labelledby="edit-event-start-label"
+              data-testid="edit-event-start"
+              onChange={(start) => onChange({ ...editingEvent, start })}
             />
           </div>
         </div>

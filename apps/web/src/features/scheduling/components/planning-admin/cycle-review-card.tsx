@@ -1,3 +1,4 @@
+import { parseInstant, parseTimeOfDay, today, toInstant } from '@church/time';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { QuickCreateEventModal } from '../quick-create-event-modal';
 import {
@@ -21,11 +22,9 @@ import type {
   ExpandedCalendarRowsState,
 } from './planning-admin.types';
 import {
-  fromDateTimeLocalValue,
   isMultiDayEvent,
   shiftedEndDate,
   toCycleCalendarTableRow,
-  toDateTimeLocalValue,
 } from './planning-admin.utils';
 import { useCycleReviewCard } from './planning-admin-context';
 import { PlanningEventCard } from './planning-event-card';
@@ -43,8 +42,8 @@ interface CycleReviewCardProps {
   isReadOnly: boolean;
 }
 
-const DEFAULT_SLOT_START_TIME = '09:00';
-const DEFAULT_SLOT_END_TIME = '10:00';
+const DEFAULT_SLOT_START_TIME = parseTimeOfDay({ value: '09:00' });
+const DEFAULT_SLOT_END_TIME = parseTimeOfDay({ value: '10:00' });
 
 type DialogState =
   | { kind: 'none' }
@@ -276,7 +275,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         title: row.title,
         description: source.event.description ?? '',
         location: source.event.location ?? '',
-        startDateTimeLocal: toDateTimeLocalValue({ iso: row.startDate }),
+        start: parseInstant({ value: row.startDate }),
         originalStartDate: source.event.startDate,
         originalEndDate: source.event.endDate,
       },
@@ -286,18 +285,15 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
   function submitEditEvent(): void {
     if (dialogState.kind !== 'edit-event') return;
     const { event } = dialogState;
-    const newStartDate = fromDateTimeLocalValue({
-      value: event.startDateTimeLocal,
-    });
 
     handleUpdateEvent({
       eventId: event.eventId,
       title: event.title,
       description: event.description || undefined,
       location: event.location || undefined,
-      startDate: newStartDate,
+      startDate: event.start,
       endDate: shiftedEndDate({
-        newStartDate,
+        newStartDate: event.start,
         originalStartDate: event.originalStartDate,
         originalEndDate: event.originalEndDate,
       }),
@@ -323,8 +319,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         eventId: parentId,
         slotId,
         label,
-        startTimeLocal: toDateTimeLocalValue({ iso: startTime }),
-        endTimeLocal: toDateTimeLocalValue({ iso: endTime }),
+        start: parseInstant({ value: startTime }),
+        end: parseInstant({ value: endTime }),
         isMultiDayEvent: isMultiDayEvent({
           startDate: source.event.startDate,
           endDate: source.event.endDate,
@@ -341,8 +337,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
       eventId: slot.eventId,
       slotId: slot.slotId,
       label: slot.label,
-      startTime: fromDateTimeLocalValue({ value: slot.startTimeLocal }),
-      endTime: fromDateTimeLocalValue({ value: slot.endTimeLocal }),
+      startTime: slot.start,
+      endTime: slot.end,
     });
   }
 
@@ -353,15 +349,26 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
 
     if (!source) return;
 
-    const datePart = toDateTimeLocalValue({ iso: row.startDate }).split('T')[0];
+    const day = today({
+      instant: parseInstant({ value: row.startDate }),
+      timeZone: churchTimezone,
+    });
 
     dispatchDialog({
       type: 'create-slot',
       slot: {
         eventId: row.eventId,
         label: '',
-        startTimeLocal: `${datePart}T${DEFAULT_SLOT_START_TIME}`,
-        endTimeLocal: `${datePart}T${DEFAULT_SLOT_END_TIME}`,
+        start: toInstant({
+          day,
+          time: DEFAULT_SLOT_START_TIME,
+          timeZone: churchTimezone,
+        }),
+        end: toInstant({
+          day,
+          time: DEFAULT_SLOT_END_TIME,
+          timeZone: churchTimezone,
+        }),
         isMultiDayEvent: isMultiDayEvent({
           startDate: source.event.startDate,
           endDate: source.event.endDate,
@@ -377,8 +384,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     handleCreateSlot({
       eventId: slot.eventId,
       label: slot.label || undefined,
-      startTime: fromDateTimeLocalValue({ value: slot.startTimeLocal }),
-      endTime: fromDateTimeLocalValue({ value: slot.endTimeLocal }),
+      startTime: slot.start,
+      endTime: slot.end,
     });
   }
 
@@ -563,6 +570,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
       <EditEventDialog
         editingEvent={editingEvent}
         updateEventPending={updateEventPending}
+        timeZone={churchTimezone}
         onChange={(event) =>
           dispatchDialog({ type: 'update-edit-event', event })
         }
@@ -575,6 +583,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
       <EditSlotDialog
         editingSlot={editingSlot}
         updateSlotPending={updateSlotPending}
+        timeZone={churchTimezone}
         onChange={(slot) => dispatchDialog({ type: 'update-edit-slot', slot })}
         onOpenChange={(open) => {
           if (!open) dispatchDialog({ type: 'close' });
@@ -585,6 +594,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
       <CreateSlotDialog
         creatingSlot={creatingSlot}
         createSlotPending={createSlotPending}
+        timeZone={churchTimezone}
         onChange={(slot) =>
           dispatchDialog({ type: 'update-create-slot', slot })
         }

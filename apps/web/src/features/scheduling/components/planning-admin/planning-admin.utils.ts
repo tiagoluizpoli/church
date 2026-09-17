@@ -1,4 +1,12 @@
-import { fromTimeColumn, type TimeOfDay, timeOfDaySpan } from '@church/time';
+import {
+  addMilliseconds,
+  fromTimeColumn,
+  type Instant,
+  millisecondsBetween,
+  parseInstant,
+  type TimeOfDay,
+  timeOfDaySpan,
+} from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   CycleCalendarSlotRow,
@@ -19,6 +27,7 @@ import type {
   ListPlanningCycles200CyclesItemState,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
+import { describeSpan } from '@/shared/utils/span-description';
 
 export const WEEKDAYS = [
   'Sunday',
@@ -197,32 +206,15 @@ export interface DescribeTimeBlockSpanInput {
   endTime: TimeOfDay;
 }
 
-function formatSpanDuration({ durationMinutes }: { durationMinutes: number }) {
-  const hours = Math.floor(durationMinutes / 60);
-  const minutes = durationMinutes % 60;
-
-  if (hours === 0) {
-    return `${minutes}m`;
-  }
-
-  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
-}
-
 /** `Runs 4h · ends next day` for a block whose end crosses midnight, or
  * `Runs 30m` for a same-day span (ADR-0003's computed-span confirmation). */
 export function describeTimeBlockSpan({
   startTime,
   endTime,
 }: DescribeTimeBlockSpanInput): string {
-  const { durationMinutes, crossesToNextDay } = timeOfDaySpan({
-    start: startTime,
-    end: endTime,
+  return describeSpan({
+    span: timeOfDaySpan({ start: startTime, end: endTime }),
   });
-  const duration = formatSpanDuration({ durationMinutes });
-
-  return crossesToNextDay
-    ? `Runs ${duration} · ends next day`
-    : `Runs ${duration}`;
 }
 
 export function sortTemplateBlocks({
@@ -271,7 +263,7 @@ export function eventStatusBadgeVariant({
 }
 
 export interface ShiftedEndDateInput {
-  newStartDate: string;
+  newStartDate: Instant;
   originalStartDate: string;
   originalEndDate: string;
 }
@@ -285,10 +277,15 @@ export function shiftedEndDate({
   newStartDate,
   originalStartDate,
   originalEndDate,
-}: ShiftedEndDateInput): string {
-  const delta =
-    new Date(newStartDate).getTime() - new Date(originalStartDate).getTime();
-  return new Date(new Date(originalEndDate).getTime() + delta).toISOString();
+}: ShiftedEndDateInput): Instant {
+  const delta = millisecondsBetween({
+    start: parseInstant({ value: originalStartDate }),
+    end: newStartDate,
+  });
+  return addMilliseconds({
+    instant: parseInstant({ value: originalEndDate }),
+    milliseconds: delta,
+  });
 }
 
 export function calculateTotalSlots({ events }: TotalSlotsInput): number {
@@ -366,56 +363,6 @@ export function toTemplateLibraryTableRow({
     weekday: WEEKDAYS[template.weekday] ?? 'Unknown',
     blockCount: template.blocks.length,
   };
-}
-
-interface PadTwoDigitsInput {
-  value: number;
-}
-
-function padTwoDigits({ value }: PadTwoDigitsInput): string {
-  return String(value).padStart(2, '0');
-}
-
-export interface ToDateTimeLocalValueInput {
-  iso: string;
-}
-
-export function toDateTimeLocalValue({
-  iso,
-}: ToDateTimeLocalValueInput): string {
-  const date = new Date(iso);
-  const month = padTwoDigits({ value: date.getMonth() + 1 });
-  const day = padTwoDigits({ value: date.getDate() });
-  const hours = padTwoDigits({ value: date.getHours() });
-  const minutes = padTwoDigits({ value: date.getMinutes() });
-  return `${date.getFullYear()}-${month}-${day}T${hours}:${minutes}`;
-}
-
-export interface FromDateTimeLocalValueInput {
-  value: string;
-}
-
-export function fromDateTimeLocalValue({
-  value,
-}: FromDateTimeLocalValueInput): string {
-  return new Date(value).toISOString();
-}
-
-export interface TimePartOfInput {
-  value: string;
-}
-
-export function timePartOf({ value }: TimePartOfInput): string {
-  return value.split('T')[1] ?? '';
-}
-
-export interface WithUpdatedTimeInput {
-  value: string;
-  time: string;
-}
-
-export function withUpdatedTime({ value, time }: WithUpdatedTimeInput): string {
-  return `${value.split('T')[0]}T${time}`;
 }
 
 export function toCycleCalendarTableRow({

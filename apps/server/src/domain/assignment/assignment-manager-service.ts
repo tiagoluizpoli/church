@@ -102,6 +102,9 @@ export const AssignmentManagerService = {
 
     const slotDurationMs = slotDurationMinutes * 60 * 1000;
     const slots: GeneratedSlot[] = [];
+    // UTC calendar day, not the Church Timezone's — this request carries no
+    // timezone, and the label only needs to distinguish spans, not name the
+    // church-local day. Preserves this function's pre-seam behavior exactly.
     const spansMultipleDays =
       request.eventStartTime.slice(0, 10) !== request.eventEndTime.slice(0, 10);
 

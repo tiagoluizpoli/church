@@ -201,11 +201,13 @@ function aggregateState(
   return 'mixed';
 }
 
-function scheduleShiftLabel(shift: {
+interface ScheduleShiftLabelInput {
   label?: string;
   startTime: Instant;
   endTime: Instant;
-}): string {
+}
+
+function scheduleShiftLabel(shift: ScheduleShiftLabelInput): string {
   const start = toDate({ instant: shift.startTime });
   const end = toDate({ instant: shift.endTime });
   return (

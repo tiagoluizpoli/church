@@ -97,4 +97,40 @@ describe('TemplateBlockRow', () => {
       document.querySelector('input[type="time"]'),
     ).not.toBeInTheDocument();
   });
+
+  it('shows the computed span with an ends-next-day suffix for an overnight block', () => {
+    renderWithProviders(
+      <TemplateBlockRow
+        block={{
+          ...initialBlock,
+          startTime: parseTimeOfDay({ value: '22:00' }),
+          endTime: parseTimeOfDay({ value: '02:00' }),
+        }}
+        index={0}
+        totalBlocks={1}
+        onBlockChange={vi.fn()}
+        onRemoveBlock={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('template-block-span')).toHaveTextContent(
+      'Runs 4h · ends next day',
+    );
+  });
+
+  it('shows the computed span without a suffix for a same-day block', () => {
+    renderWithProviders(
+      <TemplateBlockRow
+        block={initialBlock}
+        index={0}
+        totalBlocks={1}
+        onBlockChange={vi.fn()}
+        onRemoveBlock={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('template-block-span')).toHaveTextContent(
+      'Runs 30m',
+    );
+  });
 });

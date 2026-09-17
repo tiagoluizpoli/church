@@ -1,3 +1,11 @@
+import {
+  addCalendarDays,
+  fromTimeColumn,
+  parseCalendarDay,
+  parseTimeOfDay,
+  type TimeOfDay,
+  timeOfDaySpan,
+} from '@church/time';
 import { fromZonedTime } from 'date-fns-tz';
 import type { EventId, EventTemplateId, TimeBlockId } from '../branded-ids';
 import type { EventTemplate } from '../entities/event-template';
@@ -56,6 +64,18 @@ interface BuildLocalDateTimeInput {
   timeZone: string;
 }
 
+interface BuildSlotBoundsInput {
+  date: string;
+  startTime: string;
+  endTime: string;
+  timeZone: string;
+}
+
+interface SlotBounds {
+  startTime: Date;
+  endTime: Date;
+}
+
 interface ListMatchingCycleDatesInput {
   cycle: PlanningCycle;
   weekday: number;
@@ -100,14 +120,10 @@ export class CycleEventGenerator {
           .map((block) => ({
             sourceTemplateBlockId: block.id as TimeBlockId,
             label: block.label,
-            startTime: buildLocalDateTime({
+            ...buildSlotBounds({
               date: eventDate,
-              time: block.startTime,
-              timeZone,
-            }),
-            endTime: buildLocalDateTime({
-              date: eventDate,
-              time: block.endTime,
+              startTime: block.startTime,
+              endTime: block.endTime,
               timeZone,
             }),
           }));
@@ -174,4 +190,36 @@ function buildLocalDateTime({
 
 function normalizeTimeForDateTime(time: string): string {
   return time.length === 5 ? `${time}:00` : time;
+}
+
+/** A TimeBlock's time is `HH:mm` in tests or the `HH:mm:ss` a Postgres `time`
+ * column returns; either way it names a TimeOfDay. */
+function toTimeOfDay(time: string): TimeOfDay {
+  return time.length === 5
+    ? parseTimeOfDay({ value: time })
+    : fromTimeColumn({ value: time });
+}
+
+/**
+ * A block's end earlier than its start crosses midnight (ADR-0003), so its
+ * end resolves against the following day.
+ */
+function buildSlotBounds({
+  date,
+  startTime,
+  endTime,
+  timeZone,
+}: BuildSlotBoundsInput): SlotBounds {
+  const { crossesToNextDay } = timeOfDaySpan({
+    start: toTimeOfDay(startTime),
+    end: toTimeOfDay(endTime),
+  });
+  const endDate = crossesToNextDay
+    ? addCalendarDays({ day: parseCalendarDay({ value: date }), days: 1 })
+    : date;
+
+  return {
+    startTime: buildLocalDateTime({ date, time: startTime, timeZone }),
+    endTime: buildLocalDateTime({ date: endDate, time: endTime, timeZone }),
+  };
 }

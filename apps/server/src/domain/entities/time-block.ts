@@ -18,10 +18,17 @@ export interface TimeBlockInput {
   updatedAt?: Date;
 }
 
+function isSameTimeOfDay(left: string, right: string): boolean {
+  // HH:mm only, so the database's HH:mm:ss form still compares equal.
+  return left.slice(0, 5) === right.slice(0, 5);
+}
+
 export class TimeBlock extends Entity<TimeBlockProps, TimeBlockId> {
   constructor({ props, id, createdAt, updatedAt }: TimeBlockInput) {
-    if (props.startTime >= props.endTime) {
-      throw new InvalidTimeRangeError();
+    // An end before its start crosses midnight onto the next CalendarDay
+    // (ADR-0003); only a zero-length block is invalid.
+    if (isSameTimeOfDay(props.startTime, props.endTime)) {
+      throw new InvalidTimeRangeError('Start time must not equal end time');
     }
 
     super(props as TimeBlockProps, id as TimeBlockId, createdAt, updatedAt);

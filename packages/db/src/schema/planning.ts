@@ -114,7 +114,10 @@ export const timeBlock = pgTable(
     order: integer('order').notNull(),
   },
   (table) => [
-    check('time_block_time_check', sql`${table.startTime} < ${table.endTime}`),
+    check(
+      'time_block_time_not_empty_check',
+      sql`${table.startTime} != ${table.endTime}`,
+    ),
     uniqueIndex('time_block_template_order_idx').on(
       table.templateId,
       table.order,

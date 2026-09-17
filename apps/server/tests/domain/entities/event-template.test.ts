@@ -56,7 +56,7 @@ describe('EventTemplate and TimeBlock', () => {
     expect(template.blocks.map((block) => block.order)).toEqual([1, 2]);
   });
 
-  it('rejects time blocks whose start is not before the end', () => {
+  it('rejects zero-length time blocks (equal start and end)', () => {
     expect(() =>
       createTimeBlock({
         props: {
@@ -65,6 +65,18 @@ describe('EventTemplate and TimeBlock', () => {
         },
       }),
     ).toThrow(InvalidTimeRangeError);
+  });
+
+  it('accepts an overnight time block whose end is before its start', () => {
+    const block = createTimeBlock({
+      props: {
+        startTime: '22:00',
+        endTime: '02:00',
+      },
+    });
+
+    expect(block.startTime).toBe('22:00');
+    expect(block.endTime).toBe('02:00');
   });
 
   it('supports a single time block template', () => {

@@ -1,4 +1,9 @@
-import { compareInstants, fromDate, toDate } from '@church/time';
+import {
+  compareInstants,
+  fromDate,
+  now as nowInstant,
+  toDate,
+} from '@church/time';
 import { injectable } from 'tsyringe';
 import type { VolunteerId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
@@ -132,7 +137,7 @@ export class DbRedemptionManager implements RedemptionManager {
 
   async getPublicPreview({
     ministryInvitationId,
-    now = new Date(),
+    now = toDate({ instant: nowInstant() }),
   }: GetPublicRedemptionPreviewInput): Promise<PublicRedemptionPreview | null> {
     const preview = await this.invitationRepository.findPublicRedemptionPreview(
       {
@@ -146,7 +151,7 @@ export class DbRedemptionManager implements RedemptionManager {
 
   async requestVerificationCode({
     ministryInvitationId,
-    now = new Date(),
+    now = toDate({ instant: nowInstant() }),
   }: RequestRedemptionCodeInput): Promise<boolean> {
     const preview = await this.getPublicPreview({ ministryInvitationId, now });
     if (!preview) return false;
@@ -165,7 +170,7 @@ export class DbRedemptionManager implements RedemptionManager {
     password,
     code,
     idempotencyKey,
-    now = new Date(),
+    now = toDate({ instant: nowInstant() }),
   }: RedeemNewUserInput): Promise<RedeemNewUserOutcome> {
     const preview = await this.invitationRepository.findPublicRedemptionPreview(
       { ministryInvitationId, now, includeAcceptedChurchInvitation: true },
@@ -340,7 +345,7 @@ export class DbRedemptionManager implements RedemptionManager {
   async getAuthenticatedInvitationStatus({
     ministryInvitationId,
     userId,
-    now = new Date(),
+    now = toDate({ instant: nowInstant() }),
   }: GetAuthenticatedInvitationStatusInput): Promise<AuthenticatedInvitationStatus> {
     const resolved = await this.resolveInvitationContext({
       ministryInvitationId,
@@ -377,7 +382,7 @@ export class DbRedemptionManager implements RedemptionManager {
     userId,
     sessionCookie,
     idempotencyKey,
-    now = new Date(),
+    now = toDate({ instant: nowInstant() }),
   }: AcceptExistingMemberInput): Promise<AcceptExistingMemberOutcome> {
     const resolved = await this.resolveInvitationContext({
       ministryInvitationId,
@@ -445,7 +450,7 @@ export class DbRedemptionManager implements RedemptionManager {
     ministryInvitationId,
     userId,
     sessionCookie,
-    now = new Date(),
+    now = toDate({ instant: nowInstant() }),
   }: DeclineInvitationInput): Promise<DeclineInvitationOutcome> {
     const resolved = await this.resolveInvitationContext({
       ministryInvitationId,
@@ -492,7 +497,7 @@ export class DbRedemptionManager implements RedemptionManager {
 
   async getDebugVerificationCode({
     ministryInvitationId,
-    now = new Date(),
+    now = toDate({ instant: nowInstant() }),
   }: GetDebugVerificationCodeInput): Promise<string | null> {
     if (!this.verificationCodeInspector) return null;
     const preview = await this.getPublicPreview({ ministryInvitationId, now });

@@ -3,6 +3,7 @@ import {
   addMilliseconds,
   compareInstants,
   fromDate,
+  now as nowClock,
   toDate,
 } from '@church/time';
 import type { MinistryInvitationId } from '../domain/branded-ids';
@@ -74,7 +75,7 @@ export class InvitationVerificationCodeManager
     ministryInvitationId,
     recipientEmail,
     churchName,
-    now = new Date(),
+    now = toDate({ instant: nowClock() }),
   }: IssueVerificationCodeInput): Promise<void> {
     const code = this.generateCode();
     const codeHash = hashVerificationCode({
@@ -119,7 +120,7 @@ export class InvitationVerificationCodeManager
     ministryInvitationId,
     code,
     idempotencyKey,
-    now = new Date(),
+    now = toDate({ instant: nowClock() }),
   }: VerifyInvitationCodeInput): Promise<void> {
     const nowInstant = fromDate({ date: now });
     const state = await this.repository.find({ ministryInvitationId });

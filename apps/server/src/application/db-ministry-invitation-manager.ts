@@ -190,7 +190,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
             : 'invitation.ministry',
         payload: { ministryInvitationId: invitation.id },
         correlationId: crypto.randomUUID(),
-        scheduledFor: new Date(),
+        scheduledFor: toDate({ instant: nowInstant() }),
         tx,
       });
 
@@ -248,7 +248,12 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       tx,
     });
 
-    const expiresAt = new Date(Date.now() + MINISTRY_ONLY_INVITATION_TTL_MS);
+    const expiresAt = toDate({
+      instant: addMilliseconds({
+        instant: nowInstant(),
+        milliseconds: MINISTRY_ONLY_INVITATION_TTL_MS,
+      }),
+    });
     const invitation = existing
       ? await this.repo.refreshExpiry({
           churchId,
@@ -272,7 +277,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       kind: 'invitation.ministry',
       payload: { ministryInvitationId: invitation.id },
       correlationId: crypto.randomUUID(),
-      scheduledFor: new Date(),
+      scheduledFor: toDate({ instant: nowInstant() }),
       tx,
     });
 
@@ -332,7 +337,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         churchInvitationId: churchInvitationSummary.id,
       },
       correlationId: crypto.randomUUID(),
-      scheduledFor: new Date(),
+      scheduledFor: toDate({ instant: nowInstant() }),
       tx,
     });
 

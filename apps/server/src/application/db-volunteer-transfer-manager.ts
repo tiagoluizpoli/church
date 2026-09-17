@@ -1,4 +1,9 @@
-import { compareInstants, fromDate } from '@church/time';
+import {
+  compareInstants,
+  fromDate,
+  now as nowClock,
+  toDate,
+} from '@church/time';
 import { injectable } from 'tsyringe';
 import type {
   ChurchId,
@@ -96,7 +101,7 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
   async getTransferPreview({
     ministryInvitationId,
     userId,
-    now = new Date(),
+    now = toDate({ instant: nowClock() }),
   }: GetTransferPreviewInput): Promise<TransferPreview> {
     const resolved = await this.resolveTransferContext({
       ministryInvitationId,
@@ -140,7 +145,7 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
     destinationChurchName,
     password,
     idempotencyKey,
-    now = new Date(),
+    now = toDate({ instant: nowClock() }),
   }: ConfirmTransferInput): Promise<ConfirmTransferOutcome> {
     const resolved = await this.resolveTransferContext({
       ministryInvitationId,

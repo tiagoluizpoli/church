@@ -1,4 +1,4 @@
-import type { TimeOfDay } from '@church/time';
+import { parseInstant, type TimeOfDay, toTimeOfDay } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
@@ -384,9 +384,20 @@ function toMinutesSinceMidnight(hhmm: string): number {
   return (hours ?? 0) * 60 + (minutes ?? 0);
 }
 
-function localTimeOfDayInMinutes(isoValue: string): number {
-  const date = new Date(isoValue);
-  return date.getHours() * 60 + date.getMinutes();
+interface ChurchTimeOfDayInMinutesInput {
+  isoValue: string;
+  timeZone: string;
+}
+
+function churchTimeOfDayInMinutes({
+  isoValue,
+  timeZone,
+}: ChurchTimeOfDayInMinutesInput): number {
+  const time = toTimeOfDay({
+    instant: parseInstant({ value: isoValue }),
+    timeZone,
+  });
+  return toMinutesSinceMidnight(time);
 }
 
 export function isTimeWindowFilterEmpty(filter: TimeWindowFilter): boolean {
@@ -409,21 +420,31 @@ function isWithinWindow({
   return true;
 }
 
+export interface FilterSlotsByTimeOfDayInput {
+  events: GetCycleParticipation200EventsItem[];
+  filter: TimeWindowFilter;
+  timeZone: string;
+}
+
 export function filterSlotsByTimeOfDay({
   events,
   filter,
-}: {
-  events: GetCycleParticipation200EventsItem[];
-  filter: TimeWindowFilter;
-}): GetCycleParticipation200EventsItem[] {
+  timeZone,
+}: FilterSlotsByTimeOfDayInput): GetCycleParticipation200EventsItem[] {
   if (isTimeWindowFilterEmpty(filter)) return events;
 
   return events
     .map((eventView) => ({
       ...eventView,
       slots: eventView.slots.filter((slotView) => {
-        const startMinutes = localTimeOfDayInMinutes(slotView.slot.startTime);
-        const endMinutes = localTimeOfDayInMinutes(slotView.slot.endTime);
+        const startMinutes = churchTimeOfDayInMinutes({
+          isoValue: slotView.slot.startTime,
+          timeZone,
+        });
+        const endMinutes = churchTimeOfDayInMinutes({
+          isoValue: slotView.slot.endTime,
+          timeZone,
+        });
 
         if (filter.mode === 'starts') {
           return isWithinWindow({ minutes: startMinutes, filter });

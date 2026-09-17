@@ -8,7 +8,12 @@ import type {
   ServingAssignmentContext,
   SuggestedVolunteer,
 } from './cycle-builder-candidate.types';
-import { churchDayOf, dateLabel, timeLabel } from './cycle-builder-date.utils';
+import {
+  churchDayOf,
+  dateLabel,
+  lastServedMillis,
+  timeLabel,
+} from './cycle-builder-date.utils';
 import {
   type AssignableFitTier,
   isRecommendableFit,
@@ -217,8 +222,8 @@ export function recommendations({
       .filter((volunteer) => volunteer.isAvailable && !volunteer.hasConflict)
       .sort((left, right) => {
         const served =
-          (left.lastServedAt ? new Date(left.lastServedAt).getTime() : 0) -
-          (right.lastServedAt ? new Date(right.lastServedAt).getTime() : 0);
+          lastServedMillis({ lastServedAt: left.lastServedAt }) -
+          lastServedMillis({ lastServedAt: right.lastServedAt });
         return (
           served ||
           (index.workload.get(left.volunteerId) ?? 0) -

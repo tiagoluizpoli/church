@@ -4,6 +4,7 @@ import {
   type CycleBuilderShiftSummary,
   isActiveAssignment,
 } from '../../hooks/use-cycle-builder';
+import { lastServedMillis } from './cycle-builder-date.utils';
 import { shiftRoleFitForEligibleVolunteer } from './cycle-builder-fit.utils';
 
 interface CountWorkloadInput {
@@ -39,10 +40,12 @@ const availabilityRank = (
   volunteer: CycleBuilderEligibleVolunteerSummary,
 ): number => (volunteer.hasConflict ? 2 : volunteer.isAvailable ? 0 : 1);
 
-const lastServedAt = (
-  volunteer: CycleBuilderEligibleVolunteerSummary,
-): number =>
-  volunteer.lastServedAt ? new Date(volunteer.lastServedAt).getTime() : 0;
+interface LastServedAtInput {
+  volunteer: CycleBuilderEligibleVolunteerSummary;
+}
+
+const lastServedAt = ({ volunteer }: LastServedAtInput): number =>
+  lastServedMillis({ lastServedAt: volunteer.lastServedAt });
 
 interface FitRankInput {
   volunteer: CycleBuilderEligibleVolunteerSummary;
@@ -99,7 +102,8 @@ export function rankVolunteersForShiftRole({
         fitRank({ volunteer: left, roleId }) -
           fitRank({ volunteer: right, roleId }) ||
         availabilityRank(left) - availabilityRank(right) ||
-        lastServedAt(left) - lastServedAt(right) ||
+        lastServedAt({ volunteer: left }) -
+          lastServedAt({ volunteer: right }) ||
         (workload.get(left.volunteerId) ?? 0) -
           (workload.get(right.volunteerId) ?? 0) ||
         left.volunteerName.localeCompare(right.volunteerName),

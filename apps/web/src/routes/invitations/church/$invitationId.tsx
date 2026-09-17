@@ -1,8 +1,8 @@
+import { formatRelative, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { formatDistanceToNow } from 'date-fns';
 import { CalendarClock, CircleAlert, MailCheck } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -243,8 +243,9 @@ function ChurchInvitationRedemptionRoute() {
         </p>
         <p className="text-muted-foreground text-xs">
           Expires{' '}
-          {formatDistanceToNow(new Date(preview.expiresAt), {
-            addSuffix: true,
+          {formatRelative({
+            instant: parseInstant({ value: preview.expiresAt }),
+            timeZone: 'UTC',
           })}
         </p>
       </div>

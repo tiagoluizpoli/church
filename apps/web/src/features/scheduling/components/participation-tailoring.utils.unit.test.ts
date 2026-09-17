@@ -429,15 +429,15 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
         {
           slot: {
             id: 'morning',
-            startTime: '2026-07-12T08:00:00',
-            endTime: '2026-07-12T09:00:00',
+            startTime: '2026-07-12T08:00:00.000Z',
+            endTime: '2026-07-12T09:00:00.000Z',
           },
         },
         {
           slot: {
             id: 'evening',
-            startTime: '2026-07-12T20:00:00',
-            endTime: '2026-07-12T21:00:00',
+            startTime: '2026-07-12T20:00:00.000Z',
+            endTime: '2026-07-12T21:00:00.000Z',
           },
         },
       ],
@@ -452,6 +452,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
           start: parseTimeOfDay({ value: '18:00' }),
           end: parseTimeOfDay({ value: '23:00' }),
         },
+        timeZone: 'UTC',
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['evening']);
@@ -464,15 +465,15 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
             {
               slot: {
                 id: 'short',
-                startTime: '2026-07-12T09:00:00',
-                endTime: '2026-07-12T09:30:00',
+                startTime: '2026-07-12T09:00:00.000Z',
+                endTime: '2026-07-12T09:30:00.000Z',
               },
             },
             {
               slot: {
                 id: 'long',
-                startTime: '2026-07-12T09:00:00',
-                endTime: '2026-07-12T11:30:00',
+                startTime: '2026-07-12T09:00:00.000Z',
+                endTime: '2026-07-12T11:30:00.000Z',
               },
             },
           ],
@@ -486,6 +487,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
           start: parseTimeOfDay({ value: '11:00' }),
           end: parseTimeOfDay({ value: '12:00' }),
         },
+        timeZone: 'UTC',
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['long']);
@@ -498,15 +500,15 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
             {
               slot: {
                 id: 'fits',
-                startTime: '2026-07-12T18:00:00',
-                endTime: '2026-07-12T19:00:00',
+                startTime: '2026-07-12T18:00:00.000Z',
+                endTime: '2026-07-12T19:00:00.000Z',
               },
             },
             {
               slot: {
                 id: 'overruns',
-                startTime: '2026-07-12T18:00:00',
-                endTime: '2026-07-12T23:00:00',
+                startTime: '2026-07-12T18:00:00.000Z',
+                endTime: '2026-07-12T23:00:00.000Z',
               },
             },
           ],
@@ -520,6 +522,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
           start: parseTimeOfDay({ value: '17:00' }),
           end: parseTimeOfDay({ value: '20:00' }),
         },
+        timeZone: 'UTC',
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['fits']);
@@ -529,6 +532,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
       const filtered = filterSlotsByTimeOfDay({
         events: [morningAndEvening()],
         filter: { mode: 'starts', start: parseTimeOfDay({ value: '12:00' }) },
+        timeZone: 'UTC',
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['evening']);
@@ -538,6 +542,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
       const filtered = filterSlotsByTimeOfDay({
         events: [morningAndEvening()],
         filter: { mode: 'starts', end: parseTimeOfDay({ value: '12:00' }) },
+        timeZone: 'UTC',
       });
 
       expect(filtered[0]?.slots.map((s) => s.slot.id)).toEqual(['morning']);
@@ -548,16 +553,21 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('returns events unchanged when both start and end are empty, regardless of mode', () => {
       const events = [makeEventView()];
       expect(
-        filterSlotsByTimeOfDay({ events, filter: { mode: 'within' } }),
+        filterSlotsByTimeOfDay({
+          events,
+          filter: { mode: 'within' },
+          timeZone: 'UTC',
+        }),
       ).toEqual(events);
     });
 
     it('drops an event entirely once it has zero matching slots', () => {
-      const events = [makeEventView()];
+      const events = [morningAndEvening()];
       expect(
         filterSlotsByTimeOfDay({
           events,
-          filter: { mode: 'starts', start: parseTimeOfDay({ value: '23:00' }) },
+          filter: { mode: 'starts', start: parseTimeOfDay({ value: '23:30' }) },
+          timeZone: 'UTC',
         }),
       ).toEqual([]);
     });
@@ -569,8 +579,8 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
             {
               slot: {
                 id: 'on-the-dot',
-                startTime: '2026-07-12T09:00:00',
-                endTime: '2026-07-12T10:00:00',
+                startTime: '2026-07-12T09:00:00.000Z',
+                endTime: '2026-07-12T10:00:00.000Z',
               },
             },
           ],
@@ -585,6 +595,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
             start: parseTimeOfDay({ value: '09:00' }),
             end: parseTimeOfDay({ value: '09:00' }),
           },
+          timeZone: 'UTC',
         })[0]?.slots,
       ).toHaveLength(1);
     });

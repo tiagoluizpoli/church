@@ -7,14 +7,13 @@ import {
 } from '@/__tests__/setup/active-church';
 import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
-import { formatInTZ } from '@/shared/utils/date';
+import { formatInstantOf } from '@/shared/utils/church-time';
 
 /**
  * 12:00 UTC — 09:00 in São Paulo, 21:00 in Tokyo, and already 5 Jan 01:00 in
  * Pacific/Auckland, the ambient zone `vitest.config.ts` pins for this suite.
  */
 const PROBE_INSTANT = '2027-01-04T12:00:00.000Z';
-const PROBE_FORMAT = 'yyyy-MM-dd HH:mm';
 
 const getSession = vi.fn();
 const { getActiveChurchStatus, listActiveChurchOptions, selectActiveChurch } =
@@ -44,7 +43,10 @@ vi.mock('@/components/app-shell', async () => {
     return (
       <>
         <span data-testid="church-time">
-          {useTimezone().format(PROBE_INSTANT, PROBE_FORMAT)}
+          {formatInstantOf({
+            value: PROBE_INSTANT,
+            timeZone: useTimezone().churchTimezone,
+          })}
         </span>
         {children}
       </>
@@ -86,9 +88,9 @@ describe('the Active Church guard (_active-church)', () => {
       // Guards the premise: were the ambient zone São Paulo, this test could
       // pass without the Church Timezone ever being applied.
       const ambientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      expect(formatInTZ(PROBE_INSTANT, ambientTimezone, PROBE_FORMAT)).not.toBe(
-        '2027-01-04 09:00',
-      );
+      expect(
+        formatInstantOf({ value: PROBE_INSTANT, timeZone: ambientTimezone }),
+      ).not.toBe('04/01/2027 09:00');
       // Seeded through the route-render helper: the zone reaches the layout's
       // TimezoneProvider only via the entry gate, as in the real app.
       renderRoute({
@@ -97,7 +99,7 @@ describe('the Active Church guard (_active-church)', () => {
       });
 
       expect(await screen.findByTestId('church-time')).toHaveTextContent(
-        '2027-01-04 09:00',
+        '04/01/2027 09:00',
       );
     });
 
@@ -142,7 +144,7 @@ describe('the Active Church guard (_active-church)', () => {
 
       const { router } = renderPlanningCycles();
       expect(await screen.findByTestId('church-time')).toHaveTextContent(
-        '2027-01-04 09:00',
+        '04/01/2027 09:00',
       );
 
       // A link into the other Church asks once, then switches for real.
@@ -155,7 +157,7 @@ describe('the Active Church guard (_active-church)', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('church-time')).toHaveTextContent(
-          '2027-01-04 21:00',
+          '04/01/2027 21:00',
         );
       });
       expect(router.state.location.pathname).toBe(

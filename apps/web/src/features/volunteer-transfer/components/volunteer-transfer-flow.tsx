@@ -1,5 +1,5 @@
+import { formatInstant, parseInstant } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { ArrowRight, CircleAlert, Repeat2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -225,6 +225,9 @@ interface WithdrawnAssignmentsListProps {
   assignments: ReviewablePreview['withdrawnAssignments'];
 }
 
+// This preview DTO carries no Church Timezone (the former Church isn't
+// resolvable as an "active" one from this pre-auth flow), so times display in
+// UTC rather than guessing the browser's zone.
 function WithdrawnAssignmentsList({
   assignments,
 }: WithdrawnAssignmentsListProps) {
@@ -244,8 +247,11 @@ function WithdrawnAssignmentsList({
             key={`${assignment.eventName}-${assignment.timeSlotStart}-${assignment.roleName}`}
           >
             {assignment.eventName} ·{' '}
-            {format(new Date(assignment.timeSlotStart), 'PP p')} ·{' '}
-            {assignment.roleName}
+            {formatInstant({
+              instant: parseInstant({ value: assignment.timeSlotStart }),
+              timeZone: 'UTC',
+            })}{' '}
+            · {assignment.roleName}
           </li>
         ))}
       </ul>

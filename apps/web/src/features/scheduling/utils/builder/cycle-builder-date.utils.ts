@@ -5,7 +5,9 @@ import {
   formatDayAndMonth,
   formatTimeOfDay,
   formatWeekday,
+  type Instant,
   isCalendarDay,
+  millisecondsBetween,
   parseCalendarDay,
   parseInstant,
   today,
@@ -264,5 +266,27 @@ const WEEKDAY_NAME_ANCHOR_SUNDAY = parseCalendarDay({ value: '2024-01-07' });
 export function weekdayLongName({ weekday }: WeekdayLongNameInput): string {
   return formatWeekday({
     day: addCalendarDays({ day: WEEKDAY_NAME_ANCHOR_SUNDAY, days: weekday }),
+  });
+}
+
+const EPOCH_INSTANT: Instant = parseInstant({
+  value: '1970-01-01T00:00:00.000Z',
+});
+
+export interface LastServedMillisInput {
+  lastServedAt: string | undefined;
+}
+
+/**
+ * Epoch-ms recency key for "last served" sorts, treating a volunteer who has
+ * never served (no `lastServedAt`) as served at the epoch — sorting first,
+ * ahead of anyone with a real history. No raw `Date` involved.
+ */
+export function lastServedMillis({
+  lastServedAt,
+}: LastServedMillisInput): number {
+  return millisecondsBetween({
+    start: EPOCH_INSTANT,
+    end: lastServedAt ? parseInstant({ value: lastServedAt }) : EPOCH_INSTANT,
   });
 }

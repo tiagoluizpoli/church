@@ -327,9 +327,11 @@ export class DbVolunteerManager implements IVolunteerManager {
     const availabilityTasks = availabilityTasksNested
       .flat()
       .filter((t): t is DashboardAvailabilityTask => t != null)
-      .sort(
-        (a, b) =>
-          new Date(a.eventStart).getTime() - new Date(b.eventStart).getTime(),
+      .sort((a, b) =>
+        compareInstants({
+          left: a.eventStart as Instant,
+          right: b.eventStart as Instant,
+        }),
       );
 
     // Assignment groups: upcoming published assignments grouped by event
@@ -447,9 +449,11 @@ export class DbVolunteerManager implements IVolunteerManager {
       groupMap.values(),
     )
       .map((group) => {
-        const sorted = [...group.items].sort(
-          (a, b) =>
-            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        const sorted = [...group.items].sort((a, b) =>
+          compareInstants({
+            left: a.startTime as Instant,
+            right: b.startTime as Instant,
+          }),
         );
         return {
           eventId: group.eventId,
@@ -462,9 +466,11 @@ export class DbVolunteerManager implements IVolunteerManager {
           assignments: sorted,
         };
       })
-      .sort(
-        (a, b) =>
-          new Date(a.eventStart).getTime() - new Date(b.eventStart).getTime(),
+      .sort((a, b) =>
+        compareInstants({
+          left: a.eventStart as Instant,
+          right: b.eventStart as Instant,
+        }),
       );
 
     const [unreadNotificationCount, notificationPreviewResult] =

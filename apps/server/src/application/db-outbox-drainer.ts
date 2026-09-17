@@ -1,5 +1,5 @@
 import { env } from '@church/env/server';
-import { now, toDate } from '@church/time';
+import { nowAsDate, toDate } from '@church/time';
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
 import type { MinistryId, VolunteerId } from '../domain/branded-ids';
@@ -78,7 +78,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     const claimed = await this.unitOfWork.run((tx) =>
       this.outboxRepository.claimPending({
         limit,
-        now: toDate({ instant: now() }),
+        now: nowAsDate(),
         tx,
       }),
     );
@@ -266,7 +266,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         this.outboxRepository.markSent({
           id: message.id,
           providerMessageId: result.providerMessageId,
-          sentAt: toDate({ instant: now() }),
+          sentAt: nowAsDate(),
           tx,
         }),
       );

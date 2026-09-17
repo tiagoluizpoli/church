@@ -2,6 +2,7 @@ import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
   type Instant,
+  nowAsDate,
   now as nowInstant,
   toDate,
 } from '@church/time';
@@ -190,7 +191,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
             : 'invitation.ministry',
         payload: { ministryInvitationId: invitation.id },
         correlationId: crypto.randomUUID(),
-        scheduledFor: toDate({ instant: nowInstant() }),
+        scheduledFor: nowAsDate(),
         tx,
       });
 
@@ -277,7 +278,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       kind: 'invitation.ministry',
       payload: { ministryInvitationId: invitation.id },
       correlationId: crypto.randomUUID(),
-      scheduledFor: toDate({ instant: nowInstant() }),
+      scheduledFor: nowAsDate(),
       tx,
     });
 
@@ -337,7 +338,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         churchInvitationId: churchInvitationSummary.id,
       },
       correlationId: crypto.randomUUID(),
-      scheduledFor: toDate({ instant: nowInstant() }),
+      scheduledFor: nowAsDate(),
       tx,
     });
 

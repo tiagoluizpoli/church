@@ -4,6 +4,7 @@ import {
   InvalidTimeValueError,
   isInstant,
   now,
+  nowAsDate,
   parseInstant,
   resetClock,
   setTestClock,
@@ -37,5 +38,11 @@ describe('clock', () => {
     expect(() => currentTimeOfDay({ timeZone: '-03:00' })).toThrow(
       new InvalidTimeValueError({ kind: 'TimeZone', value: '-03:00' }),
     );
+  });
+
+  it('reads now() back as an equivalent Date', () => {
+    const fixed = parseInstant({ value: '2027-01-04T13:30:00Z' });
+    setTestClock({ instant: fixed });
+    expect(nowAsDate().toISOString()).toBe(fixed);
   });
 });

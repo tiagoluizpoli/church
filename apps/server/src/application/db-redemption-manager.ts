@@ -73,6 +73,25 @@ type ResolvedInvitationContext =
   | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
   | { status: 'redeemable'; context: MinistryInvitationContext };
 
+interface IsInvitationRedeemableInput {
+  ministryInvitation: MinistryInvitation;
+  now: Date;
+}
+
+/** Pending and not yet past its `expiresAt` — the shared gate every redemption path checks before proceeding. */
+function isInvitationRedeemable({
+  ministryInvitation,
+  now,
+}: IsInvitationRedeemableInput): boolean {
+  return (
+    ministryInvitation.status === 'pending' &&
+    compareInstants({
+      left: ministryInvitation.expiresAt,
+      right: fromDate({ date: now }),
+    }) > 0
+  );
+}
+
 /**
  * Checkpoint three from spec §7.4. This is intentionally transport-free: #99
  * will authenticate and call it, while this operation owns the sole database
@@ -338,13 +357,7 @@ export class DbRedemptionManager implements RedemptionManager {
       };
     }
     const { ministryInvitation } = resolved.context;
-    if (
-      ministryInvitation.status !== 'pending' ||
-      compareInstants({
-        left: ministryInvitation.expiresAt,
-        right: fromDate({ date: now }),
-      }) <= 0
-    ) {
+    if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'unavailable' };
     }
     return {
@@ -383,13 +396,7 @@ export class DbRedemptionManager implements RedemptionManager {
       };
     }
     const { ministryInvitation } = resolved.context;
-    if (
-      ministryInvitation.status !== 'pending' ||
-      compareInstants({
-        left: ministryInvitation.expiresAt,
-        right: fromDate({ date: now }),
-      }) <= 0
-    ) {
+    if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
     if (
@@ -454,13 +461,7 @@ export class DbRedemptionManager implements RedemptionManager {
     }
     const { ministryInvitation } = resolved.context;
     if (ministryInvitation.status === 'rejected') return { kind: 'declined' };
-    if (
-      ministryInvitation.status !== 'pending' ||
-      compareInstants({
-        left: ministryInvitation.expiresAt,
-        right: fromDate({ date: now }),
-      }) <= 0
-    ) {
+    if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
     if (

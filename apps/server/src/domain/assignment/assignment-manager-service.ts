@@ -338,7 +338,7 @@ export const AssignmentManagerService = {
           assignmentId: a.id,
           actorId,
           action: 'event_published',
-          timestamp: now,
+          occurredAt: now,
         }),
     );
 
@@ -401,7 +401,7 @@ export const AssignmentManagerService = {
               assignmentId: a.id,
               actorId,
               action: 'event_cancelled',
-              timestamp: now,
+              occurredAt: now,
             }),
           );
         }
@@ -444,7 +444,7 @@ export const AssignmentManagerService = {
       assignmentId: assignment.id,
       actorId,
       action: 'status_change',
-      timestamp: now,
+      occurredAt: now,
     });
   },
 
@@ -471,7 +471,7 @@ export const AssignmentManagerService = {
       actorId,
       action: 'status_change',
       reason,
-      timestamp: now,
+      occurredAt: now,
     });
   },
 

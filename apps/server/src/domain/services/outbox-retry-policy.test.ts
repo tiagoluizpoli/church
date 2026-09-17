@@ -33,20 +33,32 @@ describe('outbox retry policy', () => {
   });
 
   it('backs off exponentially in minutes', () => {
-    expect(millisecondsBetween({ start: FIXED_NOW, end: nextRetryAt(1) })).toBe(
-      2 * 60_000,
-    );
-    expect(millisecondsBetween({ start: FIXED_NOW, end: nextRetryAt(2) })).toBe(
-      4 * 60_000,
-    );
-    expect(millisecondsBetween({ start: FIXED_NOW, end: nextRetryAt(3) })).toBe(
-      8 * 60_000,
-    );
+    expect(
+      millisecondsBetween({
+        start: FIXED_NOW,
+        end: nextRetryAt({ attempts: 1 }),
+      }),
+    ).toBe(2 * 60_000);
+    expect(
+      millisecondsBetween({
+        start: FIXED_NOW,
+        end: nextRetryAt({ attempts: 2 }),
+      }),
+    ).toBe(4 * 60_000);
+    expect(
+      millisecondsBetween({
+        start: FIXED_NOW,
+        end: nextRetryAt({ attempts: 3 }),
+      }),
+    ).toBe(8 * 60_000);
   });
 
   it('caps backoff at one hour', () => {
     expect(
-      millisecondsBetween({ start: FIXED_NOW, end: nextRetryAt(10) }),
+      millisecondsBetween({
+        start: FIXED_NOW,
+        end: nextRetryAt({ attempts: 10 }),
+      }),
     ).toBe(60 * 60_000);
   });
 });

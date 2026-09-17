@@ -309,7 +309,7 @@ describe('ConflictValidationService', () => {
         baseOverride,
         conflictReport,
       );
-      expect(audit.timestamp).toEqual(now);
+      expect(audit.occurredAt).toEqual(now);
     });
   });
 

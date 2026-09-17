@@ -72,7 +72,7 @@ describe('assignmentMapper', () => {
           actorId: 'u1',
           action: 'created',
           reason: 'setup',
-          timestamp,
+          occurredAt: timestamp,
         },
         'aud1',
       );

@@ -74,7 +74,7 @@ function toAuditResponse(a: AssignmentAudit): AssignmentAuditResponse {
     actorId: a.actorId as string,
     action: a.action,
     reason: a.reason,
-    timestamp: a.timestamp,
+    timestamp: a.occurredAt,
   };
 }
 

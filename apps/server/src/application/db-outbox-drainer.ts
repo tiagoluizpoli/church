@@ -286,7 +286,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           lastError: error.message,
           attempts,
           status: 'pending',
-          scheduledFor: toDate({ instant: nextRetryAt(attempts) }),
+          scheduledFor: toDate({ instant: nextRetryAt({ attempts }) }),
           tx,
         }),
       );

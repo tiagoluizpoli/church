@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { assignment, role, shift as shiftTable } from '@church/db';
+import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -88,7 +89,7 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
       },
     );
     expect(updated.label).toBe('Renamed slot');
-    expect(updated.startTime).toEqual(graph.slot.startTime);
+    expect(updated.startTime).toEqual(fromDate({ date: graph.slot.startTime }));
 
     await expect(
       repo.update(
@@ -265,8 +266,8 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
       },
     );
 
-    expect(updated.startTime).toEqual(newStart);
-    expect(updated.endTime).toEqual(newEnd);
+    expect(updated.startTime).toEqual(fromDate({ date: newStart }));
+    expect(updated.endTime).toEqual(fromDate({ date: newEnd }));
     expect(updated.label).toBe(graph.slot.label ?? undefined);
   });
 

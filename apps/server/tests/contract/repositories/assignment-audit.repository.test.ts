@@ -26,7 +26,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
         actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'created',
-        timestamp: parseInstant({ value: '2024-06-01T10:00:00Z' }),
+        occurredAt: parseInstant({ value: '2024-06-01T10:00:00Z' }),
       },
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1' as any,
     );
@@ -36,7 +36,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
         actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'status_change',
-        timestamp: parseInstant({ value: '2024-06-01T11:00:00Z' }),
+        occurredAt: parseInstant({ value: '2024-06-01T11:00:00Z' }),
       },
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2' as any,
     );
@@ -74,7 +74,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
         (au) => au.churchId === churchId && au.assignmentId === assignmentId,
       )
       .sort((a, b) =>
-        compareInstants({ left: b.timestamp, right: a.timestamp }),
+        compareInstants({ left: b.occurredAt, right: a.occurredAt }),
       );
   }
 
@@ -82,7 +82,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId)
       .sort((a, b) =>
-        compareInstants({ left: b.timestamp, right: a.timestamp }),
+        compareInstants({ left: b.occurredAt, right: a.occurredAt }),
       );
   }
 
@@ -93,7 +93,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId && au.actorId === actorId)
       .sort((a, b) =>
-        compareInstants({ left: b.timestamp, right: a.timestamp }),
+        compareInstants({ left: b.occurredAt, right: a.occurredAt }),
       );
   }
 

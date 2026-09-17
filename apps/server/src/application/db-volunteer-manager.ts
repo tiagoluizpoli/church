@@ -166,7 +166,12 @@ function claimShiftCoverage(
   return { assignmentTeamId, requirementFilledCount };
 }
 
-function slotKey(startTime: Instant, endTime: Instant): string {
+interface SlotKeyInput {
+  startTime: Instant;
+  endTime: Instant;
+}
+
+function slotKey({ startTime, endTime }: SlotKeyInput): string {
   return `${startTime}::${endTime}`;
 }
 
@@ -176,10 +181,12 @@ function availabilityCompletionState(
 ): 'missing' | 'partial' | 'complete' {
   if (slots.length === 0) return 'missing';
   const matchingKeys = new Set(
-    entries.map((e) => slotKey(e.shiftStartTime, e.shiftEndTime)),
+    entries.map((e) =>
+      slotKey({ startTime: e.shiftStartTime, endTime: e.shiftEndTime }),
+    ),
   );
   const answered = slots.filter((s) =>
-    matchingKeys.has(slotKey(s.startTime, s.endTime)),
+    matchingKeys.has(slotKey({ startTime: s.startTime, endTime: s.endTime })),
   ).length;
   if (answered === 0) return 'missing';
   return answered >= slots.length ? 'complete' : 'partial';

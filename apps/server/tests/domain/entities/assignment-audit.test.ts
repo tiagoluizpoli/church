@@ -15,7 +15,7 @@ describe('AssignmentAudit Entity', () => {
     expect(audit.assignmentId).toBe('a1');
     expect(audit.actorId).toBe('u1');
     expect(audit.action).toBe('created');
-    expect(isInstant({ value: audit.timestamp })).toBe(true);
+    expect(isInstant({ value: audit.occurredAt })).toBe(true);
   });
 
   it('constructs with event_published and event_cancelled actions', () => {

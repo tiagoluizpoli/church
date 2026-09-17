@@ -9,8 +9,12 @@ export function hasExhaustedRetries(attempts: number): boolean {
   return attempts >= OUTBOX_MAX_ATTEMPTS;
 }
 
+export interface NextRetryAtInput {
+  attempts: number;
+}
+
 /** Exponential backoff in minutes (2^attempts), capped at one hour. */
-export function nextRetryAt(attempts: number): Instant {
+export function nextRetryAt({ attempts }: NextRetryAtInput): Instant {
   const minutes = Math.min(2 ** attempts, BACKOFF_CAP_MINUTES);
   return addMinutes({ instant: now(), minutes });
 }

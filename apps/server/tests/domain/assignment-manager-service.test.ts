@@ -675,7 +675,7 @@ describe('Publish Schedule', () => {
       expect(audit.churchId).toBe(churchId);
       expect(audit.actorId).toBe(actorId);
       expect(audit.action).toBe('event_published');
-      expect(audit.timestamp).toBe(now);
+      expect(audit.occurredAt).toBe(now);
     });
 
     assignments.forEach((a) => {
@@ -1220,7 +1220,7 @@ describe('Publish Schedule', () => {
         expect(audit.churchId).toBe(churchId);
         expect(audit.actorId).toBe(actorId);
         expect(audit.action).toBe('event_cancelled');
-        expect(audit.timestamp).toBe(now);
+        expect(audit.occurredAt).toBe(now);
       });
     });
 
@@ -1495,7 +1495,7 @@ describe('Publish Schedule', () => {
       expect(audit?.assignmentId).toBe(assignment.id);
       expect(audit?.actorId).toBe('user-1');
       expect(audit?.action).toBe('status_change');
-      expect(audit?.timestamp).toBe(now);
+      expect(audit?.occurredAt).toBe(now);
     });
 
     it('edge: already confirmed (idempotent) → success, returns null', () => {
@@ -1621,7 +1621,7 @@ describe('Publish Schedule', () => {
       expect(audit.actorId).toBe('vol-1');
       expect(audit.action).toBe('status_change');
       expect(audit.reason).toBe('SICK');
-      expect(audit.timestamp).toBe(now);
+      expect(audit.occurredAt).toBe(now);
     });
 
     it('pending without reason → declined status, audit with empty/undefined reason', () => {

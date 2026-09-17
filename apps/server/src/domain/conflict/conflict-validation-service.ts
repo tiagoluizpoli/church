@@ -141,7 +141,7 @@ function createOverrideAudit(
     action: 'created',
     reason: request.overrideReason,
     overrideConflictTypes: conflictTypes,
-    timestamp: request.now,
+    occurredAt: request.now,
   });
 }
 

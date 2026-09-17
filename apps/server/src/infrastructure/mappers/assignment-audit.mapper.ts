@@ -17,7 +17,7 @@ export function mapAssignmentAudit(row: AssignmentAuditRow): AssignmentAudit {
     actorId: row.actorId as UserId,
     action: row.action as AssignmentAuditProps['action'],
     reason: row.reason ?? undefined,
-    timestamp: fromDate({ date: row.timestamp }),
+    occurredAt: fromDate({ date: row.timestamp }),
   };
 
   return new AssignmentAudit(props, row.id as AssignmentAuditId);

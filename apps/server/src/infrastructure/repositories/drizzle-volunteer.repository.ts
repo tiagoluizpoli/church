@@ -7,6 +7,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, eq, inArray } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -218,7 +219,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     const db = getClient(this.db, tx);
     await db
       .update(volunteer)
-      .set({ status, updatedAt: new Date() })
+      .set({ status, updatedAt: nowAsDate() })
       .where(
         and(
           eq(volunteer.id, volunteerId),

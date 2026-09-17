@@ -1,4 +1,5 @@
 import { church, member, organization } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import type { ChurchAccessLevel } from '../../domain/authority/types';
 import type { ChurchId } from '../../domain/branded-ids';
@@ -73,7 +74,7 @@ export class DrizzleChurchMembershipRepository
   async touchOpened(input: TouchChurchMembershipOpenedInput): Promise<void> {
     await getClient(this.db, input.tx)
       .update(member)
-      .set({ lastOpenedAt: new Date() })
+      .set({ lastOpenedAt: nowAsDate() })
       .where(
         and(
           eq(member.organizationId, input.churchId),

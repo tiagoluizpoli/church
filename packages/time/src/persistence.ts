@@ -1,6 +1,8 @@
 import {
+  type CalendarDay,
   type Instant,
   InvalidTimeValueError,
+  isCalendarDay,
   isTimeOfDay,
   type TimeOfDay,
   type TimeValueInput,
@@ -11,6 +13,10 @@ export interface ToDateInput {
 }
 
 export interface FromDateInput {
+  date: Date;
+}
+
+export interface FromDateColumnInput {
   date: Date;
 }
 
@@ -27,6 +33,18 @@ export function fromDate({ date }: FromDateInput): Instant {
     throw new InvalidTimeValueError({ kind: 'Instant', value: String(date) });
   }
   return date.toISOString() as Instant;
+}
+
+/** Postgres `date` column (`mode: 'date'`) → CalendarDay. The driver returns
+ * a `Date` at UTC midnight of the stored day; its ISO date slice is the
+ * CalendarDay, with no timezone involved. Kept apart from `parseCalendarDay`
+ * so the brand constructor stays a plain string check. */
+export function fromDateColumn({ date }: FromDateColumnInput): CalendarDay {
+  const value = date.toISOString().slice(0, 10);
+  if (!isCalendarDay({ value })) {
+    throw new InvalidTimeValueError({ kind: 'CalendarDay', value });
+  }
+  return value as CalendarDay;
 }
 
 const TIME_COLUMN_PATTERN = /^(\d{2}:\d{2}):00$/;

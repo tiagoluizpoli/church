@@ -1,5 +1,5 @@
 import { invitationVerificationCode } from '@church/db';
-import { fromDate } from '@church/time';
+import { addMilliseconds, fromDate, toDate } from '@church/time';
 import { and, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type {
   ClaimVerificationCodeDeliveryInput,
@@ -51,9 +51,12 @@ export class DrizzleInvitationVerificationCodeRepository
     expiresAt,
     sentAt,
   }: ClaimVerificationCodeDeliveryInput): Promise<boolean> {
-    const resendEligibleAt = new Date(
-      sentAt.getTime() - VERIFICATION_CODE_RESEND_COOLDOWN_MS,
-    );
+    const resendEligibleAt = toDate({
+      instant: addMilliseconds({
+        instant: fromDate({ date: sentAt }),
+        milliseconds: -VERIFICATION_CODE_RESEND_COOLDOWN_MS,
+      }),
+    });
     const [row] = await this.db
       .insert(invitationVerificationCode)
       .values({

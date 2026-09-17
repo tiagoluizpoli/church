@@ -5,6 +5,7 @@ import {
   participationSlotInclusion,
   planningCycle,
 } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, asc, count, eq, inArray, isNull, notInArray } from 'drizzle-orm';
 import type {
   AddInclusionInput,
@@ -178,7 +179,7 @@ export class DrizzleMinistryParticipationRepository
       .update(ministryParticipation)
       .set({
         state: input.state,
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(
         and(
@@ -284,7 +285,7 @@ export class DrizzleMinistryParticipationRepository
     const db = getClient(this.db, input.tx);
     await db
       .update(ministryParticipation)
-      .set({ touchedAt: new Date() })
+      .set({ touchedAt: nowAsDate() })
       .where(
         and(
           eq(ministryParticipation.id, input.participationId),

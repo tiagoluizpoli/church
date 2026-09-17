@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { eventTemplate, timeBlock } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { EventTemplateId } from '../../domain/branded-ids';
 import type {
@@ -74,7 +75,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .set({
         name: input.name,
         weekday: input.weekday,
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(
         and(

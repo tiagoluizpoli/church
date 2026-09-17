@@ -6,6 +6,7 @@ import {
   slotRequirement,
   timeSlot,
 } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, asc, eq } from 'drizzle-orm';
 import type { ChurchId, EventId, MinistryId } from '../../domain/branded-ids';
 import type {
@@ -168,7 +169,7 @@ export class DrizzleEventRepository implements EventRepository {
           ? { startDate: input.startDate }
           : {}),
         ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(and(eq(event.id, id), withChurchIsolation(event, churchId)))
       .returning();
@@ -186,7 +187,7 @@ export class DrizzleEventRepository implements EventRepository {
       .update(event)
       .set({
         status: input.status,
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(and(eq(event.id, id), withChurchIsolation(event, churchId)));
   }

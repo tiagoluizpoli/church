@@ -12,6 +12,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
+import { addMilliseconds, now, toDate } from '@church/time';
 import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { ChurchId, RoleId, UserId } from '../../domain/branded-ids';
 import type {
@@ -382,7 +383,12 @@ export class DrizzleMinistryInvitationRepository
   ): Promise<ChurchInvitationSummary> {
     const { churchId, email, inviterId, tx } = input;
     const id = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + CHURCH_INVITATION_TTL_MS);
+    const expiresAt = toDate({
+      instant: addMilliseconds({
+        instant: now(),
+        milliseconds: CHURCH_INVITATION_TTL_MS,
+      }),
+    });
     await getClient(this.db, tx).insert(churchInvitation).values({
       id,
       organizationId: churchId,

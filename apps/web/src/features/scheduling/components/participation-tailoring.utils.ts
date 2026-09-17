@@ -1,4 +1,4 @@
-import { parseInstant, type TimeOfDay, toTimeOfDay } from '@church/time';
+import type { TimeOfDay } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
@@ -6,7 +6,11 @@ import type {
   GetCycleParticipation200EventsItemSlotsItem,
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
-import { dayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
+import {
+  churchTimeOfDay,
+  dayOf,
+  formatInstantRangeOf,
+} from '@/shared/utils/church-time';
 import { toCycleDayKey } from '@/shared/utils/date';
 
 export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
@@ -393,11 +397,7 @@ function churchTimeOfDayInMinutes({
   isoValue,
   timeZone,
 }: ChurchTimeOfDayInMinutesInput): number {
-  const time = toTimeOfDay({
-    instant: parseInstant({ value: isoValue }),
-    timeZone,
-  });
-  return toMinutesSinceMidnight(time);
+  return toMinutesSinceMidnight(churchTimeOfDay({ value: isoValue, timeZone }));
 }
 
 export function isTimeWindowFilterEmpty(filter: TimeWindowFilter): boolean {

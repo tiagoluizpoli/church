@@ -11,13 +11,13 @@ import {
   parseCalendarDay,
   parseInstant,
   today,
-  toTimeOfDay,
   weekdayIndex,
 } from '@church/time';
 import type {
   CycleBuilderEventSummary,
   CycleBuilderSlotSummary,
 } from '../../hooks/use-cycle-builder';
+import { churchTimeOfDay } from '@/shared/utils/church-time';
 
 export interface ChurchDayOfInput {
   /** A CalendarDay (`yyyy-MM-dd`) or an Instant ISO string. */
@@ -70,7 +70,7 @@ export interface TimeLabelInput {
 /** `14:30`, read on the Church Timezone's wall clock. */
 export function timeLabel({ instant, timeZone }: TimeLabelInput): string {
   return formatTimeOfDay({
-    time: toTimeOfDay({ instant: parseInstant({ value: instant }), timeZone }),
+    time: churchTimeOfDay({ value: instant, timeZone }),
   });
 }
 
@@ -285,8 +285,9 @@ export interface LastServedMillisInput {
 export function lastServedMillis({
   lastServedAt,
 }: LastServedMillisInput): number {
+  if (!lastServedAt) return 0;
   return millisecondsBetween({
     start: EPOCH_INSTANT,
-    end: lastServedAt ? parseInstant({ value: lastServedAt }) : EPOCH_INSTANT,
+    end: parseInstant({ value: lastServedAt }),
   });
 }

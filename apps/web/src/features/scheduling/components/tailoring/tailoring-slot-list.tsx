@@ -1,5 +1,6 @@
 import {
   type CalendarDay,
+  compareCalendarDays,
   compareInstants,
   formatCalendarDay,
   parseInstant,
@@ -306,7 +307,9 @@ export function TailoringSlotList({
   });
 
   const dayGroups = buildFlatDayGroups({ events, timeZone: churchTimezone });
-  const sortedDayKeys = [...dayGroups.keys()].sort();
+  const sortedDayKeys = [...dayGroups.keys()].sort((left, right) =>
+    compareCalendarDays({ left, right }),
+  );
 
   if (sortedDayKeys.length === 0) {
     return (

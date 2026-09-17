@@ -1,8 +1,4 @@
-import {
-  formatCalendarDay,
-  parseCalendarDay,
-  type TimeOfDay,
-} from '@church/time';
+import type { TimeOfDay } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
@@ -52,17 +48,6 @@ export interface ManualSpanDraft {
  * timezone) for those. */
 export function toCalendarDateString(value: string): IsoDateString {
   return toCycleDayKey(value);
-}
-
-export interface FormatCalendarDateInput {
-  value: string;
-}
-
-/** `dd/MM/yyyy` for a date-only value, such as a planning-cycle bound. */
-export function formatDate({ value }: FormatCalendarDateInput): string {
-  return formatCalendarDay({
-    day: parseCalendarDay({ value: toCalendarDateString(value) }),
-  });
 }
 
 export interface FormatTimeRangeInput {

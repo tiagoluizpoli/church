@@ -23,7 +23,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatDayOf, formatTimeRangeOf } from '@/shared/utils/church-time';
+import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export interface PlanningEventCardProps {
   row: CycleCalendarTableRow;
@@ -180,7 +180,7 @@ export function PlanningEventCard({
               <span>
                 <span>{slot.label}</span> ·{' '}
                 <span>
-                  {formatTimeRangeOf({
+                  {formatInstantRangeOf({
                     start: slot.startTime,
                     end: slot.endTime,
                     timeZone: churchTimezone,

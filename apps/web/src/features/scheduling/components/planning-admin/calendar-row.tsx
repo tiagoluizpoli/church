@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { formatDayOf, formatTimeRangeOf } from '@/shared/utils/church-time';
+import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export const CALENDAR_TABLE_COLUMNS = [
   { id: 'event', name: 'Event' },
@@ -396,7 +396,7 @@ function SlotRowCell({
       ) : null}
       {column.id === 'window' ? (
         <span className="text-muted-foreground">
-          {formatTimeRangeOf({
+          {formatInstantRangeOf({
             start: visibleRow.startTime,
             end: visibleRow.endTime,
             timeZone,

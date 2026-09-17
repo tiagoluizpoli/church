@@ -63,8 +63,12 @@ function isDateOnlyText(content: string): boolean {
   return /^\d{2}\/\d{2}\/\d{4}$/.test(content);
 }
 
+/** `dd/MM/yyyy HH:mm – HH:mm`, or `dd/MM/yyyy HH:mm – dd/MM/yyyy HH:mm` when
+ * the slot's range crosses a church-local day boundary. */
 function isTimeRangeText(content: string): boolean {
-  return /^\d{2}:\d{2}\s?[–-]\s?\d{2}:\d{2}$/.test(content);
+  return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}\s?[–-]\s?(\d{2}\/\d{2}\/\d{4}\s)?\d{2}:\d{2}$/.test(
+    content,
+  );
 }
 
 interface TwoEventCycleResponseInput {
@@ -167,7 +171,7 @@ describe('CycleReviewCard header consolidation (US1)', () => {
 });
 
 describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
-  it('renders a day row date-only and an expanded slot row time-only, with no raw ISO or arrow', async () => {
+  it('renders a day row date-only and an expanded slot row as a dated instant range, with no raw ISO or arrow', async () => {
     listPlanningCycles.mockResolvedValue({
       cycles: [
         {
@@ -200,7 +204,6 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     const slotTimeCells = within(table).getAllByText(isTimeRangeText);
     expect(slotTimeCells.length).toBeGreaterThan(0);
     for (const cell of slotTimeCells) {
-      expect(cell.textContent).not.toMatch(/2026/);
       expect(cell.textContent).not.toMatch(/Z/);
     }
   });

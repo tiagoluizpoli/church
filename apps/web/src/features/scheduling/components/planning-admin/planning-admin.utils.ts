@@ -1,8 +1,4 @@
-import {
-  formatCalendarDay,
-  fromTimeColumn,
-  parseCalendarDay,
-} from '@church/time';
+import { fromTimeColumn } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   CycleCalendarSlotRow,
@@ -22,6 +18,7 @@ import type {
   GetPlanningCycle200EventsItemEventStatus,
   ListPlanningCycles200CyclesItemState,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 export const WEEKDAYS = [
   'Sunday',
@@ -191,15 +188,6 @@ function cycleDateKey({ date }: FormatDateInput): string {
   return date.slice(0, 10);
 }
 
-/** `dd/MM/yyyy` for a cycle bound (date-only, no Church Timezone conversion
- * needed — anchored at UTC midnight, per `shared/utils/date.ts`'s
- * `toCycleDayKey`). */
-export function formatCycleDate({ date }: FormatDateInput): string {
-  return formatCalendarDay({
-    day: parseCalendarDay({ value: cycleDateKey({ date }) }),
-  });
-}
-
 export function describeTemplate({ template }: DescribeTemplateInput): string {
   return `${WEEKDAYS[template.weekday] ?? 'Unknown'} · ${template.blocks.length} block${template.blocks.length === 1 ? '' : 's'}`;
 }
@@ -329,7 +317,7 @@ export function toPlanningCyclesTableRow({
   return {
     id: cycle.id,
     name: cycle.name,
-    window: `${formatCycleDate({ date: cycle.startDate })} → ${formatCycleDate({ date: cycle.endDate })}`,
+    window: `${formatCalendarDateOnly({ value: cycle.startDate })} → ${formatCalendarDateOnly({ value: cycle.endDate })}`,
     state: cycle.state,
   };
 }

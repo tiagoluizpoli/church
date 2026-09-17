@@ -1,5 +1,4 @@
 import {
-  formatCycleDate,
   stateBadgeVariant,
   toPlanningCyclesTableRow,
 } from './planning-admin.utils';
@@ -22,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 interface SelectCycleInput {
   cycleId: string;
@@ -90,8 +90,8 @@ export function CycleListCard({
                     <div className="space-y-1">
                       <div className="font-medium">{cycle.name}</div>
                       <div className="text-muted-foreground text-xs">
-                        {formatCycleDate({ date: cycle.startDate })} →{' '}
-                        {formatCycleDate({ date: cycle.endDate })}
+                        {formatCalendarDateOnly({ value: cycle.startDate })} →{' '}
+                        {formatCalendarDateOnly({ value: cycle.endDate })}
                       </div>
                     </div>
                     <Badge variant={stateBadgeVariant({ state: cycle.state })}>

@@ -28,7 +28,6 @@ import {
   createInitialSplitForms,
   filterSlotsByName,
   filterSlotsByTimeOfDay,
-  formatDate,
   type SplitFormState,
   type TimeWindowFilter,
   toHeadcountKey,
@@ -47,7 +46,7 @@ import type {
   GetCycleParticipation200EventsItemSlotsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { dayOf } from '@/shared/utils/church-time';
+import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -566,7 +565,7 @@ function TailoringWorkspaceRoute() {
     )
     .map((eventView) => eventView.event.title);
   const cycleDateSpan = cycleQuery.data
-    ? `${formatDate({ value: cycleQuery.data.cycle.startDate })} – ${formatDate({ value: cycleQuery.data.cycle.endDate })}`
+    ? `${formatCalendarDateOnly({ value: cycleQuery.data.cycle.startDate })} – ${formatCalendarDateOnly({ value: cycleQuery.data.cycle.endDate })}`
     : null;
 
   return (

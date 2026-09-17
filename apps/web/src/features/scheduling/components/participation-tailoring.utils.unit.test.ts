@@ -6,7 +6,6 @@ import {
   createInitialSplitForms,
   filterSlotsByName,
   filterSlotsByTimeOfDay,
-  formatDate,
   formatTimeRange,
   isTimeWindowFilterEmpty,
   toCalendarDateString,
@@ -226,7 +225,7 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
   });
 });
 
-describe('formatDate/formatTimeRange (#159 — church-time seam, one format, non-UTC ambient TZ)', () => {
+describe('formatTimeRange (#159 — church-time seam, one format, non-UTC ambient TZ)', () => {
   const ORIGINAL_TZ = process.env.TZ;
 
   beforeAll(() => {
@@ -235,12 +234,6 @@ describe('formatDate/formatTimeRange (#159 — church-time seam, one format, non
 
   afterAll(() => {
     process.env.TZ = ORIGINAL_TZ;
-  });
-
-  it('formats a cycle bound as dd/MM/yyyy, regardless of the ambient TZ', () => {
-    expect(formatDate({ value: '2027-01-04T00:00:00.000Z' })).toBe(
-      '04/01/2027',
-    );
   });
 
   it('formats a Slot time range on the Church Timezone wall clock (dd/MM/yyyy HH:mm – HH:mm)', () => {

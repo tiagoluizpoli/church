@@ -1,12 +1,10 @@
 import { compareCalendarDays, parseCalendarDay } from '@church/time';
-import {
-  formatDate,
-  toCalendarDateString,
-} from '@/features/scheduling/components/participation-tailoring.utils';
+import { toCalendarDateString } from '@/features/scheduling/components/participation-tailoring.utils';
 import type {
   ListMinistryCycleSummaries200CyclesItem,
   ListMinistryCycleSummaries200CyclesItemStatus,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 export type CycleTailoringStatus =
   ListMinistryCycleSummaries200CyclesItemStatus;
@@ -90,7 +88,7 @@ export function buildMinistryCycleSummaries({
     .map((cycle) => ({
       id: cycle.cycleId,
       name: cycle.name,
-      window: `${formatDate({ value: cycle.startDate })} - ${formatDate({ value: cycle.endDate })}`,
+      window: `${formatCalendarDateOnly({ value: cycle.startDate })} - ${formatCalendarDateOnly({ value: cycle.endDate })}`,
       startDate: cycle.startDate,
       endDate: cycle.endDate,
       eventCount: cycle.eventCount,

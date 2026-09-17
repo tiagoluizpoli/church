@@ -200,10 +200,6 @@ export function formatCycleDate({ date }: FormatDateInput): string {
   });
 }
 
-export function formatEventDateTime({ date }: FormatDateInput): string {
-  return `${date.slice(0, 10)} ${date.slice(11, 16)}Z`;
-}
-
 export function describeTemplate({ template }: DescribeTemplateInput): string {
   return `${WEEKDAYS[template.weekday] ?? 'Unknown'} · ${template.blocks.length} block${template.blocks.length === 1 ? '' : 's'}`;
 }

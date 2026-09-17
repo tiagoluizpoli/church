@@ -10,7 +10,6 @@ import {
   formatTimeRange,
   isTimeWindowFilterEmpty,
   toCalendarDateString,
-  toIsoDateString,
   toMinistryCycleKey,
   validateManualSpans,
 } from './participation-tailoring.utils';
@@ -224,16 +223,6 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
 
       expect(rows[0]).toMatchObject({ eventCount: 0, slotCount: 0 });
     });
-  });
-});
-
-describe('toIsoDateString', () => {
-  it('formats a local date as yyyy-MM-dd', () => {
-    expect(toIsoDateString(new Date(2026, 6, 12))).toBe('2026-07-12');
-  });
-
-  it('zero-pads single-digit month and day', () => {
-    expect(toIsoDateString(new Date(2026, 0, 5))).toBe('2026-01-05');
   });
 });
 

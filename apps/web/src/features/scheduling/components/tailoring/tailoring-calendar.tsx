@@ -29,9 +29,18 @@ export interface TailoringCalendarProps {
 const SCROLL_STEP_PX = 240;
 const DRAG_THRESHOLD_PX = 4;
 
+interface DayOfMonthInput {
+  day: CalendarDay;
+}
+
+interface MoveFocusInput {
+  fromIso: CalendarDay;
+  delta: number;
+}
+
 /** `12` from a CalendarDay string — the compact, unpadded day-of-month this
  * strip has always shown (contrast `formatCalendarDay`'s zero-padded `dd`). */
-function dayOfMonth({ day }: { day: CalendarDay }): string {
+function dayOfMonth({ day }: DayOfMonthInput): string {
   return String(Number(day.slice(8, 10)));
 }
 
@@ -85,7 +94,7 @@ export function TailoringCalendar({
     onSelectedDateChange(selectedDate === iso ? null : iso);
   };
 
-  const moveFocus = (fromIso: CalendarDay, delta: number) => {
+  const moveFocus = ({ fromIso, delta }: MoveFocusInput) => {
     const currentIndex = days.indexOf(fromIso);
     if (currentIndex === -1) return;
     const nextIndex = Math.min(
@@ -231,10 +240,10 @@ export function TailoringCalendar({
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowLeft') {
                     event.preventDefault();
-                    moveFocus(iso, -1);
+                    moveFocus({ fromIso: iso, delta: -1 });
                   } else if (event.key === 'ArrowRight') {
                     event.preventDefault();
-                    moveFocus(iso, 1);
+                    moveFocus({ fromIso: iso, delta: 1 });
                   } else if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     selectDay(iso);

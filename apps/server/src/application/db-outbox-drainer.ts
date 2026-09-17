@@ -1,4 +1,5 @@
 import { env } from '@church/env/server';
+import { toDate } from '@church/time';
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
 import type { MinistryId, VolunteerId } from '../domain/branded-ids';
@@ -147,7 +148,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
-      expiresAt: invitation.expiresAt,
+      expiresAt: toDate({ instant: invitation.expiresAt }),
       redemptionUrl: `${env.CORS_ORIGIN}${redemptionPathFor(invitation)}`,
     };
 
@@ -285,7 +286,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           lastError: error.message,
           attempts,
           status: 'pending',
-          scheduledFor: nextRetryAt(attempts),
+          scheduledFor: toDate({ instant: nextRetryAt({ attempts }) }),
           tx,
         }),
       );

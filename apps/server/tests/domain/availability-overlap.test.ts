@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type { MinistryId, ShiftId } from '../../src/domain/branded-ids';
 import type { OverlapCandidateShift } from '../../src/domain/services/availability-overlap';
@@ -22,8 +23,8 @@ function buildShift({
   return {
     shiftId: id as ShiftId,
     ministryId,
-    startTime: new Date(start),
-    endTime: new Date(end),
+    startTime: parseInstant({ value: start }),
+    endTime: parseInstant({ value: end }),
   };
 }
 

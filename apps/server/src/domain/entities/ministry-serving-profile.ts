@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import type { TimeOfDay } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -17,9 +18,8 @@ export interface ServingProfileEqualSplit {
 
 export interface ServingProfileManualSpan {
   label?: string;
-  /** Time-of-day within the block's day, HH:mm. */
-  startTime: string;
-  endTime: string;
+  startTime: TimeOfDay;
+  endTime: TimeOfDay;
 }
 
 export interface ServingProfileManualSplit {

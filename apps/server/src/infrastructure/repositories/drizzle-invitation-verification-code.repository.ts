@@ -1,4 +1,5 @@
 import { invitationVerificationCode } from '@church/db';
+import { fromDate } from '@church/time';
 import { and, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type {
   ClaimVerificationCodeDeliveryInput,
@@ -174,10 +175,10 @@ function mapVerificationCode({
 }: MapVerificationCodeInput): VerificationCodeState {
   return {
     codeHash: row.codeHash,
-    expiresAt: row.expiresAt,
+    expiresAt: fromDate({ date: row.expiresAt }),
     failedAttempts: row.failedAttempts,
-    consumedAt: row.consumedAt,
+    consumedAt: row.consumedAt ? fromDate({ date: row.consumedAt }) : null,
     redemptionIdempotencyKey: row.redemptionIdempotencyKey,
-    lastSentAt: row.lastSentAt,
+    lastSentAt: fromDate({ date: row.lastSentAt }),
   };
 }

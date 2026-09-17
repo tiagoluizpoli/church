@@ -82,7 +82,7 @@ export const rosteringMapper = {
       volunteerName: volunteer.volunteerName,
       isAvailable: volunteer.isAvailable,
       hasConflict: volunteer.hasConflict,
-      lastServedAt: volunteer.lastServedAt?.toISOString(),
+      lastServedAt: volunteer.lastServedAt,
       qualifiedRoleIds: volunteer.qualifiedRoleIds,
       ministryAccessLevel: volunteer.ministryAccessLevel,
       leadTeamIds: volunteer.leadTeamIds,

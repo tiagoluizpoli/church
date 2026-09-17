@@ -1,4 +1,5 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { type Instant, now, toDate } from '@church/time';
 import type { ChurchId, MinistryId, VolunteerId } from '../branded-ids';
 
 export type MinistryVolunteerId = BrandedId<'MinistryVolunteerId'>;
@@ -30,7 +31,7 @@ export interface MinistryVolunteerProps {
   ministryId: MinistryId;
   ministryAccessLevel: MinistryAccessLevel;
   status: MinistryVolunteerStatus;
-  joinedAt: Date;
+  joinedAt: Instant;
 }
 
 export class MinistryVolunteer extends Entity<
@@ -57,7 +58,7 @@ export class MinistryVolunteer extends Entity<
         ...props,
         ministryAccessLevel: props.ministryAccessLevel ?? 'volunteer',
         status: props.status ?? 'active',
-        joinedAt: props.joinedAt ?? new Date(),
+        joinedAt: props.joinedAt ?? now(),
       } as unknown as MinistryVolunteerProps,
       id as MinistryVolunteerId,
       createdAt,
@@ -85,12 +86,12 @@ export class MinistryVolunteer extends Entity<
     return this._props.status;
   }
 
-  get joinedAt(): Date {
+  get joinedAt(): Instant {
     return this._props.joinedAt;
   }
 
   public promote(accessLevel: MinistryAccessLevel): void {
     this._props.ministryAccessLevel = accessLevel;
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

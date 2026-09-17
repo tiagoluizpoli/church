@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
   EVENT_STATUS_OPTIONS,
@@ -12,8 +13,8 @@ const props = {
   title: 'Sunday Service',
   description: 'Weekly gathering',
   location: 'Main Hall',
-  startDate: new Date('2026-05-15T10:00:00Z'),
-  endDate: new Date('2026-05-15T12:00:00Z'),
+  startDate: parseInstant({ value: '2026-05-15T10:00:00Z' }),
+  endDate: parseInstant({ value: '2026-05-15T12:00:00Z' }),
 };
 
 describe('Event Entity', () => {

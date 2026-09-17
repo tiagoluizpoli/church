@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { parseInstant } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
@@ -418,7 +419,7 @@ export class TailoringController implements FastifyController {
             volunteerId: status.volunteerId,
             volunteerName: status.volunteerName,
             state: status.state,
-            confirmedAt: status.confirmedAt?.toISOString(),
+            confirmedAt: status.confirmedAt,
           })),
         });
       },
@@ -454,7 +455,7 @@ export class TailoringController implements FastifyController {
             volunteerId: status.volunteerId,
             volunteerName: status.volunteerName,
             state: status.state,
-            confirmedAt: status.confirmedAt?.toISOString(),
+            confirmedAt: status.confirmedAt,
           })),
         });
       },
@@ -554,8 +555,8 @@ function toSplitStrategy({ body }: ToSplitStrategyInput): ShiftSplitStrategy {
   return {
     kind: 'manual',
     spans: body.strategy.spans.map((span) => ({
-      startTime: new Date(span.startTime),
-      endTime: new Date(span.endTime),
+      startTime: parseInstant({ value: span.startTime }),
+      endTime: parseInstant({ value: span.endTime }),
       label: span.label,
     })),
   };

@@ -1,3 +1,4 @@
+import { addMilliseconds, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { AssignmentManagerService } from '../../src/domain/assignment/assignment-manager-service';
 import {
@@ -23,8 +24,8 @@ describe('Slot Generation — Equal Split', () => {
   const eventId = 'event-1';
 
   it('even division (120min / 30min = 4 slots) — 4 non-overlapping slots', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T12:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T12:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -49,18 +50,22 @@ describe('Slot Generation — Equal Split', () => {
       expect(slot.status).toBe('active');
       expect(slot.label).toBe(`Slot ${i + 1}`);
 
-      const expectedStart = new Date(
-        eventStartTime.getTime() + i * 30 * 60 * 1000,
-      );
-      const expectedEnd = new Date(expectedStart.getTime() + 30 * 60 * 1000);
-      expect(slot.startTime.getTime()).toBe(expectedStart.getTime());
-      expect(slot.endTime.getTime()).toBe(expectedEnd.getTime());
+      const expectedStart = addMilliseconds({
+        instant: eventStartTime,
+        milliseconds: i * 30 * 60 * 1000,
+      });
+      const expectedEnd = addMilliseconds({
+        instant: expectedStart,
+        milliseconds: 30 * 60 * 1000,
+      });
+      expect(slot.startTime).toBe(expectedStart);
+      expect(slot.endTime).toBe(expectedEnd);
     });
   });
 
   it('remainder (65min / 30min) — 2x30min + 1x5min = 3 slots, hasRemainder: true', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T11:05:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T11:05:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -86,32 +91,32 @@ describe('Slot Generation — Equal Split', () => {
     expect(slot2).toBeDefined();
 
     if (slot0) {
-      expect(slot0.slot.startTime.getTime()).toBe(eventStartTime.getTime());
-      expect(slot0.slot.endTime.getTime()).toBe(
-        new Date('2026-05-19T10:30:00Z').getTime(),
+      expect(slot0.slot.startTime).toBe(eventStartTime);
+      expect(slot0.slot.endTime).toBe(
+        parseInstant({ value: '2026-05-19T10:30:00Z' }),
       );
     }
 
     if (slot1) {
-      expect(slot1.slot.startTime.getTime()).toBe(
-        new Date('2026-05-19T10:30:00Z').getTime(),
+      expect(slot1.slot.startTime).toBe(
+        parseInstant({ value: '2026-05-19T10:30:00Z' }),
       );
-      expect(slot1.slot.endTime.getTime()).toBe(
-        new Date('2026-05-19T11:00:00Z').getTime(),
+      expect(slot1.slot.endTime).toBe(
+        parseInstant({ value: '2026-05-19T11:00:00Z' }),
       );
     }
 
     if (slot2) {
-      expect(slot2.slot.startTime.getTime()).toBe(
-        new Date('2026-05-19T11:00:00Z').getTime(),
+      expect(slot2.slot.startTime).toBe(
+        parseInstant({ value: '2026-05-19T11:00:00Z' }),
       );
-      expect(slot2.slot.endTime.getTime()).toBe(eventEndTime.getTime());
+      expect(slot2.slot.endTime).toBe(eventEndTime);
     }
   });
 
   it('single slot (30min / 30min = 1 slot)', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T10:30:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T10:30:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -130,14 +135,14 @@ describe('Slot Generation — Equal Split', () => {
     const slot0 = result.slots[0];
     expect(slot0).toBeDefined();
     if (slot0) {
-      expect(slot0.slot.startTime.getTime()).toBe(eventStartTime.getTime());
-      expect(slot0.slot.endTime.getTime()).toBe(eventEndTime.getTime());
+      expect(slot0.slot.startTime).toBe(eventStartTime);
+      expect(slot0.slot.endTime).toBe(eventEndTime);
     }
   });
 
   it('two-day event (2880min / 60min) — 48 slots with day-aware labels', () => {
-    const eventStartTime = new Date('2026-05-19T00:00:00Z');
-    const eventEndTime = new Date('2026-05-21T00:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T00:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-21T00:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -161,13 +166,13 @@ describe('Slot Generation — Equal Split', () => {
     expect(firstSlot?.label).toBe('2026-05-19 - Slot 1');
     expect(dayTwoFirstSlot?.label).toBe('2026-05-20 - Slot 25');
     expect(lastSlot?.label).toBe('2026-05-20 - Slot 48');
-    expect(firstSlot?.startTime.getTime()).toBe(eventStartTime.getTime());
-    expect(lastSlot?.endTime.getTime()).toBe(eventEndTime.getTime());
+    expect(firstSlot?.startTime).toBe(eventStartTime);
+    expect(lastSlot?.endTime).toBe(eventEndTime);
   });
 
   it('slot duration exceeds event duration — 1 slot = full event', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T10:30:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T10:30:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -186,14 +191,14 @@ describe('Slot Generation — Equal Split', () => {
     const slot0 = result.slots[0];
     expect(slot0).toBeDefined();
     if (slot0) {
-      expect(slot0.slot.startTime.getTime()).toBe(eventStartTime.getTime());
-      expect(slot0.slot.endTime.getTime()).toBe(eventEndTime.getTime());
+      expect(slot0.slot.startTime).toBe(eventStartTime);
+      expect(slot0.slot.endTime).toBe(eventEndTime);
     }
   });
 
   it('very small remainder (61min / 30min) — 2x30min + 1x1min', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T11:01:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T11:01:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -212,16 +217,16 @@ describe('Slot Generation — Equal Split', () => {
     const slot2 = result.slots[2];
     expect(slot2).toBeDefined();
     if (slot2) {
-      expect(slot2.slot.startTime.getTime()).toBe(
-        new Date('2026-05-19T11:00:00Z').getTime(),
+      expect(slot2.slot.startTime).toBe(
+        parseInstant({ value: '2026-05-19T11:00:00Z' }),
       );
-      expect(slot2.slot.endTime.getTime()).toBe(eventEndTime.getTime());
+      expect(slot2.slot.endTime).toBe(eventEndTime);
     }
   });
 
   it('zero-duration slot request → domain error', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T12:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T12:00:00Z' });
 
     expect(() => {
       AssignmentManagerService.generateSlots({
@@ -238,8 +243,8 @@ describe('Slot Generation — Equal Split', () => {
   });
 
   it('negative slot duration → domain error', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T12:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T12:00:00Z' });
 
     expect(() => {
       AssignmentManagerService.generateSlots({
@@ -256,8 +261,8 @@ describe('Slot Generation — Equal Split', () => {
   });
 
   it('event duration <= 0 → domain error', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T10:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
 
     expect(() => {
       AssignmentManagerService.generateSlots({
@@ -274,8 +279,8 @@ describe('Slot Generation — Equal Split', () => {
   });
 
   it('event already has existing slots → DuplicateSlotsError', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T12:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T12:00:00Z' });
     const existingSlot = new TimeSlot({
       churchId,
       eventId,
@@ -299,8 +304,8 @@ describe('Slot Generation — Equal Split', () => {
   });
 
   it('event has existing slots from a different church → IsolationBreachError', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T12:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T12:00:00Z' });
     const existingSlot = new TimeSlot({
       churchId: 'other-church',
       eventId,
@@ -324,8 +329,8 @@ describe('Slot Generation — Equal Split', () => {
   });
 
   it('isolation: all generated slots have correct churchId and eventId', () => {
-    const eventStartTime = new Date('2026-05-19T10:00:00Z');
-    const eventEndTime = new Date('2026-05-19T11:00:00Z');
+    const eventStartTime = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const eventEndTime = parseInstant({ value: '2026-05-19T11:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId: 'other-church',
@@ -350,16 +355,16 @@ describe('Slot Generation — Equal Split', () => {
 describe('Slot Generation — Template-Based', () => {
   const churchId = 'church-1';
   const eventId = 'event-1';
-  const eventStartTime = new Date('2026-05-19T09:00:00Z');
-  const eventEndTime = new Date('2026-05-19T13:00:00Z');
+  const eventStartTime = parseInstant({ value: '2026-05-19T09:00:00Z' });
+  const eventEndTime = parseInstant({ value: '2026-05-19T13:00:00Z' });
 
   it('3 periods → 3 slots with correct labels and time ranges', () => {
-    const period1Start = new Date('2026-05-19T09:00:00Z');
-    const period1End = new Date('2026-05-19T10:15:00Z');
-    const period2Start = new Date('2026-05-19T10:15:00Z');
-    const period2End = new Date('2026-05-19T11:30:00Z');
-    const period3Start = new Date('2026-05-19T11:30:00Z');
-    const period3End = new Date('2026-05-19T13:00:00Z');
+    const period1Start = parseInstant({ value: '2026-05-19T09:00:00Z' });
+    const period1End = parseInstant({ value: '2026-05-19T10:15:00Z' });
+    const period2Start = parseInstant({ value: '2026-05-19T10:15:00Z' });
+    const period2End = parseInstant({ value: '2026-05-19T11:30:00Z' });
+    const period3Start = parseInstant({ value: '2026-05-19T11:30:00Z' });
+    const period3End = parseInstant({ value: '2026-05-19T13:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -390,24 +395,24 @@ describe('Slot Generation — Template-Based', () => {
 
     if (slot0) {
       expect(slot0.slot.label).toBe('Setup');
-      expect(slot0.slot.startTime.getTime()).toBe(period1Start.getTime());
-      expect(slot0.slot.endTime.getTime()).toBe(period1End.getTime());
+      expect(slot0.slot.startTime).toBe(period1Start);
+      expect(slot0.slot.endTime).toBe(period1End);
     }
     if (slot1) {
       expect(slot1.slot.label).toBe('Service');
-      expect(slot1.slot.startTime.getTime()).toBe(period2Start.getTime());
-      expect(slot1.slot.endTime.getTime()).toBe(period2End.getTime());
+      expect(slot1.slot.startTime).toBe(period2Start);
+      expect(slot1.slot.endTime).toBe(period2End);
     }
     if (slot2) {
       expect(slot2.slot.label).toBe('Teardown');
-      expect(slot2.slot.startTime.getTime()).toBe(period3Start.getTime());
-      expect(slot2.slot.endTime.getTime()).toBe(period3End.getTime());
+      expect(slot2.slot.startTime).toBe(period3Start);
+      expect(slot2.slot.endTime).toBe(period3End);
     }
   });
 
   it('period with requirements → SlotRequirement entities created', () => {
-    const periodStart = new Date('2026-05-19T09:00:00Z');
-    const periodEnd = new Date('2026-05-19T11:00:00Z');
+    const periodStart = parseInstant({ value: '2026-05-19T09:00:00Z' });
+    const periodEnd = parseInstant({ value: '2026-05-19T11:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -447,8 +452,8 @@ describe('Slot Generation — Template-Based', () => {
   });
 
   it('period with multiple requirements → multiple requirements per slot', () => {
-    const periodStart = new Date('2026-05-19T09:00:00Z');
-    const periodEnd = new Date('2026-05-19T11:00:00Z');
+    const periodStart = parseInstant({ value: '2026-05-19T09:00:00Z' });
+    const periodEnd = parseInstant({ value: '2026-05-19T11:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -493,8 +498,8 @@ describe('Slot Generation — Template-Based', () => {
   });
 
   it('single period → 1 slot', () => {
-    const periodStart = new Date('2026-05-19T09:00:00Z');
-    const periodEnd = new Date('2026-05-19T13:00:00Z');
+    const periodStart = parseInstant({ value: '2026-05-19T09:00:00Z' });
+    const periodEnd = parseInstant({ value: '2026-05-19T13:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -518,8 +523,8 @@ describe('Slot Generation — Template-Based', () => {
   });
 
   it('period with zero requirements → slot with empty requirements', () => {
-    const periodStart = new Date('2026-05-19T09:00:00Z');
-    const periodEnd = new Date('2026-05-19T13:00:00Z');
+    const periodStart = parseInstant({ value: '2026-05-19T09:00:00Z' });
+    const periodEnd = parseInstant({ value: '2026-05-19T13:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -548,10 +553,10 @@ describe('Slot Generation — Template-Based', () => {
   });
 
   it('non-contiguous periods (gap) → slots match template exactly', () => {
-    const period1Start = new Date('2026-05-19T09:00:00Z');
-    const period1End = new Date('2026-05-19T10:00:00Z');
-    const period2Start = new Date('2026-05-19T11:00:00Z');
-    const period2End = new Date('2026-05-19T12:00:00Z');
+    const period1Start = parseInstant({ value: '2026-05-19T09:00:00Z' });
+    const period1End = parseInstant({ value: '2026-05-19T10:00:00Z' });
+    const period2Start = parseInstant({ value: '2026-05-19T11:00:00Z' });
+    const period2End = parseInstant({ value: '2026-05-19T12:00:00Z' });
 
     const result = AssignmentManagerService.generateSlots({
       churchId,
@@ -575,12 +580,12 @@ describe('Slot Generation — Template-Based', () => {
     expect(slot1).toBeDefined();
 
     if (slot0) {
-      expect(slot0.slot.startTime.getTime()).toBe(period1Start.getTime());
-      expect(slot0.slot.endTime.getTime()).toBe(period1End.getTime());
+      expect(slot0.slot.startTime).toBe(period1Start);
+      expect(slot0.slot.endTime).toBe(period1End);
     }
     if (slot1) {
-      expect(slot1.slot.startTime.getTime()).toBe(period2Start.getTime());
-      expect(slot1.slot.endTime.getTime()).toBe(period2End.getTime());
+      expect(slot1.slot.startTime).toBe(period2Start);
+      expect(slot1.slot.endTime).toBe(period2End);
     }
   });
 
@@ -613,15 +618,15 @@ describe('Slot Generation — Template-Based', () => {
 describe('Publish Schedule', () => {
   const churchId = 'church-1';
   const actorId = 'leader-1';
-  const now = new Date('2026-05-19T09:00:00Z');
+  const now = parseInstant({ value: '2026-05-19T09:00:00Z' });
 
   it('draft event + 5 draft assignments, all pass → event published, assignments pending, transitionedCount = 5', () => {
     const event = new Event({
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -670,7 +675,7 @@ describe('Publish Schedule', () => {
       expect(audit.churchId).toBe(churchId);
       expect(audit.actorId).toBe(actorId);
       expect(audit.action).toBe('event_published');
-      expect(audit.timestamp.getTime()).toBe(now.getTime());
+      expect(audit.occurredAt).toBe(now);
     });
 
     assignments.forEach((a) => {
@@ -683,8 +688,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -727,8 +732,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -749,8 +754,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'scheduled',
     });
 
@@ -779,8 +784,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'cancelled',
     });
 
@@ -809,8 +814,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'past',
     });
 
@@ -839,8 +844,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T08:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T08:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -869,8 +874,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -952,8 +957,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -1015,8 +1020,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -1078,8 +1083,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-19T10:00:00Z'),
-      endDate: new Date('2026-05-19T12:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -1141,8 +1146,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-19T10:00:00Z'),
-        endDate: new Date('2026-05-19T12:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -1215,7 +1220,7 @@ describe('Publish Schedule', () => {
         expect(audit.churchId).toBe(churchId);
         expect(audit.actorId).toBe(actorId);
         expect(audit.action).toBe('event_cancelled');
-        expect(audit.timestamp.getTime()).toBe(now.getTime());
+        expect(audit.occurredAt).toBe(now);
       });
     });
 
@@ -1224,8 +1229,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-19T10:00:00Z'),
-        endDate: new Date('2026-05-19T12:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'draft',
       });
 
@@ -1275,8 +1280,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-19T10:00:00Z'),
-        endDate: new Date('2026-05-19T12:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'cancelled',
       });
 
@@ -1297,8 +1302,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-19T10:00:00Z'),
-        endDate: new Date('2026-05-19T12:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'past',
       });
 
@@ -1319,8 +1324,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-19T10:00:00Z'),
-        endDate: new Date('2026-05-19T12:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -1377,8 +1382,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-19T10:00:00Z'),
-        endDate: new Date('2026-05-19T12:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -1410,8 +1415,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-19T10:00:00Z'),
-        endDate: new Date('2026-05-19T12:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -1490,7 +1495,7 @@ describe('Publish Schedule', () => {
       expect(audit?.assignmentId).toBe(assignment.id);
       expect(audit?.actorId).toBe('user-1');
       expect(audit?.action).toBe('status_change');
-      expect(audit?.timestamp.getTime()).toBe(now.getTime());
+      expect(audit?.occurredAt).toBe(now);
     });
 
     it('edge: already confirmed (idempotent) → success, returns null', () => {
@@ -1616,7 +1621,7 @@ describe('Publish Schedule', () => {
       expect(audit.actorId).toBe('vol-1');
       expect(audit.action).toBe('status_change');
       expect(audit.reason).toBe('SICK');
-      expect(audit.timestamp.getTime()).toBe(now.getTime());
+      expect(audit.occurredAt).toBe(now);
     });
 
     it('pending without reason → declined status, audit with empty/undefined reason', () => {
@@ -1741,8 +1746,8 @@ describe('Publish Schedule', () => {
 
   describe('Find Replacement Volunteers', () => {
     const slotTimeRange = {
-      start: new Date('2026-05-20T09:00:00Z'),
-      end: new Date('2026-05-20T10:00:00Z'),
+      start: parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
     };
 
     it('3 qualified, all available, none declined → 3 candidates sorted ascending by workload', () => {
@@ -2026,15 +2031,15 @@ describe('Publish Schedule', () => {
   });
 
   describe('Lifecycle Transitions', () => {
-    const now = new Date('2026-05-20T12:00:00Z');
+    const now = parseInstant({ value: '2026-05-20T12:00:00Z' });
 
     it('published event past end date → event past, pending → confirmed', () => {
       const event = new Event({
         churchId,
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2077,8 +2082,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'draft',
       });
 
@@ -2112,8 +2117,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Future Service',
-        startDate: new Date('2026-05-20T14:00:00Z'),
-        endDate: new Date('2026-05-20T16:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T14:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T16:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2137,8 +2142,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Past Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'past',
       });
 
@@ -2160,8 +2165,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Cancelled Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'cancelled',
       });
 
@@ -2183,8 +2188,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2230,8 +2235,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Empty Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2255,8 +2260,8 @@ describe('Publish Schedule', () => {
         churchId: 'other-church',
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2275,8 +2280,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: new Date('2026-05-20T08:00:00Z'),
-        endDate: new Date('2026-05-20T10:00:00Z'),
+        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 

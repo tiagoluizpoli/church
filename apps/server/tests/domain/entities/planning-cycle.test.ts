@@ -1,3 +1,4 @@
+import { parseCalendarDay, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { PlanningCycle } from '../../../src/domain/entities/planning-cycle';
 import { IllegalStateTransitionError } from '../../../src/domain/errors/illegal-state-transition';
@@ -8,8 +9,8 @@ function createPlanningCycle() {
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       name: 'July 2026',
-      startDate: new Date('2026-07-01T00:00:00.000Z'),
-      endDate: new Date('2026-08-01T00:00:00.000Z'),
+      startDate: parseCalendarDay({ value: '2026-07-01' }),
+      endDate: parseCalendarDay({ value: '2026-08-01' }),
     },
     id: '22222222-2222-2222-2222-222222222222',
   });
@@ -29,8 +30,8 @@ describe('PlanningCycle', () => {
       props: {
         churchId: '11111111-1111-1111-1111-111111111111',
         name: 'Pre-locked',
-        startDate: new Date('2026-07-01T00:00:00.000Z'),
-        endDate: new Date('2026-08-01T00:00:00.000Z'),
+        startDate: parseCalendarDay({ value: '2026-07-01' }),
+        endDate: parseCalendarDay({ value: '2026-08-01' }),
         state: 'locked',
       },
     });
@@ -45,8 +46,8 @@ describe('PlanningCycle', () => {
           props: {
             churchId: '11111111-1111-1111-1111-111111111111',
             name: 'Broken',
-            startDate: new Date('2026-07-01T00:00:00.000Z'),
-            endDate: new Date('2026-07-01T00:00:00.000Z'),
+            startDate: parseCalendarDay({ value: '2026-07-01' }),
+            endDate: parseCalendarDay({ value: '2026-07-01' }),
           },
         }),
     ).toThrow(InvalidDateRangeError);
@@ -126,16 +127,18 @@ describe('PlanningCycle', () => {
   it('evaluates date containment using church-local dates', () => {
     const cycle = createPlanningCycle();
 
+    // 2026-07-31T23:00:00-03:00 is still church-local July 31.
     expect(
       cycle.containsDate({
-        date: new Date('2026-07-31T23:00:00.000-03:00'),
+        instant: parseInstant({ value: '2026-08-01T02:00:00.000Z' }),
         timeZone: 'America/Sao_Paulo',
       }),
     ).toBe(true);
 
+    // 2026-08-01T00:30:00-03:00 is church-local August 1, the exclusive end.
     expect(
       cycle.containsDate({
-        date: new Date('2026-08-01T00:30:00.000-03:00'),
+        instant: parseInstant({ value: '2026-08-01T03:30:00.000Z' }),
         timeZone: 'America/Sao_Paulo',
       }),
     ).toBe(false);

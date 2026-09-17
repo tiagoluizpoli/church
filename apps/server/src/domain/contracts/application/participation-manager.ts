@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -154,7 +155,7 @@ export interface EligibleVolunteerView {
   volunteerName: string;
   isAvailable: boolean;
   hasConflict: boolean;
-  lastServedAt?: Date;
+  lastServedAt?: Instant;
   /**
    * Every role this volunteer is qualified for in the ministry — not only the
    * roles the current shift requires. The builder shows it as the member's

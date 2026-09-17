@@ -1,4 +1,5 @@
 import { NotFoundError } from '@church/core';
+import { compareInstants, fromDate, parseInstant } from '@church/time';
 import type {
   ChurchId,
   EventId,
@@ -38,8 +39,8 @@ class MockTimeSlotRepository implements TimeSlotRepository {
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: '66666666-6666-6666-6666-666666666661' as EventId,
-        startTime: new Date('2024-06-05T10:00:00Z'),
-        endTime: new Date('2024-06-05T12:00:00Z'),
+        startTime: parseInstant({ value: '2024-06-05T10:00:00Z' }),
+        endTime: parseInstant({ value: '2024-06-05T12:00:00Z' }),
         status: 'active',
         requirements: [req],
       },
@@ -88,8 +89,8 @@ class MockTimeSlotRepository implements TimeSlotRepository {
         {
           churchId,
           eventId: input.eventId,
-          startTime: item.startTime,
-          endTime: item.endTime,
+          startTime: fromDate({ date: item.startTime }),
+          endTime: fromDate({ date: item.endTime }),
           label: item.label,
           status: 'active',
           requirements,
@@ -146,8 +147,8 @@ class MockTimeSlotRepository implements TimeSlotRepository {
       {
         churchId,
         eventId: input.eventId,
-        startTime: input.startTime,
-        endTime: input.endTime,
+        startTime: fromDate({ date: input.startTime }),
+        endTime: fromDate({ date: input.endTime }),
         label: input.label,
         status: 'active',
         requirements: [],
@@ -168,8 +169,12 @@ class MockTimeSlotRepository implements TimeSlotRepository {
       {
         churchId: existing.churchId,
         eventId: existing.eventId,
-        startTime: input.startTime ?? existing.startTime,
-        endTime: input.endTime ?? existing.endTime,
+        startTime: input.startTime
+          ? fromDate({ date: input.startTime })
+          : existing.startTime,
+        endTime: input.endTime
+          ? fromDate({ date: input.endTime })
+          : existing.endTime,
         label: input.label ?? existing.label,
         status: existing.status,
         requirements: existing.requirements,
@@ -199,8 +204,14 @@ class MockTimeSlotRepository implements TimeSlotRepository {
         slot.churchId === churchId &&
         slot.eventId === eventId &&
         slot.id !== excludeSlotId &&
-        slot.startTime < endTime &&
-        slot.endTime > startTime,
+        compareInstants({
+          left: slot.startTime,
+          right: fromDate({ date: endTime }),
+        }) < 0 &&
+        compareInstants({
+          left: slot.endTime,
+          right: fromDate({ date: startTime }),
+        }) > 0,
     );
   }
 }

@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import {
   afterAll,
   beforeAll,
@@ -150,7 +151,7 @@ describe('Ministry Invitation minting routes', () => {
       kind: 'chained',
       status: 'pending',
       churchInvitationId: 'church-invitation-1',
-      expiresAt: new Date('2030-01-01T00:00:00Z'),
+      expiresAt: parseInstant({ value: '2030-01-01T00:00:00Z' }),
     });
     ministryInvitationManager.getDeliveryStatus.mockResolvedValue('pending');
 
@@ -207,7 +208,7 @@ describe('Ministry Invitation minting routes', () => {
       id: 'ministry-invitation-1',
       kind: 'ministry-only',
       status: 'pending',
-      expiresAt: new Date('2030-02-01T00:00:00Z'),
+      expiresAt: parseInstant({ value: '2030-02-01T00:00:00Z' }),
     });
     ministryInvitationManager.getDeliveryStatus.mockResolvedValue('pending');
 

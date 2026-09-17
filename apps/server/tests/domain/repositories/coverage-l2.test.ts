@@ -1,5 +1,6 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 
+import { now, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   AssignmentId,
@@ -106,8 +107,8 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
       volunteerQualifiedRoleIds: isQualified ? [roleId] : [],
       ministryId,
       volunteerMinistryIds: isMember ? [ministryId] : [],
-      eventStartTime: new Date('2024-06-15T10:00:00Z'),
-      now: new Date('2024-06-10T10:00:00Z'),
+      eventStartTime: parseInstant({ value: '2024-06-15T10:00:00Z' }),
+      now: parseInstant({ value: '2024-06-10T10:00:00Z' }),
       slotId,
       existingSlotIds: existingAssignment ? [existingAssignment.slotId] : [],
       availabilityResult: { status: 'AVAILABLE' as const },
@@ -142,7 +143,7 @@ describe('Coverage L2: Conflict & Validation Service Data Access', () => {
       },
       overrideReason: 'Approved by lead',
       targetMinistryId: ministryId,
-      now: new Date(),
+      now: now(),
     };
 
     const auditEntity = ConflictValidationService.authorizeOverride(

@@ -1,14 +1,20 @@
+import {
+  compareInstants,
+  type Instant,
+  millisecondsBetween,
+} from '@church/time';
+
 export const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
 export const VERIFICATION_CODE_MAX_ATTEMPTS = 5;
 export const VERIFICATION_CODE_RESEND_COOLDOWN_MS = 60 * 1000;
 
 export interface VerificationCodeState {
   codeHash: string;
-  expiresAt: Date;
+  expiresAt: Instant;
   failedAttempts: number;
-  consumedAt: Date | null;
+  consumedAt: Instant | null;
   redemptionIdempotencyKey: string | null;
-  lastSentAt: Date;
+  lastSentAt: Instant;
 }
 
 export interface ValidVerificationCodeValidation {
@@ -41,12 +47,12 @@ export type VerificationCodeValidation =
 export interface ValidateVerificationCodeInput {
   state: VerificationCodeState;
   candidateMatches: boolean;
-  now: Date;
+  now: Instant;
 }
 
 export interface CanResendVerificationCodeInput {
   state: VerificationCodeState;
-  now: Date;
+  now: Instant;
 }
 
 export function validateVerificationCode({
@@ -55,7 +61,9 @@ export function validateVerificationCode({
   now,
 }: ValidateVerificationCodeInput): VerificationCodeValidation {
   if (state.consumedAt) return { status: 'consumed' };
-  if (state.expiresAt <= now) return { status: 'expired' };
+  if (compareInstants({ left: state.expiresAt, right: now }) <= 0) {
+    return { status: 'expired' };
+  }
   if (state.failedAttempts >= VERIFICATION_CODE_MAX_ATTEMPTS) {
     return { status: 'attempt-limit-reached' };
   }
@@ -67,7 +75,7 @@ export function canResendVerificationCode({
   now,
 }: CanResendVerificationCodeInput): boolean {
   return (
-    now.getTime() - state.lastSentAt.getTime() >=
+    millisecondsBetween({ start: state.lastSentAt, end: now }) >=
     VERIFICATION_CODE_RESEND_COOLDOWN_MS
   );
 }

@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import { AssignmentManagerService } from '../../src/domain/assignment/assignment-manager-service';
 import { PublishValidationError } from '../../src/domain/assignment/errors';
@@ -7,15 +8,15 @@ import { Event, type EventStatus } from '../../src/domain/entities/event';
 import { IsolationBreachError } from '../../src/domain/errors';
 
 const CHURCH_ID = 'church-1';
-const NOW = new Date('2026-07-01T10:00:00Z');
+const NOW = parseInstant({ value: '2026-07-01T10:00:00Z' });
 
 function makeEvent(churchId = CHURCH_ID, status: EventStatus = 'draft') {
   return new Event({
     churchId,
     ministryId: 'ministry-1',
     title: 'Service',
-    startDate: new Date('2026-07-01T11:00:00Z'),
-    endDate: new Date('2026-07-01T12:00:00Z'),
+    startDate: parseInstant({ value: '2026-07-01T11:00:00Z' }),
+    endDate: parseInstant({ value: '2026-07-01T12:00:00Z' }),
     status,
   });
 }
@@ -121,8 +122,8 @@ describe('AssignmentManagerService uncovered branches', () => {
 
   it('ignores unowned contexts and defaults missing workload to zero', () => {
     const timeRange = {
-      start: new Date('2026-07-01T11:00:00Z'),
-      end: new Date('2026-07-01T12:00:00Z'),
+      start: parseInstant({ value: '2026-07-01T11:00:00Z' }),
+      end: parseInstant({ value: '2026-07-01T12:00:00Z' }),
     };
     const result = AssignmentManagerService.findReplacements({
       churchId: CHURCH_ID,
@@ -161,7 +162,7 @@ describe('AssignmentManagerService uncovered branches', () => {
         churchId: CHURCH_ID,
         event,
         assignments: [],
-        now: new Date('2026-07-01T13:00:00Z'),
+        now: parseInstant({ value: '2026-07-01T13:00:00Z' }),
       }),
     ).toEqual({ transitioned: false, assignmentsAutoConfirmed: 0 });
   });

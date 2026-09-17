@@ -1,4 +1,5 @@
 import type { ministry } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type { ChurchId, MinistryId } from '../../domain/branded-ids';
 import type { MinistryProps } from '../../domain/entities/ministry';
@@ -13,7 +14,7 @@ export function mapMinistry(row: MinistryRow): Ministry {
     description: row.description ?? undefined,
     enforcementType: row.enforcementType as MinistryProps['enforcementType'],
     defaultDirection: row.defaultDirection,
-    deletedAt: row.deletedAt ?? undefined,
+    deletedAt: row.deletedAt ? fromDate({ date: row.deletedAt }) : undefined,
   };
 
   return new Ministry(

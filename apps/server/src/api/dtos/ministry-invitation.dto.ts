@@ -43,7 +43,7 @@ export const ministryInvitationMapper = {
       id: invitation.id,
       kind: invitation.kind,
       status: invitation.status,
-      expiresAt: invitation.expiresAt.toISOString(),
+      expiresAt: invitation.expiresAt,
       redemptionPath: redemptionPathFor(invitation),
       deliveryStatus,
     };

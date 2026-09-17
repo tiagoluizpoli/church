@@ -174,7 +174,7 @@ function assignmentToResponse(a: Assignment): AssignmentResponse {
     roleId: a.roleId as string,
     status: a.status,
     reason: a.reason,
-    assignedAt: a.assignedAt.toISOString(),
+    assignedAt: a.assignedAt,
     assignedBy: a.assignedBy as string | undefined,
   };
 }
@@ -189,7 +189,7 @@ function availabilityCheckSummaryToResponse(
     ministryId: summary.ministryId,
     ministryName: summary.ministryName,
     state: summary.state,
-    confirmedAt: summary.confirmedAt?.toISOString(),
+    confirmedAt: summary.confirmedAt,
     totalShiftCount: summary.totalShiftCount,
     unavailableShiftCount: summary.unavailableShiftCount,
   };
@@ -205,13 +205,13 @@ function availabilityCheckDetailToResponse(
     ministryId: detail.ministryId,
     ministryName: detail.ministryName,
     state: detail.state,
-    confirmedAt: detail.confirmedAt?.toISOString(),
+    confirmedAt: detail.confirmedAt,
     shifts: detail.shifts.map((shift) => ({
       shiftId: shift.shiftId,
       eventId: shift.eventId,
       eventTitle: shift.eventTitle,
-      startTime: shift.startTime.toISOString(),
-      endTime: shift.endTime.toISOString(),
+      startTime: shift.startTime,
+      endTime: shift.endTime,
       label: shift.label,
       available: shift.available,
     })),

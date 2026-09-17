@@ -78,8 +78,8 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     });
 
     expect(template.blocks).toHaveLength(1);
-    expect(template.blocks[0]?.startTime).toBe('22:00:00');
-    expect(template.blocks[0]?.endTime).toBe('02:00:00');
+    expect(template.blocks[0]?.startTime).toBe('22:00');
+    expect(template.blocks[0]?.endTime).toBe('02:00');
   });
 
   it('rejects a time block whose start and end are equal', async () => {

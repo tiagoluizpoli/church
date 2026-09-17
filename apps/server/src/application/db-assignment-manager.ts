@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import type {
   AssignmentId,
@@ -290,8 +291,8 @@ export class DbAssignmentManager implements IAssignmentManager {
       await this.assignmentRepo.listByVolunteerInRange(
         input.churchId,
         input.volunteerId,
-        shift.startTime,
-        shift.endTime,
+        toDate({ instant: shift.startTime }),
+        toDate({ instant: shift.endTime }),
         tx,
       );
 

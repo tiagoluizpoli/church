@@ -1,3 +1,4 @@
+import { parseTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { EventTemplate } from '../../../src/domain/entities/event-template';
 import {
@@ -18,8 +19,8 @@ function createTimeBlock({ props, id }: CreateTimeBlockInput = {}) {
       churchId: '11111111-1111-1111-1111-111111111111',
       templateId: '22222222-2222-2222-2222-222222222222',
       label: 'Welcome',
-      startTime: '09:00',
-      endTime: '09:30',
+      startTime: parseTimeOfDay({ value: '09:00' }),
+      endTime: parseTimeOfDay({ value: '09:30' }),
       order: 2,
       ...props,
     },
@@ -39,8 +40,8 @@ describe('EventTemplate and TimeBlock', () => {
           createTimeBlock({
             props: {
               label: 'Gathering',
-              startTime: '08:30',
-              endTime: '09:00',
+              startTime: parseTimeOfDay({ value: '08:30' }),
+              endTime: parseTimeOfDay({ value: '09:00' }),
               order: 1,
             },
             id: '33333333-3333-3333-3333-333333333331',
@@ -60,8 +61,8 @@ describe('EventTemplate and TimeBlock', () => {
     expect(() =>
       createTimeBlock({
         props: {
-          startTime: '10:00',
-          endTime: '10:00',
+          startTime: parseTimeOfDay({ value: '10:00' }),
+          endTime: parseTimeOfDay({ value: '10:00' }),
         },
       }),
     ).toThrow(InvalidTimeRangeError);
@@ -70,8 +71,8 @@ describe('EventTemplate and TimeBlock', () => {
   it('accepts an overnight time block whose end is before its start', () => {
     const block = createTimeBlock({
       props: {
-        startTime: '22:00',
-        endTime: '02:00',
+        startTime: parseTimeOfDay({ value: '22:00' }),
+        endTime: parseTimeOfDay({ value: '02:00' }),
       },
     });
 
@@ -141,8 +142,8 @@ describe('EventTemplate and TimeBlock', () => {
     const block = createTimeBlock({
       props: {
         label: 'Gathering',
-        startTime: '08:30',
-        endTime: '09:00',
+        startTime: parseTimeOfDay({ value: '08:30' }),
+        endTime: parseTimeOfDay({ value: '09:00' }),
         order: 1,
       },
       id: '33333333-3333-3333-3333-333333333334',

@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { ConflictValidationService } from '../../src/domain/conflict/conflict-validation-service';
 import { HardConstraintError } from '../../src/domain/conflict/errors/hard-constraint-error';
@@ -14,8 +15,8 @@ import { AssignmentAudit } from '../../src/domain/entities/assignment-audit';
 // Shared test fixtures
 // ---------------------------------------------------------------------------
 
-const now = new Date('2026-05-20T10:00:00Z');
-const futureEvent = new Date('2026-05-21T09:00:00Z');
+const now = parseInstant({ value: '2026-05-20T10:00:00Z' });
+const futureEvent = parseInstant({ value: '2026-05-21T09:00:00Z' });
 
 const baseRequest: ValidationRequest = {
   churchId: 'chu_123',
@@ -93,7 +94,7 @@ describe('ConflictValidationService', () => {
     it('throws HardConstraintError with EVENT_IN_PAST when eventStartTime <= now', () => {
       const req = {
         ...baseRequest,
-        eventStartTime: new Date('2026-05-19T00:00:00Z'),
+        eventStartTime: parseInstant({ value: '2026-05-19T00:00:00Z' }),
       };
       expect(() => ConflictValidationService.validate(req)).toThrow(
         HardConstraintError,
@@ -308,7 +309,7 @@ describe('ConflictValidationService', () => {
         baseOverride,
         conflictReport,
       );
-      expect(audit.timestamp).toEqual(now);
+      expect(audit.occurredAt).toEqual(now);
     });
   });
 

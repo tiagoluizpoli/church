@@ -1,3 +1,4 @@
+import { addMilliseconds, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
   hasResendDailyCapExceeded,
@@ -8,7 +9,7 @@ import {
   type ResendThrottleState,
 } from './resend-throttle';
 
-const now = new Date('2030-01-02T00:00:00Z');
+const now = parseInstant({ value: '2030-01-02T00:00:00Z' });
 
 describe('resend throttle — cooldown', () => {
   it('is inactive when there has been no prior resend', () => {
@@ -18,7 +19,10 @@ describe('resend throttle — cooldown', () => {
 
   it('is active just under the cooldown window', () => {
     const state: ResendThrottleState = {
-      lastResendAt: new Date(now.getTime() - (RESEND_COOLDOWN_MS - 1)),
+      lastResendAt: addMilliseconds({
+        instant: now,
+        milliseconds: -(RESEND_COOLDOWN_MS - 1),
+      }),
       resendCount: 1,
     };
     expect(isResendCooldownActive({ state, now })).toBe(true);
@@ -26,7 +30,10 @@ describe('resend throttle — cooldown', () => {
 
   it('is inactive once the cooldown window has elapsed', () => {
     const state: ResendThrottleState = {
-      lastResendAt: new Date(now.getTime() - RESEND_COOLDOWN_MS),
+      lastResendAt: addMilliseconds({
+        instant: now,
+        milliseconds: -RESEND_COOLDOWN_MS,
+      }),
       resendCount: 1,
     };
     expect(isResendCooldownActive({ state, now })).toBe(false);
@@ -52,7 +59,10 @@ describe('resend throttle — daily cap', () => {
 
   it('is not exceeded once the window has rolled over, even at the cap', () => {
     const state: ResendThrottleState = {
-      resendWindowStartedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      resendWindowStartedAt: addMilliseconds({
+        instant: now,
+        milliseconds: -24 * 60 * 60 * 1000,
+      }),
       resendCount: RESEND_DAILY_CAP,
     };
     expect(hasResendDailyCapExceeded({ state, now })).toBe(false);
@@ -70,7 +80,10 @@ describe('resend throttle — next state', () => {
   });
 
   it('increments the count within the same window', () => {
-    const windowStartedAt = new Date(now.getTime() - 60_000);
+    const windowStartedAt = addMilliseconds({
+      instant: now,
+      milliseconds: -60_000,
+    });
     const state: ResendThrottleState = {
       resendWindowStartedAt: windowStartedAt,
       resendCount: 3,
@@ -84,7 +97,10 @@ describe('resend throttle — next state', () => {
 
   it('resets the count and starts a new window once the old one expired', () => {
     const state: ResendThrottleState = {
-      resendWindowStartedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      resendWindowStartedAt: addMilliseconds({
+        instant: now,
+        milliseconds: -24 * 60 * 60 * 1000,
+      }),
       resendCount: RESEND_DAILY_CAP,
     };
     expect(nextResendThrottleState({ state, now })).toEqual({

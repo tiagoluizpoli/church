@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { compareInstants } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAuthorityManager } from '../../src/application/db-authority-manager';
 import { DbMinistryInvitationManager } from '../../src/application/db-ministry-invitation-manager';
@@ -231,9 +232,9 @@ describe('DbMinistryInvitationManager.mint', () => {
     });
 
     expect(second.id).toBe(first.id);
-    expect(second.expiresAt.getTime()).toBeGreaterThanOrEqual(
-      first.expiresAt.getTime(),
-    );
+    expect(
+      compareInstants({ left: second.expiresAt, right: first.expiresAt }),
+    ).toBeGreaterThanOrEqual(0);
   });
 
   it('reuses a still-pending chained Church Invitation on re-invite rather than minting a second one', async () => {

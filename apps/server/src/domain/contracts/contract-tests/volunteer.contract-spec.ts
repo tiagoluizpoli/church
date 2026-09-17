@@ -42,7 +42,7 @@ export function runVolunteerRepositoryContractTests(
       expect(found.id).toBe('44444444-4444-4444-4444-444444444443');
       expect(found.churchId).toBe('11111111-1111-1111-1111-111111111111');
       expect(found.isRetired).toBe(true);
-      expect(found.leftAt).toBeInstanceOf(Date);
+      expect(typeof found.leftAt).toBe('string');
     });
 
     it('should throw NotFoundError when volunteer is not found', async () => {

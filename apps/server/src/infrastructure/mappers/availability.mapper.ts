@@ -1,4 +1,5 @@
 import type { availability } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AvailabilityCheckId,
@@ -26,8 +27,8 @@ export function mapAvailability(
     availabilityCheckId: row.availabilityCheckId as AvailabilityCheckId,
     shiftId: row.shiftId as ShiftId,
     volunteerId: joined.volunteerId as VolunteerId,
-    shiftStartTime: joined.shiftStartTime,
-    shiftEndTime: joined.shiftEndTime,
+    shiftStartTime: fromDate({ date: joined.shiftStartTime }),
+    shiftEndTime: fromDate({ date: joined.shiftEndTime }),
   };
 
   return new Availability({

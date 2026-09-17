@@ -1,5 +1,6 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { AssignmentManagerService } from '../../../src/domain/assignment/assignment-manager-service';
 import type {
@@ -30,8 +31,8 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
             churchId,
             ministryId: 'ministry-1' as MinistryId,
             title: 'Youth Gathering',
-            startDate: new Date('2024-06-15T10:00:00Z'),
-            endDate: new Date('2024-06-15T12:00:00Z'),
+            startDate: parseInstant({ value: '2024-06-15T10:00:00Z' }),
+            endDate: parseInstant({ value: '2024-06-15T12:00:00Z' }),
             status: 'draft',
           },
           id,
@@ -46,8 +47,8 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
             {
               churchId,
               eventId,
-              startTime: new Date('2024-06-15T10:00:00Z'),
-              endTime: new Date('2024-06-15T12:00:00Z'),
+              startTime: parseInstant({ value: '2024-06-15T10:00:00Z' }),
+              endTime: parseInstant({ value: '2024-06-15T12:00:00Z' }),
               status: 'active',
             },
             'slot-1' as TimeSlotId,
@@ -144,7 +145,7 @@ describe('Coverage L3: Assignment Manager Service Data Access', () => {
       churchId,
       event,
       assignments,
-      now: new Date('2024-06-10T10:00:00Z'),
+      now: parseInstant({ value: '2024-06-10T10:00:00Z' }),
       actorId: 'user-admin' as any,
       assignmentValidationData: validationMap,
     });

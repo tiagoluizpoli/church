@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { compareInstants, type Instant, now, toDate } from '@church/time';
 import type {
   ChurchId,
   EventId,
@@ -27,8 +28,8 @@ export interface EventProps {
   title: string;
   description?: string;
   location?: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: Instant;
+  endDate: Instant;
   status: EventStatus;
   eventType: EventType;
 }
@@ -53,7 +54,12 @@ export class Event extends Entity<EventProps, EventId> {
     createdAt?: Date,
     updatedAt?: Date,
   ) {
-    if (props.startDate >= props.endDate) {
+    if (
+      compareInstants({
+        left: props.startDate as Instant,
+        right: props.endDate as Instant,
+      }) >= 0
+    ) {
       throw new InvalidDateRangeError();
     }
     const normalizedProps =
@@ -100,11 +106,11 @@ export class Event extends Entity<EventProps, EventId> {
     return this._props.location;
   }
 
-  get startDate(): Date {
+  get startDate(): Instant {
     return this._props.startDate;
   }
 
-  get endDate(): Date {
+  get endDate(): Instant {
     return this._props.endDate;
   }
 
@@ -118,16 +124,16 @@ export class Event extends Entity<EventProps, EventId> {
 
   public markScheduled(): void {
     this._props.status = 'scheduled';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   public cancel(): void {
     this._props.status = 'cancelled';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   public markAsPast(): void {
     this._props.status = 'past';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

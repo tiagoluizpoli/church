@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { type Instant, now, toDate } from '@church/time';
 import type { ChurchId, UserId, VolunteerId } from '../branded-ids';
 
 export const VOLUNTEER_STATUS_OPTIONS = [
@@ -14,7 +15,7 @@ export interface VolunteerProps {
   status: VolunteerStatus;
   notes?: string;
   /** Set when this profile is retired; the profile that succeeded it. */
-  leftAt?: Date;
+  leftAt?: Instant;
   successorVolunteerId?: VolunteerId;
   /** Denormalized display name, populated when the user table is joined. */
   name?: string;
@@ -55,7 +56,7 @@ export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
     return this._props.notes;
   }
 
-  get leftAt(): Date | undefined {
+  get leftAt(): Instant | undefined {
     return this._props.leftAt;
   }
 
@@ -73,16 +74,16 @@ export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
 
   public activate(): void {
     this._props.status = 'active';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   public deactivate(): void {
     this._props.status = 'inactive';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   public putOnHold(): void {
     this._props.status = 'on_hold';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

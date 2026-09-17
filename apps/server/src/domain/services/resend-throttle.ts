@@ -1,3 +1,5 @@
+import { type Instant, millisecondsBetween } from '@church/time';
+
 /** Manual resend cooldown, matching §7's verification-code cooldown. */
 export const RESEND_COOLDOWN_MS = 60_000;
 
@@ -7,14 +9,14 @@ export const RESEND_DAILY_CAP = 10;
 const RESEND_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface ResendThrottleState {
-  lastResendAt?: Date;
+  lastResendAt?: Instant;
   resendCount: number;
-  resendWindowStartedAt?: Date;
+  resendWindowStartedAt?: Instant;
 }
 
 export interface ResendThrottleCheckInput {
   state: ResendThrottleState;
-  now: Date;
+  now: Instant;
 }
 
 export function isResendCooldownActive({
@@ -22,7 +24,10 @@ export function isResendCooldownActive({
   now,
 }: ResendThrottleCheckInput): boolean {
   if (!state.lastResendAt) return false;
-  return now.getTime() - state.lastResendAt.getTime() < RESEND_COOLDOWN_MS;
+  return (
+    millisecondsBetween({ start: state.lastResendAt, end: now }) <
+    RESEND_COOLDOWN_MS
+  );
 }
 
 function isResendWindowExpired({
@@ -31,7 +36,8 @@ function isResendWindowExpired({
 }: ResendThrottleCheckInput): boolean {
   if (!state.resendWindowStartedAt) return true;
   return (
-    now.getTime() - state.resendWindowStartedAt.getTime() >= RESEND_WINDOW_MS
+    millisecondsBetween({ start: state.resendWindowStartedAt, end: now }) >=
+    RESEND_WINDOW_MS
   );
 }
 
@@ -54,6 +60,6 @@ export function nextResendThrottleState({
     resendCount: windowExpired ? 1 : state.resendCount + 1,
     resendWindowStartedAt: windowExpired
       ? now
-      : (state.resendWindowStartedAt as Date),
+      : (state.resendWindowStartedAt as Instant),
   };
 }

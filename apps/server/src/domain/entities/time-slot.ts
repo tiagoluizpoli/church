@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { compareInstants, type Instant, now, toDate } from '@church/time';
 import type {
   ChurchId,
   EventId,
@@ -15,8 +16,8 @@ export interface TimeSlotProps {
   churchId: ChurchId;
   eventId: EventId;
   sourceTemplateBlockId?: TimeBlockId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   label?: string;
   status: TimeSlotStatus;
   requirements: SlotRequirement[];
@@ -30,7 +31,12 @@ export class TimeSlot extends Entity<TimeSlotProps, TimeSlotId> {
     createdAt?: Date,
     updatedAt?: Date,
   ) {
-    if (props.startTime >= props.endTime) {
+    if (
+      compareInstants({
+        left: props.startTime as Instant,
+        right: props.endTime as Instant,
+      }) >= 0
+    ) {
       throw new InvalidDateRangeError();
     }
     super(
@@ -57,11 +63,11 @@ export class TimeSlot extends Entity<TimeSlotProps, TimeSlotId> {
     return this._props.sourceTemplateBlockId;
   }
 
-  get startTime(): Date {
+  get startTime(): Instant {
     return this._props.startTime;
   }
 
-  get endTime(): Date {
+  get endTime(): Instant {
     return this._props.endTime;
   }
 
@@ -79,6 +85,6 @@ export class TimeSlot extends Entity<TimeSlotProps, TimeSlotId> {
 
   public cancel(): void {
     this._props.status = 'cancelled';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

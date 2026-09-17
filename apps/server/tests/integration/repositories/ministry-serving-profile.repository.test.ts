@@ -1,4 +1,5 @@
 import { eventTemplate, timeBlock } from '@church/db';
+import { parseTimeOfDay } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
 import { DrizzleMinistryServingProfileRepository } from '../../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
@@ -131,7 +132,11 @@ describe('DrizzleMinistryServingProfileRepository', () => {
           shiftSplit: {
             kind: 'manual',
             spans: [
-              { label: 'First half', startTime: '09:00', endTime: '09:30' },
+              {
+                label: 'First half',
+                startTime: parseTimeOfDay({ value: '09:00' }),
+                endTime: parseTimeOfDay({ value: '09:30' }),
+              },
             ],
           },
           headcounts: [],

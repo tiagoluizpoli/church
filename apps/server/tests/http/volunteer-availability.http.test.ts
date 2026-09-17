@@ -1,3 +1,4 @@
+import { type Instant, parseInstant } from '@church/time';
 import {
   afterAll,
   beforeAll,
@@ -55,13 +56,13 @@ interface MockCheckDetail {
   ministryId: string;
   ministryName: string;
   state: 'pending' | 'confirmed';
-  confirmedAt?: Date;
+  confirmedAt?: Instant;
   shifts: Array<{
     shiftId: string;
     eventId: string;
     eventTitle: string;
-    startTime: Date;
-    endTime: Date;
+    startTime: Instant;
+    endTime: Instant;
     label?: string;
     available: boolean;
   }>;
@@ -80,8 +81,8 @@ function createCheckDetail(): MockCheckDetail {
         shiftId: SHIFT_ID,
         eventId: '88888888-8888-4888-8888-888888888888',
         eventTitle: 'Sunday Service',
-        startTime: new Date('2026-08-02T12:00:00.000Z'),
-        endTime: new Date('2026-08-02T15:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
         label: 'Morning',
         available: false,
       },

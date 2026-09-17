@@ -2,6 +2,7 @@ import type {
   ministryParticipation,
   participationSlotInclusion,
 } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -29,7 +30,7 @@ export function mapMinistryParticipation(
     ministryId: row.ministryId as MinistryId,
     eventId: row.eventId as EventId,
     state: row.state as MinistryParticipationProps['state'],
-    touchedAt: row.touchedAt,
+    touchedAt: row.touchedAt ? fromDate({ date: row.touchedAt }) : null,
   };
 
   return new MinistryParticipation({

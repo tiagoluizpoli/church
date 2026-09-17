@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import type { Instant } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -27,13 +28,13 @@ export interface MinistryInvitationProps {
   ministryAccessLevel: MinistryAccessLevel;
   status: MinistryInvitationStatus;
   inviterId: UserId;
-  expiresAt: Date;
+  expiresAt: Instant;
   /** Roles the invitee is invited to fill. Never authorization — a qualification. */
   roleIds: RoleId[];
   /** Resend cooldown/cap bookkeeping (§6.4) — undefined/0 until the first resend. */
-  lastResendAt?: Date;
+  lastResendAt?: Instant;
   resendCount?: number;
-  resendWindowStartedAt?: Date;
+  resendWindowStartedAt?: Instant;
 }
 
 /**
@@ -89,7 +90,7 @@ export class MinistryInvitation extends Entity<
     return this._props.inviterId;
   }
 
-  get expiresAt(): Date {
+  get expiresAt(): Instant {
     return this._props.expiresAt;
   }
 
@@ -97,7 +98,7 @@ export class MinistryInvitation extends Entity<
     return this._props.roleIds;
   }
 
-  get lastResendAt(): Date | undefined {
+  get lastResendAt(): Instant | undefined {
     return this._props.lastResendAt;
   }
 
@@ -105,7 +106,7 @@ export class MinistryInvitation extends Entity<
     return this._props.resendCount ?? 0;
   }
 
-  get resendWindowStartedAt(): Date | undefined {
+  get resendWindowStartedAt(): Instant | undefined {
     return this._props.resendWindowStartedAt;
   }
 

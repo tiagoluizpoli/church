@@ -1,4 +1,5 @@
 import type { availabilityCheck } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AvailabilityCheckId,
@@ -18,7 +19,9 @@ export function mapAvailabilityCheck(
     planningCycleId: row.planningCycleId as PlanningCycleId,
     ministryVolunteerId: row.ministryVolunteerId,
     state: row.state as AvailabilityCheckProps['state'],
-    confirmedAt: row.confirmedAt ?? undefined,
+    confirmedAt: row.confirmedAt
+      ? fromDate({ date: row.confirmedAt })
+      : undefined,
   };
 
   return new AvailabilityCheck({

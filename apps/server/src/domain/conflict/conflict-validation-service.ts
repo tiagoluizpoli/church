@@ -1,3 +1,4 @@
+import { compareInstants } from '@church/time';
 import { AssignmentAudit } from '../entities/assignment-audit';
 import { HardConstraintError } from './errors/hard-constraint-error';
 import { InvalidOverrideReasonError } from './errors/invalid-override-reason-error';
@@ -42,7 +43,7 @@ function validateHardConstraints(request: ValidationRequest): void {
     );
   }
 
-  if (eventStartTime <= now) {
+  if (compareInstants({ left: eventStartTime, right: now }) <= 0) {
     throw new HardConstraintError(
       'EVENT_IN_PAST',
       'Event start time is in the past or present',
@@ -140,7 +141,7 @@ function createOverrideAudit(
     action: 'created',
     reason: request.overrideReason,
     overrideConflictTypes: conflictTypes,
-    timestamp: request.now,
+    occurredAt: request.now,
   });
 }
 

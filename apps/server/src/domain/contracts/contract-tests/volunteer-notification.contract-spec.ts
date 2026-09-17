@@ -1,3 +1,4 @@
+import { fromDate } from '@church/time';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type {
   ChurchId,
@@ -114,7 +115,7 @@ export function runVolunteerNotificationRepositoryContractTests(
       const updated = result.items.find(
         (item) => item.id === FIRST_NOTIFICATION_ID,
       );
-      expect(updated?.readAt?.toISOString()).toBe(readAt?.toISOString());
+      expect(updated?.readAt).toBe(readAt && fromDate({ date: readAt }));
     });
 
     it('should mark all unread notifications as read for one volunteer only', async () => {

@@ -1,5 +1,6 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { AvailabilityEngine } from '../../../src/domain/availability/availability-engine';
 import type { ChurchId, VolunteerId } from '../../../src/domain/branded-ids';
@@ -23,8 +24,8 @@ describe('Coverage L1: Availability Engine Data Access', () => {
               availabilityCheckId: 'check-1' as any,
               shiftId: 'shift-1' as any,
               volunteerId: volunteerIds[0] as VolunteerId,
-              shiftStartTime: new Date('2024-06-01T10:00:00Z'),
-              shiftEndTime: new Date('2024-06-01T12:00:00Z'),
+              shiftStartTime: parseInstant({ value: '2024-06-01T10:00:00Z' }),
+              shiftEndTime: parseInstant({ value: '2024-06-01T12:00:00Z' }),
             },
           }),
         ];
@@ -90,8 +91,8 @@ describe('Coverage L1: Availability Engine Data Access', () => {
       timeRange: {
         // In real domain context, we would look up slot start/end.
         // For L1 test verification, we map to the engine structure.
-        start: new Date('2024-06-01T11:00:00Z'),
-        end: new Date('2024-06-01T12:00:00Z'),
+        start: parseInstant({ value: '2024-06-01T11:00:00Z' }),
+        end: parseInstant({ value: '2024-06-01T12:00:00Z' }),
       },
     }));
 
@@ -100,8 +101,8 @@ describe('Coverage L1: Availability Engine Data Access', () => {
       churchId,
       volunteerId,
       timeRange: {
-        start: new Date('2024-06-01T11:30:00Z'),
-        end: new Date('2024-06-01T12:30:00Z'),
+        start: parseInstant({ value: '2024-06-01T11:30:00Z' }),
+        end: parseInstant({ value: '2024-06-01T12:30:00Z' }),
       },
       existingBlockouts: engineBlockouts,
       existingAssignments: engineAssignments,

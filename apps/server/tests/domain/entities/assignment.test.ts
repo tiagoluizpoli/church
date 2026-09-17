@@ -1,3 +1,4 @@
+import { isInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { Assignment } from '../../../src/domain/entities/assignment';
 
@@ -15,7 +16,7 @@ describe('Assignment Entity', () => {
     expect(assignment.volunteerId).toBe('v1');
     expect(assignment.roleId).toBe('r1');
     expect(assignment.status).toBe('draft');
-    expect(assignment.assignedAt).toBeInstanceOf(Date);
+    expect(isInstant({ value: assignment.assignedAt })).toBe(true);
   });
 
   it('handles mutations correctly', () => {

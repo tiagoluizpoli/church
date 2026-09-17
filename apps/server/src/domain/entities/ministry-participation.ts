@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { type Instant, now, toDate } from '@church/time';
 import type {
   ChurchId,
   EventId,
@@ -21,7 +22,7 @@ export interface MinistryParticipationProps {
   ministryId: MinistryId;
   eventId: EventId;
   state: ParticipationState;
-  touchedAt: Date | null;
+  touchedAt: Instant | null;
 }
 
 export interface MinistryParticipationInput {
@@ -139,7 +140,7 @@ export class MinistryParticipation extends Entity<
     return this._props.state;
   }
 
-  get touchedAt(): Date | null {
+  get touchedAt(): Instant | null {
     return this._props.touchedAt;
   }
 
@@ -148,8 +149,8 @@ export class MinistryParticipation extends Entity<
    * after the first, so it never overwrites the original touch time. */
   touch(): void {
     if (this._props.touchedAt !== null) return;
-    this._props.touchedAt = new Date();
-    this._updatedAt = new Date();
+    this._props.touchedAt = now();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   fireAvailability(): void {
@@ -173,7 +174,7 @@ export class MinistryParticipation extends Entity<
     }
 
     this._props.state = 'published';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   private transitionTo(
@@ -185,6 +186,6 @@ export class MinistryParticipation extends Entity<
     }
 
     this._props.state = next;
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

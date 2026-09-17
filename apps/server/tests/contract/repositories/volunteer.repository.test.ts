@@ -1,4 +1,5 @@
 import { NotFoundError } from '@church/core';
+import { parseInstant } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -43,7 +44,7 @@ class MockVolunteerRepository implements VolunteerRepository {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         userId: '22222222-2222-2222-2222-222222222223' as UserId,
         status: 'active',
-        leftAt: new Date('2024-01-01T00:00:00Z'),
+        leftAt: parseInstant({ value: '2024-01-01T00:00:00Z' }),
       },
       '44444444-4444-4444-4444-444444444443' as VolunteerId,
     );

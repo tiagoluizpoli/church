@@ -1,3 +1,4 @@
+import { isInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { AssignmentAudit } from '../../../src/domain/entities/assignment-audit';
 
@@ -14,7 +15,7 @@ describe('AssignmentAudit Entity', () => {
     expect(audit.assignmentId).toBe('a1');
     expect(audit.actorId).toBe('u1');
     expect(audit.action).toBe('created');
-    expect(audit.timestamp).toBeInstanceOf(Date);
+    expect(isInstant({ value: audit.occurredAt })).toBe(true);
   });
 
   it('constructs with event_published and event_cancelled actions', () => {

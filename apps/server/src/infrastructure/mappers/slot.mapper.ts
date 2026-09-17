@@ -1,4 +1,5 @@
 import type { slotRequirement, timeSlot } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -49,8 +50,8 @@ export function mapTimeSlot(
     eventId: row.eventId as EventId,
     sourceTemplateBlockId:
       (row.sourceTemplateBlockId as TimeBlockId | null) ?? undefined,
-    startTime: row.startTime,
-    endTime: row.endTime,
+    startTime: fromDate({ date: row.startTime }),
+    endTime: fromDate({ date: row.endTime }),
     label: row.label ?? undefined,
     status: 'active',
     requirements,

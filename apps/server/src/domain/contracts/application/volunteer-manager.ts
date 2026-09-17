@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   AssignmentId,
   AvailabilityCheckId,
@@ -103,7 +104,7 @@ export interface VolunteerAvailabilityCheckSummary {
   ministryId: string;
   ministryName: string;
   state: AvailabilityCheckState;
-  confirmedAt?: Date;
+  confirmedAt?: Instant;
   totalShiftCount: number;
   unavailableShiftCount: number;
 }
@@ -112,8 +113,8 @@ export interface VolunteerCheckShift {
   shiftId: string;
   eventId: string;
   eventTitle: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   label?: string;
   available: boolean;
 }
@@ -125,7 +126,7 @@ export interface VolunteerAvailabilityCheckDetail {
   ministryId: string;
   ministryName: string;
   state: AvailabilityCheckState;
-  confirmedAt?: Date;
+  confirmedAt?: Instant;
   shifts: VolunteerCheckShift[];
 }
 
@@ -164,7 +165,7 @@ export interface AvailabilityOverlapItem {
 
 export interface ConfirmAvailabilityCheckResult {
   state: AvailabilityCheckState;
-  confirmedAt: Date;
+  confirmedAt: Instant;
   overlaps: AvailabilityOverlapItem[];
 }
 

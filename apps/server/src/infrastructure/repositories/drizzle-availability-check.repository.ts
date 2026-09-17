@@ -12,6 +12,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
+import { fromDate } from '@church/time';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type {
   EventId,
@@ -251,8 +252,8 @@ export class DrizzleAvailabilityCheckRepository
       shiftId: row.shiftId as ShiftId,
       eventId: row.eventId as EventId,
       eventTitle: row.eventTitle,
-      startTime: row.startTime,
-      endTime: row.endTime,
+      startTime: fromDate({ date: row.startTime }),
+      endTime: fromDate({ date: row.endTime }),
       label: row.label ?? undefined,
     }));
   }
@@ -304,8 +305,8 @@ export class DrizzleAvailabilityCheckRepository
     return rows.map((row) => ({
       shiftId: row.shiftId as ShiftId,
       ministryId: row.ministryId as MinistryId,
-      startTime: row.startTime,
-      endTime: row.endTime,
+      startTime: fromDate({ date: row.startTime }),
+      endTime: fromDate({ date: row.endTime }),
     }));
   }
 

@@ -1,3 +1,4 @@
+import { compareInstants, fromDate, toDate } from '@church/time';
 import { injectable } from 'tsyringe';
 import type { VolunteerId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
@@ -71,6 +72,25 @@ type ResolvedInvitationContext =
   | { status: 'identity-mismatch' }
   | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
   | { status: 'redeemable'; context: MinistryInvitationContext };
+
+interface IsInvitationRedeemableInput {
+  ministryInvitation: MinistryInvitation;
+  now: Date;
+}
+
+/** Pending and not yet past its `expiresAt` — the shared gate every redemption path checks before proceeding. */
+function isInvitationRedeemable({
+  ministryInvitation,
+  now,
+}: IsInvitationRedeemableInput): boolean {
+  return (
+    ministryInvitation.status === 'pending' &&
+    compareInstants({
+      left: ministryInvitation.expiresAt,
+      right: fromDate({ date: now }),
+    }) > 0
+  );
+}
 
 /**
  * Checkpoint three from spec §7.4. This is intentionally transport-free: #99
@@ -337,10 +357,7 @@ export class DbRedemptionManager implements RedemptionManager {
       };
     }
     const { ministryInvitation } = resolved.context;
-    if (
-      ministryInvitation.status !== 'pending' ||
-      ministryInvitation.expiresAt <= now
-    ) {
+    if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'unavailable' };
     }
     return {
@@ -351,7 +368,7 @@ export class DbRedemptionManager implements RedemptionManager {
       ministryName: resolved.context.ministryName,
       ministryAccessLevel: ministryInvitation.ministryAccessLevel,
       roleNames: resolved.context.roleNames,
-      expiresAt: ministryInvitation.expiresAt,
+      expiresAt: toDate({ instant: ministryInvitation.expiresAt }),
     };
   }
 
@@ -379,10 +396,7 @@ export class DbRedemptionManager implements RedemptionManager {
       };
     }
     const { ministryInvitation } = resolved.context;
-    if (
-      ministryInvitation.status !== 'pending' ||
-      ministryInvitation.expiresAt <= now
-    ) {
+    if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
     if (
@@ -447,10 +461,7 @@ export class DbRedemptionManager implements RedemptionManager {
     }
     const { ministryInvitation } = resolved.context;
     if (ministryInvitation.status === 'rejected') return { kind: 'declined' };
-    if (
-      ministryInvitation.status !== 'pending' ||
-      ministryInvitation.expiresAt <= now
-    ) {
+    if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
     if (

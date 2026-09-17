@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import {
   afterAll,
   beforeAll,
@@ -116,7 +117,7 @@ describe('Rostering routes', () => {
         volunteerName: 'Ada Lovelace',
         isAvailable: true,
         hasConflict: false,
-        lastServedAt: new Date('2026-08-01T10:00:00.000Z'),
+        lastServedAt: parseInstant({ value: '2026-08-01T10:00:00.000Z' }),
         qualifiedRoleIds: ['role-1'],
         ministryAccessLevel: 'volunteer',
         leadTeamIds: [],

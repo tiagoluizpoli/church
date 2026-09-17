@@ -1,6 +1,8 @@
 import 'reflect-metadata';
+import { fromDate, toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import { AssignmentManagerService } from '../domain/assignment/assignment-manager-service';
+import type { SlotGenerationStrategy } from '../domain/assignment/types';
 import type {
   CancelEventInput,
   CreateSlotInput,
@@ -198,18 +200,30 @@ export class DbEventManager implements IEventManager {
     const ev = await this.eventRepo.getById(churchId, eventId);
     const existingSlots = await this.slotRepo.listByEvent(churchId, eventId);
 
+    const strategyWithInstants: SlotGenerationStrategy =
+      strategy.kind === 'template-based'
+        ? {
+            kind: 'template-based',
+            periods: strategy.periods.map((period) => ({
+              ...period,
+              startTime: fromDate({ date: period.startTime }),
+              endTime: fromDate({ date: period.endTime }),
+            })),
+          }
+        : strategy;
+
     const result = AssignmentManagerService.generateSlots({
       churchId: churchId as string,
       eventId: eventId as string,
       eventStartTime: ev.startDate,
       eventEndTime: ev.endDate,
-      strategy,
+      strategy: strategyWithInstants,
       existingSlots,
     });
 
     const bulkItems = result.slots.map(({ slot, requirements }) => ({
-      startTime: slot.startTime,
-      endTime: slot.endTime,
+      startTime: toDate({ instant: slot.startTime }),
+      endTime: toDate({ instant: slot.endTime }),
       label: slot.label,
       requirements: requirements.map((r) => ({
         roleId: r.roleId,

@@ -1,9 +1,8 @@
-import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
+import { type Instant, today, toInstant } from '@church/time';
 import type { TimeBlockId, TimeSlotId } from '../branded-ids';
 import type { DefaultDirection } from '../entities/ministry';
 import type {
   ServingProfileHeadcount,
-  ServingProfileManualSpan,
   ServingProfileShiftSplit,
 } from '../entities/ministry-serving-profile';
 import { computeEqualSpans } from './shift-splitter';
@@ -11,8 +10,8 @@ import { computeEqualSpans } from './shift-splitter';
 export interface ProfileSeederSlot {
   timeSlotId: TimeSlotId;
   sourceTemplateBlockId?: TimeBlockId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface ProfileSeederEntry {
@@ -32,8 +31,8 @@ export interface SeedParticipationPlanInput {
 }
 
 export interface SeededShiftPlan {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   label?: string;
   headcounts: ServingProfileHeadcount[];
 }
@@ -117,27 +116,12 @@ function buildProfileShifts({
     }));
   }
 
-  const slotDate = formatInTimeZone(slot.startTime, timeZone, 'yyyy-MM-dd');
+  const slotDate = today({ instant: slot.startTime, timeZone });
 
   return entry.shiftSplit.spans.map((span) => ({
-    startTime: buildSpanInstant({ slotDate, time: span.startTime, timeZone }),
-    endTime: buildSpanInstant({ slotDate, time: span.endTime, timeZone }),
+    startTime: toInstant({ day: slotDate, time: span.startTime, timeZone }),
+    endTime: toInstant({ day: slotDate, time: span.endTime, timeZone }),
     label: span.label,
     headcounts: entry.headcounts,
   }));
-}
-
-interface BuildSpanInstantInput {
-  slotDate: string;
-  time: ServingProfileManualSpan['startTime'];
-  timeZone: string;
-}
-
-function buildSpanInstant({
-  slotDate,
-  time,
-  timeZone,
-}: BuildSpanInstantInput): Date {
-  const normalizedTime = time.length === 5 ? `${time}:00` : time;
-  return fromZonedTime(`${slotDate}T${normalizedTime}`, timeZone);
 }

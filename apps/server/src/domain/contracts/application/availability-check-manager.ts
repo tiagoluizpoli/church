@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   ChurchId,
   MinistryId,
@@ -37,7 +38,7 @@ export interface CheckStatusRow {
   volunteerId: string;
   volunteerName: string;
   state?: AvailabilityCheckState;
-  confirmedAt?: Date;
+  confirmedAt?: Instant;
 }
 
 export interface IAvailabilityCheckManager {

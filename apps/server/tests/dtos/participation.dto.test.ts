@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { participationMapper } from '../../src/api/dtos/participation.dto';
 import type {
@@ -29,8 +30,8 @@ function buildEvent(): Event {
       churchId: 'church-1',
       planningCycleId: 'cycle-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-05-15T09:00:00Z'),
-      endDate: new Date('2026-05-15T11:00:00Z'),
+      startDate: parseInstant({ value: '2026-05-15T09:00:00Z' }),
+      endDate: parseInstant({ value: '2026-05-15T11:00:00Z' }),
     },
     'event-1',
   );
@@ -41,8 +42,8 @@ function buildSlot(): TimeSlot {
     {
       churchId: 'church-1',
       eventId: 'event-1',
-      startTime: new Date('2026-05-15T09:00:00Z'),
-      endTime: new Date('2026-05-15T10:00:00Z'),
+      startTime: parseInstant({ value: '2026-05-15T09:00:00Z' }),
+      endTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
       label: 'Slot A',
     },
     'slot-1',
@@ -55,8 +56,8 @@ function buildShift(label?: string): Shift {
       churchId: 'church-1',
       participationId: 'participation-1',
       timeSlotId: 'slot-1',
-      startTime: new Date('2026-05-15T09:00:00Z'),
-      endTime: new Date('2026-05-15T09:30:00Z'),
+      startTime: parseInstant({ value: '2026-05-15T09:00:00Z' }),
+      endTime: parseInstant({ value: '2026-05-15T09:30:00Z' }),
       label,
     },
     id: 'shift-1',
@@ -86,8 +87,8 @@ describe('participationMapper', () => {
         id: 'shift-1',
         participationId: 'participation-1',
         timeSlotId: 'slot-1',
-        startTime: shift.startTime.toISOString(),
-        endTime: shift.endTime.toISOString(),
+        startTime: shift.startTime,
+        endTime: shift.endTime,
         label: 'First Half',
       });
     });
@@ -99,8 +100,8 @@ describe('participationMapper', () => {
         id: 'shift-1',
         participationId: 'participation-1',
         timeSlotId: 'slot-1',
-        startTime: shift.startTime.toISOString(),
-        endTime: shift.endTime.toISOString(),
+        startTime: shift.startTime,
+        endTime: shift.endTime,
         label: undefined,
       });
     });
@@ -173,8 +174,8 @@ describe('participationMapper', () => {
         id: 'shift-1',
         participationId: 'participation-1',
         timeSlotId: 'slot-1',
-        startTime: shift.startTime.toISOString(),
-        endTime: shift.endTime.toISOString(),
+        startTime: shift.startTime,
+        endTime: shift.endTime,
         label: 'Only Shift',
       });
     });

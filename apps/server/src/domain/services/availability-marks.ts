@@ -1,16 +1,15 @@
-import { formatInTimeZone } from 'date-fns-tz';
+import { type CalendarDay, type Instant, today } from '@church/time';
 import type { ShiftId } from '../branded-ids';
 import { CrossMinistryScopeError } from '../errors/cross-ministry-scope';
 
 export interface WholeDayCandidateShift {
   shiftId: ShiftId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface ExpandWholeDayShiftIdsInput {
-  /** Church-local date, `yyyy-MM-dd`. */
-  churchDate: string;
+  churchDate: CalendarDay;
   timeZone: string;
   shifts: WholeDayCandidateShift[];
 }
@@ -23,9 +22,7 @@ export function expandWholeDayShiftIds({
 }: ExpandWholeDayShiftIdsInput): ShiftId[] {
   return shifts
     .filter(
-      (shift) =>
-        formatInTimeZone(shift.startTime, timeZone, 'yyyy-MM-dd') ===
-        churchDate,
+      (shift) => today({ instant: shift.startTime, timeZone }) === churchDate,
     )
     .map((shift) => shift.shiftId);
 }

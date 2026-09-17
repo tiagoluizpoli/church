@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { type Instant, now, toDate } from '@church/time';
 import type {
   AvailabilityCheckId,
   ChurchId,
@@ -19,7 +20,7 @@ export interface AvailabilityCheckProps {
   /** Ministry membership (ministry_volunteer row) this check targets. */
   ministryVolunteerId: string;
   state: AvailabilityCheckState;
-  confirmedAt?: Date;
+  confirmedAt?: Instant;
 }
 
 export interface AvailabilityCheckInput {
@@ -62,7 +63,7 @@ export class AvailabilityCheck extends Entity<
     return this._props.state;
   }
 
-  get confirmedAt(): Date | undefined {
+  get confirmedAt(): Instant | undefined {
     return this._props.confirmedAt;
   }
 
@@ -73,7 +74,7 @@ export class AvailabilityCheck extends Entity<
     }
 
     this._props.state = 'confirmed';
-    this._props.confirmedAt = new Date();
-    this._updatedAt = new Date();
+    this._props.confirmedAt = now();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

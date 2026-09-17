@@ -1,4 +1,5 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { now, toDate } from '@church/time';
 import type {
   ChurchId,
   MinistryParticipationId,
@@ -80,6 +81,6 @@ export class SlotRequirement extends Entity<
       throw new InvalidRequiredCountError();
     }
     this._props.requiredCount = count;
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

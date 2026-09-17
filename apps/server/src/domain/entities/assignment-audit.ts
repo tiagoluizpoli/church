@@ -1,4 +1,5 @@
 import { type BrandedId, Entity, type LooseProps } from '@church/core';
+import { type Instant, now } from '@church/time';
 import type { AssignmentId, ChurchId, UserId } from '../branded-ids';
 import type { SoftConflictType } from '../conflict/types';
 
@@ -21,7 +22,7 @@ export interface AssignmentAuditProps {
   actorId: UserId;
   action: AssignmentAuditAction;
   reason?: string;
-  timestamp: Date;
+  occurredAt: Instant;
   overrideConflictTypes?: SoftConflictType[];
 }
 
@@ -30,8 +31,8 @@ export class AssignmentAudit extends Entity<
   AssignmentAuditId
 > {
   constructor(
-    props: Omit<LooseProps<AssignmentAuditProps>, 'timestamp'> &
-      Partial<Pick<LooseProps<AssignmentAuditProps>, 'timestamp'>>,
+    props: Omit<LooseProps<AssignmentAuditProps>, 'occurredAt'> &
+      Partial<Pick<LooseProps<AssignmentAuditProps>, 'occurredAt'>>,
     id?: string,
     createdAt?: Date,
     updatedAt?: Date,
@@ -39,7 +40,7 @@ export class AssignmentAudit extends Entity<
     super(
       {
         ...props,
-        timestamp: props.timestamp ?? new Date(),
+        occurredAt: props.occurredAt ?? now(),
       } as unknown as AssignmentAuditProps,
       id as AssignmentAuditId,
       createdAt,
@@ -71,7 +72,7 @@ export class AssignmentAudit extends Entity<
     return this._props.overrideConflictTypes;
   }
 
-  get timestamp(): Date {
-    return this._props.timestamp;
+  get occurredAt(): Instant {
+    return this._props.occurredAt;
   }
 }

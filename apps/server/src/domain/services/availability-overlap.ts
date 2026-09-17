@@ -1,10 +1,11 @@
+import { compareInstants, type Instant } from '@church/time';
 import type { MinistryId, ShiftId } from '../branded-ids';
 
 export interface OverlapCandidateShift {
   shiftId: ShiftId;
   ministryId: MinistryId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface DetectCrossMinistryOverlapsInput {
@@ -32,7 +33,8 @@ export function detectCrossMinistryOverlaps({
       if (first.ministryId === second.ministryId) continue;
 
       const intersects =
-        first.startTime < second.endTime && second.startTime < first.endTime;
+        compareInstants({ left: first.startTime, right: second.endTime }) < 0 &&
+        compareInstants({ left: second.startTime, right: first.endTime }) < 0;
       if (intersects) {
         pairs.push({ first, second });
       }

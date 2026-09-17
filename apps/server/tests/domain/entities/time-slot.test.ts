@@ -1,11 +1,12 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { TimeSlot } from '../../../src/domain/entities/time-slot';
 import { InvalidDateRangeError } from '../../../src/domain/errors/invalid-date-range';
 
 describe('TimeSlot Entity', () => {
   it('constructs with valid props', () => {
-    const startTime = new Date('2026-05-15T10:00:00Z');
-    const endTime = new Date('2026-05-15T12:00:00Z');
+    const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
+    const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
 
     const timeSlot = new TimeSlot({
       churchId: 'c1',
@@ -26,8 +27,8 @@ describe('TimeSlot Entity', () => {
   });
 
   it('handles mutations correctly', () => {
-    const startTime = new Date('2026-05-15T10:00:00Z');
-    const endTime = new Date('2026-05-15T12:00:00Z');
+    const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
+    const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
 
     const timeSlot = new TimeSlot({
       churchId: 'c1',
@@ -43,8 +44,8 @@ describe('TimeSlot Entity', () => {
   });
 
   it('throws InvalidDateRangeError if startTime >= endTime', () => {
-    const startTime = new Date('2026-05-15T12:00:00Z');
-    const endTime = new Date('2026-05-15T10:00:00Z');
+    const startTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
+    const endTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
 
     expect(() => {
       new TimeSlot({

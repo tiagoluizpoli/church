@@ -1,9 +1,13 @@
+import {
+  type CalendarDay,
+  enumerateCalendarDays,
+  formatCalendarDayWithWeekday,
+  formatWeekday,
+  parseCalendarDay,
+} from '@church/time';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { type PointerEvent, useRef, useState } from 'react';
-import {
-  parseCalendarDate,
-  toIsoDateString,
-} from '../participation-tailoring.utils';
+import { toCalendarDateString } from '../participation-tailoring.utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -22,29 +26,13 @@ export interface TailoringCalendarProps {
   onSelectedDateChange: (date: string | null) => void;
 }
 
-const WEEKDAY_ABBREVIATIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/** Screen readers only get the weekday abbreviation + day-of-month from the
- * visible cell (e.g. "Wed 12"), which is ambiguous once a cycle spans a
- * month boundary. `aria-label` carries the full date instead. */
-const FULL_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
-});
-
 const SCROLL_STEP_PX = 240;
 const DRAG_THRESHOLD_PX = 4;
 
-function enumerateDays(start: Date, end: Date): Date[] {
-  const days: Date[] = [];
-  const cursor = new Date(start);
-  while (cursor.getTime() <= end.getTime()) {
-    days.push(new Date(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return days;
+/** `12` from a CalendarDay string — the compact, unpadded day-of-month this
+ * strip has always shown (contrast `formatCalendarDay`'s zero-padded `dd`). */
+function dayOfMonth({ day }: { day: CalendarDay }): string {
+  return String(Number(day.slice(8, 10)));
 }
 
 interface DragState {
@@ -77,32 +65,35 @@ export function TailoringCalendar({
   selectedDate,
   onSelectedDateChange,
 }: TailoringCalendarProps) {
-  const cycleStart = parseCalendarDate(cycleStartDate);
-  const cycleEnd = parseCalendarDate(cycleEndDate);
-  const days = enumerateDays(cycleStart, cycleEnd);
+  const cycleStart = parseCalendarDay({
+    value: toCalendarDateString(cycleStartDate),
+  });
+  const cycleEnd = parseCalendarDay({
+    value: toCalendarDateString(cycleEndDate),
+  });
+  const days = enumerateCalendarDays({ start: cycleStart, end: cycleEnd });
 
   const stripRef = useRef<HTMLDivElement>(null);
   const dayButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const dragState = useRef<DragState | null>(null);
   const skipClickIso = useRef<string | null>(null);
   const [focusedIso, setFocusedIso] = useState<string>(
-    selectedDate ?? toIsoDateString(cycleStart),
+    selectedDate ?? cycleStart,
   );
 
   const selectDay = (iso: string) => {
     onSelectedDateChange(selectedDate === iso ? null : iso);
   };
 
-  const moveFocus = (fromIso: string, delta: number) => {
-    const currentIndex = days.findIndex(
-      (day) => toIsoDateString(day) === fromIso,
-    );
+  const moveFocus = (fromIso: CalendarDay, delta: number) => {
+    const currentIndex = days.indexOf(fromIso);
     if (currentIndex === -1) return;
     const nextIndex = Math.min(
       Math.max(currentIndex + delta, 0),
       days.length - 1,
     );
-    const nextIso = toIsoDateString(days[nextIndex]);
+    const nextIso = days[nextIndex];
+    if (!nextIso) return;
     setFocusedIso(nextIso);
     const nextButton = dayButtonRefs.current.get(nextIso);
     nextButton?.focus();
@@ -198,12 +189,11 @@ export function TailoringCalendar({
             clearDragState({ pointerId: event.pointerId })
           }
         >
-          {days.map((day) => {
-            const iso = toIsoDateString(day);
+          {days.map((iso) => {
             const hasEvent = eventDayMarkers.has(iso);
             const isDayFilter = selectedDate === iso;
             const isRovingTarget = focusedIso === iso;
-            const fullDateLabel = FULL_DATE_FORMATTER.format(day);
+            const fullDateLabel = formatCalendarDayWithWeekday({ day: iso });
 
             return (
               <button
@@ -252,9 +242,9 @@ export function TailoringCalendar({
                 }}
               >
                 <span className="text-[10px] text-muted-foreground uppercase">
-                  {WEEKDAY_ABBREVIATIONS[day.getDay()]}
+                  {formatWeekday({ day: iso }).slice(0, 3)}
                 </span>
-                <span className="font-medium">{day.getDate()}</span>
+                <span className="font-medium">{dayOfMonth({ day: iso })}</span>
               </button>
             );
           })}

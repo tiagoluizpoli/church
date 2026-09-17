@@ -1,6 +1,7 @@
+import { compareCalendarDays, parseCalendarDay } from '@church/time';
 import {
   formatDate,
-  parseCalendarDate,
+  toCalendarDateString,
 } from '@/features/scheduling/components/participation-tailoring.utils';
 import type {
   ListMinistryCycleSummaries200CyclesItem,
@@ -78,15 +79,18 @@ export function buildMinistryCycleSummaries({
   cycles,
 }: BuildMinistryCycleSummariesInput): TailoringCycleSummary[] {
   return [...cycles]
-    .sort(
-      (left, right) =>
-        parseCalendarDate(left.startDate).getTime() -
-        parseCalendarDate(right.startDate).getTime(),
+    .sort((left, right) =>
+      compareCalendarDays({
+        left: parseCalendarDay({ value: toCalendarDateString(left.startDate) }),
+        right: parseCalendarDay({
+          value: toCalendarDateString(right.startDate),
+        }),
+      }),
     )
     .map((cycle) => ({
       id: cycle.cycleId,
       name: cycle.name,
-      window: `${formatDate(cycle.startDate)} - ${formatDate(cycle.endDate)}`,
+      window: `${formatDate({ value: cycle.startDate })} - ${formatDate({ value: cycle.endDate })}`,
       startDate: cycle.startDate,
       endDate: cycle.endDate,
       eventCount: cycle.eventCount,

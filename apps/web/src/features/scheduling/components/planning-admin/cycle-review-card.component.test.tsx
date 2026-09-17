@@ -60,13 +60,11 @@ async function selectTheOnlyCycle() {
 }
 
 function isDateOnlyText(content: string): boolean {
-  return /^\w{3} \d{1,2}, \d{4}$/.test(content);
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(content);
 }
 
 function isTimeRangeText(content: string): boolean {
-  return /^\d{1,2}:\d{2}\s?(AM|PM)\s?[–-]\s?\d{1,2}:\d{2}\s?(AM|PM)$/.test(
-    content,
-  );
+  return /^\d{2}:\d{2}\s?[–-]\s?\d{2}:\d{2}$/.test(content);
 }
 
 interface TwoEventCycleResponseInput {

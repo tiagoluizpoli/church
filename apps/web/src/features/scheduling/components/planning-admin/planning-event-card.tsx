@@ -23,6 +23,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatDayOf, formatTimeRangeOf } from '@/shared/utils/church-time';
 
 export interface PlanningEventCardProps {
   row: CycleCalendarTableRow;
@@ -59,7 +60,7 @@ export function PlanningEventCard({
   const [confirmState, setConfirmState] = useState<ConfirmState>({
     kind: 'none',
   });
-  const { format } = useTimezone();
+  const { churchTimezone } = useTimezone();
 
   /** Auto-close the confirm dialog on the falling edge of pending (mutation
    * settled) instead of synchronously in the click handler — otherwise the
@@ -94,7 +95,7 @@ export function PlanningEventCard({
         <div className="space-y-1">
           <div className="font-medium text-base">{row.title}</div>
           <div className="text-muted-foreground text-xs">
-            {format(row.startDate, 'PP')}
+            {formatDayOf({ value: row.startDate, timeZone: churchTimezone })}
           </div>
           <div className="text-muted-foreground text-xs">
             {row.eventType} · {row.slots.length} slot
@@ -179,7 +180,11 @@ export function PlanningEventCard({
               <span>
                 <span>{slot.label}</span> ·{' '}
                 <span>
-                  {format(slot.startTime, 'p')} – {format(slot.endTime, 'p')}
+                  {formatTimeRangeOf({
+                    start: slot.startTime,
+                    end: slot.endTime,
+                    timeZone: churchTimezone,
+                  })}
                 </span>
               </span>
               {!isReadOnly ? (

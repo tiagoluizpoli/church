@@ -1,4 +1,8 @@
-import { fromTimeColumn } from '@church/time';
+import {
+  formatCalendarDay,
+  fromTimeColumn,
+  parseCalendarDay,
+} from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   CycleCalendarSlotRow,
@@ -183,8 +187,17 @@ export function getSelectedCycleIdOrThrow({
   return selectedCycleId;
 }
 
-export function formatCycleDate({ date }: FormatDateInput): string {
+function cycleDateKey({ date }: FormatDateInput): string {
   return date.slice(0, 10);
+}
+
+/** `dd/MM/yyyy` for a cycle bound (date-only, no Church Timezone conversion
+ * needed — anchored at UTC midnight, per `shared/utils/date.ts`'s
+ * `toCycleDayKey`). */
+export function formatCycleDate({ date }: FormatDateInput): string {
+  return formatCalendarDay({
+    day: parseCalendarDay({ value: cycleDateKey({ date }) }),
+  });
 }
 
 export function formatEventDateTime({ date }: FormatDateInput): string {
@@ -311,9 +324,7 @@ export function isMultiDayEvent({
   startDate,
   endDate,
 }: IsMultiDayEventInput): boolean {
-  return (
-    formatCycleDate({ date: startDate }) !== formatCycleDate({ date: endDate })
-  );
+  return cycleDateKey({ date: startDate }) !== cycleDateKey({ date: endDate });
 }
 
 export function toPlanningCyclesTableRow({

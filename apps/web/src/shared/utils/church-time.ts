@@ -29,7 +29,7 @@ export function formatDayOf(input: ChurchInstantInput): string {
 }
 
 /** `14:30` */
-function formatTimeOf({ value, timeZone }: ChurchInstantInput): string {
+export function formatTimeOf({ value, timeZone }: ChurchInstantInput): string {
   return formatTimeOfDay({
     time: toTimeOfDay({ instant: parseInstant({ value }), timeZone }),
   });
@@ -63,4 +63,14 @@ export function formatInstantRangeOf({
       ? formatTimeOf({ value: end, timeZone })
       : formatInstantOf({ value: end, timeZone });
   return `${formatInstantOf({ value: start, timeZone })} – ${endLabel}`;
+}
+
+/** `09:00 – 18:00`, with no date — for a slot/shift time range shown
+ * alongside a day header that already carries the date. */
+export function formatTimeRangeOf({
+  start,
+  end,
+  timeZone,
+}: ChurchTimeRangeInput): string {
+  return `${formatTimeOf({ value: start, timeZone })} – ${formatTimeOf({ value: end, timeZone })}`;
 }

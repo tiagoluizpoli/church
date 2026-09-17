@@ -54,8 +54,8 @@ describe('CycleListCard table view (US1)', () => {
     ).toBeInTheDocument();
 
     const row = within(table).getByRole('row', { name: /August 2026/ });
-    expect(row).toHaveTextContent('2026-08-01');
-    expect(row).toHaveTextContent('2026-08-31');
+    expect(row).toHaveTextContent('01/08/2026');
+    expect(row).toHaveTextContent('31/08/2026');
     expect(row).toHaveTextContent('locked');
   });
 

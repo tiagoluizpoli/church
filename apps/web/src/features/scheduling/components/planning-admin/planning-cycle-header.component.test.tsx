@@ -94,8 +94,8 @@ describe('PlanningCycleHeader (T058)', () => {
     expect(screen.getByTestId('selected-cycle-state')).toHaveTextContent(
       'locked',
     );
-    expect(periodChip).toHaveTextContent('Aug 1, 2026');
-    expect(periodChip).toHaveTextContent('Aug 31, 2026');
+    expect(periodChip).toHaveTextContent('01/08/2026');
+    expect(periodChip).toHaveTextContent('31/08/2026');
     expect(periodChip).not.toHaveTextContent('August 2026');
   });
 

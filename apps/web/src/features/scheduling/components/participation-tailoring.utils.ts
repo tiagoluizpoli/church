@@ -1,4 +1,8 @@
-import type { TimeOfDay } from '@church/time';
+import {
+  formatCalendarDay,
+  parseCalendarDay,
+  type TimeOfDay,
+} from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
   GetCycleParticipation200,
@@ -6,7 +10,8 @@ import type {
   GetCycleParticipation200EventsItemSlotsItem,
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
-import { toCycleDayKey, toLocalDayKey } from '@/shared/utils/date';
+import { dayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
+import { toCycleDayKey } from '@/shared/utils/date';
 
 export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
 
@@ -38,54 +43,41 @@ export interface ManualSpanDraft {
   label: string;
 }
 
-/** Parses the `yyyy-MM-dd` portion of a date-only or full ISO date-time
- * string as a local calendar date. `new Date(dateOnlyString)` parses at UTC
- * midnight, which shifts the displayed day back one in timezones behind UTC
- * — this treats the value as the calendar day it represents instead. */
-export function parseCalendarDate(value: string): Date {
-  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
-  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
-}
-
 /** Calendar day of a date-only value, such as a planning-cycle bound.
  *
  * Only for values that name a day rather than a moment. Slot and shift
  * timestamps are real church-local wall-clock instants (a 9am slot is stored as
  * `12:00Z` in UTC-3), so slicing their UTC prefix reports the wrong day for
- * anything served late enough to cross UTC midnight — use `toLocalDayKey` for
- * those. */
+ * anything served late enough to cross UTC midnight — use `dayOf` (church
+ * timezone) for those. */
 export function toCalendarDateString(value: string): IsoDateString {
   return toCycleDayKey(value);
 }
 
-export function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(parseCalendarDate(value));
+export interface FormatCalendarDateInput {
+  value: string;
 }
 
-export function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value));
+/** `dd/MM/yyyy` for a date-only value, such as a planning-cycle bound. */
+export function formatDate({ value }: FormatCalendarDateInput): string {
+  return formatCalendarDay({
+    day: parseCalendarDay({ value: toCalendarDateString(value) }),
+  });
 }
 
+export interface FormatTimeRangeInput {
+  start: string;
+  end: string;
+  timeZone: string;
+}
+
+/** `dd/MM/yyyy HH:mm – HH:mm`, read on the Church Timezone's wall clock. */
 export function formatTimeRange({
   start,
   end,
-}: {
-  start: string;
-  end: string;
-}): string {
-  return `${formatDateTime(start)} - ${new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(end))}`;
+  timeZone,
+}: FormatTimeRangeInput): string {
+  return formatInstantRangeOf({ start, end, timeZone });
 }
 
 export function createInitialInclusions(
@@ -350,16 +342,20 @@ export function toIsoDateString(date: Date): IsoDateString {
 /** Derives the set of calendar days with at least one visible tailoring slot.
  * The strip dot is a "there is something to work on this day" marker, so it
  * should come from actual slot timestamps, not a parent event's full span. */
+export interface BuildSlotDayMarkersInput {
+  events: GetCycleParticipation200EventsItem[];
+  timeZone: string;
+}
+
 export function buildSlotDayMarkers({
   events,
-}: {
-  events: GetCycleParticipation200EventsItem[];
-}): Set<IsoDateString> {
+  timeZone,
+}: BuildSlotDayMarkersInput): Set<IsoDateString> {
   const markers = new Set<IsoDateString>();
 
   for (const eventView of events) {
     for (const slotView of eventView.slots) {
-      markers.add(toLocalDayKey(slotView.slot.startTime));
+      markers.add(dayOf({ value: slotView.slot.startTime, timeZone }));
     }
   }
 

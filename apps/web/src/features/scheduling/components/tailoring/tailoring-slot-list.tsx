@@ -1,3 +1,9 @@
+import {
+  type CalendarDay,
+  compareInstants,
+  formatCalendarDay,
+  parseInstant,
+} from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useQueries } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -5,7 +11,6 @@ import { ChevronDownIcon, Loader2Icon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import z from 'zod';
 import {
-  formatDate,
   formatTimeRange,
   getSlotRoleOptions,
   participationStateLabel,
@@ -34,7 +39,8 @@ import type {
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
-import { toLocalDayKey } from '@/shared/utils/date';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { dayOf } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 export interface HeadcountSave {
@@ -91,33 +97,40 @@ export interface TailoringSlotListProps {
 }
 
 interface FlatSlotRow {
-  dayKey: string;
+  dayKey: CalendarDay;
   eventView: GetCycleParticipation200EventsItem;
   slotView: GetCycleParticipation200EventsItemSlotsItem;
 }
 
-function buildFlatDayGroups(
-  events: GetCycleParticipation200EventsItem[],
-): Map<string, FlatSlotRow[]> {
+export interface BuildFlatDayGroupsInput {
+  events: GetCycleParticipation200EventsItem[];
+  timeZone: string;
+}
+
+function buildFlatDayGroups({
+  events,
+  timeZone,
+}: BuildFlatDayGroupsInput): Map<CalendarDay, FlatSlotRow[]> {
   const rows: FlatSlotRow[] = [];
 
   for (const eventView of events) {
     for (const slotView of eventView.slots) {
       rows.push({
-        dayKey: toLocalDayKey(slotView.slot.startTime),
+        dayKey: dayOf({ value: slotView.slot.startTime, timeZone }),
         eventView,
         slotView,
       });
     }
   }
 
-  rows.sort(
-    (left, right) =>
-      new Date(left.slotView.slot.startTime).getTime() -
-      new Date(right.slotView.slot.startTime).getTime(),
+  rows.sort((left, right) =>
+    compareInstants({
+      left: parseInstant({ value: left.slotView.slot.startTime }),
+      right: parseInstant({ value: right.slotView.slot.startTime }),
+    }),
   );
 
-  const groups = new Map<string, FlatSlotRow[]>();
+  const groups = new Map<CalendarDay, FlatSlotRow[]>();
   for (const row of rows) {
     const existing = groups.get(row.dayKey);
     if (existing) {
@@ -248,6 +261,7 @@ export function TailoringSlotList({
   onSaveHeadcounts,
 }: TailoringSlotListProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const { churchTimezone } = useTimezone();
   const uniqueEventIds = [...new Set(events.map((e) => e.event.id))];
 
   /** Collapsed by default (T-layout: wall-of-forms fix) — a slot only
@@ -291,7 +305,7 @@ export function TailoringSlotList({
     retryRoleCatalogByEventId[eventId] = () => query?.refetch();
   });
 
-  const dayGroups = buildFlatDayGroups(events);
+  const dayGroups = buildFlatDayGroups({ events, timeZone: churchTimezone });
   const sortedDayKeys = [...dayGroups.keys()].sort();
 
   if (sortedDayKeys.length === 0) {
@@ -326,7 +340,7 @@ export function TailoringSlotList({
                 className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
                 data-testid={`tailoring-day-header-${dayKey}`}
               >
-                {formatDate(dayKey)}
+                {formatCalendarDay({ day: dayKey })}
               </div>
 
               <div className="space-y-2">
@@ -431,6 +445,7 @@ function SlotRow({
   onSaveHeadcounts,
 }: SlotRowProps) {
   const isMobile = useFormControlSize() === 'touch';
+  const { churchTimezone } = useTimezone();
   const included = slotView.included;
   const isSavingSplit = pendingSplitSlotId === slotView.slot.id;
   const isSavingInclusion = pendingInclusionSlotId === slotView.slot.id;
@@ -483,6 +498,7 @@ function SlotRow({
                 {formatTimeRange({
                   start: slotView.slot.startTime,
                   end: slotView.slot.endTime,
+                  timeZone: churchTimezone,
                 })}
               </div>
             </div>
@@ -680,6 +696,7 @@ function HeadcountPanel({
   onSaveHeadcounts,
 }: HeadcountPanelProps) {
   const isMobile = useFormControlSize() === 'touch';
+  const { churchTimezone } = useTimezone();
   const headcountSavesByShift = slotView.shifts.map((shift) => ({
     shiftId: shift.id,
     validHeadcounts: parseValidHeadcounts({
@@ -745,6 +762,7 @@ function HeadcountPanel({
                 {formatTimeRange({
                   start: shift.startTime,
                   end: shift.endTime,
+                  timeZone: churchTimezone,
                 })}
               </div>
             </div>

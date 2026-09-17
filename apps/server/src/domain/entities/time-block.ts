@@ -28,7 +28,7 @@ export class TimeBlock extends Entity<TimeBlockProps, TimeBlockId> {
     // An end before its start crosses midnight onto the next CalendarDay
     // (ADR-0003); only a zero-length block is invalid.
     if (isSameTimeOfDay(props.startTime, props.endTime)) {
-      throw new InvalidTimeRangeError();
+      throw new InvalidTimeRangeError('Start time must not equal end time');
     }
 
     super(props as TimeBlockProps, id as TimeBlockId, createdAt, updatedAt);

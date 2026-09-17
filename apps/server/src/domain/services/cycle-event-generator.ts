@@ -1,5 +1,7 @@
 import {
+  addCalendarDays,
   fromTimeColumn,
+  parseCalendarDay,
   parseTimeOfDay,
   type TimeOfDay,
   timeOfDaySpan,
@@ -213,9 +215,7 @@ function buildSlotBounds({
     end: toTimeOfDay(endTime),
   });
   const endDate = crossesToNextDay
-    ? new Date(new Date(`${date}T00:00:00.000Z`).getTime() + ONE_DAY_IN_MS)
-        .toISOString()
-        .slice(0, 10)
+    ? addCalendarDays({ day: parseCalendarDay({ value: date }), days: 1 })
     : date;
 
   return {

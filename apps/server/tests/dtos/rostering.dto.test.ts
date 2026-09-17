@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
   createParticipationAssignmentResponseSchema,
@@ -12,7 +13,7 @@ import { Assignment } from '../../src/domain/entities/assignment';
 describe('rosteringMapper', () => {
   describe('eligibleVolunteerToResponse', () => {
     it('maps a volunteer with lastServedAt present', () => {
-      const lastServedAt = new Date('2026-01-01T00:00:00.000Z');
+      const lastServedAt = parseInstant({ value: '2026-01-01T00:00:00.000Z' });
 
       const response = rosteringMapper.eligibleVolunteerToResponse({
         volunteerId: VolunteerId.from('v1'),
@@ -30,7 +31,7 @@ describe('rosteringMapper', () => {
         volunteerName: 'Jane',
         isAvailable: true,
         hasConflict: false,
-        lastServedAt: lastServedAt.toISOString(),
+        lastServedAt,
         qualifiedRoleIds: ['role-1', 'role-2'],
         ministryAccessLevel: 'leader',
         leadTeamIds: ['team-1'],
@@ -73,7 +74,7 @@ describe('rosteringMapper', () => {
           isAvailable: false,
           hasConflict: true,
           qualifiedRoleIds: [],
-          lastServedAt: new Date('2026-01-05T00:00:00.000Z'),
+          lastServedAt: parseInstant({ value: '2026-01-05T00:00:00.000Z' }),
           ministryAccessLevel: 'volunteer',
           leadTeamIds: [],
         },

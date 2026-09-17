@@ -1,4 +1,5 @@
 import type { shift } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -16,8 +17,8 @@ export function mapShift(row: ShiftRow): Shift {
     churchId: row.churchId as ChurchId,
     participationId: row.participationId as MinistryParticipationId,
     timeSlotId: row.timeSlotId as TimeSlotId,
-    startTime: row.startTime,
-    endTime: row.endTime,
+    startTime: fromDate({ date: row.startTime }),
+    endTime: fromDate({ date: row.endTime }),
     label: row.label ?? undefined,
   };
 

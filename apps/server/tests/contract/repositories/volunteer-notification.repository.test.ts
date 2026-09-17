@@ -1,3 +1,4 @@
+import { fromDate, type Instant, parseInstant } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
@@ -33,7 +34,7 @@ interface SeedNotificationInput {
   body: string;
   payload: VolunteerNotificationPayload;
   createdAt: Date;
-  readAt?: Date;
+  readAt?: Instant;
   ministryId?: MinistryId;
   eventId?: EventId;
   assignmentId?: AssignmentId;
@@ -73,7 +74,7 @@ class MockVolunteerNotificationRepository
           section: 'notifications',
         },
         createdAt: new Date('2024-06-02T12:00:00Z'),
-        readAt: new Date('2024-06-02T13:00:00Z'),
+        readAt: parseInstant({ value: '2024-06-02T13:00:00Z' }),
       },
       {
         id: 'cccccccc-cccc-cccc-cccc-cccccccccccc' as VolunteerNotificationId,
@@ -164,7 +165,8 @@ class MockVolunteerNotificationRepository
     notificationId: VolunteerNotificationId,
   ): Promise<Date | null> {
     const notification = this.notifications.get(notificationId);
-    const readAt = new Date();
+    const readAtDate = new Date();
+    const readAt = fromDate({ date: readAtDate });
 
     if (
       !notification ||
@@ -192,7 +194,7 @@ class MockVolunteerNotificationRepository
       }),
     );
 
-    return readAt;
+    return readAtDate;
   }
 
   async markAllRead(
@@ -225,7 +227,7 @@ class MockVolunteerNotificationRepository
           body: notification.body,
           payload: notification.payload,
           createdAt: notification.createdAt,
-          readAt: new Date(),
+          readAt: fromDate({ date: new Date() }),
         }),
       );
     }
@@ -233,10 +235,11 @@ class MockVolunteerNotificationRepository
     return updatedCount;
   }
 
-  private createNotification(
-    input: SeedNotificationInput,
-  ): VolunteerNotification {
-    return new VolunteerNotification(input, input.id);
+  private createNotification({
+    createdAt,
+    ...props
+  }: SeedNotificationInput): VolunteerNotification {
+    return new VolunteerNotification(props, props.id, createdAt);
   }
 }
 

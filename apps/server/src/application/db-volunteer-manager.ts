@@ -1,4 +1,12 @@
 import 'reflect-metadata';
+import {
+  addMilliseconds,
+  compareInstants,
+  type Instant,
+  now as nowInstant,
+  parseCalendarDay,
+  toDate,
+} from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, ShiftId } from '../domain/branded-ids';
 import type {
@@ -158,8 +166,8 @@ function claimShiftCoverage(
   return { assignmentTeamId, requirementFilledCount };
 }
 
-function slotKey(startTime: Date, endTime: Date): string {
-  return `${startTime.toISOString()}::${endTime.toISOString()}`;
+function slotKey(startTime: Instant, endTime: Instant): string {
+  return `${startTime}::${endTime}`;
 }
 
 function availabilityCompletionState(
@@ -195,12 +203,14 @@ function aggregateState(
 
 function scheduleShiftLabel(shift: {
   label?: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }): string {
+  const start = toDate({ instant: shift.startTime });
+  const end = toDate({ instant: shift.endTime });
   return (
     shift.label ??
-    `${shift.startTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${shift.endTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+    `${start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
   );
 }
 
@@ -248,7 +258,7 @@ export class DbVolunteerManager implements IVolunteerManager {
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
     const { volunteerId, churchId } = input;
-    const now = new Date();
+    const now = nowInstant();
 
     const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds(
       churchId,
@@ -271,7 +281,8 @@ export class DbVolunteerManager implements IVolunteerManager {
         return Promise.all(
           events.map(
             async (event): Promise<DashboardAvailabilityTask | null> => {
-              if (event.startDate <= now) return null;
+              if (compareInstants({ left: event.startDate, right: now }) <= 0)
+                return null;
               const eventWithSlots = await this.eventRepo.getWithSlots(
                 churchId,
                 event.id,
@@ -294,8 +305,8 @@ export class DbVolunteerManager implements IVolunteerManager {
                 ministryId: ministry.id,
                 ministryName: ministry.name,
                 eventType: event.eventType,
-                eventStart: event.startDate.toISOString(),
-                eventEnd: event.endDate.toISOString(),
+                eventStart: event.startDate,
+                eventEnd: event.endDate,
                 completionState,
               };
             },
@@ -377,7 +388,12 @@ export class DbVolunteerManager implements IVolunteerManager {
       const participation = participationsById.get(
         assignment.participationId as string,
       );
-      if (!participation || !shift || shift.endTime <= now) continue;
+      if (
+        !participation ||
+        !shift ||
+        compareInstants({ left: shift.endTime, right: now }) <= 0
+      )
+        continue;
 
       const event = eventsById.get(participation.eventId as string);
       const ministry = ministryById.get(participation.ministryId as string);
@@ -385,7 +401,9 @@ export class DbVolunteerManager implements IVolunteerManager {
 
       const role = await this.roleRepo.getById(churchId, assignment.roleId);
       const timingState: 'in_progress' | 'upcoming' =
-        shift.startTime <= now ? 'in_progress' : 'upcoming';
+        compareInstants({ left: shift.startTime, right: now }) <= 0
+          ? 'in_progress'
+          : 'upcoming';
 
       const item: DashboardAssignmentItem = {
         assignmentId: assignment.id as string,
@@ -394,8 +412,8 @@ export class DbVolunteerManager implements IVolunteerManager {
         participationId: participation.id as string,
         roleId: assignment.roleId as string,
         roleName: role.name,
-        startTime: shift.startTime.toISOString(),
-        endTime: shift.endTime.toISOString(),
+        startTime: shift.startTime,
+        endTime: shift.endTime,
         status: assignment.status,
         timingState,
         canRespond: timingState === 'upcoming',
@@ -410,7 +428,7 @@ export class DbVolunteerManager implements IVolunteerManager {
           eventTitle: event.title,
           ministryId: participation.ministryId as string,
           ministryName: ministry.name,
-          eventStart: event.startDate.toISOString(),
+          eventStart: event.startDate,
           items: [item],
         });
       }
@@ -454,7 +472,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       type: n.type,
       title: n.title,
       body: n.body,
-      readAt: n.readAt?.toISOString(),
+      readAt: n.readAt,
       createdAt: n.createdAt.toISOString(),
     }));
 
@@ -475,10 +493,11 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: GetUpcomingAssignmentsInput,
   ): Promise<Assignment[]> {
     const { churchId } = input;
-    const now = new Date();
-    const future = new Date(
-      now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000,
-    );
+    const now = nowInstant();
+    const future = addMilliseconds({
+      instant: now,
+      milliseconds: UPCOMING_DAYS * 24 * 60 * 60 * 1000,
+    });
     const assignments = await this.listPublishedAssignmentsForVolunteer(input);
     const shifts = await Promise.all(
       assignments
@@ -501,7 +520,9 @@ export class DbVolunteerManager implements IVolunteerManager {
     return assignments.filter((assignment) => {
       const shift = shiftsById.get(assignment.shiftId as string);
       return (
-        shift != null && shift.startTime >= now && shift.startTime <= future
+        shift != null &&
+        compareInstants({ left: shift.startTime, right: now }) >= 0 &&
+        compareInstants({ left: shift.startTime, right: future }) <= 0
       );
     });
   }
@@ -670,8 +691,8 @@ export class DbVolunteerManager implements IVolunteerManager {
           return {
             eventId: event.id as string,
             title: event.title,
-            startDate: event.startDate.toISOString(),
-            endDate: event.endDate.toISOString(),
+            startDate: event.startDate,
+            endDate: event.endDate,
             assignmentCount: activeAssignments.length,
             rows,
           };
@@ -796,7 +817,7 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     const wholeDayShiftIds = (input.wholeDayDates ?? []).flatMap((date) =>
       expandWholeDayShiftIds({
-        churchDate: date,
+        churchDate: parseCalendarDay({ value: date }),
         timeZone: context.timeZone,
         shifts,
       }),
@@ -849,11 +870,11 @@ export class DbVolunteerManager implements IVolunteerManager {
       }
     }
 
-    const confirmedAt = context.check.confirmedAt ?? new Date();
+    const confirmedAt = context.check.confirmedAt ?? nowInstant();
     await this.availabilityCheckRepo.confirm({
       churchId: input.churchId,
       checkId: input.checkId,
-      confirmedAt,
+      confirmedAt: toDate({ instant: confirmedAt }),
     });
 
     const overlaps: AvailabilityOverlapItem[] = overlapPairs.map((pair) => ({
@@ -940,11 +961,11 @@ export class DbVolunteerManager implements IVolunteerManager {
         churchId,
         shiftId: assignment.shiftId,
       });
-      const cutoff = new Date(
-        shift.startTime.getTime() -
-          this.cancelLeadTimeDays * MILLISECONDS_PER_DAY,
-      );
-      if (new Date() >= cutoff) {
+      const cutoff = addMilliseconds({
+        instant: shift.startTime,
+        milliseconds: -this.cancelLeadTimeDays * MILLISECONDS_PER_DAY,
+      });
+      if (compareInstants({ left: nowInstant(), right: cutoff }) >= 0) {
         throw new CancelWindowClosedError();
       }
     }

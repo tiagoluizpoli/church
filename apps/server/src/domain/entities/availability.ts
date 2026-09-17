@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { compareInstants, type Instant } from '@church/time';
 import type {
   AvailabilityCheckId,
   AvailabilityId,
@@ -19,8 +20,8 @@ export interface AvailabilityProps {
   availabilityCheckId: AvailabilityCheckId;
   shiftId: ShiftId;
   volunteerId: VolunteerId;
-  shiftStartTime: Date;
-  shiftEndTime: Date;
+  shiftStartTime: Instant;
+  shiftEndTime: Instant;
 }
 
 export interface AvailabilityInput {
@@ -32,7 +33,12 @@ export interface AvailabilityInput {
 
 export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
   constructor({ props, id, createdAt, updatedAt }: AvailabilityInput) {
-    if (props.shiftStartTime >= props.shiftEndTime) {
+    if (
+      compareInstants({
+        left: props.shiftStartTime as Instant,
+        right: props.shiftEndTime as Instant,
+      }) >= 0
+    ) {
       throw new InvalidTimeRangeError();
     }
     super(
@@ -59,11 +65,11 @@ export class Availability extends Entity<AvailabilityProps, AvailabilityId> {
     return this._props.volunteerId;
   }
 
-  get shiftStartTime(): Date {
+  get shiftStartTime(): Instant {
     return this._props.shiftStartTime;
   }
 
-  get shiftEndTime(): Date {
+  get shiftEndTime(): Instant {
     return this._props.shiftEndTime;
   }
 }

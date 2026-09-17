@@ -1,4 +1,5 @@
 import type { ministryInvitation } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -27,11 +28,15 @@ export function mapMinistryInvitation(
     ministryAccessLevel: row.ministryAccessLevel as MinistryAccessLevel,
     status: row.status,
     inviterId: row.inviterId as UserId,
-    expiresAt: row.expiresAt,
+    expiresAt: fromDate({ date: row.expiresAt }),
     roleIds,
-    lastResendAt: row.lastResendAt ?? undefined,
+    lastResendAt: row.lastResendAt
+      ? fromDate({ date: row.lastResendAt })
+      : undefined,
     resendCount: row.resendCount,
-    resendWindowStartedAt: row.resendWindowStartedAt ?? undefined,
+    resendWindowStartedAt: row.resendWindowStartedAt
+      ? fromDate({ date: row.resendWindowStartedAt })
+      : undefined,
   };
 
   return new MinistryInvitation(

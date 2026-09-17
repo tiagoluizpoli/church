@@ -1,3 +1,4 @@
+import { compareInstants, fromDate, millisecondsBetween } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
   hashVerificationCode,
@@ -27,13 +28,19 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
       return state;
     },
     async claimDelivery({ codeHash, expiresAt, sentAt }) {
-      if (state && sentAt.getTime() - state.lastSentAt.getTime() < 60_000) {
+      if (
+        state &&
+        millisecondsBetween({
+          start: state.lastSentAt,
+          end: fromDate({ date: sentAt }),
+        }) < 60_000
+      ) {
         return false;
       }
       state = {
         codeHash,
-        expiresAt,
-        lastSentAt: sentAt,
+        expiresAt: fromDate({ date: expiresAt }),
+        lastSentAt: fromDate({ date: sentAt }),
         failedAttempts: 0,
         consumedAt: null,
         redemptionIdempotencyKey: null,
@@ -43,7 +50,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
     async releaseDeliveryClaim({ codeHash, sentAt }) {
       if (
         state?.codeHash === codeHash &&
-        state.lastSentAt.getTime() === sentAt.getTime()
+        state.lastSentAt === fromDate({ date: sentAt })
       ) {
         state = null;
       }
@@ -54,13 +61,14 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
       now,
       redemptionIdempotencyKey,
     }) {
+      const nowInstant = fromDate({ date: now });
       if (
         state?.codeHash === candidateHash &&
         !state.consumedAt &&
-        state.expiresAt > now &&
+        compareInstants({ left: state.expiresAt, right: nowInstant }) > 0 &&
         state.failedAttempts < 5
       ) {
-        state.consumedAt = consumedAt;
+        state.consumedAt = fromDate({ date: consumedAt });
         state.redemptionIdempotencyKey = redemptionIdempotencyKey ?? null;
         return true;
       }
@@ -68,11 +76,13 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
     },
     async recordFailedAttemptIfAllowed({ candidateHash, now }) {
       const currentState = state;
+      const nowInstant = fromDate({ date: now });
       if (
         currentState !== null &&
         currentState.codeHash !== candidateHash &&
         !currentState.consumedAt &&
-        currentState.expiresAt > now &&
+        compareInstants({ left: currentState.expiresAt, right: nowInstant }) >
+          0 &&
         currentState.failedAttempts < 5
       ) {
         currentState.failedAttempts += 1;

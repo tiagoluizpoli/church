@@ -1,26 +1,25 @@
 import {
   addCalendarDays,
-  fromTimeColumn,
-  parseCalendarDay,
-  parseTimeOfDay,
+  type CalendarDay,
+  compareCalendarDays,
+  type Instant,
   type TimeOfDay,
   timeOfDaySpan,
+  toInstant,
+  weekdayIndex,
 } from '@church/time';
-import { fromZonedTime } from 'date-fns-tz';
 import type { EventId, EventTemplateId, TimeBlockId } from '../branded-ids';
 import type { EventTemplate } from '../entities/event-template';
 import type { PlanningCycle } from '../entities/planning-cycle';
 
-const ONE_DAY_IN_MS = 86_400_000;
-
 export interface ExistingGeneratedSlotFingerprint {
-  eventDate: string;
+  eventDate: CalendarDay;
   sourceTemplateBlockId: TimeBlockId;
 }
 
 export interface ExistingGeneratedEvent {
   eventId: EventId;
-  eventDate: string;
+  eventDate: CalendarDay;
   sourceTemplateId?: EventTemplateId;
 }
 
@@ -35,16 +34,16 @@ export interface GenerateCycleEventsInput {
 export interface GeneratedCycleSlotPlan {
   sourceTemplateBlockId: TimeBlockId;
   label: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface GeneratedCycleCreateEventPlan {
   kind: 'create_event';
   sourceTemplateId: EventTemplateId;
   title: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: Instant;
+  endDate: Instant;
   slots: GeneratedCycleSlotPlan[];
 }
 
@@ -58,22 +57,16 @@ export type GeneratedCycleEventPlan =
   | GeneratedCycleCreateEventPlan
   | GeneratedCycleAppendSlotPlan;
 
-interface BuildLocalDateTimeInput {
-  date: string;
-  time: string;
-  timeZone: string;
-}
-
 interface BuildSlotBoundsInput {
-  date: string;
-  startTime: string;
-  endTime: string;
+  date: CalendarDay;
+  startTime: TimeOfDay;
+  endTime: TimeOfDay;
   timeZone: string;
 }
 
 interface SlotBounds {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 interface ListMatchingCycleDatesInput {
@@ -165,39 +158,19 @@ export class CycleEventGenerator {
 function listMatchingCycleDates({
   cycle,
   weekday,
-}: ListMatchingCycleDatesInput): string[] {
-  const dates: string[] = [];
-  let cursor = new Date(cycle.startDate);
+}: ListMatchingCycleDatesInput): CalendarDay[] {
+  const dates: CalendarDay[] = [];
+  let cursor = cycle.startDate;
 
-  while (cursor < cycle.endDate) {
-    if (cursor.getUTCDay() === weekday) {
-      dates.push(cursor.toISOString().slice(0, 10));
+  while (compareCalendarDays({ left: cursor, right: cycle.endDate }) < 0) {
+    if (weekdayIndex({ day: cursor }) === weekday) {
+      dates.push(cursor);
     }
 
-    cursor = new Date(cursor.getTime() + ONE_DAY_IN_MS);
+    cursor = addCalendarDays({ day: cursor, days: 1 });
   }
 
   return dates;
-}
-
-function buildLocalDateTime({
-  date,
-  time,
-  timeZone,
-}: BuildLocalDateTimeInput): Date {
-  return fromZonedTime(`${date}T${normalizeTimeForDateTime(time)}`, timeZone);
-}
-
-function normalizeTimeForDateTime(time: string): string {
-  return time.length === 5 ? `${time}:00` : time;
-}
-
-/** A TimeBlock's time is `HH:mm` in tests or the `HH:mm:ss` a Postgres `time`
- * column returns; either way it names a TimeOfDay. */
-function toTimeOfDay(time: string): TimeOfDay {
-  return time.length === 5
-    ? parseTimeOfDay({ value: time })
-    : fromTimeColumn({ value: time });
 }
 
 /**
@@ -211,15 +184,15 @@ function buildSlotBounds({
   timeZone,
 }: BuildSlotBoundsInput): SlotBounds {
   const { crossesToNextDay } = timeOfDaySpan({
-    start: toTimeOfDay(startTime),
-    end: toTimeOfDay(endTime),
+    start: startTime,
+    end: endTime,
   });
   const endDate = crossesToNextDay
-    ? addCalendarDays({ day: parseCalendarDay({ value: date }), days: 1 })
+    ? addCalendarDays({ day: date, days: 1 })
     : date;
 
   return {
-    startTime: buildLocalDateTime({ date, time: startTime, timeZone }),
-    endTime: buildLocalDateTime({ date: endDate, time: endTime, timeZone }),
+    startTime: toInstant({ day: date, time: startTime, timeZone }),
+    endTime: toInstant({ day: endDate, time: endTime, timeZone }),
   };
 }

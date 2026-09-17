@@ -1,3 +1,4 @@
+import { millisecondsBetween, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   ChurchId,
@@ -20,8 +21,8 @@ const participationId =
 
 const timeSlot = {
   id: '66666666-6666-4666-8666-666666666666' as TimeSlotId,
-  startTime: new Date('2026-08-02T09:00:00.000Z'),
-  endTime: new Date('2026-08-02T12:00:00.000Z'),
+  startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+  endTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
 };
 
 const splitter = new ShiftSplitter();
@@ -55,8 +56,8 @@ describe('ShiftSplitter (DL1-SS)', () => {
     expect(shifts).toHaveLength(3);
     assertExactTiling({ shifts });
 
-    const spanMs = shifts.map(
-      (shift) => shift.endTime.getTime() - shift.startTime.getTime(),
+    const spanMs = shifts.map((shift) =>
+      millisecondsBetween({ start: shift.startTime, end: shift.endTime }),
     );
     expect(spanMs).toEqual([3_600_000, 3_600_000, 3_600_000]);
   });
@@ -76,12 +77,18 @@ describe('ShiftSplitter (DL1-SS)', () => {
     expect(shifts).toHaveLength(7);
     assertExactTiling({ shifts });
 
-    const baseSpan =
-      (shifts[0]?.endTime.getTime() ?? 0) -
-      (shifts[0]?.startTime.getTime() ?? 0);
-    const finalSpan =
-      (shifts[6]?.endTime.getTime() ?? 0) -
-      (shifts[6]?.startTime.getTime() ?? 0);
+    const baseSpan = shifts[0]
+      ? millisecondsBetween({
+          start: shifts[0].startTime,
+          end: shifts[0].endTime,
+        })
+      : 0;
+    const finalSpan = shifts[6]
+      ? millisecondsBetween({
+          start: shifts[6].startTime,
+          end: shifts[6].endTime,
+        })
+      : 0;
 
     expect(baseSpan).toBe(Math.floor(10_800_000 / 7));
     expect(finalSpan).toBe(10_800_000 - baseSpan * 6);
@@ -100,8 +107,8 @@ describe('ShiftSplitter (DL1-SS)', () => {
   it('rejects a split count too high for the slot duration', () => {
     const shortSlot = {
       id: timeSlot.id,
-      startTime: new Date('2026-08-02T09:00:00.000Z'),
-      endTime: new Date('2026-08-02T09:00:00.001Z'),
+      startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T09:00:00.001Z' }),
     };
 
     expect(() =>
@@ -119,13 +126,13 @@ describe('ShiftSplitter (DL1-SS)', () => {
       kind: 'manual',
       spans: [
         {
-          startTime: new Date('2026-08-02T09:00:00.000Z'),
-          endTime: new Date('2026-08-02T09:30:00.000Z'),
+          startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
           label: 'Setup',
         },
         {
-          startTime: new Date('2026-08-02T09:30:00.000Z'),
-          endTime: new Date('2026-08-02T12:00:00.000Z'),
+          startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
           label: 'Service',
         },
       ],
@@ -142,12 +149,12 @@ describe('ShiftSplitter (DL1-SS)', () => {
         kind: 'manual',
         spans: [
           {
-            startTime: new Date('2026-08-02T09:00:00.000Z'),
-            endTime: new Date('2026-08-02T10:00:00.000Z'),
+            startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+            endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
           },
           {
-            startTime: new Date('2026-08-02T11:00:00.000Z'),
-            endTime: new Date('2026-08-02T12:30:00.000Z'),
+            startTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+            endTime: parseInstant({ value: '2026-08-02T12:30:00.000Z' }),
           },
         ],
       }),
@@ -159,12 +166,12 @@ describe('ShiftSplitter (DL1-SS)', () => {
       kind: 'manual',
       spans: [
         {
-          startTime: new Date('2026-08-02T09:00:00.000Z'),
-          endTime: new Date('2026-08-02T10:00:00.000Z'),
+          startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
         },
         {
-          startTime: new Date('2026-08-02T11:00:00.000Z'),
-          endTime: new Date('2026-08-02T12:00:00.000Z'),
+          startTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
         },
       ],
     });
@@ -176,12 +183,12 @@ describe('ShiftSplitter (DL1-SS)', () => {
         kind: 'manual',
         spans: [
           {
-            startTime: new Date('2026-08-02T09:00:00.000Z'),
-            endTime: new Date('2026-08-02T10:30:00.000Z'),
+            startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+            endTime: parseInstant({ value: '2026-08-02T10:30:00.000Z' }),
           },
           {
-            startTime: new Date('2026-08-02T10:00:00.000Z'),
-            endTime: new Date('2026-08-02T12:00:00.000Z'),
+            startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+            endTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
           },
         ],
       }),

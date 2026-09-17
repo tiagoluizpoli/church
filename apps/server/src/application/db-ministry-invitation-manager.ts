@@ -1,4 +1,10 @@
 import { NotFoundError } from '@church/core';
+import {
+  addMilliseconds,
+  type Instant,
+  now as nowInstant,
+  toDate,
+} from '@church/time';
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, UserId } from '../domain/branded-ids';
@@ -64,7 +70,7 @@ interface ResolveChainedChurchInvitationInput {
 
 interface EnsureResendAllowedInput {
   throttleState: ResendThrottleState;
-  now: Date;
+  now: Instant;
 }
 
 @injectable()
@@ -146,7 +152,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       });
       if (!existing) throw new MinistryInvitationNotFoundError();
 
-      const now = new Date();
+      const now = nowInstant();
       const throttleState: ResendThrottleState = {
         lastResendAt: existing.lastResendAt,
         resendCount: existing.resendCount,
@@ -154,14 +160,25 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       };
       this.ensureResendAllowed({ throttleState, now });
 
-      const expiresAt = new Date(
-        now.getTime() + MINISTRY_ONLY_INVITATION_TTL_MS,
-      );
+      const expiresAt = addMilliseconds({
+        instant: now,
+        milliseconds: MINISTRY_ONLY_INVITATION_TTL_MS,
+      });
+      const nextThrottle = nextResendThrottleState({
+        state: throttleState,
+        now,
+      });
       const invitation = await this.repo.applyResend({
         churchId,
         ministryInvitation: existing,
-        expiresAt,
-        throttle: nextResendThrottleState({ state: throttleState, now }),
+        expiresAt: toDate({ instant: expiresAt }),
+        throttle: {
+          lastResendAt: toDate({ instant: nextThrottle.lastResendAt }),
+          resendCount: nextThrottle.resendCount,
+          resendWindowStartedAt: toDate({
+            instant: nextThrottle.resendWindowStartedAt,
+          }),
+        },
         tx,
       });
 

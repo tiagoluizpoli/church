@@ -1,4 +1,5 @@
 import type { event } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type { ChurchId, EventId } from '../../domain/branded-ids';
 import type { EventProps } from '../../domain/entities/event';
@@ -15,8 +16,8 @@ export function mapEvent(row: EventRow): Event {
     title: row.title,
     description: row.description ?? undefined,
     location: row.location ?? undefined,
-    startDate: row.startDate,
-    endDate: row.endDate,
+    startDate: fromDate({ date: row.startDate }),
+    endDate: fromDate({ date: row.endDate }),
     status: row.status as EventProps['status'],
     eventType: row.eventType as EventProps['eventType'],
   };

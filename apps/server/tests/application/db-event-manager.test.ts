@@ -1,3 +1,4 @@
+import { parseInstant, toDate } from '@church/time';
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { DbEventManager } from '../../src/application/db-event-manager';
@@ -58,8 +59,8 @@ function buildEvent(): Event {
       churchId,
       planningCycleId: 'cycle-1',
       title: 'Sunday Service',
-      startDate: new Date('2026-08-02T09:00:00.000Z'),
-      endDate: new Date('2026-08-02T12:00:00.000Z'),
+      startDate: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+      endDate: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
     },
     eventId,
   );
@@ -110,8 +111,12 @@ function createRepos(): Repos {
         {
           churchId,
           eventId,
-          startTime: input.startTime ?? new Date('2026-08-02T09:00:00.000Z'),
-          endTime: input.endTime ?? new Date('2026-08-02T10:00:00.000Z'),
+          startTime:
+            input.startTime ??
+            parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+          endTime:
+            input.endTime ??
+            parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
           label: input.label,
         },
         id,
@@ -348,8 +353,8 @@ describe('DbEventManager', () => {
             availabilityCheckId: 'check-1' as never,
             shiftId: 'shift-1' as never,
             volunteerId: teamAVolunteerId,
-            shiftStartTime: new Date('2026-08-02T09:00:00.000Z'),
-            shiftEndTime: new Date('2026-08-02T10:00:00.000Z'),
+            shiftStartTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+            shiftEndTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
           },
         }),
       ];
@@ -537,8 +542,8 @@ describe('DbEventManager', () => {
           {
             churchId,
             eventId,
-            startTime: new Date('2026-08-02T09:00:00.000Z'),
-            endTime: new Date('2026-08-02T10:00:00.000Z'),
+            startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+            endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
           },
           slotId,
         ),
@@ -712,8 +717,8 @@ describe('DbEventManager', () => {
           eventId,
           slots: [
             expect.objectContaining({
-              startTime: event.startDate,
-              endTime: event.endDate,
+              startTime: toDate({ instant: event.startDate }),
+              endTime: toDate({ instant: event.endDate }),
               requirements: [],
             }),
           ],

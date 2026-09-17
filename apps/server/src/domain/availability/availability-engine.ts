@@ -1,4 +1,21 @@
-import type { AvailabilityCheckRequest, AvailabilityResult } from './types';
+import { compareInstants } from '@church/time';
+import type {
+  AvailabilityCheckRequest,
+  AvailabilityResult,
+  TimeRange,
+} from './types';
+
+interface RangesIntersectInput {
+  left: TimeRange;
+  right: TimeRange;
+}
+
+function rangesIntersect({ left, right }: RangesIntersectInput): boolean {
+  return (
+    compareInstants({ left: left.start, right: right.end }) < 0 &&
+    compareInstants({ left: right.start, right: left.end }) < 0
+  );
+}
 
 /**
  * Pure Domain Service for availability calculations.
@@ -11,10 +28,6 @@ export const AvailabilityEngine = {
    * @throws Error if a churchId isolation breach is detected.
    */
   checkAvailability(request: AvailabilityCheckRequest): AvailabilityResult {
-    const { start, end } = request.timeRange;
-    const requestStart = start.getTime();
-    const requestEnd = end.getTime();
-
     // 1. Check Blockouts (UNAVAILABLE)
     for (const blockout of request.existingBlockouts) {
       if (blockout.churchId !== request.churchId) {
@@ -23,11 +36,9 @@ export const AvailabilityEngine = {
         );
       }
 
-      const bStart = blockout.timeRange.start.getTime();
-      const bEnd = blockout.timeRange.end.getTime();
-
-      // Math.max(start1, start2) < Math.min(end1, end2)
-      if (Math.max(requestStart, bStart) < Math.min(requestEnd, bEnd)) {
+      if (
+        rangesIntersect({ left: request.timeRange, right: blockout.timeRange })
+      ) {
         return {
           status: 'UNAVAILABLE',
           conflictReason: 'blockout',
@@ -57,10 +68,12 @@ export const AvailabilityEngine = {
         continue;
       }
 
-      const aStart = assignment.timeRange.start.getTime();
-      const aEnd = assignment.timeRange.end.getTime();
-
-      if (Math.max(requestStart, aStart) < Math.min(requestEnd, aEnd)) {
+      if (
+        rangesIntersect({
+          left: request.timeRange,
+          right: assignment.timeRange,
+        })
+      ) {
         return {
           status: 'DOUBLE_BOOKED',
           conflictReason: 'assignment',

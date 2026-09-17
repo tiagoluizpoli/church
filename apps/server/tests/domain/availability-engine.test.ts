@@ -1,3 +1,4 @@
+import { type Instant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { AvailabilityEngine } from '../../src/domain/availability/availability-engine';
 import type {
@@ -11,8 +12,8 @@ describe('AvailabilityEngine', () => {
   const volunteerId = 'vol_123';
 
   const createRequest = (
-    start: Date,
-    end: Date,
+    start: Instant,
+    end: Instant,
     blockouts: BlockoutContext[] = [],
     assignments: AssignmentContext[] = [],
     excludeAssignmentId?: string,
@@ -27,8 +28,8 @@ describe('AvailabilityEngine', () => {
 
   it('should return AVAILABLE when there are no blockouts or assignments', () => {
     const request = createRequest(
-      new Date('2026-05-20T09:00:00Z'),
-      new Date('2026-05-20T10:00:00Z'),
+      parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      parseInstant({ value: '2026-05-20T10:00:00Z' }),
     );
     const result = AvailabilityEngine.checkAvailability(request);
     expect(result.status).toBe('AVAILABLE');
@@ -39,14 +40,14 @@ describe('AvailabilityEngine', () => {
       id: 'blk_1',
       churchId,
       timeRange: {
-        start: new Date('2026-05-20T08:00:00Z'),
-        end: new Date('2026-05-20T10:00:00Z'),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
       },
       isAllDay: false,
     };
     const request = createRequest(
-      new Date('2026-05-20T09:00:00Z'),
-      new Date('2026-05-20T11:00:00Z'),
+      parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      parseInstant({ value: '2026-05-20T11:00:00Z' }),
       [blockout],
     );
     const result = AvailabilityEngine.checkAvailability(request);
@@ -60,14 +61,14 @@ describe('AvailabilityEngine', () => {
       id: 'asg_1',
       churchId,
       timeRange: {
-        start: new Date('2026-05-20T08:00:00Z'),
-        end: new Date('2026-05-20T10:00:00Z'),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
       },
       status: 'confirmed',
     };
     const request = createRequest(
-      new Date('2026-05-20T09:00:00Z'),
-      new Date('2026-05-20T11:00:00Z'),
+      parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      parseInstant({ value: '2026-05-20T11:00:00Z' }),
       [],
       [assignment],
     );
@@ -82,14 +83,14 @@ describe('AvailabilityEngine', () => {
       id: 'asg_1',
       churchId,
       timeRange: {
-        start: new Date('2026-05-20T08:00:00Z'),
-        end: new Date('2026-05-20T10:00:00Z'),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
       },
       status: 'declined',
     };
     const request = createRequest(
-      new Date('2026-05-20T09:00:00Z'),
-      new Date('2026-05-20T11:00:00Z'),
+      parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      parseInstant({ value: '2026-05-20T11:00:00Z' }),
       [],
       [assignment],
     );
@@ -102,14 +103,14 @@ describe('AvailabilityEngine', () => {
       id: 'blk_1',
       churchId,
       timeRange: {
-        start: new Date('2026-05-20T08:00:00Z'),
-        end: new Date('2026-05-20T09:00:00Z'),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T09:00:00Z' }),
       },
       isAllDay: false,
     };
     const request = createRequest(
-      new Date('2026-05-20T09:00:00Z'),
-      new Date('2026-05-20T10:00:00Z'),
+      parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      parseInstant({ value: '2026-05-20T10:00:00Z' }),
       [blockout],
     );
     const result = AvailabilityEngine.checkAvailability(request);
@@ -121,14 +122,14 @@ describe('AvailabilityEngine', () => {
       id: 'asg_1',
       churchId,
       timeRange: {
-        start: new Date('2026-05-20T23:00:00Z'),
-        end: new Date('2026-05-21T01:00:00Z'),
+        start: parseInstant({ value: '2026-05-20T23:00:00Z' }),
+        end: parseInstant({ value: '2026-05-21T01:00:00Z' }),
       },
       status: 'confirmed',
     };
     const request = createRequest(
-      new Date('2026-05-21T00:00:00Z'),
-      new Date('2026-05-21T02:00:00Z'),
+      parseInstant({ value: '2026-05-21T00:00:00Z' }),
+      parseInstant({ value: '2026-05-21T02:00:00Z' }),
       [],
       [assignment],
     );
@@ -141,14 +142,14 @@ describe('AvailabilityEngine', () => {
       id: 'blk_all_day',
       churchId,
       timeRange: {
-        start: new Date('2026-05-20T00:00:00Z'),
-        end: new Date('2026-05-20T23:59:59Z'),
+        start: parseInstant({ value: '2026-05-20T00:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T23:59:59Z' }),
       },
       isAllDay: true,
     };
     const request = createRequest(
-      new Date('2026-05-20T10:00:00Z'),
-      new Date('2026-05-20T11:00:00Z'),
+      parseInstant({ value: '2026-05-20T10:00:00Z' }),
+      parseInstant({ value: '2026-05-20T11:00:00Z' }),
       [blockout],
     );
     const result = AvailabilityEngine.checkAvailability(request);
@@ -160,14 +161,14 @@ describe('AvailabilityEngine', () => {
       id: 'blk_1',
       churchId: 'other_church',
       timeRange: {
-        start: new Date('2026-05-20T08:00:00Z'),
-        end: new Date('2026-05-20T10:00:00Z'),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
       },
       isAllDay: false,
     };
     const request = createRequest(
-      new Date('2026-05-20T09:00:00Z'),
-      new Date('2026-05-20T11:00:00Z'),
+      parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      parseInstant({ value: '2026-05-20T11:00:00Z' }),
       [blockout],
     );
     expect(() => AvailabilityEngine.checkAvailability(request)).toThrow(
@@ -180,14 +181,14 @@ describe('AvailabilityEngine', () => {
       id: 'asg_1',
       churchId: 'other_church',
       timeRange: {
-        start: new Date('2026-05-20T08:00:00Z'),
-        end: new Date('2026-05-20|10:00:00Z'),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
       },
       status: 'confirmed',
     };
     const request = createRequest(
-      new Date('2026-05-20T09:00:00Z'),
-      new Date('2026-05-20T11:00:00Z'),
+      parseInstant({ value: '2026-05-20T09:00:00Z' }),
+      parseInstant({ value: '2026-05-20T11:00:00Z' }),
       [],
       [assignment],
     );
@@ -202,14 +203,14 @@ describe('AvailabilityEngine', () => {
         id: 'asg_A',
         churchId,
         timeRange: {
-          start: new Date('2026-05-20T09:00:00Z'),
-          end: new Date('2026-05-20T11:00:00Z'),
+          start: parseInstant({ value: '2026-05-20T09:00:00Z' }),
+          end: parseInstant({ value: '2026-05-20T11:00:00Z' }),
         },
         status: 'confirmed',
       };
       const request = createRequest(
-        new Date('2026-05-20T09:00:00Z'),
-        new Date('2026-05-20T11:00:00Z'),
+        parseInstant({ value: '2026-05-20T09:00:00Z' }),
+        parseInstant({ value: '2026-05-20T11:00:00Z' }),
         [],
         [assignment],
         'asg_A',
@@ -223,8 +224,8 @@ describe('AvailabilityEngine', () => {
         id: 'asg_A',
         churchId,
         timeRange: {
-          start: new Date('2026-05-20T09:00:00Z'),
-          end: new Date('2026-05-20T11:00:00Z'),
+          start: parseInstant({ value: '2026-05-20T09:00:00Z' }),
+          end: parseInstant({ value: '2026-05-20T11:00:00Z' }),
         },
         status: 'confirmed',
       };
@@ -232,14 +233,14 @@ describe('AvailabilityEngine', () => {
         id: 'asg_B',
         churchId,
         timeRange: {
-          start: new Date('2026-05-20T10:00:00Z'),
-          end: new Date('2026-05-20T12:00:00Z'),
+          start: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+          end: parseInstant({ value: '2026-05-20T12:00:00Z' }),
         },
         status: 'confirmed',
       };
       const request = createRequest(
-        new Date('2026-05-20T09:00:00Z'),
-        new Date('2026-05-20T11:00:00Z'),
+        parseInstant({ value: '2026-05-20T09:00:00Z' }),
+        parseInstant({ value: '2026-05-20T11:00:00Z' }),
         [],
         [assignmentA, assignmentB],
         'asg_A',

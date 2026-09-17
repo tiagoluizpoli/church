@@ -1,3 +1,4 @@
+import { compareInstants, fromDate, toDate } from '@church/time';
 import { injectable } from 'tsyringe';
 import type { VolunteerId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
@@ -339,7 +340,10 @@ export class DbRedemptionManager implements RedemptionManager {
     const { ministryInvitation } = resolved.context;
     if (
       ministryInvitation.status !== 'pending' ||
-      ministryInvitation.expiresAt <= now
+      compareInstants({
+        left: ministryInvitation.expiresAt,
+        right: fromDate({ date: now }),
+      }) <= 0
     ) {
       return { kind: 'unavailable' };
     }
@@ -351,7 +355,7 @@ export class DbRedemptionManager implements RedemptionManager {
       ministryName: resolved.context.ministryName,
       ministryAccessLevel: ministryInvitation.ministryAccessLevel,
       roleNames: resolved.context.roleNames,
-      expiresAt: ministryInvitation.expiresAt,
+      expiresAt: toDate({ instant: ministryInvitation.expiresAt }),
     };
   }
 
@@ -381,7 +385,10 @@ export class DbRedemptionManager implements RedemptionManager {
     const { ministryInvitation } = resolved.context;
     if (
       ministryInvitation.status !== 'pending' ||
-      ministryInvitation.expiresAt <= now
+      compareInstants({
+        left: ministryInvitation.expiresAt,
+        right: fromDate({ date: now }),
+      }) <= 0
     ) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
@@ -449,7 +456,10 @@ export class DbRedemptionManager implements RedemptionManager {
     if (ministryInvitation.status === 'rejected') return { kind: 'declined' };
     if (
       ministryInvitation.status !== 'pending' ||
-      ministryInvitation.expiresAt <= now
+      compareInstants({
+        left: ministryInvitation.expiresAt,
+        right: fromDate({ date: now }),
+      }) <= 0
     ) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }

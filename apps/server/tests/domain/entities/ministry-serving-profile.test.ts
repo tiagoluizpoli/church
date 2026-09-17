@@ -1,3 +1,4 @@
+import { parseTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   ChurchId,
@@ -55,7 +56,12 @@ describe('MinistryServingProfile entity', () => {
       props: {
         shiftSplit: {
           kind: 'manual',
-          spans: [{ startTime: '09:00', endTime: '10:00' }],
+          spans: [
+            {
+              startTime: parseTimeOfDay({ value: '09:00' }),
+              endTime: parseTimeOfDay({ value: '10:00' }),
+            },
+          ],
         },
       },
     });
@@ -81,7 +87,12 @@ describe('MinistryServingProfile entity', () => {
         props: {
           shiftSplit: {
             kind: 'manual',
-            spans: [{ startTime: '10:00', endTime: '10:00' }],
+            spans: [
+              {
+                startTime: parseTimeOfDay({ value: '10:00' }),
+                endTime: parseTimeOfDay({ value: '10:00' }),
+              },
+            ],
           },
         },
       }),

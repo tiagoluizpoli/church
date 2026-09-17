@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   AvailabilityCheckId,
@@ -22,8 +23,8 @@ describe('Availability entity — unavailability mark (DL1-AV)', () => {
         availabilityCheckId,
         shiftId,
         volunteerId,
-        shiftStartTime: new Date('2026-08-02T09:00:00.000Z'),
-        shiftEndTime: new Date('2026-08-02T12:00:00.000Z'),
+        shiftStartTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+        shiftEndTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
       },
     });
 
@@ -42,8 +43,8 @@ describe('Availability entity — unavailability mark (DL1-AV)', () => {
             availabilityCheckId,
             shiftId,
             volunteerId,
-            shiftStartTime: new Date('2026-08-02T12:00:00.000Z'),
-            shiftEndTime: new Date('2026-08-02T09:00:00.000Z'),
+            shiftStartTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+            shiftEndTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
           },
         }),
     ).toThrow(InvalidTimeRangeError);

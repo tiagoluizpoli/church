@@ -1,4 +1,5 @@
 import type { assignment } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AssignmentId,
@@ -28,7 +29,7 @@ export function mapAssignment(
     roleId: row.roleId as RoleId,
     status: row.status as AssignmentProps['status'],
     reason: row.reason ?? undefined,
-    assignedAt: row.assignedAt,
+    assignedAt: fromDate({ date: row.assignedAt }),
     assignedBy: row.assignedBy ? (row.assignedBy as UserId) : undefined,
   };
 

@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { assignmentMapper } from '../../src/api/dtos/assignment.dto';
 import { Assignment } from '../../src/domain/entities/assignment';
@@ -6,7 +7,7 @@ import { AssignmentAudit } from '../../src/domain/entities/assignment-audit';
 describe('assignmentMapper', () => {
   describe('toResponse', () => {
     it('maps an assignment with all optional fields present', () => {
-      const assignedAt = new Date('2026-01-01T00:00:00.000Z');
+      const assignedAt = parseInstant({ value: '2026-01-01T00:00:00.000Z' });
       const assignment = new Assignment(
         {
           churchId: 'c1',
@@ -35,7 +36,7 @@ describe('assignmentMapper', () => {
         roleId: 'r1',
         status: 'confirmed',
         reason: 'because',
-        assignedAt: assignedAt.toISOString(),
+        assignedAt,
         assignedBy: 'u1',
       });
     });
@@ -63,7 +64,7 @@ describe('assignmentMapper', () => {
 
   describe('auditToResponse', () => {
     it('maps an audit with reason present', () => {
-      const timestamp = new Date('2026-02-01T00:00:00.000Z');
+      const timestamp = parseInstant({ value: '2026-02-01T00:00:00.000Z' });
       const audit = new AssignmentAudit(
         {
           churchId: 'c1',
@@ -84,7 +85,7 @@ describe('assignmentMapper', () => {
         actorId: 'u1',
         action: 'created',
         reason: 'setup',
-        timestamp: timestamp.toISOString(),
+        timestamp,
       });
     });
 

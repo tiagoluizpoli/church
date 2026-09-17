@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { parseInstant } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ChurchId,
@@ -47,7 +48,7 @@ function pendingInvitation(): MinistryInvitation {
       ministryAccessLevel: 'volunteer',
       status: 'pending',
       inviterId: UserId.from('88888888-8888-4888-8888-888888888888'),
-      expiresAt: new Date('2026-12-01T00:00:00.000Z'),
+      expiresAt: parseInstant({ value: '2026-12-01T00:00:00.000Z' }),
       roleIds: [],
     },
     MINISTRY_INVITATION_ID,

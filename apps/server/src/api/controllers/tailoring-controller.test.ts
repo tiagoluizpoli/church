@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import {
   afterAll,
   beforeAll,
@@ -70,13 +71,13 @@ function createShift(): Shift {
       churchId: '11111111-1111-1111-1111-111111111111',
       participationId: '22222222-2222-2222-8222-222222222222',
       timeSlotId: '33333333-3333-3333-8333-333333333333',
-      startTime: new Date('2026-08-03T09:00:00.000Z'),
-      endTime: new Date('2026-08-03T10:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-03T09:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
       label: 'Welcome',
     },
     slotBounds: {
-      startTime: new Date('2026-08-03T09:00:00.000Z'),
-      endTime: new Date('2026-08-03T10:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-03T09:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
     },
   });
 }
@@ -251,7 +252,7 @@ describe('Tailoring participation routes', () => {
         volunteerId: 'vol-1',
         volunteerName: 'E2E Volunteer',
         state: 'confirmed',
-        confirmedAt: new Date('2026-08-03T10:00:00.000Z'),
+        confirmedAt: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
       },
       {
         volunteerId: 'vol-2',

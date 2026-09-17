@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { type Instant, now, toDate } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
@@ -28,7 +29,7 @@ export interface AssignmentProps {
   roleId: RoleId;
   status: AssignmentStatus;
   reason?: string;
-  assignedAt: Date;
+  assignedAt: Instant;
   assignedBy?: UserId;
 }
 
@@ -44,7 +45,7 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
       {
         ...props,
         status: props.status ?? 'draft',
-        assignedAt: props.assignedAt ?? new Date(),
+        assignedAt: props.assignedAt ?? now(),
       } as unknown as AssignmentProps,
       id as AssignmentId,
       createdAt,
@@ -84,7 +85,7 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
     return this._props.reason;
   }
 
-  get assignedAt(): Date {
+  get assignedAt(): Instant {
     return this._props.assignedAt;
   }
 
@@ -94,7 +95,7 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
 
   public confirm(): void {
     this._props.status = 'confirmed';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   public decline(reason?: string): void {
@@ -102,16 +103,16 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
     if (reason !== undefined) {
       this._props.reason = reason;
     }
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   public markAsPending(): void {
     this._props.status = 'pending';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   public cancel(): void {
     this._props.status = 'cancelled';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

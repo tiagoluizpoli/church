@@ -62,7 +62,7 @@ function toAssignmentResponse(a: Assignment): AssignmentResponse {
     roleId: a.roleId as string,
     status: a.status,
     reason: a.reason,
-    assignedAt: a.assignedAt.toISOString(),
+    assignedAt: a.assignedAt,
     assignedBy: a.assignedBy as string | undefined,
   };
 }
@@ -74,7 +74,7 @@ function toAuditResponse(a: AssignmentAudit): AssignmentAuditResponse {
     actorId: a.actorId as string,
     action: a.action,
     reason: a.reason,
-    timestamp: a.timestamp.toISOString(),
+    timestamp: a.timestamp,
   };
 }
 

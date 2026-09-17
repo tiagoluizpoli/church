@@ -1,5 +1,6 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for test mocks
 
+import { compareInstants, parseInstant } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
@@ -25,7 +26,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
         actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'created',
-        timestamp: new Date('2024-06-01T10:00:00Z'),
+        timestamp: parseInstant({ value: '2024-06-01T10:00:00Z' }),
       },
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1' as any,
     );
@@ -35,7 +36,7 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
         actorId: '22222222-2222-2222-2222-222222222221' as UserId,
         action: 'status_change',
-        timestamp: new Date('2024-06-01T11:00:00Z'),
+        timestamp: parseInstant({ value: '2024-06-01T11:00:00Z' }),
       },
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2' as any,
     );
@@ -72,13 +73,17 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
       .filter(
         (au) => au.churchId === churchId && au.assignmentId === assignmentId,
       )
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      .sort((a, b) =>
+        compareInstants({ left: b.timestamp, right: a.timestamp }),
+      );
   }
 
   async listByChurch(churchId: ChurchId): Promise<AssignmentAudit[]> {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      .sort((a, b) =>
+        compareInstants({ left: b.timestamp, right: a.timestamp }),
+      );
   }
 
   async listByActor(
@@ -87,7 +92,9 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
   ): Promise<AssignmentAudit[]> {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId && au.actorId === actorId)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      .sort((a, b) =>
+        compareInstants({ left: b.timestamp, right: a.timestamp }),
+      );
   }
 
   async listByCycle(): Promise<AssignmentAudit[]> {

@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   AvailabilityCheckId,
   ChurchId,
@@ -74,8 +75,8 @@ export interface CheckShiftRow {
   shiftId: ShiftId;
   eventId: EventId;
   eventTitle: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   label?: string;
 }
 
@@ -90,8 +91,8 @@ export interface ListUnmarkedVolunteerShiftsInput {
 export interface UnmarkedVolunteerShiftRow {
   shiftId: ShiftId;
   ministryId: MinistryId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface ListMinistryLeaderVolunteerIdsInput {

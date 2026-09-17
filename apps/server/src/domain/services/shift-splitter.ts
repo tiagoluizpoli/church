@@ -1,3 +1,9 @@
+import {
+  addMilliseconds,
+  compareInstants,
+  type Instant,
+  millisecondsBetween,
+} from '@church/time';
 import type {
   ChurchId,
   MinistryParticipationId,
@@ -12,8 +18,8 @@ export interface EqualNSplitStrategy {
 }
 
 export interface ManualSplitSpan {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   label?: string;
 }
 
@@ -26,8 +32,8 @@ export type ShiftSplitStrategy = EqualNSplitStrategy | ManualSplitStrategy;
 
 export interface SplitTargetTimeSlot {
   id: TimeSlotId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface SplitShiftsInput {
@@ -38,13 +44,13 @@ export interface SplitShiftsInput {
 }
 
 export interface EqualSpan {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface ComputeEqualSpansInput {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   n: number;
 }
 
@@ -61,7 +67,7 @@ export function computeEqualSpans({
     throw new InvalidShiftSplitError('split count must be a positive integer');
   }
 
-  const totalMs = endTime.getTime() - startTime.getTime();
+  const totalMs = millisecondsBetween({ start: startTime, end: endTime });
   const baseMs = Math.floor(totalMs / n);
 
   if (baseMs < 1) {
@@ -71,11 +77,17 @@ export function computeEqualSpans({
   const spans: EqualSpan[] = [];
 
   for (let index = 0; index < n; index += 1) {
-    const spanStart = new Date(startTime.getTime() + index * baseMs);
+    const spanStart = addMilliseconds({
+      instant: startTime,
+      milliseconds: index * baseMs,
+    });
     const spanEnd =
       index === n - 1
         ? endTime
-        : new Date(startTime.getTime() + (index + 1) * baseMs);
+        : addMilliseconds({
+            instant: startTime,
+            milliseconds: (index + 1) * baseMs,
+          });
     spans.push({ startTime: spanStart, endTime: spanEnd });
   }
 
@@ -129,15 +141,19 @@ function normalizeManualSpans({
     throw new InvalidShiftSplitError('manual split requires at least one span');
   }
 
-  const ordered = [...spans].sort(
-    (left, right) => left.startTime.getTime() - right.startTime.getTime(),
+  const ordered = [...spans].sort((left, right) =>
+    compareInstants({ left: left.startTime, right: right.startTime }),
   );
 
   for (let index = 1; index < ordered.length; index += 1) {
     const previous = ordered[index - 1];
     const current = ordered[index];
 
-    if (previous && current && current.startTime < previous.endTime) {
+    if (
+      previous &&
+      current &&
+      compareInstants({ left: current.startTime, right: previous.endTime }) < 0
+    ) {
       throw new InvalidShiftSplitError('manual spans must not overlap');
     }
   }

@@ -47,7 +47,7 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
     check.confirm();
 
     expect(check.state).toBe('confirmed');
-    expect(check.confirmedAt).toBeInstanceOf(Date);
+    expect(typeof check.confirmedAt).toBe('string');
   });
 
   it('DL1-AC-03 confirm() twice throws IllegalStateTransitionError', () => {

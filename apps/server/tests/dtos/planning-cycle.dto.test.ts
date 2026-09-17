@@ -1,3 +1,4 @@
+import { parseCalendarDay, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { planningCycleMapper } from '../../src/api/dtos/planning-cycle.dto';
 import { Event } from '../../src/domain/entities/event';
@@ -9,8 +10,8 @@ function createPlanningCycle() {
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       name: 'July 2026',
-      startDate: new Date('2026-07-01T00:00:00.000Z'),
-      endDate: new Date('2026-08-01T00:00:00.000Z'),
+      startDate: parseCalendarDay({ value: '2026-07-01' }),
+      endDate: parseCalendarDay({ value: '2026-08-01' }),
     },
     id: '22222222-2222-2222-2222-222222222222',
   });
@@ -22,8 +23,8 @@ function createEvent() {
       churchId: '11111111-1111-1111-1111-111111111111',
       planningCycleId: '22222222-2222-2222-2222-222222222222',
       title: 'Sunday Service',
-      startDate: new Date('2026-07-05T13:00:00.000Z'),
-      endDate: new Date('2026-07-05T15:00:00.000Z'),
+      startDate: parseInstant({ value: '2026-07-05T13:00:00.000Z' }),
+      endDate: parseInstant({ value: '2026-07-05T15:00:00.000Z' }),
     },
     '33333333-3333-3333-3333-333333333333',
   );
@@ -34,8 +35,8 @@ function createTimeSlot() {
     {
       churchId: '11111111-1111-1111-1111-111111111111',
       eventId: '33333333-3333-3333-3333-333333333333',
-      startTime: new Date('2026-07-05T13:00:00.000Z'),
-      endTime: new Date('2026-07-05T14:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-07-05T13:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-07-05T14:00:00.000Z' }),
       label: 'Worship',
     },
     '44444444-4444-4444-4444-444444444444',
@@ -81,8 +82,8 @@ describe('planningCycleMapper', () => {
       {
         churchId: '11111111-1111-1111-1111-111111111111',
         eventId: '33333333-3333-3333-3333-333333333333',
-        startTime: new Date('2026-07-05T14:00:00.000Z'),
-        endTime: new Date('2026-07-05T15:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-07-05T14:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-07-05T15:00:00.000Z' }),
         label: 'Fellowship',
       },
       '55555555-5555-5555-5555-555555555555',

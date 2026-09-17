@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { compareInstants, fromDate, type Instant, toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import type { ChurchId } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
@@ -98,7 +99,7 @@ interface BuildEligibleVolunteerViewInput {
   volunteerName: string;
   isUnavailable: boolean;
   activeAssignmentWarnings: ConflictIssue[];
-  lastServedAt?: Date;
+  lastServedAt?: Instant;
   qualifiedRoleIds: string[];
   ministryAccessLevel: MinistryAccessLevel;
   leadTeamIds: string[];
@@ -507,16 +508,20 @@ export class DbParticipationManager implements IParticipationManager {
       );
 
       shift.updateBounds({
-        startTime: input.startTime ?? shift.startTime,
-        endTime: input.endTime ?? shift.endTime,
+        startTime: input.startTime
+          ? fromDate({ date: input.startTime })
+          : shift.startTime,
+        endTime: input.endTime
+          ? fromDate({ date: input.endTime })
+          : shift.endTime,
         slotBounds: { startTime: slot.startTime, endTime: slot.endTime },
       });
 
       return this.shiftRepository.update({
         churchId: input.churchId,
         shiftId: input.shiftId,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
+        startTime: toDate({ instant: shift.startTime }),
+        endTime: toDate({ instant: shift.endTime }),
         ...(input.label !== undefined ? { label: input.label } : {}),
         tx,
       });
@@ -1332,10 +1337,11 @@ function buildEligibleForVolunteer({
         assignmentShiftsById.get(assignment.shiftId as string)?.startTime,
     )
     .filter(
-      (servedAt): servedAt is Date =>
-        servedAt instanceof Date && servedAt < shift.startTime,
+      (servedAt): servedAt is Instant =>
+        servedAt !== undefined &&
+        compareInstants({ left: servedAt, right: shift.startTime }) < 0,
     )
-    .sort((left, right) => right.getTime() - left.getTime())[0];
+    .sort((left, right) => compareInstants({ left: right, right: left }))[0];
 
   const membershipInfo = membershipInfoByVolunteerId.get(
     volunteer.id as string,
@@ -1374,12 +1380,14 @@ function sortEligibleVolunteers(
       return left.isAvailable ? -1 : 1;
     }
 
-    const leftServedAt =
-      left.lastServedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
-    const rightServedAt =
-      right.lastServedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
-    if (leftServedAt !== rightServedAt) {
-      return leftServedAt - rightServedAt;
+    if (left.lastServedAt !== right.lastServedAt) {
+      if (!left.lastServedAt) return -1;
+      if (!right.lastServedAt) return 1;
+      const comparison = compareInstants({
+        left: left.lastServedAt,
+        right: right.lastServedAt,
+      });
+      if (comparison !== 0) return comparison;
     }
 
     return left.volunteerName.localeCompare(right.volunteerName);
@@ -1444,12 +1452,15 @@ function rangesOverlap({
   otherStartTime,
   otherEndTime,
 }: {
-  startTime: Date;
-  endTime: Date;
-  otherStartTime: Date;
-  otherEndTime: Date;
+  startTime: Instant;
+  endTime: Instant;
+  otherStartTime: Instant;
+  otherEndTime: Instant;
 }): boolean {
-  return startTime < otherEndTime && endTime > otherStartTime;
+  return (
+    compareInstants({ left: startTime, right: otherEndTime }) < 0 &&
+    compareInstants({ left: endTime, right: otherStartTime }) > 0
+  );
 }
 
 function isActiveAssignmentStatus(status: string): boolean {

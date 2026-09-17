@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import type { Instant } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
@@ -39,31 +40,21 @@ export interface VolunteerNotificationProps {
   title: string;
   body: string;
   payload: VolunteerNotificationPayload;
-  readAt?: Date;
-  createdAt: Date;
+  readAt?: Instant;
 }
-
-type VolunteerNotificationConstructorProps = Omit<
-  LooseProps<VolunteerNotificationProps>,
-  'createdAt'
-> &
-  Partial<Pick<LooseProps<VolunteerNotificationProps>, 'createdAt'>>;
 
 export class VolunteerNotification extends Entity<
   VolunteerNotificationProps,
   VolunteerNotificationId
 > {
   constructor(
-    props: VolunteerNotificationConstructorProps,
+    props: LooseProps<VolunteerNotificationProps>,
     id?: string,
     createdAt?: Date,
     updatedAt?: Date,
   ) {
     super(
-      {
-        ...props,
-        createdAt: props.createdAt ?? new Date(),
-      } as VolunteerNotificationProps,
+      props as VolunteerNotificationProps,
       id as VolunteerNotificationId,
       createdAt,
       updatedAt,
@@ -110,11 +101,7 @@ export class VolunteerNotification extends Entity<
     return this._props.payload;
   }
 
-  get readAt(): Date | undefined {
+  get readAt(): Instant | undefined {
     return this._props.readAt;
-  }
-
-  get createdAt(): Date {
-    return this._props.createdAt;
   }
 }

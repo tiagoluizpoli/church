@@ -1,4 +1,10 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import {
+  addMilliseconds,
+  compareInstants,
+  fromDate,
+  toDate,
+} from '@church/time';
 import type { MinistryInvitationId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager as InvitationVerificationCodeManagerContract } from '../domain/contracts/application/invitation-verification-code-manager';
 import type { EmailSender } from '../domain/contracts/infrastructure/email-sender';
@@ -75,10 +81,14 @@ export class InvitationVerificationCodeManager
       code,
       secret: this.verificationCodeSecret,
     });
+    const expiresAt = addMilliseconds({
+      instant: fromDate({ date: now }),
+      milliseconds: VERIFICATION_CODE_TTL_MS,
+    });
     const claimed = await this.repository.claimDelivery({
       ministryInvitationId,
       codeHash,
-      expiresAt: new Date(now.getTime() + VERIFICATION_CODE_TTL_MS),
+      expiresAt: toDate({ instant: expiresAt }),
       sentAt: now,
     });
     if (!claimed) {
@@ -111,6 +121,7 @@ export class InvitationVerificationCodeManager
     idempotencyKey,
     now = new Date(),
   }: VerifyInvitationCodeInput): Promise<void> {
+    const nowInstant = fromDate({ date: now });
     const state = await this.repository.find({ ministryInvitationId });
     if (!state)
       throw new VerificationCodeError({ code: 'VERIFICATION_CODE_NOT_FOUND' });
@@ -122,7 +133,7 @@ export class InvitationVerificationCodeManager
       state.consumedAt &&
       idempotencyKey &&
       state.redemptionIdempotencyKey === idempotencyKey &&
-      state.expiresAt > now &&
+      compareInstants({ left: state.expiresAt, right: nowInstant }) > 0 &&
       verifyVerificationCodeHash({
         codeHash: state.codeHash,
         candidateHash,
@@ -136,7 +147,7 @@ export class InvitationVerificationCodeManager
         codeHash: state.codeHash,
         candidateHash,
       }),
-      now,
+      now: nowInstant,
     });
     if (outcome.status === 'valid') {
       const consumed = await this.repository.consumeIfValid({
@@ -168,7 +179,7 @@ export class InvitationVerificationCodeManager
         codeHash: current.codeHash,
         candidateHash,
       }),
-      now,
+      now: nowInstant,
     });
     throw new VerificationCodeError({
       code: toErrorCode({ status: currentOutcome.status }),

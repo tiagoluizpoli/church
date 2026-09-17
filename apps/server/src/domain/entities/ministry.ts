@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { type Instant, now, toDate } from '@church/time';
 import type { ChurchId, MinistryId } from '../branded-ids';
 
 export const ENFORCEMENT_TYPE_OPTIONS = ['soft', 'hard'] as const;
@@ -18,7 +19,7 @@ export interface MinistryProps {
   description?: string;
   enforcementType: EnforcementType;
   defaultDirection: DefaultDirection;
-  deletedAt?: Date;
+  deletedAt?: Instant;
 }
 
 export class Ministry extends Entity<MinistryProps, MinistryId> {
@@ -66,12 +67,12 @@ export class Ministry extends Entity<MinistryProps, MinistryId> {
     return this._props.defaultDirection;
   }
 
-  get deletedAt(): Date | undefined {
+  get deletedAt(): Instant | undefined {
     return this._props.deletedAt;
   }
 
   public softDelete(): void {
-    this._props.deletedAt = new Date();
-    this._updatedAt = new Date();
+    this._props.deletedAt = now();
+    this._updatedAt = toDate({ instant: now() });
   }
 }

@@ -1,3 +1,4 @@
+import { fromTimeColumn, parseInstant, parseTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   RoleId,
@@ -19,14 +20,14 @@ const roleId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as RoleId;
 const templatedSlot = {
   timeSlotId: '66666666-6666-4666-8666-666666666666' as TimeSlotId,
   sourceTemplateBlockId: blockId,
-  startTime: new Date('2026-08-02T12:00:00.000Z'),
-  endTime: new Date('2026-08-02T15:00:00.000Z'),
+  startTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+  endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
 };
 
 const dynamicSlot = {
   timeSlotId: '66666666-6666-4666-8666-666666666667' as TimeSlotId,
-  startTime: new Date('2026-08-02T12:00:00.000Z'),
-  endTime: new Date('2026-08-02T15:00:00.000Z'),
+  startTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+  endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
 };
 
 const seeder = new ProfileSeeder();
@@ -67,8 +68,16 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
       shiftSplit: {
         kind: 'manual',
         spans: [
-          { label: 'Setup', startTime: '09:00', endTime: '10:30' },
-          { label: 'Serve', startTime: '10:30', endTime: '12:00' },
+          {
+            label: 'Setup',
+            startTime: parseTimeOfDay({ value: '09:00' }),
+            endTime: parseTimeOfDay({ value: '10:30' }),
+          },
+          {
+            label: 'Serve',
+            startTime: parseTimeOfDay({ value: '10:30' }),
+            endTime: parseTimeOfDay({ value: '12:00' }),
+          },
         ],
       },
       headcounts: [],
@@ -78,14 +87,14 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
 
     expect(result.shifts).toHaveLength(2);
     expect(result.shifts[0]?.startTime).toEqual(
-      new Date('2026-08-02T12:00:00.000Z'),
+      parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
     );
     expect(result.shifts[0]?.endTime).toEqual(
-      new Date('2026-08-02T13:30:00.000Z'),
+      parseInstant({ value: '2026-08-02T13:30:00.000Z' }),
     );
     expect(result.shifts[0]?.label).toBe('Setup');
     expect(result.shifts[1]?.endTime).toEqual(
-      new Date('2026-08-02T15:00:00.000Z'),
+      parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
     );
   });
 
@@ -95,7 +104,13 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
       serves: true,
       shiftSplit: {
         kind: 'manual',
-        spans: [{ label: 'Serve', startTime: '09:00:00', endTime: '12:00:00' }],
+        spans: [
+          {
+            label: 'Serve',
+            startTime: fromTimeColumn({ value: '09:00:00' }),
+            endTime: fromTimeColumn({ value: '12:00:00' }),
+          },
+        ],
       },
       headcounts: [],
     };
@@ -104,10 +119,10 @@ describe('ProfileSeeder three-tier seeding (DL1-PS)', () => {
 
     expect(result.shifts).toHaveLength(1);
     expect(result.shifts[0]?.startTime).toEqual(
-      new Date('2026-08-02T12:00:00.000Z'),
+      parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
     );
     expect(result.shifts[0]?.endTime).toEqual(
-      new Date('2026-08-02T15:00:00.000Z'),
+      parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
     );
   });
 

@@ -1,3 +1,4 @@
+import { isInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { MinistryVolunteer } from '../../../src/domain/entities/ministry-volunteer';
 
@@ -14,7 +15,7 @@ describe('MinistryVolunteer Entity', () => {
     expect(mv.ministryId).toBe('m1');
     expect(mv.ministryAccessLevel).toBe('volunteer');
     expect(mv.status).toBe('active');
-    expect(mv.joinedAt).toBeInstanceOf(Date);
+    expect(isInstant({ value: mv.joinedAt })).toBe(true);
   });
 
   it('handles mutations correctly', () => {

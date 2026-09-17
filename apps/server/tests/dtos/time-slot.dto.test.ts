@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { timeSlotMapper } from '../../src/api/dtos/time-slot.dto';
 import { SlotRequirement } from '../../src/domain/entities/slot-requirement';
@@ -56,8 +57,8 @@ describe('timeSlotMapper', () => {
 
   describe('toResponse', () => {
     it('maps a slot with a label and non-empty requirements', () => {
-      const startTime = new Date('2026-05-15T10:00:00Z');
-      const endTime = new Date('2026-05-15T12:00:00Z');
+      const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
+      const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
       const requirement = new SlotRequirement(
         {
           churchId: 'church-1',
@@ -85,8 +86,8 @@ describe('timeSlotMapper', () => {
         id: 'slot-1',
         churchId: 'church-1',
         eventId: 'event-1',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: startTime,
+        endTime: endTime,
         label: 'Morning Slot',
         status: 'active',
         requirements: [
@@ -103,8 +104,8 @@ describe('timeSlotMapper', () => {
     });
 
     it('maps a slot with no label and empty requirements', () => {
-      const startTime = new Date('2026-05-15T10:00:00Z');
-      const endTime = new Date('2026-05-15T12:00:00Z');
+      const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
+      const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
       const slot = new TimeSlot(
         {
           churchId: 'church-1',
@@ -121,8 +122,8 @@ describe('timeSlotMapper', () => {
         id: 'slot-2',
         churchId: 'church-1',
         eventId: 'event-1',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: startTime,
+        endTime: endTime,
         label: undefined,
         status: 'active',
         requirements: [],
@@ -136,8 +137,8 @@ describe('timeSlotMapper', () => {
     });
 
     it('maps a non-empty list of slots', () => {
-      const startTime = new Date('2026-05-15T10:00:00Z');
-      const endTime = new Date('2026-05-15T12:00:00Z');
+      const startTime = parseInstant({ value: '2026-05-15T10:00:00Z' });
+      const endTime = parseInstant({ value: '2026-05-15T12:00:00Z' });
       const slot = new TimeSlot(
         {
           churchId: 'church-1',
@@ -156,8 +157,8 @@ describe('timeSlotMapper', () => {
         id: 'slot-3',
         churchId: 'church-1',
         eventId: 'event-1',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: startTime,
+        endTime: endTime,
         label: 'Slot A',
         status: 'active',
         requirements: [],

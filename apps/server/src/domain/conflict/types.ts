@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type { AvailabilityResult } from '../availability/types';
 
 // --- Hard Constraint Reason Codes ---
@@ -56,8 +57,8 @@ export type ValidationRequest = {
   ministryId: string;
   roleId: string;
   slotId: string;
-  eventStartTime: Date;
-  now: Date;
+  eventStartTime: Instant;
+  now: Instant;
   availabilityResult: AvailabilityResult;
   existingSlotIds: string[];
   serviceCount: number;
@@ -74,5 +75,5 @@ export type OverrideRequest = {
   caller: CallerContext;
   targetMinistryId: string;
   /** Injected clock — used as the audit timestamp. Pass `request.now` from the calling context. */
-  now: Date;
+  now: Instant;
 };

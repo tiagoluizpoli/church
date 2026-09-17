@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { role, team } from '@church/db';
+import { fromDate, parseInstant, toDate } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ChurchId,
@@ -60,8 +61,8 @@ describe('DrizzleShiftRepository', () => {
         churchId,
         participationId: MinistryParticipationId.from(graph.participation.id),
         timeSlotId: TimeSlotId.from(graph.slot.id),
-        startTime: graph.slot.startTime,
-        endTime: graph.slot.endTime,
+        startTime: fromDate({ date: graph.slot.startTime }),
+        endTime: fromDate({ date: graph.slot.endTime }),
         label: 'Whole slot',
       },
     });
@@ -106,8 +107,8 @@ describe('DrizzleShiftRepository', () => {
               graph.participation.id,
             ),
             timeSlotId: TimeSlotId.from(graph.slot.id),
-            startTime: graph.slot.startTime,
-            endTime: graph.slot.endTime,
+            startTime: fromDate({ date: graph.slot.startTime }),
+            endTime: fromDate({ date: graph.slot.endTime }),
           },
         }),
       ],
@@ -143,8 +144,8 @@ describe('DrizzleShiftRepository', () => {
         churchId,
         participationId,
         timeSlotId,
-        startTime: new Date('2026-08-02T10:00:00.000Z'),
-        endTime: new Date('2026-08-02T11:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
       },
     });
     const earlier = new Shift({
@@ -152,8 +153,8 @@ describe('DrizzleShiftRepository', () => {
         churchId,
         participationId,
         timeSlotId,
-        startTime: new Date('2026-08-02T09:00:00.000Z'),
-        endTime: new Date('2026-08-02T09:30:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
       },
     });
 
@@ -191,8 +192,8 @@ describe('DrizzleShiftRepository', () => {
               graph.participation.id,
             ),
             timeSlotId: TimeSlotId.from(graph.slot.id),
-            startTime: graph.slot.startTime,
-            endTime: graph.slot.endTime,
+            startTime: fromDate({ date: graph.slot.startTime }),
+            endTime: fromDate({ date: graph.slot.endTime }),
             label: 'Original',
           },
         }),
@@ -235,8 +236,8 @@ describe('DrizzleShiftRepository', () => {
               graph.participation.id,
             ),
             timeSlotId: TimeSlotId.from(graph.slot.id),
-            startTime: graph.slot.startTime,
-            endTime: graph.slot.endTime,
+            startTime: fromDate({ date: graph.slot.startTime }),
+            endTime: fromDate({ date: graph.slot.endTime }),
             label: 'Keep me',
           },
         }),
@@ -244,13 +245,13 @@ describe('DrizzleShiftRepository', () => {
     });
     if (!created) throw new Error('setup failed');
 
-    const newStart = new Date('2026-08-02T10:00:00.000Z');
-    const newEnd = new Date('2026-08-02T10:30:00.000Z');
+    const newStart = parseInstant({ value: '2026-08-02T10:00:00.000Z' });
+    const newEnd = parseInstant({ value: '2026-08-02T10:30:00.000Z' });
     const updated = await repo.update({
       churchId,
       shiftId: created.id,
-      startTime: newStart,
-      endTime: newEnd,
+      startTime: toDate({ instant: newStart }),
+      endTime: toDate({ instant: newEnd }),
     });
 
     expect(updated.startTime).toEqual(newStart);
@@ -279,8 +280,8 @@ describe('DrizzleShiftRepository', () => {
             churchId,
             participationId,
             timeSlotId,
-            startTime: graph.slot.startTime,
-            endTime: graph.slot.endTime,
+            startTime: fromDate({ date: graph.slot.startTime }),
+            endTime: fromDate({ date: graph.slot.endTime }),
           },
         }),
       ],
@@ -300,8 +301,8 @@ describe('DrizzleShiftRepository', () => {
             churchId,
             participationId,
             timeSlotId,
-            startTime: graph.slot.startTime,
-            endTime: graph.slot.endTime,
+            startTime: fromDate({ date: graph.slot.startTime }),
+            endTime: fromDate({ date: graph.slot.endTime }),
           },
         }),
       ],
@@ -331,8 +332,8 @@ describe('DrizzleShiftRepository', () => {
             churchId,
             participationId,
             timeSlotId: TimeSlotId.from(graph.slot.id),
-            startTime: graph.slot.startTime,
-            endTime: graph.slot.endTime,
+            startTime: fromDate({ date: graph.slot.startTime }),
+            endTime: fromDate({ date: graph.slot.endTime }),
           },
         }),
       ],

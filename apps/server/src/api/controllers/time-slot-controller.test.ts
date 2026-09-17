@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import {
   afterAll,
   beforeAll,
@@ -109,8 +110,8 @@ describe('TimeSlot controller authorization wiring', () => {
       id: '99999999-9999-9999-9999-999999999999',
       churchId: '11111111-1111-1111-1111-111111111111',
       eventId,
-      startTime: new Date('2026-08-02T09:00:00.000Z'),
-      endTime: new Date('2026-08-02T10:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
       label: 'Worship',
       status: 'active',
       requirements: [],

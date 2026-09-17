@@ -1,3 +1,4 @@
+import { type Instant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   ChurchId,
@@ -16,13 +17,13 @@ const participationId =
 const timeSlotId = '66666666-6666-4666-8666-666666666666' as TimeSlotId;
 
 const slotBounds = {
-  startTime: new Date('2026-08-02T09:00:00.000Z'),
-  endTime: new Date('2026-08-02T12:00:00.000Z'),
+  startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+  endTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
 };
 
 interface BuildShiftInput {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   label?: string;
 }
 
@@ -43,8 +44,8 @@ function buildShift({ startTime, endTime, label }: BuildShiftInput): Shift {
 describe('Shift entity (DL1-SH)', () => {
   it('DL1-SH-01 constructs a shift within slot bounds', () => {
     const shift = buildShift({
-      startTime: new Date('2026-08-02T09:30:00.000Z'),
-      endTime: new Date('2026-08-02T11:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
       label: 'First serve',
     });
 
@@ -67,8 +68,8 @@ describe('Shift entity (DL1-SH)', () => {
   it('DL1-SH-03 rejects a shift starting before the slot', () => {
     expect(() =>
       buildShift({
-        startTime: new Date('2026-08-02T08:59:00.000Z'),
-        endTime: new Date('2026-08-02T10:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T08:59:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
       }),
     ).toThrow(ShiftOutOfBoundsError);
   });
@@ -76,8 +77,8 @@ describe('Shift entity (DL1-SH)', () => {
   it('DL1-SH-04 rejects a shift ending after the slot', () => {
     expect(() =>
       buildShift({
-        startTime: new Date('2026-08-02T10:00:00.000Z'),
-        endTime: new Date('2026-08-02T12:01:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T12:01:00.000Z' }),
       }),
     ).toThrow(ShiftOutOfBoundsError);
   });
@@ -85,15 +86,15 @@ describe('Shift entity (DL1-SH)', () => {
   it('DL1-SH-05 rejects a shift with start >= end', () => {
     expect(() =>
       buildShift({
-        startTime: new Date('2026-08-02T10:00:00.000Z'),
-        endTime: new Date('2026-08-02T10:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
       }),
     ).toThrow(InvalidTimeRangeError);
 
     expect(() =>
       buildShift({
-        startTime: new Date('2026-08-02T11:00:00.000Z'),
-        endTime: new Date('2026-08-02T10:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
       }),
     ).toThrow(InvalidTimeRangeError);
   });
@@ -101,10 +102,10 @@ describe('Shift entity (DL1-SH)', () => {
   it('DL1-SH-06 allows shifts touching slot start and end exactly', () => {
     const opening = buildShift({
       startTime: slotBounds.startTime,
-      endTime: new Date('2026-08-02T10:00:00.000Z'),
+      endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
     });
     const closing = buildShift({
-      startTime: new Date('2026-08-02T11:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
       endTime: slotBounds.endTime,
     });
 
@@ -118,8 +119,8 @@ describe('Shift entity (DL1-SH)', () => {
         churchId,
         participationId,
         timeSlotId,
-        startTime: new Date('2026-08-02T09:30:00.000Z'),
-        endTime: new Date('2026-08-02T11:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
       },
       id: '77777777-7777-4777-8777-777777777777',
     });
@@ -129,19 +130,23 @@ describe('Shift entity (DL1-SH)', () => {
 
   it('updateBounds accepts new times within slot bounds', () => {
     const shift = buildShift({
-      startTime: new Date('2026-08-02T09:30:00.000Z'),
-      endTime: new Date('2026-08-02T11:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
     });
     const previousUpdatedAt = shift.updatedAt;
 
     shift.updateBounds({
-      startTime: new Date('2026-08-02T10:00:00.000Z'),
-      endTime: new Date('2026-08-02T11:30:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:30:00.000Z' }),
       slotBounds,
     });
 
-    expect(shift.startTime).toEqual(new Date('2026-08-02T10:00:00.000Z'));
-    expect(shift.endTime).toEqual(new Date('2026-08-02T11:30:00.000Z'));
+    expect(shift.startTime).toEqual(
+      parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+    );
+    expect(shift.endTime).toEqual(
+      parseInstant({ value: '2026-08-02T11:30:00.000Z' }),
+    );
     expect(shift.updatedAt.getTime()).toBeGreaterThanOrEqual(
       previousUpdatedAt.getTime(),
     );
@@ -149,14 +154,14 @@ describe('Shift entity (DL1-SH)', () => {
 
   it('updateBounds rejects a start that is not before the end', () => {
     const shift = buildShift({
-      startTime: new Date('2026-08-02T09:30:00.000Z'),
-      endTime: new Date('2026-08-02T11:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
     });
 
     expect(() =>
       shift.updateBounds({
-        startTime: new Date('2026-08-02T10:00:00.000Z'),
-        endTime: new Date('2026-08-02T10:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
         slotBounds,
       }),
     ).toThrow(InvalidTimeRangeError);
@@ -164,14 +169,14 @@ describe('Shift entity (DL1-SH)', () => {
 
   it('updateBounds rejects times outside the slot bounds', () => {
     const shift = buildShift({
-      startTime: new Date('2026-08-02T09:30:00.000Z'),
-      endTime: new Date('2026-08-02T11:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
     });
 
     expect(() =>
       shift.updateBounds({
-        startTime: new Date('2026-08-02T08:00:00.000Z'),
-        endTime: new Date('2026-08-02T11:00:00.000Z'),
+        startTime: parseInstant({ value: '2026-08-02T08:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
         slotBounds,
       }),
     ).toThrow(ShiftOutOfBoundsError);
@@ -179,8 +184,8 @@ describe('Shift entity (DL1-SH)', () => {
 
   it('updateLabel replaces or clears the label', () => {
     const shift = buildShift({
-      startTime: new Date('2026-08-02T09:30:00.000Z'),
-      endTime: new Date('2026-08-02T11:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
       label: 'First serve',
     });
 

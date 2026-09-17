@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { shift, slotRequirement } from '@church/db';
+import { toDate } from '@church/time';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type {
   CreateShiftsInput,
@@ -45,8 +46,8 @@ export class DrizzleShiftRepository implements ShiftRepository {
           churchId: input.churchId,
           participationId: entity.participationId,
           timeSlotId: entity.timeSlotId,
-          startTime: entity.startTime,
-          endTime: entity.endTime,
+          startTime: toDate({ instant: entity.startTime }),
+          endTime: toDate({ instant: entity.endTime }),
           label: entity.label ?? null,
         })),
       )

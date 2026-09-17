@@ -1,4 +1,5 @@
 import type { volunteerNotification } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AssignmentId,
@@ -34,9 +35,12 @@ export function mapVolunteerNotification(
     title: row.title,
     body: row.body,
     payload: row.payload as VolunteerNotificationPayload,
-    readAt: row.readAt ?? undefined,
-    createdAt: row.createdAt,
+    readAt: row.readAt ? fromDate({ date: row.readAt }) : undefined,
   };
 
-  return new VolunteerNotification(props, row.id as VolunteerNotificationId);
+  return new VolunteerNotification(
+    props,
+    row.id as VolunteerNotificationId,
+    row.createdAt,
+  );
 }

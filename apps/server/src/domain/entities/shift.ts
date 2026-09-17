@@ -1,4 +1,5 @@
 import { Entity, type LooseProps } from '@church/core';
+import { compareInstants, type Instant, now, toDate } from '@church/time';
 import type {
   ChurchId,
   MinistryParticipationId,
@@ -12,14 +13,14 @@ export interface ShiftProps {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
   timeSlotId: TimeSlotId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   label?: string;
 }
 
 export interface ShiftSlotBounds {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 export interface ShiftInput {
@@ -32,16 +33,16 @@ export interface ShiftInput {
 }
 
 export interface ShiftUpdateBoundsInput {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   slotBounds: ShiftSlotBounds;
 }
 
 export class Shift extends Entity<ShiftProps, ShiftId> {
   constructor({ props, slotBounds, id, createdAt, updatedAt }: ShiftInput) {
     assertShiftWithinBounds({
-      startTime: props.startTime,
-      endTime: props.endTime,
+      startTime: props.startTime as Instant,
+      endTime: props.endTime as Instant,
       slotBounds,
     });
 
@@ -60,11 +61,11 @@ export class Shift extends Entity<ShiftProps, ShiftId> {
     return this._props.timeSlotId;
   }
 
-  get startTime(): Date {
+  get startTime(): Instant {
     return this._props.startTime;
   }
 
-  get endTime(): Date {
+  get endTime(): Instant {
     return this._props.endTime;
   }
 
@@ -80,18 +81,18 @@ export class Shift extends Entity<ShiftProps, ShiftId> {
     assertShiftWithinBounds({ startTime, endTime, slotBounds });
     this._props.startTime = startTime;
     this._props.endTime = endTime;
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   updateLabel(label: string | undefined): void {
     this._props.label = label;
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 }
 
 interface AssertShiftWithinBoundsInput {
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
   slotBounds?: ShiftSlotBounds;
 }
 
@@ -100,7 +101,7 @@ function assertShiftWithinBounds({
   endTime,
   slotBounds,
 }: AssertShiftWithinBoundsInput): void {
-  if (startTime >= endTime) {
+  if (compareInstants({ left: startTime, right: endTime }) >= 0) {
     throw new InvalidTimeRangeError();
   }
 
@@ -108,7 +109,10 @@ function assertShiftWithinBounds({
     return;
   }
 
-  if (startTime < slotBounds.startTime || endTime > slotBounds.endTime) {
+  if (
+    compareInstants({ left: startTime, right: slotBounds.startTime }) < 0 ||
+    compareInstants({ left: endTime, right: slotBounds.endTime }) > 0
+  ) {
     throw new ShiftOutOfBoundsError();
   }
 }

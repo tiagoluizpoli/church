@@ -1,3 +1,5 @@
+import { addMinutes, type Instant, now } from '@church/time';
+
 /** After this many attempts, a retryable failure still gives up for good. */
 export const OUTBOX_MAX_ATTEMPTS = 5;
 
@@ -8,7 +10,7 @@ export function hasExhaustedRetries(attempts: number): boolean {
 }
 
 /** Exponential backoff in minutes (2^attempts), capped at one hour. */
-export function nextRetryAt(attempts: number): Date {
+export function nextRetryAt(attempts: number): Instant {
   const minutes = Math.min(2 ** attempts, BACKOFF_CAP_MINUTES);
-  return new Date(Date.now() + minutes * 60_000);
+  return addMinutes({ instant: now(), minutes });
 }

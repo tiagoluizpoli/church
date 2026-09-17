@@ -21,7 +21,7 @@ describe('Ministry Entity', () => {
 
     ministry.softDelete();
 
-    expect(ministry.deletedAt).toBeInstanceOf(Date);
+    expect(typeof ministry.deletedAt).toBe('string');
     expect(ministry.updatedAt.getTime()).toBeGreaterThanOrEqual(
       originalUpdatedAt.getTime(),
     );

@@ -1,4 +1,5 @@
 import type { ministryServingProfile } from '@church/db';
+import { parseTimeOfDay } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -50,8 +51,8 @@ function mapShiftSplit(
     kind: 'manual',
     spans: stored.spans.map((span) => ({
       label: span.label,
-      startTime: span.startTime,
-      endTime: span.endTime,
+      startTime: parseTimeOfDay({ value: span.startTime }),
+      endTime: parseTimeOfDay({ value: span.endTime }),
     })),
   };
 }

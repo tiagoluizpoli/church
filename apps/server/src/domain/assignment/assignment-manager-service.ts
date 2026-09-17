@@ -1,3 +1,9 @@
+import {
+  addMilliseconds,
+  compareInstants,
+  type Instant,
+  millisecondsBetween,
+} from '@church/time';
 import { AvailabilityEngine } from '../availability/availability-engine';
 import { ConflictValidationService } from '../conflict/conflict-validation-service';
 import type { HardConstraintReason } from '../conflict/types';
@@ -39,7 +45,7 @@ interface GenerateEqualSplitSlotsInput {
 }
 
 interface BuildEqualSplitSlotLabelInput {
-  slotStartTime: Date;
+  slotStartTime: Instant;
   slotNumber: number;
   spansMultipleDays: boolean;
 }
@@ -86,8 +92,10 @@ export const AssignmentManagerService = {
       throw new InvalidSlotDurationError();
     }
 
-    const eventDurationMs =
-      request.eventEndTime.getTime() - request.eventStartTime.getTime();
+    const eventDurationMs = millisecondsBetween({
+      start: request.eventStartTime,
+      end: request.eventEndTime,
+    });
     if (eventDurationMs <= 0) {
       throw new InvalidEventDurationError();
     }
@@ -95,8 +103,7 @@ export const AssignmentManagerService = {
     const slotDurationMs = slotDurationMinutes * 60 * 1000;
     const slots: GeneratedSlot[] = [];
     const spansMultipleDays =
-      request.eventStartTime.toISOString().slice(0, 10) !==
-      request.eventEndTime.toISOString().slice(0, 10);
+      request.eventStartTime.slice(0, 10) !== request.eventEndTime.slice(0, 10);
 
     // If the slot duration matches or exceeds the event duration
     if (slotDurationMs >= eventDurationMs) {
@@ -123,11 +130,14 @@ export const AssignmentManagerService = {
     const fullSlotsCount = Math.floor(eventDurationMs / slotDurationMs);
     const hasRemainder = eventDurationMs % slotDurationMs !== 0;
 
-    let currentStart = request.eventStartTime.getTime();
+    let currentStart = request.eventStartTime;
 
     for (let i = 0; i < fullSlotsCount; i++) {
-      const slotStart = new Date(currentStart);
-      const slotEnd = new Date(currentStart + slotDurationMs);
+      const slotStart = currentStart;
+      const slotEnd = addMilliseconds({
+        instant: currentStart,
+        milliseconds: slotDurationMs,
+      });
       const slot = new TimeSlot({
         churchId: request.churchId,
         eventId: request.eventId,
@@ -140,12 +150,12 @@ export const AssignmentManagerService = {
         }),
       });
       slots.push({ slot, requirements: [] });
-      currentStart = slotEnd.getTime();
+      currentStart = slotEnd;
     }
 
     if (hasRemainder) {
-      const slotStart = new Date(currentStart);
-      const slotEnd = new Date(request.eventEndTime);
+      const slotStart = currentStart;
+      const slotEnd = request.eventEndTime;
       const slot = new TimeSlot({
         churchId: request.churchId,
         eventId: request.eventId,
@@ -173,7 +183,7 @@ export const AssignmentManagerService = {
       return `Slot ${slotNumber}`;
     }
 
-    return `${slotStartTime.toISOString().slice(0, 10)} - Slot ${slotNumber}`;
+    return `${slotStartTime.slice(0, 10)} - Slot ${slotNumber}`;
   },
 
   generateTemplateSlots(
@@ -247,7 +257,7 @@ export const AssignmentManagerService = {
     }
 
     // 2. Check if event is in the past
-    if (event.startDate <= now) {
+    if (compareInstants({ left: event.startDate, right: now }) <= 0) {
       throw new PastEventError();
     }
 
@@ -575,7 +585,7 @@ export const AssignmentManagerService = {
     }
 
     // 2. Check if event is actually expired
-    if (event.endDate > now) {
+    if (compareInstants({ left: event.endDate, right: now }) > 0) {
       return {
         transitioned: false,
         assignmentsAutoConfirmed: 0,

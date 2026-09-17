@@ -1,5 +1,15 @@
 import 'reflect-metadata';
 import { NotFoundError } from '@church/core';
+import {
+  addMilliseconds,
+  compareCalendarDays,
+  fromDate,
+  type Instant,
+  millisecondsBetween,
+  now,
+  toDate,
+  today,
+} from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import type {
   ChurchId,
@@ -52,7 +62,6 @@ import {
   ProfileSeeder,
   type ProfileSeederEntry,
 } from '../domain/services/profile-seeder';
-import { toChurchDate } from '../test-support/clock';
 
 interface EnsurePlanningCycleWritableInput {
   cycle: PlanningCycle;
@@ -96,8 +105,8 @@ interface PlanningSeedContext {
 interface GeneratedSlotSeedInput {
   timeSlotId: TimeSlotId;
   sourceTemplateBlockId: TimeBlockId;
-  startTime: Date;
-  endTime: Date;
+  startTime: Instant;
+  endTime: Instant;
 }
 
 interface SeedGeneratedSlotsInput {
@@ -169,7 +178,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         templates,
         existingEvents: existingEvents.map((eventGroup) => ({
           eventId: eventGroup.event.id,
-          eventDate: toChurchDate({
+          eventDate: today({
             instant: eventGroup.event.startDate,
             timeZone: church.timezone,
           }),
@@ -184,7 +193,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             }
 
             fingerprints.push({
-              eventDate: toChurchDate({
+              eventDate: today({
                 instant: eventGroup.event.startDate,
                 timeZone: church.timezone,
               }),
@@ -215,8 +224,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
                   planningCycleId: input.cycleId,
                   sourceTemplateId: plan.sourceTemplateId,
                   title: plan.title,
-                  startDate: plan.startDate,
-                  endDate: plan.endDate,
+                  startDate: toDate({ instant: plan.startDate }),
+                  endDate: toDate({ instant: plan.endDate }),
                   status: cycle.state === 'locked' ? 'scheduled' : 'draft',
                   eventType: 'hourly',
                   tx,
@@ -240,8 +249,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             churchId: input.churchId,
             eventId: targetEventId,
             sourceTemplateBlockId: slot.sourceTemplateBlockId,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
+            startTime: toDate({ instant: slot.startTime }),
+            endTime: toDate({ instant: slot.endTime }),
             label: slot.label,
             tx,
           });
@@ -486,12 +495,15 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
-      if (
-        input.startDate &&
-        input.startDate.getTime() !== currentEvent.startDate.getTime()
-      ) {
-        const delta =
-          input.startDate.getTime() - currentEvent.startDate.getTime();
+      const newStartDate = input.startDate
+        ? fromDate({ date: input.startDate })
+        : undefined;
+
+      if (newStartDate && newStartDate !== currentEvent.startDate) {
+        const delta = millisecondsBetween({
+          start: currentEvent.startDate,
+          end: newStartDate,
+        });
         const slots = await this.timeSlotRepository.listByEvent(
           input.churchId,
           input.eventId,
@@ -508,8 +520,18 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             input.churchId,
             slot.id,
             {
-              startTime: new Date(slot.startTime.getTime() + delta),
-              endTime: new Date(slot.endTime.getTime() + delta),
+              startTime: toDate({
+                instant: addMilliseconds({
+                  instant: slot.startTime,
+                  milliseconds: delta,
+                }),
+              }),
+              endTime: toDate({
+                instant: addMilliseconds({
+                  instant: slot.endTime,
+                  milliseconds: delta,
+                }),
+              }),
             },
             tx,
           );
@@ -681,13 +703,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       throw new IllegalStateTransitionError(cycle.state, 'mutate');
     }
 
-    const today = toChurchDate({
-      instant: new Date(),
-      timeZone: churchTimeZone,
-    });
-    const cycleEnd = cycle.endDate.toISOString().slice(0, 10);
+    const churchToday = today({ instant: now(), timeZone: churchTimeZone });
 
-    if (today >= cycleEnd) {
+    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) >= 0) {
       await this.cycleRepository.updateState({
         churchId: cycle.churchId,
         cycleId: cycle.id,
@@ -713,7 +731,7 @@ function assertEventStartsWithinCycle({
 }: AssertEventStartsWithinCycleInput): void {
   if (
     !cycle.containsDate({
-      date: eventStartDate,
+      instant: fromDate({ date: eventStartDate }),
       timeZone: churchTimeZone,
     })
   ) {

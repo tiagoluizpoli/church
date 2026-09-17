@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { RoleId } from '../../../src/domain/branded-ids';
 import { MinistryInvitation } from '../../../src/domain/entities/ministry-invitation';
@@ -11,7 +12,7 @@ describe('MinistryInvitation Entity', () => {
       ministryAccessLevel: 'volunteer',
       status: 'pending',
       inviterId: 'inviter1',
-      expiresAt: new Date('2030-01-01T00:00:00Z'),
+      expiresAt: parseInstant({ value: '2030-01-01T00:00:00Z' }),
       roleIds: [],
     });
 
@@ -28,7 +29,7 @@ describe('MinistryInvitation Entity', () => {
       ministryAccessLevel: 'leader',
       status: 'pending',
       inviterId: 'inviter1',
-      expiresAt: new Date('2030-01-01T00:00:00Z'),
+      expiresAt: parseInstant({ value: '2030-01-01T00:00:00Z' }),
       roleIds: [RoleId.from('r1'), RoleId.from('r2')],
     });
 
@@ -39,7 +40,7 @@ describe('MinistryInvitation Entity', () => {
   });
 
   it('exposes every prop through its getters', () => {
-    const expiresAt = new Date('2030-06-01T00:00:00Z');
+    const expiresAt = parseInstant({ value: '2030-06-01T00:00:00Z' });
     const invitation = new MinistryInvitation({
       churchId: 'c1',
       ministryId: 'm1',

@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
   eventMapper,
@@ -18,16 +19,16 @@ const fullEventProps = {
   title: 'Sunday Service',
   description: 'Weekly gathering',
   location: 'Main Hall',
-  startDate: new Date('2026-05-15T10:00:00Z'),
-  endDate: new Date('2026-05-15T12:00:00Z'),
+  startDate: parseInstant({ value: '2026-05-15T10:00:00Z' }),
+  endDate: parseInstant({ value: '2026-05-15T12:00:00Z' }),
 };
 
 const minimalEventProps = {
   churchId: 'church-2',
   planningCycleId: 'cycle-2',
   title: 'Midweek Study',
-  startDate: new Date('2026-05-16T10:00:00Z'),
-  endDate: new Date('2026-05-16T12:00:00Z'),
+  startDate: parseInstant({ value: '2026-05-16T10:00:00Z' }),
+  endDate: parseInstant({ value: '2026-05-16T12:00:00Z' }),
 };
 
 describe('eventMapper.toResponse', () => {
@@ -132,8 +133,8 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       {
         churchId: 'church-1',
         eventId: 'event-1',
-        startTime: new Date('2026-05-15T10:00:00Z'),
-        endTime: new Date('2026-05-15T11:00:00Z'),
+        startTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
+        endTime: parseInstant({ value: '2026-05-15T11:00:00Z' }),
         label: 'Worship Set',
         requirements: [requirementWithExtras, requirementWithoutExtras],
       },
@@ -150,7 +151,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         roleId: 'role-1',
         reason: 'Volunteered',
         assignedBy: 'user-1',
-        assignedAt: new Date('2026-01-10T00:00:00Z'),
+        assignedAt: parseInstant({ value: '2026-01-10T00:00:00Z' }),
       },
       'assignment-1',
     );
@@ -160,7 +161,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         slotId: 'slot-1',
         volunteerId: 'volunteer-2',
         roleId: 'role-2',
-        assignedAt: new Date('2026-01-11T00:00:00Z'),
+        assignedAt: parseInstant({ value: '2026-01-11T00:00:00Z' }),
       },
       'assignment-2',
     );
@@ -171,8 +172,8 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         availabilityCheckId: 'check-1',
         shiftId: 'shift-1',
         volunteerId: 'volunteer-1',
-        shiftStartTime: new Date('2026-05-15T10:00:00Z'),
-        shiftEndTime: new Date('2026-05-15T11:00:00Z'),
+        shiftStartTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
+        shiftEndTime: parseInstant({ value: '2026-05-15T11:00:00Z' }),
       },
       id: 'availability-1',
     });
@@ -342,8 +343,8 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       {
         churchId: 'church-2',
         eventId: 'event-2',
-        startTime: new Date('2026-05-16T10:00:00Z'),
-        endTime: new Date('2026-05-16T11:00:00Z'),
+        startTime: parseInstant({ value: '2026-05-16T10:00:00Z' }),
+        endTime: parseInstant({ value: '2026-05-16T11:00:00Z' }),
       },
       'slot-2',
     );

@@ -1,3 +1,9 @@
+import {
+  fromTimeColumn,
+  parseCalendarDay,
+  parseInstant,
+  parseTimeOfDay,
+} from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   EventId,
@@ -27,8 +33,8 @@ function createCycle(): PlanningCycle {
     props: {
       churchId,
       name: 'July cycle',
-      startDate: new Date('2026-07-01T00:00:00.000Z'),
-      endDate: new Date('2026-07-15T00:00:00.000Z'),
+      startDate: parseCalendarDay({ value: '2026-07-01' }),
+      endDate: parseCalendarDay({ value: '2026-07-15' }),
     },
   });
 }
@@ -45,8 +51,8 @@ function createTemplate(): EventTemplate {
             churchId,
             templateId,
             label: 'Gathering',
-            startTime: '09:00',
-            endTime: '10:00',
+            startTime: parseTimeOfDay({ value: '09:00' }),
+            endTime: parseTimeOfDay({ value: '10:00' }),
             order: 1,
           },
           id: blockAId,
@@ -56,10 +62,9 @@ function createTemplate(): EventTemplate {
             churchId,
             templateId,
             label: 'Service',
-            // 8-char (seconds-qualified) time exercises the branch where
-            // normalizeTimeForDateTime does not need to append ':00'.
-            startTime: '10:00:00',
-            endTime: '11:00:00',
+            // Seconds-qualified time exercises the Postgres `time` column shape.
+            startTime: fromTimeColumn({ value: '10:00:00' }),
+            endTime: fromTimeColumn({ value: '11:00:00' }),
             order: 2,
           },
           id: blockBId,
@@ -89,32 +94,40 @@ describe('CycleEventGenerator', () => {
     expect(first?.kind).toBe('create_event');
     expect(first?.sourceTemplateId).toBe(templateId);
     expect(first?.title).toBe('Wednesday Service');
-    expect(first?.startDate).toEqual(new Date('2026-07-01T09:00:00.000Z'));
-    expect(first?.endDate).toEqual(new Date('2026-07-01T11:00:00.000Z'));
+    expect(first?.startDate).toEqual(
+      parseInstant({ value: '2026-07-01T09:00:00.000Z' }),
+    );
+    expect(first?.endDate).toEqual(
+      parseInstant({ value: '2026-07-01T11:00:00.000Z' }),
+    );
     expect(first?.slots).toHaveLength(2);
     expect(first?.slots[0]).toMatchObject({
       sourceTemplateBlockId: blockAId,
       label: 'Gathering',
-      startTime: new Date('2026-07-01T09:00:00.000Z'),
-      endTime: new Date('2026-07-01T10:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-07-01T09:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
     });
     expect(first?.slots[1]).toMatchObject({
       sourceTemplateBlockId: blockBId,
       label: 'Service',
-      startTime: new Date('2026-07-01T10:00:00.000Z'),
-      endTime: new Date('2026-07-01T11:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-07-01T11:00:00.000Z' }),
     });
 
     expect(second?.kind).toBe('create_event');
-    expect(second?.startDate).toEqual(new Date('2026-07-08T09:00:00.000Z'));
-    expect(second?.endDate).toEqual(new Date('2026-07-08T11:00:00.000Z'));
+    expect(second?.startDate).toEqual(
+      parseInstant({ value: '2026-07-08T09:00:00.000Z' }),
+    );
+    expect(second?.endDate).toEqual(
+      parseInstant({ value: '2026-07-08T11:00:00.000Z' }),
+    );
   });
 
   it('appends slots to an existing event for the same date and template instead of creating a new one', () => {
     const existingEvents: ExistingGeneratedEvent[] = [
       {
         eventId: 'existing-event-1' as EventId,
-        eventDate: '2026-07-01',
+        eventDate: parseCalendarDay({ value: '2026-07-01' }),
         sourceTemplateId: templateId,
       },
     ];
@@ -139,7 +152,10 @@ describe('CycleEventGenerator', () => {
 
   it('ignores existing events without a sourceTemplateId when matching for append', () => {
     const existingEvents: ExistingGeneratedEvent[] = [
-      { eventId: 'no-template-event' as EventId, eventDate: '2026-07-01' },
+      {
+        eventId: 'no-template-event' as EventId,
+        eventDate: parseCalendarDay({ value: '2026-07-01' }),
+      },
     ];
 
     const plans = generator.generate({
@@ -156,9 +172,18 @@ describe('CycleEventGenerator', () => {
 
   it('skips blocks whose fingerprint already exists and skips the date entirely once all blocks are generated', () => {
     const existingFingerprints: ExistingGeneratedSlotFingerprint[] = [
-      { eventDate: '2026-07-01', sourceTemplateBlockId: blockAId },
-      { eventDate: '2026-07-08', sourceTemplateBlockId: blockAId },
-      { eventDate: '2026-07-08', sourceTemplateBlockId: blockBId },
+      {
+        eventDate: parseCalendarDay({ value: '2026-07-01' }),
+        sourceTemplateBlockId: blockAId,
+      },
+      {
+        eventDate: parseCalendarDay({ value: '2026-07-08' }),
+        sourceTemplateBlockId: blockAId,
+      },
+      {
+        eventDate: parseCalendarDay({ value: '2026-07-08' }),
+        sourceTemplateBlockId: blockBId,
+      },
     ];
 
     const plans = generator.generate({
@@ -193,8 +218,8 @@ describe('CycleEventGenerator', () => {
               churchId,
               templateId: overnightTemplateId,
               label: 'Vigil',
-              startTime: '22:00',
-              endTime: '02:00',
+              startTime: parseTimeOfDay({ value: '22:00' }),
+              endTime: parseTimeOfDay({ value: '02:00' }),
               order: 1,
             },
             id: overnightBlockId,
@@ -214,8 +239,8 @@ describe('CycleEventGenerator', () => {
 
     const [first] = plans as GeneratedCycleCreateEventPlan[];
     expect(first?.slots[0]).toMatchObject({
-      startTime: new Date('2026-07-01T22:00:00.000Z'),
-      endTime: new Date('2026-07-02T02:00:00.000Z'),
+      startTime: parseInstant({ value: '2026-07-01T22:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-07-02T02:00:00.000Z' }),
     });
   });
 
@@ -231,8 +256,8 @@ describe('CycleEventGenerator', () => {
               churchId,
               templateId: 'no-monday-template',
               label: 'Only Block',
-              startTime: '09:00',
-              endTime: '10:00',
+              startTime: parseTimeOfDay({ value: '09:00' }),
+              endTime: parseTimeOfDay({ value: '10:00' }),
               order: 1,
             },
           }),
@@ -245,8 +270,8 @@ describe('CycleEventGenerator', () => {
       props: {
         churchId,
         name: 'Single day',
-        startDate: new Date('2026-07-01T00:00:00.000Z'),
-        endDate: new Date('2026-07-02T00:00:00.000Z'),
+        startDate: parseCalendarDay({ value: '2026-07-01' }),
+        endDate: parseCalendarDay({ value: '2026-07-02' }),
       },
     });
 

@@ -1,9 +1,15 @@
 import { Entity, type LooseProps } from '@church/core';
+import {
+  type CalendarDay,
+  compareCalendarDays,
+  type Instant,
+  now,
+  toDate,
+  today,
+} from '@church/time';
 import type { ChurchId, PlanningCycleId } from '../branded-ids';
 import { IllegalStateTransitionError } from '../errors/illegal-state-transition';
-import { DateRange } from '../value-objects/date-range';
-
-const ONE_DAY_IN_MS = 86_400_000;
+import { InvalidDateRangeError } from '../errors/invalid-date-range';
 
 export const PLANNING_CYCLE_STATE_OPTIONS = [
   'draft',
@@ -15,8 +21,8 @@ export type PlanningCycleState = (typeof PLANNING_CYCLE_STATE_OPTIONS)[number];
 export interface PlanningCycleProps {
   churchId: ChurchId;
   name: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: CalendarDay;
+  endDate: CalendarDay;
   state: PlanningCycleState;
 }
 
@@ -33,7 +39,7 @@ export interface PlanningCycleCanReopenEventInput {
 }
 
 export interface PlanningCycleContainsDateInput {
-  date: Date;
+  instant: Instant;
   timeZone: string;
 }
 
@@ -44,10 +50,14 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
       state: props.state ?? 'draft',
     } as PlanningCycleProps;
 
-    DateRange.create({
-      start: normalizedProps.startDate,
-      end: normalizedProps.endDate,
-    });
+    if (
+      compareCalendarDays({
+        left: normalizedProps.startDate,
+        right: normalizedProps.endDate,
+      }) >= 0
+    ) {
+      throw new InvalidDateRangeError();
+    }
 
     super(normalizedProps, id as PlanningCycleId, createdAt, updatedAt);
   }
@@ -60,11 +70,11 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
     return this._props.name;
   }
 
-  get startDate(): Date {
+  get startDate(): CalendarDay {
     return this._props.startDate;
   }
 
-  get endDate(): Date {
+  get endDate(): CalendarDay {
     return this._props.endDate;
   }
 
@@ -78,7 +88,7 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
     }
 
     this._props.state = 'locked';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   archive(): void {
@@ -87,7 +97,7 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
     }
 
     this._props.state = 'archived';
-    this._updatedAt = new Date();
+    this._updatedAt = toDate({ instant: now() });
   }
 
   assertCanReopenEvent({ eventState }: PlanningCycleCanReopenEventInput): void {
@@ -100,26 +110,11 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
     }
   }
 
-  containsDate({ date, timeZone }: PlanningCycleContainsDateInput): boolean {
-    const range = DateRange.create({
-      start: normalizeStoredDate({ date: this.startDate }),
-      end: normalizeStoredDate({ date: this.endDate }),
-    });
-    const normalizedDate = DateRange.createDateOnly({
-      start: date,
-      end: new Date(date.getTime() + ONE_DAY_IN_MS),
-      timeZone,
-    }).start;
-
-    return normalizedDate >= range.start && normalizedDate < range.end;
+  containsDate({ instant, timeZone }: PlanningCycleContainsDateInput): boolean {
+    const day = today({ instant, timeZone });
+    return (
+      compareCalendarDays({ left: day, right: this.startDate }) >= 0 &&
+      compareCalendarDays({ left: day, right: this.endDate }) < 0
+    );
   }
-}
-
-interface NormalizeStoredDateInput {
-  date: Date;
-}
-
-function normalizeStoredDate({ date }: NormalizeStoredDateInput): Date {
-  const isoDate = date.toISOString().slice(0, 10);
-  return new Date(`${isoDate}T00:00:00.000Z`);
 }

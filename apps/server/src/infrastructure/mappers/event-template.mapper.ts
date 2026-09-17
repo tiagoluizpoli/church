@@ -1,4 +1,5 @@
 import type { eventTemplate, timeBlock } from '@church/db';
+import { fromTimeColumn } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -23,8 +24,8 @@ export function mapTimeBlock(row: TimeBlockRow): TimeBlock {
     churchId: row.churchId as ChurchId,
     templateId: row.templateId as EventTemplateId,
     label: row.label,
-    startTime: row.startTime,
-    endTime: row.endTime,
+    startTime: fromTimeColumn({ value: row.startTime }),
+    endTime: fromTimeColumn({ value: row.endTime }),
     order: row.order,
   };
 

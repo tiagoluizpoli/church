@@ -9,6 +9,7 @@ import {
   volunteer,
   volunteerNotification,
 } from '@church/db';
+import { fromDate, parseInstant } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAuthorityManager } from '../../src/application/db-authority-manager';
@@ -271,8 +272,8 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     });
 
     expect(created).toHaveLength(3);
-    expect(created[0]?.startTime).toEqual(slot.startTime);
-    expect(created[2]?.endTime).toEqual(slot.endTime);
+    expect(created[0]?.startTime).toEqual(fromDate({ date: slot.startTime }));
+    expect(created[2]?.endTime).toEqual(fromDate({ date: slot.endTime }));
   });
 
   it('DL2-PT-04 manual out-of-bounds split is rejected with a conflict error', async () => {
@@ -289,8 +290,8 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
           kind: 'manual',
           spans: [
             {
-              startTime: new Date('2026-08-02T11:00:00.000Z'),
-              endTime: new Date('2026-08-02T16:00:00.000Z'),
+              startTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+              endTime: parseInstant({ value: '2026-08-02T16:00:00.000Z' }),
             },
           ],
         },
@@ -842,7 +843,7 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       label: 'Relabeled shift',
     });
     expect(updated.label).toBe('Relabeled shift');
-    expect(updated.startTime).toEqual(slot.startTime);
+    expect(updated.startTime).toEqual(fromDate({ date: slot.startTime }));
 
     const boundsOnlyUpdate = await participationManager.updateShift({
       churchId,
@@ -1194,7 +1195,7 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
       (row) => row.volunteerId === '99999999-9999-4999-8999-999999999981',
     );
     expect(confirmedRow?.state).toBe('confirmed');
-    expect(confirmedRow?.confirmedAt).toBeInstanceOf(Date);
+    expect(typeof confirmedRow?.confirmedAt).toBe('string');
     expect(stillPendingRow?.state).toBe('pending');
   });
 });

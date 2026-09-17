@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { compareCalendarDays, now, today } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import type {
   CreatePlanningCycleManagerInput,
@@ -18,7 +19,6 @@ import {
   IllegalStateTransitionError,
   OverlappingCycleError,
 } from '../domain/errors';
-import { toChurchDate } from '../test-support/clock';
 
 interface EnsureResolvedCycleInput {
   cycle: PlanningCycle;
@@ -183,13 +183,9 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
       return cycle;
     }
 
-    const today = toChurchDate({
-      instant: new Date(),
-      timeZone: churchTimeZone,
-    });
-    const cycleEnd = cycle.endDate.toISOString().slice(0, 10);
+    const churchToday = today({ instant: now(), timeZone: churchTimeZone });
 
-    if (today < cycleEnd) {
+    if (compareCalendarDays({ left: churchToday, right: cycle.endDate }) < 0) {
       return cycle;
     }
 

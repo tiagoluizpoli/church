@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { parseTimeOfDay } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import type { z } from 'zod';
 import {
@@ -577,7 +578,17 @@ export class ChurchAdminController implements FastifyController {
               entry.sourceTemplateBlockId,
             ),
             serves: entry.serves,
-            shiftSplit: entry.shiftSplit,
+            shiftSplit:
+              entry.shiftSplit.kind === 'manual'
+                ? {
+                    kind: 'manual' as const,
+                    spans: entry.shiftSplit.spans.map((span) => ({
+                      label: span.label,
+                      startTime: parseTimeOfDay({ value: span.startTime }),
+                      endTime: parseTimeOfDay({ value: span.endTime }),
+                    })),
+                  }
+                : entry.shiftSplit,
             headcounts: entry.headcounts.map((headcount) => ({
               roleId: RoleId.from(headcount.roleId),
               teamId: headcount.teamId

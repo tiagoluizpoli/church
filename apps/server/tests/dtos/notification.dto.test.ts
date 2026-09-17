@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { notificationMapper } from '../../src/api/dtos/notification.dto';
 import { VolunteerNotification } from '../../src/domain/entities/volunteer-notification';
@@ -15,10 +16,10 @@ function createFullNotification() {
       title: 'New assignment',
       body: 'You have a new assignment',
       payload: { assignmentId: '66666666-6666-6666-6666-666666666666' },
-      readAt: new Date('2026-07-01T00:00:00.000Z'),
-      createdAt: new Date('2026-06-30T00:00:00.000Z'),
+      readAt: parseInstant({ value: '2026-07-01T00:00:00.000Z' }),
     },
     '77777777-7777-7777-7777-777777777777',
+    new Date('2026-06-30T00:00:00.000Z'),
   );
 }
 
@@ -31,9 +32,9 @@ function createMinimalNotification() {
       title: 'Schedule published',
       body: 'Your schedule is ready',
       payload: {},
-      createdAt: new Date('2026-06-30T00:00:00.000Z'),
     },
     '88888888-8888-8888-8888-888888888888',
+    new Date('2026-06-30T00:00:00.000Z'),
   );
 }
 

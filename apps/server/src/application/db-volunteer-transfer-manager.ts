@@ -1,3 +1,4 @@
+import { compareInstants, fromDate } from '@church/time';
 import { injectable } from 'tsyringe';
 import type {
   ChurchId,
@@ -225,7 +226,10 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
     const { ministryInvitation } = context;
     if (
       ministryInvitation.status !== 'pending' ||
-      ministryInvitation.expiresAt <= now
+      compareInstants({
+        left: ministryInvitation.expiresAt,
+        right: fromDate({ date: now }),
+      }) <= 0
     ) {
       return { status: 'unavailable' };
     }

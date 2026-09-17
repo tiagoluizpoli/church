@@ -41,7 +41,7 @@ function toResponse(n: VolunteerNotification): NotificationResponse {
     title: n.title,
     body: n.body,
     payload: n.payload as Record<string, string | null>,
-    readAt: n.readAt?.toISOString(),
+    readAt: n.readAt,
     createdAt: n.createdAt.toISOString(),
   };
 }

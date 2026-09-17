@@ -1,6 +1,8 @@
+import type { Instant } from '@church/time';
+
 export type TimeRange = {
-  start: Date;
-  end: Date;
+  start: Instant;
+  end: Instant;
 };
 
 export type BlockoutContext = {

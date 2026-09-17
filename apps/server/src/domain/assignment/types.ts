@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   AssignmentContext,
   BlockoutContext,
@@ -17,8 +18,8 @@ export type EqualSplitStrategy = {
 
 export type TemplatePeriod = {
   label: string;
-  startTime: Date; // Absolute time for the target event day
-  endTime: Date;
+  startTime: Instant; // Absolute time for the target event day
+  endTime: Instant;
   requirements?: Array<{
     roleId: string;
     teamId?: string;
@@ -37,8 +38,8 @@ export type SlotGenerationStrategy = EqualSplitStrategy | TemplateBasedStrategy;
 export type SlotGenerationRequest = {
   churchId: string;
   eventId: string;
-  eventStartTime: Date;
-  eventEndTime: Date;
+  eventStartTime: Instant;
+  eventEndTime: Instant;
   strategy: SlotGenerationStrategy;
   existingSlots?: TimeSlot[];
 };
@@ -58,7 +59,7 @@ export type PublishRequest = {
   churchId: string;
   event: Event;
   assignments: Assignment[];
-  now: Date;
+  now: Instant;
   actorId: string;
   assignmentValidationData: Map<
     string,
@@ -67,7 +68,7 @@ export type PublishRequest = {
       ministryId: string;
       roleId: string;
       slotId: string;
-      eventStartTime: Date;
+      eventStartTime: Instant;
       volunteerQualifiedRoleIds: string[];
       volunteerMinistryIds: string[];
       existingSlotIds: string[];
@@ -95,7 +96,7 @@ export type CancelEventRequest = {
   slots: TimeSlot[];
   assignments: Assignment[];
   actorId: string;
-  now: Date;
+  now: Instant;
 };
 
 export type EventCancellationResult = {
@@ -111,14 +112,14 @@ export type DeclineAssignmentRequest = {
   assignment: Assignment;
   reason?: string;
   actorId: string;
-  now: Date;
+  now: Instant;
 };
 
 export type ConfirmAssignmentRequest = {
   churchId: string;
   assignment: Assignment;
   actorId: string;
-  now: Date;
+  now: Instant;
 };
 
 export type ReplacementCandidate = {
@@ -142,7 +143,7 @@ export type LifecycleTransitionRequest = {
   churchId: string;
   event: Event;
   assignments: Assignment[];
-  now: Date;
+  now: Instant;
 };
 
 export type LifecycleTransitionResult = {

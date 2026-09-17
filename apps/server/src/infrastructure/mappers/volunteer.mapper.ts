@@ -1,4 +1,5 @@
 import type { volunteer } from '@church/db';
+import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
 import type { VolunteerProps } from '../../domain/entities/volunteer';
@@ -15,7 +16,7 @@ export function mapVolunteer(
     userId: row.userId as UserId,
     status: row.status as VolunteerProps['status'],
     notes: row.notes ?? undefined,
-    leftAt: row.leftAt ?? undefined,
+    leftAt: row.leftAt ? fromDate({ date: row.leftAt }) : undefined,
     successorVolunteerId:
       (row.successorVolunteerId as VolunteerId) ?? undefined,
     name: name ?? undefined,

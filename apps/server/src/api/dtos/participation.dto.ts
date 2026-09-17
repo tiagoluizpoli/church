@@ -162,8 +162,8 @@ function toShiftResponse(shift: Shift): ShiftResponse {
     id: shift.id as string,
     participationId: shift.participationId as string,
     timeSlotId: shift.timeSlotId as string,
-    startTime: shift.startTime.toISOString(),
-    endTime: shift.endTime.toISOString(),
+    startTime: shift.startTime,
+    endTime: shift.endTime,
     label: shift.label,
   };
 }

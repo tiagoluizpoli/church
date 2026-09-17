@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { VolunteerNotification } from '../../../src/domain/entities/volunteer-notification';
 
@@ -41,12 +42,12 @@ describe('VolunteerNotification', () => {
 
   it('preserves supplied creation and read times', () => {
     const createdAt = new Date('2026-07-01T10:00:00Z');
-    const readAt = new Date('2026-07-01T11:00:00Z');
-    const notification = new VolunteerNotification({
-      ...props,
+    const readAt = parseInstant({ value: '2026-07-01T11:00:00Z' });
+    const notification = new VolunteerNotification(
+      { ...props, readAt },
+      undefined,
       createdAt,
-      readAt,
-    });
+    );
 
     expect(notification.createdAt).toBe(createdAt);
     expect(notification.readAt).toBe(readAt);

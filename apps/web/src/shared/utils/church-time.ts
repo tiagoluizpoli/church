@@ -5,6 +5,7 @@ import {
   formatTimeOfDay,
   parseCalendarDay,
   parseInstant,
+  type TimeOfDay,
   today,
   toTimeOfDay,
 } from '@church/time';
@@ -29,11 +30,20 @@ export function formatDayOf(input: ChurchInstantInput): string {
   return formatCalendarDay({ day: dayOf(input) });
 }
 
+/** The `HH:mm` TimeOfDay an API instant falls on in the Church Timezone —
+ * the shared parse-and-convert step behind every wall-clock-time read below,
+ * and reused wherever a caller needs the TimeOfDay itself rather than a
+ * formatted string (e.g. deriving minutes-since-midnight for a filter). */
+export function churchTimeOfDay({
+  value,
+  timeZone,
+}: ChurchInstantInput): TimeOfDay {
+  return toTimeOfDay({ instant: parseInstant({ value }), timeZone });
+}
+
 /** `14:30` */
 function formatTimeOf({ value, timeZone }: ChurchInstantInput): string {
-  return formatTimeOfDay({
-    time: toTimeOfDay({ instant: parseInstant({ value }), timeZone }),
-  });
+  return formatTimeOfDay({ time: churchTimeOfDay({ value, timeZone }) });
 }
 
 export interface CalendarDateOnlyInput {

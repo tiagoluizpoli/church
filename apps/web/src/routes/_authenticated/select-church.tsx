@@ -1,6 +1,6 @@
+import { formatRecency, parseInstant } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { formatDistanceToNow } from 'date-fns';
 import {
   ArrowRight,
   CalendarClock,
@@ -39,11 +39,18 @@ const AREA_LABELS: Record<string, string> = {
 
 interface FormatLastOpenedInput {
   lastOpenedAt: string | null;
+  timeZone: string;
 }
 
-function formatLastOpened({ lastOpenedAt }: FormatLastOpenedInput): string {
+function formatLastOpened({
+  lastOpenedAt,
+  timeZone,
+}: FormatLastOpenedInput): string {
   if (!lastOpenedAt) return 'Never opened';
-  return formatDistanceToNow(new Date(lastOpenedAt), { addSuffix: true });
+  return formatRecency({
+    instant: parseInstant({ value: lastOpenedAt }),
+    timeZone,
+  });
 }
 
 interface InitialsForInput {
@@ -240,6 +247,7 @@ function SelectChurchRoute() {
                       {accessLabel({ accessLevel: church.accessLevel })} ·{' '}
                       {formatLastOpened({
                         lastOpenedAt: church.lastOpenedAt,
+                        timeZone: church.timezone,
                       })}
                     </span>
                   </span>
@@ -294,7 +302,10 @@ function SelectChurchRoute() {
                       {areasLabel({ availableAreas: church.availableAreas })}
                     </span>
                     <span className="text-muted-foreground text-sm">
-                      {formatLastOpened({ lastOpenedAt: church.lastOpenedAt })}
+                      {formatLastOpened({
+                        lastOpenedAt: church.lastOpenedAt,
+                        timeZone: church.timezone,
+                      })}
                     </span>
                     <span className="flex size-8 items-center justify-center rounded-md text-muted-foreground">
                       <ArrowRight className="size-4" />

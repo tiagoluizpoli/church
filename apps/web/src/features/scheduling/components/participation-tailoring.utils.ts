@@ -6,7 +6,11 @@ import type {
   GetCycleParticipation200EventsItemSlotsItem,
   GetScheduleBuilderData200RolesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
-import { dayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
+import {
+  churchTimeOfDay,
+  dayOf,
+  formatInstantRangeOf,
+} from '@/shared/utils/church-time';
 import { toCycleDayKey } from '@/shared/utils/date';
 
 export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
@@ -384,9 +388,16 @@ function toMinutesSinceMidnight(hhmm: string): number {
   return (hours ?? 0) * 60 + (minutes ?? 0);
 }
 
-function localTimeOfDayInMinutes(isoValue: string): number {
-  const date = new Date(isoValue);
-  return date.getHours() * 60 + date.getMinutes();
+interface ChurchTimeOfDayInMinutesInput {
+  isoValue: string;
+  timeZone: string;
+}
+
+function churchTimeOfDayInMinutes({
+  isoValue,
+  timeZone,
+}: ChurchTimeOfDayInMinutesInput): number {
+  return toMinutesSinceMidnight(churchTimeOfDay({ value: isoValue, timeZone }));
 }
 
 export function isTimeWindowFilterEmpty(filter: TimeWindowFilter): boolean {
@@ -409,21 +420,31 @@ function isWithinWindow({
   return true;
 }
 
+export interface FilterSlotsByTimeOfDayInput {
+  events: GetCycleParticipation200EventsItem[];
+  filter: TimeWindowFilter;
+  timeZone: string;
+}
+
 export function filterSlotsByTimeOfDay({
   events,
   filter,
-}: {
-  events: GetCycleParticipation200EventsItem[];
-  filter: TimeWindowFilter;
-}): GetCycleParticipation200EventsItem[] {
+  timeZone,
+}: FilterSlotsByTimeOfDayInput): GetCycleParticipation200EventsItem[] {
   if (isTimeWindowFilterEmpty(filter)) return events;
 
   return events
     .map((eventView) => ({
       ...eventView,
       slots: eventView.slots.filter((slotView) => {
-        const startMinutes = localTimeOfDayInMinutes(slotView.slot.startTime);
-        const endMinutes = localTimeOfDayInMinutes(slotView.slot.endTime);
+        const startMinutes = churchTimeOfDayInMinutes({
+          isoValue: slotView.slot.startTime,
+          timeZone,
+        });
+        const endMinutes = churchTimeOfDayInMinutes({
+          isoValue: slotView.slot.endTime,
+          timeZone,
+        });
 
         if (filter.mode === 'starts') {
           return isWithinWindow({ minutes: startMinutes, filter });

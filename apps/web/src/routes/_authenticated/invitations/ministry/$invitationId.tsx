@@ -1,6 +1,6 @@
+import { formatRelative, parseInstant } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { formatDistanceToNow } from 'date-fns';
 import {
   ArrowRight,
   CalendarClock,
@@ -455,8 +455,9 @@ function RedeemableInvitationCard({
         </p>
         <p className="text-muted-foreground text-xs">
           Expires{' '}
-          {formatDistanceToNow(new Date(status.expiresAt), {
-            addSuffix: true,
+          {formatRelative({
+            instant: parseInstant({ value: status.expiresAt }),
+            timeZone: 'UTC',
           })}
         </p>
       </div>

@@ -1,3 +1,4 @@
+import { now } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
@@ -391,7 +392,7 @@ export function useCycleBuilder({
             assignmentId: createOptimisticAssignmentId(),
             shiftId,
             body,
-            assignedAt: new Date().toISOString(),
+            assignedAt: now(),
           }),
       }),
     onError: (_error, _variables, context) => rollbackOptimistic({ context }),

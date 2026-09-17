@@ -536,6 +536,7 @@ function TailoringWorkspaceRoute() {
   const filteredEvents = filterSlotsByTimeOfDay({
     events: nameFiltered,
     filter: timeWindowFilter,
+    timeZone: churchTimezone,
   });
 
   const isLoading =

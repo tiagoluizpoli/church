@@ -30,6 +30,11 @@ export interface SlotFormFieldsProps {
   onChange: (values: SlotFormValues) => void;
 }
 
+interface UpdateTimeInput {
+  field: 'start' | 'end';
+  time: TimeOfDay;
+}
+
 /**
  * Label/Start/End fields shared by the Edit-slot and Add-slot dialogs,
  * including the InstantField-vs-TimeOfDayField branching that depends on
@@ -53,7 +58,7 @@ export function SlotFormFields({
     ? null
     : instantSpan({ start: values.start, end: values.end, timeZone });
 
-  function updateTime(field: 'start' | 'end', time: TimeOfDay) {
+  function updateTime({ field, time }: UpdateTimeInput) {
     onChange({
       ...values,
       [field]: toInstant({
@@ -94,7 +99,7 @@ export function SlotFormFields({
             aria-labelledby={`${idPrefix}-start-label`}
             data-testid={`${idPrefix}-start-time-field`}
             value={toTimeOfDay({ instant: values.start, timeZone })}
-            onChange={(time) => updateTime('start', time)}
+            onChange={(time) => updateTime({ field: 'start', time })}
           />
         )}
       </div>
@@ -117,7 +122,7 @@ export function SlotFormFields({
             aria-labelledby={`${idPrefix}-end-label`}
             data-testid={`${idPrefix}-end-time-field`}
             value={toTimeOfDay({ instant: values.end, timeZone })}
-            onChange={(time) => updateTime('end', time)}
+            onChange={(time) => updateTime({ field: 'end', time })}
           />
         )}
         {isInvalidRange ? (

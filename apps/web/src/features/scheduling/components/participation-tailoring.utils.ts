@@ -17,6 +17,7 @@ import {
   formatInstantRangeOf,
 } from '@/shared/utils/church-time';
 import { toCycleDayKey } from '@/shared/utils/date';
+import { isInvalidInstantRange } from '@/shared/utils/span-description';
 
 export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
 
@@ -165,9 +166,8 @@ export function validateManualSpans({
   const slotEnd = parseInstant({ value: slotView.slot.endTime });
 
   if (
-    spans.some(
-      (span) =>
-        compareInstants({ left: span.startTime, right: span.endTime }) !== -1,
+    spans.some((span) =>
+      isInvalidInstantRange({ start: span.startTime, end: span.endTime }),
     )
   ) {
     return 'Each manual shift must end after it starts.';

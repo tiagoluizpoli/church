@@ -8,6 +8,7 @@ import {
 } from '@church/time';
 import { CalendarIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
+import type { DateAfter, DateBefore } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { useFormControlSize } from '@/components/ui/form-control-size';
@@ -75,9 +76,13 @@ export function DatePickerField({
   const formControlSize = useFormControlSize();
   const selected = value ? pickerDateOf({ value }) : undefined;
   const showClear = Boolean(onClear && value && !disabled);
-  const disabledMatchers = [
-    minDate ? { before: pickerDateOf({ value: minDate }) } : null,
-    maxDate ? { after: pickerDateOf({ value: maxDate }) } : null,
+  const disabledMatchers: (DateBefore | DateAfter)[] = [
+    minDate
+      ? ({ before: pickerDateOf({ value: minDate }) } satisfies DateBefore)
+      : null,
+    maxDate
+      ? ({ after: pickerDateOf({ value: maxDate }) } satisfies DateAfter)
+      : null,
   ].filter((matcher) => matcher !== null);
 
   return (

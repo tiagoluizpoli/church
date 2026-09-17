@@ -1,10 +1,4 @@
-import {
-  compareInstants,
-  type Instant,
-  instantSpan,
-  now,
-  parseInstant,
-} from '@church/time';
+import { type Instant, instantSpan, now, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { Trash2Icon } from 'lucide-react';
 import z from 'zod';
@@ -27,7 +21,10 @@ import {
 import type { GetCycleParticipation200EventsItemSlotsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { describeSpan } from '@/shared/utils/span-description';
+import {
+  describeSpan,
+  isInvalidInstantRange,
+} from '@/shared/utils/span-description';
 
 export interface ManualSplitEditorProps {
   slotIndex: number;
@@ -240,10 +237,10 @@ export function ManualSplitEditor({
                     })
                   }
                 />
-                {compareInstants({
-                  left: span.startTime,
-                  right: span.endTime,
-                }) === -1 ? (
+                {!isInvalidInstantRange({
+                  start: span.startTime,
+                  end: span.endTime,
+                }) ? (
                   <p
                     className="text-muted-foreground text-xs"
                     data-testid={`manual-split-span-${slotIndex}-${spanIndex}`}

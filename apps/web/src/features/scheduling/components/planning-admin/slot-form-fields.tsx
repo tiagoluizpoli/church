@@ -1,36 +1,68 @@
-import { parseTimeOfDay, type TimeOfDay } from '@church/time';
-import { timePartOf, withUpdatedTime } from './planning-admin.utils';
+import {
+  type Instant,
+  instantSpan,
+  type TimeOfDay,
+  today,
+  toInstant,
+  toTimeOfDay,
+} from '@church/time';
+import { InstantField } from '@/components/instant-field';
 import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  describeSpan,
+  isInvalidInstantRange,
+} from '@/shared/utils/span-description';
 
 export interface SlotFormValues {
   label: string;
-  startTimeLocal: string;
-  endTimeLocal: string;
+  start: Instant;
+  end: Instant;
   isMultiDayEvent: boolean;
 }
 
 export interface SlotFormFieldsProps {
   idPrefix: string;
   values: SlotFormValues;
+  timeZone: string;
   labelPlaceholder?: string;
   onChange: (values: SlotFormValues) => void;
 }
 
 /**
  * Label/Start/End fields shared by the Edit-slot and Add-slot dialogs,
- * including the datetime-local-vs-time branching that depends on whether the
- * slot's parent event spans a single calendar day or several
- * (`isMultiDayEvent`, see `planning-admin.utils.ts`).
+ * including the InstantField-vs-TimeOfDayField branching that depends on
+ * whether the slot's parent event spans a single calendar day or several
+ * (`isMultiDayEvent`, see `planning-admin.utils.ts`). Both branches combine
+ * through the Church Timezone (`toInstant`/`toTimeOfDay`), so no reading here
+ * depends on the browser's ambient zone (ADR-0003).
  */
 export function SlotFormFields({
   idPrefix,
   values,
+  timeZone,
   labelPlaceholder,
   onChange,
 }: SlotFormFieldsProps) {
-  const isInvalidRange = values.startTimeLocal >= values.endTimeLocal;
+  const isInvalidRange = isInvalidInstantRange({
+    start: values.start,
+    end: values.end,
+  });
+  const span = isInvalidRange
+    ? null
+    : instantSpan({ start: values.start, end: values.end, timeZone });
+
+  function updateTime(field: 'start' | 'end', time: TimeOfDay) {
+    onChange({
+      ...values,
+      [field]: toInstant({
+        day: today({ instant: values[field], timeZone }),
+        time,
+        timeZone,
+      }),
+    });
+  }
 
   return (
     <div className="space-y-3">
@@ -48,31 +80,21 @@ export function SlotFormFields({
           Start
         </Label>
         {values.isMultiDayEvent ? (
-          <Input
-            id={`${idPrefix}-start`}
-            type="datetime-local"
-            value={values.startTimeLocal}
-            onChange={(e) =>
-              onChange({ ...values, startTimeLocal: e.target.value })
-            }
+          <InstantField
+            idPrefix={`${idPrefix}-start`}
+            value={values.start}
+            timeZone={timeZone}
+            data-testid={`${idPrefix}-start`}
+            aria-labelledby={`${idPrefix}-start-label`}
+            onChange={(start) => onChange({ ...values, start })}
           />
         ) : (
           <TimeOfDayField
             id={`${idPrefix}-start`}
             aria-labelledby={`${idPrefix}-start-label`}
             data-testid={`${idPrefix}-start-time-field`}
-            value={parseTimeOfDay({
-              value: timePartOf({ value: values.startTimeLocal }),
-            })}
-            onChange={(time: TimeOfDay) =>
-              onChange({
-                ...values,
-                startTimeLocal: withUpdatedTime({
-                  value: values.startTimeLocal,
-                  time,
-                }),
-              })
-            }
+            value={toTimeOfDay({ instant: values.start, timeZone })}
+            onChange={(time) => updateTime('start', time)}
           />
         )}
       </div>
@@ -81,35 +103,32 @@ export function SlotFormFields({
           End
         </Label>
         {values.isMultiDayEvent ? (
-          <Input
-            id={`${idPrefix}-end`}
-            type="datetime-local"
-            value={values.endTimeLocal}
-            onChange={(e) =>
-              onChange({ ...values, endTimeLocal: e.target.value })
-            }
+          <InstantField
+            idPrefix={`${idPrefix}-end`}
+            value={values.end}
+            timeZone={timeZone}
+            data-testid={`${idPrefix}-end`}
+            aria-labelledby={`${idPrefix}-end-label`}
+            onChange={(end) => onChange({ ...values, end })}
           />
         ) : (
           <TimeOfDayField
             id={`${idPrefix}-end`}
             aria-labelledby={`${idPrefix}-end-label`}
             data-testid={`${idPrefix}-end-time-field`}
-            value={parseTimeOfDay({
-              value: timePartOf({ value: values.endTimeLocal }),
-            })}
-            onChange={(time: TimeOfDay) =>
-              onChange({
-                ...values,
-                endTimeLocal: withUpdatedTime({
-                  value: values.endTimeLocal,
-                  time,
-                }),
-              })
-            }
+            value={toTimeOfDay({ instant: values.end, timeZone })}
+            onChange={(time) => updateTime('end', time)}
           />
         )}
         {isInvalidRange ? (
           <p className="text-destructive text-xs">End must be after start.</p>
+        ) : span ? (
+          <p
+            className="text-muted-foreground text-xs"
+            data-testid={`${idPrefix}-span`}
+          >
+            {describeSpan({ span })}
+          </p>
         ) : null}
       </div>
     </div>

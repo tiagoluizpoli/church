@@ -1,3 +1,10 @@
+import {
+  compareInstants,
+  type Instant,
+  instantSpan,
+  now,
+  parseInstant,
+} from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { Trash2Icon } from 'lucide-react';
 import z from 'zod';
@@ -5,6 +12,7 @@ import {
   type SplitFormState,
   validateManualSpans,
 } from '../participation-tailoring.utils';
+import { InstantField } from '@/components/instant-field';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
@@ -18,6 +26,8 @@ import {
 } from '@/components/ui/select';
 import type { GetCycleParticipation200EventsItemSlotsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { describeSpan } from '@/shared/utils/span-description';
 
 export interface ManualSplitEditorProps {
   slotIndex: number;
@@ -32,8 +42,8 @@ interface ManualSplitSchemaParams {
 }
 
 const manualSpanSchema = z.object({
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: z.custom<Instant>(),
+  endTime: z.custom<Instant>(),
   label: z.string(),
 });
 
@@ -83,6 +93,7 @@ export function ManualSplitEditor({
   splitForm,
   onSplitFormChange,
 }: ManualSplitEditorProps) {
+  const { churchTimezone } = useTimezone();
   const isMobile = useFormControlSize() === 'touch';
   const form = useForm({
     defaultValues: splitForm,
@@ -195,40 +206,57 @@ export function ManualSplitEditor({
                 </Button>
               </div>
               <div className="grid gap-2">
-                <Input
+                <InstantField
+                  idPrefix={`manual-split-start-${slotIndex}-${spanIndex}`}
                   data-testid={`manual-split-start-${slotIndex}-${spanIndex}`}
-                  type="datetime-local"
-                  aria-label="Shift start"
                   value={span.startTime}
-                  onChange={(event) =>
+                  timeZone={churchTimezone}
+                  onChange={(startTime) =>
                     updateSplitForm({
                       ...splitForm,
                       manualSpans: splitForm.manualSpans.map(
                         (currentSpan, currentIndex) =>
                           currentIndex === spanIndex
-                            ? { ...currentSpan, startTime: event.target.value }
+                            ? { ...currentSpan, startTime }
                             : currentSpan,
                       ),
                     })
                   }
                 />
-                <Input
+                <InstantField
+                  idPrefix={`manual-split-end-${slotIndex}-${spanIndex}`}
                   data-testid={`manual-split-end-${slotIndex}-${spanIndex}`}
-                  type="datetime-local"
-                  aria-label="Shift end"
                   value={span.endTime}
-                  onChange={(event) =>
+                  timeZone={churchTimezone}
+                  onChange={(endTime) =>
                     updateSplitForm({
                       ...splitForm,
                       manualSpans: splitForm.manualSpans.map(
                         (currentSpan, currentIndex) =>
                           currentIndex === spanIndex
-                            ? { ...currentSpan, endTime: event.target.value }
+                            ? { ...currentSpan, endTime }
                             : currentSpan,
                       ),
                     })
                   }
                 />
+                {compareInstants({
+                  left: span.startTime,
+                  right: span.endTime,
+                }) === -1 ? (
+                  <p
+                    className="text-muted-foreground text-xs"
+                    data-testid={`manual-split-span-${slotIndex}-${spanIndex}`}
+                  >
+                    {describeSpan({
+                      span: instantSpan({
+                        start: span.startTime,
+                        end: span.endTime,
+                        timeZone: churchTimezone,
+                      }),
+                    })}
+                  </p>
+                ) : null}
                 <Input
                   data-testid={`manual-split-label-${slotIndex}-${spanIndex}`}
                   value={span.label}
@@ -259,7 +287,15 @@ export function ManualSplitEditor({
                 ...splitForm,
                 manualSpans: [
                   ...splitForm.manualSpans,
-                  { startTime: '', endTime: '', label: '' },
+                  {
+                    startTime: slotView
+                      ? parseInstant({ value: slotView.slot.startTime })
+                      : now(),
+                    endTime: slotView
+                      ? parseInstant({ value: slotView.slot.endTime })
+                      : now(),
+                    label: '',
+                  },
                 ],
               })
             }

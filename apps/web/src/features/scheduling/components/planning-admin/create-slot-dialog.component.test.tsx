@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -7,8 +8,8 @@ import type { CreatingSlotState } from './planning-admin.types';
 const creatingSlot: CreatingSlotState = {
   eventId: 'event-1',
   label: 'Worship',
-  startTimeLocal: '2025-01-05T09:00',
-  endTimeLocal: '2025-01-05T10:00',
+  start: parseInstant({ value: '2025-01-05T09:00:00Z' }),
+  end: parseInstant({ value: '2025-01-05T10:00:00Z' }),
   isMultiDayEvent: false,
 };
 
@@ -21,6 +22,7 @@ describe('CreateSlotDialog', () => {
       <CreateSlotDialog
         creatingSlot={creatingSlot}
         createSlotPending={false}
+        timeZone="UTC"
         onChange={vi.fn()}
         onOpenChange={vi.fn()}
         onSubmit={onSubmit}
@@ -38,10 +40,11 @@ describe('CreateSlotDialog', () => {
       <CreateSlotDialog
         creatingSlot={{
           ...creatingSlot,
-          startTimeLocal: '2025-01-05T10:00',
-          endTimeLocal: '2025-01-05T09:00',
+          start: parseInstant({ value: '2025-01-05T10:00:00Z' }),
+          end: parseInstant({ value: '2025-01-05T09:00:00Z' }),
         }}
         createSlotPending={false}
+        timeZone="UTC"
         onChange={vi.fn()}
         onOpenChange={vi.fn()}
         onSubmit={vi.fn()}

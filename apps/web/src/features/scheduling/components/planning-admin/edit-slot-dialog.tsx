@@ -2,10 +2,12 @@ import type { EditingSlotState } from './planning-admin.types';
 import { SlotFormFields } from './slot-form-fields';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
+import { isInvalidInstantRange } from '@/shared/utils/span-description';
 
 export interface EditSlotDialogProps {
   editingSlot: EditingSlotState | null;
   updateSlotPending: boolean;
+  timeZone: string;
   onChange: (slot: EditingSlotState) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
@@ -16,6 +18,7 @@ export interface EditSlotDialogProps {
 export function EditSlotDialog({
   editingSlot,
   updateSlotPending,
+  timeZone,
   onChange,
   onOpenChange,
   onSubmit,
@@ -38,7 +41,10 @@ export function EditSlotDialog({
             type="button"
             disabled={
               !editingSlot ||
-              editingSlot.startTimeLocal >= editingSlot.endTimeLocal ||
+              isInvalidInstantRange({
+                start: editingSlot.start,
+                end: editingSlot.end,
+              }) ||
               updateSlotPending
             }
             onClick={onSubmit}
@@ -52,6 +58,7 @@ export function EditSlotDialog({
         <SlotFormFields
           idPrefix="edit-slot"
           values={editingSlot}
+          timeZone={timeZone}
           onChange={(values) => onChange({ ...editingSlot, ...values })}
         />
       ) : null}

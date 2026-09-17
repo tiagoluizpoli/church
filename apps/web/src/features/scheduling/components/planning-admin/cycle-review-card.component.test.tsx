@@ -916,14 +916,21 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'Add slot' });
-    expect(within(dialog).getByLabelText('Start')).toHaveAttribute(
-      'type',
-      'datetime-local',
-    );
-    expect(within(dialog).getByLabelText('End')).toHaveAttribute(
-      'type',
-      'datetime-local',
-    );
+    expect(
+      within(dialog).getByTestId('create-slot-start-date'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('create-slot-start-time'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('create-slot-end-date'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('create-slot-end-time'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByTestId('create-slot-start-time-field'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows time-only fields in the Edit slot dialog for a single-day event slot', async () => {
@@ -966,14 +973,21 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
-    expect(within(dialog).getByLabelText('Start')).toHaveAttribute(
-      'type',
-      'datetime-local',
-    );
-    expect(within(dialog).getByLabelText('End')).toHaveAttribute(
-      'type',
-      'datetime-local',
-    );
+    expect(
+      within(dialog).getByTestId('edit-slot-start-date'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('edit-slot-start-time'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('edit-slot-end-date'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByTestId('edit-slot-end-time'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByTestId('edit-slot-start-time-field'),
+    ).not.toBeInTheDocument();
   });
 });
 

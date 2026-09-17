@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,7 @@ const editingEvent: EditingEventState = {
   title: 'Sunday Service',
   description: '',
   location: '',
-  startDateTimeLocal: '2026-06-28T09:00',
+  start: parseInstant({ value: '2026-06-28T09:00:00.000Z' }),
   originalStartDate: '2026-06-28T09:00:00.000Z',
   originalEndDate: '2026-06-28T10:00:00.000Z',
 };
@@ -23,6 +24,7 @@ describe('EditEventDialog', () => {
       <EditEventDialog
         editingEvent={editingEvent}
         updateEventPending={false}
+        timeZone="UTC"
         onChange={vi.fn()}
         onOpenChange={vi.fn()}
         onSubmit={onSubmit}
@@ -42,6 +44,7 @@ describe('EditEventDialog', () => {
       <EditEventDialog
         editingEvent={{ ...editingEvent, title: '  ' }}
         updateEventPending={false}
+        timeZone="UTC"
         onChange={vi.fn()}
         onOpenChange={vi.fn()}
         onSubmit={vi.fn()}

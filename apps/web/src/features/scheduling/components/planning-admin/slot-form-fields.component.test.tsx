@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
@@ -10,17 +11,20 @@ import {
 import { renderWithProviders } from '@/__tests__/setup/render';
 import { fillTimeOfDayField } from '@/__tests__/setup/time-of-day';
 
+const TIME_ZONE = 'America/Sao_Paulo';
+
+// 09:00–10:00 America/Sao_Paulo (UTC-3).
 const initialSingleDayValues: SlotFormValues = {
   label: 'Worship',
-  startTimeLocal: '2025-01-05T09:00',
-  endTimeLocal: '2025-01-05T10:00',
+  start: parseInstant({ value: '2025-01-05T12:00:00.000Z' }),
+  end: parseInstant({ value: '2025-01-05T13:00:00.000Z' }),
   isMultiDayEvent: false,
 };
 
 const multiDayValues: SlotFormValues = {
   label: 'Overnight watch',
-  startTimeLocal: '2025-01-05T22:00',
-  endTimeLocal: '2025-01-06T06:00',
+  start: parseInstant({ value: '2025-01-06T01:00:00.000Z' }),
+  end: parseInstant({ value: '2025-01-06T09:00:00.000Z' }),
   isMultiDayEvent: true,
 };
 
@@ -37,6 +41,7 @@ function Harness({ onChange }: HarnessProps) {
     <SlotFormFields
       idPrefix="create-slot"
       values={values}
+      timeZone={TIME_ZONE}
       onChange={(next) => {
         setValues(next);
         onChange(next);
@@ -46,7 +51,7 @@ function Harness({ onChange }: HarnessProps) {
 }
 
 describe('SlotFormFields', () => {
-  it('single-day: drives the start TimeOfDay field, preserving the underlying date', async () => {
+  it('single-day: drives the start TimeOfDay field through the Church Timezone, preserving the underlying date', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(<Harness onChange={onChange} />);
@@ -59,7 +64,7 @@ describe('SlotFormFields', () => {
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...initialSingleDayValues,
-      startTimeLocal: '2025-01-05T08:30',
+      start: parseInstant({ value: '2025-01-05T11:30:00.000Z' }),
     });
   });
 
@@ -76,7 +81,7 @@ describe('SlotFormFields', () => {
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...initialSingleDayValues,
-      endTimeLocal: '2025-01-05T11:15',
+      end: parseInstant({ value: '2025-01-05T14:15:00.000Z' }),
     });
   });
 
@@ -85,6 +90,7 @@ describe('SlotFormFields', () => {
       <SlotFormFields
         idPrefix="create-slot"
         values={initialSingleDayValues}
+        timeZone={TIME_ZONE}
         onChange={vi.fn()}
       />,
     );
@@ -94,25 +100,40 @@ describe('SlotFormFields', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('multi-day: keeps datetime-local inputs, not the TimeOfDay field', () => {
+  it('multi-day: renders CalendarDay + TimeOfDay InstantFields, not the TimeOfDay-only field', () => {
     renderWithProviders(
       <SlotFormFields
         idPrefix="create-slot"
         values={multiDayValues}
+        timeZone={TIME_ZONE}
         onChange={vi.fn()}
       />,
     );
 
-    expect(screen.getByLabelText('Start')).toHaveAttribute(
-      'type',
-      'datetime-local',
-    );
-    expect(screen.getByLabelText('End')).toHaveAttribute(
-      'type',
-      'datetime-local',
-    );
+    expect(screen.getByTestId('create-slot-start-date')).toBeInTheDocument();
+    expect(screen.getByTestId('create-slot-start-time')).toBeInTheDocument();
+    expect(screen.getByTestId('create-slot-end-date')).toBeInTheDocument();
+    expect(screen.getByTestId('create-slot-end-time')).toBeInTheDocument();
     expect(
       screen.queryByTestId('create-slot-start-time-field'),
     ).not.toBeInTheDocument();
+    expect(
+      document.querySelector('input[type="datetime-local"]'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the computed-span confirmation for a span crossing midnight', () => {
+    renderWithProviders(
+      <SlotFormFields
+        idPrefix="create-slot"
+        values={multiDayValues}
+        timeZone={TIME_ZONE}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('create-slot-span')).toHaveTextContent(
+      /Runs \d+h/,
+    );
   });
 });

@@ -31,7 +31,6 @@ import {
   type SplitFormState,
   type TimeWindowFilter,
   toHeadcountKey,
-  toIsoString,
   validateManualSpans,
 } from '@/features/scheduling/components/participation-tailoring.utils';
 import { TailoringCalendar } from '@/features/scheduling/components/tailoring/tailoring-calendar';
@@ -407,8 +406,8 @@ function TailoringWorkspaceRoute() {
           strategy: {
             kind: 'manual',
             spans: form.manualSpans.map((span) => ({
-              startTime: toIsoString(span.startTime),
-              endTime: toIsoString(span.endTime),
+              startTime: span.startTime,
+              endTime: span.endTime,
               label: span.label || undefined,
             })),
           },

@@ -2,10 +2,12 @@ import type { CreatingSlotState } from './planning-admin.types';
 import { SlotFormFields } from './slot-form-fields';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
+import { isInvalidInstantRange } from '@/shared/utils/span-description';
 
 export interface CreateSlotDialogProps {
   creatingSlot: CreatingSlotState | null;
   createSlotPending: boolean;
+  timeZone: string;
   onChange: (slot: CreatingSlotState) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
@@ -16,6 +18,7 @@ export interface CreateSlotDialogProps {
 export function CreateSlotDialog({
   creatingSlot,
   createSlotPending,
+  timeZone,
   onChange,
   onOpenChange,
   onSubmit,
@@ -38,7 +41,10 @@ export function CreateSlotDialog({
             type="button"
             disabled={
               !creatingSlot ||
-              creatingSlot.startTimeLocal >= creatingSlot.endTimeLocal ||
+              isInvalidInstantRange({
+                start: creatingSlot.start,
+                end: creatingSlot.end,
+              }) ||
               createSlotPending
             }
             onClick={onSubmit}
@@ -52,6 +58,7 @@ export function CreateSlotDialog({
         <SlotFormFields
           idPrefix="create-slot"
           values={creatingSlot}
+          timeZone={timeZone}
           labelPlaceholder="e.g. Worship"
           onChange={(values) => onChange({ ...creatingSlot, ...values })}
         />

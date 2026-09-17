@@ -1,3 +1,4 @@
+import { parseInstant } from '@church/time';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -8,6 +9,9 @@ import {
 import { renderWithProviders } from '@/__tests__/setup/render';
 import type { SplitFormState } from '@/features/scheduling/components/participation-tailoring.utils';
 import type { GetCycleParticipation200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
+
+const SPAN_START = parseInstant({ value: '2026-07-12T09:00:00Z' });
+const SPAN_END = parseInstant({ value: '2026-07-12T10:00:00Z' });
 
 const SINGLE_FORM: SplitFormState = {
   mode: 'equal',
@@ -24,7 +28,7 @@ const EQUAL_FORM: SplitFormState = {
 const MANUAL_FORM: SplitFormState = {
   mode: 'manual',
   equalCount: '2',
-  manualSpans: [{ startTime: '', endTime: '', label: '' }],
+  manualSpans: [{ startTime: SPAN_START, endTime: SPAN_END, label: '' }],
 };
 
 describe('ManualSplitEditor mode switching (US3/T022/T023)', () => {
@@ -154,11 +158,13 @@ describe('ManualSplitEditor manual spans (T001/T023)', () => {
 
     await user.click(screen.getByTestId('add-manual-split-0'));
 
-    expect(onSplitFormChange).toHaveBeenCalledWith({
-      mode: 'manual',
-      equalCount: '2',
-      manualSpans: [{ startTime: '', endTime: '', label: '' }],
-    });
+    expect(onSplitFormChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'manual',
+        equalCount: '2',
+        manualSpans: [expect.objectContaining({ label: '' })],
+      }),
+    );
   });
 
   it('updates an existing span field without touching sibling spans', async () => {
@@ -172,8 +178,8 @@ describe('ManualSplitEditor manual spans (T001/T023)', () => {
           mode: 'manual',
           equalCount: '2',
           manualSpans: [
-            { startTime: '', endTime: '', label: 'first' },
-            { startTime: '', endTime: '', label: 'second' },
+            { startTime: SPAN_START, endTime: SPAN_END, label: 'first' },
+            { startTime: SPAN_START, endTime: SPAN_END, label: 'second' },
           ],
         }}
         onSplitFormChange={onSplitFormChange}
@@ -194,8 +200,8 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
       id: 'slot-1',
       churchId: 'church-1',
       eventId: 'event-1',
-      startTime: '2026-07-12T09:00:00',
-      endTime: '2026-07-12T11:00:00',
+      startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+      endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
       label: 'Greeter',
       status: 'active',
       requirements: [],
@@ -217,13 +223,13 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     expect(
       parseManual([
         {
-          startTime: '2026-07-12T09:00:00',
-          endTime: '2026-07-12T10:00:00',
+          startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
           label: '',
         },
         {
-          startTime: '2026-07-12T10:00:00',
-          endTime: '2026-07-12T11:00:00',
+          startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
           label: '',
         },
       ]).success,
@@ -234,8 +240,8 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     expect(
       parseManual([
         {
-          startTime: '2026-07-12T09:00:00',
-          endTime: '2026-07-12T09:00:00',
+          startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
           label: '',
         },
       ]).success,
@@ -246,8 +252,8 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     expect(
       parseManual([
         {
-          startTime: '2026-07-12T10:00:00',
-          endTime: '2026-07-12T09:00:00',
+          startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
           label: '',
         },
       ]).success,
@@ -258,8 +264,8 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     expect(
       parseManual([
         {
-          startTime: '2026-07-12T08:00:00',
-          endTime: '2026-07-12T10:00:00',
+          startTime: parseInstant({ value: '2026-07-12T08:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
           label: '',
         },
       ]).success,
@@ -270,8 +276,8 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     expect(
       parseManual([
         {
-          startTime: '2026-07-12T09:00:00',
-          endTime: '2026-07-12T12:00:00',
+          startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T12:00:00Z' }),
           label: '',
         },
       ]).success,
@@ -282,13 +288,13 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     expect(
       parseManual([
         {
-          startTime: '2026-07-12T09:00:00',
-          endTime: '2026-07-12T10:30:00',
+          startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T10:30:00Z' }),
           label: '',
         },
         {
-          startTime: '2026-07-12T10:00:00',
-          endTime: '2026-07-12T11:00:00',
+          startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
           label: '',
         },
       ]).success,
@@ -297,13 +303,13 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     expect(
       parseManual([
         {
-          startTime: '2026-07-12T09:00:00',
-          endTime: '2026-07-12T10:00:00',
+          startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
           label: '',
         },
         {
-          startTime: '2026-07-12T09:00:00',
-          endTime: '2026-07-12T10:00:00',
+          startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+          endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
           label: '',
         },
       ]).success,
@@ -317,8 +323,34 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
         equalCount: '3',
         manualSpans: [
           {
-            startTime: '2026-07-12T08:00:00',
-            endTime: '2026-07-12T07:00:00',
+            startTime: parseInstant({ value: '2026-07-12T08:00:00Z' }),
+            endTime: parseInstant({ value: '2026-07-12T07:00:00Z' }),
+            label: '',
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts a manual span within a parent TimeSlot whose own bounds cross midnight', () => {
+    const overnightSlotView: GetCycleParticipation200EventsItem['slots'][number] =
+      {
+        ...SLOT_VIEW,
+        slot: {
+          ...SLOT_VIEW.slot,
+          startTime: '2026-07-12T22:00:00Z',
+          endTime: '2026-07-13T02:00:00Z',
+        },
+      };
+
+    expect(
+      createManualSplitSchema({ slotView: overnightSlotView }).safeParse({
+        mode: 'manual',
+        equalCount: '2',
+        manualSpans: [
+          {
+            startTime: parseInstant({ value: '2026-07-12T22:00:00Z' }),
+            endTime: parseInstant({ value: '2026-07-13T02:00:00Z' }),
             label: '',
           },
         ],

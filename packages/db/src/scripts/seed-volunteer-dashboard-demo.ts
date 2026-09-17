@@ -1,3 +1,15 @@
+import {
+  addCalendarDays,
+  addMilliseconds,
+  type CalendarDay,
+  type Instant,
+  now,
+  nowAsDate,
+  parseTimeOfDay,
+  toDate,
+  today,
+  toInstant,
+} from '@church/time';
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../client';
 import * as schema from '../schema';
@@ -71,7 +83,17 @@ interface EnsureVolunteerContextInput {
 }
 
 interface BuildEventSpecsInput {
-  now: Date;
+  referenceInstant: Instant;
+  timeZone: string;
+}
+
+interface ChurchLocalInstantInput {
+  day: CalendarDay;
+  time: string;
+}
+
+interface MinutesAfterInput {
+  minutes: number;
 }
 
 interface EnsureEventInput {
@@ -393,53 +415,65 @@ async function ensureVolunteerContext({
   };
 }
 
-function buildEventSpecs({ now }: BuildEventSpecsInput): DemoEventPlan {
-  const pendingStart = new Date(now);
-  pendingStart.setDate(now.getDate() + 7);
-  pendingStart.setHours(8, 0, 0, 0);
+function buildEventSpecs({
+  referenceInstant,
+  timeZone,
+}: BuildEventSpecsInput): DemoEventPlan {
+  const referenceDay = today({ instant: referenceInstant, timeZone });
+  const pendingDay = addCalendarDays({ day: referenceDay, days: 7 });
+  const confirmedDay = addCalendarDays({ day: referenceDay, days: 14 });
 
-  const pendingEnd = new Date(pendingStart);
-  pendingEnd.setHours(20, 0, 0, 0);
+  const churchLocalInstant = ({ day, time }: ChurchLocalInstantInput) =>
+    toInstant({ day, time: parseTimeOfDay({ value: time }), timeZone });
 
-  const confirmedStart = new Date(now);
-  confirmedStart.setDate(now.getDate() + 14);
-  confirmedStart.setHours(19, 0, 0, 0);
+  const pendingStart = churchLocalInstant({ day: pendingDay, time: '08:00' });
+  const pendingEnd = churchLocalInstant({ day: pendingDay, time: '20:00' });
+  const confirmedStart = churchLocalInstant({
+    day: confirmedDay,
+    time: '19:00',
+  });
+  const confirmedEnd = churchLocalInstant({ day: confirmedDay, time: '21:00' });
 
-  const confirmedEnd = new Date(confirmedStart);
-  confirmedEnd.setHours(21, 0, 0, 0);
+  const minutesAfterPendingStart = ({ minutes }: MinutesAfterInput) =>
+    toDate({
+      instant: addMilliseconds({
+        instant: pendingStart,
+        milliseconds: minutes * 60_000,
+      }),
+    });
 
   return {
     pendingEvent: {
       title: DEMO_PENDING_EVENT_TITLE,
-      startDate: pendingStart,
-      endDate: pendingEnd,
+      startDate: toDate({ instant: pendingStart }),
+      endDate: toDate({ instant: pendingEnd }),
       slots: [
         {
           label: '8:00 AM Service',
-          startTime: new Date(pendingStart),
-          endTime: new Date(pendingStart.getTime() + 90 * 60 * 1000),
+          startTime: minutesAfterPendingStart({ minutes: 0 }),
+          endTime: minutesAfterPendingStart({ minutes: 90 }),
         },
         {
           label: '10:30 AM Service',
-          startTime: new Date(pendingStart.getTime() + 150 * 60 * 1000),
-          endTime: new Date(pendingStart.getTime() + 240 * 60 * 1000),
+          startTime: minutesAfterPendingStart({ minutes: 150 }),
+          endTime: minutesAfterPendingStart({ minutes: 240 }),
         },
         {
           label: '6:30 PM Service',
-          startTime: new Date(pendingStart.getTime() + 630 * 60 * 1000),
-          endTime: new Date(pendingStart.getTime() + 720 * 60 * 1000),
+          startTime: minutesAfterPendingStart({ minutes: 630 }),
+          endTime: minutesAfterPendingStart({ minutes: 720 }),
         },
       ],
     },
     confirmedEvent: {
       title: DEMO_CONFIRMED_EVENT_TITLE,
-      startDate: confirmedStart,
-      endDate: confirmedEnd,
+      startDate: toDate({ instant: confirmedStart }),
+      endDate: toDate({ instant: confirmedEnd }),
       slots: [
         {
           label: 'Prayer Team',
-          startTime: confirmedStart,
-          endTime: confirmedEnd,
+          startTime: toDate({ instant: confirmedStart }),
+          endTime: toDate({ instant: confirmedEnd }),
         },
       ],
     },
@@ -457,8 +491,18 @@ async function ensureEvent({ context, spec }: EnsureEventInput) {
         .values({
           churchId: context.church.id,
           name: 'Volunteer dashboard demo',
-          startDate: new Date(Date.now() - 86_400_000),
-          endDate: new Date(Date.now() + 60 * 86_400_000),
+          startDate: toDate({
+            instant: addMilliseconds({
+              instant: now(),
+              milliseconds: -86_400_000,
+            }),
+          }),
+          endDate: toDate({
+            instant: addMilliseconds({
+              instant: now(),
+              milliseconds: 60 * 86_400_000,
+            }),
+          }),
           state: 'locked',
         })
         .returning()
@@ -733,8 +777,10 @@ export async function seedVolunteerDashboardDemo({
 }: SeedVolunteerDashboardDemoInput) {
   const user = await resolveTargetUser({ email });
   const context = await ensureVolunteerContext({ user });
-  const now = new Date();
-  const { pendingEvent, confirmedEvent } = buildEventSpecs({ now });
+  const { pendingEvent, confirmedEvent } = buildEventSpecs({
+    referenceInstant: now(),
+    timeZone: context.church.timezone,
+  });
   const pending = await ensureEvent({ context, spec: pendingEvent });
   const confirmed = await ensureEvent({ context, spec: confirmedEvent });
 
@@ -803,7 +849,7 @@ export async function seedVolunteerDashboardDemo({
     type: 'assignment_reminder',
     eventId: pending.event.id,
     assignmentId: confirmedAssignment.id,
-    readAt: new Date(),
+    readAt: nowAsDate(),
   });
 
   return {

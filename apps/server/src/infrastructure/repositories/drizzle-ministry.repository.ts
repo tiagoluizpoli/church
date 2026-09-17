@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { ministry } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, asc, eq } from 'drizzle-orm';
 import type { ChurchId, MinistryId } from '../../domain/branded-ids';
 import type {
@@ -77,7 +78,7 @@ export class DrizzleMinistryRepository implements MinistryRepository {
       .update(ministry)
       .set({
         defaultDirection: input.defaultDirection,
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(
         and(

@@ -7,6 +7,7 @@ import {
   slotRequirement,
   timeSlot,
 } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, asc, eq } from 'drizzle-orm';
 import type { TimeSlotId } from '../../domain/branded-ids';
 import type {
@@ -78,7 +79,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           : {}),
         ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(
         and(

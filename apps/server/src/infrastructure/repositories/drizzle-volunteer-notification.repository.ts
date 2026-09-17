@@ -1,4 +1,5 @@
 import { volunteerNotification } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, count, desc, eq, isNull, lt } from 'drizzle-orm';
 import type {
   ChurchId,
@@ -113,7 +114,7 @@ export class DrizzleVolunteerNotificationRepository
     notificationId: VolunteerNotificationId,
     tx?: TransactionContext,
   ): Promise<Date | null> {
-    const readAt = new Date();
+    const readAt = nowAsDate();
     const [row] = await getClient(this.db, tx)
       .update(volunteerNotification)
       .set({ readAt })
@@ -136,7 +137,7 @@ export class DrizzleVolunteerNotificationRepository
   ): Promise<number> {
     const result = await getClient(this.db, tx)
       .update(volunteerNotification)
-      .set({ readAt: new Date() })
+      .set({ readAt: nowAsDate() })
       .where(
         and(
           withChurchIsolation(volunteerNotification, churchId),

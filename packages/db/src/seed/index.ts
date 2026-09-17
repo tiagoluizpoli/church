@@ -28,10 +28,10 @@ export async function seedDatabase() {
     teams,
     roles,
   });
-  const { events, participations, blocks } = await generateEvents(
+  const { events, participations, blocks } = await generateEvents({
     ministries,
     roles,
-  );
+  });
   const { requirements } = await generateSlotsAndRequirements(
     events,
     participations,

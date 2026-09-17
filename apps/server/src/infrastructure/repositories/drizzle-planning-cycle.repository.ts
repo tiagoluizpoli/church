@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { planningCycle } from '@church/db';
+import { nowAsDate } from '@church/time';
 import { and, eq, gt, lt, sql } from 'drizzle-orm';
 import type {
   AcquirePlanningCycleChurchLockInput,
@@ -112,7 +113,7 @@ export class DrizzlePlanningCycleRepository implements PlanningCycleRepository {
       .update(planningCycle)
       .set({
         state: input.state,
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(
         and(

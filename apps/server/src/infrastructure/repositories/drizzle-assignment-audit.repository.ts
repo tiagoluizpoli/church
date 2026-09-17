@@ -9,6 +9,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
+import { fromDate, nowAsDate } from '@church/time';
 import { aliasedTable, and, desc, eq } from 'drizzle-orm';
 import type {
   AssignmentId,
@@ -61,7 +62,7 @@ export class DrizzleAssignmentAuditRepository
           | 'deleted'
           | 'status_change',
         reason: input.reason ?? null,
-        timestamp: new Date(),
+        timestamp: nowAsDate(),
       })
       .returning();
     if (!row) throw new Error('AssignmentAudit insert failed');
@@ -197,7 +198,7 @@ export class DrizzleAssignmentAuditRepository
       volunteerId: r.volunteerId,
       volunteerName: r.volunteerName ?? r.volunteerId,
       slotId: r.slotId,
-      slotLabel: r.slotLabel ?? r.slotStart.toISOString(),
+      slotLabel: r.slotLabel ?? fromDate({ date: r.slotStart }),
       roleId: r.roleId,
       roleName: r.roleName,
       action: r.action as AssignmentAuditLogEntry['action'],

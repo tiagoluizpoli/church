@@ -1,17 +1,26 @@
+import { addMilliseconds, fromDate, parseInstant, toDate } from '@church/time';
 import { faker } from '@faker-js/faker';
 import { db } from '../../client';
 import * as schema from '../../schema';
 import { SEED_CONFIG } from '../constants';
 import { logStep, logSuccess } from '../utils';
 
-export async function generateEvents(
-  ministries: (typeof schema.ministry.$inferSelect)[],
-  roles: (typeof schema.role.$inferSelect)[],
-) {
+const DAY_MS = 86_400_000;
+
+export interface GenerateEventsInput {
+  ministries: (typeof schema.ministry.$inferSelect)[];
+  roles: (typeof schema.role.$inferSelect)[];
+}
+
+export async function generateEvents({
+  ministries,
+  roles,
+}: GenerateEventsInput) {
   logStep('Generating planning cycles, templates, and events...');
   faker.seed(SEED_CONFIG.GLOBAL_SEED + 5);
 
-  const referenceDate = new Date(SEED_CONFIG.REFERENCE_DATE);
+  const referenceInstant = parseInstant({ value: SEED_CONFIG.REFERENCE_DATE });
+  const referenceDate = toDate({ instant: referenceInstant });
   const churchIds = [...new Set(ministries.map(({ churchId }) => churchId))];
   const cycles = await db
     .insert(schema.planningCycle)
@@ -20,8 +29,18 @@ export async function generateEvents(
         id: faker.string.uuid(),
         churchId,
         name: 'Demo planning cycle',
-        startDate: new Date(referenceDate.getTime() - 45 * 86_400_000),
-        endDate: new Date(referenceDate.getTime() + 120 * 86_400_000),
+        startDate: toDate({
+          instant: addMilliseconds({
+            instant: referenceInstant,
+            milliseconds: -45 * DAY_MS,
+          }),
+        }),
+        endDate: toDate({
+          instant: addMilliseconds({
+            instant: referenceInstant,
+            milliseconds: 120 * DAY_MS,
+          }),
+        }),
         state: 'locked' as const,
       })),
     )
@@ -96,7 +115,12 @@ export async function generateEvents(
         description: faker.lorem.sentence(),
         location: SEED_CONFIG.DEFAULT_LOCATION,
         startDate,
-        endDate: new Date(startDate.getTime() + 2 * 3_600_000),
+        endDate: toDate({
+          instant: addMilliseconds({
+            instant: fromDate({ date: startDate }),
+            milliseconds: 2 * 3_600_000,
+          }),
+        }),
         status: 'past',
       });
     }
@@ -118,7 +142,12 @@ export async function generateEvents(
         description: faker.lorem.sentence(),
         location: SEED_CONFIG.DEFAULT_LOCATION,
         startDate,
-        endDate: new Date(startDate.getTime() + 2 * 3_600_000),
+        endDate: toDate({
+          instant: addMilliseconds({
+            instant: fromDate({ date: startDate }),
+            milliseconds: 2 * 3_600_000,
+          }),
+        }),
         status: 'scheduled',
       });
     }

@@ -28,7 +28,6 @@ import {
   createInitialSplitForms,
   filterSlotsByName,
   filterSlotsByTimeOfDay,
-  formatDate,
   type SplitFormState,
   type TimeWindowFilter,
   toHeadcountKey,
@@ -46,7 +45,8 @@ import type {
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemSlotsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
-import { toLocalDayKey } from '@/shared/utils/date';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -280,6 +280,7 @@ function editSessionReducer(
 function TailoringWorkspaceRoute() {
   const { ministryId, cycleId } = Route.useParams();
   const queryClient = useQueryClient();
+  const { churchTimezone } = useTimezone();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
@@ -509,7 +510,10 @@ function TailoringWorkspaceRoute() {
     withResolver: true,
   });
 
-  const eventDayMarkers = buildSlotDayMarkers({ events });
+  const eventDayMarkers = buildSlotDayMarkers({
+    events,
+    timeZone: churchTimezone,
+  });
 
   const dayFiltered = selectedDate
     ? events
@@ -517,7 +521,10 @@ function TailoringWorkspaceRoute() {
           ...eventView,
           slots: eventView.slots.filter(
             (slotView) =>
-              toLocalDayKey(slotView.slot.startTime) === selectedDate,
+              dayOf({
+                value: slotView.slot.startTime,
+                timeZone: churchTimezone,
+              }) === selectedDate,
           ),
         }))
         .filter((eventView) => eventView.slots.length > 0)
@@ -558,7 +565,7 @@ function TailoringWorkspaceRoute() {
     )
     .map((eventView) => eventView.event.title);
   const cycleDateSpan = cycleQuery.data
-    ? `${formatDate(cycleQuery.data.cycle.startDate)} – ${formatDate(cycleQuery.data.cycle.endDate)}`
+    ? `${formatCalendarDateOnly({ value: cycleQuery.data.cycle.startDate })} – ${formatCalendarDateOnly({ value: cycleQuery.data.cycle.endDate })}`
     : null;
 
   return (

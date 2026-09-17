@@ -149,7 +149,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     handleUpdateSlot,
     handleDeleteSlot,
   } = useCycleReviewCard();
-  const { format } = useTimezone();
+  const { churchTimezone } = useTimezone();
   const [calendarRowsState, setCalendarRowsState] =
     useState<ExpandedCalendarRowsState>({ expandedEventIds: new Set() });
   const [dialogState, dispatchDialog] = useReducer(dialogReducer, {
@@ -514,7 +514,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                             }
                             deleteEventPending={deleteEventPending}
                             deleteSlotPending={deleteSlotPending}
-                            format={format}
+                            timeZone={churchTimezone}
                             onToggleExpand={toggleEventExpanded}
                             onAddSlotRequest={startCreateSlot}
                             onEditEventRequest={startEditEvent}

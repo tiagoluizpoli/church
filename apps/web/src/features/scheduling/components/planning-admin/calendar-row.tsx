@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
-import type { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export const CALENDAR_TABLE_COLUMNS = [
   { id: 'event', name: 'Event' },
@@ -162,7 +162,7 @@ export interface CalendarRowProps {
   isConfirmingDeleteSlot: boolean;
   deleteEventPending: boolean;
   deleteSlotPending: boolean;
-  format: ReturnType<typeof useTimezone>['format'];
+  timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
   onAddSlotRequest: (input: StartCreateSlotInput) => void;
   onEditEventRequest: (input: StartEditEventInput) => void;
@@ -193,7 +193,7 @@ export function CalendarRow({
   isConfirmingDeleteSlot,
   deleteEventPending,
   deleteSlotPending,
-  format,
+  timeZone,
   onToggleExpand,
   onAddSlotRequest,
   onEditEventRequest,
@@ -228,7 +228,7 @@ export function CalendarRow({
               isReadOnly={isReadOnly}
               isConfirmingDelete={isConfirmingDeleteEvent}
               deletePending={deleteEventPending}
-              format={format}
+              timeZone={timeZone}
               onToggleExpand={onToggleExpand}
               onAddSlotRequest={onAddSlotRequest}
               onEditEventRequest={onEditEventRequest}
@@ -242,7 +242,7 @@ export function CalendarRow({
               isReadOnly={isReadOnly}
               isConfirmingDelete={isConfirmingDeleteSlot}
               deletePending={deleteSlotPending}
-              format={format}
+              timeZone={timeZone}
               onEditSlotRequest={onEditSlotRequest}
               onDeleteOpenChange={onDeleteSlotOpenChange}
               onDeleteConfirm={onDeleteSlotConfirm}
@@ -263,7 +263,7 @@ interface ParentRowCellProps {
   isReadOnly: boolean;
   isConfirmingDelete: boolean;
   deletePending: boolean;
-  format: ReturnType<typeof useTimezone>['format'];
+  timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
   onAddSlotRequest: (input: StartCreateSlotInput) => void;
   onEditEventRequest: (input: StartEditEventInput) => void;
@@ -278,7 +278,7 @@ function ParentRowCell({
   isReadOnly,
   isConfirmingDelete,
   deletePending,
-  format,
+  timeZone,
   onToggleExpand,
   onAddSlotRequest,
   onEditEventRequest,
@@ -303,7 +303,9 @@ function ParentRowCell({
           {row.title}
         </span>
       ) : null}
-      {column.id === 'window' ? format(row.startDate, 'PP') : null}
+      {column.id === 'window'
+        ? formatDayOf({ value: row.startDate, timeZone })
+        : null}
       {column.id === 'slots'
         ? `${row.slots.length} slot${row.slots.length === 1 ? '' : 's'}`
         : null}
@@ -370,7 +372,7 @@ interface SlotRowCellProps {
   isReadOnly: boolean;
   isConfirmingDelete: boolean;
   deletePending: boolean;
-  format: ReturnType<typeof useTimezone>['format'];
+  timeZone: string;
   onEditSlotRequest: (input: StartEditSlotInput) => void;
   onDeleteOpenChange: (input: ConfirmDeleteSlotOpenChangeInput) => void;
   onDeleteConfirm: (input: ConfirmDeleteSlotInput) => void;
@@ -382,7 +384,7 @@ function SlotRowCell({
   isReadOnly,
   isConfirmingDelete,
   deletePending,
-  format,
+  timeZone,
   onEditSlotRequest,
   onDeleteOpenChange,
   onDeleteConfirm,
@@ -394,8 +396,11 @@ function SlotRowCell({
       ) : null}
       {column.id === 'window' ? (
         <span className="text-muted-foreground">
-          {format(visibleRow.startTime, 'p')} –{' '}
-          {format(visibleRow.endTime, 'p')}
+          {formatInstantRangeOf({
+            start: visibleRow.startTime,
+            end: visibleRow.endTime,
+            timeZone,
+          })}
         </span>
       ) : null}
       {column.id === 'actions' && !isReadOnly ? (

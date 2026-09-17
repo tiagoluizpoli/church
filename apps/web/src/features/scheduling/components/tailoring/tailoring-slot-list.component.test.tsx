@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { TailoringSlotList } from './tailoring-slot-list';
 import { renderWithProviders } from '@/__tests__/setup/render';
 import type {
@@ -25,8 +25,8 @@ function makeSlotView(
       id: 'slot-1',
       churchId: 'church-1',
       eventId: 'event-1',
-      startTime: '2026-07-12T09:00:00',
-      endTime: '2026-07-12T11:00:00',
+      startTime: '2026-07-12T09:00:00.000Z',
+      endTime: '2026-07-12T11:00:00.000Z',
       label: 'Greeter',
       status: 'active',
       requirements: [],
@@ -171,8 +171,8 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
                   id: 'shift-1',
                   participationId: 'participation-1',
                   timeSlotId: 'slot-1',
-                  startTime: '2026-07-12T09:00:00',
-                  endTime: '2026-07-12T11:00:00',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                  endTime: '2026-07-12T11:00:00.000Z',
                 },
               ],
             },
@@ -218,8 +218,8 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
                   id: 'shift-1',
                   participationId: 'participation-1',
                   timeSlotId: 'slot-1',
-                  startTime: '2026-07-12T09:00:00',
-                  endTime: '2026-07-12T11:00:00',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                  endTime: '2026-07-12T11:00:00.000Z',
                 },
               ],
             },
@@ -261,8 +261,8 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
                   id: 'shift-1',
                   participationId: 'participation-1',
                   timeSlotId: 'slot-1',
-                  startTime: '2026-07-12T09:00:00',
-                  endTime: '2026-07-12T11:00:00',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                  endTime: '2026-07-12T11:00:00.000Z',
                 },
               ],
             },
@@ -309,8 +309,8 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
                   id: 'shift-1',
                   participationId: 'participation-1',
                   timeSlotId: 'slot-1',
-                  startTime: '2026-07-12T09:00:00',
-                  endTime: '2026-07-12T11:00:00',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                  endTime: '2026-07-12T11:00:00.000Z',
                 },
               ],
             },
@@ -373,15 +373,15 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
                   id: 'shift-1',
                   participationId: 'participation-1',
                   timeSlotId: 'slot-1',
-                  startTime: '2026-07-12T09:00:00',
-                  endTime: '2026-07-12T10:00:00',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                  endTime: '2026-07-12T10:00:00.000Z',
                 },
                 {
                   id: 'shift-2',
                   participationId: 'participation-1',
                   timeSlotId: 'slot-1',
-                  startTime: '2026-07-12T10:00:00',
-                  endTime: '2026-07-12T11:00:00',
+                  startTime: '2026-07-12T10:00:00.000Z',
+                  endTime: '2026-07-12T11:00:00.000Z',
                 },
               ],
             },
@@ -425,8 +425,8 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
             id: 'shift-1',
             participationId: 'participation-1',
             timeSlotId: 'slot-1',
-            startTime: '2026-07-12T09:00:00',
-            endTime: '2026-07-12T11:00:00',
+            startTime: '2026-07-12T09:00:00.000Z',
+            endTime: '2026-07-12T11:00:00.000Z',
           },
         ],
       },
@@ -519,8 +519,8 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
             id: 'shift-1',
             participationId: 'participation-1',
             timeSlotId: 'slot-1',
-            startTime: '2026-07-12T09:00:00',
-            endTime: '2026-07-12T11:00:00',
+            startTime: '2026-07-12T09:00:00.000Z',
+            endTime: '2026-07-12T11:00:00.000Z',
           },
         ],
       },
@@ -654,8 +654,8 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
             id: 'shift-1',
             participationId: 'participation-1',
             timeSlotId: 'slot-1',
-            startTime: '2026-07-12T09:00:00',
-            endTime: '2026-07-12T11:00:00',
+            startTime: '2026-07-12T09:00:00.000Z',
+            endTime: '2026-07-12T11:00:00.000Z',
           },
         ],
       },
@@ -742,5 +742,66 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
     expect(
       screen.queryByTestId('headcount-unsaved-indicator-slot-1'),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('TailoringSlotList exact-string display under a non-UTC ambient TZ (#159)', () => {
+  const ORIGINAL_TZ = process.env.TZ;
+
+  beforeAll(() => {
+    process.env.TZ = 'Pacific/Auckland';
+  });
+
+  afterAll(() => {
+    process.env.TZ = ORIGINAL_TZ;
+  });
+
+  it('renders the TimeSlot day header and a Shift time range as exact dd/MM/yyyy / HH:mm strings, driven by the Church Timezone param rather than the ambient TZ', async () => {
+    getScheduleBuilderData.mockResolvedValue({
+      roles: [{ id: 'role-1', name: 'Greeter' }],
+      events: [],
+      availability: [],
+      volunteers: [],
+      callerTeamIds: null,
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <TailoringSlotList
+        {...NO_OP_PROPS}
+        splitForms={{
+          'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
+        }}
+        events={[
+          makeEventView({}, [
+            {
+              included: true,
+              shifts: [
+                {
+                  id: 'shift-1',
+                  participationId: 'participation-1',
+                  timeSlotId: 'slot-1',
+                  // A sub-range of the slot's own 09:00–11:00Z window, so the
+                  // shift's rendered range is distinct from the slot's own.
+                  startTime: '2026-07-12T09:00:00.000Z',
+                  endTime: '2026-07-12T10:00:00.000Z',
+                },
+              ],
+            },
+          ]),
+        ]}
+      />,
+      { churchTimezone: 'America/Sao_Paulo' },
+    );
+
+    expect(
+      await screen.findByTestId('tailoring-day-header-2026-07-12'),
+    ).toHaveTextContent('12/07/2026');
+
+    await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));
+
+    expect(
+      await screen.findByText('12/07/2026 06:00 – 07:00'),
+    ).toBeInTheDocument();
   });
 });

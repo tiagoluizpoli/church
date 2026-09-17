@@ -33,7 +33,7 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
       {
         id: 'cycle-1',
         name: 'Agosto 2026',
-        window: 'Aug 1, 2026 - Aug 31, 2026',
+        window: '01/08/2026 - 31/08/2026',
         startDate: '2026-08-01',
         endDate: '2026-08-31',
         eventCount: 1,

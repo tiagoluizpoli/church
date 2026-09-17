@@ -1,7 +1,7 @@
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import { PlanningEventCard } from './planning-event-card';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -282,17 +282,19 @@ describe('PlanningEventCard affordances (US1)', () => {
 });
 
 function isDateOnlyText(content: string): boolean {
-  return /^\w{3} \d{1,2}, \d{4}$/.test(content);
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(content);
 }
 
+/** `dd/MM/yyyy HH:mm – HH:mm`, or `dd/MM/yyyy HH:mm – dd/MM/yyyy HH:mm` when
+ * the slot's range crosses a church-local day boundary. */
 function isTimeRangeText(content: string): boolean {
-  return /^\d{1,2}:\d{2}\s?(AM|PM)\s?[–-]\s?\d{1,2}:\d{2}\s?(AM|PM)$/.test(
+  return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}\s?[–-]\s?(\d{2}\/\d{2}\/\d{4}\s)?\d{2}:\d{2}$/.test(
     content,
   );
 }
 
 describe('PlanningEventCard timezone-aware formatting (US2)', () => {
-  it("renders a day's date date-only and a slot's time time-only, with no raw ISO or arrow", () => {
+  it("renders a day's date date-only and a slot's time as a dated instant range, with no raw ISO or arrow", () => {
     render(
       <PlanningEventCard
         row={twoSlotRow()}
@@ -338,5 +340,37 @@ describe('PlanningEventCard timezone-aware formatting (US2)', () => {
     )[0].textContent;
 
     expect(kiritimatiSlotTime).not.toBe(utcSlotTime);
+  });
+});
+
+describe('PlanningEventCard exact-string display under a non-UTC ambient TZ (#159)', () => {
+  const ORIGINAL_TZ = process.env.TZ;
+
+  beforeAll(() => {
+    process.env.TZ = 'Pacific/Auckland';
+  });
+
+  afterAll(() => {
+    process.env.TZ = ORIGINAL_TZ;
+  });
+
+  it('renders the Event day and each Shift/TimeSlot range as exact dd/MM/yyyy / HH:mm strings, driven by the Church Timezone param rather than the ambient TZ', () => {
+    render(
+      <PlanningEventCard
+        row={twoSlotRow()}
+        isReadOnly={false}
+        {...baseProps()}
+      />,
+      { churchTimezone: 'UTC' },
+    );
+
+    const card = screen.getByTestId('planning-event-card');
+    expect(within(card).getByText('02/08/2026')).toBeInTheDocument();
+    expect(
+      within(card).getByText('02/08/2026 09:00 – 10:00'),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByText('02/08/2026 10:00 – 11:00'),
+    ).toBeInTheDocument();
   });
 });

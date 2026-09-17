@@ -7,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatInstantOf } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 interface AuditLogPanelProps {
@@ -24,6 +26,7 @@ export function AuditLogPanel({
   cycleId,
   ministryId,
 }: AuditLogPanelProps) {
+  const { churchTimezone } = useTimezone();
   const auditQuery = useQuery({
     queryKey: ['cycle-audit', cycleId, ministryId],
     queryFn: () =>
@@ -78,10 +81,10 @@ export function AuditLogPanel({
                   {item.reason ? ` — ${item.reason}` : ''}
                 </div>
                 <div className="text-muted-foreground text-xs">
-                  {new Intl.DateTimeFormat(undefined, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  }).format(new Date(item.timestamp))}{' '}
+                  {formatInstantOf({
+                    value: item.timestamp,
+                    timeZone: churchTimezone,
+                  })}{' '}
                   · by {item.actorId}
                 </div>
               </div>

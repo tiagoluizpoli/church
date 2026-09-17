@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dayOf,
+  formatCalendarDateOnly,
   formatDayOf,
   formatInstantOf,
   formatInstantRangeOf,
@@ -20,6 +21,13 @@ describe('church-time', () => {
 
   it('formats the day as dd/MM/yyyy', () => {
     expect(formatDayOf({ value: LATE_EVENING, timeZone: SAO_PAULO })).toBe(
+      '04/01/2027',
+    );
+  });
+
+  it('formats a date-only value (a planning-cycle bound) as dd/MM/yyyy, ignoring any ambient TZ', () => {
+    expect(formatCalendarDateOnly({ value: '2027-01-04' })).toBe('04/01/2027');
+    expect(formatCalendarDateOnly({ value: '2027-01-04T00:00:00.000Z' })).toBe(
       '04/01/2027',
     );
   });

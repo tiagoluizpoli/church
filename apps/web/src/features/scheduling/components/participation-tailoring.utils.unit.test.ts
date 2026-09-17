@@ -6,9 +6,9 @@ import {
   createInitialSplitForms,
   filterSlotsByName,
   filterSlotsByTimeOfDay,
+  formatTimeRange,
   isTimeWindowFilterEmpty,
   toCalendarDateString,
-  toIsoDateString,
   toMinistryCycleKey,
   validateManualSpans,
 } from './participation-tailoring.utils';
@@ -225,13 +225,37 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
   });
 });
 
-describe('toIsoDateString', () => {
-  it('formats a local date as yyyy-MM-dd', () => {
-    expect(toIsoDateString(new Date(2026, 6, 12))).toBe('2026-07-12');
+describe('formatTimeRange (#159 — church-time seam, one format, non-UTC ambient TZ)', () => {
+  const ORIGINAL_TZ = process.env.TZ;
+
+  beforeAll(() => {
+    process.env.TZ = 'Pacific/Auckland';
   });
 
-  it('zero-pads single-digit month and day', () => {
-    expect(toIsoDateString(new Date(2026, 0, 5))).toBe('2026-01-05');
+  afterAll(() => {
+    process.env.TZ = ORIGINAL_TZ;
+  });
+
+  it('formats a Slot time range on the Church Timezone wall clock (dd/MM/yyyy HH:mm – HH:mm)', () => {
+    // 09:00–11:00 church-local in America/Sao_Paulo (UTC-3).
+    expect(
+      formatTimeRange({
+        start: '2027-01-04T12:00:00.000Z',
+        end: '2027-01-04T14:00:00.000Z',
+        timeZone: 'America/Sao_Paulo',
+      }),
+    ).toBe('04/01/2027 09:00 – 11:00');
+  });
+
+  it('formats a Shift time range that crosses midnight with a second date', () => {
+    // 22:00 Monday to 02:00 Tuesday church-local in America/Sao_Paulo.
+    expect(
+      formatTimeRange({
+        start: '2027-01-05T01:00:00.000Z',
+        end: '2027-01-05T05:00:00.000Z',
+        timeZone: 'America/Sao_Paulo',
+      }),
+    ).toBe('04/01/2027 22:00 – 05/01/2027 02:00');
   });
 });
 
@@ -248,7 +272,14 @@ describe('buildSlotDayMarkers', () => {
   describe('Happy Path', () => {
     it('marks the day of a single visible slot', () => {
       const markers = buildSlotDayMarkers({
-        events: [makeEventView()],
+        events: [
+          makeEventView({
+            slotOverrides: [
+              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00.000Z' } },
+            ],
+          }),
+        ],
+        timeZone: 'UTC',
       });
 
       expect([...markers]).toEqual(['2026-07-12']);
@@ -259,11 +290,12 @@ describe('buildSlotDayMarkers', () => {
         events: [
           makeEventView({
             slotOverrides: [
-              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00' } },
-              { slot: { id: 'slot-2', startTime: '2026-07-14T09:00:00' } },
+              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00.000Z' } },
+              { slot: { id: 'slot-2', startTime: '2026-07-14T09:00:00.000Z' } },
             ],
           }),
         ],
+        timeZone: 'UTC',
       });
 
       expect([...markers].sort()).toEqual(['2026-07-12', '2026-07-14']);
@@ -271,20 +303,22 @@ describe('buildSlotDayMarkers', () => {
   });
 
   describe('Timezone', () => {
-    // The fixtures above use naive local timestamps, but the API returns
-    // UTC-suffixed instants — which is how an evening slot went unnoticed.
+    // The Church Timezone is an explicit parameter, never the ambient
+    // process TZ — proven by setting the ambient TZ to a zone other than
+    // the Church Timezone under test and confirming the result still
+    // follows the explicit `timeZone`, not the environment.
     const ORIGINAL_TZ = process.env.TZ;
 
     beforeAll(() => {
-      process.env.TZ = 'America/Sao_Paulo';
+      process.env.TZ = 'Pacific/Auckland';
     });
 
     afterAll(() => {
       process.env.TZ = ORIGINAL_TZ;
     });
 
-    it('marks an evening slot on the day it is served, not the next UTC day', () => {
-      // A 21:00 local Monday slot is stored as 00:00Z Tuesday.
+    it('marks an evening slot on the day it is served in the Church Timezone, not the next UTC day', () => {
+      // A 21:00 church-local Monday slot is stored as 00:00Z Tuesday.
       const markers = buildSlotDayMarkers({
         events: [
           makeEventView({
@@ -293,12 +327,13 @@ describe('buildSlotDayMarkers', () => {
             ],
           }),
         ],
+        timeZone: 'America/Sao_Paulo',
       });
 
       expect([...markers]).toEqual(['2027-01-04']);
     });
 
-    it('marks a morning slot on its own day', () => {
+    it('marks a morning slot on its own day in the Church Timezone', () => {
       const markers = buildSlotDayMarkers({
         events: [
           makeEventView({
@@ -307,6 +342,7 @@ describe('buildSlotDayMarkers', () => {
             ],
           }),
         ],
+        timeZone: 'America/Sao_Paulo',
       });
 
       expect([...markers]).toEqual(['2027-01-04']);
@@ -315,7 +351,7 @@ describe('buildSlotDayMarkers', () => {
 
   describe('Edge Cases', () => {
     it('returns an empty set for zero events', () => {
-      expect(buildSlotDayMarkers({ events: [] }).size).toBe(0);
+      expect(buildSlotDayMarkers({ events: [], timeZone: 'UTC' }).size).toBe(0);
     });
 
     it('deduplicates multiple slots on the same day', () => {
@@ -323,11 +359,12 @@ describe('buildSlotDayMarkers', () => {
         events: [
           makeEventView({
             slotOverrides: [
-              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00' } },
-              { slot: { id: 'slot-2', startTime: '2026-07-12T11:00:00' } },
+              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00.000Z' } },
+              { slot: { id: 'slot-2', startTime: '2026-07-12T11:00:00.000Z' } },
             ],
           }),
         ],
+        timeZone: 'UTC',
       });
 
       expect(markers.size).toBe(1);

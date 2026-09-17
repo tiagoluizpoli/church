@@ -18,6 +18,7 @@ import type {
   GetPlanningCycle200EventsItemEventStatus,
   ListPlanningCycles200CyclesItemState,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 export const WEEKDAYS = [
   'Sunday',
@@ -183,12 +184,8 @@ export function getSelectedCycleIdOrThrow({
   return selectedCycleId;
 }
 
-export function formatCycleDate({ date }: FormatDateInput): string {
+function cycleDateKey({ date }: FormatDateInput): string {
   return date.slice(0, 10);
-}
-
-export function formatEventDateTime({ date }: FormatDateInput): string {
-  return `${date.slice(0, 10)} ${date.slice(11, 16)}Z`;
 }
 
 export function describeTemplate({ template }: DescribeTemplateInput): string {
@@ -311,9 +308,7 @@ export function isMultiDayEvent({
   startDate,
   endDate,
 }: IsMultiDayEventInput): boolean {
-  return (
-    formatCycleDate({ date: startDate }) !== formatCycleDate({ date: endDate })
-  );
+  return cycleDateKey({ date: startDate }) !== cycleDateKey({ date: endDate });
 }
 
 export function toPlanningCyclesTableRow({
@@ -322,7 +317,7 @@ export function toPlanningCyclesTableRow({
   return {
     id: cycle.id,
     name: cycle.name,
-    window: `${formatCycleDate({ date: cycle.startDate })} → ${formatCycleDate({ date: cycle.endDate })}`,
+    window: `${formatCalendarDateOnly({ value: cycle.startDate })} → ${formatCalendarDateOnly({ value: cycle.endDate })}`,
     state: cycle.state,
   };
 }

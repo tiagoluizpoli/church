@@ -3,6 +3,7 @@ import {
   formatCalendarDay,
   formatInstant,
   formatTimeOfDay,
+  parseCalendarDay,
   parseInstant,
   today,
   toTimeOfDay,
@@ -32,6 +33,24 @@ export function formatDayOf(input: ChurchInstantInput): string {
 function formatTimeOf({ value, timeZone }: ChurchInstantInput): string {
   return formatTimeOfDay({
     time: toTimeOfDay({ instant: parseInstant({ value }), timeZone }),
+  });
+}
+
+export interface CalendarDateOnlyInput {
+  value: string;
+}
+
+/**
+ * `04/01/2027` for a value that *names a day* rather than a moment — a
+ * planning-cycle bound, anchored at UTC midnight, never converted through
+ * the Church Timezone. Accepts either a bare `yyyy-MM-dd` or a full
+ * ISO date-time whose calendar-date prefix is the day it names.
+ */
+export function formatCalendarDateOnly({
+  value,
+}: CalendarDateOnlyInput): string {
+  return formatCalendarDay({
+    day: parseCalendarDay({ value: value.slice(0, 10) }),
   });
 }
 

@@ -11,6 +11,10 @@ describe('instantSchema', () => {
   it('rejects a non-UTC offset', () => {
     expect(() => instantSchema.parse('2027-01-04T13:30:00+02:00')).toThrow();
   });
+
+  it('rejects sub-millisecond precision zod alone would accept', () => {
+    expect(() => instantSchema.parse('2027-01-04T13:30:00.123456Z')).toThrow();
+  });
 });
 
 describe('calendarDaySchema', () => {
@@ -30,5 +34,13 @@ describe('timeOfDaySchema', () => {
 
   it('rejects a value missing the minute segment', () => {
     expect(() => timeOfDaySchema.parse('13')).toThrow();
+  });
+
+  it('rejects seconds precision the bare regex alone would accept', () => {
+    expect(() => timeOfDaySchema.parse('13:30:45')).toThrow();
+  });
+
+  it('rejects an out-of-range hour', () => {
+    expect(() => timeOfDaySchema.parse('99:99')).toThrow();
   });
 });

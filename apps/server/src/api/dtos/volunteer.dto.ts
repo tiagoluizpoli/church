@@ -12,21 +12,14 @@ import type {
   VolunteerDashboard,
 } from '../../domain/contracts/application/volunteer-manager';
 import type { Assignment } from '../../domain/entities/assignment';
+import {
+  type AssignmentResponse,
+  assignmentMapper,
+  assignmentResponseSchema,
+} from './assignment.dto';
 
-export const assignmentResponseSchema = z.object({
-  id: z.string(),
-  churchId: z.string(),
-  slotId: z.string(),
-  participationId: z.string().optional(),
-  shiftId: z.string().optional(),
-  volunteerId: z.string(),
-  roleId: z.string(),
-  status: z.enum(['draft', 'pending', 'confirmed', 'declined', 'cancelled']),
-  reason: z.string().optional(),
-  assignedAt: instantSchema,
-  assignedBy: z.string().optional(),
-});
-export type AssignmentResponse = z.infer<typeof assignmentResponseSchema>;
+export type { AssignmentResponse };
+export { assignmentResponseSchema };
 
 export const availabilityCheckSummarySchema = z.object({
   id: z.string(),
@@ -190,21 +183,7 @@ export const respondToAssignmentBodySchema = z.object({
   reason: z.string().optional(),
 });
 
-function assignmentToResponse(a: Assignment): AssignmentResponse {
-  return {
-    id: a.id as string,
-    churchId: a.churchId as string,
-    slotId: a.slotId as string,
-    participationId: a.participationId as string | undefined,
-    shiftId: a.shiftId as string | undefined,
-    volunteerId: a.volunteerId as string,
-    roleId: a.roleId as string,
-    status: a.status,
-    reason: a.reason,
-    assignedAt: a.assignedAt,
-    assignedBy: a.assignedBy as string | undefined,
-  };
-}
+const assignmentToResponse = assignmentMapper.toResponse;
 
 function availabilityCheckSummaryToResponse(
   summary: VolunteerAvailabilityCheckSummary,
@@ -336,14 +315,7 @@ function ministryScheduleEventToResponse(
     startDate: parseInstant({ value: event.startDate }),
     endDate: parseInstant({ value: event.endDate }),
     assignmentCount: event.assignmentCount,
-    rows: event.rows.map((row) => ({
-      slotId: row.slotId,
-      slotLabel: row.slotLabel,
-      roleName: row.roleName,
-      teamName: row.teamName,
-      volunteerDisplayName: row.volunteerDisplayName,
-      confirmationState: row.confirmationState,
-    })),
+    rows: event.rows,
   };
 }
 

@@ -1,8 +1,13 @@
-import { parseInstant } from '@church/time';
+import { isCalendarDay, isInstant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { participationMapper } from '../../src/api/dtos/participation.dto';
+import {
+  participationMapper,
+  shiftResponseSchema,
+} from '../../src/api/dtos/participation.dto';
+import { PlanningCycleId } from '../../src/domain/branded-ids';
 import type {
   CycleParticipationView,
+  MinistryCycleSummaryView,
   ParticipationEventView,
   ParticipationSlotView,
 } from '../../src/domain/contracts/application/participation-manager';
@@ -91,6 +96,10 @@ describe('participationMapper', () => {
         endTime: shift.endTime,
         label: 'First Half',
       });
+      const response = participationMapper.shiftToResponse(shift);
+      expect(() => shiftResponseSchema.parse(response)).not.toThrow();
+      expect(isInstant({ value: response.startTime })).toBe(true);
+      expect(isInstant({ value: response.endTime })).toBe(true);
     });
 
     it('maps a shift with no label', () => {
@@ -263,6 +272,46 @@ describe('participationMapper', () => {
       expect(participationMapper.cycleViewToResponse(view)).toEqual({
         events: [],
       });
+    });
+  });
+
+  describe('ministryCycleSummaryListToResponse', () => {
+    it('maps a summary view, recovering its CalendarDay bounds from raw Dates', () => {
+      const view: MinistryCycleSummaryView = {
+        cycleId: PlanningCycleId.from('cycle-1'),
+        name: 'July 2026',
+        startDate: new Date('2026-07-01T00:00:00.000Z'),
+        endDate: new Date('2026-08-01T00:00:00.000Z'),
+        isPartOf: true,
+        eventCount: 4,
+        slotCount: 8,
+        status: 'in_progress',
+        availabilityFiredForAll: false,
+        availabilityFiredForAny: true,
+      };
+
+      const response = participationMapper.ministryCycleSummaryListToResponse([
+        view,
+      ]);
+
+      expect(response.cycles).toEqual([
+        {
+          cycleId: 'cycle-1',
+          name: 'July 2026',
+          startDate: '2026-07-01',
+          endDate: '2026-08-01',
+          isPartOf: true,
+          eventCount: 4,
+          slotCount: 8,
+          status: 'in_progress',
+          availabilityFiredForAll: false,
+          availabilityFiredForAny: true,
+        },
+      ]);
+      const summary = response.cycles[0];
+      if (!summary) throw new Error('expected a mapped summary');
+      expect(isCalendarDay({ value: summary.startDate })).toBe(true);
+      expect(isCalendarDay({ value: summary.endDate })).toBe(true);
     });
   });
 });

@@ -1,3 +1,4 @@
+import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { Ministry } from '../../domain/entities/ministry';
 
@@ -8,8 +9,8 @@ export const ministryResponseSchema = z.object({
   description: z.string().optional(),
   enforcementType: z.enum(['soft', 'hard']),
   defaultDirection: z.enum(['all_in', 'all_out']),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: instantSchema,
+  updatedAt: instantSchema,
 });
 
 export type MinistryResponse = z.infer<typeof ministryResponseSchema>;
@@ -27,8 +28,8 @@ export const ministryMapper = {
       description: ministry.description,
       enforcementType: ministry.enforcementType,
       defaultDirection: ministry.defaultDirection,
-      createdAt: ministry.createdAt.toISOString(),
-      updatedAt: ministry.updatedAt.toISOString(),
+      createdAt: fromDate({ date: ministry.createdAt }),
+      updatedAt: fromDate({ date: ministry.updatedAt }),
     };
   },
 

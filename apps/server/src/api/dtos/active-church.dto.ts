@@ -1,3 +1,4 @@
+import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type {
   ResolvedActiveChurch,
@@ -36,7 +37,7 @@ export const churchSelectionOptionResponseSchema = z.object({
   timezone: z.string(),
   accessLevel: z.enum(['member', 'admin']),
   availableAreas: z.array(z.enum(['dashboard', 'scheduling'])),
-  lastOpenedAt: z.string().nullable(),
+  lastOpenedAt: instantSchema.nullable(),
 });
 export type ChurchSelectionOptionResponse = z.infer<
   typeof churchSelectionOptionResponseSchema
@@ -95,7 +96,7 @@ export const activeChurchMapper = {
       accessLevel: option.accessLevel,
       availableAreas: option.availableAreas,
       lastOpenedAt: option.lastOpenedAt
-        ? option.lastOpenedAt.toISOString()
+        ? fromDate({ date: option.lastOpenedAt })
         : null,
     };
   },

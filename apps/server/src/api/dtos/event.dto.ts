@@ -1,3 +1,4 @@
+import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { ScheduleBuilderData } from '../../domain/contracts/application/event-manager';
 import type { Event } from '../../domain/entities/event';
@@ -25,12 +26,12 @@ export const eventResponseSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   location: z.string().optional(),
-  startDate: z.string(),
-  endDate: z.string(),
+  startDate: instantSchema,
+  endDate: instantSchema,
   status: z.enum(['draft', 'scheduled', 'cancelled', 'past']),
   eventType: z.enum(['hourly', 'day_based']),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: instantSchema,
+  updatedAt: instantSchema,
 });
 export type EventResponse = z.infer<typeof eventResponseSchema>;
 
@@ -47,8 +48,8 @@ export const scheduleBuilderDataResponseSchema = z.object({
           id: z.string(),
           churchId: z.string(),
           eventId: z.string(),
-          startTime: z.string(),
-          endTime: z.string(),
+          startTime: instantSchema,
+          endTime: instantSchema,
           label: z.string().optional(),
           status: z.enum(['active', 'cancelled']),
           requirements: z.array(
@@ -82,7 +83,7 @@ export const scheduleBuilderDataResponseSchema = z.object({
         'cancelled',
       ]),
       reason: z.string().optional(),
-      assignedAt: z.string(),
+      assignedAt: instantSchema,
       assignedBy: z.string().optional(),
     }),
   ),
@@ -91,8 +92,8 @@ export const scheduleBuilderDataResponseSchema = z.object({
       id: z.string(),
       volunteerId: z.string(),
       type: z.enum(['available', 'unavailable']),
-      startTime: z.string(),
-      endTime: z.string(),
+      startTime: instantSchema,
+      endTime: instantSchema,
       isAllDay: z.boolean(),
     }),
   ),
@@ -123,8 +124,8 @@ function eventToResponse(ev: Event): EventResponse {
     endDate: ev.endDate,
     status: ev.status,
     eventType: ev.eventType,
-    createdAt: ev.createdAt.toISOString(),
-    updatedAt: ev.updatedAt.toISOString(),
+    createdAt: fromDate({ date: ev.createdAt }),
+    updatedAt: fromDate({ date: ev.updatedAt }),
   };
 }
 

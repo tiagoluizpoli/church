@@ -1,3 +1,4 @@
+import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type {
   EligibleVolunteerView,
@@ -33,7 +34,7 @@ export const eligibleVolunteerResponseSchema = z.object({
   volunteerName: z.string(),
   isAvailable: z.boolean(),
   hasConflict: z.boolean(),
-  lastServedAt: z.string().optional(),
+  lastServedAt: instantSchema.optional(),
   qualifiedRoleIds: z.array(z.string()),
   ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
   leadTeamIds: z.array(z.string()),

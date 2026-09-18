@@ -1,6 +1,12 @@
+import { calendarDaySchema, instantSchema, parseInstant } from '@church/time';
 import { z } from 'zod';
 import type {
+  DashboardAssignmentGroup,
+  DashboardAssignmentItem,
+  DashboardAvailabilityTask,
+  DashboardNotificationPreview,
   MinistrySchedule,
+  MinistryScheduleEvent,
   VolunteerAvailabilityCheckDetail,
   VolunteerAvailabilityCheckSummary,
   VolunteerDashboard,
@@ -17,7 +23,7 @@ export const assignmentResponseSchema = z.object({
   roleId: z.string(),
   status: z.enum(['draft', 'pending', 'confirmed', 'declined', 'cancelled']),
   reason: z.string().optional(),
-  assignedAt: z.string(),
+  assignedAt: instantSchema,
   assignedBy: z.string().optional(),
 });
 export type AssignmentResponse = z.infer<typeof assignmentResponseSchema>;
@@ -29,10 +35,14 @@ export const availabilityCheckSummarySchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
-  confirmedAt: z.string().optional(),
+  confirmedAt: instantSchema.optional(),
   totalShiftCount: z.number(),
   unavailableShiftCount: z.number(),
 });
+
+export type AvailabilityCheckSummaryResponse = z.infer<
+  typeof availabilityCheckSummarySchema
+>;
 
 export const availabilityCheckListResponseSchema = z.object({
   checks: z.array(availabilityCheckSummarySchema),
@@ -42,8 +52,8 @@ const availabilityCheckShiftSchema = z.object({
   shiftId: z.string(),
   eventId: z.string(),
   eventTitle: z.string(),
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
   label: z.string().optional(),
   available: z.boolean(),
 });
@@ -55,13 +65,16 @@ export const availabilityCheckDetailResponseSchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
-  confirmedAt: z.string().optional(),
+  confirmedAt: instantSchema.optional(),
   shifts: z.array(availabilityCheckShiftSchema),
 });
+export type AvailabilityCheckDetailResponse = z.infer<
+  typeof availabilityCheckDetailResponseSchema
+>;
 
 export const setUnavailabilityMarksBodySchema = z.object({
   shiftIds: z.array(z.string()),
-  wholeDayDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+  wholeDayDates: z.array(calendarDaySchema).optional(),
 });
 
 const dashboardAssignmentItemSchema = z.object({
@@ -73,23 +86,29 @@ const dashboardAssignmentItemSchema = z.object({
   roleName: z.string(),
   teamId: z.string().optional(),
   teamName: z.string().optional(),
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
   status: z.enum(['pending', 'confirmed', 'declined']),
   timingState: z.enum(['in_progress', 'upcoming']),
   canRespond: z.boolean(),
 });
+type DashboardAssignmentItemResponse = z.infer<
+  typeof dashboardAssignmentItemSchema
+>;
 
 const dashboardAssignmentGroupSchema = z.object({
   eventId: z.string(),
   eventTitle: z.string(),
   ministryId: z.string(),
   ministryName: z.string(),
-  eventStart: z.string(),
+  eventStart: instantSchema,
   aggregateResponseState: z.enum(['pending', 'confirmed', 'mixed', 'declined']),
   hasPendingResponse: z.boolean(),
   assignments: z.array(dashboardAssignmentItemSchema),
 });
+type DashboardAssignmentGroupResponse = z.infer<
+  typeof dashboardAssignmentGroupSchema
+>;
 
 const dashboardAvailabilityTaskSchema = z.object({
   eventId: z.string(),
@@ -97,19 +116,25 @@ const dashboardAvailabilityTaskSchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
   eventType: z.enum(['hourly', 'day_based']),
-  eventStart: z.string(),
-  eventEnd: z.string(),
+  eventStart: instantSchema,
+  eventEnd: instantSchema,
   completionState: z.enum(['missing', 'partial', 'complete']),
 });
+type DashboardAvailabilityTaskResponse = z.infer<
+  typeof dashboardAvailabilityTaskSchema
+>;
 
 const dashboardNotificationPreviewSchema = z.object({
   id: z.string(),
   type: z.string(),
   title: z.string(),
   body: z.string(),
-  readAt: z.string().optional(),
-  createdAt: z.string(),
+  readAt: instantSchema.optional(),
+  createdAt: instantSchema,
 });
+type DashboardNotificationPreviewResponse = z.infer<
+  typeof dashboardNotificationPreviewSchema
+>;
 
 const dashboardMinistryOptionSchema = z.object({
   id: z.string(),
@@ -124,39 +149,41 @@ export const dashboardResponseSchema = z.object({
   defaultMinistryId: z.string().optional(),
   ministryOptions: z.array(dashboardMinistryOptionSchema),
 });
+export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 
 export const assignmentListResponseSchema = z.object({
   assignments: z.array(assignmentResponseSchema),
 });
 
-export const ministryScheduleResponseSchema = z.object({
-  ministryId: z.string(),
-  ministryName: z.string(),
-  events: z.array(
+const ministryScheduleEventResponseSchema = z.object({
+  eventId: z.string(),
+  title: z.string(),
+  startDate: instantSchema,
+  endDate: instantSchema,
+  assignmentCount: z.number(),
+  rows: z.array(
     z.object({
-      eventId: z.string(),
-      title: z.string(),
-      startDate: z.string(),
-      endDate: z.string(),
-      assignmentCount: z.number(),
-      rows: z.array(
-        z.object({
-          slotId: z.string(),
-          slotLabel: z.string(),
-          roleName: z.string(),
-          teamName: z.string().optional(),
-          volunteerDisplayName: z.string().optional(),
-          confirmationState: z.enum([
-            'pending',
-            'confirmed',
-            'declined',
-            'open',
-          ]),
-        }),
-      ),
+      slotId: z.string(),
+      slotLabel: z.string(),
+      roleName: z.string(),
+      teamName: z.string().optional(),
+      volunteerDisplayName: z.string().optional(),
+      confirmationState: z.enum(['pending', 'confirmed', 'declined', 'open']),
     }),
   ),
 });
+type MinistryScheduleEventResponse = z.infer<
+  typeof ministryScheduleEventResponseSchema
+>;
+
+export const ministryScheduleResponseSchema = z.object({
+  ministryId: z.string(),
+  ministryName: z.string(),
+  events: z.array(ministryScheduleEventResponseSchema),
+});
+export type MinistryScheduleResponse = z.infer<
+  typeof ministryScheduleResponseSchema
+>;
 
 export const respondToAssignmentBodySchema = z.object({
   response: z.enum(['accepted', 'declined']),
@@ -181,7 +208,7 @@ function assignmentToResponse(a: Assignment): AssignmentResponse {
 
 function availabilityCheckSummaryToResponse(
   summary: VolunteerAvailabilityCheckSummary,
-): z.infer<typeof availabilityCheckSummarySchema> {
+): AvailabilityCheckSummaryResponse {
   return {
     id: summary.id,
     planningCycleId: summary.planningCycleId,
@@ -197,7 +224,7 @@ function availabilityCheckSummaryToResponse(
 
 function availabilityCheckDetailToResponse(
   detail: VolunteerAvailabilityCheckDetail,
-): z.infer<typeof availabilityCheckDetailResponseSchema> {
+): AvailabilityCheckDetailResponse {
   return {
     id: detail.id,
     planningCycleId: detail.planningCycleId,
@@ -218,23 +245,124 @@ function availabilityCheckDetailToResponse(
   };
 }
 
+function dashboardAvailabilityTaskToResponse(
+  task: DashboardAvailabilityTask,
+): DashboardAvailabilityTaskResponse {
+  return {
+    eventId: task.eventId,
+    eventTitle: task.eventTitle,
+    ministryId: task.ministryId,
+    ministryName: task.ministryName,
+    eventType: task.eventType,
+    eventStart: parseInstant({ value: task.eventStart }),
+    eventEnd: parseInstant({ value: task.eventEnd }),
+    completionState: task.completionState,
+  };
+}
+
+function dashboardAssignmentItemToResponse(
+  item: DashboardAssignmentItem,
+): DashboardAssignmentItemResponse {
+  return {
+    assignmentId: item.assignmentId,
+    slotId: item.slotId,
+    shiftId: item.shiftId,
+    participationId: item.participationId,
+    roleId: item.roleId,
+    roleName: item.roleName,
+    teamId: item.teamId,
+    teamName: item.teamName,
+    startTime: parseInstant({ value: item.startTime }),
+    endTime: parseInstant({ value: item.endTime }),
+    status: item.status,
+    timingState: item.timingState,
+    canRespond: item.canRespond,
+  };
+}
+
+function dashboardAssignmentGroupToResponse(
+  group: DashboardAssignmentGroup,
+): DashboardAssignmentGroupResponse {
+  return {
+    eventId: group.eventId,
+    eventTitle: group.eventTitle,
+    ministryId: group.ministryId,
+    ministryName: group.ministryName,
+    eventStart: parseInstant({ value: group.eventStart }),
+    aggregateResponseState: group.aggregateResponseState,
+    hasPendingResponse: group.hasPendingResponse,
+    assignments: group.assignments.map(dashboardAssignmentItemToResponse),
+  };
+}
+
+function dashboardNotificationPreviewToResponse(
+  preview: DashboardNotificationPreview,
+): DashboardNotificationPreviewResponse {
+  return {
+    id: preview.id,
+    type: preview.type,
+    title: preview.title,
+    body: preview.body,
+    readAt: preview.readAt
+      ? parseInstant({ value: preview.readAt })
+      : undefined,
+    createdAt: parseInstant({ value: preview.createdAt }),
+  };
+}
+
+function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
+  return {
+    availabilityTasks: dashboard.availabilityTasks.map(
+      dashboardAvailabilityTaskToResponse,
+    ),
+    upcomingAssignmentGroups: dashboard.upcomingAssignmentGroups.map(
+      dashboardAssignmentGroupToResponse,
+    ),
+    unreadNotificationCount: dashboard.unreadNotificationCount,
+    notificationPreview: dashboard.notificationPreview.map(
+      dashboardNotificationPreviewToResponse,
+    ),
+    defaultMinistryId: dashboard.defaultMinistryId,
+    ministryOptions: dashboard.ministryOptions,
+  };
+}
+
+function ministryScheduleEventToResponse(
+  event: MinistryScheduleEvent,
+): MinistryScheduleEventResponse {
+  return {
+    eventId: event.eventId,
+    title: event.title,
+    startDate: parseInstant({ value: event.startDate }),
+    endDate: parseInstant({ value: event.endDate }),
+    assignmentCount: event.assignmentCount,
+    rows: event.rows.map((row) => ({
+      slotId: row.slotId,
+      slotLabel: row.slotLabel,
+      roleName: row.roleName,
+      teamName: row.teamName,
+      volunteerDisplayName: row.volunteerDisplayName,
+      confirmationState: row.confirmationState,
+    })),
+  };
+}
+
+function ministryScheduleToResponse(
+  schedule: MinistrySchedule,
+): MinistryScheduleResponse {
+  return {
+    ministryId: schedule.ministryId,
+    ministryName: schedule.ministryName,
+    events: schedule.events.map(ministryScheduleEventToResponse),
+  };
+}
+
 export const volunteerMapper = {
-  dashboardToResponse(dashboard: VolunteerDashboard) {
-    return {
-      availabilityTasks: dashboard.availabilityTasks,
-      upcomingAssignmentGroups: dashboard.upcomingAssignmentGroups,
-      unreadNotificationCount: dashboard.unreadNotificationCount,
-      notificationPreview: dashboard.notificationPreview,
-      defaultMinistryId: dashboard.defaultMinistryId,
-      ministryOptions: dashboard.ministryOptions,
-    };
-  },
+  dashboardToResponse,
   assignmentsToResponse(assignments: Assignment[]) {
     return { assignments: assignments.map(assignmentToResponse) };
   },
-  ministryScheduleToResponse(schedule: MinistrySchedule) {
-    return schedule;
-  },
+  ministryScheduleToResponse,
   availabilityCheckListToResponse(
     summaries: VolunteerAvailabilityCheckSummary[],
   ) {

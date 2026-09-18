@@ -1,3 +1,4 @@
+import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTemplate } from '../../domain/entities/event-template';
 
@@ -23,8 +24,8 @@ export const eventTemplateBlockResponseSchema = z.object({
   churchId: z.string(),
   templateId: z.string(),
   label: z.string(),
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: timeOfDaySchema,
+  endTime: timeOfDaySchema,
   order: z.number(),
 });
 
@@ -34,8 +35,8 @@ export const eventTemplateResponseSchema = z.object({
   name: z.string(),
   weekday: z.number(),
   blocks: z.array(eventTemplateBlockResponseSchema),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: instantSchema,
+  updatedAt: instantSchema,
 });
 
 export const eventTemplateListResponseSchema = z.object({
@@ -62,8 +63,8 @@ function toEventTemplateResponse(template: EventTemplate) {
       endTime: block.endTime,
       order: block.order,
     })),
-    createdAt: template.createdAt.toISOString(),
-    updatedAt: template.updatedAt.toISOString(),
+    createdAt: fromDate({ date: template.createdAt }),
+    updatedAt: fromDate({ date: template.updatedAt }),
   };
 }
 

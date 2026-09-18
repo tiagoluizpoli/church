@@ -1,7 +1,8 @@
-import { parseInstant } from '@church/time';
+import { isInstant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
   eventMapper,
+  eventResponseSchema,
   scheduleBuilderDataResponseSchema,
 } from '../../src/api/dtos/event.dto';
 import { RoleId, VolunteerId } from '../../src/domain/branded-ids';
@@ -57,6 +58,12 @@ describe('eventMapper.toResponse', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',
     });
+
+    expect(() => eventResponseSchema.parse(response)).not.toThrow();
+    expect(isInstant({ value: response.startDate })).toBe(true);
+    expect(isInstant({ value: response.endDate })).toBe(true);
+    expect(isInstant({ value: response.createdAt })).toBe(true);
+    expect(isInstant({ value: response.updatedAt })).toBe(true);
   });
 
   it('maps an event with all optional fields absent', () => {
@@ -306,6 +313,12 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     expect(() =>
       scheduleBuilderDataResponseSchema.parse(response),
     ).not.toThrow();
+    expect(
+      isInstant({ value: response.assignments[0]?.assignedAt ?? '' }),
+    ).toBe(true);
+    expect(
+      isInstant({ value: response.availability[0]?.startTime ?? '' }),
+    ).toBe(true);
 
     expect(response.roles).toEqual([
       { id: 'role-1', name: 'Vocalist' },

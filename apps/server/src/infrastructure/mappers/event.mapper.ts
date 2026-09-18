@@ -16,8 +16,8 @@ export function mapEvent(row: EventRow): Event {
     title: row.title,
     description: row.description ?? undefined,
     location: row.location ?? undefined,
-    startDate: fromDate({ date: row.startDate }),
-    endDate: fromDate({ date: row.endDate }),
+    start: fromDate({ date: row.start }),
+    end: fromDate({ date: row.end }),
     status: row.status as EventProps['status'],
     eventType: row.eventType as EventProps['eventType'],
   };

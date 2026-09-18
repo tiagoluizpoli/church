@@ -38,8 +38,8 @@ describe('Volunteer dashboard offline + refresh UI', () => {
             id: 'event-1',
             title: 'Youth Gathering',
             eventType: 'hourly',
-            startDate: '2099-01-05T09:00:00.000Z',
-            endDate: '2099-01-05T11:00:00.000Z',
+            start: '2099-01-05T09:00:00.000Z',
+            end: '2099-01-05T11:00:00.000Z',
           }}
           slots={[
             {

@@ -62,8 +62,8 @@ describe('Database Level Constraints (T035)', () => {
         churchId,
         planningCycleId: cycle.id,
         title: 'Constraint Event',
-        startDate: new Date('2026-05-10T09:00:00Z'),
-        endDate: new Date('2026-05-10T12:00:00Z'),
+        start: new Date('2026-05-10T09:00:00Z'),
+        end: new Date('2026-05-10T12:00:00Z'),
       })
       .returning();
     if (!insertedEvent) throw new Error('Event insert failed');

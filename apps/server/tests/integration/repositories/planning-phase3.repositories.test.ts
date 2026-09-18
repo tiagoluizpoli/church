@@ -162,8 +162,8 @@ describe('Phase 3 planning repositories', () => {
       churchId: ChurchId.from(seed.churchAId),
       planningCycleId: PlanningCycleId.from(cycle.id),
       title: 'Prayer Night',
-      startDate: new Date('2026-08-05T22:00:00.000Z'),
-      endDate: new Date('2026-08-06T00:00:00.000Z'),
+      start: new Date('2026-08-05T22:00:00.000Z'),
+      end: new Date('2026-08-06T00:00:00.000Z'),
       status: 'draft',
       eventType: 'day_based',
     });

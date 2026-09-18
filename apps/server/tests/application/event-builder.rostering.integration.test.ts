@@ -313,8 +313,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Sunday Service',
-      startDate: EVENT_START,
-      endDate: EVENT_END,
+      start: EVENT_START,
+      end: EVENT_END,
     });
     const shiftId = await seedShift({
       churchId: seed.churchAId,
@@ -367,8 +367,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Sunday Service',
-      startDate: EVENT_START,
-      endDate: EVENT_END,
+      start: EVENT_START,
+      end: EVENT_END,
     });
     const shiftId = await seedShift({
       churchId: seed.churchAId,
@@ -433,8 +433,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Published Service',
-      startDate: EVENT_START,
-      endDate: EVENT_END,
+      start: EVENT_START,
+      end: EVENT_END,
     });
     const shiftId = await seedShift({
       churchId: seed.churchAId,
@@ -480,8 +480,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Church A Service',
-      startDate: EVENT_START,
-      endDate: EVENT_END,
+      start: EVENT_START,
+      end: EVENT_END,
     });
 
     const manager = createParticipationManager();
@@ -515,8 +515,8 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Sunday Service',
-      startDate: EVENT_START,
-      endDate: EVENT_END,
+      start: EVENT_START,
+      end: EVENT_END,
     });
     const shiftId = await seedShift({
       churchId: seed.churchAId,
@@ -600,8 +600,8 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Membership Lock Service',
-      startDate: EVENT_START,
-      endDate: EVENT_END,
+      start: EVENT_START,
+      end: EVENT_END,
     });
     const shiftId = await seedShift({
       churchId: seed.churchAId,
@@ -746,8 +746,8 @@ async function seedRosteringCycleBelowFull(input: SeedPublishableInput) {
     cycleId: cycle.id,
     ministryId: input.ministryId,
     title: 'Publishable Service',
-    startDate: EVENT_START,
-    endDate: EVENT_END,
+    start: EVENT_START,
+    end: EVENT_END,
   });
   const shiftId = await seedShift({
     churchId: input.churchId,
@@ -873,8 +873,8 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Audited Service',
-      startDate: EVENT_START,
-      endDate: EVENT_END,
+      start: EVENT_START,
+      end: EVENT_END,
     });
     const shiftId = await seedShift({
       churchId: seed.churchAId,

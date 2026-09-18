@@ -48,8 +48,8 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         title: input.title,
         description: input.description ?? null,
         location: input.location ?? null,
-        startDate: input.startDate,
-        endDate: input.endDate,
+        start: input.start,
+        end: input.end,
         status: input.status,
         eventType: input.eventType,
       })
@@ -74,10 +74,8 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         ...(input.location !== undefined
           ? { location: input.location ?? null }
           : {}),
-        ...(input.startDate !== undefined
-          ? { startDate: input.startDate }
-          : {}),
-        ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
+        ...(input.start !== undefined ? { start: input.start } : {}),
+        ...(input.end !== undefined ? { end: input.end } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
         updatedAt: nowAsDate(),
       })
@@ -153,7 +151,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           withChurchIsolation(event, input.churchId),
         ),
       )
-      .orderBy(asc(event.startDate));
+      .orderBy(asc(event.start));
 
     return Promise.all(
       eventRows.map(async (eventRow) => {

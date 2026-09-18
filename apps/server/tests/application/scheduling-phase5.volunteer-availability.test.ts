@@ -227,8 +227,8 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
     cycleId: cycle.id,
     ministryId: seed.ministryAId,
     title: 'Sunday Service',
-    startDate: new Date('2026-08-02T12:00:00.000Z'),
-    endDate: new Date('2026-08-02T22:00:00.000Z'),
+    start: new Date('2026-08-02T12:00:00.000Z'),
+    end: new Date('2026-08-02T22:00:00.000Z'),
     status: 'scheduled',
   });
 
@@ -601,8 +601,8 @@ async function seedPublishedAssignment(input: SeedPublishedAssignmentInput) {
     cycleId: input.cycleId,
     ministryId: input.ministryId,
     title: input.eventTitle,
-    startDate: input.eventStart,
-    endDate: input.eventEnd,
+    start: input.eventStart,
+    end: input.eventEnd,
     status: 'scheduled',
   });
   const shift = await seedShift({

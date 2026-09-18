@@ -262,10 +262,10 @@ export function eventStatusBadgeVariant({
   return 'secondary';
 }
 
-export interface ShiftedEndDateInput {
-  newStartDate: Instant;
-  originalStartDate: string;
-  originalEndDate: string;
+export interface ShiftedEndInput {
+  newStart: Instant;
+  originalStart: string;
+  originalEnd: string;
 }
 
 /**
@@ -273,17 +273,17 @@ export interface ShiftedEndDateInput {
  * date edit): shifts the end by the same delta so start < end always holds,
  * mirroring FR-007a's slot-cascade delta but for the event row itself.
  */
-export function shiftedEndDate({
-  newStartDate,
-  originalStartDate,
-  originalEndDate,
-}: ShiftedEndDateInput): Instant {
+export function shiftedEnd({
+  newStart,
+  originalStart,
+  originalEnd,
+}: ShiftedEndInput): Instant {
   const delta = millisecondsBetween({
-    start: parseInstant({ value: originalStartDate }),
-    end: newStartDate,
+    start: parseInstant({ value: originalStart }),
+    end: newStart,
   });
   return addMilliseconds({
-    instant: parseInstant({ value: originalEndDate }),
+    instant: parseInstant({ value: originalEnd }),
     milliseconds: delta,
   });
 }
@@ -327,8 +327,8 @@ export function cycleIsLocked({ cycle }: SelectedCycleInput): boolean {
 }
 
 export interface IsMultiDayEventInput {
-  startDate: string;
-  endDate: string;
+  eventStart: string;
+  eventEnd: string;
 }
 
 /**
@@ -337,10 +337,12 @@ export interface IsMultiDayEventInput {
  * event the date is already implied, so the slot dialogs show time only.
  */
 export function isMultiDayEvent({
-  startDate,
-  endDate,
+  eventStart,
+  eventEnd,
 }: IsMultiDayEventInput): boolean {
-  return cycleDateKey({ date: startDate }) !== cycleDateKey({ date: endDate });
+  return (
+    cycleDateKey({ date: eventStart }) !== cycleDateKey({ date: eventEnd })
+  );
 }
 
 export function toPlanningCyclesTableRow({
@@ -373,7 +375,7 @@ export function toCycleCalendarTableRow({
   return {
     eventId: eventGroup.event.id,
     title: eventGroup.event.title,
-    startDate: eventGroup.event.startDate,
+    start: eventGroup.event.start,
     eventType: eventGroup.event.eventType,
     status: eventGroup.event.status,
     slots: eventGroup.slots.map(

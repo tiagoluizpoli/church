@@ -11,8 +11,8 @@ const editingEvent: EditingEventState = {
   description: '',
   location: '',
   start: parseInstant({ value: '2026-06-28T09:00:00.000Z' }),
-  originalStartDate: '2026-06-28T09:00:00.000Z',
-  originalEndDate: '2026-06-28T10:00:00.000Z',
+  originalStart: '2026-06-28T09:00:00.000Z',
+  originalEnd: '2026-06-28T10:00:00.000Z',
 };
 
 describe('EditEventDialog', () => {

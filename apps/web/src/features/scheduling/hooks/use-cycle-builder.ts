@@ -150,8 +150,8 @@ export interface CycleBuilderEventSummary {
   state: string;
   eventId: string;
   title: string;
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
   status: string;
   eventType: string;
   fillRatio: number;
@@ -303,8 +303,8 @@ function mapCycleBuilderData(
       state: item.participation.state,
       eventId: item.event.id,
       title: item.event.title,
-      startDate: item.event.startDate,
-      endDate: item.event.endDate,
+      start: item.event.start,
+      end: item.event.end,
       status: item.event.status,
       eventType: item.event.eventType,
       fillRatio: requiredCount === 0 ? 0 : assignedCount / requiredCount,

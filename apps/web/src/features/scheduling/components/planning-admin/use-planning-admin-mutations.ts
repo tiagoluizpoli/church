@@ -46,8 +46,8 @@ export interface UpdateEventInput {
   title?: string;
   description?: string;
   location?: string;
-  startDate?: string;
-  endDate?: string;
+  start?: string;
+  end?: string;
 }
 
 export interface DeleteEventInput {

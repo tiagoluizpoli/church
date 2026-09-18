@@ -208,8 +208,8 @@ export async function createSchedulingPhase3EventGraph(input: {
   ministryId: string;
   sourceTemplateId?: string;
   title: string;
-  startDate: Date;
-  endDate: Date;
+  start: Date;
+  end: Date;
   status?: 'draft' | 'scheduled' | 'cancelled' | 'past';
   sourceTemplateBlockId?: string;
 }) {
@@ -220,8 +220,8 @@ export async function createSchedulingPhase3EventGraph(input: {
       planningCycleId: input.cycleId,
       sourceTemplateId: input.sourceTemplateId ?? null,
       title: input.title,
-      startDate: input.startDate,
-      endDate: input.endDate,
+      start: input.start,
+      end: input.end,
       status: input.status ?? 'draft',
     })
     .returning();
@@ -245,8 +245,8 @@ export async function createSchedulingPhase3EventGraph(input: {
       churchId: input.churchId,
       eventId: planningEvent.id,
       sourceTemplateBlockId: input.sourceTemplateBlockId ?? null,
-      startTime: input.startDate,
-      endTime: input.endDate,
+      startTime: input.start,
+      endTime: input.end,
       label: 'Generated Slot',
     })
     .returning();

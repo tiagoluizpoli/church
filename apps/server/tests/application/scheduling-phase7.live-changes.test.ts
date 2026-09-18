@@ -333,8 +333,8 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Live execution service',
-      startDate: new Date('2026-12-06T09:00:00.000Z'),
-      endDate: new Date('2026-12-06T11:00:00.000Z'),
+      start: new Date('2026-12-06T09:00:00.000Z'),
+      end: new Date('2026-12-06T11:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -441,8 +441,8 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Permission check service',
-      startDate: new Date('2027-01-10T09:00:00.000Z'),
-      endDate: new Date('2027-01-10T11:00:00.000Z'),
+      start: new Date('2027-01-10T09:00:00.000Z'),
+      end: new Date('2027-01-10T11:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -524,8 +524,8 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Reassign service',
-      startDate: new Date('2027-02-07T09:00:00.000Z'),
-      endDate: new Date('2027-02-07T11:00:00.000Z'),
+      start: new Date('2027-02-07T09:00:00.000Z'),
+      end: new Date('2027-02-07T11:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -631,8 +631,8 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Near-term service',
-      startDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-      endDate: new Date(now.getTime() + 25 * 60 * 60 * 1000),
+      start: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      end: new Date(now.getTime() + 25 * 60 * 60 * 1000),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -740,8 +740,8 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Slot-based assignment service',
-      startDate: new Date('2027-03-07T09:00:00.000Z'),
-      endDate: new Date('2027-03-07T10:00:00.000Z'),
+      start: new Date('2027-03-07T09:00:00.000Z'),
+      end: new Date('2027-03-07T10:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -807,8 +807,8 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Delete assignment service',
-      startDate: new Date('2027-04-04T09:00:00.000Z'),
-      endDate: new Date('2027-04-04T10:00:00.000Z'),
+      start: new Date('2027-04-04T09:00:00.000Z'),
+      end: new Date('2027-04-04T10:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -879,8 +879,8 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Override service',
-      startDate: new Date('2027-05-09T09:00:00.000Z'),
-      endDate: new Date('2027-05-09T10:00:00.000Z'),
+      start: new Date('2027-05-09T09:00:00.000Z'),
+      end: new Date('2027-05-09T10:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -951,8 +951,8 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Non-member service',
-      startDate: new Date('2027-06-06T09:00:00.000Z'),
-      endDate: new Date('2027-06-06T10:00:00.000Z'),
+      start: new Date('2027-06-06T09:00:00.000Z'),
+      end: new Date('2027-06-06T10:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -1007,8 +1007,8 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Qualification service',
-      startDate: new Date('2027-07-04T09:00:00.000Z'),
-      endDate: new Date('2027-07-04T10:00:00.000Z'),
+      start: new Date('2027-07-04T09:00:00.000Z'),
+      end: new Date('2027-07-04T10:00:00.000Z'),
       status: 'scheduled',
     });
     const ownRole = await seedRole({

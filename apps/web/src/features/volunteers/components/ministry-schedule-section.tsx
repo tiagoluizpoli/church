@@ -139,8 +139,8 @@ export function MinistryScheduleSection({
                       <div className="font-medium">{event.title}</div>
                       <div className="text-muted-foreground">
                         {formatInstantRangeOf({
-                          start: event.startDate,
-                          end: event.endDate,
+                          start: event.start,
+                          end: event.end,
                           timeZone: churchTimezone,
                         })}
                       </div>

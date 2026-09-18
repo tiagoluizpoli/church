@@ -101,8 +101,8 @@ describe('Assignments and Audit Schema', () => {
         churchId: churchId,
         planningCycleId: cycle.id,
         title: 'Test Event',
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 3600000),
+        start: new Date(),
+        end: new Date(Date.now() + 3600000),
       })
       .returning();
     if (!newEvent) throw new Error('Failed to create event');

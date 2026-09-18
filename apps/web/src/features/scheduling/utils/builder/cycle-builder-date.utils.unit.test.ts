@@ -79,8 +79,8 @@ function makeEvent(
     state: 'rostering',
     eventId: 'event-1',
     title: 'teste',
-    startDate: '2027-01-04T03:00:00.000Z',
-    endDate: '2027-01-05T02:59:59.999Z',
+    start: '2027-01-04T03:00:00.000Z',
+    end: '2027-01-05T02:59:59.999Z',
     status: 'draft',
     eventType: 'hourly',
     fillRatio: 0,
@@ -108,8 +108,8 @@ describe('deriveEventDates', () => {
       makeEvent({
         eventId: 'event-2',
         title: 'segunda da benção',
-        startDate: '2027-01-11T03:00:00.000Z',
-        endDate: '2027-01-12T02:59:59.999Z',
+        start: '2027-01-11T03:00:00.000Z',
+        end: '2027-01-12T02:59:59.999Z',
         slots: [
           makeSlot({
             slotId: 'slot-3',
@@ -158,7 +158,7 @@ describe('deriveEventDates', () => {
 
   it('lists each day of a genuinely multi-day event that serves on both', () => {
     const event = makeEvent({
-      endDate: '2027-01-06T02:59:59.999Z',
+      end: '2027-01-06T02:59:59.999Z',
       slots: [
         makeSlot({ slotId: 'day-1', startTime: '2027-01-04T12:00:00.000Z' }),
         makeSlot({ slotId: 'day-2', startTime: '2027-01-05T12:00:00.000Z' }),
@@ -190,8 +190,8 @@ describe('a 22:00 Friday → 01:00 Saturday church-local Event', () => {
   });
   const event = makeEvent({
     eventId: 'late-friday-event',
-    startDate: '2027-01-09T01:00:00.000Z',
-    endDate: '2027-01-09T04:00:00.000Z',
+    start: '2027-01-09T01:00:00.000Z',
+    end: '2027-01-09T04:00:00.000Z',
     slots: [lateFridaySlot],
   });
 
@@ -243,7 +243,7 @@ describe('eventOccursOnDay', () => {
     // claim the second (that shape is the phantom-day bug this guards
     // against; see the Friday/Saturday case below).
     const event = makeEvent({
-      endDate: '2027-01-06T02:59:59.999Z',
+      end: '2027-01-06T02:59:59.999Z',
       slots: [
         makeSlot({ slotId: 'day-1', startTime: '2027-01-04T12:00:00.000Z' }),
         makeSlot({ slotId: 'day-2', startTime: '2027-01-05T12:00:00.000Z' }),
@@ -256,7 +256,7 @@ describe('eventOccursOnDay', () => {
 
   it('claims only Friday for a 22:00 Friday → 01:00 Saturday event, never the phantom Saturday', () => {
     // Regression for the bug a raw [start, end] bounds check let through: the
-    // event's own startDate/endDate cross church-local midnight, but it must
+    // event's own start/end cross church-local midnight, but it must
     // still resolve to exactly one day — its start day — not both.
     const lateFridaySlot = makeSlot({
       slotId: 'late-friday',
@@ -272,8 +272,8 @@ describe('eventOccursOnDay', () => {
     });
     const event = makeEvent({
       eventId: 'late-friday-event',
-      startDate: '2027-01-09T01:00:00.000Z',
-      endDate: '2027-01-09T04:00:00.000Z',
+      start: '2027-01-09T01:00:00.000Z',
+      end: '2027-01-09T04:00:00.000Z',
       slots: [lateFridaySlot],
     });
 
@@ -315,7 +315,7 @@ describe('eventSlotsOnDay', () => {
       startTime: '2027-01-05T12:00:00.000Z',
     });
     const event = makeEvent({
-      endDate: '2027-01-06T02:59:59.999Z',
+      end: '2027-01-06T02:59:59.999Z',
       slots: [dayOne, dayTwo],
     });
 

@@ -57,7 +57,7 @@ export function buildShiftAssignmentIndex({
   const roleNameById = new Map(data.roles.map((role) => [role.id, role.name]));
   for (const event of data.events) {
     const eventDayLabel = dateLabel({
-      day: churchDayOf({ value: event.startDate, timeZone }),
+      day: churchDayOf({ value: event.start, timeZone }),
     });
     for (const slot of event.slots) {
       for (const candidateShift of slot.shifts) {

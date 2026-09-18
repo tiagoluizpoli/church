@@ -114,8 +114,8 @@ export async function generateEvents({
         title: `${ministry.name} ${faker.helpers.arrayElement(titles)}`,
         description: faker.lorem.sentence(),
         location: SEED_CONFIG.DEFAULT_LOCATION,
-        startDate,
-        endDate: toDate({
+        start: startDate,
+        end: toDate({
           instant: addMilliseconds({
             instant: fromDate({ date: startDate }),
             milliseconds: 2 * 3_600_000,
@@ -141,8 +141,8 @@ export async function generateEvents({
         title: `${ministry.name} ${faker.helpers.arrayElement(titles)}`,
         description: faker.lorem.sentence(),
         location: SEED_CONFIG.DEFAULT_LOCATION,
-        startDate,
-        endDate: toDate({
+        start: startDate,
+        end: toDate({
           instant: addMilliseconds({
             instant: fromDate({ date: startDate }),
             milliseconds: 2 * 3_600_000,
@@ -191,8 +191,8 @@ export async function generateSlotsAndRequirements(
           ({ churchId }) => churchId === event.churchId,
         )?.id,
         label: 'Main Session',
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       })),
     )
     .returning();

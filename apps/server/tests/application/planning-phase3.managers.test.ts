@@ -238,8 +238,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: activeCycle.id,
       title: 'Sunday Service',
-      startDate: new Date('2026-08-02T12:00:00.000Z'),
-      endDate: new Date('2026-08-02T14:00:00.000Z'),
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T14:00:00.000Z'),
     });
 
     await cycleManager.lockCycle({
@@ -272,8 +272,8 @@ describe('Phase 3 planning managers', () => {
         churchId: churchAId,
         cycleId: PlanningCycleId.from(expiredCycle.id),
         title: 'Too Late',
-        startDate: new Date('2000-01-10T12:00:00.000Z'),
-        endDate: new Date('2000-01-10T14:00:00.000Z'),
+        start: new Date('2000-01-10T12:00:00.000Z'),
+        end: new Date('2000-01-10T14:00:00.000Z'),
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
 
@@ -303,8 +303,8 @@ describe('Phase 3 planning managers', () => {
         churchId: churchAId,
         cycleId: cycle.id,
         title: 'Outside cycle',
-        startDate: new Date('2027-10-05T12:00:00.000Z'),
-        endDate: new Date('2027-10-05T14:00:00.000Z'),
+        start: new Date('2027-10-05T12:00:00.000Z'),
+        end: new Date('2027-10-05T14:00:00.000Z'),
       }),
     ).rejects.toThrow(EventOutsidePlanningCycleError);
   });
@@ -325,15 +325,15 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'November first',
-      startDate: fromZonedTime('2026-11-01T00:00:00.000', seed.churchATimezone),
-      endDate: fromZonedTime('2026-11-01T23:59:59.999', seed.churchATimezone),
+      start: fromZonedTime('2026-11-01T00:00:00.000', seed.churchATimezone),
+      end: fromZonedTime('2026-11-01T23:59:59.999', seed.churchATimezone),
     });
 
     expect(
-      formatInTimeZone(created.startDate, seed.churchATimezone, 'yyyy-MM-dd'),
+      formatInTimeZone(created.start, seed.churchATimezone, 'yyyy-MM-dd'),
     ).toBe('2026-11-01');
     expect(
-      formatInTimeZone(created.endDate, seed.churchATimezone, 'yyyy-MM-dd'),
+      formatInTimeZone(created.end, seed.churchATimezone, 'yyyy-MM-dd'),
     ).toBe('2026-11-01');
   });
 
@@ -429,8 +429,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'Added after lock',
-      startDate: new Date('2026-12-10T12:00:00.000Z'),
-      endDate: new Date('2026-12-10T14:00:00.000Z'),
+      start: new Date('2026-12-10T12:00:00.000Z'),
+      end: new Date('2026-12-10T14:00:00.000Z'),
     });
     expect(manualPostLockEvent.status).toBe('scheduled');
 
@@ -487,8 +487,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: draftCycle.id,
       title: 'Cancel me (draft cycle)',
-      startDate: new Date('2027-01-05T09:00:00.000Z'),
-      endDate: new Date('2027-01-05T10:00:00.000Z'),
+      start: new Date('2027-01-05T09:00:00.000Z'),
+      end: new Date('2027-01-05T10:00:00.000Z'),
     });
 
     await eventManager.cancelEvent({
@@ -514,8 +514,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: lockedCycle.id,
       title: 'Scheduled once locked',
-      startDate: new Date('2027-02-05T09:00:00.000Z'),
-      endDate: new Date('2027-02-05T10:00:00.000Z'),
+      start: new Date('2027-02-05T09:00:00.000Z'),
+      end: new Date('2027-02-05T10:00:00.000Z'),
     });
     await cycleManager.lockCycle({
       churchId: churchAId,
@@ -569,8 +569,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'Scheduled service',
-      startDate: new Date('2027-04-05T09:00:00.000Z'),
-      endDate: new Date('2027-04-05T10:00:00.000Z'),
+      start: new Date('2027-04-05T09:00:00.000Z'),
+      end: new Date('2027-04-05T10:00:00.000Z'),
     });
     await markEventScheduled(scheduledEvent.id);
 
@@ -746,8 +746,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'Movable event',
-      startDate: new Date('2027-03-05T09:00:00.000Z'),
-      endDate: new Date('2027-03-05T10:00:00.000Z'),
+      start: new Date('2027-03-05T09:00:00.000Z'),
+      end: new Date('2027-03-05T10:00:00.000Z'),
     });
 
     await expect(
@@ -755,7 +755,7 @@ describe('Phase 3 planning managers', () => {
         churchId: churchAId,
         cycleId: cycle.id,
         eventId: event.id,
-        startDate: new Date('2027-04-15T09:00:00.000Z'),
+        start: new Date('2027-04-15T09:00:00.000Z'),
       }),
     ).rejects.toThrow(EventOutsidePlanningCycleError);
   });
@@ -951,8 +951,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: draftCycle.id,
       title: 'Bare manual day',
-      startDate: new Date('2027-08-02T00:00:00.000Z'),
-      endDate: new Date('2027-08-02T23:59:59.999Z'),
+      start: new Date('2027-08-02T00:00:00.000Z'),
+      end: new Date('2027-08-02T23:59:59.999Z'),
     });
 
     const created = await eventManager.createSlot({
@@ -977,8 +977,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: lockedCycle.id,
       title: 'Locked day',
-      startDate: new Date('2027-09-02T00:00:00.000Z'),
-      endDate: new Date('2027-09-02T23:59:59.999Z'),
+      start: new Date('2027-09-02T00:00:00.000Z'),
+      end: new Date('2027-09-02T23:59:59.999Z'),
     });
     await cycleManager.lockCycle({
       churchId: churchAId,
@@ -1012,8 +1012,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: draftCycle.id,
       title: 'Two-slot day',
-      startDate: new Date('2027-05-02T09:00:00.000Z'),
-      endDate: new Date('2027-05-02T12:00:00.000Z'),
+      start: new Date('2027-05-02T09:00:00.000Z'),
+      end: new Date('2027-05-02T12:00:00.000Z'),
     });
     const [slotA, slotB] = await Promise.all([
       seedEventSlot({
@@ -1071,8 +1071,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: draftCycle.id,
       title: 'Other day',
-      startDate: new Date('2027-05-03T09:00:00.000Z'),
-      endDate: new Date('2027-05-03T10:00:00.000Z'),
+      start: new Date('2027-05-03T09:00:00.000Z'),
+      end: new Date('2027-05-03T10:00:00.000Z'),
     });
     await expect(
       eventManager.updateSlot({
@@ -1108,8 +1108,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: draftCycle.id,
       title: 'Race day',
-      startDate: new Date('2027-05-04T09:00:00.000Z'),
-      endDate: new Date('2027-05-04T10:00:00.000Z'),
+      start: new Date('2027-05-04T09:00:00.000Z'),
+      end: new Date('2027-05-04T10:00:00.000Z'),
     });
     const raceSlot = await seedEventSlot({
       churchId: seed.churchAId,
@@ -1156,8 +1156,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'Cascade day',
-      startDate: new Date('2027-06-02T09:00:00.000Z'),
-      endDate: new Date('2027-06-02T12:00:00.000Z'),
+      start: new Date('2027-06-02T09:00:00.000Z'),
+      end: new Date('2027-06-02T12:00:00.000Z'),
     });
     const [slotOne, slotTwo] = await Promise.all([
       seedEventSlot({
@@ -1180,7 +1180,7 @@ describe('Phase 3 planning managers', () => {
       cycleId: cycle.id,
       eventId: cascadeEvent.id,
       title: 'Cascade day (retitled)',
-      endDate: new Date('2027-06-05T00:00:00.000Z'),
+      end: new Date('2027-06-05T00:00:00.000Z'),
     });
     const slotsAfterNonDateEdit = await schedulingTestDb
       .select()
@@ -1202,7 +1202,7 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       eventId: cascadeEvent.id,
-      startDate: newStartDate,
+      start: newStartDate,
     });
 
     const slotsAfterDateShift = await schedulingTestDb
@@ -1234,8 +1234,8 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'Rollback day',
-      startDate: new Date('2027-06-10T09:00:00.000Z'),
-      endDate: new Date('2027-06-10T10:00:00.000Z'),
+      start: new Date('2027-06-10T09:00:00.000Z'),
+      end: new Date('2027-06-10T10:00:00.000Z'),
     });
     const survivingSlot = await seedEventSlot({
       churchId: seed.churchAId,
@@ -1265,8 +1265,8 @@ describe('Phase 3 planning managers', () => {
         churchId: churchAId,
         cycleId: cycle.id,
         eventId: EventId.from(rollbackEvent.id),
-        startDate: new Date('2027-06-10T09:30:00.000Z'),
-        endDate: new Date('2027-06-10T10:30:00.000Z'),
+        start: new Date('2027-06-10T09:30:00.000Z'),
+        end: new Date('2027-06-10T10:30:00.000Z'),
       }),
     ).rejects.toThrow('Simulated mid-cascade failure');
 
@@ -1276,10 +1276,10 @@ describe('Phase 3 planning managers', () => {
       .select()
       .from(event)
       .where(eq(event.id, rollbackEvent.id));
-    expect(rolledBackEvent?.startDate.getTime()).toBe(
+    expect(rolledBackEvent?.start.getTime()).toBe(
       new Date('2027-06-10T09:00:00.000Z').getTime(),
     );
-    expect(rolledBackEvent?.endDate.getTime()).toBe(
+    expect(rolledBackEvent?.end.getTime()).toBe(
       new Date('2027-06-10T10:00:00.000Z').getTime(),
     );
 

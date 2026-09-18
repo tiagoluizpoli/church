@@ -13,8 +13,8 @@ const props = {
   title: 'Sunday Service',
   description: 'Weekly gathering',
   location: 'Main Hall',
-  startDate: parseInstant({ value: '2026-05-15T10:00:00Z' }),
-  endDate: parseInstant({ value: '2026-05-15T12:00:00Z' }),
+  start: parseInstant({ value: '2026-05-15T10:00:00Z' }),
+  end: parseInstant({ value: '2026-05-15T12:00:00Z' }),
 };
 
 describe('Event Entity', () => {
@@ -60,7 +60,7 @@ describe('Event Entity', () => {
   });
 
   it('rejects an invalid date range', () => {
-    expect(() => new Event({ ...props, startDate: props.endDate })).toThrow(
+    expect(() => new Event({ ...props, start: props.end })).toThrow(
       InvalidDateRangeError,
     );
   });

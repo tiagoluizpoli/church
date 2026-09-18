@@ -125,7 +125,7 @@ export class DrizzleEventRepository implements EventRepository {
         eq(ministryParticipation.eventId, event.id),
       )
       .where(and(...conditions))
-      .orderBy(asc(event.startDate));
+      .orderBy(asc(event.start));
     return rows.map(({ event: row }) => mapEvent(row));
   }
 
@@ -144,8 +144,8 @@ export class DrizzleEventRepository implements EventRepository {
         title: input.title,
         description: input.description ?? null,
         location: input.location ?? null,
-        startDate: input.startDate,
-        endDate: input.endDate,
+        start: input.start,
+        end: input.end,
         status: input.status ?? 'draft',
         eventType: (input.eventType ?? 'hourly') as 'hourly' | 'day_based',
       })
@@ -165,10 +165,8 @@ export class DrizzleEventRepository implements EventRepository {
       .update(event)
       .set({
         ...(input.title !== undefined ? { title: input.title } : {}),
-        ...(input.startDate !== undefined
-          ? { startDate: input.startDate }
-          : {}),
-        ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
+        ...(input.start !== undefined ? { start: input.start } : {}),
+        ...(input.end !== undefined ? { end: input.end } : {}),
         updatedAt: nowAsDate(),
       })
       .where(and(eq(event.id, id), withChurchIsolation(event, churchId)))

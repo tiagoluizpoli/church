@@ -290,7 +290,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         return Promise.all(
           events.map(
             async (event): Promise<DashboardAvailabilityTask | null> => {
-              if (compareInstants({ left: event.startDate, right: now }) <= 0)
+              if (compareInstants({ left: event.start, right: now }) <= 0)
                 return null;
               const eventWithSlots = await this.eventRepo.getWithSlots(
                 churchId,
@@ -314,8 +314,8 @@ export class DbVolunteerManager implements IVolunteerManager {
                 ministryId: ministry.id,
                 ministryName: ministry.name,
                 eventType: event.eventType,
-                eventStart: event.startDate,
-                eventEnd: event.endDate,
+                eventStart: event.start,
+                eventEnd: event.end,
                 completionState,
               };
             },
@@ -439,7 +439,7 @@ export class DbVolunteerManager implements IVolunteerManager {
           eventTitle: event.title,
           ministryId: participation.ministryId as string,
           ministryName: ministry.name,
-          eventStart: event.startDate,
+          eventStart: event.start,
           items: [item],
         });
       }
@@ -706,8 +706,8 @@ export class DbVolunteerManager implements IVolunteerManager {
           return {
             eventId: event.id as string,
             title: event.title,
-            startDate: event.startDate,
-            endDate: event.endDate,
+            start: event.start,
+            end: event.end,
             assignmentCount: activeAssignments.length,
             rows,
           };

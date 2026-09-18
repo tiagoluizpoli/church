@@ -215,8 +215,8 @@ export class DbEventManager implements IEventManager {
     const result = AssignmentManagerService.generateSlots({
       churchId: churchId as string,
       eventId: eventId as string,
-      eventStartTime: ev.startDate,
-      eventEndTime: ev.endDate,
+      eventStartTime: ev.start,
+      eventEndTime: ev.end,
       strategy: strategyWithInstants,
       existingSlots,
     });

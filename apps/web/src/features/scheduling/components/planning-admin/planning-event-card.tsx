@@ -95,7 +95,7 @@ export function PlanningEventCard({
         <div className="space-y-1">
           <div className="font-medium text-base">{row.title}</div>
           <div className="text-muted-foreground text-xs">
-            {formatDayOf({ value: row.startDate, timeZone: churchTimezone })}
+            {formatDayOf({ value: row.start, timeZone: churchTimezone })}
           </div>
           <div className="text-muted-foreground text-xs">
             {row.eventType} · {row.slots.length} slot

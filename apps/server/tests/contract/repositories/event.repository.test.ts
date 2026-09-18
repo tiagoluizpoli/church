@@ -38,8 +38,8 @@ class MockEventRepository implements EventRepository {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         title: 'Youth Gathering',
-        startDate: parseInstant({ value: '2024-06-05T10:00:00Z' }),
-        endDate: parseInstant({ value: '2024-06-05T12:00:00Z' }),
+        start: parseInstant({ value: '2024-06-05T10:00:00Z' }),
+        end: parseInstant({ value: '2024-06-05T12:00:00Z' }),
         status: 'draft',
       },
       '66666666-6666-6666-6666-666666666661' as EventId,
@@ -49,8 +49,8 @@ class MockEventRepository implements EventRepository {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2024-06-04T10:00:00Z' }),
-        endDate: parseInstant({ value: '2024-06-04T12:00:00Z' }),
+        start: parseInstant({ value: '2024-06-04T10:00:00Z' }),
+        end: parseInstant({ value: '2024-06-04T12:00:00Z' }),
         status: 'scheduled',
       },
       '66666666-6666-6666-6666-666666666662' as EventId,
@@ -81,8 +81,8 @@ class MockEventRepository implements EventRepository {
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: e1.id,
-        startTime: e1.startDate,
-        endTime: e1.endDate,
+        startTime: e1.start,
+        endTime: e1.end,
         status: 'active',
         requirements: [req],
       },
@@ -126,7 +126,7 @@ class MockEventRepository implements EventRepository {
       list = list.filter((e) => e.status === status);
     }
     return list.sort((a, b) =>
-      compareInstants({ left: a.startDate, right: b.startDate }),
+      compareInstants({ left: a.start, right: b.start }),
     );
   }
 
@@ -140,8 +140,8 @@ class MockEventRepository implements EventRepository {
         title: input.title,
         description: input.description,
         location: input.location,
-        startDate: fromDate({ date: input.startDate }),
-        endDate: fromDate({ date: input.endDate }),
+        start: fromDate({ date: input.start }),
+        end: fromDate({ date: input.end }),
         status: input.status ?? 'draft',
       },
       id,
@@ -183,10 +183,8 @@ class MockEventRepository implements EventRepository {
         title: input.title ?? e.title,
         description: e.description,
         location: e.location,
-        startDate: input.startDate
-          ? fromDate({ date: input.startDate })
-          : e.startDate,
-        endDate: input.endDate ? fromDate({ date: input.endDate }) : e.endDate,
+        start: input.start ? fromDate({ date: input.start }) : e.start,
+        end: input.end ? fromDate({ date: input.end }) : e.end,
         status: e.status,
         eventType: e.eventType,
       },

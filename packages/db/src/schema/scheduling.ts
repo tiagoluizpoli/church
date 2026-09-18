@@ -31,11 +31,11 @@ export const event = pgTable(
     title: varchar('title', { length: 255 }).notNull(),
     description: text('description'),
     location: varchar('location', { length: 255 }),
-    startDate: timestamp('start_date', {
+    start: timestamp('start', {
       withTimezone: true,
       mode: 'date',
     }).notNull(),
-    endDate: timestamp('end_date', {
+    end: timestamp('end', {
       withTimezone: true,
       mode: 'date',
     }).notNull(),
@@ -52,9 +52,7 @@ export const event = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [
-    check('event_date_check', sql`${table.startDate} < ${table.endDate}`),
-  ],
+  (table) => [check('event_date_check', sql`${table.start} < ${table.end}`)],
 );
 
 export const timeSlot = pgTable(

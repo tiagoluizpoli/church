@@ -61,8 +61,8 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Sunday Service',
-      startDate: new Date('2026-08-02T09:00:00.000Z'),
-      endDate: new Date('2026-08-02T11:00:00.000Z'),
+      start: new Date('2026-08-02T09:00:00.000Z'),
+      end: new Date('2026-08-02T11:00:00.000Z'),
       status: 'scheduled',
     });
 

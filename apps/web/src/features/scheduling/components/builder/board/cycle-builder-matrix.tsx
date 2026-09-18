@@ -405,7 +405,7 @@ export function CycleBuilderMatrix(props: Props) {
                     eventTitle: shiftContext.event.title,
                     dateText: dateLabel({
                       day: churchDayOf({
-                        value: shiftContext.event.startDate,
+                        value: shiftContext.event.start,
                         timeZone: churchTimezone,
                       }),
                     }),

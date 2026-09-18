@@ -120,8 +120,8 @@ async function seedCycleAndEvent({
     cycleId: cycle.id,
     ministryId: ministryId ?? seed.ministryAId,
     title: 'Sunday Service',
-    startDate: new Date('2026-08-02T12:00:00.000Z'),
-    endDate: new Date('2026-08-02T15:00:00.000Z'),
+    start: new Date('2026-08-02T12:00:00.000Z'),
+    end: new Date('2026-08-02T15:00:00.000Z'),
     status: 'scheduled',
   });
 
@@ -219,16 +219,16 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Event A',
-      startDate: new Date('2026-08-02T12:00:00.000Z'),
-      endDate: new Date('2026-08-02T15:00:00.000Z'),
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
     });
     await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Event B',
-      startDate: new Date('2026-08-03T12:00:00.000Z'),
-      endDate: new Date('2026-08-03T15:00:00.000Z'),
+      start: new Date('2026-08-03T12:00:00.000Z'),
+      end: new Date('2026-08-03T15:00:00.000Z'),
     });
     await schedulingTestDb
       .update(ministryParticipation)
@@ -265,16 +265,16 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Event A',
-      startDate: new Date('2026-08-02T12:00:00.000Z'),
-      endDate: new Date('2026-08-02T15:00:00.000Z'),
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
     });
     const graphB = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Event B',
-      startDate: new Date('2026-08-03T12:00:00.000Z'),
-      endDate: new Date('2026-08-03T15:00:00.000Z'),
+      start: new Date('2026-08-03T12:00:00.000Z'),
+      end: new Date('2026-08-03T15:00:00.000Z'),
     });
     // Event A's participation includes its one slot; Event B's participation
     // is untouched (no inclusion row) — slotCount must sum only included
@@ -325,8 +325,8 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Event A',
-      startDate: new Date('2026-08-02T12:00:00.000Z'),
-      endDate: new Date('2026-08-02T15:00:00.000Z'),
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
     });
     await schedulingTestDb
       .update(ministryParticipation)
@@ -363,16 +363,16 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Fired Event',
-      startDate: new Date('2026-08-02T12:00:00.000Z'),
-      endDate: new Date('2026-08-02T15:00:00.000Z'),
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
     });
     await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Untouched Event',
-      startDate: new Date('2026-08-03T12:00:00.000Z'),
-      endDate: new Date('2026-08-03T15:00:00.000Z'),
+      start: new Date('2026-08-03T12:00:00.000Z'),
+      end: new Date('2026-08-03T15:00:00.000Z'),
     });
     // Fire exactly one of the two participations.
     await schedulingTestDb

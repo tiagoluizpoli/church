@@ -29,8 +29,8 @@ describe('MinistryScheduleSection (T157)', () => {
           {
             eventId: 'event-1',
             title: 'Sunday Service',
-            startDate: '2027-06-10T13:00:00.000Z',
-            endDate: '2027-06-10T15:30:00.000Z',
+            start: '2027-06-10T13:00:00.000Z',
+            end: '2027-06-10T15:30:00.000Z',
             assignmentCount: 2,
             rows: [],
           },

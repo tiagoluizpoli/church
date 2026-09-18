@@ -21,8 +21,8 @@ export interface CreatePlanningEventInput {
   title: string;
   description?: string;
   location?: string;
-  startDate: Date;
-  endDate: Date;
+  start: Date;
+  end: Date;
   status: EventStatus;
   eventType: EventType;
   tx?: TransactionContext;
@@ -34,8 +34,8 @@ export interface UpdatePlanningEventInput {
   title?: string;
   description?: string;
   location?: string;
-  startDate?: Date;
-  endDate?: Date;
+  start?: Date;
+  end?: Date;
   status?: EventStatus;
   tx?: TransactionContext;
 }

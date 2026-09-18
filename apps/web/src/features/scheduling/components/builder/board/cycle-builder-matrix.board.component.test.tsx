@@ -19,8 +19,8 @@ const boardData: CycleBuilderData = {
       state: 'rostering',
       eventId: 'event-1',
       title: 'Sunday Gathering',
-      startDate: '2026-08-02T09:00:00.000Z',
-      endDate: '2026-08-02T11:00:00.000Z',
+      start: '2026-08-02T09:00:00.000Z',
+      end: '2026-08-02T11:00:00.000Z',
       status: 'scheduled',
       eventType: 'hourly',
       fillRatio: 0,
@@ -242,8 +242,8 @@ describe('CycleBuilderMatrix', () => {
               eventId: 'event-2',
               participationId: 'participation-2',
               title: 'Midweek Gathering',
-              startDate: '2026-08-05T19:00:00.000Z',
-              endDate: '2026-08-05T21:00:00.000Z',
+              start: '2026-08-05T19:00:00.000Z',
+              end: '2026-08-05T21:00:00.000Z',
               slots: [],
             },
           ],
@@ -396,8 +396,8 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-2',
         participationId: 'participation-2',
         title: 'Second Sunday Gathering',
-        startDate: '2026-08-09T09:00:00.000Z',
-        endDate: '2026-08-09T11:00:00.000Z',
+        start: '2026-08-09T09:00:00.000Z',
+        end: '2026-08-09T11:00:00.000Z',
       };
 
       renderWithProviders(
@@ -442,8 +442,8 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-2',
         participationId: 'participation-2',
         title: 'Second Sunday Gathering',
-        startDate: '2026-08-09T09:00:00.000Z',
-        endDate: '2026-08-09T11:00:00.000Z',
+        start: '2026-08-09T09:00:00.000Z',
+        end: '2026-08-09T11:00:00.000Z',
       };
 
       renderWithProviders(
@@ -508,8 +508,8 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-2',
         participationId: 'participation-2',
         title: 'Second Sunday Gathering',
-        startDate: '2026-08-09T09:00:00.000Z',
-        endDate: '2026-08-09T11:00:00.000Z',
+        start: '2026-08-09T09:00:00.000Z',
+        end: '2026-08-09T11:00:00.000Z',
       };
 
       renderWithProviders(
@@ -678,16 +678,16 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-early',
         participationId: 'participation-early',
         title: 'Early Retreat',
-        startDate: '2026-08-01T09:00:00.000Z',
-        endDate: '2026-08-03T11:00:00.000Z',
+        start: '2026-08-01T09:00:00.000Z',
+        end: '2026-08-03T11:00:00.000Z',
       };
       const lateEvent: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
         eventId: 'event-late',
         participationId: 'participation-late',
         title: 'Late Retreat',
-        startDate: '2026-08-10T09:00:00.000Z',
-        endDate: '2026-08-12T11:00:00.000Z',
+        start: '2026-08-10T09:00:00.000Z',
+        end: '2026-08-12T11:00:00.000Z',
       };
 
       renderWithProviders(
@@ -929,8 +929,8 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-full',
         participationId: 'participation-full',
         title: 'Fully Staffed',
-        startDate: '2026-08-02T09:00:00.000Z',
-        endDate: '2026-08-02T11:00:00.000Z',
+        start: '2026-08-02T09:00:00.000Z',
+        end: '2026-08-02T11:00:00.000Z',
         requiredCount: 2,
         assignedCount: 2,
       };
@@ -939,8 +939,8 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-partial',
         participationId: 'participation-partial',
         title: 'Partially Staffed',
-        startDate: '2026-08-09T09:00:00.000Z',
-        endDate: '2026-08-09T11:00:00.000Z',
+        start: '2026-08-09T09:00:00.000Z',
+        end: '2026-08-09T11:00:00.000Z',
         requiredCount: 2,
         assignedCount: 1,
         // Slots would otherwise still carry boardData's Aug 2 startTime,
@@ -954,8 +954,8 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-empty',
         participationId: 'participation-empty',
         title: 'Understaffed',
-        startDate: '2026-08-16T09:00:00.000Z',
-        endDate: '2026-08-16T11:00:00.000Z',
+        start: '2026-08-16T09:00:00.000Z',
+        end: '2026-08-16T11:00:00.000Z',
         requiredCount: 2,
         assignedCount: 0,
         slotCount: 0,
@@ -999,8 +999,8 @@ describe('CycleBuilderMatrix', () => {
         eventId: 'event-none',
         participationId: 'participation-none',
         title: 'Nothing Required',
-        startDate: '2026-08-23T09:00:00.000Z',
-        endDate: '2026-08-23T11:00:00.000Z',
+        start: '2026-08-23T09:00:00.000Z',
+        end: '2026-08-23T11:00:00.000Z',
         requiredCount: 0,
         assignedCount: 0,
         // See the partial/empty fixtures above: without this, the stale

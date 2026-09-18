@@ -235,8 +235,8 @@ describe('volunteerMapper', () => {
           {
             eventId: 'event-1',
             title: 'Sunday Service',
-            startDate: '2026-05-15T09:00:00.000Z',
-            endDate: '2026-05-15T11:00:00.000Z',
+            start: '2026-05-15T09:00:00.000Z',
+            end: '2026-05-15T11:00:00.000Z',
             assignmentCount: 1,
             rows: [
               {
@@ -254,8 +254,8 @@ describe('volunteerMapper', () => {
 
       const event = response.events[0];
       if (!event) throw new Error('expected a mapped event');
-      expect(isInstant({ value: event.startDate })).toBe(true);
-      expect(isInstant({ value: event.endDate })).toBe(true);
+      expect(isInstant({ value: event.start })).toBe(true);
+      expect(isInstant({ value: event.end })).toBe(true);
       expect(event.rows).toEqual(schedule.events[0]?.rows);
     });
   });

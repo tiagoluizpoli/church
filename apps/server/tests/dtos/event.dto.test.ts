@@ -20,16 +20,16 @@ const fullEventProps = {
   title: 'Sunday Service',
   description: 'Weekly gathering',
   location: 'Main Hall',
-  startDate: parseInstant({ value: '2026-05-15T10:00:00Z' }),
-  endDate: parseInstant({ value: '2026-05-15T12:00:00Z' }),
+  start: parseInstant({ value: '2026-05-15T10:00:00Z' }),
+  end: parseInstant({ value: '2026-05-15T12:00:00Z' }),
 };
 
 const minimalEventProps = {
   churchId: 'church-2',
   planningCycleId: 'cycle-2',
   title: 'Midweek Study',
-  startDate: parseInstant({ value: '2026-05-16T10:00:00Z' }),
-  endDate: parseInstant({ value: '2026-05-16T12:00:00Z' }),
+  start: parseInstant({ value: '2026-05-16T10:00:00Z' }),
+  end: parseInstant({ value: '2026-05-16T12:00:00Z' }),
 };
 
 describe('eventMapper.toResponse', () => {
@@ -51,8 +51,8 @@ describe('eventMapper.toResponse', () => {
       title: 'Sunday Service',
       description: 'Weekly gathering',
       location: 'Main Hall',
-      startDate: '2026-05-15T10:00:00.000Z',
-      endDate: '2026-05-15T12:00:00.000Z',
+      start: '2026-05-15T10:00:00.000Z',
+      end: '2026-05-15T12:00:00.000Z',
       status: 'draft',
       eventType: 'hourly',
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -60,8 +60,8 @@ describe('eventMapper.toResponse', () => {
     });
 
     expect(() => eventResponseSchema.parse(response)).not.toThrow();
-    expect(isInstant({ value: response.startDate })).toBe(true);
-    expect(isInstant({ value: response.endDate })).toBe(true);
+    expect(isInstant({ value: response.start })).toBe(true);
+    expect(isInstant({ value: response.end })).toBe(true);
     expect(isInstant({ value: response.createdAt })).toBe(true);
     expect(isInstant({ value: response.updatedAt })).toBe(true);
   });
@@ -84,8 +84,8 @@ describe('eventMapper.toResponse', () => {
       title: 'Midweek Study',
       description: undefined,
       location: undefined,
-      startDate: '2026-05-16T10:00:00.000Z',
-      endDate: '2026-05-16T12:00:00.000Z',
+      start: '2026-05-16T10:00:00.000Z',
+      end: '2026-05-16T12:00:00.000Z',
       status: 'draft',
       eventType: 'hourly',
       createdAt: '2026-01-03T00:00:00.000Z',

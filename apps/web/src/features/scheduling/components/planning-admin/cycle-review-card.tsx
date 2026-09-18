@@ -23,7 +23,7 @@ import type {
 } from './planning-admin.types';
 import {
   isMultiDayEvent,
-  shiftedEndDate,
+  shiftedEnd,
   toCycleCalendarTableRow,
 } from './planning-admin.utils';
 import { useCycleReviewCard } from './planning-admin-context';
@@ -275,9 +275,9 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         title: row.title,
         description: source.event.description ?? '',
         location: source.event.location ?? '',
-        start: parseInstant({ value: row.startDate }),
-        originalStartDate: source.event.startDate,
-        originalEndDate: source.event.endDate,
+        start: parseInstant({ value: row.start }),
+        originalStart: source.event.start,
+        originalEnd: source.event.end,
       },
     });
   }
@@ -291,11 +291,11 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
       title: event.title,
       description: event.description || undefined,
       location: event.location || undefined,
-      startDate: event.start,
-      endDate: shiftedEndDate({
-        newStartDate: event.start,
-        originalStartDate: event.originalStartDate,
-        originalEndDate: event.originalEndDate,
+      start: event.start,
+      end: shiftedEnd({
+        newStart: event.start,
+        originalStart: event.originalStart,
+        originalEnd: event.originalEnd,
       }),
     });
   }
@@ -322,8 +322,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         start: parseInstant({ value: startTime }),
         end: parseInstant({ value: endTime }),
         isMultiDayEvent: isMultiDayEvent({
-          startDate: source.event.startDate,
-          endDate: source.event.endDate,
+          eventStart: source.event.start,
+          eventEnd: source.event.end,
         }),
       },
     });
@@ -350,7 +350,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     if (!source) return;
 
     const day = today({
-      instant: parseInstant({ value: row.startDate }),
+      instant: parseInstant({ value: row.start }),
       timeZone: churchTimezone,
     });
 
@@ -370,8 +370,8 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
           timeZone: churchTimezone,
         }),
         isMultiDayEvent: isMultiDayEvent({
-          startDate: source.event.startDate,
-          endDate: source.event.endDate,
+          eventStart: source.event.start,
+          eventEnd: source.event.end,
         }),
       },
     });

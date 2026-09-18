@@ -15,8 +15,8 @@ function makeEvent(churchId = CHURCH_ID, status: EventStatus = 'draft') {
     churchId,
     ministryId: 'ministry-1',
     title: 'Service',
-    startDate: parseInstant({ value: '2026-07-01T11:00:00Z' }),
-    endDate: parseInstant({ value: '2026-07-01T12:00:00Z' }),
+    start: parseInstant({ value: '2026-07-01T11:00:00Z' }),
+    end: parseInstant({ value: '2026-07-01T12:00:00Z' }),
     status,
   });
 }
@@ -39,7 +39,7 @@ function makeValidationData(assignment: Assignment, event: Event) {
         ministryId: event.planningCycleId,
         roleId: assignment.roleId,
         slotId: assignment.slotId,
-        eventStartTime: event.startDate,
+        eventStartTime: event.start,
         volunteerQualifiedRoleIds: [assignment.roleId],
         volunteerMinistryIds: [event.planningCycleId],
         existingSlotIds: [],

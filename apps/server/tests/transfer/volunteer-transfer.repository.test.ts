@@ -78,8 +78,8 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
       planningCycleId: cycle?.id ?? '',
       title: 'Transfer Sunday',
       // Event runs from before to well after the commit instant.
-      startDate: new Date('2026-09-15T09:00:00Z'),
-      endDate: new Date('2026-09-15T18:00:00Z'),
+      start: new Date('2026-09-15T09:00:00Z'),
+      end: new Date('2026-09-15T18:00:00Z'),
     })
     .returning({ id: event.id });
   const [participation] = await testDb
@@ -540,8 +540,8 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
         churchId: fixture.churchB.id,
         planningCycleId: cycle?.id ?? '',
         title: 'Extra Assignments Event',
-        startDate: new Date(COMMIT.getTime() - 1000),
-        endDate: new Date(COMMIT.getTime() + 24 * 3_600_000),
+        start: new Date(COMMIT.getTime() - 1000),
+        end: new Date(COMMIT.getTime() + 24 * 3_600_000),
       })
       .returning({ id: event.id });
     const [extraParticipation] = await testDb

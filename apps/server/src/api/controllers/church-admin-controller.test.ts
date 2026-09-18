@@ -280,8 +280,8 @@ describe('Church admin planning routes', () => {
           churchId: '11111111-1111-1111-1111-111111111111',
           planningCycleId: '22222222-2222-2222-2222-222222222222',
           title: 'Domingo',
-          startDate: parseInstant({ value: '2026-06-28T03:00:00.000Z' }),
-          endDate: parseInstant({ value: '2026-06-29T02:59:59.999Z' }),
+          start: parseInstant({ value: '2026-06-28T03:00:00.000Z' }),
+          end: parseInstant({ value: '2026-06-29T02:59:59.999Z' }),
           eventType: 'hourly',
         },
         '33333333-3333-3333-3333-333333333333',
@@ -295,8 +295,8 @@ describe('Church admin planning routes', () => {
       url: '/api/v1/admin/planning-cycles/22222222-2222-2222-2222-222222222222/events',
       payload: {
         title: 'Domingo',
-        startDate: '2026-06-28T03:00:00.000Z',
-        endDate: '2026-06-29T02:59:59.999Z',
+        start: '2026-06-28T03:00:00.000Z',
+        end: '2026-06-29T02:59:59.999Z',
         eventType: 'hourly',
       },
     });
@@ -304,8 +304,8 @@ describe('Church admin planning routes', () => {
     expect(response.statusCode).toBe(201);
     expect(planningEventManager.createEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        startDate: new Date('2026-06-28T03:00:00.000Z'),
-        endDate: new Date('2026-06-29T02:59:59.999Z'),
+        start: new Date('2026-06-28T03:00:00.000Z'),
+        end: new Date('2026-06-29T02:59:59.999Z'),
       }),
     );
     expect(planningEventManager.createEvent).not.toHaveBeenCalledWith(

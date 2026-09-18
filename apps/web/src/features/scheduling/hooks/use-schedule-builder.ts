@@ -88,8 +88,8 @@ export function useScheduleBuilder(eventId: string) {
       volunteerMembership: membershipOf(volunteerMap.get(a.volunteerId)),
     }));
 
-    const eventStartMs = new Date(event.startDate).getTime();
-    const eventEndMs = new Date(event.endDate).getTime();
+    const eventStartMs = new Date(event.start).getTime();
+    const eventEndMs = new Date(event.end).getTime();
 
     const volunteerAvailability = volunteers.map((v) => ({
       volunteerId: v.id,

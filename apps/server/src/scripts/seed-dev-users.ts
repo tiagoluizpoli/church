@@ -14,10 +14,11 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { addMilliseconds, now, nowAsDate, toDate } from '@church/time';
+import { now, nowAsDate } from '@church/time';
 import { hashPassword } from 'better-auth/crypto';
 import { and, eq, isNull } from 'drizzle-orm';
 import { provisionSeedChurch } from './provision-seed-church';
+import { expiresAtAfter } from './shared-time';
 
 const db = createDb();
 
@@ -307,11 +308,9 @@ async function ensureMinistryInvitationLifecycleFixtures({
     });
     await addChurchMember({ db, churchId, userId: invitee.id });
 
-    const expiresAt = toDate({
-      instant: addMilliseconds({
-        instant: seededAt,
-        milliseconds: fixture.expiresInDays * dayMs,
-      }),
+    const expiresAt = expiresAtAfter({
+      from: seededAt,
+      milliseconds: fixture.expiresInDays * dayMs,
     });
 
     await db

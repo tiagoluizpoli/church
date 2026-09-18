@@ -7,10 +7,11 @@ import {
   type TenancyWriter,
   user,
 } from '@church/db';
-import { addMilliseconds, now, toDate } from '@church/time';
+import { now } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ChurchSlugTakenError } from '../domain/errors/church-slug-taken';
+import { expiresAtAfter } from './shared-time';
 
 // Better Auth's own default for its `invitation` table — the plugin's HTTP
 // API is bypassed here, so this operation reproduces it rather than leaving
@@ -21,11 +22,9 @@ const ORGANIZATION_SLUG_UNIQUE_CONSTRAINT = 'organization_slug_unique';
 
 /** The invitation table's `expiresAt`, `CHURCH_INVITATION_TTL_MS` from now. */
 function churchInvitationExpiresAt(): Date {
-  return toDate({
-    instant: addMilliseconds({
-      instant: now(),
-      milliseconds: CHURCH_INVITATION_TTL_MS,
-    }),
+  return expiresAtAfter({
+    from: now(),
+    milliseconds: CHURCH_INVITATION_TTL_MS,
   });
 }
 

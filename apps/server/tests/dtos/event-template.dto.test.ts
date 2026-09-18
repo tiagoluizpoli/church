@@ -1,5 +1,9 @@
+import { isInstant, isTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { eventTemplateMapper } from '../../src/api/dtos/event-template.dto';
+import {
+  eventTemplateMapper,
+  eventTemplateResponseSchema,
+} from '../../src/api/dtos/event-template.dto';
 import { EventTemplate } from '../../src/domain/entities/event-template';
 import { TimeBlock } from '../../src/domain/entities/time-block';
 
@@ -82,6 +86,13 @@ describe('eventTemplateMapper', () => {
         order: 2,
       },
     ]);
+    expect(() => eventTemplateResponseSchema.parse(response)).not.toThrow();
+    expect(isInstant({ value: response.createdAt })).toBe(true);
+    expect(isInstant({ value: response.updatedAt })).toBe(true);
+    for (const block of response.blocks) {
+      expect(isTimeOfDay({ value: block.startTime })).toBe(true);
+      expect(isTimeOfDay({ value: block.endTime })).toBe(true);
+    }
   });
 
   it('maps a template with zero blocks to an empty blocks array', () => {

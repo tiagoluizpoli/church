@@ -1,3 +1,4 @@
+import { instantSchema } from '@church/time';
 import { z } from 'zod';
 
 const ministryAccessLevelValues = ['volunteer', 'leader'] as const;
@@ -32,7 +33,7 @@ export const redemptionPreviewResponseSchema = z.object({
   ministryName: z.string(),
   ministryAccessLevel: z.enum(ministryAccessLevelValues),
   roleNames: z.array(z.string()),
-  expiresAt: z.string(),
+  expiresAt: instantSchema,
 });
 
 export const verificationCodeRequestedResponseSchema = z.object({
@@ -86,7 +87,7 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
       ministryName: z.string(),
       ministryAccessLevel: z.enum(ministryAccessLevelValues),
       roleNames: z.array(z.string()),
-      expiresAt: z.string(),
+      expiresAt: instantSchema,
     }),
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
     z.object({ kind: z.literal('identity-mismatch') }),
@@ -138,7 +139,7 @@ export const transferPreviewResponseSchema = z.discriminatedUnion('kind', [
     withdrawnAssignments: z.array(
       z.object({
         eventName: z.string(),
-        timeSlotStart: z.string(),
+        timeSlotStart: instantSchema,
         roleName: z.string(),
       }),
     ),

@@ -1,5 +1,9 @@
+import { isInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { ministryMapper } from '../../src/api/dtos/ministry.dto';
+import {
+  ministryMapper,
+  ministryResponseSchema,
+} from '../../src/api/dtos/ministry.dto';
 import { Ministry } from '../../src/domain/entities/ministry';
 
 describe('ministryMapper', () => {
@@ -28,6 +32,8 @@ describe('ministryMapper', () => {
         createdAt: ministry.createdAt.toISOString(),
         updatedAt: ministry.updatedAt.toISOString(),
       });
+      expect(() => ministryResponseSchema.parse(response)).not.toThrow();
+      expect(isInstant({ value: response.createdAt })).toBe(true);
     });
 
     it('maps a ministry with description absent', () => {

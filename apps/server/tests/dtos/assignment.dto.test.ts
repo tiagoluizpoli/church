@@ -1,6 +1,10 @@
-import { parseInstant } from '@church/time';
+import { isInstant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { assignmentMapper } from '../../src/api/dtos/assignment.dto';
+import {
+  assignmentAuditResponseSchema,
+  assignmentMapper,
+  assignmentResponseSchema,
+} from '../../src/api/dtos/assignment.dto';
 import { Assignment } from '../../src/domain/entities/assignment';
 import { AssignmentAudit } from '../../src/domain/entities/assignment-audit';
 
@@ -39,6 +43,8 @@ describe('assignmentMapper', () => {
         assignedAt,
         assignedBy: 'u1',
       });
+      expect(() => assignmentResponseSchema.parse(response)).not.toThrow();
+      expect(isInstant({ value: response.assignedAt })).toBe(true);
     });
 
     it('maps an assignment with optional fields absent', () => {
@@ -87,6 +93,8 @@ describe('assignmentMapper', () => {
         reason: 'setup',
         timestamp,
       });
+      expect(() => assignmentAuditResponseSchema.parse(response)).not.toThrow();
+      expect(isInstant({ value: response.timestamp })).toBe(true);
     });
 
     it('maps an audit with reason absent', () => {

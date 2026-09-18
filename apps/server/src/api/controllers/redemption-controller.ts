@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { auth } from '@church/auth';
+import { fromDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
@@ -340,7 +341,7 @@ export class RedemptionController implements FastifyController {
             withdrawnAssignments: preview.withdrawnAssignments.map(
               (assignment) => ({
                 eventName: assignment.eventName,
-                timeSlotStart: assignment.timeSlotStart.toISOString(),
+                timeSlotStart: fromDate({ date: assignment.timeSlotStart }),
                 roleName: assignment.roleName,
               }),
             ),
@@ -476,6 +477,6 @@ function toInvitationPreviewFields(preview: InvitationPreviewFields) {
     ministryName: preview.ministryName,
     ministryAccessLevel: preview.ministryAccessLevel,
     roleNames: preview.roleNames,
-    expiresAt: preview.expiresAt.toISOString(),
+    expiresAt: fromDate({ date: preview.expiresAt }),
   };
 }

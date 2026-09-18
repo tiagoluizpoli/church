@@ -1,6 +1,9 @@
-import { parseInstant } from '@church/time';
+import { isInstant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { timeSlotMapper } from '../../src/api/dtos/time-slot.dto';
+import {
+  timeSlotMapper,
+  timeSlotResponseSchema,
+} from '../../src/api/dtos/time-slot.dto';
 import { SlotRequirement } from '../../src/domain/entities/slot-requirement';
 import { TimeSlot } from '../../src/domain/entities/time-slot';
 
@@ -101,6 +104,9 @@ describe('timeSlotMapper', () => {
           },
         ],
       });
+      expect(() => timeSlotResponseSchema.parse(response)).not.toThrow();
+      expect(isInstant({ value: response.startTime })).toBe(true);
+      expect(isInstant({ value: response.endTime })).toBe(true);
     });
 
     it('maps a slot with no label and empty requirements', () => {

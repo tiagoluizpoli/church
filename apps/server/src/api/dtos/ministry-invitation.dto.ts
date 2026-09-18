@@ -1,3 +1,4 @@
+import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { MinistryInvitationDeliveryStatus } from '../../domain/contracts/application/ministry-invitation-manager';
 import { MINISTRY_INVITATION_DELIVERY_STATUS_OPTIONS } from '../../domain/contracts/application/ministry-invitation-manager';
@@ -16,7 +17,7 @@ export const ministryInvitationResponseSchema = z.object({
   id: z.string(),
   kind: z.enum(['ministry-only', 'chained']),
   status: z.enum(MINISTRY_INVITATION_STATUS_OPTIONS),
-  expiresAt: z.string(),
+  expiresAt: instantSchema,
   redemptionPath: z.string(),
   /**
    * The invitation's most recent outbox message status (spec #56 §6.4).

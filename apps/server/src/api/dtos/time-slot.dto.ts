@@ -1,3 +1,4 @@
+import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { SlotRequirement } from '../../domain/entities/slot-requirement';
 import type { TimeSlot } from '../../domain/entities/time-slot';
@@ -66,8 +67,8 @@ export const timeSlotResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
   eventId: z.string(),
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
   label: z.string().optional(),
   status: z.enum(['active', 'cancelled']),
   requirements: z.array(slotRequirementResponseSchema),

@@ -1,6 +1,14 @@
-import { parseCalendarDay, parseInstant } from '@church/time';
+import {
+  isCalendarDay,
+  isInstant,
+  parseCalendarDay,
+  parseInstant,
+} from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { planningCycleMapper } from '../../src/api/dtos/planning-cycle.dto';
+import {
+  planningCycleMapper,
+  planningCycleResponseSchema,
+} from '../../src/api/dtos/planning-cycle.dto';
 import { Event } from '../../src/domain/entities/event';
 import { PlanningCycle } from '../../src/domain/entities/planning-cycle';
 import { TimeSlot } from '../../src/domain/entities/time-slot';
@@ -57,6 +65,11 @@ describe('planningCycleMapper', () => {
     expect(response.state).toBe('draft');
     expect(response.createdAt).toBe(cycle.createdAt.toISOString());
     expect(response.updatedAt).toBe(cycle.updatedAt.toISOString());
+    expect(() => planningCycleResponseSchema.parse(response)).not.toThrow();
+    expect(isCalendarDay({ value: response.startDate })).toBe(true);
+    expect(isCalendarDay({ value: response.endDate })).toBe(true);
+    expect(isInstant({ value: response.createdAt })).toBe(true);
+    expect(isInstant({ value: response.updatedAt })).toBe(true);
   });
 
   it('maps a non-empty list of planning cycles', () => {

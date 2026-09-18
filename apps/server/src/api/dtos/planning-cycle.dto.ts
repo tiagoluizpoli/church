@@ -1,3 +1,4 @@
+import { calendarDaySchema, fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { PlanningCycleDetails } from '../../domain/contracts/application/planning-cycle-manager';
 import type { PlanningCycle } from '../../domain/entities/planning-cycle';
@@ -18,11 +19,11 @@ export const planningCycleResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
   name: z.string(),
-  startDate: z.string(),
-  endDate: z.string(),
+  startDate: calendarDaySchema,
+  endDate: calendarDaySchema,
   state: z.enum(['draft', 'locked', 'archived']),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: instantSchema,
+  updatedAt: instantSchema,
 });
 
 export const planningCycleListResponseSchema = z.object({
@@ -49,8 +50,8 @@ function toPlanningCycleResponse(cycle: PlanningCycle): PlanningCycleResponse {
     startDate: cycle.startDate,
     endDate: cycle.endDate,
     state: cycle.state,
-    createdAt: cycle.createdAt.toISOString(),
-    updatedAt: cycle.updatedAt.toISOString(),
+    createdAt: fromDate({ date: cycle.createdAt }),
+    updatedAt: fromDate({ date: cycle.updatedAt }),
   };
 }
 

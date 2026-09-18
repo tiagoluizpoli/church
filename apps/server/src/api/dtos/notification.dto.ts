@@ -1,3 +1,4 @@
+import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { NotificationListResult } from '../../domain/contracts/application/volunteer-manager';
 import type { VolunteerNotification } from '../../domain/entities/volunteer-notification';
@@ -20,14 +21,14 @@ export const notificationResponseSchema = z.object({
   title: z.string(),
   body: z.string(),
   payload: z.record(z.string(), z.string().nullable()),
-  readAt: z.string().optional(),
-  createdAt: z.string(),
+  readAt: instantSchema.optional(),
+  createdAt: instantSchema,
 });
 export type NotificationResponse = z.infer<typeof notificationResponseSchema>;
 
 export const notificationListResponseSchema = z.object({
   items: z.array(notificationResponseSchema),
-  nextCursor: z.string().optional(),
+  nextCursor: instantSchema.optional(),
 });
 
 function toResponse(n: VolunteerNotification): NotificationResponse {
@@ -42,7 +43,7 @@ function toResponse(n: VolunteerNotification): NotificationResponse {
     body: n.body,
     payload: n.payload as Record<string, string | null>,
     readAt: n.readAt,
-    createdAt: n.createdAt.toISOString(),
+    createdAt: fromDate({ date: n.createdAt }),
   };
 }
 
@@ -51,7 +52,9 @@ export const notificationMapper = {
   listToResponse(result: NotificationListResult) {
     return {
       items: result.items.map(toResponse),
-      nextCursor: result.nextCursor?.toISOString(),
+      nextCursor: result.nextCursor
+        ? fromDate({ date: result.nextCursor })
+        : undefined,
     };
   },
 };

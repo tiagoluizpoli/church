@@ -1,3 +1,4 @@
+import { timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { MinistryServingProfile } from '../../domain/entities/ministry-serving-profile';
 
@@ -17,8 +18,8 @@ const servingProfileShiftSplitSchema = z.discriminatedUnion('kind', [
     spans: z.array(
       z.object({
         label: z.string().optional(),
-        startTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-        endTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+        startTime: timeOfDaySchema,
+        endTime: timeOfDaySchema,
       }),
     ),
   }),

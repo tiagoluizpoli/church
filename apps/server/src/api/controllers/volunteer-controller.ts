@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { instantSchema, toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
@@ -48,7 +49,7 @@ interface NotificationRouteParams {
 }
 
 const getNotificationsQuerystringSchema = z.object({
-  cursor: z.string().optional(),
+  cursor: instantSchema.optional(),
   limit: z.coerce.number().optional(),
 });
 
@@ -314,7 +315,7 @@ export class VolunteerController implements FastifyController {
         const result = await this.volunteerManager.getNotifications({
           volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
-          cursor: cursor ? new Date(cursor) : undefined,
+          cursor: cursor ? toDate({ instant: cursor }) : undefined,
           limit,
         });
         return reply.send(notificationMapper.listToResponse(result));

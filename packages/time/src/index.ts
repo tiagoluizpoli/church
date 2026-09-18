@@ -7,3 +7,4 @@ export * from './display';
 export * from './persistence';
 export * from './picker';
 export * from './span';
+export * from './zod';

@@ -1,3 +1,9 @@
+import {
+  calendarDaySchema,
+  fromDate,
+  instantSchema,
+  today,
+} from '@church/time';
 import { z } from 'zod';
 import type {
   CycleParticipationView,
@@ -24,8 +30,8 @@ export const shiftResponseSchema = z.object({
   id: z.string(),
   participationId: z.string(),
   timeSlotId: z.string(),
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
   label: z.string().optional(),
 });
 export type ShiftResponse = z.infer<typeof shiftResponseSchema>;
@@ -114,8 +120,8 @@ export const fireAvailabilityResponseSchema = z.object({
 export const ministryCycleSummaryResponseSchema = z.object({
   cycleId: z.string(),
   name: z.string(),
-  startDate: z.string(),
-  endDate: z.string(),
+  startDate: calendarDaySchema,
+  endDate: calendarDaySchema,
   isPartOf: z.boolean(),
   eventCount: z.number(),
   slotCount: z.number(),
@@ -140,7 +146,7 @@ export const availabilityStatusResponseSchema = z.object({
       volunteerId: z.string(),
       volunteerName: z.string(),
       state: z.enum(['pending', 'confirmed']).optional(),
-      confirmedAt: z.string().optional(),
+      confirmedAt: instantSchema.optional(),
     }),
   ),
 });
@@ -191,14 +197,29 @@ function toSlotView(view: ParticipationSlotView) {
   };
 }
 
+/**
+ * `MinistryCycleSummaryView.startDate/endDate` are still raw `Date` (a
+ * pre-seam application-layer gap this DTO can't close — the PlanningCycle
+ * entity they originate from is already `CalendarDay`). `timeZone: 'UTC'`
+ * only recovers the label as-stored; it is not a Church Timezone read and
+ * would be wrong if this ever carried a wall-clock-sensitive value.
+ */
+interface ToCycleDayInput {
+  date: Date;
+}
+
+function toCycleDay({ date }: ToCycleDayInput) {
+  return today({ instant: fromDate({ date }), timeZone: 'UTC' });
+}
+
 function toMinistryCycleSummaryResponse(
   view: MinistryCycleSummaryView,
 ): MinistryCycleSummaryResponse {
   return {
     cycleId: view.cycleId as string,
     name: view.name,
-    startDate: view.startDate.toISOString().slice(0, 10),
-    endDate: view.endDate.toISOString().slice(0, 10),
+    startDate: toCycleDay({ date: view.startDate }),
+    endDate: toCycleDay({ date: view.endDate }),
     isPartOf: view.isPartOf,
     eventCount: view.eventCount,
     slotCount: view.slotCount,

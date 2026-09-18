@@ -1,3 +1,4 @@
+import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
@@ -23,7 +24,7 @@ export const assignmentResponseSchema = z.object({
   roleId: z.string(),
   status: z.enum(['draft', 'pending', 'confirmed', 'declined', 'cancelled']),
   reason: z.string().optional(),
-  assignedAt: z.string(),
+  assignedAt: instantSchema,
   assignedBy: z.string().optional(),
 });
 export type AssignmentResponse = z.infer<typeof assignmentResponseSchema>;
@@ -41,7 +42,7 @@ export const assignmentAuditResponseSchema = z.object({
     'event_cancelled',
   ]),
   reason: z.string().optional(),
-  timestamp: z.string(),
+  timestamp: instantSchema,
 });
 export type AssignmentAuditResponse = z.infer<
   typeof assignmentAuditResponseSchema

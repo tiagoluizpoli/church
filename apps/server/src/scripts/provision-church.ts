@@ -7,9 +7,11 @@ import {
   type TenancyWriter,
   user,
 } from '@church/db';
+import { now } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ChurchSlugTakenError } from '../domain/errors/church-slug-taken';
+import { expiresAtAfter } from './shared-time';
 
 // Better Auth's own default for its `invitation` table — the plugin's HTTP
 // API is bypassed here, so this operation reproduces it rather than leaving
@@ -17,6 +19,14 @@ import { ChurchSlugTakenError } from '../domain/errors/church-slug-taken';
 const CHURCH_INVITATION_TTL_MS = 48 * 60 * 60 * 1000;
 
 const ORGANIZATION_SLUG_UNIQUE_CONSTRAINT = 'organization_slug_unique';
+
+/** The invitation table's `expiresAt`, `CHURCH_INVITATION_TTL_MS` from now. */
+function churchInvitationExpiresAt(): Date {
+  return expiresAtAfter({
+    from: now(),
+    milliseconds: CHURCH_INVITATION_TTL_MS,
+  });
+}
 
 const AdminEmailSchema = z.email();
 
@@ -154,7 +164,7 @@ export async function provisionChurch(
       email: adminEmail,
       role: 'admin',
       status: 'pending',
-      expiresAt: new Date(Date.now() + CHURCH_INVITATION_TTL_MS),
+      expiresAt: churchInvitationExpiresAt(),
       inviterId: input.operatorUserId,
     });
 
@@ -220,7 +230,7 @@ export async function repairChurchInvitation(
       email: newEmail,
       role: existing.role,
       status: 'pending',
-      expiresAt: new Date(Date.now() + CHURCH_INVITATION_TTL_MS),
+      expiresAt: churchInvitationExpiresAt(),
       inviterId: existing.inviterId,
     });
 

@@ -24,9 +24,19 @@ import {
   volunteer,
   volunteerNotification,
 } from '@church/db';
+import { parseInstant, toDate } from '@church/time';
 import { inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+
+interface InstantDateInput {
+  value: string;
+}
+
+/** Fixture ISO literal → `Date`, for timestamptz and date-mode columns written directly. */
+function instantDate({ value }: InstantDateInput): Date {
+  return toDate({ instant: parseInstant({ value }) });
+}
 
 const workspaceRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -274,8 +284,8 @@ export async function seedE2e({
           id: E2E_IDS.planningCycle,
           churchId: E2E_IDS.church,
           name: 'E2E December cycle',
-          startDate: new Date('2026-12-01T00:00:00Z'),
-          endDate: new Date('2027-01-01T00:00:00Z'),
+          startDate: instantDate({ value: '2026-12-01T00:00:00Z' }),
+          endDate: instantDate({ value: '2027-01-01T00:00:00Z' }),
           state: 'locked',
         },
         {
@@ -284,8 +294,8 @@ export async function seedE2e({
           id: E2E_IDS.us4PlanningCycle,
           churchId: E2E_IDS.church,
           name: 'E2E US4 publish cycle',
-          startDate: new Date('2027-02-01T00:00:00Z'),
-          endDate: new Date('2027-03-01T00:00:00Z'),
+          startDate: instantDate({ value: '2027-02-01T00:00:00Z' }),
+          endDate: instantDate({ value: '2027-03-01T00:00:00Z' }),
           state: 'locked',
         },
       ])
@@ -318,8 +328,8 @@ export async function seedE2e({
         id: E2E_IDS.churchBPlanningCycle,
         churchId: E2E_IDS.churchB,
         name: CHURCH_B_PLANNING_CYCLE_NAME,
-        startDate: new Date('2026-12-01T00:00:00Z'),
-        endDate: new Date('2027-01-01T00:00:00Z'),
+        startDate: instantDate({ value: '2026-12-01T00:00:00Z' }),
+        endDate: instantDate({ value: '2027-01-01T00:00:00Z' }),
         state: 'locked',
       })
       .onConflictDoNothing();
@@ -632,8 +642,8 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Sunday Service',
-          startDate: new Date('2026-12-25T09:00:00Z'),
-          endDate: new Date('2026-12-25T11:00:00Z'),
+          startDate: instantDate({ value: '2026-12-25T09:00:00Z' }),
+          endDate: instantDate({ value: '2026-12-25T11:00:00Z' }),
           status: 'draft',
           eventType: 'hourly',
         },
@@ -642,8 +652,8 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Override Service',
-          startDate: new Date('2026-12-26T09:00:00Z'),
-          endDate: new Date('2026-12-26T11:00:00Z'),
+          startDate: instantDate({ value: '2026-12-26T09:00:00Z' }),
+          endDate: instantDate({ value: '2026-12-26T11:00:00Z' }),
           status: 'draft',
           eventType: 'hourly',
         },
@@ -652,8 +662,8 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Decline Service',
-          startDate: new Date('2026-12-27T09:00:00Z'),
-          endDate: new Date('2026-12-27T11:00:00Z'),
+          startDate: instantDate({ value: '2026-12-27T09:00:00Z' }),
+          endDate: instantDate({ value: '2026-12-27T11:00:00Z' }),
           status: 'scheduled',
           eventType: 'hourly',
         },
@@ -662,8 +672,8 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Team Leader Service',
-          startDate: new Date('2026-12-28T09:00:00Z'),
-          endDate: new Date('2026-12-28T11:00:00Z'),
+          startDate: instantDate({ value: '2026-12-28T09:00:00Z' }),
+          endDate: instantDate({ value: '2026-12-28T11:00:00Z' }),
           status: 'draft',
           eventType: 'hourly',
         },
@@ -672,8 +682,8 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           planningCycleId: E2E_IDS.planningCycle,
           title: 'E2E Care Gathering',
-          startDate: new Date('2026-12-24T09:00:00Z'),
-          endDate: new Date('2026-12-24T11:00:00Z'),
+          startDate: instantDate({ value: '2026-12-24T09:00:00Z' }),
+          endDate: instantDate({ value: '2026-12-24T11:00:00Z' }),
           status: 'scheduled',
           eventType: 'hourly',
         },
@@ -682,8 +692,8 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           planningCycleId: E2E_IDS.us4PlanningCycle,
           title: 'E2E US4 Publish Service',
-          startDate: new Date('2027-02-07T09:00:00Z'),
-          endDate: new Date('2027-02-07T11:00:00Z'),
+          startDate: instantDate({ value: '2027-02-07T09:00:00Z' }),
+          endDate: instantDate({ value: '2027-02-07T11:00:00Z' }),
           status: 'draft',
           eventType: 'hourly',
         },
@@ -739,48 +749,48 @@ export async function seedE2e({
           id: E2E_IDS.slot,
           churchId: E2E_IDS.church,
           eventId: E2E_IDS.event,
-          startTime: new Date('2026-12-25T09:00:00Z'),
-          endTime: new Date('2026-12-25T11:00:00Z'),
+          startTime: instantDate({ value: '2026-12-25T09:00:00Z' }),
+          endTime: instantDate({ value: '2026-12-25T11:00:00Z' }),
           label: 'Morning Service',
         },
         {
           id: E2E_IDS.slotOverride,
           churchId: E2E_IDS.church,
           eventId: E2E_IDS.eventOverride,
-          startTime: new Date('2026-12-26T09:00:00Z'),
-          endTime: new Date('2026-12-26T11:00:00Z'),
+          startTime: instantDate({ value: '2026-12-26T09:00:00Z' }),
+          endTime: instantDate({ value: '2026-12-26T11:00:00Z' }),
           label: 'Override Service',
         },
         {
           id: E2E_IDS.declineSlot,
           churchId: E2E_IDS.church,
           eventId: E2E_IDS.declineEvent,
-          startTime: new Date('2026-12-27T09:00:00Z'),
-          endTime: new Date('2026-12-27T11:00:00Z'),
+          startTime: instantDate({ value: '2026-12-27T09:00:00Z' }),
+          endTime: instantDate({ value: '2026-12-27T11:00:00Z' }),
           label: 'Decline Service',
         },
         {
           id: E2E_IDS.us6Slot,
           churchId: E2E_IDS.church,
           eventId: E2E_IDS.us6Event,
-          startTime: new Date('2026-12-28T09:00:00Z'),
-          endTime: new Date('2026-12-28T11:00:00Z'),
+          startTime: instantDate({ value: '2026-12-28T09:00:00Z' }),
+          endTime: instantDate({ value: '2026-12-28T11:00:00Z' }),
           label: 'Team Leader Service',
         },
         {
           id: E2E_IDS.careSlot,
           churchId: E2E_IDS.church,
           eventId: E2E_IDS.careEvent,
-          startTime: new Date('2026-12-24T09:00:00Z'),
-          endTime: new Date('2026-12-24T11:00:00Z'),
+          startTime: instantDate({ value: '2026-12-24T09:00:00Z' }),
+          endTime: instantDate({ value: '2026-12-24T11:00:00Z' }),
           label: 'Care Check-In',
         },
         {
           id: E2E_IDS.us4Slot,
           churchId: E2E_IDS.church,
           eventId: E2E_IDS.us4Event,
-          startTime: new Date('2027-02-07T09:00:00Z'),
-          endTime: new Date('2027-02-07T11:00:00Z'),
+          startTime: instantDate({ value: '2027-02-07T09:00:00Z' }),
+          endTime: instantDate({ value: '2027-02-07T11:00:00Z' }),
           label: 'US4 Publish Service',
         },
       ])
@@ -854,32 +864,32 @@ export async function seedE2e({
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[eventId],
           timeSlotId: slotId,
-          startTime: new Date(startTime),
-          endTime: new Date(endTime),
+          startTime: instantDate({ value: startTime }),
+          endTime: instantDate({ value: endTime }),
         })),
         {
           id: US4_SHARED_CARE_SHIFT_ID,
           churchId: E2E_IDS.church,
           participationId: US4_SHARED_CARE_PARTICIPATION_ID,
           timeSlotId: E2E_IDS.us6Slot,
-          startTime: new Date('2026-12-28T09:00:00Z'),
-          endTime: new Date('2026-12-28T11:00:00Z'),
+          startTime: instantDate({ value: '2026-12-28T09:00:00Z' }),
+          endTime: instantDate({ value: '2026-12-28T11:00:00Z' }),
         },
         {
           id: E2E_IDS.us4Shift,
           churchId: E2E_IDS.church,
           participationId: E2E_IDS.us4Participation,
           timeSlotId: E2E_IDS.us4Slot,
-          startTime: new Date('2027-02-07T09:00:00Z'),
-          endTime: new Date('2027-02-07T11:00:00Z'),
+          startTime: instantDate({ value: '2027-02-07T09:00:00Z' }),
+          endTime: instantDate({ value: '2027-02-07T11:00:00Z' }),
         },
         {
           id: E2E_IDS.us4CareShift,
           churchId: E2E_IDS.church,
           participationId: E2E_IDS.us4CareParticipation,
           timeSlotId: E2E_IDS.us4Slot,
-          startTime: new Date('2027-02-07T09:00:00Z'),
-          endTime: new Date('2027-02-07T11:00:00Z'),
+          startTime: instantDate({ value: '2027-02-07T09:00:00Z' }),
+          endTime: instantDate({ value: '2027-02-07T11:00:00Z' }),
         },
       ])
       .onConflictDoNothing();
@@ -1036,7 +1046,7 @@ export async function seedE2e({
           ministryId: E2E_IDS.ministry,
           section: 'assignments',
         },
-        createdAt: new Date('2026-12-24T08:00:00Z'),
+        createdAt: instantDate({ value: '2026-12-24T08:00:00Z' }),
       })
       .onConflictDoNothing();
 

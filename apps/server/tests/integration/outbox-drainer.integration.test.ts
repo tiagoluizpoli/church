@@ -147,8 +147,8 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
         churchId: fixture.churchB.id,
         planningCycleId: cycle?.id ?? '',
         title: 'Transfer Sunday',
-        startDate: new Date(COMMIT.getTime() - 3_600_000),
-        endDate: new Date(COMMIT.getTime() + 24 * 3_600_000),
+        start: new Date(COMMIT.getTime() - 3_600_000),
+        end: new Date(COMMIT.getTime() + 24 * 3_600_000),
       })
       .returning({ id: event.id });
     const [participation] = await testDb

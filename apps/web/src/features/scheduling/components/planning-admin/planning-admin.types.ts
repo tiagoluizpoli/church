@@ -55,7 +55,7 @@ export interface CycleCalendarSlotRow {
 export interface CycleCalendarTableRow {
   eventId: string;
   title: string;
-  startDate: string;
+  start: string;
   eventType: string;
   status: PlanningCycleEventGroup['event']['status'];
   slots: CycleCalendarSlotRow[];
@@ -71,8 +71,8 @@ export interface EditingEventState {
   description: string;
   location: string;
   start: Instant;
-  originalStartDate: string;
-  originalEndDate: string;
+  originalStart: string;
+  originalEnd: string;
 }
 
 export interface EditingSlotState {

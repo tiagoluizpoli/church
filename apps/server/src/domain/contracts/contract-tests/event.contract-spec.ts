@@ -81,8 +81,8 @@ export function runEventRepositoryContractTests(
           planningCycleId:
             '22222222-2222-2222-2222-222222222231' as PlanningCycleId,
           title: 'New Event',
-          startDate: new Date('2024-06-10T10:00:00Z'),
-          endDate: new Date('2024-06-10T12:00:00Z'),
+          start: new Date('2024-06-10T10:00:00Z'),
+          end: new Date('2024-06-10T12:00:00Z'),
         },
       );
       expect(created).toBeDefined();

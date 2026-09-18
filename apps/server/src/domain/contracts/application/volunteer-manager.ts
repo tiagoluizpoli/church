@@ -85,8 +85,8 @@ export interface MinistryScheduleRow {
 export interface MinistryScheduleEvent {
   eventId: string;
   title: string;
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
   assignmentCount: number;
   rows: MinistryScheduleRow[];
 }

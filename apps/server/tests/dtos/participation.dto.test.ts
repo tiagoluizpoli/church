@@ -35,8 +35,8 @@ function buildEvent(): Event {
       churchId: 'church-1',
       planningCycleId: 'cycle-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-15T09:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-15T11:00:00Z' }),
+      start: parseInstant({ value: '2026-05-15T09:00:00Z' }),
+      end: parseInstant({ value: '2026-05-15T11:00:00Z' }),
     },
     'event-1',
   );

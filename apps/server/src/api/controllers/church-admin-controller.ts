@@ -394,8 +394,8 @@ export class ChurchAdminController implements FastifyController {
           title: body.title,
           description: body.description,
           location: body.location,
-          startDate: new Date(body.startDate),
-          endDate: new Date(body.endDate),
+          start: new Date(body.start),
+          end: new Date(body.end),
           eventType: body.eventType,
         });
         return reply.status(201).send(eventMapper.toResponse(event));
@@ -425,8 +425,8 @@ export class ChurchAdminController implements FastifyController {
           title: body.title,
           description: body.description,
           location: body.location,
-          startDate: body.startDate ? new Date(body.startDate) : undefined,
-          endDate: body.endDate ? new Date(body.endDate) : undefined,
+          start: body.start ? new Date(body.start) : undefined,
+          end: body.end ? new Date(body.end) : undefined,
         });
         return reply.send(eventMapper.toResponse(event));
       },

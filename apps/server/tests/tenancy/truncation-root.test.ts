@@ -283,8 +283,8 @@ async function seedEveryTenantedTable(): Promise<void> {
     churchId: IDS.church,
     planningCycleId: IDS.planningCycle,
     title: 'Truncation event',
-    startDate: new Date('2026-06-07T09:00:00Z'),
-    endDate: new Date('2026-06-07T11:00:00Z'),
+    start: new Date('2026-06-07T09:00:00Z'),
+    end: new Date('2026-06-07T11:00:00Z'),
   });
 
   await testDb.insert(timeSlot).values({

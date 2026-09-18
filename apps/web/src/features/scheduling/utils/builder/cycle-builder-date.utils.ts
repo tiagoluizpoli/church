@@ -97,8 +97,8 @@ export function eventDayKeys({
   timeZone,
 }: EventDayKeysInput): CalendarDay[] {
   return enumerateCalendarDays({
-    start: churchDayOf({ value: event.startDate, timeZone }),
-    end: churchDayOf({ value: event.endDate, timeZone }),
+    start: churchDayOf({ value: event.start, timeZone }),
+    end: churchDayOf({ value: event.end, timeZone }),
   });
 }
 
@@ -164,7 +164,7 @@ export function eventOccursOnDay({
   timeZone,
 }: EventOccursOnDayInput): boolean {
   if (event.slots.length === 0) {
-    return churchDayOf({ value: event.startDate, timeZone }) === day;
+    return churchDayOf({ value: event.start, timeZone }) === day;
   }
   return eventSlotsOnDay({ event, day, timeZone }).length > 0;
 }
@@ -228,8 +228,8 @@ export function eventMatchesDateSpan({
   timeZone,
 }: EventMatchesDateSpanInput): boolean {
   if (!rangeStart && !rangeEnd) return true;
-  const start = churchDayOf({ value: event.startDate, timeZone });
-  const end = churchDayOf({ value: event.endDate, timeZone });
+  const start = churchDayOf({ value: event.start, timeZone });
+  const end = churchDayOf({ value: event.end, timeZone });
   if (mode === 'starts')
     return isDateWithinRange({ date: start, rangeStart, rangeEnd });
   if (mode === 'ends')

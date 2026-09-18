@@ -153,8 +153,8 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
       planningCycleId: cycle.id,
       sourceTemplateId: template.id,
       title: 'Sunday Service',
-      startDate: new Date('2026-08-09T12:00:00Z'),
-      endDate: new Date('2026-08-09T14:00:00Z'),
+      start: new Date('2026-08-09T12:00:00Z'),
+      end: new Date('2026-08-09T14:00:00Z'),
     })
     .returning();
   if (!insertedEvent) throw new Error('Event seed failed');
@@ -164,8 +164,8 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
       churchId: seed.churchAId,
       eventId: insertedEvent.id,
       sourceTemplateBlockId: block.id,
-      startTime: insertedEvent.startDate,
-      endTime: insertedEvent.endDate,
+      startTime: insertedEvent.start,
+      endTime: insertedEvent.end,
     })
     .returning();
   const [participation] = await testDb

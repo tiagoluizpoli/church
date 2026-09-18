@@ -212,7 +212,7 @@ export function CalendarRow({
   // values, since none of the *interaction* flags changed.
   const dataFingerprint =
     visibleRow.kind === 'parent'
-      ? `${visibleRow.row.title}-${visibleRow.row.startDate}-${visibleRow.row.status}-${visibleRow.row.slots.length}`
+      ? `${visibleRow.row.title}-${visibleRow.row.start}-${visibleRow.row.status}-${visibleRow.row.slots.length}`
       : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlySlotInEvent}`;
   const rowKey = `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteSlotPending ? 'slot-pending' : 'slot-idle'}`;
 
@@ -304,7 +304,7 @@ function ParentRowCell({
         </span>
       ) : null}
       {column.id === 'window'
-        ? formatDayOf({ value: row.startDate, timeZone })
+        ? formatDayOf({ value: row.start, timeZone })
         : null}
       {column.id === 'slots'
         ? `${row.slots.length} slot${row.slots.length === 1 ? '' : 's'}`

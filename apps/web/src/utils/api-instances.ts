@@ -15,8 +15,8 @@ interface LegacyCreateEventBody {
   title: string;
   description?: string;
   location?: string;
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
   eventType?: 'hourly' | 'day_based';
 }
 

@@ -31,40 +31,40 @@ type EventType = 'hourly' | 'day_based';
 
 interface CreateEventFormValues {
   title: string;
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
   eventType: EventType;
 }
 
 interface ToDayRangeBoundsInput {
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
   timeZone: string;
 }
 
 interface DayRangeBounds {
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
 }
 
 /** A day range's full span, per the event's own calendar days (FR: hourly
  * events carry all their slots within one day; day-based events span the
  * full start-to-end date range) — read in the Church Timezone, not UTC
- * (#149). Start is `startDate`'s church-local midnight; end is the last
- * millisecond before church-local midnight after `endDate`. */
+ * (#149). Start is `start`'s church-local midnight; end is the last
+ * millisecond before church-local midnight after `end`. */
 function toDayRangeBounds({
-  startDate,
-  endDate,
+  start,
+  end,
   timeZone,
 }: ToDayRangeBoundsInput): DayRangeBounds {
   return {
-    startDate: calendarDayBounds({
-      day: parseCalendarDay({ value: startDate }),
+    start: calendarDayBounds({
+      day: parseCalendarDay({ value: start }),
       timeZone,
     }).start,
-    endDate: addMilliseconds({
+    end: addMilliseconds({
       instant: calendarDayBounds({
-        day: parseCalendarDay({ value: endDate }),
+        day: parseCalendarDay({ value: end }),
         timeZone,
       }).end,
       milliseconds: -1,
@@ -82,8 +82,8 @@ export function QuickCreateEventModal({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
   const [eventType, setEventType] = useState<EventType>('hourly');
 
   const create = useMutation({
@@ -93,33 +93,30 @@ export function QuickCreateEventModal({
         : adminApi.createPlanningEvent(target.cycleId, body),
   });
 
-  const effectiveEndDate = eventType === 'hourly' ? startDate : endDate;
+  const effectiveEnd = eventType === 'hourly' ? start : end;
   const canSubmit = Boolean(
-    title.trim() &&
-      startDate &&
-      effectiveEndDate &&
-      startDate <= effectiveEndDate,
+    title.trim() && start && effectiveEnd && start <= effectiveEnd,
   );
 
   const resetForm = () => {
     setTitle('');
-    setStartDate('');
-    setEndDate('');
+    setStart('');
+    setEnd('');
     setEventType('hourly');
   };
 
   const handleSubmit = async () => {
-    if (!startDate || !effectiveEndDate) return;
+    if (!start || !effectiveEnd) return;
     const bounds = toDayRangeBounds({
-      startDate,
-      endDate: effectiveEndDate,
+      start,
+      end: effectiveEnd,
       timeZone: churchTimezone,
     });
     try {
       await create.mutateAsync({
         title,
-        startDate: bounds.startDate,
-        endDate: bounds.endDate,
+        start: bounds.start,
+        end: bounds.end,
         eventType,
       });
       onCreated();
@@ -193,8 +190,8 @@ export function QuickCreateEventModal({
             <Label htmlFor="event-date">Date</Label>
             <DatePickerField
               id="event-date"
-              value={startDate}
-              onChange={setStartDate}
+              value={start}
+              onChange={setStart}
             />
           </div>
         ) : (
@@ -203,16 +200,16 @@ export function QuickCreateEventModal({
               <Label htmlFor="event-start-date">Start date</Label>
               <DatePickerField
                 id="event-start-date"
-                value={startDate}
-                onChange={setStartDate}
+                value={start}
+                onChange={setStart}
               />
             </div>
             <div className="space-y-1">
               <Label htmlFor="event-end-date">End date</Label>
               <DatePickerField
                 id="event-end-date"
-                value={endDate}
-                onChange={setEndDate}
+                value={end}
+                onChange={setEnd}
               />
             </div>
           </div>

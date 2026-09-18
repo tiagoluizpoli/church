@@ -124,8 +124,8 @@ describe('PlanningCycleHeader (T058)', () => {
           event: {
             id: 'event-1',
             title: 'Sunday Service',
-            startDate: '2026-08-02T09:00:00Z',
-            endDate: '2026-08-02T11:00:00Z',
+            start: '2026-08-02T09:00:00Z',
+            end: '2026-08-02T11:00:00Z',
             eventType: 'service',
             status: 'scheduled',
           },
@@ -148,8 +148,8 @@ describe('PlanningCycleHeader (T058)', () => {
           event: {
             id: 'event-2',
             title: 'Wednesday Service',
-            startDate: '2026-08-05T19:00:00Z',
-            endDate: '2026-08-05T20:00:00Z',
+            start: '2026-08-05T19:00:00Z',
+            end: '2026-08-05T20:00:00Z',
             eventType: 'service',
             status: 'scheduled',
           },

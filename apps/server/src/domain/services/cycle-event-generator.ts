@@ -42,8 +42,8 @@ export interface GeneratedCycleCreateEventPlan {
   kind: 'create_event';
   sourceTemplateId: EventTemplateId;
   title: string;
-  startDate: Instant;
-  endDate: Instant;
+  start: Instant;
+  end: Instant;
   slots: GeneratedCycleSlotPlan[];
 }
 
@@ -144,8 +144,8 @@ export class CycleEventGenerator {
           kind: 'create_event',
           sourceTemplateId: template.id as EventTemplateId,
           title: template.name,
-          startDate: firstSlot.startTime,
-          endDate: lastSlot.endTime,
+          start: firstSlot.startTime,
+          end: lastSlot.endTime,
           slots,
         });
       }

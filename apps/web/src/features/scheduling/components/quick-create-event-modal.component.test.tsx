@@ -138,8 +138,8 @@ describe('QuickCreateEventModal', () => {
 
     expect(mutateAsyncMock).toHaveBeenCalledWith({
       title: 'Domingo',
-      startDate: '2026-06-28T03:00:00.000Z',
-      endDate: '2026-06-29T02:59:59.999Z',
+      start: '2026-06-28T03:00:00.000Z',
+      end: '2026-06-29T02:59:59.999Z',
       eventType: 'hourly',
     });
   }, 30000);

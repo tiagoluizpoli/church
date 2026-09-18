@@ -260,7 +260,7 @@ export const AssignmentManagerService = {
     }
 
     // 2. Check if event is in the past
-    if (compareInstants({ left: event.startDate, right: now }) <= 0) {
+    if (compareInstants({ left: event.start, right: now }) <= 0) {
       throw new PastEventError();
     }
 
@@ -588,7 +588,7 @@ export const AssignmentManagerService = {
     }
 
     // 2. Check if event is actually expired
-    if (compareInstants({ left: event.endDate, right: now }) > 0) {
+    if (compareInstants({ left: event.end, right: now }) > 0) {
       return {
         transitioned: false,
         assignmentsAutoConfirmed: 0,

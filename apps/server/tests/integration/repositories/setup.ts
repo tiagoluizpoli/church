@@ -191,15 +191,15 @@ export async function seed(): Promise<void> {
     endDate: new Date('2024-07-01T00:00:00Z'),
   });
 
-  // Events (event-2 June 4 = older, event-1 June 5 = newer; list ascending by start_date returns event-2 first)
+  // Events (event-2 June 4 = older, event-1 June 5 = newer; list ascending by start returns event-2 first)
   await testDb.insert(event).values([
     {
       id: '66666666-6666-6666-6666-666666666661',
       churchId: '11111111-1111-1111-1111-111111111111',
       planningCycleId: '22222222-2222-2222-2222-222222222231',
       title: 'Youth Gathering',
-      startDate: new Date('2024-06-05T09:00:00Z'),
-      endDate: new Date('2024-06-05T11:00:00Z'),
+      start: new Date('2024-06-05T09:00:00Z'),
+      end: new Date('2024-06-05T11:00:00Z'),
       status: 'draft',
     },
     {
@@ -207,8 +207,8 @@ export async function seed(): Promise<void> {
       churchId: '11111111-1111-1111-1111-111111111111',
       planningCycleId: '22222222-2222-2222-2222-222222222231',
       title: 'Adult Service',
-      startDate: new Date('2024-06-04T09:00:00Z'),
-      endDate: new Date('2024-06-04T11:00:00Z'),
+      start: new Date('2024-06-04T09:00:00Z'),
+      end: new Date('2024-06-04T11:00:00Z'),
       status: 'scheduled',
     },
   ]);

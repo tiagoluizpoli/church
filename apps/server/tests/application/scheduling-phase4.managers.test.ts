@@ -142,8 +142,8 @@ async function seedCycleWithEvent({
     cycleId: cycle.id,
     ministryId: ministryId ?? seed.ministryAId,
     title: 'Sunday Service',
-    startDate: new Date('2026-08-02T12:00:00.000Z'),
-    endDate: new Date('2026-08-02T15:00:00.000Z'),
+    start: new Date('2026-08-02T12:00:00.000Z'),
+    end: new Date('2026-08-02T15:00:00.000Z'),
     status: 'scheduled',
   });
 
@@ -485,8 +485,8 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       cycleId: seedB.cycle.id,
       ministryId: seed.ministryAId,
       title: 'Second Event',
-      startDate: new Date('2026-08-09T12:00:00.000Z'),
-      endDate: new Date('2026-08-09T15:00:00.000Z'),
+      start: new Date('2026-08-09T12:00:00.000Z'),
+      end: new Date('2026-08-09T15:00:00.000Z'),
       status: 'scheduled',
     });
     const { participationManager } = createPhase4Managers();
@@ -655,8 +655,8 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
       cycleId: graph1.cycle.id,
       ministryId: seed.ministryAId,
       title: 'Second Sunday',
-      startDate: new Date('2026-08-09T12:00:00.000Z'),
-      endDate: new Date('2026-08-09T15:00:00.000Z'),
+      start: new Date('2026-08-09T12:00:00.000Z'),
+      end: new Date('2026-08-09T15:00:00.000Z'),
       status: 'scheduled',
     });
     const { availabilityManager, notificationSpy } = createPhase4Managers();
@@ -1002,8 +1002,8 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Target event',
-      startDate: new Date('2026-08-09T09:00:00.000Z'),
-      endDate: new Date('2026-08-09T10:00:00.000Z'),
+      start: new Date('2026-08-09T09:00:00.000Z'),
+      end: new Date('2026-08-09T10:00:00.000Z'),
       status: 'scheduled',
     });
     const overlapGraph = await createSchedulingPhase3EventGraph({
@@ -1011,8 +1011,8 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Overlap event',
-      startDate: new Date('2026-08-09T09:30:00.000Z'),
-      endDate: new Date('2026-08-09T10:30:00.000Z'),
+      start: new Date('2026-08-09T09:30:00.000Z'),
+      end: new Date('2026-08-09T10:30:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRoleFor({

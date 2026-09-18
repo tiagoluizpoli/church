@@ -26,8 +26,8 @@ describe('AvailabilityForm (T157)', () => {
           id: 'event-1',
           title: 'Sunday Service',
           eventType: 'hourly',
-          startDate: '2027-01-04T12:00:00.000Z',
-          endDate: '2027-01-04T14:00:00.000Z',
+          start: '2027-01-04T12:00:00.000Z',
+          end: '2027-01-04T14:00:00.000Z',
         }}
         slots={[
           {

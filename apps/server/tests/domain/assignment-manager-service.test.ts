@@ -625,8 +625,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -649,7 +649,7 @@ describe('Publish Schedule', () => {
         ministryId: 'ministry-1',
         roleId: a.roleId,
         slotId: a.slotId,
-        eventStartTime: event.startDate,
+        eventStartTime: event.start,
         volunteerQualifiedRoleIds: [a.roleId],
         volunteerMinistryIds: ['ministry-1'],
         existingSlotIds: [],
@@ -688,8 +688,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -707,7 +707,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: assignment.roleId,
       slotId: assignment.slotId,
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: [assignment.roleId],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -732,8 +732,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -754,8 +754,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'scheduled',
     });
 
@@ -784,8 +784,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'cancelled',
     });
 
@@ -814,8 +814,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'past',
     });
 
@@ -844,8 +844,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T08:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T08:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -874,8 +874,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -904,7 +904,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: 'r-1',
       slotId: 's-1',
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: ['r-1'],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -914,7 +914,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: 'r-2',
       slotId: 's-2',
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: ['r-other'],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -924,7 +924,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: 'r-3',
       slotId: 's-3',
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: ['r-3'],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -957,8 +957,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -981,7 +981,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: 'r-1',
       slotId: 's-1',
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: ['r-other'],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -991,7 +991,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: 'r-2',
       slotId: 's-2',
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: ['r-2'],
       volunteerMinistryIds: ['ministry-other'],
       existingSlotIds: [],
@@ -1020,8 +1020,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -1046,7 +1046,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: 'r-1',
       slotId: 's-1',
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: ['r-1'],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -1056,7 +1056,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: 'r-2',
       slotId: 's-2',
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: ['r-other'],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -1083,8 +1083,8 @@ describe('Publish Schedule', () => {
       churchId,
       ministryId: 'ministry-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-      endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+      start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+      end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
       status: 'draft',
     });
 
@@ -1116,7 +1116,7 @@ describe('Publish Schedule', () => {
       ministryId: 'ministry-1',
       roleId: draftAssignment.roleId,
       slotId: draftAssignment.slotId,
-      eventStartTime: event.startDate,
+      eventStartTime: event.start,
       volunteerQualifiedRoleIds: [draftAssignment.roleId],
       volunteerMinistryIds: ['ministry-1'],
       existingSlotIds: [],
@@ -1146,28 +1146,28 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+        start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
       const slot1 = new TimeSlot({
         churchId,
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
       const slot2 = new TimeSlot({
         churchId,
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
       const slot3 = new TimeSlot({
         churchId,
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
 
       const a1 = new Assignment({
@@ -1229,16 +1229,16 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+        start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'draft',
       });
 
       const slot1 = new TimeSlot({
         churchId,
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
 
       const a1 = new Assignment({
@@ -1280,8 +1280,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+        start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'cancelled',
       });
 
@@ -1302,8 +1302,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+        start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'past',
       });
 
@@ -1324,16 +1324,16 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+        start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
       const slot = new TimeSlot({
         churchId,
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
 
       const a1 = new Assignment({
@@ -1382,16 +1382,16 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+        start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
       const slot = new TimeSlot({
         churchId,
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
 
       const result = AssignmentManagerService.cancelEvent({
@@ -1415,16 +1415,16 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'ministry-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-19T10:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-19T12:00:00Z' }),
+        start: parseInstant({ value: '2026-05-19T10:00:00Z' }),
+        end: parseInstant({ value: '2026-05-19T12:00:00Z' }),
         status: 'scheduled',
       });
 
       const slot = new TimeSlot({
         churchId: 'other-church',
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
       const assignment = new Assignment({
         churchId,
@@ -1448,8 +1448,8 @@ describe('Publish Schedule', () => {
       const slotOk = new TimeSlot({
         churchId,
         eventId: event.id,
-        startTime: event.startDate,
-        endTime: event.endDate,
+        startTime: event.start,
+        endTime: event.end,
       });
       const assignmentBad = new Assignment({
         churchId: 'other-church',
@@ -2038,8 +2038,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2082,8 +2082,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'draft',
       });
 
@@ -2117,8 +2117,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Future Service',
-        startDate: parseInstant({ value: '2026-05-20T14:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T16:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T14:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T16:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2142,8 +2142,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Past Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'past',
       });
 
@@ -2165,8 +2165,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Cancelled Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'cancelled',
       });
 
@@ -2188,8 +2188,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2235,8 +2235,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Empty Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2260,8 +2260,8 @@ describe('Publish Schedule', () => {
         churchId: 'other-church',
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 
@@ -2280,8 +2280,8 @@ describe('Publish Schedule', () => {
         churchId,
         ministryId: 'min-1',
         title: 'Sunday Service',
-        startDate: parseInstant({ value: '2026-05-20T08:00:00Z' }),
-        endDate: parseInstant({ value: '2026-05-20T10:00:00Z' }),
+        start: parseInstant({ value: '2026-05-20T08:00:00Z' }),
+        end: parseInstant({ value: '2026-05-20T10:00:00Z' }),
         status: 'scheduled',
       });
 

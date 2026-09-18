@@ -179,7 +179,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         existingEvents: existingEvents.map((eventGroup) => ({
           eventId: eventGroup.event.id,
           eventDate: today({
-            instant: eventGroup.event.startDate,
+            instant: eventGroup.event.start,
             timeZone: church.timezone,
           }),
           sourceTemplateId: eventGroup.event.sourceTemplateId,
@@ -194,7 +194,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
             fingerprints.push({
               eventDate: today({
-                instant: eventGroup.event.startDate,
+                instant: eventGroup.event.start,
                 timeZone: church.timezone,
               }),
               sourceTemplateBlockId: slot.sourceTemplateBlockId,
@@ -224,8 +224,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
                   planningCycleId: input.cycleId,
                   sourceTemplateId: plan.sourceTemplateId,
                   title: plan.title,
-                  startDate: toDate({ instant: plan.startDate }),
-                  endDate: toDate({ instant: plan.endDate }),
+                  start: toDate({ instant: plan.start }),
+                  end: toDate({ instant: plan.end }),
                   status: cycle.state === 'locked' ? 'scheduled' : 'draft',
                   eventType: 'hourly',
                   tx,
@@ -430,7 +430,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
       assertEventStartsWithinCycle({
         cycle,
-        eventStartDate: input.startDate,
+        eventStart: input.start,
         churchTimeZone: church.timezone,
       });
 
@@ -440,8 +440,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         title: input.title,
         description: input.description,
         location: input.location,
-        startDate: input.startDate,
-        endDate: input.endDate,
+        start: input.start,
+        end: input.end,
         status: cycle.state === 'locked' ? 'scheduled' : 'draft',
         eventType: input.eventType ?? 'hourly',
         tx,
@@ -475,10 +475,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         throw new IllegalStateTransitionError(currentEvent.status, 'update');
       }
 
-      if (input.startDate) {
+      if (input.start) {
         assertEventStartsWithinCycle({
           cycle,
-          eventStartDate: input.startDate,
+          eventStart: input.start,
           churchTimeZone: church.timezone,
         });
       }
@@ -489,20 +489,20 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         title: input.title,
         description: input.description,
         location: input.location,
-        startDate: input.startDate,
-        endDate: input.endDate,
+        start: input.start,
+        end: input.end,
         status: cycle.state === 'locked' ? 'scheduled' : currentEvent.status,
         tx,
       });
 
-      const newStartDate = input.startDate
-        ? fromDate({ date: input.startDate })
+      const newStart = input.start
+        ? fromDate({ date: input.start })
         : undefined;
 
-      if (newStartDate && newStartDate !== currentEvent.startDate) {
+      if (newStart && newStart !== currentEvent.start) {
         const delta = millisecondsBetween({
-          start: currentEvent.startDate,
-          end: newStartDate,
+          start: currentEvent.start,
+          end: newStart,
         });
         const slots = await this.timeSlotRepository.listByEvent(
           input.churchId,
@@ -720,18 +720,18 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
 interface AssertEventStartsWithinCycleInput {
   cycle: PlanningCycle;
-  eventStartDate: Date;
+  eventStart: Date;
   churchTimeZone: string;
 }
 
 function assertEventStartsWithinCycle({
   cycle,
-  eventStartDate,
+  eventStart,
   churchTimeZone,
 }: AssertEventStartsWithinCycleInput): void {
   if (
     !cycle.containsDate({
-      instant: fromDate({ date: eventStartDate }),
+      instant: fromDate({ date: eventStart }),
       timeZone: churchTimeZone,
     })
   ) {

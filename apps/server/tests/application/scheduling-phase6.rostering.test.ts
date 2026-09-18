@@ -387,8 +387,8 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Roster target',
-      startDate: new Date('2026-08-10T09:00:00.000Z'),
-      endDate: new Date('2026-08-10T11:00:00.000Z'),
+      start: new Date('2026-08-10T09:00:00.000Z'),
+      end: new Date('2026-08-10T11:00:00.000Z'),
       status: 'scheduled',
     });
     const history = await createSchedulingPhase3EventGraph({
@@ -396,8 +396,8 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Earlier service',
-      startDate: new Date('2026-08-03T09:00:00.000Z'),
-      endDate: new Date('2026-08-03T11:00:00.000Z'),
+      start: new Date('2026-08-03T09:00:00.000Z'),
+      end: new Date('2026-08-03T11:00:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -526,8 +526,8 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Primary service',
-      startDate: new Date('2026-09-07T09:00:00.000Z'),
-      endDate: new Date('2026-09-07T11:00:00.000Z'),
+      start: new Date('2026-09-07T09:00:00.000Z'),
+      end: new Date('2026-09-07T11:00:00.000Z'),
       status: 'scheduled',
     });
     const overlapBranch = await createSchedulingPhase3EventGraph({
@@ -535,8 +535,8 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Overlap branch',
-      startDate: new Date('2026-09-07T09:30:00.000Z'),
-      endDate: new Date('2026-09-07T11:30:00.000Z'),
+      start: new Date('2026-09-07T09:30:00.000Z'),
+      end: new Date('2026-09-07T11:30:00.000Z'),
       status: 'scheduled',
     });
     const roleRow = await seedRole({
@@ -726,8 +726,8 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Shared event',
-      startDate: new Date('2026-10-04T09:00:00.000Z'),
-      endDate: new Date('2026-10-04T11:00:00.000Z'),
+      start: new Date('2026-10-04T09:00:00.000Z'),
+      end: new Date('2026-10-04T11:00:00.000Z'),
       status: 'scheduled',
     });
     const [secondMinistry] = await schedulingTestDb
@@ -918,8 +918,8 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Team-attributed service',
-      startDate: new Date('2026-11-08T09:00:00.000Z'),
-      endDate: new Date('2026-11-08T11:00:00.000Z'),
+      start: new Date('2026-11-08T09:00:00.000Z'),
+      end: new Date('2026-11-08T11:00:00.000Z'),
       status: 'scheduled',
     });
     const hostRole = await seedRole({
@@ -1044,8 +1044,8 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Multi-team-attributed service',
-      startDate: new Date('2026-12-06T09:00:00.000Z'),
-      endDate: new Date('2026-12-06T11:00:00.000Z'),
+      start: new Date('2026-12-06T09:00:00.000Z'),
+      end: new Date('2026-12-06T11:00:00.000Z'),
       status: 'scheduled',
     });
     const hostRole = await seedRole({

@@ -19,8 +19,8 @@ export interface CreateEventInput {
   title: string;
   description?: string;
   location?: string;
-  startDate: Date;
-  endDate: Date;
+  start: Date;
+  end: Date;
   status?: EventStatus;
   eventType?: EventType;
 }
@@ -31,8 +31,8 @@ export interface UpdateEventStatusInput {
 
 export interface UpdateEventInput {
   title?: string;
-  startDate?: Date;
-  endDate?: Date;
+  start?: Date;
+  end?: Date;
 }
 
 export interface EventRepository {

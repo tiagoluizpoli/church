@@ -47,8 +47,8 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       title: 'Prayer Night',
       description: 'A night of prayer',
       location: 'Main hall',
-      startDate: new Date('2026-08-05T22:00:00.000Z'),
-      endDate: new Date('2026-08-06T00:00:00.000Z'),
+      start: new Date('2026-08-05T22:00:00.000Z'),
+      end: new Date('2026-08-06T00:00:00.000Z'),
       status: 'draft',
       eventType: 'day_based',
     });
@@ -73,8 +73,8 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       churchId,
       planningCycleId: PlanningCycleId.from(cycle.id),
       title: 'Original title',
-      startDate: new Date('2026-08-05T22:00:00.000Z'),
-      endDate: new Date('2026-08-06T00:00:00.000Z'),
+      start: new Date('2026-08-05T22:00:00.000Z'),
+      end: new Date('2026-08-06T00:00:00.000Z'),
       status: 'draft',
       eventType: 'day_based',
     });
@@ -96,8 +96,8 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       eventId: created.id,
       description: 'New description',
       location: 'New location',
-      startDate: new Date('2026-08-06T22:00:00.000Z'),
-      endDate: new Date('2026-08-07T00:00:00.000Z'),
+      start: new Date('2026-08-06T22:00:00.000Z'),
+      end: new Date('2026-08-07T00:00:00.000Z'),
       status: 'scheduled',
     });
 
@@ -133,8 +133,8 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
       title: 'Prayer Night',
-      startDate: new Date('2026-08-05T22:00:00.000Z'),
-      endDate: new Date('2026-08-06T00:00:00.000Z'),
+      start: new Date('2026-08-05T22:00:00.000Z'),
+      end: new Date('2026-08-06T00:00:00.000Z'),
     });
     await schedulingTestDb.insert(shift).values({
       churchId: seed.churchAId,
@@ -214,8 +214,8 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       churchId,
       planningCycleId: PlanningCycleId.from(cycle.id),
       title: 'Prayer Night',
-      startDate: new Date('2026-08-05T22:00:00.000Z'),
-      endDate: new Date('2026-08-06T00:00:00.000Z'),
+      start: new Date('2026-08-05T22:00:00.000Z'),
+      end: new Date('2026-08-06T00:00:00.000Z'),
       status: 'draft',
       eventType: 'day_based',
     });

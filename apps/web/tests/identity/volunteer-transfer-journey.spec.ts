@@ -243,8 +243,8 @@ async function makeChurchBAssignableSeat({
   churchBAdminCtx,
 }: ChurchBSeatInput): Promise<ChurchBSeat> {
   const eventTitle = `E2E ChurchB Transfer Service ${Date.now()}`;
-  const startDate = '2027-03-10T09:00:00.000Z';
-  const endDate = '2027-03-10T11:00:00.000Z';
+  const start = '2027-03-10T09:00:00.000Z';
+  const end = '2027-03-10T11:00:00.000Z';
 
   const cycleRes = await churchBAdminCtx.post('/api/v1/admin/planning-cycles', {
     data: {
@@ -258,14 +258,14 @@ async function makeChurchBAssignableSeat({
 
   const eventRes = await churchBAdminCtx.post(
     `/api/v1/admin/planning-cycles/${cycleId}/events`,
-    { data: { title: eventTitle, startDate, endDate, eventType: 'hourly' } },
+    { data: { title: eventTitle, start, end, eventType: 'hourly' } },
   );
   await assertOk({ res: eventRes, action: 'create Church B event' });
   const { id: eventId } = (await eventRes.json()) as CreatedResourceResponse;
 
   const slotRes = await churchBAdminCtx.post(
     `/api/v1/admin/planning-cycles/${cycleId}/events/${eventId}/slots`,
-    { data: { startTime: startDate, endTime: endDate, label: 'Service' } },
+    { data: { startTime: start, endTime: end, label: 'Service' } },
   );
   await assertOk({ res: slotRes, action: 'create Church B time slot' });
   const { id: slotId } = (await slotRes.json()) as CreatedResourceResponse;

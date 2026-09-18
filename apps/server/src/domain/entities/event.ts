@@ -28,8 +28,8 @@ export interface EventProps {
   title: string;
   description?: string;
   location?: string;
-  startDate: Instant;
-  endDate: Instant;
+  start: Instant;
+  end: Instant;
   status: EventStatus;
   eventType: EventType;
 }
@@ -56,8 +56,8 @@ export class Event extends Entity<EventProps, EventId> {
   ) {
     if (
       compareInstants({
-        left: props.startDate as Instant,
-        right: props.endDate as Instant,
+        left: props.start as Instant,
+        right: props.end as Instant,
       }) >= 0
     ) {
       throw new InvalidDateRangeError();
@@ -106,12 +106,12 @@ export class Event extends Entity<EventProps, EventId> {
     return this._props.location;
   }
 
-  get startDate(): Instant {
-    return this._props.startDate;
+  get start(): Instant {
+    return this._props.start;
   }
 
-  get endDate(): Instant {
-    return this._props.endDate;
+  get end(): Instant {
+    return this._props.end;
   }
 
   get status(): EventStatus {

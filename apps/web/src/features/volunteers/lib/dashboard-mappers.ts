@@ -69,8 +69,8 @@ export interface DashboardMinistryScheduleRow {
 export interface DashboardMinistryScheduleEvent {
   eventId: string;
   title: string;
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
   assignmentCount: number;
   rows: DashboardMinistryScheduleRow[];
 }
@@ -118,8 +118,8 @@ export function mapAvailabilityEvent(
     id: task.eventId,
     title: task.eventTitle,
     eventType: task.eventType,
-    startDate: task.eventStart,
-    endDate: task.eventEnd,
+    start: task.eventStart,
+    end: task.eventEnd,
   };
 }
 

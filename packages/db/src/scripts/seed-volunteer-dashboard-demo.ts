@@ -58,8 +58,8 @@ interface DemoContext {
 
 interface DemoEventSpec {
   title: string;
-  startDate: Date;
-  endDate: Date;
+  start: Date;
+  end: Date;
   slots: DemoSlotSpec[];
 }
 
@@ -445,8 +445,8 @@ function buildEventSpecs({
   return {
     pendingEvent: {
       title: DEMO_PENDING_EVENT_TITLE,
-      startDate: toDate({ instant: pendingStart }),
-      endDate: toDate({ instant: pendingEnd }),
+      start: toDate({ instant: pendingStart }),
+      end: toDate({ instant: pendingEnd }),
       slots: [
         {
           label: '8:00 AM Service',
@@ -467,8 +467,8 @@ function buildEventSpecs({
     },
     confirmedEvent: {
       title: DEMO_CONFIRMED_EVENT_TITLE,
-      startDate: toDate({ instant: confirmedStart }),
-      endDate: toDate({ instant: confirmedEnd }),
+      start: toDate({ instant: confirmedStart }),
+      end: toDate({ instant: confirmedEnd }),
       slots: [
         {
           label: 'Prayer Team',
@@ -526,8 +526,8 @@ async function ensureEvent({ context, spec }: EnsureEventInput) {
           description:
             'Seeded sample event for volunteer dashboard evaluation.',
           location: 'Main Auditorium',
-          startDate: spec.startDate,
-          endDate: spec.endDate,
+          start: spec.start,
+          end: spec.end,
           status: 'scheduled',
           eventType: 'hourly',
         })

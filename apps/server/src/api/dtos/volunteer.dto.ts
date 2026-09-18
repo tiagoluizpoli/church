@@ -151,8 +151,8 @@ export const assignmentListResponseSchema = z.object({
 const ministryScheduleEventResponseSchema = z.object({
   eventId: z.string(),
   title: z.string(),
-  startDate: instantSchema,
-  endDate: instantSchema,
+  start: instantSchema,
+  end: instantSchema,
   assignmentCount: z.number(),
   rows: z.array(
     z.object({
@@ -312,8 +312,8 @@ function ministryScheduleEventToResponse(
   return {
     eventId: event.eventId,
     title: event.title,
-    startDate: parseInstant({ value: event.startDate }),
-    endDate: parseInstant({ value: event.endDate }),
+    start: parseInstant({ value: event.start }),
+    end: parseInstant({ value: event.end }),
     assignmentCount: event.assignmentCount,
     rows: event.rows,
   };

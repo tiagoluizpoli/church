@@ -94,10 +94,10 @@ describe('CycleEventGenerator', () => {
     expect(first?.kind).toBe('create_event');
     expect(first?.sourceTemplateId).toBe(templateId);
     expect(first?.title).toBe('Wednesday Service');
-    expect(first?.startDate).toEqual(
+    expect(first?.start).toEqual(
       parseInstant({ value: '2026-07-01T09:00:00.000Z' }),
     );
-    expect(first?.endDate).toEqual(
+    expect(first?.end).toEqual(
       parseInstant({ value: '2026-07-01T11:00:00.000Z' }),
     );
     expect(first?.slots).toHaveLength(2);
@@ -115,10 +115,10 @@ describe('CycleEventGenerator', () => {
     });
 
     expect(second?.kind).toBe('create_event');
-    expect(second?.startDate).toEqual(
+    expect(second?.start).toEqual(
       parseInstant({ value: '2026-07-08T09:00:00.000Z' }),
     );
-    expect(second?.endDate).toEqual(
+    expect(second?.end).toEqual(
       parseInstant({ value: '2026-07-08T11:00:00.000Z' }),
     );
   });

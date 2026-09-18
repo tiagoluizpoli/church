@@ -31,8 +31,8 @@ function createEvent() {
       churchId: '11111111-1111-1111-1111-111111111111',
       planningCycleId: '22222222-2222-2222-2222-222222222222',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-07-05T13:00:00.000Z' }),
-      endDate: parseInstant({ value: '2026-07-05T15:00:00.000Z' }),
+      start: parseInstant({ value: '2026-07-05T13:00:00.000Z' }),
+      end: parseInstant({ value: '2026-07-05T15:00:00.000Z' }),
     },
     '33333333-3333-3333-3333-333333333333',
   );

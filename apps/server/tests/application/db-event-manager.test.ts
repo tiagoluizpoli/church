@@ -59,8 +59,8 @@ function buildEvent(): Event {
       churchId,
       planningCycleId: 'cycle-1',
       title: 'Sunday Service',
-      startDate: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
-      endDate: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+      start: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+      end: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
     },
     eventId,
   );
@@ -689,8 +689,8 @@ describe('DbEventManager', () => {
           {
             churchId,
             eventId,
-            startTime: event.startDate,
-            endTime: event.endDate,
+            startTime: event.start,
+            endTime: event.end,
           },
           slotId,
         ),
@@ -717,8 +717,8 @@ describe('DbEventManager', () => {
           eventId,
           slots: [
             expect.objectContaining({
-              startTime: toDate({ instant: event.startDate }),
-              endTime: toDate({ instant: event.endDate }),
+              startTime: toDate({ instant: event.start }),
+              endTime: toDate({ instant: event.end }),
               requirements: [],
             }),
           ],

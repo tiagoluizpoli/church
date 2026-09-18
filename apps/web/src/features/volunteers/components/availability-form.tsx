@@ -28,8 +28,8 @@ export interface AvailabilityEventViewModel {
   id: string;
   title: string;
   eventType: 'hourly' | 'day_based';
-  startDate: string;
-  endDate: string;
+  start: string;
+  end: string;
 }
 
 export interface AvailabilitySlotViewModel {

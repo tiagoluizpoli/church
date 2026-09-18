@@ -30,8 +30,8 @@ async function seedEventGraph(churchId: string, ministryId: string) {
     cycleId: cycle.id,
     ministryId,
     title: 'Sunday Service',
-    startDate: new Date('2026-08-02T09:00:00.000Z'),
-    endDate: new Date('2026-08-02T11:00:00.000Z'),
+    start: new Date('2026-08-02T09:00:00.000Z'),
+    end: new Date('2026-08-02T11:00:00.000Z'),
     status: 'scheduled',
   });
 }
@@ -229,8 +229,8 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
         churchId: seed.churchAId,
         planningCycleId: cycle.id,
         title: 'No participations yet',
-        startDate: new Date('2026-08-03T09:00:00.000Z'),
-        endDate: new Date('2026-08-03T11:00:00.000Z'),
+        start: new Date('2026-08-03T09:00:00.000Z'),
+        end: new Date('2026-08-03T11:00:00.000Z'),
         status: 'draft',
       })
       .returning();

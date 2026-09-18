@@ -14,6 +14,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
+import { addMilliseconds, now, nowAsDate, toDate } from '@church/time';
 import { hashPassword } from 'better-auth/crypto';
 import { and, eq, isNull } from 'drizzle-orm';
 import { provisionSeedChurch } from './provision-seed-church';
@@ -295,7 +296,7 @@ async function ensureMinistryInvitationLifecycleFixtures({
   inviterId,
 }: EnsureMinistryInvitationLifecycleFixturesInput): Promise<void> {
   const passwordHash = await hashPassword(DEV_PASSWORD);
-  const now = Date.now();
+  const seededAt = now();
   const dayMs = 24 * 60 * 60 * 1000;
 
   for (const fixture of MINISTRY_INVITATION_FIXTURES) {
@@ -305,6 +306,13 @@ async function ensureMinistryInvitationLifecycleFixtures({
       passwordHash,
     });
     await addChurchMember({ db, churchId, userId: invitee.id });
+
+    const expiresAt = toDate({
+      instant: addMilliseconds({
+        instant: seededAt,
+        milliseconds: fixture.expiresInDays * dayMs,
+      }),
+    });
 
     await db
       .insert(ministryInvitation)
@@ -316,17 +324,17 @@ async function ensureMinistryInvitationLifecycleFixtures({
         ministryAccessLevel: 'volunteer',
         status: fixture.status,
         inviterId,
-        expiresAt: new Date(now + fixture.expiresInDays * dayMs),
-        acceptedAt: fixture.status === 'accepted' ? new Date() : null,
-        canceledAt: fixture.status === 'canceled' ? new Date() : null,
+        expiresAt,
+        acceptedAt: fixture.status === 'accepted' ? nowAsDate() : null,
+        canceledAt: fixture.status === 'canceled' ? nowAsDate() : null,
       })
       .onConflictDoUpdate({
         target: [ministryInvitation.id],
         set: {
           status: fixture.status,
-          expiresAt: new Date(now + fixture.expiresInDays * dayMs),
-          acceptedAt: fixture.status === 'accepted' ? new Date() : null,
-          canceledAt: fixture.status === 'canceled' ? new Date() : null,
+          expiresAt,
+          acceptedAt: fixture.status === 'accepted' ? nowAsDate() : null,
+          canceledAt: fixture.status === 'canceled' ? nowAsDate() : null,
         },
       });
   }
@@ -372,7 +380,7 @@ async function ensureAuthUser({
       .set({
         name,
         emailVerified: true,
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(eq(user.id, ensuredUser.id))
       .returning();
@@ -405,7 +413,7 @@ async function ensureAuthUser({
       .set({
         accountId: ensuredUser.id,
         password: passwordHash,
-        updatedAt: new Date(),
+        updatedAt: nowAsDate(),
       })
       .where(eq(account.id, credentialAccount.id));
   }
@@ -435,7 +443,7 @@ async function ensureVolunteer({ userId, churchId }: EnsureVolunteerInput) {
         .update(volunteer)
         .set({
           status: 'active',
-          updatedAt: new Date(),
+          updatedAt: nowAsDate(),
         })
         .where(eq(volunteer.id, existingVolunteer.id))
         .returning();

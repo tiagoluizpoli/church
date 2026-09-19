@@ -25,6 +25,10 @@ import {
   timeSlotResponseSchema,
   updateSlotBodySchema,
 } from '../dtos/time-slot.dto';
+import {
+  dateFromInstantString,
+  optionalDateFromInstantString,
+} from '../utils/request-time';
 
 interface EventRouteParams {
   eventId: string;
@@ -85,8 +89,8 @@ export class TimeSlotController implements FastifyController {
         const slot = await this.eventManager.createSlot({
           churchId: ChurchId.from(request.churchId),
           eventId: EventId.from(eventId),
-          startTime: new Date(body.startTime),
-          endTime: new Date(body.endTime),
+          startTime: dateFromInstantString({ value: body.startTime }),
+          endTime: dateFromInstantString({ value: body.endTime }),
           label: body.label,
         });
         return reply.status(201).send(timeSlotMapper.toResponse(slot));
@@ -119,8 +123,8 @@ export class TimeSlotController implements FastifyController {
         const slot = await this.eventManager.updateSlot({
           churchId: ChurchId.from(request.churchId),
           slotId: TimeSlotId.from(slotId),
-          startTime: body.startTime ? new Date(body.startTime) : undefined,
-          endTime: body.endTime ? new Date(body.endTime) : undefined,
+          startTime: optionalDateFromInstantString({ value: body.startTime }),
+          endTime: optionalDateFromInstantString({ value: body.endTime }),
           label: body.label,
         });
         return reply.send(timeSlotMapper.toResponse(slot));
@@ -187,8 +191,8 @@ export class TimeSlotController implements FastifyController {
                 kind: 'template-based' as const,
                 periods: body.strategy.periods.map((p) => ({
                   label: p.label,
-                  startTime: new Date(p.startTime),
-                  endTime: new Date(p.endTime),
+                  startTime: dateFromInstantString({ value: p.startTime }),
+                  endTime: dateFromInstantString({ value: p.endTime }),
                   requirements: p.requirements,
                 })),
               };

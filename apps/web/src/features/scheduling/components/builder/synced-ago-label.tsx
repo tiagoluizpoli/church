@@ -1,3 +1,4 @@
+import { nowAsDate } from '@church/time';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -50,10 +51,13 @@ export function SyncedAgoLabel({
   isRefreshing,
   className,
 }: SyncedAgoLabelProps) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => nowAsDate().getTime());
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), SYNCED_AGO_TICK_MS);
+    const timer = setInterval(
+      () => setNow(nowAsDate().getTime()),
+      SYNCED_AGO_TICK_MS,
+    );
     return () => clearInterval(timer);
   }, []);
 

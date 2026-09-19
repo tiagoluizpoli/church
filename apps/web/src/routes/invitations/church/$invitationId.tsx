@@ -1,4 +1,4 @@
-import { formatRelative, parseInstant } from '@church/time';
+import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -111,11 +111,11 @@ function ChurchInvitationRedemptionRoute() {
   const queryClient = useQueryClient();
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => nowAsDate().getTime());
 
   useEffect(() => {
     if (!codeSentAt) return;
-    const interval = setInterval(() => setNow(Date.now()), 1000);
+    const interval = setInterval(() => setNow(nowAsDate().getTime()), 1000);
     return () => clearInterval(interval);
   }, [codeSentAt]);
 
@@ -128,7 +128,7 @@ function ChurchInvitationRedemptionRoute() {
   const requestCodeMutation = useMutation({
     mutationFn: () =>
       redemptionApi.requestChurchInvitationVerificationCode(invitationId),
-    onSuccess: () => setCodeSentAt(Date.now()),
+    onSuccess: () => setCodeSentAt(nowAsDate().getTime()),
   });
 
   const redeemMutation = useMutation({

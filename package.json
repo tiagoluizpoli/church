@@ -61,7 +61,7 @@
     "test:e2e": "turbo test:e2e --filter=web --",
     "test:e2e:ui": "turbo test:e2e:ui --filter=web --",
     "test": "bun run test:unit && bun run test:integration && bun run test:e2e",
-    "test:validation": "bun test tooling/validation/affected.test.ts",
+    "test:validation": "bun test tooling",
     "validate:affected": "bun tooling/validation/affected.ts",
     "validate": "bun run lint && bun run typecheck && bun run test",
     "commit": "cz"

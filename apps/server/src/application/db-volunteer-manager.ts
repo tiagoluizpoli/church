@@ -2,10 +2,13 @@ import 'reflect-metadata';
 import {
   addMilliseconds,
   compareInstants,
+  formatTimeOfDay,
+  fromDate,
   type Instant,
   now as nowInstant,
   parseCalendarDay,
   toDate,
+  toTimeOfDay,
 } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, ShiftId } from '../domain/branded-ids';
@@ -214,13 +217,17 @@ interface ScheduleShiftLabelInput {
   endTime: Instant;
 }
 
+/** Fallback label when a Shift has none. No Church Timezone is available at
+ * this layer, so this reads UTC — a seam-armed swap of the prior raw
+ * `toLocaleTimeString`, not a timezone-correctness fix. */
 function scheduleShiftLabel(shift: ScheduleShiftLabelInput): string {
-  const start = toDate({ instant: shift.startTime });
-  const end = toDate({ instant: shift.endTime });
-  return (
-    shift.label ??
-    `${start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-  );
+  const start = formatTimeOfDay({
+    time: toTimeOfDay({ instant: shift.startTime, timeZone: 'UTC' }),
+  });
+  const end = formatTimeOfDay({
+    time: toTimeOfDay({ instant: shift.endTime, timeZone: 'UTC' }),
+  });
+  return shift.label ?? `${start} - ${end}`;
 }
 
 function scheduleVolunteerName(name: string | undefined): string | undefined {
@@ -488,7 +495,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       title: n.title,
       body: n.body,
       readAt: n.readAt,
-      createdAt: n.createdAt.toISOString(),
+      createdAt: fromDate({ date: n.createdAt }),
     }));
 
     const defaultMinistryId =

@@ -1,0 +1,44 @@
+language js
+
+// ADR-0003: every date/time construction, wall-clock read and locale format
+// lives in @church/time. Biome `overrides` cannot exempt a plugin, so the
+// exemptions are matched on $filename here. Covered by date-time-seam.test.ts.
+or {
+  `new Date($args)`,
+  `new Date`,
+  `Date.now()`,
+  `$recv.toISOString()`,
+  `$recv.$method($args)` where {
+    $method <: or {
+      `toLocaleString`,
+      `toLocaleDateString`,
+      `toLocaleTimeString`,
+      `getFullYear`,
+      `getMonth`,
+      `getDate`,
+      `getDay`,
+      `getHours`,
+      `getMinutes`,
+      `getSeconds`,
+      `getTimezoneOffset`
+    }
+  },
+  `Intl.DateTimeFormat($args)`,
+  `new Intl.DateTimeFormat($args)`
+} as $hit where {
+  not $filename <: or {
+    r".*packages/time/src/.*",
+    r".*packages/db/src/schema/.*",
+    r".*\.test\.tsx?$",
+    r".*/tests/.*",
+    r".*/__tests__/.*",
+    r".*/contract-tests/.*",
+    r".*/test-support/.*",
+    r".*apps/web/src/components/ui/calendar\.tsx$",
+    // @church/core is zero-dep by design and cannot import @church/time;
+    // Entity's created/updated timestamps are internal bookkeeping, not
+    // display.
+    r".*packages/core/src/entity\.ts$"
+  },
+  register_diagnostic(span=$hit, message="Raw date/time API outside @church/time. Use now(), toInstant, today or a format* function from @church/time.")
+}

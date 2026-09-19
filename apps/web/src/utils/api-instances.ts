@@ -6,6 +6,7 @@ import { getMinistries } from '@/infrastructure/api/ministries';
 import { getPlanning } from '@/infrastructure/api/planning';
 import { getRedemption } from '@/infrastructure/api/redemption';
 import { getRostering } from '@/infrastructure/api/rostering';
+import { getSchedulingCapability } from '@/infrastructure/api/scheduling-capability';
 import { getTailoring } from '@/infrastructure/api/tailoring';
 import { getTimeSlots } from '@/infrastructure/api/time-slots';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
@@ -59,3 +60,4 @@ export const volunteerApi = {
 export const featureFlagsApi = createFeatureFlagsApi();
 export const activeChurchApi = getActiveChurch();
 export const redemptionApi = getRedemption();
+export const schedulingCapabilitiesApi = getSchedulingCapability();

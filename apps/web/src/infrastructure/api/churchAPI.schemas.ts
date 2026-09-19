@@ -2069,6 +2069,15 @@ export type PublishParticipation403 = {
   message: string;
 };
 
+export type GetSchedulingCapability200 = {
+  canAccessScheduling: boolean;
+};
+
+export type GetSchedulingCapability401 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewChurchInvitation200MinistryAccessLevel = typeof PreviewChurchInvitation200MinistryAccessLevel[keyof typeof PreviewChurchInvitation200MinistryAccessLevel];
 
 

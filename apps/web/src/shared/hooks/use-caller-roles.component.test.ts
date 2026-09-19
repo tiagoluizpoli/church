@@ -3,15 +3,17 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { useCallerRoles } from './use-caller-roles';
-import { adminApi } from '@/utils/api-instances';
+import { schedulingCapabilitiesApi } from '@/utils/api-instances';
 
 vi.mock('@/utils/api-instances', () => ({
-  adminApi: {
-    listMinistries: vi.fn(),
+  schedulingCapabilitiesApi: {
+    getSchedulingCapability: vi.fn(),
   },
 }));
 
-const mockedListMinistries = vi.mocked(adminApi.listMinistries);
+const mockedGetSchedulingCapability = vi.mocked(
+  schedulingCapabilitiesApi.getSchedulingCapability,
+);
 
 function renderCallerRoles() {
   const queryClient = new QueryClient({
@@ -25,7 +27,7 @@ function renderCallerRoles() {
 
 describe('useCallerRoles', () => {
   it('assumes hidden while the gating query is still resolving', () => {
-    mockedListMinistries.mockReturnValue(new Promise(() => {}));
+    mockedGetSchedulingCapability.mockReturnValue(new Promise(() => {}));
 
     const { result } = renderCallerRoles();
 
@@ -35,8 +37,10 @@ describe('useCallerRoles', () => {
     });
   });
 
-  it('reveals Scheduling once the role-gated query succeeds', async () => {
-    mockedListMinistries.mockResolvedValue({ ministries: [] });
+  it('reveals Scheduling when the server capability projection grants it', async () => {
+    mockedGetSchedulingCapability.mockResolvedValue({
+      canAccessScheduling: true,
+    });
 
     const { result } = renderCallerRoles();
 
@@ -44,13 +48,19 @@ describe('useCallerRoles', () => {
     expect(result.current.canSeeScheduling).toBe(true);
   });
 
-  it('keeps Scheduling hidden when the role-gated query is forbidden (403)', async () => {
-    mockedListMinistries.mockRejectedValue(
-      Object.assign(new Error('Forbidden'), {
-        isAxiosError: true,
-        response: { status: 403 },
-      }),
-    );
+  it('keeps Scheduling hidden when the server capability projection denies it', async () => {
+    mockedGetSchedulingCapability.mockResolvedValue({
+      canAccessScheduling: false,
+    });
+
+    const { result } = renderCallerRoles();
+
+    await waitFor(() => expect(result.current.isResolving).toBe(false));
+    expect(result.current.canSeeScheduling).toBe(false);
+  });
+
+  it('keeps Scheduling hidden when the capability query fails', async () => {
+    mockedGetSchedulingCapability.mockRejectedValue(new Error('Unavailable'));
 
     const { result } = renderCallerRoles();
 

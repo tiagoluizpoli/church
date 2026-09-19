@@ -11,6 +11,7 @@ import { FeatureFlagController } from '../../api/controllers/feature-flag-contro
 import { MinistryController } from '../../api/controllers/ministry-controller';
 import { RedemptionController } from '../../api/controllers/redemption-controller';
 import { RosteringController } from '../../api/controllers/rostering-controller';
+import { SchedulingCapabilityController } from '../../api/controllers/scheduling-capability-controller';
 import { TailoringController } from '../../api/controllers/tailoring-controller';
 import { TimeSlotController } from '../../api/controllers/time-slot-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
@@ -353,6 +354,10 @@ export function registerInjections(): void {
   container.registerSingleton(
     injection.controllers.fastify,
     RosteringController,
+  );
+  container.registerSingleton(
+    injection.controllers.fastify,
+    SchedulingCapabilityController,
   );
   container.register(injection.controllers.fastify, {
     useFactory: () =>

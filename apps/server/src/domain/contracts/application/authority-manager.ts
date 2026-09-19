@@ -48,6 +48,11 @@ export interface HasSchedulingAccessInput {
   userId: UserId;
 }
 
+/** Navigation data only; every protected resource still asks AuthorityService. */
+export interface SchedulingCapabilityProjection {
+  canAccessScheduling: boolean;
+}
+
 /**
  * Resolves the calling `AuthorityActor` and the Ministry owning a bare
  * resource id (Participation, Shift, Event, TimeSlot), then asks
@@ -61,13 +66,12 @@ export interface IAuthorityManager {
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
   canManageEvent(input: CanManageEventInput): Promise<boolean>;
   canManageEventSlot(input: CanManageEventSlotInput): Promise<boolean>;
+  resolveSchedulingCapability(
+    input: HasSchedulingAccessInput,
+  ): Promise<SchedulingCapabilityProjection>;
   /**
-   * True if `AuthorityService` grants `manage` on the Church, or on any one
-   * Ministry the actor belongs to — no single resource to name, so this asks
-   * per candidate resource rather than a single call. Exists for the
-   * frontend's nav-visibility probe (`useCallerRoles`, research.md R1): there
-   * is no "my roles" endpoint, so visibility is derived from whether this
-   * lightweight, role-gated query is forbidden.
+   * Compatibility boolean for server-only callers such as the active-Church
+   * selector. It delegates to the Scheduling capability projection.
    */
   hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean>;
 }

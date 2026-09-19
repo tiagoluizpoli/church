@@ -40,6 +40,7 @@ jobs:
       UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
       ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
 
     steps:
       - uses: actions/checkout@v4
@@ -77,7 +78,7 @@ jobs:
         run: bun run db:migrate
 
       - name: Run tests with coverage
-        run: bunx turbo test:unit test:integration --filter=server --only -- --coverage
+        run: bunx turbo test:unit test:integration -- --coverage
 
   e2e:
     name: E2E
@@ -111,6 +112,7 @@ jobs:
       UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
       ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
 
     steps:
       - uses: actions/checkout@v4

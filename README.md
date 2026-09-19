@@ -137,6 +137,8 @@ suite (`bun run test:e2e`), which calls
 - `bun run typecheck`: Check TypeScript types across all apps
 - `bun run test:unit`: Run unit and component tests
 - `bun run test:integration`: Run integration tests
+- `bun run validate:date-time-seam`: Fail on date-time seam suppressions and
+  `date-fns` locale format tokens before pushing
 - `bun run test:e2e -- tests/[path].spec.ts`: Run an affected end-to-end journey
 - `bun run test`: Run the complete test suite
 - `bun run validate:affected`: Validate the changed files and their affected workspaces

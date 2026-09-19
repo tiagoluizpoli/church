@@ -28,7 +28,7 @@ For instructions on how to add new backlog items or edit existing ones, see the 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | [BL-021](./items/BL-021.md) | Auth route protection & sign-up suppression | Authentication & Routing | 1 | — | [#18](https://github.com/tiagoluizpoli/church/issues/18) |
 | 2 | [BL-007](./items/BL-007.md) | ✅ ~~Volunteer-authenticated E2E specs for the volunteer dashboard~~ — **delivered** (see [Delivered](#delivered)) | Volunteer Dashboard | 1 | — | [#19](https://github.com/tiagoluizpoli/church/issues/19) |
-| 3 | [BL-017](./items/BL-017.md) | `sub_leader` role detection for nav and route guards | Backend Architecture / Auth | 1 | [BL-021](./items/BL-021.md) | [#20](https://github.com/tiagoluizpoli/church/issues/20) |
+| 3 | [BL-017](./items/BL-017.md) | TeamLeader scheduling entry and resource-scoped capabilities | Scheduling Authorization / Navigation | 1 | — | [#20](https://github.com/tiagoluizpoli/church/issues/20) |
 | 4 | [BL-020](./items/BL-020.md) | ✅ ~~Deleting a draft cycle event must hard-delete, not soft-cancel~~ — **delivered** (see [Delivered](#delivered)) | Scheduling / Planning (Bug) | 1 | — | [#21](https://github.com/tiagoluizpoli/church/issues/21) |
 | 5 | [BL-022](./items/BL-022.md) | ✅ ~~Cycles table: single-selection semantics~~ — **delivered** (see [Delivered](#delivered)) | Frontend UX/IA | 1 | — | [#22](https://github.com/tiagoluizpoli/church/issues/22) |
 | 6 | [BL-011](./items/BL-011.md) | Restructure controller auth and route ownership | Backend Architecture | 2 | — | [#23](https://github.com/tiagoluizpoli/church/issues/23) |

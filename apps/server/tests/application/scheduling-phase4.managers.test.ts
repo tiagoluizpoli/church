@@ -381,6 +381,7 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
       new DrizzleSchedulingScopeResolver({ db: schedulingTestDb }),
       new DrizzleEventRepository({ db: schedulingTestDb }),
       new DrizzleTimeSlotRepository({ db: schedulingTestDb }),
+      new DrizzleMinistryRepository({ db: schedulingTestDb }),
     );
     await expect(
       authorityManager.canManageParticipation({

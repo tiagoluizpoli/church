@@ -14,6 +14,7 @@ import type {
 } from '../domain/contracts/application/authority-manager';
 import type { AuthorityActorRepository } from '../domain/contracts/infrastructure/authority-actor.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
+import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SchedulingScopeRepository } from '../domain/contracts/infrastructure/scheduling-scope.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 
@@ -33,6 +34,8 @@ export class DbAuthorityManager implements IAuthorityManager {
     private readonly eventRepository: EventRepository,
     @inject('ITimeSlotRepository')
     private readonly timeSlotRepository: TimeSlotRepository,
+    @inject('IMinistryRepository')
+    private readonly ministryRepository: MinistryRepository,
   ) {}
 
   async canManageChurch(input: CanManageChurchInput): Promise<boolean> {
@@ -102,21 +105,32 @@ export class DbAuthorityManager implements IAuthorityManager {
       action: 'manage',
       resource: { type: 'church', churchId: input.churchId },
     });
-    if (churchDecision.allowed) return { canAccessScheduling: true };
+    if (churchDecision.allowed) {
+      return { canAccessScheduling: true, entries: [{ kind: 'church' }] };
+    }
 
-    const canManageLedMinistry = actor.ministryMemberships.some(
-      (membership) =>
-        AuthorityService.authorize({
-          actor,
-          action: 'manage',
-          resource: {
-            type: 'ministry',
-            churchId: input.churchId,
-            ministryId: membership.ministryId,
-          },
-        }).allowed,
+    const ledMinistryIds = actor.ministryMemberships.flatMap((membership) => {
+      const decision = AuthorityService.authorize({
+        actor,
+        action: 'manage',
+        resource: {
+          type: 'ministry',
+          churchId: input.churchId,
+          ministryId: membership.ministryId,
+        },
+      });
+      return decision.allowed ? [membership.ministryId] : [];
+    });
+    const entries = await Promise.all(
+      ledMinistryIds.map(async (ministryId) => {
+        const ministry = await this.ministryRepository.getById(
+          input.churchId,
+          ministryId,
+        );
+        return { kind: 'ministry' as const, ministryId, name: ministry.name };
+      }),
     );
-    return { canAccessScheduling: canManageLedMinistry };
+    return { canAccessScheduling: entries.length > 0, entries };
   }
 
   async hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {

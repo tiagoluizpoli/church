@@ -81,6 +81,7 @@ export const E2E_IDS = {
   ministry: 'e2e33333-3333-3333-3333-333333333331',
   ministryCare: 'e2e33333-3333-3333-3333-333333333332',
   leaderVolunteer: 'e2e44444-4444-4444-4444-444444444441',
+  ministryLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444445',
   schedulingVolunteer: 'e2e44444-4444-4444-4444-444444444442',
   teamLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444446',
   team1: 'e2eaaaa1-0000-0000-0000-000000000001',
@@ -221,6 +222,7 @@ export const UNQUALIFIED_VOLUNTEER = {
 /** Every membership in `E2E_IDS.ministry`: the three named ones plus the pool. */
 const MINISTRY_MEMBERSHIP_IDS = [
   'e2eccccc-cccc-cccc-cccc-ccccccccccc1',
+  'e2eccccc-cccc-cccc-cccc-ccccccccccc2',
   'e2eccccc-cccc-cccc-cccc-cccccccccca6',
   'e2eccccc-cccc-cccc-cccc-cccccccccca7',
   ...POOL_VOLUNTEERS.map((_, index) => poolMembershipId({ index })),
@@ -233,6 +235,7 @@ function makeDb() {
 
 export interface SeedE2eOptions {
   leaderUserId: string;
+  ministryLeaderUserId: string;
   teamLeaderUserId: string;
   volunteerUserId: string;
   churchBAdminUserId: string;
@@ -240,6 +243,7 @@ export interface SeedE2eOptions {
 
 export async function seedE2e({
   leaderUserId,
+  ministryLeaderUserId,
   teamLeaderUserId,
   volunteerUserId,
   churchBAdminUserId,
@@ -259,7 +263,7 @@ export async function seedE2e({
       )
       .onConflictDoNothing();
 
-    // The Church itself, and leader/teamLeader/volunteer's Church Membership,
+    // The Church itself, and leaders'/volunteers' Church Memberships,
     // are provisioned before this script runs — `apps/web/tests/global-
     // setup.ts` provisions the Church and has each of them redeem a real
     // Church Invitation (spec 024 §3.2 permits fixture setup to still write
@@ -431,6 +435,24 @@ export async function seedE2e({
       })
       .returning({ id: volunteer.id });
 
+    const [ministryLeaderVolunteerRow] = await db
+      .insert(volunteer)
+      .values({
+        id: E2E_IDS.ministryLeaderVolunteer,
+        churchId: E2E_IDS.church,
+        userId: ministryLeaderUserId,
+        status: 'active',
+      })
+      .onConflictDoUpdate({
+        target: [volunteer.id],
+        set: {
+          churchId: E2E_IDS.church,
+          userId: ministryLeaderUserId,
+          status: 'active',
+        },
+      })
+      .returning({ id: volunteer.id });
+
     const [teamLeaderVolunteerRow] = await db
       .insert(volunteer)
       .values({
@@ -468,11 +490,13 @@ export async function seedE2e({
       .returning({ id: volunteer.id });
 
     const leaderVolunteerId = leaderVolunteerRow?.id;
+    const ministryLeaderVolunteerId = ministryLeaderVolunteerRow?.id;
     const teamLeaderVolunteerId = teamLeaderVolunteerRow?.id;
     const schedulingVolunteerId = schedulingVolunteerRow?.id;
 
     if (
       !leaderVolunteerId ||
+      !ministryLeaderVolunteerId ||
       !teamLeaderVolunteerId ||
       !schedulingVolunteerId
     ) {
@@ -500,6 +524,14 @@ export async function seedE2e({
           id: 'e2eccccc-cccc-cccc-cccc-ccccccccccc1',
           churchId: E2E_IDS.church,
           volunteerId: leaderVolunteerId,
+          ministryId: E2E_IDS.ministry,
+          ministryAccessLevel: 'leader',
+          status: 'active',
+        },
+        {
+          id: 'e2eccccc-cccc-cccc-cccc-ccccccccccc2',
+          churchId: E2E_IDS.church,
+          volunteerId: ministryLeaderVolunteerId,
           ministryId: E2E_IDS.ministry,
           ministryAccessLevel: 'leader',
           status: 'active',
@@ -1058,6 +1090,7 @@ export async function seedE2e({
 
 export interface CleanupE2eOptions {
   leaderUserId?: string;
+  ministryLeaderUserId?: string;
   teamLeaderUserId?: string;
   volunteerUserId?: string;
   churchBAdminUserId?: string;
@@ -1065,6 +1098,7 @@ export interface CleanupE2eOptions {
 
 export async function cleanupE2e({
   leaderUserId,
+  ministryLeaderUserId,
   teamLeaderUserId,
   volunteerUserId,
   churchBAdminUserId,
@@ -1083,6 +1117,7 @@ export async function cleanupE2e({
       ...POOL_VOLUNTEERS.map((v) => v.userId),
       UNQUALIFIED_VOLUNTEER.userId,
       leaderUserId,
+      ministryLeaderUserId,
       teamLeaderUserId,
       volunteerUserId,
       churchBAdminUserId,
@@ -1113,6 +1148,10 @@ if (import.meta.main) {
     if (argv.includes('cleanup')) {
       await cleanupE2e({
         leaderUserId: parseArg({ argv, flag: 'leader-user-id' }),
+        ministryLeaderUserId: parseArg({
+          argv,
+          flag: 'ministry-leader-user-id',
+        }),
         teamLeaderUserId: parseArg({ argv, flag: 'team-leader-user-id' }),
         volunteerUserId: parseArg({ argv, flag: 'volunteer-user-id' }),
         churchBAdminUserId: parseArg({ argv, flag: 'church-b-admin-user-id' }),
@@ -1121,6 +1160,10 @@ if (import.meta.main) {
       return;
     }
     const leaderUserId = parseArg({ argv, flag: 'leader-user-id' });
+    const ministryLeaderUserId = parseArg({
+      argv,
+      flag: 'ministry-leader-user-id',
+    });
     const teamLeaderUserId = parseArg({ argv, flag: 'team-leader-user-id' });
     const volunteerUserId = parseArg({ argv, flag: 'volunteer-user-id' });
     const churchBAdminUserId = parseArg({
@@ -1129,16 +1172,18 @@ if (import.meta.main) {
     });
     if (
       !leaderUserId ||
+      !ministryLeaderUserId ||
       !teamLeaderUserId ||
       !volunteerUserId ||
       !churchBAdminUserId
     ) {
       throw new Error(
-        'Usage: seed:e2e -- --leader-user-id=<id> --team-leader-user-id=<id> --volunteer-user-id=<id> --church-b-admin-user-id=<id>',
+        'Usage: seed:e2e -- --leader-user-id=<id> --ministry-leader-user-id=<id> --team-leader-user-id=<id> --volunteer-user-id=<id> --church-b-admin-user-id=<id>',
       );
     }
     const ids = await seedE2e({
       leaderUserId,
+      ministryLeaderUserId,
       teamLeaderUserId,
       volunteerUserId,
       churchBAdminUserId,

@@ -48,9 +48,14 @@ export interface HasSchedulingAccessInput {
   userId: UserId;
 }
 
+export type SchedulingCapabilityEntry =
+  | { kind: 'church' }
+  | { kind: 'ministry'; ministryId: MinistryId; name: string };
+
 /** Navigation data only; every protected resource still asks AuthorityService. */
 export interface SchedulingCapabilityProjection {
   canAccessScheduling: boolean;
+  entries: SchedulingCapabilityEntry[];
 }
 
 /**

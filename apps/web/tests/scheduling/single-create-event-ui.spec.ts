@@ -76,12 +76,14 @@ async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
 test('exactly one create-event UI is reachable from every entry point (FR-012, SC-004)', async ({
   page,
 }) => {
-  // Entry point 1: /scheduling. The nav restructure (FR-015/FR-016) turned this
-  // into a redirect, which is itself how FR-012 is now satisfied — there is no
-  // separate ministry ad-hoc create-event surface to diverge from the canonical
-  // one. Asserting the redirect keeps that guarantee under test: the day
-  // someone reintroduces a second surface here, this fails.
+  // Entry point 1: the capability index. A ChurchAdmin may enter the one
+  // church-planning workspace, rather than being redirected from a global
+  // Scheduling route.
   await page.goto('/scheduling');
+  await expect(
+    page.getByRole('link', { name: 'Open church planning' }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Open church planning' }).click();
   await expect(page).toHaveURL(/\/scheduling\/planning-cycles/);
 
   // Entry point 2: the planning cycle itself — the one canonical form.

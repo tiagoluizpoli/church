@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["TZ"],
   "ui": "tui",
   "tasks": {
     "build": {

@@ -40,6 +40,7 @@ describe('useCallerRoles', () => {
   it('reveals Scheduling when the server capability projection grants it', async () => {
     mockedGetSchedulingCapability.mockResolvedValue({
       canAccessScheduling: true,
+      entries: [{ kind: 'church' }],
     });
 
     const { result } = renderCallerRoles();
@@ -51,6 +52,7 @@ describe('useCallerRoles', () => {
   it('keeps Scheduling hidden when the server capability projection denies it', async () => {
     mockedGetSchedulingCapability.mockResolvedValue({
       canAccessScheduling: false,
+      entries: [],
     });
 
     const { result } = renderCallerRoles();

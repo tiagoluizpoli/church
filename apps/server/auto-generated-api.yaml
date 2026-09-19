@@ -4863,8 +4863,39 @@ paths:
                 properties:
                   canAccessScheduling:
                     type: boolean
+                  entries:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            kind:
+                              type: string
+                              enum:
+                                - church
+                          required:
+                            - kind
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            kind:
+                              type: string
+                              enum:
+                                - ministry
+                            ministryId:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            name:
+                              type: string
+                          required:
+                            - kind
+                            - ministryId
+                            - name
+                          additionalProperties: false
                 required:
                   - canAccessScheduling
+                  - entries
                 additionalProperties: false
         "401":
           description: Default Response
@@ -5768,50 +5799,6 @@ paths:
                 required:
                   - error
                   - message
-                additionalProperties: false
-  /api/v1/redemption/church/{invitationId}/debug-code:
-    get:
-      operationId: debugGetChurchInvitationVerificationCode
-      summary: Get a Church Invitation verification code (debug)
-      tags:
-        - redemption-debug
-      description: "Non-production only: read back the verification code sent for a
-        Church Invitation, bypassing email delivery."
-      parameters:
-        - schema:
-            type: string
-            format: uuid
-            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-          in: path
-          name: invitationId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: string
-                    pattern: ^\d{6}$
-                required:
-                  - code
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    enum:
-                      - INVITATION_UNAVAILABLE
-                required:
-                  - error
                 additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:

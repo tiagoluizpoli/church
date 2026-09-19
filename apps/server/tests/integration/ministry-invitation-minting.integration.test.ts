@@ -40,6 +40,7 @@ const authorityManager = new DbAuthorityManager(
   new DrizzleSchedulingScopeResolver({ db: testDb }),
   new DrizzleEventRepository({ db: testDb }),
   new DrizzleTimeSlotRepository({ db: testDb }),
+  ministryRepository,
 );
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
 const outboxRepository = new DrizzleOutboxRepository({ db: testDb });

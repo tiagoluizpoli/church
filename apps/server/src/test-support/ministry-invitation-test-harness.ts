@@ -44,6 +44,7 @@ export function createMinistryInvitationTestHarness({
     new DrizzleSchedulingScopeResolver({ db }),
     new DrizzleEventRepository({ db }),
     new DrizzleTimeSlotRepository({ db }),
+    ministryRepository,
   );
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const manager = new DbMinistryInvitationManager(

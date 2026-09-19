@@ -15,6 +15,16 @@ const errorResponseSchema = z.object({
 
 const schedulingCapabilityResponseSchema = z.object({
   canAccessScheduling: z.boolean(),
+  entries: z.array(
+    z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('church') }),
+      z.object({
+        kind: z.literal('ministry'),
+        ministryId: z.uuid(),
+        name: z.string(),
+      }),
+    ]),
+  ),
 });
 
 /**

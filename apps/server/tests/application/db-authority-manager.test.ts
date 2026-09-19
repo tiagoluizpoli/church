@@ -66,6 +66,7 @@ const scopeRepository = {
 };
 const eventRepository = { getMinistryId: vi.fn() };
 const timeSlotRepository = { getById: vi.fn() };
+const ministryRepository = { getById: vi.fn() };
 
 function createManager(): DbAuthorityManager {
   return new DbAuthorityManager(
@@ -73,6 +74,7 @@ function createManager(): DbAuthorityManager {
     scopeRepository as never,
     eventRepository as never,
     timeSlotRepository as never,
+    ministryRepository as never,
   );
 }
 
@@ -211,23 +213,30 @@ describe('DbAuthorityManager', () => {
     );
   });
 
-  it('projects Scheduling capability for Church admins and Ministry leaders, but not plain Volunteers', async () => {
+  it('projects Scheduling entries for Church admins and Ministry leaders, but not plain Volunteers', async () => {
     const manager = createManager();
 
     actorRepository.resolveActor.mockResolvedValueOnce(adminActor());
     await expect(
       manager.resolveSchedulingCapability({ churchId, userId }),
-    ).resolves.toEqual({ canAccessScheduling: true });
+    ).resolves.toEqual({
+      canAccessScheduling: true,
+      entries: [{ kind: 'church' }],
+    });
 
     actorRepository.resolveActor.mockResolvedValueOnce(ministryLeaderActor());
+    ministryRepository.getById.mockResolvedValueOnce({ name: 'Worship' });
     await expect(
       manager.resolveSchedulingCapability({ churchId, userId }),
-    ).resolves.toEqual({ canAccessScheduling: true });
+    ).resolves.toEqual({
+      canAccessScheduling: true,
+      entries: [{ kind: 'ministry', ministryId, name: 'Worship' }],
+    });
 
     actorRepository.resolveActor.mockResolvedValueOnce(volunteerActor());
     await expect(
       manager.resolveSchedulingCapability({ churchId, userId }),
-    ).resolves.toEqual({ canAccessScheduling: false });
+    ).resolves.toEqual({ canAccessScheduling: false, entries: [] });
   });
 
   it('denies a resource whose resolved Ministry belongs to a different Church', async () => {

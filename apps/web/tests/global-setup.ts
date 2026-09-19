@@ -26,8 +26,8 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
  *     in `test.use({ storageState })` — existing unauthenticated specs
  *     untouched.
  *
- * ChurchAdmin and leader states share one session, proving role coexistence
- * once ChurchAdmin authorization is introduced by the foundational phase.
+ * ChurchAdmin and legacy leader states share one session; the Ministry-leader
+ * state stays separate so browser coverage can prove scope-specific access.
  */
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 const SERVER_DIR = path.resolve(dirname, '../../server');
@@ -37,6 +37,10 @@ export const CHURCH_ADMIN_STORAGE_STATE = path.resolve(
   '.auth/church-admin.json',
 );
 export const LEADER_STORAGE_STATE = path.resolve(dirname, '.auth/leader.json');
+export const MINISTRY_LEADER_STORAGE_STATE = path.resolve(
+  dirname,
+  '.auth/ministry-leader.json',
+);
 export const VOLUNTEER_STORAGE_STATE = path.resolve(
   dirname,
   '.auth/volunteer.json',
@@ -67,6 +71,11 @@ const TEAM_LEADER_BASE = {
   name: 'E2E Team Leader',
 };
 
+const MINISTRY_LEADER_BASE = {
+  password: 'e2e-Password-012',
+  name: 'E2E Ministry Leader',
+};
+
 const VOLUNTEER_BASE = {
   password: 'e2e-Password-789',
   name: 'E2E Volunteer',
@@ -85,6 +94,7 @@ const AUTH_RESPONSE_SCHEMA = z.object({
 
 export const E2E_AUTH_META_SCHEMA = z.object({
   leaderUserId: z.string().min(1),
+  ministryLeaderUserId: z.string().min(1).optional(),
   teamLeaderUserId: z.string().min(1),
   volunteerUserId: z.string().min(1),
   churchBAdminUserId: z.string().min(1),
@@ -222,6 +232,7 @@ export default async function globalSetup(): Promise<void> {
   globalTeardown();
 
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
+  const ministryLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const teamLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const volunteerCtx = await request.newContext({ baseURL: SERVER_URL });
   const churchBAdminCtx = await request.newContext({ baseURL: SERVER_URL });
@@ -232,6 +243,10 @@ export default async function globalSetup(): Promise<void> {
   const teamLeaderCreds = {
     ...TEAM_LEADER_BASE,
     email: makeUniqueEmail({ label: 'e2e-teamleader' }),
+  };
+  const ministryLeaderCreds = {
+    ...MINISTRY_LEADER_BASE,
+    email: makeUniqueEmail({ label: 'e2e-ministry-leader' }),
   };
   const volunteerCreds = {
     ...VOLUNTEER_BASE,
@@ -277,6 +292,13 @@ export default async function globalSetup(): Promise<void> {
     organizationId: churchA.churchId,
     role: 'member',
   });
+  const ministryLeaderInvitation = mintE2eChurchInvitation({
+    inviterEmail: leaderCreds.email,
+    inviterPassword: leaderCreds.password,
+    inviteeEmail: ministryLeaderCreds.email,
+    organizationId: churchA.churchId,
+    role: 'member',
+  });
   const volunteerInvitation = mintE2eChurchInvitation({
     inviterEmail: leaderCreds.email,
     inviterPassword: leaderCreds.password,
@@ -285,7 +307,12 @@ export default async function globalSetup(): Promise<void> {
     role: 'member',
   });
 
-  const [teamLeaderId, volunteerId] = await Promise.all([
+  const [ministryLeaderId, teamLeaderId, volunteerId] = await Promise.all([
+    authUser({
+      ctx: ministryLeaderCtx,
+      creds: ministryLeaderCreds,
+      invitationId: ministryLeaderInvitation.invitationId,
+    }),
     authUser({
       ctx: teamLeaderCtx,
       creds: teamLeaderCreds,
@@ -305,6 +332,7 @@ export default async function globalSetup(): Promise<void> {
       'seed:e2e',
       '--',
       `--leader-user-id=${leaderId}`,
+      `--ministry-leader-user-id=${ministryLeaderId}`,
       `--team-leader-user-id=${teamLeaderId}`,
       `--volunteer-user-id=${volunteerId}`,
       `--church-b-admin-user-id=${churchBAdminId}`,
@@ -318,6 +346,7 @@ export default async function globalSetup(): Promise<void> {
     JSON.stringify(
       E2E_AUTH_META_SCHEMA.parse({
         leaderUserId: leaderId,
+        ministryLeaderUserId: ministryLeaderId,
         teamLeaderUserId: teamLeaderId,
         volunteerUserId: volunteerId,
         churchBAdminUserId: churchBAdminId,
@@ -328,6 +357,7 @@ export default async function globalSetup(): Promise<void> {
   await Promise.all([
     leaderCtx.storageState({ path: CHURCH_ADMIN_STORAGE_STATE }),
     leaderCtx.storageState({ path: LEADER_STORAGE_STATE }),
+    ministryLeaderCtx.storageState({ path: MINISTRY_LEADER_STORAGE_STATE }),
     teamLeaderCtx.storageState({ path: TEAM_LEADER_STORAGE_STATE }),
     volunteerCtx.storageState({ path: VOLUNTEER_STORAGE_STATE }),
     churchBAdminCtx.storageState({ path: CHURCH_B_ADMIN_STORAGE_STATE }),
@@ -335,6 +365,7 @@ export default async function globalSetup(): Promise<void> {
 
   await Promise.all([
     leaderCtx.dispose(),
+    ministryLeaderCtx.dispose(),
     teamLeaderCtx.dispose(),
     volunteerCtx.dispose(),
     churchBAdminCtx.dispose(),

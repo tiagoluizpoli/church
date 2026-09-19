@@ -68,6 +68,7 @@ describe('Scheduling capability controller', () => {
   it('returns the Active-Church capability projection for a ChurchAdmin without a Volunteer profile', async () => {
     authorityGuard.resolveSchedulingCapability.mockResolvedValue({
       canAccessScheduling: true,
+      entries: [{ kind: 'church' }],
     });
 
     const response = await app.inject({
@@ -76,7 +77,10 @@ describe('Scheduling capability controller', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ canAccessScheduling: true });
+    expect(response.json()).toEqual({
+      canAccessScheduling: true,
+      entries: [{ kind: 'church' }],
+    });
     expect(authorityGuard.resolveSchedulingCapability).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
       userId: 'current-user',
@@ -92,6 +96,7 @@ describe('Scheduling capability controller', () => {
     });
     authorityGuard.resolveSchedulingCapability.mockResolvedValue({
       canAccessScheduling: false,
+      entries: [],
     });
 
     const response = await app.inject({
@@ -100,6 +105,39 @@ describe('Scheduling capability controller', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ canAccessScheduling: false });
+    expect(response.json()).toEqual({
+      canAccessScheduling: false,
+      entries: [],
+    });
+  });
+
+  it('returns only the led Ministry entries from the capability projection', async () => {
+    authorityGuard.resolveSchedulingCapability.mockResolvedValue({
+      canAccessScheduling: true,
+      entries: [
+        {
+          kind: 'ministry',
+          ministryId: '22222222-2222-4222-8222-222222222222',
+          name: 'Worship',
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/scheduling/capability',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      canAccessScheduling: true,
+      entries: [
+        {
+          kind: 'ministry',
+          ministryId: '22222222-2222-4222-8222-222222222222',
+          name: 'Worship',
+        },
+      ],
+    });
   });
 });

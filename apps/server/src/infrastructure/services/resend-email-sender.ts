@@ -1,3 +1,4 @@
+import { formatInstant, fromDate } from '@church/time';
 import { Resend } from 'resend';
 import type {
   EmailPayload,
@@ -141,14 +142,17 @@ interface RenderTransferDigestHtmlInput {
   payload: TransferMinistryDigestEmail | TransferLeaderlessMinistryEmail;
 }
 
-/** Shared body for both transfer notification kinds — only the framing differs. */
+/** Shared body for both transfer notification kinds — only the framing
+ * differs. No Church Timezone is available at this layer, so times read
+ * UTC — a seam-armed swap of the prior raw `toLocaleString`, not a
+ * timezone-correctness fix. */
 function renderTransferDigestHtml({
   payload,
 }: RenderTransferDigestHtmlInput): string {
   const items = payload.withdrawnAssignments
     .map(
       (a) =>
-        `<li>${a.eventName} — ${a.timeSlotStart.toLocaleString()} — ${a.roleName}</li>`,
+        `<li>${a.eventName} — ${formatInstant({ instant: fromDate({ date: a.timeSlotStart }), timeZone: 'UTC' })} — ${a.roleName}</li>`,
     )
     .join('');
   return `

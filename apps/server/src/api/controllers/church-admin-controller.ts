@@ -60,6 +60,11 @@ import {
   timeSlotResponseSchema,
   updateSlotBodySchema,
 } from '../dtos/time-slot.dto';
+import {
+  dateFromCalendarDayString,
+  dateFromInstantString,
+  optionalDateFromInstantString,
+} from '../utils/request-time';
 
 interface PlanningCycleRouteParams {
   cycleId: string;
@@ -156,8 +161,8 @@ export class ChurchAdminController implements FastifyController {
         const cycle = await this.planningCycleManager.createCycle({
           churchId: ChurchId.from(request.churchId),
           name: body.name,
-          startDate: new Date(`${body.startDate}T00:00:00.000Z`),
-          endDate: new Date(`${body.endDate}T00:00:00.000Z`),
+          startDate: dateFromCalendarDayString({ value: body.startDate }),
+          endDate: dateFromCalendarDayString({ value: body.endDate }),
         });
         return reply.status(201).send(planningCycleMapper.toResponse(cycle));
       },
@@ -394,8 +399,8 @@ export class ChurchAdminController implements FastifyController {
           title: body.title,
           description: body.description,
           location: body.location,
-          start: new Date(body.start),
-          end: new Date(body.end),
+          start: dateFromInstantString({ value: body.start }),
+          end: dateFromInstantString({ value: body.end }),
           eventType: body.eventType,
         });
         return reply.status(201).send(eventMapper.toResponse(event));
@@ -425,8 +430,8 @@ export class ChurchAdminController implements FastifyController {
           title: body.title,
           description: body.description,
           location: body.location,
-          start: body.start ? new Date(body.start) : undefined,
-          end: body.end ? new Date(body.end) : undefined,
+          start: optionalDateFromInstantString({ value: body.start }),
+          end: optionalDateFromInstantString({ value: body.end }),
         });
         return reply.send(eventMapper.toResponse(event));
       },
@@ -472,8 +477,8 @@ export class ChurchAdminController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           cycleId: PlanningCycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          startTime: new Date(body.startTime),
-          endTime: new Date(body.endTime),
+          startTime: dateFromInstantString({ value: body.startTime }),
+          endTime: dateFromInstantString({ value: body.endTime }),
           label: body.label,
         });
         return reply.status(201).send(timeSlotMapper.toResponse(slot));
@@ -501,8 +506,8 @@ export class ChurchAdminController implements FastifyController {
           cycleId: PlanningCycleId.from(cycleId),
           eventId: EventId.from(eventId),
           slotId: TimeSlotId.from(slotId),
-          startTime: body.startTime ? new Date(body.startTime) : undefined,
-          endTime: body.endTime ? new Date(body.endTime) : undefined,
+          startTime: optionalDateFromInstantString({ value: body.startTime }),
+          endTime: optionalDateFromInstantString({ value: body.endTime }),
           label: body.label,
         });
         return reply.send(timeSlotMapper.toResponse(slot));

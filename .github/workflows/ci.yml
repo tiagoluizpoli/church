@@ -64,6 +64,9 @@ jobs:
       - name: Lint (Biome + boundary enforcement)
         run: bun run lint
 
+      - name: Validation tests (affected-plan, date-time seam fixture)
+        run: bun run test:validation
+
       - name: Create .env for test runner
         run: |
           printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=test\nENABLE_DEBUG_ENDPOINTS=true\n' \

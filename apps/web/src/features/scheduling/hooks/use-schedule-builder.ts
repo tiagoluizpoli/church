@@ -1,3 +1,4 @@
+import { compareInstants, type Instant, parseInstant } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { mapAvailabilityStatus } from '../utils/availability-status';
@@ -23,23 +24,35 @@ interface PublishEventParams {
 
 const BUILDER_QUERY_KEY = ['schedule-builder'] as const;
 
-function computeAvailabilityStatus(
-  volunteerId: string,
-  availability: {
-    volunteerId: string;
-    type: 'available' | 'unavailable';
-    startTime: string;
-    endTime: string;
-    isAllDay: boolean;
-  }[],
-  eventStartMs: number,
-  eventEndMs: number,
-): string {
+interface AvailabilityRecord {
+  volunteerId: string;
+  type: 'available' | 'unavailable';
+  startTime: string;
+  endTime: string;
+  isAllDay: boolean;
+}
+
+interface ComputeAvailabilityStatusInput {
+  volunteerId: string;
+  availability: AvailabilityRecord[];
+  eventStart: Instant;
+  eventEnd: Instant;
+}
+
+function computeAvailabilityStatus({
+  volunteerId,
+  availability,
+  eventStart,
+  eventEnd,
+}: ComputeAvailabilityStatusInput): string {
   const records = availability.filter((av) => av.volunteerId === volunteerId);
   for (const av of records) {
-    const avStart = new Date(av.startTime).getTime();
-    const avEnd = new Date(av.endTime).getTime();
-    if (avStart <= eventEndMs && avEnd >= eventStartMs) {
+    const avStart = parseInstant({ value: av.startTime });
+    const avEnd = parseInstant({ value: av.endTime });
+    if (
+      compareInstants({ left: avStart, right: eventEnd }) <= 0 &&
+      compareInstants({ left: avEnd, right: eventStart }) >= 0
+    ) {
       return av.type === 'unavailable' ? 'UNAVAILABLE' : 'AVAILABLE';
     }
   }
@@ -88,19 +101,19 @@ export function useScheduleBuilder(eventId: string) {
       volunteerMembership: membershipOf(volunteerMap.get(a.volunteerId)),
     }));
 
-    const eventStartMs = new Date(event.start).getTime();
-    const eventEndMs = new Date(event.end).getTime();
+    const eventStart = parseInstant({ value: event.start });
+    const eventEnd = parseInstant({ value: event.end });
 
     const volunteerAvailability = volunteers.map((v) => ({
       volunteerId: v.id,
       volunteerName: v.name,
       membership: membershipOf(v),
-      status: computeAvailabilityStatus(
-        v.id,
+      status: computeAvailabilityStatus({
+        volunteerId: v.id,
         availability,
-        eventStartMs,
-        eventEndMs,
-      ),
+        eventStart,
+        eventEnd,
+      }),
       conflictReason: undefined,
     }));
 

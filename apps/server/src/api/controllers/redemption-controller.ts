@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { auth } from '@church/auth';
-import { fromDate } from '@church/time';
+import { fromDate, nowAsDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
@@ -460,7 +460,10 @@ export class RedemptionController implements FastifyController {
   }
 }
 
-function isRateLimited({ key, now = Date.now() }: RateLimitInput): boolean {
+function isRateLimited({
+  key,
+  now = nowAsDate().getTime(),
+}: RateLimitInput): boolean {
   const attempts = (publicRateLimit.get(key) ?? []).filter(
     (attempt) => attempt > now - RATE_WINDOW_MS,
   );

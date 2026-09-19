@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "plugins": ["./tooling/biome/require-named-object-parameters.grit"],
+  "plugins": [
+    "./tooling/biome/require-named-object-parameters.grit",
+    "./tooling/biome/date-time-seam.grit"
+  ],
   "vcs": {
     "enabled": false,
     "clientKind": "git",
@@ -154,6 +157,15 @@
             "requireAscii": true,
             "filenameCases": ["kebab-case"]
           }
+        },
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+              "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+            }
+          }
         }
       },
       "a11y": {
@@ -207,7 +219,11 @@
                     "group": ["**/domain/contracts/infrastructure/**"],
                     "message": "api/ → domain/contracts/application/ only for contracts. Infrastructure contracts (repositories/services) are for application and infrastructure layers only."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
               }
             }
           }
@@ -235,7 +251,11 @@
                     "group": ["**/api/**"],
                     "message": "domain/ → packages/* only. API layer import forbidden from domain."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
               }
             }
           }
@@ -259,7 +279,11 @@
                     "group": ["**/api/**"],
                     "message": "application/ → domain/ only. API layer import forbidden from application."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
               }
             }
           }
@@ -268,6 +292,16 @@
     },
     {
       "includes": ["apps/server/src/domain/contracts/contract-tests/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/time/**"],
       "linter": {
         "rules": {
           "style": {
@@ -297,7 +331,11 @@
                     "group": ["**/domain/contracts/application/**"],
                     "message": "infrastructure/ → domain/contracts/infrastructure/ only for contracts. Manager interfaces (application contracts) are not for infrastructure layer."
                   }
-                ]
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
               }
             }
           }

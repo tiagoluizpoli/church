@@ -36,6 +36,7 @@ import {
   splitShiftsBodySchema,
   updateShiftBodySchema,
 } from '../dtos/participation.dto';
+import { optionalDateFromInstantString } from '../utils/request-time';
 
 interface CycleParticipationRouteParams {
   cycleId: string;
@@ -283,8 +284,8 @@ export class TailoringController implements FastifyController {
         const shift = await this.participationManager.updateShift({
           churchId: ChurchId.from(request.churchId),
           shiftId: ShiftId.from(shiftId),
-          startTime: body.startTime ? new Date(body.startTime) : undefined,
-          endTime: body.endTime ? new Date(body.endTime) : undefined,
+          startTime: optionalDateFromInstantString({ value: body.startTime }),
+          endTime: optionalDateFromInstantString({ value: body.endTime }),
           label: body.label,
         });
         return reply.send(participationMapper.shiftToResponse(shift));

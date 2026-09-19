@@ -9,7 +9,14 @@ import {
   slotRequirement,
   timeSlot,
 } from '@church/db';
-import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
+import {
+  addMilliseconds,
+  calendarDayBounds,
+  formatCalendarDay,
+  parseCalendarDay,
+  toDate,
+  today,
+} from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
@@ -325,16 +332,39 @@ describe('Phase 3 planning managers', () => {
       churchId: churchAId,
       cycleId: cycle.id,
       title: 'November first',
-      start: fromZonedTime('2026-11-01T00:00:00.000', seed.churchATimezone),
-      end: fromZonedTime('2026-11-01T23:59:59.999', seed.churchATimezone),
+      start: toDate({
+        instant: calendarDayBounds({
+          day: parseCalendarDay({ value: '2026-11-01' }),
+          timeZone: seed.churchATimezone,
+        }).start,
+      }),
+      end: toDate({
+        instant: addMilliseconds({
+          instant: calendarDayBounds({
+            day: parseCalendarDay({ value: '2026-11-01' }),
+            timeZone: seed.churchATimezone,
+          }).end,
+          milliseconds: -1,
+        }),
+      }),
     });
 
     expect(
-      formatInTimeZone(created.start, seed.churchATimezone, 'yyyy-MM-dd'),
-    ).toBe('2026-11-01');
+      formatCalendarDay({
+        day: today({
+          instant: created.start,
+          timeZone: seed.churchATimezone,
+        }),
+      }),
+    ).toBe('01/11/2026');
     expect(
-      formatInTimeZone(created.end, seed.churchATimezone, 'yyyy-MM-dd'),
-    ).toBe('2026-11-01');
+      formatCalendarDay({
+        day: today({
+          instant: created.end,
+          timeZone: seed.churchATimezone,
+        }),
+      }),
+    ).toBe('01/11/2026');
   });
 
   it('applies templates idempotently and requires reopen before editing a locked event', async () => {

@@ -1,18 +1,28 @@
-import { addMilliseconds, fromDate, parseInstant, toDate } from '@church/time';
+import {
+  addMilliseconds,
+  calendarDayBounds,
+  fromDate,
+  parseCalendarDay,
+  parseInstant,
+  toDate,
+} from '@church/time';
 import { faker } from '@faker-js/faker';
 import { db } from '../../client';
 import * as schema from '../../schema';
+import type { ChurchRecord } from '../../tenancy';
 import { SEED_CONFIG } from '../constants';
 import { logStep, logSuccess } from '../utils';
 
 const DAY_MS = 86_400_000;
 
 export interface GenerateEventsInput {
+  churches: ChurchRecord[];
   ministries: (typeof schema.ministry.$inferSelect)[];
   roles: (typeof schema.role.$inferSelect)[];
 }
 
 export async function generateEvents({
+  churches,
   ministries,
   roles,
 }: GenerateEventsInput) {
@@ -97,7 +107,11 @@ export async function generateEvents({
     const template = templates.find(
       ({ churchId }) => churchId === ministry.churchId,
     );
-    if (!cycle || !template) throw new Error('Missing seed planning data');
+    if (!cycle || !template) {
+      throw new Error(
+        `Missing seed planning data for ministry "${ministry.name}"`,
+      );
+    }
     const titles = SEED_CONFIG.MINISTRY_ROLES[ministry.name] ?? [
       'Special Event',
     ];
@@ -151,6 +165,45 @@ export async function generateEvents({
         status: 'scheduled',
       });
     }
+  }
+
+  // One day-based Event per church: church-local midnight to end of day,
+  // via the same `calendarDayBounds` bridge quick-create uses (#149). Lets
+  // whoever performs the #171 cutover spot-check a real church-timezone
+  // Instant (e.g. Hope City's `America/Sao_Paulo`) against its wall clock.
+  const dayBasedDay = parseCalendarDay({
+    value: SEED_CONFIG.DAY_BASED_EVENT_DAY,
+  });
+  for (const church of churches) {
+    const ministry = ministries.find(({ churchId }) => churchId === church.id);
+    const cycle = cycles.find(({ churchId }) => churchId === church.id);
+    const template = templates.find(({ churchId }) => churchId === church.id);
+    if (!ministry || !cycle || !template) {
+      throw new Error(
+        `Missing seed planning data for day-based Event on church "${church.name}"`,
+      );
+    }
+    const bounds = calendarDayBounds({
+      day: dayBasedDay,
+      timeZone: church.timezone,
+    });
+    const id = faker.string.uuid();
+    eventMinistries.set(id, ministry.id);
+    eventRows.push({
+      id,
+      churchId: church.id,
+      planningCycleId: cycle.id,
+      sourceTemplateId: template.id,
+      title: `${church.name} ${SEED_CONFIG.DAY_BASED_EVENT_TITLE_SUFFIX}`,
+      description:
+        'Day-based Event spanning church-local midnight to end of day.',
+      location: SEED_CONFIG.DEFAULT_LOCATION,
+      start: toDate({ instant: bounds.start }),
+      end: toDate({
+        instant: addMilliseconds({ instant: bounds.end, milliseconds: -1 }),
+      }),
+      status: 'scheduled',
+    });
   }
 
   const events = await db.insert(schema.event).values(eventRows).returning();

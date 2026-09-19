@@ -113,6 +113,10 @@ export async function createFastify() {
           name: 'rostering',
           description: 'Cycle and shift rostering endpoints',
         },
+        {
+          name: 'scheduling-capability',
+          description: 'Active Church Scheduling navigation capability',
+        },
         { name: 'volunteer', description: 'Volunteer-facing endpoints' },
         { name: 'feature-flags', description: 'Feature flag endpoints' },
         {

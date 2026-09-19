@@ -10,6 +10,7 @@ import type {
   CanManageShiftInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
+  SchedulingCapabilityProjection,
 } from '../domain/contracts/application/authority-manager';
 import type { AuthorityActorRepository } from '../domain/contracts/infrastructure/authority-actor.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
@@ -92,23 +93,18 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.canManageEvent({ ...input, eventId: slot.eventId });
   }
 
-  /**
-   * True if the actor can `manage` the Church itself, or `manage` at least
-   * one Ministry they belong to. No single resource to name, so this asks
-   * `AuthorityService` once per candidate resource rather than inventing a
-   * parallel admin/leader check — every decision still comes from the one
-   * policy engine.
-   */
-  async hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {
+  async resolveSchedulingCapability(
+    input: HasSchedulingAccessInput,
+  ): Promise<SchedulingCapabilityProjection> {
     const actor = await this.resolveActor(input);
     const churchDecision = AuthorityService.authorize({
       actor,
       action: 'manage',
       resource: { type: 'church', churchId: input.churchId },
     });
-    if (churchDecision.allowed) return true;
+    if (churchDecision.allowed) return { canAccessScheduling: true };
 
-    return actor.ministryMemberships.some(
+    const canManageLedMinistry = actor.ministryMemberships.some(
       (membership) =>
         AuthorityService.authorize({
           actor,
@@ -120,6 +116,12 @@ export class DbAuthorityManager implements IAuthorityManager {
           },
         }).allowed,
     );
+    return { canAccessScheduling: canManageLedMinistry };
+  }
+
+  async hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {
+    const capability = await this.resolveSchedulingCapability(input);
+    return capability.canAccessScheduling;
   }
 
   private async resolveActor(input: ResolveActorInput) {

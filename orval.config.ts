@@ -14,6 +14,7 @@ export default defineConfig({
           'planning',
           'tailoring',
           'rostering',
+          'scheduling-capability',
           'volunteer',
           'feature-flags',
           'active-church',

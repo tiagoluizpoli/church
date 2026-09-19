@@ -8,6 +8,7 @@ import type {
   CanManageShiftInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
+  SchedulingCapabilityProjection,
 } from '../../domain/contracts/application/authority-manager';
 
 /**
@@ -45,6 +46,12 @@ export class AuthorityGuard {
 
   canManageEventSlot(input: CanManageEventSlotInput): Promise<boolean> {
     return this.manager.canManageEventSlot(input);
+  }
+
+  resolveSchedulingCapability(
+    input: HasSchedulingAccessInput,
+  ): Promise<SchedulingCapabilityProjection> {
+    return this.manager.resolveSchedulingCapability(input);
   }
 
   hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {

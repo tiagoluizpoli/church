@@ -39,6 +39,13 @@ function memberActor(): AuthorityActor {
   };
 }
 
+function volunteerActor(): AuthorityActor {
+  return {
+    ...memberActor(),
+    volunteerId: 'vol_1' as never,
+  };
+}
+
 function ministryLeaderActor(): AuthorityActor {
   return {
     userId,
@@ -204,23 +211,23 @@ describe('DbAuthorityManager', () => {
     );
   });
 
-  it('hasSchedulingAccess allows a Church admin, allows a Ministry leader, denies a plain member', async () => {
+  it('projects Scheduling capability for Church admins and Ministry leaders, but not plain Volunteers', async () => {
     const manager = createManager();
 
     actorRepository.resolveActor.mockResolvedValueOnce(adminActor());
     await expect(
-      manager.hasSchedulingAccess({ churchId, userId }),
-    ).resolves.toBe(true);
+      manager.resolveSchedulingCapability({ churchId, userId }),
+    ).resolves.toEqual({ canAccessScheduling: true });
 
     actorRepository.resolveActor.mockResolvedValueOnce(ministryLeaderActor());
     await expect(
-      manager.hasSchedulingAccess({ churchId, userId }),
-    ).resolves.toBe(true);
+      manager.resolveSchedulingCapability({ churchId, userId }),
+    ).resolves.toEqual({ canAccessScheduling: true });
 
-    actorRepository.resolveActor.mockResolvedValueOnce(memberActor());
+    actorRepository.resolveActor.mockResolvedValueOnce(volunteerActor());
     await expect(
-      manager.hasSchedulingAccess({ churchId, userId }),
-    ).resolves.toBe(false);
+      manager.resolveSchedulingCapability({ churchId, userId }),
+    ).resolves.toEqual({ canAccessScheduling: false });
   });
 
   it('denies a resource whose resolved Ministry belongs to a different Church', async () => {

@@ -1,3 +1,9 @@
+import {
+  addMilliseconds,
+  calendarDayBounds,
+  fromDate,
+  parseCalendarDay,
+} from '@church/time';
 import { faker } from '@faker-js/faker';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -97,6 +103,47 @@ describe('Local Seeder', () => {
       const snapshot2 = await getSnapshot();
 
       expect(snapshot1).toEqual(snapshot2);
+    });
+  });
+
+  describe('#171: Cutover spot-check — church-local Instants', () => {
+    it('seeds churches with real, distinct IANA timezones (not UTC)', async () => {
+      await seedDatabase();
+
+      const churches = await db.select().from(schema.church);
+      const timezones = churches.map((row) => row.timezone);
+      expect(new Set(timezones).size).toBe(churches.length);
+      expect(timezones).not.toContain('UTC');
+    });
+
+    it('stores a day-based Event at church-local midnight for a São Paulo church', async () => {
+      await seedDatabase();
+
+      const [saoPauloChurch] = await db
+        .select()
+        .from(schema.church)
+        .where(eq(schema.church.timezone, 'America/Sao_Paulo'));
+      expect(saoPauloChurch).toBeDefined();
+      if (!saoPauloChurch) throw new Error('unreachable');
+
+      const churchEvents = await db
+        .select()
+        .from(schema.event)
+        .where(eq(schema.event.churchId, saoPauloChurch.id));
+      const dayEvent = churchEvents.find((row) =>
+        row.title.includes(SEED_CONFIG.DAY_BASED_EVENT_TITLE_SUFFIX),
+      );
+      expect(dayEvent).toBeDefined();
+      if (!dayEvent) throw new Error('unreachable');
+
+      const expectedBounds = calendarDayBounds({
+        day: parseCalendarDay({ value: SEED_CONFIG.DAY_BASED_EVENT_DAY }),
+        timeZone: 'America/Sao_Paulo',
+      });
+      expect(fromDate({ date: dayEvent.start })).toBe(expectedBounds.start);
+      expect(fromDate({ date: dayEvent.end })).toBe(
+        addMilliseconds({ instant: expectedBounds.end, milliseconds: -1 }),
+      );
     });
   });
 });

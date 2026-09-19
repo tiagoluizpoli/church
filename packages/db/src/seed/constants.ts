@@ -15,4 +15,8 @@ export const SEED_CONFIG = {
   },
   DEFAULT_LOCATION: 'Main Sanctuary',
   REFERENCE_DATE: '2026-05-01T00:00:00Z',
+  // A fixed future CalendarDay for the one seeded day-based Event per church
+  // (church-local midnight to end of day) — the #171 cutover spot-check.
+  DAY_BASED_EVENT_DAY: '2026-06-20',
+  DAY_BASED_EVENT_TITLE_SUFFIX: 'Day Retreat',
 };

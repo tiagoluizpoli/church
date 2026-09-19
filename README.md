@@ -94,6 +94,40 @@ church/
 │   └── db/          # Database schema & queries
 ```
 
+## Data Cutover: Date & Time Seam (#171)
+
+The `@church/time` seam (ADR-0003) changed how `Event.start`/`Event.end` and
+related bounds are constructed. No live production data exists yet, so the
+cutover for this change is a **reset and reseed**, not a data-repair
+migration — schema changes (the TimeBlock crosses-midnight constraint drop,
+the `_date` column rename) already shipped as ordinary migrations in
+`packages/db/src/migrations/`.
+
+To cut an environment over to seam-correct data:
+
+1. Apply any pending schema migrations: `bun run db:migrate`.
+2. Reset and reseed from clean:
+   ```bash
+   bun run db:seed:reset          # truncates every table, then reseeds
+   bun run db:seed:dev-users      # (optional) attaches dev login users
+   ```
+   (`bun run db:seed:reset:dev-users` runs both in sequence.)
+3. Spot-check a church-local Instant: the seed churches carry distinct real
+   IANA timezones (`America/New_York`, `America/Sao_Paulo`,
+   `America/Los_Angeles`), and each gets one day-based Event (`"<Church> Day
+   Retreat"`) spanning church-local midnight to end of day. For the
+   `America/Sao_Paulo` church, that Event's stored `start` should read as
+   `00:00` when converted to that zone, not to UTC or the machine's local
+   zone — `packages/db/tests/seed.test.ts` (`#171: Cutover spot-check`)
+   asserts this automatically on every `bun run test:integration` run.
+
+E2E has its own, separate seeding path (`apps/web/tests/global-setup.ts` →
+`apps/server/src/test-support/e2e-seed.ts`, invoked via
+`bun run --cwd apps/server seed:e2e`) that provisions its own Churches and
+fixtures per Playwright run; it needs no manual reset step beyond running the
+suite (`bun run test:e2e`), which calls
+`globalSetup` before every run.
+
 ## Available Scripts
 
 - `bun run dev`: Start all applications in development mode

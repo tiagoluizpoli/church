@@ -29,6 +29,7 @@ export async function seedDatabase() {
     roles,
   });
   const { events, participations, blocks } = await generateEvents({
+    churches,
     ministries,
     roles,
   });

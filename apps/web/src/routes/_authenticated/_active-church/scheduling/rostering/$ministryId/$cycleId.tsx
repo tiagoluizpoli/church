@@ -27,7 +27,6 @@ function EventBuilderRoute() {
     createAssignment,
     deleteAssignment,
     reassignAssignment,
-    isReadOnly,
   } = useCycleBuilder({ cycleId, ministryId, teamId });
   const cycleQuery = useQuery({
     queryKey: ['rostering-cycle', cycleId],
@@ -73,7 +72,7 @@ function EventBuilderRoute() {
         data={data}
         cycleId={cycleId}
         ministryId={ministryId}
-        isReadOnly={isReadOnly}
+        teamId={teamId}
         cycleName={teamId ? 'Team roster' : cycleQuery.data?.cycle.name}
         cycleStartDate={teamId ? undefined : cycleQuery.data?.cycle.startDate}
         cycleEndDate={teamId ? undefined : cycleQuery.data?.cycle.endDate}

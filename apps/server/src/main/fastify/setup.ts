@@ -20,8 +20,9 @@ import PinoPretty from 'pino-pretty';
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
 type FastifyFactory = (opts?: Record<string, unknown>) => FastifyInstance;
+type ErrorMapEntry = { status: number };
 const createFastifyInstance = Fastify as unknown as FastifyFactory;
-const ERROR_MAP: Record<string, { status: number }> = {
+const ERROR_MAP: Record<string, ErrorMapEntry> = {
   INVALID_DATE_RANGE: { status: 400 },
   INVALID_TIME_RANGE: { status: 400 },
   INVALID_REQUIRED_COUNT: { status: 400 },
@@ -35,6 +36,7 @@ const ERROR_MAP: Record<string, { status: number }> = {
   UNAUTHORIZED_OVERRIDE: { status: 403 },
   CHECK_ACCESS_DENIED: { status: 403 },
   ASSIGNMENT_ACCESS_DENIED: { status: 403 },
+  ROSTER_ACTION_NOT_AVAILABLE: { status: 403 },
   INSUFFICIENT_INVITATION_AUTHORITY: { status: 403 },
   CANCEL_WINDOW_CLOSED: { status: 409 },
   AVAILABILITY_OVERLAP: { status: 409 },

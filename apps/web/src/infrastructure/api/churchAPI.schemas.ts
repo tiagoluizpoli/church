@@ -1762,6 +1762,7 @@ export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemRequirementsItem 
   teamId?: string;
   requiredCount: number;
   notes?: string;
+  canMutateAssignments: boolean;
 };
 
 export type GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus = typeof GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus[keyof typeof GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItemStatus];
@@ -2008,6 +2009,10 @@ export type CreateParticipationAssignment201 = {
 export type CreateParticipationAssignment403 = {
   error: string;
   message: string;
+};
+
+export type DeleteParticipationAssignmentParams = {
+teamId?: string;
 };
 
 /**

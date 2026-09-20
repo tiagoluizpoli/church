@@ -1,10 +1,18 @@
 import 'reflect-metadata';
-import { compareInstants, fromDate, type Instant, toDate } from '@church/time';
+import {
+  compareInstants,
+  fromDate,
+  type Instant,
+  now,
+  toDate,
+} from '@church/time';
 import { inject, injectable } from 'tsyringe';
-import type { ChurchId, TeamId } from '../domain/branded-ids';
+import { TeamRosterMutationPolicy } from '../domain/authority/team-roster-mutation-policy';
+import { type ChurchId, TeamId } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
 import type {
   CycleBuilderEventView,
+  CycleBuilderRequirementView,
   CycleBuilderRoleOption,
   CycleBuilderShiftView,
   CycleBuilderSlotView,
@@ -155,8 +163,11 @@ interface BuildBuilderEventViewInput {
   includedSlotIds: Set<string>;
   shifts: Shift[];
   requirements: SlotRequirement[];
+  allRequirements: SlotRequirement[];
   assignments: Assignment[];
   eligibleByShift: Map<string, EligibleVolunteerView[]>;
+  teamId?: TeamId;
+  membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
 }
 
 interface PublishCandidate {
@@ -379,8 +390,11 @@ export class DbParticipationManager implements IParticipationManager {
             ),
             shifts: visibleShifts,
             requirements: visibleRequirements,
+            allRequirements: requirements,
             assignments: visibleAssignments,
             eligibleByShift,
+            teamId,
+            membershipInfoByVolunteerId,
           }),
         );
       }
@@ -389,7 +403,9 @@ export class DbParticipationManager implements IParticipationManager {
         events.flatMap((event) =>
           event.slots.flatMap((slot) =>
             slot.shifts.flatMap((shift) =>
-              shift.requirements.map((requirement) => requirement.roleId),
+              shift.requirements.map(
+                (requirement) => requirement.requirement.roleId,
+              ),
             ),
           ),
         ),
@@ -1316,8 +1332,11 @@ function buildBuilderEventView({
   includedSlotIds,
   shifts,
   requirements,
+  allRequirements,
   assignments,
   eligibleByShift,
+  teamId,
+  membershipInfoByVolunteerId,
 }: BuildBuilderEventViewInput): CycleBuilderEventView {
   const shiftsBySlot = new Map<string, Shift[]>();
   for (const shift of shifts) {
@@ -1326,11 +1345,21 @@ function buildBuilderEventView({
     shiftsBySlot.set(shift.timeSlotId as string, slotShifts);
   }
 
-  const requirementsByShift = new Map<string, SlotRequirement[]>();
+  const requirementsByShift = new Map<string, CycleBuilderRequirementView[]>();
   for (const requirement of requirements) {
     const key = (requirement.shiftId ?? '') as string;
     const shiftRequirements = requirementsByShift.get(key) ?? [];
-    shiftRequirements.push(requirement);
+    shiftRequirements.push({
+      requirement,
+      canMutateAssignments: canMutateCycleBuilderRequirement({
+        requirement,
+        allRequirements,
+        eventGroup,
+        participation,
+        teamId,
+        membershipInfoByVolunteerId,
+      }),
+    });
     requirementsByShift.set(key, shiftRequirements);
   }
 
@@ -1366,6 +1395,49 @@ function buildBuilderEventView({
     event: eventGroup.event,
     slots,
   };
+}
+
+interface CanMutateCycleBuilderRequirementInput {
+  requirement: SlotRequirement;
+  allRequirements: SlotRequirement[];
+  eventGroup: EventWithSlots;
+  participation: MinistryParticipation;
+  teamId?: TeamId;
+  membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
+}
+
+function canMutateCycleBuilderRequirement({
+  requirement,
+  allRequirements,
+  eventGroup,
+  participation,
+  teamId,
+  membershipInfoByVolunteerId,
+}: CanMutateCycleBuilderRequirementInput): boolean {
+  if (!teamId) {
+    return true;
+  }
+
+  const requirementTeamIds = allRequirements
+    .filter(
+      (candidate) =>
+        candidate.shiftId === requirement.shiftId &&
+        candidate.roleId === requirement.roleId,
+    )
+    .map((candidate) => candidate.teamId);
+  const volunteerTeamIds = [...membershipInfoByVolunteerId.values()].flatMap(
+    (membership) => membership.teamIds,
+  );
+
+  return TeamRosterMutationPolicy.authorize({
+    teamId,
+    participationState: participation.state,
+    eventStatus: eventGroup.event.status,
+    eventStart: eventGroup.event.start,
+    now: now(),
+    requirementTeamIds,
+    volunteerTeamIds: volunteerTeamIds.map((id) => TeamId.from(id)),
+  });
 }
 
 function buildEligibleForVolunteer({

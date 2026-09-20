@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useCycleBuilder } from './use-cycle-builder';
+import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
 import type {
   GetCycleBuilderData200,
   GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem,
@@ -100,6 +100,7 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     participationId: 'participation-1',
                     roleId: 'role-1',
                     requiredCount: 2,
+                    canMutateAssignments: false,
                   },
                 ],
                 assignments: [ANA_ASSIGNMENT],
@@ -136,7 +137,11 @@ interface WrapperProps {
   children: ReactNode;
 }
 
-function renderCycleBuilder() {
+interface RenderCycleBuilderInput {
+  teamId?: string;
+}
+
+function renderCycleBuilder({ teamId }: RenderCycleBuilderInput = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -144,7 +149,8 @@ function renderCycleBuilder() {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
   return renderHook(
-    () => useCycleBuilder({ cycleId: 'cycle-1', ministryId: 'ministry-1' }),
+    () =>
+      useCycleBuilder({ cycleId: 'cycle-1', ministryId: 'ministry-1', teamId }),
     { wrapper },
   );
 }
@@ -161,6 +167,35 @@ beforeEach(() => {
 });
 
 describe('useCycleBuilder optimistic assignments', () => {
+  it('creates a Team roster assignment in the route Team context', async () => {
+    adminApiMock.createParticipationAssignment.mockResolvedValue({});
+    const { result } = renderCycleBuilder({ teamId: 'team-1' });
+    await waitFor(() => expect(result.current.data).toBeDefined());
+
+    await result.current.createAssignment.mutateAsync({
+      shiftId: 'shift-1',
+      body: { volunteerId: 'bruno', roleId: 'role-1' },
+    });
+
+    expect(adminApiMock.createParticipationAssignment).toHaveBeenCalledWith(
+      'shift-1',
+      { volunteerId: 'bruno', roleId: 'role-1', teamId: 'team-1' },
+    );
+  });
+
+  it('removes a Team roster assignment in the route Team context', async () => {
+    adminApiMock.deleteParticipationAssignment.mockResolvedValue({});
+    const { result } = renderCycleBuilder({ teamId: 'team-1' });
+    await waitFor(() => expect(result.current.data).toBeDefined());
+
+    await result.current.deleteAssignment.mutateAsync('assignment-1');
+
+    expect(adminApiMock.deleteParticipationAssignment).toHaveBeenCalledWith(
+      'assignment-1',
+      { teamId: 'team-1' },
+    );
+  });
+
   it('shows a created assignment before the server answers', async () => {
     const pendingCreate = defer<unknown>();
     adminApiMock.createParticipationAssignment.mockReturnValue(

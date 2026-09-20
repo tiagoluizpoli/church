@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { NotFoundError } from '@church/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
@@ -74,6 +75,14 @@ interface AssignmentRouteParams {
   assignmentId: string;
 }
 
+interface AssignmentMutationQuery {
+  teamId?: string;
+}
+
+const assignmentMutationQuerySchema = z.object({
+  teamId: z.string().optional(),
+});
+
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
@@ -104,6 +113,30 @@ interface ResolveOwnedAssignmentInput {
 interface ResolveOwnedAssignmentResult {
   assignment?: Assignment;
   denied: boolean;
+}
+
+interface ResolveRosterAssignmentInput extends ResolveOwnedAssignmentInput {
+  teamId?: string;
+}
+
+interface ResolveRosterAssignmentResult extends ResolveOwnedAssignmentResult {
+  teamLeaderScopeId?: TeamId;
+}
+
+interface ResolveRosterShiftInput {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  shiftId: string;
+  teamId?: string;
+}
+
+interface ResolveRosterShiftResult {
+  denied: boolean;
+  teamLeaderScopeId?: TeamId;
+}
+
+interface DenyRosterActionInput {
+  reply: FastifyReply;
 }
 
 interface DenyParticipationScopeInput {
@@ -374,17 +407,23 @@ export class RosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { shiftId } = request.params as ShiftRouteParams;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
-
         const body = request.body as CreateParticipationAssignmentBody;
+        const scope = await this.resolveRosterShift({
+          request,
+          reply,
+          shiftId,
+          teamId: body.teamId,
+        });
+        if (scope.denied) return;
+
         const result =
           await this.assignmentManager.createParticipationAssignment({
             churchId: ChurchId.from(request.churchId),
             shiftId: ShiftId.from(shiftId),
             volunteerId: VolunteerId.from(body.volunteerId),
             roleId: RoleId.from(body.roleId),
-            teamId: body.teamId,
+            teamId: body.teamId ? TeamId.from(body.teamId) : undefined,
+            teamLeaderScopeId: scope.teamLeaderScopeId,
             actorId: UserId.from(request.userId),
             override: body.override,
           });
@@ -402,15 +441,18 @@ export class RosteringController implements FastifyController {
           operationId: 'deleteParticipationAssignment',
           summary: 'Delete an Assignment',
           description: 'Remove a Volunteer Assignment from its Shift.',
+          querystring: assignmentMutationQuerySchema,
           response: { 204: z.null(), 403: errorResponseSchema },
         },
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
-        const resolved = await this.resolveOwnedAssignment({
+        const { teamId } = request.query as AssignmentMutationQuery;
+        const resolved = await this.resolveRosterAssignment({
           request,
           reply,
           assignmentId,
+          teamId,
         });
         if (resolved.denied) return;
 
@@ -418,6 +460,7 @@ export class RosteringController implements FastifyController {
           assignmentId: AssignmentId.from(assignmentId),
           churchId: ChurchId.from(request.churchId),
           actorId: UserId.from(request.userId),
+          teamLeaderScopeId: resolved.teamLeaderScopeId,
         });
         return reply.status(204).send(null);
       },
@@ -441,7 +484,7 @@ export class RosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
-        const resolved = await this.resolveOwnedAssignment({
+        const resolved = await this.resolveRosterAssignment({
           request,
           reply,
           assignmentId,
@@ -555,32 +598,87 @@ export class RosteringController implements FastifyController {
     return true;
   }
 
-  private async resolveOwnedAssignment({
+  private async resolveRosterAssignment({
     request,
     reply,
     assignmentId,
-  }: ResolveOwnedAssignmentInput): Promise<ResolveOwnedAssignmentResult> {
-    const assignment = await this.assignmentManager.getAssignment({
-      churchId: ChurchId.from(request.churchId),
-      assignmentId: AssignmentId.from(assignmentId),
-    });
-    const { shiftId } = assignment;
-    const allowed =
-      shiftId != null &&
-      (await this.authorityGuard.canManageShift({
+    teamId,
+  }: ResolveRosterAssignmentInput): Promise<ResolveRosterAssignmentResult> {
+    let assignment: Assignment;
+    try {
+      assignment = await this.assignmentManager.getAssignment({
         churchId: ChurchId.from(request.churchId),
-        shiftId,
-        userId: UserId.from(request.userId),
-      }));
-    if (allowed) {
-      return { assignment, denied: false };
+        assignmentId: AssignmentId.from(assignmentId),
+      });
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        this.denyRosterAction({ reply });
+        return { denied: true };
+      }
+      throw error;
+    }
+    if (!assignment.shiftId) {
+      this.denyRosterAction({ reply });
+      return { denied: true };
     }
 
-    reply.status(403).send({
-      error: 'FORBIDDEN',
-      message: 'Shift belongs to another ministry',
+    const scope = await this.resolveRosterShift({
+      request,
+      reply,
+      shiftId: assignment.shiftId,
+      teamId,
     });
+    return scope.denied
+      ? { denied: true }
+      : {
+          assignment,
+          denied: false,
+          teamLeaderScopeId: scope.teamLeaderScopeId,
+        };
+  }
+
+  private async resolveRosterShift({
+    request,
+    reply,
+    shiftId,
+    teamId,
+  }: ResolveRosterShiftInput): Promise<ResolveRosterShiftResult> {
+    const churchId = ChurchId.from(request.churchId);
+    const userId = UserId.from(request.userId);
+    const brandedShiftId = ShiftId.from(shiftId);
+    if (
+      await this.authorityGuard.canManageShift({
+        churchId,
+        shiftId: brandedShiftId,
+        userId,
+      })
+    ) {
+      return { denied: false };
+    }
+
+    if (teamId) {
+      const teamLeaderScopeId = TeamId.from(teamId);
+      if (
+        await this.authorityGuard.canManageTeamShift({
+          churchId,
+          shiftId: brandedShiftId,
+          teamId: teamLeaderScopeId,
+          userId,
+        })
+      ) {
+        return { denied: false, teamLeaderScopeId };
+      }
+    }
+
+    this.denyRosterAction({ reply });
     return { denied: true };
+  }
+
+  private denyRosterAction({ reply }: DenyRosterActionInput): void {
+    reply.status(403).send({
+      error: 'ROSTER_ACTION_NOT_AVAILABLE',
+      message: 'Roster action is not available',
+    });
   }
 
   private async denyShiftScope({

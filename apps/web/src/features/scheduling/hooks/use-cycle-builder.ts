@@ -53,6 +53,8 @@ export interface CycleBuilderRequirementSummary {
   roleId: string;
   teamId?: string;
   requiredCount: number;
+  /** Server-authorized assignment mutation capability for this requirement. */
+  canMutateAssignments?: boolean;
 }
 
 export interface CycleBuilderEligibleVolunteerSummary {
@@ -386,7 +388,10 @@ export function useCycleBuilder({
 
   const createAssignment = useMutation({
     mutationFn: ({ shiftId, body }: CreateCycleAssignmentParams) =>
-      adminApi.createParticipationAssignment(shiftId, body),
+      adminApi.createParticipationAssignment(
+        shiftId,
+        teamId ? { ...body, teamId } : body,
+      ),
     onMutate: ({ shiftId, body }) =>
       applyOptimistic({
         update: ({ data }) =>
@@ -404,7 +409,10 @@ export function useCycleBuilder({
 
   const deleteAssignment = useMutation({
     mutationFn: (assignmentId: string) =>
-      adminApi.deleteParticipationAssignment(assignmentId),
+      adminApi.deleteParticipationAssignment(
+        assignmentId,
+        teamId ? { teamId } : undefined,
+      ),
     onMutate: (assignmentId) =>
       applyOptimistic({
         update: ({ data }) =>
@@ -443,6 +451,5 @@ export function useCycleBuilder({
     createAssignment,
     deleteAssignment,
     reassignAssignment,
-    isReadOnly: Boolean(teamId),
   };
 }

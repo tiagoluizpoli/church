@@ -1,11 +1,14 @@
 import 'reflect-metadata';
-import { toDate } from '@church/time';
+import { now, toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
-import type {
-  AssignmentId,
-  ChurchId,
-  UserId,
-  VolunteerId,
+import { TeamRosterMutationPolicy } from '../domain/authority/team-roster-mutation-policy';
+import {
+  type AssignmentId,
+  type ChurchId,
+  type RoleId,
+  TeamId,
+  type UserId,
+  type VolunteerId,
 } from '../domain/branded-ids';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
@@ -28,14 +31,36 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
+import type { MinistryParticipation } from '../domain/entities/ministry-participation';
+import type { Shift } from '../domain/entities/shift';
+import { RosterActionNotAvailableError } from '../domain/errors/roster-action-not-available';
 
 interface ReassignTransactionResult {
   nextAssignment: Assignment;
   previousVolunteerId: VolunteerId;
+}
+
+interface AssertTeamLeaderRosterMutationInput {
+  churchId: ChurchId;
+  teamId: TeamId;
+  shift: Shift;
+  participation: MinistryParticipation;
+  volunteerId: VolunteerId;
+  roleId: RoleId;
+  tx: TransactionContext;
+}
+
+interface NotifyReassignmentInput {
+  churchId: ChurchId;
+  previousVolunteerId: VolunteerId;
+  nextVolunteerId: VolunteerId;
+  participationId: NonNullable<Assignment['participationId']>;
+  assignmentId: AssignmentId;
 }
 
 @injectable()
@@ -97,6 +122,36 @@ export class DbAssignmentManager implements IAssignmentManager {
   async deleteAssignment(input: DeleteAssignmentInput): Promise<void> {
     const { assignmentId, churchId, actorId } = input;
     await this.unitOfWork.run(async (tx) => {
+      if (input.teamLeaderScopeId) {
+        const assignment = await this.assignmentRepo.getById(
+          churchId,
+          assignmentId,
+          tx,
+        );
+        if (!assignment.shiftId) {
+          throw new RosterActionNotAvailableError();
+        }
+        const shift = await this.shiftRepository.getById({
+          churchId,
+          shiftId: assignment.shiftId,
+          tx,
+        });
+        const participation = await this.participationRepository.getById({
+          churchId,
+          participationId: shift.participationId,
+          tx,
+        });
+        await this.assertTeamLeaderRosterMutation({
+          churchId,
+          teamId: input.teamLeaderScopeId,
+          shift,
+          participation,
+          volunteerId: assignment.volunteerId,
+          roleId: assignment.roleId,
+          tx,
+        });
+      }
+
       await this.auditRepo.create(
         churchId,
         {
@@ -224,6 +279,21 @@ export class DbAssignmentManager implements IAssignmentManager {
       participation.ministryId,
       tx,
     );
+
+    if (input.teamLeaderScopeId) {
+      if (input.teamId !== input.teamLeaderScopeId) {
+        throw new RosterActionNotAvailableError();
+      }
+      await this.assertTeamLeaderRosterMutation({
+        churchId: input.churchId,
+        teamId: input.teamLeaderScopeId,
+        shift,
+        participation,
+        volunteerId: input.volunteerId,
+        roleId: input.roleId,
+        tx,
+      });
+    }
 
     const hasMembership =
       await this.volunteerRepository.hasMembershipInMinistry(
@@ -373,19 +443,65 @@ export class DbAssignmentManager implements IAssignmentManager {
     };
   }
 
+  private async assertTeamLeaderRosterMutation({
+    churchId,
+    teamId,
+    shift,
+    participation,
+    volunteerId,
+    roleId,
+    tx,
+  }: AssertTeamLeaderRosterMutationInput): Promise<void> {
+    const [event, requirements, memberships] = await Promise.all([
+      this.planningEventRepository.getEvent({
+        churchId,
+        eventId: participation.eventId,
+        tx,
+      }),
+      this.shiftRepository.listRequirementsByParticipation({
+        churchId,
+        participationId: participation.id,
+        tx,
+      }),
+      this.volunteerRepository.listMinistryMemberships(
+        churchId,
+        participation.ministryId,
+        tx,
+      ),
+    ]);
+    const requirementTeamIds = requirements
+      .filter(
+        (requirement) =>
+          requirement.shiftId === shift.id && requirement.roleId === roleId,
+      )
+      .map((requirement) => requirement.teamId);
+    const volunteerTeamIds =
+      memberships
+        .find((membership) => membership.volunteerId === volunteerId)
+        ?.teamMemberships.map((membership) => TeamId.from(membership.teamId)) ??
+      [];
+
+    const allowed = TeamRosterMutationPolicy.authorize({
+      teamId,
+      participationState: participation.state,
+      eventStatus: event.status,
+      eventStart: event.start,
+      now: now(),
+      requirementTeamIds,
+      volunteerTeamIds,
+    });
+    if (!allowed) {
+      throw new RosterActionNotAvailableError();
+    }
+  }
+
   private async notifyReassignment({
     churchId,
     previousVolunteerId,
     nextVolunteerId,
     participationId,
     assignmentId,
-  }: {
-    churchId: ChurchId;
-    previousVolunteerId: VolunteerId;
-    nextVolunteerId: VolunteerId;
-    participationId: NonNullable<Assignment['participationId']>;
-    assignmentId: AssignmentId;
-  }): Promise<void> {
+  }: NotifyReassignmentInput): Promise<void> {
     const participation = await this.participationRepository.getById({
       churchId,
       participationId,

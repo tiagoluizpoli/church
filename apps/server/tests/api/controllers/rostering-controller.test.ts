@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import { parseInstant } from '@church/time';
 import {
   afterAll,
@@ -8,11 +9,11 @@ import {
   it,
   vi,
 } from 'vitest';
-import { Assignment } from '../../domain/entities/assignment';
-import { BelowFullPublishError } from '../../domain/errors/below-full-publish';
-import { createFastify } from '../../main/fastify/setup';
-import type { FastifyTypedInstance } from '../../main/fastify/types';
-import { RosteringController } from './rostering-controller';
+import { RosteringController } from '../../../src/api/controllers/rostering-controller';
+import { Assignment } from '../../../src/domain/entities/assignment';
+import { BelowFullPublishError } from '../../../src/domain/errors/below-full-publish';
+import { createFastify } from '../../../src/main/fastify/setup';
+import type { FastifyTypedInstance } from '../../../src/main/fastify/types';
 
 vi.mock('@church/auth', () => ({
   auth: {
@@ -52,6 +53,7 @@ const authorityGuard = {
   canManageShift: vi.fn(),
   canManageMinistry: vi.fn(),
   canManageTeam: vi.fn(),
+  canManageTeamShift: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -95,6 +97,7 @@ beforeEach(() => {
   authorityGuard.canManageShift.mockResolvedValue(true);
   authorityGuard.canManageMinistry.mockResolvedValue(true);
   authorityGuard.canManageTeam.mockResolvedValue(false);
+  authorityGuard.canManageTeamShift.mockResolvedValue(false);
   assignmentManager.getAssignment.mockResolvedValue({
     shiftId: '66666666-6666-6666-8666-666666666666',
   });
@@ -205,6 +208,107 @@ describe('Rostering routes', () => {
     });
   });
 
+  it('allows a TeamLeader to assign within the explicitly led Team', async () => {
+    authorityGuard.canManageShift.mockResolvedValue(false);
+    authorityGuard.canManageTeamShift.mockResolvedValue(true);
+    assignmentManager.createParticipationAssignment.mockResolvedValue({
+      assignment: new Assignment(
+        {
+          churchId: '11111111-1111-1111-1111-111111111111',
+          slotId: '77777777-7777-7777-8777-777777777777',
+          participationId: '22222222-2222-2222-8222-222222222222',
+          shiftId: '66666666-6666-6666-8666-666666666666',
+          volunteerId: 'vol-1',
+          roleId: 'role-1',
+          status: 'pending',
+        },
+        'assign-1',
+      ),
+      warnings: [],
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      payload: {
+        volunteerId: 'vol-1',
+        roleId: 'role-1',
+        teamId: '33333333-3333-4333-8333-333333333333',
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(authorityGuard.canManageTeamShift).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      shiftId: '66666666-6666-6666-8666-666666666666',
+      teamId: '33333333-3333-4333-8333-333333333333',
+      userId: 'leader-user',
+    });
+    expect(
+      assignmentManager.createParticipationAssignment,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: '33333333-3333-4333-8333-333333333333',
+        teamLeaderScopeId: '33333333-3333-4333-8333-333333333333',
+      }),
+    );
+  });
+
+  it('denies a TeamLeader assignment without an explicitly led Team non-disclosively', async () => {
+    authorityGuard.canManageShift.mockResolvedValue(false);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      payload: { volunteerId: 'vol-1', roleId: 'role-1' },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: 'ROSTER_ACTION_NOT_AVAILABLE',
+      message: 'Roster action is not available',
+    });
+    expect(
+      assignmentManager.createParticipationAssignment,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('allows a TeamLeader to remove an Assignment from the explicitly led Team', async () => {
+    authorityGuard.canManageShift.mockResolvedValue(false);
+    authorityGuard.canManageTeamShift.mockResolvedValue(true);
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/rostering/assignments/assign-1?teamId=33333333-3333-4333-8333-333333333333',
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(assignmentManager.deleteAssignment).toHaveBeenCalledWith({
+      assignmentId: 'assign-1',
+      churchId: '11111111-1111-1111-1111-111111111111',
+      actorId: 'leader-user',
+      teamLeaderScopeId: '33333333-3333-4333-8333-333333333333',
+    });
+  });
+
+  it('denies a forged Assignment id without disclosing whether it exists', async () => {
+    assignmentManager.getAssignment.mockRejectedValueOnce(
+      new NotFoundError('Assignment not found'),
+    );
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/rostering/assignments/forged?teamId=33333333-3333-4333-8333-333333333333',
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: 'ROSTER_ACTION_NOT_AVAILABLE',
+      message: 'Roster action is not available',
+    });
+    expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
+  });
+
   it('POST /api/v1/rostering/participations/:id/publish returns 204 and 409 below-full without confirm', async () => {
     const okResponse = await app.inject({
       method: 'POST',
@@ -284,8 +388,8 @@ describe('Rostering routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'FORBIDDEN',
-      message: 'Shift belongs to another ministry',
+      error: 'ROSTER_ACTION_NOT_AVAILABLE',
+      message: 'Roster action is not available',
     });
     expect(
       assignmentManager.reassignParticipationAssignment,
@@ -306,8 +410,8 @@ describe('Rostering routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'FORBIDDEN',
-      message: 'Shift belongs to another ministry',
+      error: 'ROSTER_ACTION_NOT_AVAILABLE',
+      message: 'Roster action is not available',
     });
     expect(
       assignmentManager.createParticipationAssignment,

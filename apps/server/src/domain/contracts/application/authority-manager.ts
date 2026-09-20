@@ -27,6 +27,13 @@ export interface CanManageTeamInput {
   userId: UserId;
 }
 
+export interface CanManageTeamShiftInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  teamId: TeamId;
+  userId: UserId;
+}
+
 export interface CanManageParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -83,6 +90,7 @@ export interface IAuthorityManager {
   canManageChurch(input: CanManageChurchInput): Promise<boolean>;
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
   canManageTeam(input: CanManageTeamInput): Promise<boolean>;
+  canManageTeamShift(input: CanManageTeamShiftInput): Promise<boolean>;
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
   canManageEvent(input: CanManageEventInput): Promise<boolean>;

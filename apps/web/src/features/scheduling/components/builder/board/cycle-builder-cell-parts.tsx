@@ -20,6 +20,8 @@ interface AssignmentButtonProps {
   shiftId: string;
   roleId: string;
   isPublished: boolean;
+  isEditable?: boolean;
+  allowReplacement?: boolean;
   onRemove: () => void;
   onSelect: (input: AssignmentButtonSelectInput) => void;
   pickerVolunteers: PickerVolunteer[];
@@ -42,6 +44,8 @@ export function AssignmentButton({
   shiftId,
   roleId,
   isPublished,
+  isEditable = true,
+  allowReplacement = true,
   onRemove,
   onSelect,
   pickerVolunteers,
@@ -57,7 +61,7 @@ export function AssignmentButton({
     data: { shiftId, roleId, assignmentId: assignment.id },
     // Replacing a row the server has never seen would send it an id it cannot
     // resolve. The window is short; refusing it is cheaper than a 404 toast.
-    disabled: isPending,
+    disabled: isPending || !isEditable || !allowReplacement,
   });
   const chip = (
     <AssignmentChip
@@ -83,10 +87,12 @@ export function AssignmentButton({
         'inline-flex max-w-full rounded-full',
         replacementTarget.isOver && 'ring-1 ring-primary ring-offset-1',
       )}
-      data-drop-target={isPending ? undefined : 'replace'}
+      data-drop-target={
+        isPending || !isEditable || !allowReplacement ? undefined : 'replace'
+      }
       data-testid={`cycle-assignment-${assignment.id}`}
     >
-      {isPending ? (
+      {isPending || !isEditable ? (
         chip
       ) : (
         <AssignmentPicker
@@ -98,6 +104,7 @@ export function AssignmentButton({
           trigger={chip}
           volunteers={pickerVolunteers}
           hasAssignment
+          allowReplacement={allowReplacement}
           onSelect={(volunteerId) => onSelect({ volunteerId })}
           onRemove={onRemove}
         />
@@ -117,6 +124,7 @@ export interface FailedAssignmentWrite {
 
 interface FailedAssignmentChipProps {
   failedWrite: FailedAssignmentWrite;
+  isEditable?: boolean;
   onRetry: () => void;
   onDismiss: () => void;
 }
@@ -129,6 +137,7 @@ interface FailedAssignmentChipProps {
  */
 export function FailedAssignmentChip({
   failedWrite,
+  isEditable = true,
   onRetry,
   onDismiss,
 }: FailedAssignmentChipProps) {
@@ -154,31 +163,35 @@ export function FailedAssignmentChip({
           />
           <TooltipContent>{failedWrite.message}</TooltipContent>
         </Tooltip>
-        <Button
-          type="button"
-          size={isTouch ? 'touch' : 'sm'}
-          variant="ghost"
-          className={cn(
-            'h-7 gap-1 px-2 text-xs',
-            isTouch && 'h-11 px-3 text-sm',
-          )}
-          aria-label={`Retry assigning ${failedWrite.volunteerName} — ${failedWrite.message}`}
-          onClick={onRetry}
-          data-testid="cycle-failed-assignment-retry"
-        >
-          <RotateCcwIcon className="size-3 shrink-0" />
-          Retry
-        </Button>
-        <Button
-          type="button"
-          size={isTouch ? 'icon-touch' : 'icon-sm'}
-          variant="ghost"
-          aria-label={`Dismiss the failed assignment for ${failedWrite.volunteerName}`}
-          onClick={onDismiss}
-          data-testid="cycle-failed-assignment-dismiss"
-        >
-          <XIcon className="size-3" />
-        </Button>
+        {isEditable ? (
+          <>
+            <Button
+              type="button"
+              size={isTouch ? 'touch' : 'sm'}
+              variant="ghost"
+              className={cn(
+                'h-7 gap-1 px-2 text-xs',
+                isTouch && 'h-11 px-3 text-sm',
+              )}
+              aria-label={`Retry assigning ${failedWrite.volunteerName} — ${failedWrite.message}`}
+              onClick={onRetry}
+              data-testid="cycle-failed-assignment-retry"
+            >
+              <RotateCcwIcon className="size-3 shrink-0" />
+              Retry
+            </Button>
+            <Button
+              type="button"
+              size={isTouch ? 'icon-touch' : 'icon-sm'}
+              variant="ghost"
+              aria-label={`Dismiss the failed assignment for ${failedWrite.volunteerName}`}
+              onClick={onDismiss}
+              data-testid="cycle-failed-assignment-dismiss"
+            >
+              <XIcon className="size-3" />
+            </Button>
+          </>
+        ) : null}
       </span>
       {/* Durable text, not just the tooltip above — a leader who looks back at
           this cell three minutes later has no hover in flight to catch it. */}

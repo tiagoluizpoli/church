@@ -3,12 +3,12 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { renderWithProviders } from '@/__tests__/setup/render';
+import { CycleBuilderCell } from '@/features/scheduling/components/builder/board/cycle-builder-cell';
 import type {
   CycleBuilderAssignment,
   CycleBuilderShiftSummary,
-} from '../../../hooks/use-cycle-builder';
-import { CycleBuilderCell } from './cycle-builder-cell';
-import { renderWithProviders } from '@/__tests__/setup/render';
+} from '@/features/scheduling/hooks/use-cycle-builder';
 
 const shift: CycleBuilderShiftSummary = {
   shiftId: 'shift-1',
@@ -367,6 +367,33 @@ describe('CycleBuilderCell', () => {
     expect(unassign).not.toHaveClass('w-full');
   });
 
+  it('lets a Team Leader remove an existing assignment without offering a replacement', async () => {
+    const user = userEvent.setup();
+    const onRemove = vi.fn();
+    const onSelect = vi.fn();
+    renderCell({
+      assignments: [assignments[0]],
+      allowReplacement: false,
+      onRemove,
+      onSelect,
+    });
+
+    await user.click(screen.getByTestId('assignment-chip'));
+
+    expect(screen.getByRole('button', { name: 'Unassign' })).toBeVisible();
+    expect(
+      screen.queryByLabelText('Search volunteers'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('picker-option')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('cycle-assignment-assignment-1'),
+    ).not.toHaveAttribute('data-drop-target');
+
+    await user.click(screen.getByRole('button', { name: 'Unassign' }));
+    expect(onRemove).toHaveBeenCalledWith('assignment-1');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   describe('Team Leader badge (issue #49 end-to-end)', () => {
     it('badges an assignee as Team Leader only when contextTeamId names a team they lead', () => {
       const teamLeaderAssignment: CycleBuilderAssignment = {
@@ -465,6 +492,33 @@ describe('CycleBuilderCell', () => {
 
       await user.click(screen.getByTestId('cycle-failed-assignment-dismiss'));
       expect(onDismissFailedWrite).toHaveBeenCalledWith('failed-1');
+    });
+
+    it('keeps a rejected write readable without retry actions in an immutable cell', () => {
+      renderCell({
+        isEditable: false,
+        failedWrites: [
+          {
+            failedWriteId: 'failed-1',
+            shiftId: 'shift-1',
+            roleId: 'role-1',
+            volunteerId: 'volunteer-2',
+            volunteerName: 'Ada Lovelace',
+            message: 'Volunteer is unavailable',
+          },
+        ],
+        onRetryFailedWrite: vi.fn(),
+        onDismissFailedWrite: vi.fn(),
+      });
+
+      expect(screen.getByTestId('assignment-chip')).toHaveTextContent(
+        'Ada Lovelace',
+      );
+      expect(screen.getByText('Volunteer is unavailable')).toBeVisible();
+      expect(screen.queryByTestId('cycle-failed-assignment-retry')).toBeNull();
+      expect(
+        screen.queryByTestId('cycle-failed-assignment-dismiss'),
+      ).toBeNull();
     });
   });
 });

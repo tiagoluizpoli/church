@@ -47,7 +47,6 @@ import {
 import {
   buildFocusLabel,
   type FocusedShift,
-  findShiftById,
   findShiftContextById,
   focusKey,
   roleHasRoom,
@@ -80,6 +79,8 @@ interface Props {
   onDismissFailedWrite?: (failedWriteId: string) => void;
   /** Audit/publish controls, rendered on the filter toolbar's own row. */
   actions?: ReactNode;
+  /** Present only when the board is opened through a TeamLeader's Team route. */
+  teamId?: string;
 }
 
 export function CycleBuilderMatrix(props: Props) {
@@ -253,6 +254,17 @@ export function CycleBuilderMatrix(props: Props) {
     return byCell;
   }, [props.failedWrites]);
   const volunteers = useMemo(() => pool(props.data), [props.data]);
+  const canManageAnyRequirement = props.data.events.some((event) =>
+    event.slots.some(
+      (slot) =>
+        slot.included &&
+        slot.shifts.some((shift) =>
+          shift.requirements.some(
+            (requirement) => requirement.canMutateAssignments ?? true,
+          ),
+        ),
+    ),
+  );
   const activeAssignments = props.data.assignments.filter((assignment) =>
     isActiveAssignment({ status: assignment.status }),
   );
@@ -278,13 +290,24 @@ export function CycleBuilderMatrix(props: Props) {
   // already-assigned-elsewhere collisions are captured identically no matter
   // which surface started the assignment. Clearing focus afterwards returns the
   // cards to their plain "Select slot" state.
-  const focusedShift =
-    focused && findShiftById({ data: props.data, shiftId: focused.shiftId });
+  const focusedShiftContext =
+    focused &&
+    findShiftContextById({ data: props.data, shiftId: focused.shiftId });
+  const focusedShift = focusedShiftContext?.shift;
+  const focusedRequirementIsEditable = Boolean(
+    focused &&
+      focusedShiftContext &&
+      (focusedShift?.requirements.find(
+        (requirement) => requirement.roleId === focused?.roleId,
+      )?.canMutateAssignments ??
+        true),
+  );
   // A full role can still be focused, so the rail honours the same headcount
   // ceiling the board enforces cell-side as `canAdd`.
   const focusedRoleHasRoom = Boolean(
     focused &&
       focusedShift &&
+      focusedRequirementIsEditable &&
       roleHasRoom({ shift: focusedShift, roleId: focused.roleId }),
   );
   // Everyone the leader may commit to the focused slot, each carrying the tier
@@ -389,9 +412,15 @@ export function CycleBuilderMatrix(props: Props) {
                 shiftId: target.shiftId,
               });
               const shift = shiftContext?.shift;
+              const requirement = shift?.requirements.find(
+                (requirement) => requirement.roleId === target.roleId,
+              );
               const roleLabel = props.data.roles.find(
                 (role) => role.id === target.roleId,
               )?.name;
+              if (!shiftContext || !(requirement?.canMutateAssignments ?? true))
+                return;
+              if (props.teamId && target.assignmentId) return;
               if (shiftContext && shift && roleLabel) {
                 const slotLabel = shiftContext.slot.label ?? 'this shift';
                 setFocused({
@@ -469,24 +498,29 @@ export function CycleBuilderMatrix(props: Props) {
               filtersAreDefault={filtersAreDefault}
               onClearFilters={clearFilters}
               dragScroll={boardDragScroll}
+              teamId={props.teamId}
             />
-            <VolunteerPoolSidebar
-              volunteers={volunteers}
-              assignments={activeAssignments}
-              roles={props.data.roles}
-              selectedVolunteerId={props.selectedVolunteerId}
-              onSelectVolunteer={props.onSelectVolunteer}
-              focusedVolunteerIds={focused?.ids}
-              focusLabel={focused?.label}
-              idealVolunteerId={focused?.idealVolunteerId}
-              assignableVolunteerFits={assignableFocusedVolunteerFits}
-              onAssignFocusedVolunteer={
-                focused && focusedRoleHasRoom
-                  ? assignFocusedVolunteer
-                  : undefined
-              }
-              onClearFocus={focused ? () => setFocused(null) : undefined}
-            />
+            <fieldset disabled={!canManageAnyRequirement} className="contents">
+              <VolunteerPoolSidebar
+                volunteers={volunteers}
+                assignments={activeAssignments}
+                roles={props.data.roles}
+                selectedVolunteerId={props.selectedVolunteerId}
+                onSelectVolunteer={
+                  canManageAnyRequirement ? props.onSelectVolunteer : undefined
+                }
+                focusedVolunteerIds={focused?.ids}
+                focusLabel={focused?.label}
+                idealVolunteerId={focused?.idealVolunteerId}
+                assignableVolunteerFits={assignableFocusedVolunteerFits}
+                onAssignFocusedVolunteer={
+                  focused && focusedRoleHasRoom
+                    ? assignFocusedVolunteer
+                    : undefined
+                }
+                onClearFocus={focused ? () => setFocused(null) : undefined}
+              />
+            </fieldset>
           </div>
           {/* The drag ghost lives in a portal above the whole layout, so it
               floats over the board instead of being clipped by the rail's

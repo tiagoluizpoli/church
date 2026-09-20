@@ -4,6 +4,7 @@ import {
   ministryParticipation,
   participationSlotInclusion,
   planningCycle,
+  slotRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, count, eq, inArray, isNull, notInArray } from 'drizzle-orm';
@@ -300,7 +301,7 @@ export class DrizzleMinistryParticipationRepository
   ): Promise<MinistryCycleSummaryRow[]> {
     const db = getClient(this.db, input.tx);
 
-    const cycles = await db
+    const lockedCycles = await db
       .select({
         id: planningCycle.id,
         name: planningCycle.name,
@@ -315,6 +316,38 @@ export class DrizzleMinistryParticipationRepository
         ),
       )
       .orderBy(asc(planningCycle.startDate));
+
+    if (lockedCycles.length === 0) {
+      return [];
+    }
+
+    const lockedCycleIds = lockedCycles.map((cycle) => cycle.id);
+    const cycles: typeof lockedCycles = input.teamId ? [] : lockedCycles;
+
+    if (input.teamId) {
+      const teamCycleRows = await db
+        .select({ cycleId: event.planningCycleId })
+        .from(slotRequirement)
+        .innerJoin(
+          ministryParticipation,
+          eq(slotRequirement.participationId, ministryParticipation.id),
+        )
+        .innerJoin(event, eq(ministryParticipation.eventId, event.id))
+        .where(
+          and(
+            withChurchIsolation(slotRequirement, input.churchId),
+            withChurchIsolation(ministryParticipation, input.churchId),
+            withChurchIsolation(event, input.churchId),
+            eq(ministryParticipation.ministryId, input.ministryId),
+            eq(slotRequirement.teamId, input.teamId),
+            inArray(event.planningCycleId, lockedCycleIds),
+          ),
+        );
+      const teamCycleIds = new Set(teamCycleRows.map((row) => row.cycleId));
+      cycles.push(
+        ...lockedCycles.filter((cycle) => teamCycleIds.has(cycle.id)),
+      );
+    }
 
     if (cycles.length === 0) {
       return [];

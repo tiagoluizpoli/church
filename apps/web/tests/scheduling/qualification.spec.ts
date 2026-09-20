@@ -21,6 +21,7 @@ const BUILDER_URL =
 
 const UNQUALIFIED_NAME = 'Ursula Unqualified';
 const QUALIFIED_NAME = 'Grace Hopper';
+const OUTSIDE_TEAM_NAME = 'Ada Lovelace';
 
 test.describe('qualification governs candidacy', () => {
   test.use({ storageState: LEADER_STORAGE_STATE });
@@ -64,33 +65,26 @@ test.describe('qualification governs candidacy', () => {
   });
 });
 
-test.describe('TeamLeader scoping composes with qualification', () => {
+test.describe('TeamLeader roster discovery composes with qualification', () => {
   test.use({ storageState: TEAM_LEADER_STORAGE_STATE });
 
-  /**
-   * Currently red, deliberately not deleted or softened.
-   *
-   * The cycle-builder endpoint guards on `canManageMinistry` →
-   * `isMinistryLeader`, which matches `ministryAccessLevel = 'leader'`
-   * exactly, so a TeamLeader receives 403 and the page never renders. That
-   * contradicts the rest of the 023 model: `DbEventManager.getScheduleBuilderData`
-   * admits TeamLeaders and narrows their view to the teams they lead, and the
-   * e2e seed exists to resolve one as a TeamLeader of team1.
-   *
-   * Either the guard is too strict or TeamLeaders are meant to be excluded
-   * from the cycle builder entirely — that is a product decision, not a test
-   * fix. `test.fail()` keeps the assertion executing and honest: the day the
-   * guard admits TeamLeaders, this turns green and Playwright reports it as
-   * an unexpected pass, forcing the annotation to be removed.
-   */
-  test.fail();
   test('a TeamLeader sees their own team’s qualified members and still never the unqualified one', async ({
     page,
   }) => {
-    await page.goto(BUILDER_URL);
+    await page.goto('/scheduling');
+    await page
+      .getByRole('link', { name: 'Open E2E Team Alpha roster' })
+      .click();
+    await page.getByRole('link', { name: 'Open roster' }).first().click();
     await expect(page.getByTestId('cycle-builder')).toBeVisible({
       timeout: 15_000,
     });
+    await expect(
+      page.getByText('This Team roster is read-only.'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Publish cycle' }),
+    ).toHaveCount(0);
 
     const rail = page.getByTestId('volunteer-pool');
     await expect(rail).toBeVisible();
@@ -104,5 +98,22 @@ test.describe('TeamLeader scoping composes with qualification', () => {
     await expect(
       rail.getByText(UNQUALIFIED_NAME, { exact: false }),
     ).toHaveCount(0);
+    await expect(
+      rail.getByText(OUTSIDE_TEAM_NAME, { exact: false }),
+    ).toHaveCount(0);
+  });
+
+  test('a wrong-Team roster link returns to Scheduling without roster data', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331?teamId=e2eaaaa1-0000-0000-0000-000000000002',
+    );
+
+    await expect(page).toHaveURL(/\/scheduling$/);
+    await expect(
+      page.getByRole('heading', { name: 'Scheduling' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('team-roster-cycles')).toHaveCount(0);
   });
 });

@@ -10,6 +10,7 @@ import {
   PlanningCycleId,
   RoleId,
   ShiftId,
+  TeamId,
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -51,12 +52,18 @@ interface CycleRouteParams {
   cycleId: string;
 }
 
+interface TeamRouteParams {
+  teamId: string;
+}
+
 interface CycleMinistryQuery {
   ministryId: string;
+  teamId?: string;
 }
 
 const cycleMinistryQuerySchema = z.object({
   ministryId: z.string(),
+  teamId: z.string().optional(),
 });
 
 interface ShiftRouteParams {
@@ -70,6 +77,15 @@ interface AssignmentRouteParams {
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
+});
+
+const teamRosterCycleListResponseSchema = z.object({
+  cycles: z.array(
+    z.object({
+      cycleId: z.string(),
+      name: z.string(),
+    }),
+  ),
 });
 
 type CreateParticipationAssignmentBody = z.infer<
@@ -102,6 +118,13 @@ interface DenyShiftScopeInput {
   shiftId: string;
 }
 
+interface CanReadCycleBuilderInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  teamId?: TeamId;
+  userId: UserId;
+}
+
 @injectable()
 export class RosteringController implements FastifyController {
   readonly prefix = '/rostering';
@@ -127,6 +150,52 @@ export class RosteringController implements FastifyController {
     );
 
     app.get(
+      '/teams/:teamId/cycles-summary',
+      {
+        schema: {
+          tags: ['rostering'],
+          operationId: 'listTeamRosterCycles',
+          summary: "List a Team's readable roster cycles",
+          description:
+            'List the locked PlanningCycles in a Ministry that a TeamLeader may open as a read-only roster.',
+          querystring: cycleMinistryQuerySchema,
+          response: {
+            200: teamRosterCycleListResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { teamId } = request.params as TeamRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+        const allowed = await this.authorityGuard.canManageTeam({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          teamId: TeamId.from(teamId),
+          userId: UserId.from(request.userId),
+        });
+        if (!allowed) {
+          return reply.status(403).send({
+            error: 'FORBIDDEN',
+            message: 'Not a leader of this team',
+          });
+        }
+        const cycles =
+          await this.participationManager.listMinistryCycleSummaries({
+            churchId: ChurchId.from(request.churchId),
+            ministryId: MinistryId.from(ministryId),
+            teamId: TeamId.from(teamId),
+          });
+        return reply.send({
+          cycles: cycles.map((cycle) => ({
+            cycleId: cycle.cycleId,
+            name: cycle.name,
+          })),
+        });
+      },
+    );
+
+    app.get(
       '/cycles/:cycleId/builder',
       {
         schema: {
@@ -144,11 +213,12 @@ export class RosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleRouteParams;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { ministryId, teamId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
+        const allowed = await this.canReadCycleBuilder({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
+          teamId: teamId ? TeamId.from(teamId) : undefined,
           userId: UserId.from(request.userId),
         });
         if (!allowed) {
@@ -162,6 +232,7 @@ export class RosteringController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           cycleId: PlanningCycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
+          teamId: teamId ? TeamId.from(teamId) : undefined,
           userId: UserId.from(request.userId),
         });
         return reply.send(cycleBuilderMapper.toResponse(view));
@@ -531,5 +602,30 @@ export class RosteringController implements FastifyController {
       message: 'Shift belongs to another ministry',
     });
     return true;
+  }
+
+  private async canReadCycleBuilder({
+    churchId,
+    ministryId,
+    teamId,
+    userId,
+  }: CanReadCycleBuilderInput): Promise<boolean> {
+    if (
+      await this.authorityGuard.canManageMinistry({
+        churchId,
+        ministryId,
+        userId,
+      })
+    ) {
+      return true;
+    }
+    return teamId
+      ? this.authorityGuard.canManageTeam({
+          churchId,
+          ministryId,
+          teamId,
+          userId,
+        })
+      : false;
   }
 }

@@ -1633,8 +1633,28 @@ export type GetAvailabilityStatus200 = {
   statuses: GetAvailabilityStatus200StatusesItem[];
 };
 
+export type ListTeamRosterCyclesParams = {
+ministryId: string;
+teamId?: string;
+};
+
+export type ListTeamRosterCycles200CyclesItem = {
+  cycleId: string;
+  name: string;
+};
+
+export type ListTeamRosterCycles200 = {
+  cycles: ListTeamRosterCycles200CyclesItem[];
+};
+
+export type ListTeamRosterCycles403 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleBuilderDataParams = {
 ministryId: string;
+teamId?: string;
 };
 
 export type GetCycleBuilderData200EventsItemParticipationState = typeof GetCycleBuilderData200EventsItemParticipationState[keyof typeof GetCycleBuilderData200EventsItemParticipationState];
@@ -1826,6 +1846,7 @@ export type GetCycleBuilderData403 = {
 
 export type GetCycleAuditLogParams = {
 ministryId: string;
+teamId?: string;
 };
 
 export type GetCycleAuditLog200ItemsItemAction = typeof GetCycleAuditLog200ItemsItemAction[keyof typeof GetCycleAuditLog200ItemsItemAction];
@@ -1861,6 +1882,7 @@ export type GetCycleAuditLog403 = {
 
 export type PublishCycleParams = {
 ministryId: string;
+teamId?: string;
 };
 
 export type PublishCycleBody = {
@@ -2075,6 +2097,14 @@ export type GetSchedulingCapability200EntriesItem = {
   kind: 'ministry';
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
+  name: string;
+} | {
+  kind: 'team';
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  teamId: string;
   name: string;
 };
 

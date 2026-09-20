@@ -31,6 +31,11 @@ function SchedulingIndexRoute() {
     retry: false,
   });
   const entries = capabilityQuery.data?.entries ?? [];
+  const teamEntries = entries.filter(
+    (entry): entry is Extract<typeof entry, { kind: 'team' }> =>
+      entry.kind === 'team',
+  );
+  const workspaceEntries = entries.filter((entry) => entry.kind !== 'team');
   const retryCapability = () => capabilityQuery.refetch();
 
   return (
@@ -66,17 +71,37 @@ function SchedulingIndexRoute() {
           </AlertDescription>
         </Alert>
       ) : entries.length > 0 ? (
-        <section
-          className="grid gap-4 md:grid-cols-2"
-          aria-label="Scheduling workspaces"
-        >
-          {entries.map((entry) => (
-            <SchedulingEntryCard
-              key={entry.kind === 'church' ? entry.kind : entry.ministryId}
-              entry={entry}
-            />
-          ))}
-        </section>
+        <div className="flex flex-col gap-6">
+          {workspaceEntries.length > 0 ? (
+            <section
+              className="grid gap-4 md:grid-cols-2"
+              aria-label="Scheduling workspaces"
+            >
+              {workspaceEntries.map((entry) => (
+                <SchedulingEntryCard
+                  key={entry.kind === 'church' ? entry.kind : entry.ministryId}
+                  entry={entry}
+                />
+              ))}
+            </section>
+          ) : null}
+          {teamEntries.length > 0 ? (
+            <section className="flex flex-col gap-4" aria-label="Team rosters">
+              {Object.entries(
+                Object.groupBy(teamEntries, (entry) => entry.ministryName),
+              ).map(([ministryName, teams]) => (
+                <div key={ministryName} className="flex flex-col gap-3">
+                  <h2 className="font-semibold text-lg">{ministryName}</h2>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {teams?.map((entry) => (
+                      <TeamRosterEntryCard key={entry.teamId} entry={entry} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          ) : null}
+        </div>
       ) : (
         <Alert>
           <AlertTitle>No Scheduling work is available</AlertTitle>
@@ -92,7 +117,7 @@ function SchedulingIndexRoute() {
 function SchedulingEntryCard({
   entry,
 }: {
-  entry: GetSchedulingCapability200EntriesItem;
+  entry: Exclude<GetSchedulingCapability200EntriesItem, { kind: 'team' }>;
 }) {
   if (entry.kind === 'church') {
     return (
@@ -136,6 +161,34 @@ function SchedulingEntryCard({
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           Open {entry.name}
+        </Link>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function TeamRosterEntryCard({
+  entry,
+}: {
+  entry: Extract<GetSchedulingCapability200EntriesItem, { kind: 'team' }>;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{entry.name}</CardTitle>
+        <CardDescription>Review this Team's roster work.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>View only the requirements and Volunteers assigned to this Team.</p>
+      </CardContent>
+      <CardFooter>
+        <Link
+          to="/scheduling/rostering/$ministryId"
+          params={{ ministryId: entry.ministryId }}
+          search={{ teamId: entry.teamId }}
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
+        >
+          Open {entry.name} roster
         </Link>
       </CardFooter>
     </Card>

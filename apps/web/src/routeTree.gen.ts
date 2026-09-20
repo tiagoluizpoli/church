@@ -34,6 +34,7 @@ import { Route as AuthenticatedActiveChurchSchedulingPlanningCyclesTemplatesRout
 import { Route as AuthenticatedActiveChurchSchedulingPlanningCyclesNewRouteImport } from './routes/_authenticated/_active-church/scheduling/planning-cycles/new'
 import { Route as AuthenticatedActiveChurchSchedulingPlanningCyclesCycleIdRouteImport } from './routes/_authenticated/_active-church/scheduling/planning-cycles/$cycleId'
 import { Route as AuthenticatedActiveChurchSchedulingTailoringMinistryIdIndexRouteImport } from './routes/_authenticated/_active-church/scheduling/tailoring/$ministryId/index'
+import { Route as AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRouteImport } from './routes/_authenticated/_active-church/scheduling/rostering/$ministryId/index'
 import { Route as AuthenticatedActiveChurchSchedulingTailoringMinistryIdCycleIdRouteImport } from './routes/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId'
 import { Route as AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRouteImport } from './routes/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId'
 
@@ -188,6 +189,14 @@ const AuthenticatedActiveChurchSchedulingTailoringMinistryIdIndexRoute =
         AuthenticatedActiveChurchSchedulingTailoringMinistryIdRoute,
     } as any,
   )
+const AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute =
+  AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRouteImport.update(
+    {
+      id: '/rostering/$ministryId/',
+      path: '/rostering/$ministryId/',
+      getParentRoute: () => AuthenticatedActiveChurchSchedulingRoute,
+    } as any,
+  )
 const AuthenticatedActiveChurchSchedulingTailoringMinistryIdCycleIdRoute =
   AuthenticatedActiveChurchSchedulingTailoringMinistryIdCycleIdRouteImport.update(
     {
@@ -231,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/scheduling/tailoring/': typeof AuthenticatedActiveChurchSchedulingTailoringIndexRoute
   '/scheduling/rostering/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdCycleIdRoute
+  '/scheduling/rostering/$ministryId/': typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute
   '/scheduling/tailoring/$ministryId/': typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -254,6 +264,7 @@ export interface FileRoutesByTo {
   '/scheduling/tailoring': typeof AuthenticatedActiveChurchSchedulingTailoringIndexRoute
   '/scheduling/rostering/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRoute
   '/scheduling/tailoring/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdCycleIdRoute
+  '/scheduling/rostering/$ministryId': typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute
   '/scheduling/tailoring/$ministryId': typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdIndexRoute
 }
 export interface FileRoutesById {
@@ -284,6 +295,7 @@ export interface FileRoutesById {
   '/_authenticated/_active-church/scheduling/tailoring/': typeof AuthenticatedActiveChurchSchedulingTailoringIndexRoute
   '/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRoute
   '/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId': typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdCycleIdRoute
+  '/_authenticated/_active-church/scheduling/rostering/$ministryId/': typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute
   '/_authenticated/_active-church/scheduling/tailoring/$ministryId/': typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -313,6 +325,7 @@ export interface FileRouteTypes {
     | '/scheduling/tailoring/'
     | '/scheduling/rostering/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId/$cycleId'
+    | '/scheduling/rostering/$ministryId/'
     | '/scheduling/tailoring/$ministryId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -336,6 +349,7 @@ export interface FileRouteTypes {
     | '/scheduling/tailoring'
     | '/scheduling/rostering/$ministryId/$cycleId'
     | '/scheduling/tailoring/$ministryId/$cycleId'
+    | '/scheduling/rostering/$ministryId'
     | '/scheduling/tailoring/$ministryId'
   id:
     | '__root__'
@@ -365,6 +379,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_active-church/scheduling/tailoring/'
     | '/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId'
     | '/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId'
+    | '/_authenticated/_active-church/scheduling/rostering/$ministryId/'
     | '/_authenticated/_active-church/scheduling/tailoring/$ministryId/'
   fileRoutesById: FileRoutesById
 }
@@ -552,6 +567,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdIndexRouteImport
       parentRoute: typeof AuthenticatedActiveChurchSchedulingTailoringMinistryIdRoute
     }
+    '/_authenticated/_active-church/scheduling/rostering/$ministryId/': {
+      id: '/_authenticated/_active-church/scheduling/rostering/$ministryId/'
+      path: '/rostering/$ministryId'
+      fullPath: '/scheduling/rostering/$ministryId/'
+      preLoaderRoute: typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRouteImport
+      parentRoute: typeof AuthenticatedActiveChurchSchedulingRoute
+    }
     '/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId': {
       id: '/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId'
       path: '/$cycleId'
@@ -634,6 +656,7 @@ interface AuthenticatedActiveChurchSchedulingRouteChildren {
   AuthenticatedActiveChurchSchedulingTailoringRoute: typeof AuthenticatedActiveChurchSchedulingTailoringRouteWithChildren
   AuthenticatedActiveChurchSchedulingIndexRoute: typeof AuthenticatedActiveChurchSchedulingIndexRoute
   AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRoute: typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRoute
+  AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute: typeof AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute
 }
 
 const AuthenticatedActiveChurchSchedulingRouteChildren: AuthenticatedActiveChurchSchedulingRouteChildren =
@@ -646,6 +669,8 @@ const AuthenticatedActiveChurchSchedulingRouteChildren: AuthenticatedActiveChurc
       AuthenticatedActiveChurchSchedulingIndexRoute,
     AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRoute:
       AuthenticatedActiveChurchSchedulingRosteringMinistryIdCycleIdRoute,
+    AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute:
+      AuthenticatedActiveChurchSchedulingRosteringMinistryIdIndexRoute,
   }
 
 const AuthenticatedActiveChurchSchedulingRouteWithChildren =

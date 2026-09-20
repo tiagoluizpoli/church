@@ -40,6 +40,7 @@ interface CycleBuilderProps {
   reassignAssignment: CycleBuilderMutations['reassignAssignment'];
   syncedAt?: number;
   isRefreshing?: boolean;
+  isReadOnly?: boolean;
 }
 
 interface RoleLabelForInput {
@@ -88,6 +89,7 @@ export function CycleBuilder({
   reassignAssignment,
   syncedAt,
   isRefreshing,
+  isReadOnly = false,
 }: CycleBuilderProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -117,7 +119,7 @@ export function CycleBuilder({
   // Rendered on the filter toolbar's own row (B-4 header pass) rather than
   // the header — audit/publish sit with the rest of this screen's controls
   // instead of stretching a panel that otherwise only carries title + stats.
-  const toolbarActions = (
+  const toolbarActions = isReadOnly ? null : (
     <>
       <Button
         type="button"
@@ -157,33 +159,46 @@ export function CycleBuilder({
         isRefreshing={isRefreshing}
       />
 
-      <CycleBuilderMatrix
-        data={data}
-        cycleStartDate={cycleStartDate}
-        cycleEndDate={cycleEndDate}
-        selectedDate={selectedDate}
-        onSelectedDateChange={setSelectedDate}
-        selectedVolunteerId={selectedVolunteerId}
-        onSelectVolunteer={(volunteerId) =>
-          setSelectedVolunteerId((current) =>
-            current === volunteerId ? undefined : volunteerId,
-          )
-        }
-        onSelectAssignment={actions.handleSelectAssignment}
-        onRemoveAssignment={setPendingRemovalId}
-        actions={toolbarActions}
-        failedWrites={actions.boardFailedWrites}
-        onRetryFailedWrite={actions.retryFailedWrite}
-        onDismissFailedWrite={actions.dismissFailedWrite}
-      />
+      {isReadOnly ? (
+        <p className="text-muted-foreground text-sm">
+          This Team roster is read-only.
+        </p>
+      ) : null}
 
-      <AuditLogPanel
-        open={auditOpen}
-        onOpenChange={setAuditOpen}
-        assignments={data.assignments}
-        cycleId={cycleId}
-        ministryId={ministryId}
-      />
+      <fieldset
+        disabled={isReadOnly}
+        className={isReadOnly ? 'pointer-events-none contents' : 'contents'}
+      >
+        <CycleBuilderMatrix
+          data={data}
+          cycleStartDate={cycleStartDate}
+          cycleEndDate={cycleEndDate}
+          selectedDate={selectedDate}
+          onSelectedDateChange={setSelectedDate}
+          selectedVolunteerId={selectedVolunteerId}
+          onSelectVolunteer={(volunteerId) =>
+            setSelectedVolunteerId((current) =>
+              current === volunteerId ? undefined : volunteerId,
+            )
+          }
+          onSelectAssignment={actions.handleSelectAssignment}
+          onRemoveAssignment={setPendingRemovalId}
+          actions={toolbarActions}
+          failedWrites={actions.boardFailedWrites}
+          onRetryFailedWrite={actions.retryFailedWrite}
+          onDismissFailedWrite={actions.dismissFailedWrite}
+        />
+      </fieldset>
+
+      {!isReadOnly ? (
+        <AuditLogPanel
+          open={auditOpen}
+          onOpenChange={setAuditOpen}
+          assignments={data.assignments}
+          cycleId={cycleId}
+          ministryId={ministryId}
+        />
+      ) : null}
 
       <Dialog
         open={pendingRemovalId !== null}

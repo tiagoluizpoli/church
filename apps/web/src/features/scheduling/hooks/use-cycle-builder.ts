@@ -20,6 +20,7 @@ import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 interface UseCycleBuilderParams {
   cycleId: string;
   ministryId: string;
+  teamId?: string;
 }
 
 interface CreateCycleAssignmentParams {
@@ -321,11 +322,13 @@ function mapCycleBuilderData(
 export function useCycleBuilder({
   cycleId,
   ministryId,
+  teamId,
 }: UseCycleBuilderParams) {
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
-    queryFn: () => adminApi.getCycleBuilderData(cycleId, { ministryId }),
+    queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId, teamId],
+    queryFn: () =>
+      adminApi.getCycleBuilderData(cycleId, { ministryId, teamId }),
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
   });
@@ -335,7 +338,7 @@ export function useCycleBuilder({
       adminApi.publishCycle(cycleId, { confirmBelowFull }, { ministryId }),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({
-        queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
+        queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId, teamId],
       });
       // Publishing is the most consequential action in the builder and was the
       // only mutation here that reported nothing back. `published` is false
@@ -352,7 +355,7 @@ export function useCycleBuilder({
     },
   });
 
-  const queryKey = [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId];
+  const queryKey = [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId, teamId];
 
   // Fire-and-forget on purpose: the cache already holds the optimistic result,
   // so awaiting the refetch would only keep `mutateAsync` — and the toast that
@@ -440,5 +443,6 @@ export function useCycleBuilder({
     createAssignment,
     deleteAssignment,
     reassignAssignment,
+    isReadOnly: Boolean(teamId),
   };
 }

@@ -14,6 +14,8 @@ import type {
   GetCycleBuilderDataParams,
   GetParticipationCompletion200,
   ListEligibleVolunteers200,
+  ListTeamRosterCycles200,
+  ListTeamRosterCyclesParams,
   PublishCycle200,
   PublishCycleBody,
   PublishCycleParams,
@@ -30,6 +32,20 @@ import { apiClient } from '../../utils/api-client';
 
   export const getRostering = () => {
 /**
+ * List the locked PlanningCycles in a Ministry that a TeamLeader may open as a read-only roster.
+ * @summary List a Team's readable roster cycles
+ */
+const listTeamRosterCycles = (
+    teamId: string,
+    params: ListTeamRosterCyclesParams,
+ ) => {
+      return apiClient<ListTeamRosterCycles200>(
+      {url: `/api/v1/rostering/teams/${teamId}/cycles-summary`, method: 'GET',
+        params
+    },
+      );
+    }
+  /**
  * Get a Ministry's roster-building view of a PlanningCycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.
  * @summary Get cycle builder data for a Ministry
  */
@@ -155,7 +171,8 @@ const publishParticipation = (
     },
       );
     }
-  return {getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
+  return {listTeamRosterCycles,getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
+export type ListTeamRosterCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['listTeamRosterCycles']>>>
 export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getCycleBuilderData']>>>
 export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getCycleAuditLog']>>>
 export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['publishCycle']>>>

@@ -73,6 +73,33 @@ describe('Scheduling capability index route', () => {
     );
   });
 
+  it('groups Team roster entries under their Ministry', async () => {
+    getSchedulingCapability.mockResolvedValue({
+      canAccessScheduling: true,
+      entries: [
+        {
+          kind: 'team',
+          ministryId: '11111111-1111-4111-8111-111111111111',
+          ministryName: 'Worship',
+          teamId: '22222222-2222-4222-8222-222222222222',
+          name: 'Greeting',
+        },
+      ],
+    });
+
+    renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Worship' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Open Greeting roster' }),
+    ).toHaveAttribute(
+      'href',
+      '/scheduling/rostering/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
+    );
+  });
+
   it('keeps entry links hidden while the capability projection resolves', async () => {
     getSchedulingCapability.mockReturnValue(new Promise(() => {}));
 

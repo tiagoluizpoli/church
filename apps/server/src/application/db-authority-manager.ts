@@ -8,6 +8,7 @@ import type {
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
+  CanManageTeamInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
   SchedulingCapabilityProjection,
@@ -16,6 +17,7 @@ import type { AuthorityActorRepository } from '../domain/contracts/infrastructur
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SchedulingScopeRepository } from '../domain/contracts/infrastructure/scheduling-scope.repository';
+import type { TeamRepository } from '../domain/contracts/infrastructure/team.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 
 interface ResolveActorInput {
@@ -36,6 +38,8 @@ export class DbAuthorityManager implements IAuthorityManager {
     private readonly timeSlotRepository: TimeSlotRepository,
     @inject('IMinistryRepository')
     private readonly ministryRepository: MinistryRepository,
+    @inject('ITeamRepository')
+    private readonly teamRepository?: TeamRepository,
   ) {}
 
   async canManageChurch(input: CanManageChurchInput): Promise<boolean> {
@@ -56,6 +60,20 @@ export class DbAuthorityManager implements IAuthorityManager {
         type: 'ministry',
         churchId: input.churchId,
         ministryId: input.ministryId,
+      },
+    }).allowed;
+  }
+
+  async canManageTeam(input: CanManageTeamInput): Promise<boolean> {
+    const actor = await this.resolveActor(input);
+    return AuthorityService.authorize({
+      actor,
+      action: 'manage',
+      resource: {
+        type: 'team',
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        teamId: input.teamId,
       },
     }).allowed;
   }
@@ -121,7 +139,7 @@ export class DbAuthorityManager implements IAuthorityManager {
       });
       return decision.allowed ? [membership.ministryId] : [];
     });
-    const entries = await Promise.all(
+    const ministryEntries = await Promise.all(
       ledMinistryIds.map(async (ministryId) => {
         const ministry = await this.ministryRepository.getById(
           input.churchId,
@@ -130,6 +148,53 @@ export class DbAuthorityManager implements IAuthorityManager {
         return { kind: 'ministry' as const, ministryId, name: ministry.name };
       }),
     );
+    const ledTeamMemberships = actor.teamMemberships.filter(
+      (membership) =>
+        AuthorityService.authorize({
+          actor,
+          action: 'manage',
+          resource: {
+            type: 'team',
+            churchId: input.churchId,
+            ministryId: membership.ministryId,
+            teamId: membership.teamId,
+          },
+        }).allowed,
+    );
+    const teams =
+      ledTeamMemberships.length === 0
+        ? []
+        : ((await this.teamRepository?.listByIds(
+            input.churchId,
+            ledTeamMemberships.map((membership) => membership.teamId),
+          )) ?? []);
+    const ministries = await Promise.all(
+      [
+        ...new Set(
+          ledTeamMemberships.map((membership) => membership.ministryId),
+        ),
+      ].map((ministryId) =>
+        this.ministryRepository.getById(input.churchId, ministryId),
+      ),
+    );
+    const ministryNames = new Map(
+      ministries.map((ministry) => [ministry.id, ministry.name]),
+    );
+    const teamEntries = teams.flatMap((team) => {
+      const ministryName = ministryNames.get(team.ministryId);
+      return ministryName
+        ? [
+            {
+              kind: 'team' as const,
+              ministryId: team.ministryId,
+              ministryName,
+              teamId: team.id,
+              name: team.name,
+            },
+          ]
+        : [];
+    });
+    const entries = [...ministryEntries, ...teamEntries];
     return { canAccessScheduling: entries.length > 0, entries };
   }
 

@@ -23,6 +23,13 @@ const schedulingCapabilityResponseSchema = z.object({
         ministryId: z.uuid(),
         name: z.string(),
       }),
+      z.object({
+        kind: z.literal('team'),
+        ministryId: z.uuid(),
+        ministryName: z.string(),
+        teamId: z.uuid(),
+        name: z.string(),
+      }),
     ]),
   ),
 });

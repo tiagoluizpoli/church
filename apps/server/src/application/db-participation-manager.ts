@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { compareInstants, fromDate, type Instant, toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
-import type { ChurchId } from '../domain/branded-ids';
+import type { ChurchId, TeamId } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
 import type {
   CycleBuilderEventView,
@@ -118,6 +118,7 @@ interface QualifiedVolunteerRef {
 interface VolunteerMembershipInfo {
   qualifiedRoleIds: string[];
   ministryAccessLevel: MinistryAccessLevel;
+  teamIds: string[];
   leadTeamIds: string[];
 }
 
@@ -129,6 +130,7 @@ interface BuildEligibleForVolunteerInput {
   assignmentShiftsById: Map<string, Shift>;
   unavailableMarkKeys: Set<string>;
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
+  teamId?: TeamId;
 }
 
 interface ListVolunteerMembershipInfoInput {
@@ -142,6 +144,7 @@ interface ListEligibleForShiftsInput {
   participation: MinistryParticipation;
   shifts: Shift[];
   requirements: SlotRequirement[];
+  teamId?: TeamId;
   membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
   tx?: TransactionContext;
 }
@@ -258,6 +261,7 @@ export class DbParticipationManager implements IParticipationManager {
     input: GetCycleBuilderDataInput,
   ): Promise<CycleBuilderView> {
     await this.ministryRepository.getById(input.churchId, input.ministryId);
+    const teamId = input.teamId;
 
     return this.unitOfWork.run(async (tx) => {
       const eventGroups = await this.eventRepository.listCycleEvents({
@@ -282,13 +286,21 @@ export class DbParticipationManager implements IParticipationManager {
       const events: CycleBuilderEventView[] = [];
 
       for (const eventGroup of eventGroups) {
-        const participation = await this.getOrCreateParticipation({
-          churchId: input.churchId,
-          cycleId: input.cycleId,
-          ministryId: input.ministryId,
-          eventId: eventGroup.event.id,
-          tx,
-        });
+        const participation = teamId
+          ? await this.participationRepository.findByMinistryEvent({
+              churchId: input.churchId,
+              ministryId: input.ministryId,
+              eventId: eventGroup.event.id,
+              tx,
+            })
+          : await this.getOrCreateParticipation({
+              churchId: input.churchId,
+              cycleId: input.cycleId,
+              ministryId: input.ministryId,
+              eventId: eventGroup.event.id,
+              tx,
+            });
+        if (!participation) continue;
         const [inclusions, shifts, requirements, assignments] =
           await Promise.all([
             this.participationRepository.listInclusions({
@@ -313,37 +325,81 @@ export class DbParticipationManager implements IParticipationManager {
             ),
           ]);
 
+        const visibleRequirements = teamId
+          ? requirements.filter((requirement) => requirement.teamId === teamId)
+          : requirements;
+        const visibleShiftIds = new Set(
+          visibleRequirements.map((requirement) => requirement.shiftId),
+        );
+        const visibleShifts = teamId
+          ? shifts.filter((shift) => visibleShiftIds.has(shift.id))
+          : shifts;
+        if (teamId && visibleShifts.length === 0) continue;
+        const visibleSlotIds = new Set(
+          visibleShifts.map((shift) => shift.timeSlotId),
+        );
+        const visibleEventGroup = teamId
+          ? {
+              ...eventGroup,
+              slots: eventGroup.slots.filter((slot) =>
+                visibleSlotIds.has(slot.id),
+              ),
+            }
+          : eventGroup;
+        const visibleAssignments = teamId
+          ? assignments.filter((assignment) =>
+              isUnambiguouslyTeamScopedAssignment({
+                assignment,
+                requirements,
+                teamId,
+                membershipInfoByVolunteerId,
+              }),
+            )
+          : assignments;
+
         // Query B — eligible volunteers batched over all this participation's
         // shifts at once (never N+1). Published participations still include
         // candidates because leaders may reassign after publication.
         const eligibleByShift = await this.listEligibleVolunteersForShifts({
           churchId: input.churchId,
           participation,
-          shifts,
-          requirements,
+          shifts: visibleShifts,
+          requirements: visibleRequirements,
+          teamId,
           membershipInfoByVolunteerId,
           tx,
         });
 
         events.push(
           buildBuilderEventView({
-            eventGroup,
+            eventGroup: visibleEventGroup,
             participation,
             includedSlotIds: new Set(
               inclusions.map((inclusion) => inclusion.timeSlotId as string),
             ),
-            shifts,
-            requirements,
-            assignments,
+            shifts: visibleShifts,
+            requirements: visibleRequirements,
+            assignments: visibleAssignments,
             eligibleByShift,
           }),
         );
       }
 
-      const roleOptions: CycleBuilderRoleOption[] = roles.map((role) => ({
-        id: role.id,
-        name: role.name,
-      }));
+      const visibleRoleIds = new Set(
+        events.flatMap((event) =>
+          event.slots.flatMap((slot) =>
+            slot.shifts.flatMap((shift) =>
+              shift.requirements.map((requirement) => requirement.roleId),
+            ),
+          ),
+        ),
+      );
+      const roleOptions: CycleBuilderRoleOption[] = roles
+        .filter((role) => !teamId || visibleRoleIds.has(role.id))
+        .map((role) => ({
+          id: role.id,
+          name: role.name,
+        }));
 
       return { events, roles: roleOptions };
     });
@@ -902,6 +958,7 @@ export class DbParticipationManager implements IParticipationManager {
     const rows = await this.participationRepository.listMinistryCycleSummaries({
       churchId: input.churchId,
       ministryId: input.ministryId,
+      teamId: input.teamId,
     });
 
     return rows.map((row) => ({
@@ -1023,6 +1080,7 @@ export class DbParticipationManager implements IParticipationManager {
         {
           qualifiedRoleIds: membership.qualifiedRoleIds,
           ministryAccessLevel: membership.ministryAccessLevel,
+          teamIds: membership.teamMemberships.map((team) => team.teamId),
           leadTeamIds: membership.teamMemberships
             .filter((team) => team.accessLevel === 'leader')
             .map((team) => team.teamId),
@@ -1067,6 +1125,7 @@ export class DbParticipationManager implements IParticipationManager {
     participation,
     shifts,
     requirements,
+    teamId,
     membershipInfoByVolunteerId,
     tx,
   }: ListEligibleForShiftsInput): Promise<
@@ -1136,6 +1195,10 @@ export class DbParticipationManager implements IParticipationManager {
     const activeAssignments = assignments.filter((assignment) =>
       isActiveAssignmentStatus(assignment.status),
     );
+    // Assignment rows lack a Team id. Until they can be unambiguously
+    // attributed across every participation, derived availability signals are
+    // withheld from a Team-scoped read rather than exposing another Team.
+    const visibleActiveAssignments = teamId ? [] : activeAssignments;
     const ministryOnlyFairness =
       (await this.featureFlagService?.isEnabled(
         EVENT_BUILDER_MINISTRY_ONLY_FAIRNESS_FLAG,
@@ -1143,7 +1206,7 @@ export class DbParticipationManager implements IParticipationManager {
       )) ?? false;
     const participationIds = [
       ...new Set(
-        activeAssignments
+        visibleActiveAssignments
           .map((assignment) => assignment.participationId)
           .filter(
             (participationId): participationId is MinistryParticipation['id'] =>
@@ -1168,15 +1231,15 @@ export class DbParticipationManager implements IParticipationManager {
         .map((assignmentParticipation) => assignmentParticipation.id),
     );
     const fairnessAssignments = ministryOnlyFairness
-      ? activeAssignments.filter(
+      ? visibleActiveAssignments.filter(
           (assignment) =>
             assignment.participationId != null &&
             ministryParticipationIds.has(assignment.participationId),
         )
-      : activeAssignments;
+      : visibleActiveAssignments;
     const assignmentShiftIds = [
       ...new Set(
-        activeAssignments
+        visibleActiveAssignments
           .map((assignment) => assignment.shiftId)
           .filter((shiftId): shiftId is Shift['id'] => shiftId != null),
       ),
@@ -1210,17 +1273,26 @@ export class DbParticipationManager implements IParticipationManager {
                   volunteersByRole.get(requirement.roleId as string) ?? [],
               ),
             );
-      const eligible = qualified.map((volunteer) =>
-        buildEligibleForVolunteer({
-          volunteer,
-          shift,
-          activeAssignments,
-          fairnessAssignments,
-          assignmentShiftsById,
-          unavailableMarkKeys,
-          membershipInfoByVolunteerId,
-        }),
-      );
+      const eligible = qualified
+        .filter(
+          (volunteer) =>
+            !teamId ||
+            membershipInfoByVolunteerId
+              .get(volunteer.id as string)
+              ?.teamIds.includes(teamId),
+        )
+        .map((volunteer) =>
+          buildEligibleForVolunteer({
+            volunteer,
+            shift,
+            activeAssignments: visibleActiveAssignments,
+            fairnessAssignments,
+            assignmentShiftsById,
+            unavailableMarkKeys,
+            membershipInfoByVolunteerId,
+            teamId,
+          }),
+        );
       eligibleByShift.set(shift.id as string, sortEligibleVolunteers(eligible));
     }
 
@@ -1304,6 +1376,7 @@ function buildEligibleForVolunteer({
   assignmentShiftsById,
   unavailableMarkKeys,
   membershipInfoByVolunteerId,
+  teamId,
 }: BuildEligibleForVolunteerInput): EligibleVolunteerView {
   const volunteerAssignments = activeAssignments.filter(
     (assignment) => assignment.volunteerId === volunteer.id,
@@ -1357,7 +1430,11 @@ function buildEligibleForVolunteer({
     lastServedAt,
     qualifiedRoleIds: membershipInfo?.qualifiedRoleIds ?? [],
     ministryAccessLevel: membershipInfo?.ministryAccessLevel ?? 'volunteer',
-    leadTeamIds: membershipInfo?.leadTeamIds ?? [],
+    leadTeamIds: teamId
+      ? (membershipInfo?.leadTeamIds ?? []).filter(
+          (leadTeamId) => leadTeamId === teamId,
+        )
+      : (membershipInfo?.leadTeamIds ?? []),
   });
 }
 
@@ -1499,4 +1576,36 @@ function buildEligibleVolunteerView({
     ministryAccessLevel,
     leadTeamIds,
   };
+}
+
+/**
+ * Assignments do not carry a Team id. A Team view may disclose one only when
+ * its Shift/Role maps to exactly one requirement owned by the led Team.
+ * Ambiguous historical rows are withheld rather than leaking another Team.
+ */
+function isUnambiguouslyTeamScopedAssignment({
+  assignment,
+  requirements,
+  teamId,
+  membershipInfoByVolunteerId,
+}: {
+  assignment: Assignment;
+  requirements: SlotRequirement[];
+  teamId: TeamId;
+  membershipInfoByVolunteerId: Map<string, VolunteerMembershipInfo>;
+}): boolean {
+  const matchingRequirements = requirements.filter(
+    (requirement) =>
+      requirement.shiftId === assignment.shiftId &&
+      requirement.roleId === assignment.roleId,
+  );
+  return (
+    matchingRequirements.length === 1 &&
+    matchingRequirements[0]?.teamId === teamId &&
+    Boolean(
+      membershipInfoByVolunteerId
+        .get(assignment.volunteerId as string)
+        ?.teamIds.includes(teamId),
+    )
+  );
 }

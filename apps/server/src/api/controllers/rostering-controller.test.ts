@@ -27,6 +27,7 @@ const mockGetSession = vi.mocked(
 );
 
 const participationManager = {
+  listMinistryCycleSummaries: vi.fn(),
   listEligibleVolunteers: vi.fn(),
   getCompletion: vi.fn(),
   publish: vi.fn(),
@@ -50,6 +51,7 @@ const authorityGuard = {
   canManageParticipation: vi.fn(),
   canManageShift: vi.fn(),
   canManageMinistry: vi.fn(),
+  canManageTeam: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -92,6 +94,7 @@ beforeEach(() => {
   authorityGuard.canManageParticipation.mockResolvedValue(true);
   authorityGuard.canManageShift.mockResolvedValue(true);
   authorityGuard.canManageMinistry.mockResolvedValue(true);
+  authorityGuard.canManageTeam.mockResolvedValue(false);
   assignmentManager.getAssignment.mockResolvedValue({
     shiftId: '66666666-6666-6666-8666-666666666666',
   });
@@ -351,6 +354,63 @@ describe('Rostering routes', () => {
     expect(denied.json()).toEqual({
       error: 'FORBIDDEN',
       message: 'Not a leader of this ministry',
+    });
+  });
+
+  it('GET /api/v1/rostering/cycles/:id/builder scopes a TeamLeader to their Team', async () => {
+    participationManager.getCycleBuilderData.mockResolvedValue({
+      events: [],
+      roles: [],
+    });
+    authorityGuard.canManageMinistry.mockResolvedValue(false);
+    authorityGuard.canManageTeam.mockResolvedValue(true);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222&teamId=33333333-3333-4333-8333-333333333333',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(participationManager.getCycleBuilderData).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      cycleId: '11111111-1111-1111-8111-111111111111',
+      ministryId: '22222222-2222-2222-8222-222222222222',
+      teamId: '33333333-3333-4333-8333-333333333333',
+      userId: 'leader-user',
+    });
+  });
+
+  it('GET /api/v1/rostering/teams/:id/cycles-summary denies a different Team', async () => {
+    authorityGuard.canManageTeam.mockResolvedValue(false);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(
+      participationManager.listMinistryCycleSummaries,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/v1/rostering/teams/:id/cycles-summary lists only that Team’s cycles', async () => {
+    authorityGuard.canManageTeam.mockResolvedValue(true);
+    participationManager.listMinistryCycleSummaries.mockResolvedValue([]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ cycles: [] });
+    expect(
+      participationManager.listMinistryCycleSummaries,
+    ).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      ministryId: '22222222-2222-2222-8222-222222222222',
+      teamId: '33333333-3333-4333-8333-333333333333',
     });
   });
 

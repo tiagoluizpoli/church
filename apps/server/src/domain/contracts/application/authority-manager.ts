@@ -4,6 +4,7 @@ import type {
   MinistryId,
   MinistryParticipationId,
   ShiftId,
+  TeamId,
   TimeSlotId,
   UserId,
 } from '../../branded-ids';
@@ -16,6 +17,13 @@ export interface CanManageChurchInput {
 export interface CanManageMinistryInput {
   churchId: ChurchId;
   ministryId: MinistryId;
+  userId: UserId;
+}
+
+export interface CanManageTeamInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  teamId: TeamId;
   userId: UserId;
 }
 
@@ -50,7 +58,14 @@ export interface HasSchedulingAccessInput {
 
 export type SchedulingCapabilityEntry =
   | { kind: 'church' }
-  | { kind: 'ministry'; ministryId: MinistryId; name: string };
+  | { kind: 'ministry'; ministryId: MinistryId; name: string }
+  | {
+      kind: 'team';
+      ministryId: MinistryId;
+      ministryName: string;
+      teamId: TeamId;
+      name: string;
+    };
 
 /** Navigation data only; every protected resource still asks AuthorityService. */
 export interface SchedulingCapabilityProjection {
@@ -67,6 +82,7 @@ export interface SchedulingCapabilityProjection {
 export interface IAuthorityManager {
   canManageChurch(input: CanManageChurchInput): Promise<boolean>;
   canManageMinistry(input: CanManageMinistryInput): Promise<boolean>;
+  canManageTeam(input: CanManageTeamInput): Promise<boolean>;
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
   canManageEvent(input: CanManageEventInput): Promise<boolean>;

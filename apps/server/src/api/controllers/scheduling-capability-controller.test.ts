@@ -140,4 +140,38 @@ describe('Scheduling capability controller', () => {
       ],
     });
   });
+
+  it('returns a Team roster entry without granting Ministry management', async () => {
+    authorityGuard.resolveSchedulingCapability.mockResolvedValue({
+      canAccessScheduling: true,
+      entries: [
+        {
+          kind: 'team',
+          ministryId: '11111111-1111-4111-8111-111111111111',
+          ministryName: 'Worship',
+          teamId: '22222222-2222-4222-8222-222222222222',
+          name: 'Greeting',
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/scheduling/capability',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      canAccessScheduling: true,
+      entries: [
+        {
+          kind: 'team',
+          ministryId: '11111111-1111-4111-8111-111111111111',
+          ministryName: 'Worship',
+          teamId: '22222222-2222-4222-8222-222222222222',
+          name: 'Greeting',
+        },
+      ],
+    });
+  });
 });

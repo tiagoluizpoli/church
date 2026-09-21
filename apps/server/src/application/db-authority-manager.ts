@@ -9,6 +9,7 @@ import type {
   CanManageParticipationInput,
   CanManageShiftInput,
   CanManageTeamInput,
+  CanManageTeamShiftInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
   SchedulingCapabilityProjection,
@@ -76,6 +77,21 @@ export class DbAuthorityManager implements IAuthorityManager {
         teamId: input.teamId,
       },
     }).allowed;
+  }
+
+  async canManageTeamShift(input: CanManageTeamShiftInput): Promise<boolean> {
+    const ministryId = await this.scopeRepository.resolveShiftMinistry({
+      churchId: input.churchId,
+      shiftId: input.shiftId,
+    });
+    if (!ministryId || !this.teamRepository) return false;
+
+    const [team] = await this.teamRepository.listByIds(input.churchId, [
+      input.teamId,
+    ]);
+    if (!team || team.ministryId !== ministryId) return false;
+
+    return this.canManageTeam({ ...input, ministryId });
   }
 
   async canManageParticipation(

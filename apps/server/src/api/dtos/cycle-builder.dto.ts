@@ -22,7 +22,11 @@ import { timeSlotMapper, timeSlotResponseSchema } from './time-slot.dto';
 
 export const cycleBuilderShiftViewSchema = z.object({
   shift: shiftResponseSchema,
-  requirements: z.array(shiftRequirementResponseSchema),
+  requirements: z.array(
+    shiftRequirementResponseSchema.extend({
+      canMutateAssignments: z.boolean(),
+    }),
+  ),
   assignments: z.array(assignmentResponseSchema), // [] when none
   eligibleVolunteers: z.array(eligibleVolunteerResponseSchema),
 });
@@ -109,9 +113,12 @@ export const cycleBuilderMapper = {
           included: slotView.included,
           shifts: slotView.shifts.map((shiftView) => ({
             shift: participationMapper.shiftToResponse(shiftView.shift),
-            requirements: shiftView.requirements.map((requirement) =>
-              participationMapper.requirementToResponse(requirement),
-            ),
+            requirements: shiftView.requirements.map((requirement) => ({
+              ...participationMapper.requirementToResponse(
+                requirement.requirement,
+              ),
+              canMutateAssignments: requirement.canMutateAssignments,
+            })),
             assignments: shiftView.assignments.map((assignment) =>
               assignmentMapper.toResponse(assignment),
             ),

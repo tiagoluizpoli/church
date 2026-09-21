@@ -58,9 +58,19 @@ export interface GetCycleBuilderDataInput {
 
 export interface CycleBuilderShiftView {
   shift: Shift;
-  requirements: SlotRequirement[];
+  requirements: CycleBuilderRequirementView[];
   assignments: Assignment[];
   eligibleVolunteers: EligibleVolunteerView[];
+}
+
+/**
+ * A requirement plus the actor-scoped authority to mutate its assignments.
+ * The capability is computed for the Cycle Builder read; it is never a
+ * substitute for mutation-time authorization.
+ */
+export interface CycleBuilderRequirementView {
+  requirement: SlotRequirement;
+  canMutateAssignments: boolean;
 }
 
 export interface CycleBuilderSlotView {

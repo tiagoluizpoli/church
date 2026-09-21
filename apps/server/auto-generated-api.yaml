@@ -4179,12 +4179,15 @@ paths:
                                             type: number
                                           notes:
                                             type: string
+                                          canMutateAssignments:
+                                            type: boolean
                                         required:
                                           - id
                                           - shiftId
                                           - participationId
                                           - roleId
                                           - requiredCount
+                                          - canMutateAssignments
                                         additionalProperties: false
                                     assignments:
                                       type: array
@@ -4703,6 +4706,11 @@ paths:
         - rostering
       description: Remove a Volunteer Assignment from its Shift.
       parameters:
+        - schema:
+            type: string
+          in: query
+          name: teamId
+          required: false
         - schema:
             type: string
           in: path

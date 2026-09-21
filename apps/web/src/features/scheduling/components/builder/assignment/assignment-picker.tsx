@@ -69,6 +69,7 @@ interface AssignmentPickerProps {
   volunteers: PickerVolunteer[];
   suggestions?: SuggestionGroups;
   hasAssignment?: boolean;
+  allowReplacement?: boolean;
   onSelect: (volunteerId: string) => void;
   onSelectSuggestion?: (suggestion: SuggestedVolunteer) => void;
   onRemove?: () => void;
@@ -89,6 +90,7 @@ export function AssignmentPicker({
   volunteers,
   suggestions,
   hasAssignment,
+  allowReplacement = true,
   onSelect,
   onSelectSuggestion,
   onRemove,
@@ -171,14 +173,16 @@ export function AssignmentPicker({
           </p>
         )}
 
-        <Input
-          ref={searchInputRef}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search volunteers…"
-          aria-label="Search volunteers"
-          className={isTouch ? 'mb-3 text-sm' : 'mb-3 h-8 text-xs'}
-        />
+        {allowReplacement ? (
+          <Input
+            ref={searchInputRef}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search volunteers…"
+            aria-label="Search volunteers"
+            className={isTouch ? 'mb-3 text-sm' : 'mb-3 h-8 text-xs'}
+          />
+        ) : null}
 
         {hasAssignment && onRemove && (
           <div className="mb-3 flex justify-end">
@@ -202,7 +206,7 @@ export function AssignmentPicker({
           </div>
         )}
 
-        {displayedSuggestions && onSelectSuggestion && (
+        {allowReplacement && displayedSuggestions && onSelectSuggestion && (
           <div className="mb-3 space-y-2 border-b pb-3">
             {displayedSuggestions.safe.length > 0 ? (
               <SuggestionList
@@ -243,79 +247,86 @@ export function AssignmentPicker({
           </div>
         )}
 
-        <ul className="max-h-64 space-y-1 overflow-y-auto">
-          {filtered.length === 0 && !hasSelectableSuggestions && (
-            <li className="px-1 py-2 text-muted-foreground text-xs">
-              No volunteers match
-            </li>
-          )}
-          {filtered.map((v) => (
-            <li key={v.id}>
-              <button
-                type="button"
-                data-testid="picker-option"
-                className={cn(
-                  'flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-xs hover:bg-muted/60',
-                  isTouch && 'min-h-11 px-3 text-sm',
-                )}
-                onClick={() => {
-                  onSelect(v.id);
-                  onOpenChange(false);
-                }}
-              >
-                <span className="min-w-0">
-                  <span
-                    className="block truncate font-medium"
-                    data-testid="picker-option-name"
-                  >
-                    {v.name}
-                  </span>
-                  {v.isQualified === false ? (
-                    <span
-                      className="mt-0.5 flex items-center gap-1 text-destructive text-xs"
-                      data-testid="picker-option-unqualified"
-                    >
-                      <TriangleAlertIcon className="size-3 shrink-0" />
-                      Not qualified — needs a reason
-                    </span>
-                  ) : null}
-                  {v.alreadyServingAssignments?.length ? (
-                    v.alreadyServingAssignments.length === 1 ? (
-                      <span className="mt-0.5 flex items-center gap-1 text-xs text-yellow-700 dark:text-yellow-300">
-                        <TriangleAlertIcon className="size-3 shrink-0" />
-                        Serving {v.alreadyServingAssignments[0]?.summary}
-                      </span>
-                    ) : (
-                      <details className="mt-0.5 text-xs text-yellow-700 dark:text-yellow-300">
-                        <summary className="flex cursor-pointer items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                          <TriangleAlertIcon className="size-3 shrink-0" />
-                          Serving in {v.alreadyServingAssignments.length} other
-                          assignments
-                        </summary>
-                        <ul className="mt-1 space-y-1 pl-4 text-muted-foreground">
-                          {v.alreadyServingAssignments.map((assignment) => (
-                            <li key={assignment.detail}>{assignment.detail}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    )
-                  ) : v.alreadyAssignedCount > 0 ? (
-                    <span className="mt-0.5 block text-muted-foreground text-xs">
-                      Already assigned {v.alreadyAssignedCount} time
-                      {v.alreadyAssignedCount === 1 ? '' : 's'} this cycle
-                    </span>
-                  ) : null}
-                </span>
-                <Badge
-                  className={cn('shrink-0', STATUS_STYLE[v.availabilityStatus])}
-                  data-testid={`picker-status-${v.id}`}
+        {allowReplacement ? (
+          <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+            {filtered.length === 0 && !hasSelectableSuggestions && (
+              <li className="px-1 py-2 text-muted-foreground text-xs">
+                No volunteers match
+              </li>
+            )}
+            {filtered.map((v) => (
+              <li key={v.id}>
+                <button
+                  type="button"
+                  data-testid="picker-option"
+                  className={cn(
+                    'flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-xs hover:bg-muted/60',
+                    isTouch && 'min-h-11 px-3 text-sm',
+                  )}
+                  onClick={() => {
+                    onSelect(v.id);
+                    onOpenChange(false);
+                  }}
                 >
-                  {STATUS_LABEL[v.availabilityStatus]}
-                </Badge>
-              </button>
-            </li>
-          ))}
-        </ul>
+                  <span className="min-w-0">
+                    <span
+                      className="block truncate font-medium"
+                      data-testid="picker-option-name"
+                    >
+                      {v.name}
+                    </span>
+                    {v.isQualified === false ? (
+                      <span
+                        className="mt-0.5 flex items-center gap-1 text-destructive text-xs"
+                        data-testid="picker-option-unqualified"
+                      >
+                        <TriangleAlertIcon className="size-3 shrink-0" />
+                        Not qualified — needs a reason
+                      </span>
+                    ) : null}
+                    {v.alreadyServingAssignments?.length ? (
+                      v.alreadyServingAssignments.length === 1 ? (
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-yellow-700 dark:text-yellow-300">
+                          <TriangleAlertIcon className="size-3 shrink-0" />
+                          Serving {v.alreadyServingAssignments[0]?.summary}
+                        </span>
+                      ) : (
+                        <details className="mt-0.5 text-xs text-yellow-700 dark:text-yellow-300">
+                          <summary className="flex cursor-pointer items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                            <TriangleAlertIcon className="size-3 shrink-0" />
+                            Serving in {v.alreadyServingAssignments.length}{' '}
+                            other assignments
+                          </summary>
+                          <ul className="mt-1 flex flex-col gap-1 pl-4 text-muted-foreground">
+                            {v.alreadyServingAssignments.map((assignment) => (
+                              <li key={assignment.detail}>
+                                {assignment.detail}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )
+                    ) : v.alreadyAssignedCount > 0 ? (
+                      <span className="mt-0.5 block text-muted-foreground text-xs">
+                        Already assigned {v.alreadyAssignedCount} time
+                        {v.alreadyAssignedCount === 1 ? '' : 's'} this cycle
+                      </span>
+                    ) : null}
+                  </span>
+                  <Badge
+                    className={cn(
+                      'shrink-0',
+                      STATUS_STYLE[v.availabilityStatus],
+                    )}
+                    data-testid={`picker-status-${v.id}`}
+                  >
+                    {STATUS_LABEL[v.availabilityStatus]}
+                  </Badge>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

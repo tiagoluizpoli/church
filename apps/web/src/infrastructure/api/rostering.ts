@@ -8,6 +8,7 @@ import type {
   CreateParticipationAssignment201,
   CreateParticipationAssignmentBody,
   DeleteParticipationAssignment204,
+  DeleteParticipationAssignmentParams,
   GetCycleAuditLog200,
   GetCycleAuditLogParams,
   GetCycleBuilderData200,
@@ -123,9 +124,11 @@ const createParticipationAssignment = (
  */
 const deleteParticipationAssignment = (
     assignmentId: string,
+    params?: DeleteParticipationAssignmentParams,
  ) => {
       return apiClient<DeleteParticipationAssignment204>(
-      {url: `/api/v1/rostering/assignments/${assignmentId}`, method: 'DELETE'
+      {url: `/api/v1/rostering/assignments/${assignmentId}`, method: 'DELETE',
+        params
     },
       );
     }

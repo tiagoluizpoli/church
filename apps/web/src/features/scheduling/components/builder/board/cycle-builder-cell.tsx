@@ -49,6 +49,9 @@ interface CycleBuilderCellProps {
   selectedVolunteerId?: string;
   selectedVolunteerName?: string;
   isPublished: boolean;
+  isEditable?: boolean;
+  /** Team Leaders may remove their assignments but cannot replace them. */
+  allowReplacement?: boolean;
   /** True while the rail is ranking people for this shift×role. */
   isFocused?: boolean;
   /** Writes for this shift×role that the server rejected, kept on the board. */
@@ -118,6 +121,8 @@ export function CycleBuilderCell({
   selectedVolunteerId,
   selectedVolunteerName,
   isPublished,
+  isEditable = true,
+  allowReplacement = true,
   isFocused,
   failedWrites,
   contextTeamId,
@@ -148,14 +153,21 @@ export function CycleBuilderCell({
     id: `cycle-role:${shift.shiftId}:${roleId}`,
     data: { shiftId: shift.shiftId, roleId },
     disabled:
-      !canAdd || Boolean(draggedFit && !isAssignableFit({ fit: draggedFit })),
+      !isEditable ||
+      !canAdd ||
+      Boolean(draggedFit && !isAssignableFit({ fit: draggedFit })),
   });
   // Reverse highlight: selecting someone in the rail paints the board with
   // where they actually fit. Before this every under-filled cell offered an
   // identical "Assign X", which said nothing — the board looked the same for a
   // qualified, available volunteer and for one who fits nowhere.
   let selectedCandidateFit: ShiftRoleFit = { tier: 'none' };
-  if (canAdd && selectedVolunteerId && !selectedVolunteerIsAssignedToShift) {
+  if (
+    isEditable &&
+    canAdd &&
+    selectedVolunteerId &&
+    !selectedVolunteerIsAssignedToShift
+  ) {
     selectedCandidateFit = volunteerFitForShiftRole({
       shift,
       roleId,
@@ -258,7 +270,7 @@ export function CycleBuilderCell({
         roleDropTarget.isOver && 'border-primary bg-primary/5',
       )}
       data-selected-fit={selectedFit.tier}
-      data-drop-target={canAdd ? 'append' : undefined}
+      data-drop-target={isEditable && canAdd ? 'append' : undefined}
       data-testid={`cycle-requirement-${shift.shiftId}-${roleId}`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -282,6 +294,8 @@ export function CycleBuilderCell({
             shiftId={shift.shiftId}
             roleId={roleId}
             isPublished={isPublished}
+            isEditable={isEditable}
+            allowReplacement={allowReplacement}
             onFocus={onFocus}
             pickerVolunteers={pickerVolunteers}
             onRemove={() => onRemove(assignment.id)}
@@ -296,6 +310,7 @@ export function CycleBuilderCell({
           <FailedAssignmentChip
             key={failedWrite.failedWriteId}
             failedWrite={failedWrite}
+            isEditable={isEditable}
             onRetry={() => onRetryFailedWrite?.(failedWrite.failedWriteId)}
             onDismiss={() => onDismissFailedWrite?.(failedWrite.failedWriteId)}
           />
@@ -310,7 +325,7 @@ export function CycleBuilderCell({
           assignButton
         )}
 
-        {canAdd ? (
+        {isEditable && canAdd ? (
           <AssignmentPicker
             open={addPickerOpen}
             onOpenChange={(open) => {

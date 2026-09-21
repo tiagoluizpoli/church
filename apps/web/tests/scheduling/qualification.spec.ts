@@ -4,6 +4,8 @@ import {
   TEAM_LEADER_STORAGE_STATE,
 } from '../global-setup';
 
+const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+
 /**
  * 023 qualification + multi-team model.
  *
@@ -18,6 +20,13 @@ import {
 
 const BUILDER_URL =
   '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111';
+
+const TEAM_ID = 'e2eaaaa1-0000-0000-0000-000000000001';
+const US6_EVENT_ID = 'e2e66666-6666-6666-6666-666666666664';
+const US6_SHIFT_ID = 'e2e71111-1111-1111-1111-111111111114';
+const GREETER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555552';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
+const GRACE_HOPPER_ID = 'e2e44444-4444-4444-4444-4444444444a1';
 
 const UNQUALIFIED_NAME = 'Ursula Unqualified';
 const QUALIFIED_NAME = 'Grace Hopper';
@@ -71,17 +80,12 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
   test('a TeamLeader sees their own team’s qualified members and still never the unqualified one', async ({
     page,
   }) => {
-    await page.goto('/scheduling');
-    await page
-      .getByRole('link', { name: 'Open E2E Team Alpha roster' })
-      .click();
-    await page.getByRole('link', { name: 'Open roster' }).first().click();
+    // The capability index has its own API seam. This proof is about the
+    // Team-scoped roster, whose stable public entry point is the roster link.
+    await page.goto(`${BUILDER_URL}?teamId=${TEAM_ID}`);
     await expect(page.getByTestId('cycle-builder')).toBeVisible({
       timeout: 15_000,
     });
-    await expect(
-      page.getByText('This Team roster is read-only.'),
-    ).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Publish cycle' }),
     ).toHaveCount(0);
@@ -101,6 +105,101 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     await expect(
       rail.getByText(OUTSIDE_TEAM_NAME, { exact: false }),
     ).toHaveCount(0);
+  });
+
+  test('a TeamLeader assigns and removes a led-Team roster seat, but cannot mutate an unled requirement', async ({
+    browser,
+    page,
+  }) => {
+    // The shared US6 fixture starts at availability_fired/draft so discovery
+    // coverage can prove its safe default. Stage only this resource through
+    // the leader-facing API: scheduling its draft Event, then assigning Grace,
+    // moves the MinistryParticipation into rostering without changing the
+    // fixture schema or another cycle.
+    const leaderContext = await browser.newContext({
+      storageState: LEADER_STORAGE_STATE,
+    });
+    const scheduleResponse = await leaderContext.request.patch(
+      `${SERVER_URL}/api/v1/admin/planning-cycles/e2e21111-1111-1111-1111-111111111111/events/${US6_EVENT_ID}`,
+      { data: {} },
+    );
+    expect(scheduleResponse.ok()).toBeTruthy();
+
+    const stageResponse = await leaderContext.request.post(
+      `${SERVER_URL}/api/v1/rostering/shifts/${US6_SHIFT_ID}/assignments`,
+      {
+        data: {
+          volunteerId: GRACE_HOPPER_ID,
+          roleId: GREETER_ROLE_ID,
+          teamId: TEAM_ID,
+        },
+      },
+    );
+    expect(stageResponse.status()).toBe(201);
+    await leaderContext.close();
+
+    await page.goto(`${BUILDER_URL}?teamId=${TEAM_ID}`);
+    await expect(page.getByTestId('cycle-builder')).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const ledRequirement = page.getByTestId(
+      `cycle-requirement-${US6_SHIFT_ID}-${GREETER_ROLE_ID}`,
+    );
+    await expect(ledRequirement.getByTestId('assignment-chip')).toContainText(
+      QUALIFIED_NAME,
+    );
+    // A Team route receives only that Team's requirements; an unled cell is
+    // therefore absent rather than present-but-disabled. The forged request
+    // below proves the server still denies the boundary.
+    await expect(
+      page.getByTestId(`cycle-requirement-${US6_SHIFT_ID}-${USHER_ROLE_ID}`),
+    ).toHaveCount(0);
+
+    const removeResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        response.url().includes('/api/v1/rostering/assignments/') &&
+        response.url().includes(`teamId=${TEAM_ID}`),
+    );
+    await ledRequirement.getByTestId('assignment-chip').click();
+    await page
+      .getByTestId('assignment-picker')
+      .getByRole('button', { name: 'Unassign' })
+      .click();
+    expect((await removeResponse).status()).toBe(204);
+    await expect(ledRequirement.getByTestId('assignment-chip')).toHaveCount(0);
+
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response
+          .url()
+          .includes(`/api/v1/rostering/shifts/${US6_SHIFT_ID}/assignments`),
+    );
+    await ledRequirement.getByRole('button', { name: 'Add' }).click();
+    await page
+      .getByTestId('assignment-picker')
+      .getByTestId('picker-option')
+      .filter({ hasText: QUALIFIED_NAME })
+      .click();
+    expect((await createResponse).status()).toBe(201);
+    await expect(ledRequirement.getByTestId('assignment-chip')).toContainText(
+      QUALIFIED_NAME,
+    );
+
+    const unledResponse = await page.request.post(
+      `${SERVER_URL}/api/v1/rostering/shifts/${US6_SHIFT_ID}/assignments`,
+      {
+        data: {
+          volunteerId: GRACE_HOPPER_ID,
+          roleId: USHER_ROLE_ID,
+          teamId: TEAM_ID,
+        },
+      },
+    );
+    expect(unledResponse.status()).toBe(403);
+    await expect(ledRequirement.getByTestId('assignment-chip')).toBeVisible();
   });
 
   test('a wrong-Team roster link returns to Scheduling without roster data', async ({

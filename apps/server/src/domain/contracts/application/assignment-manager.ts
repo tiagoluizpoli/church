@@ -5,6 +5,7 @@ import type {
   PlanningCycleId,
   RoleId,
   ShiftId,
+  TeamId,
   TimeSlotId,
   UserId,
   VolunteerId,
@@ -31,7 +32,8 @@ export interface CreateParticipationAssignmentInput {
   shiftId: ShiftId;
   volunteerId: VolunteerId;
   roleId: RoleId;
-  teamId?: string;
+  teamId?: TeamId;
+  teamLeaderScopeId?: TeamId;
   actorId: UserId;
   override?: AssignmentOverrideInput;
 }
@@ -65,6 +67,7 @@ export interface DeleteAssignmentInput {
   assignmentId: AssignmentId;
   churchId: ChurchId;
   actorId: UserId;
+  teamLeaderScopeId?: TeamId;
 }
 
 export interface ListAssignmentAuditLogInput {

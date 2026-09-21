@@ -118,13 +118,18 @@ describe('DbParticipationManager Team roster scope', () => {
     ministryRepository.getById.mockResolvedValue({});
     eventRepository.listCycleEvents.mockResolvedValue([
       {
-        event: { id: 'event-1' },
+        event: {
+          id: 'event-1',
+          status: 'scheduled',
+          start: '2027-01-01T09:00:00.000Z',
+        },
         slots: [{ id: 'slot-a' }, { id: 'slot-b' }],
       },
     ]);
     participationRepository.findByMinistryEvent.mockResolvedValue({
       id: 'participation-1',
       ministryId,
+      state: 'rostering',
     });
     participationRepository.listInclusions.mockResolvedValue([]);
     shiftRepository.listByParticipation.mockResolvedValue([
@@ -135,7 +140,7 @@ describe('DbParticipationManager Team roster scope', () => {
       {
         id: 'requirement-b',
         shiftId: 'shift-a',
-        roleId: 'role-a',
+        roleId: 'role-b',
         teamId: otherTeamId,
       },
     ]);
@@ -189,13 +194,137 @@ describe('DbParticipationManager Team roster scope', () => {
     expect(shifts).toHaveLength(1);
     expect(shifts[0]?.shift.id).toBe('shift-a');
     expect(
-      shifts[0]?.requirements.map((requirement) => requirement.id),
+      shifts[0]?.requirements.map((requirement) => requirement.requirement.id),
     ).toEqual(['requirement-a']);
-    // A same-role assignment cannot be safely attributed without a persisted
-    // Team id, so neither Team receives it through this read model.
-    expect(shifts[0]?.assignments).toEqual([]);
+    expect(shifts[0]?.requirements[0]?.canMutateAssignments).toBe(true);
+    expect(shifts[0]?.assignments.map((assignment) => assignment.id)).toEqual([
+      'assignment-a',
+    ]);
     expect(
       shifts[0]?.eligibleVolunteers.map((volunteer) => volunteer.volunteerId),
     ).toEqual(['volunteer-a']);
+  });
+
+  it('withholds a TeamLeader mutation capability when same-role requirements are ambiguous', async () => {
+    const {
+      manager,
+      assignmentRepository,
+      availabilityRepository,
+      eventRepository,
+      ministryRepository,
+      participationRepository,
+      roleRepository,
+      shiftRepository,
+      volunteerRepository,
+    } = createManager();
+    ministryRepository.getById.mockResolvedValue({});
+    eventRepository.listCycleEvents.mockResolvedValue([
+      {
+        event: {
+          id: 'event-1',
+          status: 'scheduled',
+          start: '2027-01-01T09:00:00.000Z',
+        },
+        slots: [{ id: 'slot-a' }],
+      },
+    ]);
+    participationRepository.findByMinistryEvent.mockResolvedValue({
+      id: 'participation-1',
+      ministryId,
+      state: 'rostering',
+    });
+    participationRepository.listInclusions.mockResolvedValue([]);
+    shiftRepository.listByParticipation.mockResolvedValue([
+      { id: 'shift-a', timeSlotId: 'slot-a' },
+    ]);
+    shiftRepository.listRequirementsByParticipation.mockResolvedValue([
+      { id: 'requirement-a', shiftId: 'shift-a', roleId: 'role-a', teamId },
+      {
+        id: 'requirement-b',
+        shiftId: 'shift-a',
+        roleId: 'role-a',
+        teamId: otherTeamId,
+      },
+    ]);
+    assignmentRepository.listByParticipation.mockResolvedValue([]);
+    assignmentRepository.listByVolunteers.mockResolvedValue([]);
+    availabilityRepository.listByVolunteers.mockResolvedValue([]);
+    roleRepository.listByMinistry.mockResolvedValue([
+      { id: 'role-a', name: 'Greeter' },
+    ]);
+    volunteerRepository.listMinistryMemberships.mockResolvedValue([
+      {
+        volunteerId: 'volunteer-a',
+        qualifiedRoleIds: ['role-a'],
+        ministryAccessLevel: 'volunteer',
+        teamMemberships: [{ teamId, accessLevel: 'member' }],
+      },
+    ]);
+    volunteerRepository.listQualifiedForRole.mockResolvedValue([
+      { id: 'volunteer-a', name: 'Alpha' },
+    ]);
+
+    const view = await manager.getCycleBuilderData({
+      churchId,
+      cycleId,
+      ministryId,
+      teamId,
+      userId,
+    });
+
+    expect(
+      view.events[0]?.slots[0]?.shifts[0]?.requirements[0]
+        ?.canMutateAssignments,
+    ).toBe(false);
+  });
+
+  it('keeps a Ministry leader capable of mutating every returned requirement', async () => {
+    const {
+      manager,
+      assignmentRepository,
+      availabilityRepository,
+      eventRepository,
+      ministryRepository,
+      participationRepository,
+      roleRepository,
+      shiftRepository,
+      volunteerRepository,
+    } = createManager();
+    ministryRepository.getById.mockResolvedValue({});
+    eventRepository.listCycleEvents.mockResolvedValue([
+      { event: { id: 'event-1' }, slots: [{ id: 'slot-a' }] },
+    ]);
+    participationRepository.findByMinistryEvent.mockResolvedValue({
+      id: 'participation-1',
+      ministryId,
+      state: 'published',
+    });
+    participationRepository.listInclusions.mockResolvedValue([]);
+    shiftRepository.listByParticipation.mockResolvedValue([
+      { id: 'shift-a', timeSlotId: 'slot-a' },
+    ]);
+    shiftRepository.listRequirementsByParticipation.mockResolvedValue([
+      { id: 'requirement-a', shiftId: 'shift-a', roleId: 'role-a' },
+    ]);
+    assignmentRepository.listByParticipation.mockResolvedValue([]);
+    assignmentRepository.listByVolunteers.mockResolvedValue([]);
+    availabilityRepository.listByVolunteers.mockResolvedValue([]);
+    roleRepository.listByMinistry.mockResolvedValue([
+      { id: 'role-a', name: 'Greeter' },
+    ]);
+    volunteerRepository.listMinistryMemberships.mockResolvedValue([]);
+    volunteerRepository.listQualifiedForRole.mockResolvedValue([]);
+
+    const view = await manager.getCycleBuilderData({
+      churchId,
+      cycleId,
+      ministryId,
+      userId,
+    });
+
+    expect(
+      view.events[0]?.slots[0]?.shifts[0]?.requirements[0]
+        ?.canMutateAssignments,
+    ).toBe(true);
   });
 });

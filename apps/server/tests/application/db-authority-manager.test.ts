@@ -188,6 +188,36 @@ describe('DbAuthorityManager', () => {
     ).resolves.toBe(false);
   });
 
+  it('canManageTeamShift allows only the explicitly led Team owning the Shift ministry', async () => {
+    const manager = createManager();
+    const shiftId = 'shift_1' as ShiftId;
+
+    scopeRepository.resolveShiftMinistry.mockResolvedValue(ministryId);
+    teamRepository.listByIds.mockResolvedValue([
+      { id: teamId, ministryId, name: 'Greeting' },
+    ]);
+    actorRepository.resolveActor.mockResolvedValue(teamLeaderActor());
+
+    await expect(
+      manager.canManageTeamShift({ churchId, shiftId, teamId, userId }),
+    ).resolves.toBe(true);
+  });
+
+  it('canManageTeamShift denies a forged Team from another Ministry without resolving the actor', async () => {
+    const manager = createManager();
+    const shiftId = 'shift_1' as ShiftId;
+
+    scopeRepository.resolveShiftMinistry.mockResolvedValue(ministryId);
+    teamRepository.listByIds.mockResolvedValue([
+      { id: teamId, ministryId: 'min_other', name: 'Other' },
+    ]);
+
+    await expect(
+      manager.canManageTeamShift({ churchId, shiftId, teamId, userId }),
+    ).resolves.toBe(false);
+    expect(actorRepository.resolveActor).not.toHaveBeenCalled();
+  });
+
   it('canManageEvent resolves the owning Ministry via EventRepository then delegates', async () => {
     const manager = createManager();
     const eventId = 'evt_1' as EventId;

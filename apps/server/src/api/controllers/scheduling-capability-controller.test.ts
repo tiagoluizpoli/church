@@ -174,4 +174,48 @@ describe('Scheduling capability controller', () => {
       ],
     });
   });
+
+  it('returns mixed Ministry and Team scope without a redundant Team entry', async () => {
+    authorityGuard.resolveSchedulingCapability.mockResolvedValue({
+      canAccessScheduling: true,
+      entries: [
+        {
+          kind: 'ministry',
+          ministryId: '11111111-1111-4111-8111-111111111111',
+          name: 'Worship',
+        },
+        {
+          kind: 'team',
+          ministryId: '22222222-2222-4222-8222-222222222222',
+          ministryName: 'Kids',
+          teamId: '33333333-3333-4333-8333-333333333333',
+          name: 'Check-in',
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/scheduling/capability',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      canAccessScheduling: true,
+      entries: [
+        {
+          kind: 'ministry',
+          ministryId: '11111111-1111-4111-8111-111111111111',
+          name: 'Worship',
+        },
+        {
+          kind: 'team',
+          ministryId: '22222222-2222-4222-8222-222222222222',
+          ministryName: 'Kids',
+          teamId: '33333333-3333-4333-8333-333333333333',
+          name: 'Check-in',
+        },
+      ],
+    });
+  });
 });

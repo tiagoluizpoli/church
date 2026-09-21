@@ -362,6 +362,58 @@ describe('DbAuthorityManager', () => {
     });
   });
 
+  it('keeps mixed Ministry and Team leadership at their actual scopes', async () => {
+    const manager = createManager();
+    const teamOnlyMinistryId = 'min_kids' as MinistryId;
+    const teamOnlyTeamId = 'team_checkin' as TeamId;
+
+    actorRepository.resolveActor.mockResolvedValueOnce({
+      ...ministryLeaderActor(),
+      teamMemberships: [
+        {
+          churchId,
+          ministryId,
+          teamId,
+          accessLevel: 'leader',
+        },
+        {
+          churchId,
+          ministryId: teamOnlyMinistryId,
+          teamId: teamOnlyTeamId,
+          accessLevel: 'leader',
+        },
+      ],
+    });
+    ministryRepository.getById
+      .mockResolvedValueOnce({ id: ministryId, name: 'Worship' })
+      .mockResolvedValueOnce({ id: ministryId, name: 'Worship' })
+      .mockResolvedValueOnce({ id: teamOnlyMinistryId, name: 'Kids' });
+    teamRepository.listByIds.mockResolvedValueOnce([
+      { id: teamId, ministryId, name: 'Greeting' },
+      {
+        id: teamOnlyTeamId,
+        ministryId: teamOnlyMinistryId,
+        name: 'Check-in',
+      },
+    ]);
+
+    await expect(
+      manager.resolveSchedulingCapability({ churchId, userId }),
+    ).resolves.toEqual({
+      canAccessScheduling: true,
+      entries: [
+        { kind: 'ministry', ministryId, name: 'Worship' },
+        {
+          kind: 'team',
+          ministryId: teamOnlyMinistryId,
+          ministryName: 'Kids',
+          teamId: teamOnlyTeamId,
+          name: 'Check-in',
+        },
+      ],
+    });
+  });
+
   it('denies a resource whose resolved Ministry belongs to a different Church', async () => {
     const manager = createManager();
 

@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/__tests__/setup/children-props';
@@ -6,6 +6,7 @@ import { renderRoute } from '@/__tests__/setup/render-route';
 
 const getSchedulingCapability = vi.fn();
 const listPlanningCycles = vi.fn();
+const listTeamRosterCycles = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -15,6 +16,7 @@ vi.mock('@/utils/api-instances', async () => ({
   },
   adminApi: {
     listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listTeamRosterCycles: (...args: unknown[]) => listTeamRosterCycles(...args),
   },
   activeChurchApi: (await import('@/__tests__/setup/active-church'))
     .activeChurchApiMock,
@@ -42,6 +44,7 @@ beforeEach(() => {
   getSchedulingCapability.mockReset();
   listPlanningCycles.mockReset();
   listPlanningCycles.mockResolvedValue({ cycles: [] });
+  listTeamRosterCycles.mockReset();
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
 });
 
@@ -141,5 +144,24 @@ describe('Scheduling capability index route', () => {
     expect(
       await screen.findByText('No Scheduling work is available'),
     ).toBeVisible();
+  });
+
+  it('returns a caller whose Scheduling authority was removed to Dashboard after a denied Team link', async () => {
+    listTeamRosterCycles.mockRejectedValueOnce(new Error('Forbidden'));
+    getSchedulingCapability.mockResolvedValueOnce({
+      canAccessScheduling: false,
+      entries: [],
+    });
+
+    const { router } = renderRoute({
+      initialPath:
+        '/scheduling/rostering/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/dashboard'),
+    );
+    expect(getSchedulingCapability).toHaveBeenCalledTimes(1);
   });
 });

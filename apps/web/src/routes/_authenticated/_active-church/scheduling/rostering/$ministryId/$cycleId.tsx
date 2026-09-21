@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
+import { useSchedulingAccessFallback } from '@/shared/hooks/use-scheduling-access-fallback';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -19,7 +19,6 @@ export const Route = createFileRoute(
 function EventBuilderRoute() {
   const { ministryId, cycleId } = Route.useParams();
   const { teamId } = Route.useSearch();
-  const navigate = useNavigate();
   const {
     data,
     publish,
@@ -35,18 +34,10 @@ function EventBuilderRoute() {
     enabled: !teamId,
   });
 
-  useEffect(() => {
-    if (query.isError) {
-      void navigate({ to: '/scheduling', replace: true });
-    }
-  }, [navigate, query.isError]);
+  useSchedulingAccessFallback({ shouldRedirect: query.isError });
 
   if (query.isError) {
-    return (
-      <div className="rounded border border-destructive p-4 text-destructive text-sm">
-        {query.error?.message ?? 'Failed to load cycle builder'}
-      </div>
-    );
+    return null;
   }
 
   if (

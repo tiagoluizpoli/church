@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { PlanningAdmin } from '@/features/scheduling/components/planning-admin';
 import { isForbiddenError } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
+import { resolveSchedulingAccessFallback } from '@/shared/hooks/use-scheduling-access-fallback';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -15,7 +16,10 @@ export const Route = createFileRoute(
       });
     } catch (error) {
       if (isForbiddenError({ error })) {
-        redirect({ to: '/dashboard', throw: true });
+        const destination = await resolveSchedulingAccessFallback({
+          queryClient: context.queryClient,
+        });
+        redirect({ to: destination, throw: true });
       }
       throw error;
     }

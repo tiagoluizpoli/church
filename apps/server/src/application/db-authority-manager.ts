@@ -197,6 +197,7 @@ export class DbAuthorityManager implements IAuthorityManager {
       ministries.map((ministry) => [ministry.id, ministry.name]),
     );
     const teamEntries = teams.flatMap((team) => {
+      if (ledMinistryIds.includes(team.ministryId)) return [];
       const ministryName = ministryNames.get(team.ministryId);
       return ministryName
         ? [

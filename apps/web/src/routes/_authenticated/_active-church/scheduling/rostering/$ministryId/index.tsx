@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { z } from 'zod';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
+import { useSchedulingAccessFallback } from '@/shared/hooks/use-scheduling-access-fallback';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -28,18 +28,15 @@ export const Route = createFileRoute(
 function TeamRosterCyclesRoute() {
   const { ministryId } = Route.useParams();
   const { teamId } = Route.useSearch();
-  const navigate = useNavigate();
   const cyclesQuery = useQuery({
     queryKey: ['team-roster-cycles', ministryId, teamId],
     queryFn: () => adminApi.listTeamRosterCycles(teamId, { ministryId }),
     retry: false,
   });
 
-  useEffect(() => {
-    if (cyclesQuery.isError) {
-      void navigate({ to: '/scheduling', replace: true });
-    }
-  }, [cyclesQuery.isError, navigate]);
+  useSchedulingAccessFallback({ shouldRedirect: cyclesQuery.isError });
+
+  if (cyclesQuery.isError) return null;
 
   const cycles = cyclesQuery.data?.cycles ?? [];
 
@@ -60,7 +57,7 @@ function TeamRosterCyclesRoute() {
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>
-      ) : cyclesQuery.isError ? null : cycles.length === 0 ? (
+      ) : cycles.length === 0 ? (
         <Alert>
           <AlertTitle>No locked roster cycles</AlertTitle>
           <AlertDescription>

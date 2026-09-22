@@ -28,11 +28,22 @@ const VOLUNTEER_TRANSFER_SPEC_PATHS = [
 
 // #216 — the dashboard shell and its shared hooks/lib feed all three of the
 // Availability, Assignment, and Ministry Schedule sections at once, so a
-// change there is verified by all three specs together.
+// change there is verified by all three specs together. #218 — the same
+// shell and hooks (use-online-state, use-dashboard-refresh,
+// dashboard-query-options' cached-snapshot reads) also drive the offline
+// experience proven by us5-offline, so it joins this shared group.
 const VOLUNTEER_DASHBOARD_SPEC_PATHS = [
   'tests/volunteer-dashboard/us1-availability.spec.ts',
   'tests/volunteer-dashboard/us2-assignments.spec.ts',
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+  'tests/volunteer-dashboard/us5-offline.spec.ts',
+];
+
+// #218 — the notification bell (header) and the /notifications inbox page
+// are proven end to end by this one spec, the only one that drives the
+// bell's dropdown, its deep links, and the full inbox page.
+const NOTIFICATION_BELL_SPEC_PATHS = [
+  'tests/volunteer-dashboard/us-notification-bell.spec.ts',
 ];
 
 // #217 — Church isolation on the planning-cycles list and $cycleId route,
@@ -271,9 +282,14 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
   },
   {
+    // #218 — also owns the cached notification-inbox reads/writes that back
+    // use-notification-inbox's offline fallback.
     sourcePathPrefix:
       'apps/web/src/features/volunteers/lib/dashboard-query-options.ts',
-    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
+    specPaths: [
+      ...VOLUNTEER_DASHBOARD_SPEC_PATHS,
+      ...NOTIFICATION_BELL_SPEC_PATHS,
+    ],
   },
   {
     sourcePathPrefix:
@@ -281,14 +297,37 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
   },
   {
+    // #218 — shared by every dashboard hook (use-volunteer-dashboard,
+    // use-dashboard-refresh) and by use-notification-inbox, so a change here
+    // is verified by both the offline and notification-bell journeys.
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/hooks/use-online-state.ts',
+    specPaths: [
+      ...VOLUNTEER_DASHBOARD_SPEC_PATHS,
+      ...NOTIFICATION_BELL_SPEC_PATHS,
+    ],
+  },
+  {
+    // #218 — the offline/last-known-data alert rendered only from the
+    // dashboard shell.
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx',
+    specPaths: ['tests/volunteer-dashboard/us5-offline.spec.ts'],
+  },
+  {
     sourcePathPrefix:
       'apps/web/src/features/volunteers/components/availability-needed-section.tsx',
     specPaths: ['tests/volunteer-dashboard/us1-availability.spec.ts'],
   },
   {
+    // #218 — also renders the offline-disabled Save/edit affordances
+    // us5-offline asserts on.
     sourcePathPrefix:
       'apps/web/src/features/volunteers/components/availability-form.tsx',
-    specPaths: ['tests/volunteer-dashboard/us1-availability.spec.ts'],
+    specPaths: [
+      'tests/volunteer-dashboard/us1-availability.spec.ts',
+      'tests/volunteer-dashboard/us5-offline.spec.ts',
+    ],
   },
   {
     sourcePathPrefix:
@@ -319,14 +358,45 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // #216 — the volunteer-facing generated API client backs the dashboard
   // (Availability/Assignment/ministry-schedule), the availability-check
   // journey (#210's initial smoke set), and roster-publish's volunteer-side
-  // assertion; verified by grepping each endpoint's only caller.
+  // assertion; verified by grepping each endpoint's only caller. #218 — it
+  // also serves the /notifications, /notifications/:id, and
+  // /notifications/read-all endpoints the bell and inbox call.
   {
     sourcePathPrefix: 'apps/web/src/infrastructure/api/volunteer.ts',
     specPaths: [
       ...VOLUNTEER_DASHBOARD_SPEC_PATHS,
+      ...NOTIFICATION_BELL_SPEC_PATHS,
       'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
     ],
+  },
+  // #218 — the notification bell (header, every page) and the /notifications
+  // inbox page, proven end to end by this one spec.
+  {
+    sourcePathPrefix:
+      'apps/web/src/components/notification-bell/notification-bell.tsx',
+    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/notifications.tsx',
+    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
+    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',
+    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
+  },
+  {
+    // Drives the deep-link the spec asserts on when clicking a notification.
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/lib/notification-navigation.ts',
+    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
   // #216 — the rostering (assignment/publish) generated API client backs the
   // cycle-builder used at the rostering route; already the exact spec pair
@@ -368,9 +438,14 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   },
   // #217 — the volunteer controller's own-assignment cancel endpoint is what
-  // proves a different volunteer gets a 403, not just a UI affordance.
+  // proves a different volunteer gets a 403, not just a UI affordance. #218 —
+  // it also owns the /notifications list, read, and read-all endpoints the
+  // bell and inbox call.
   {
     sourcePathPrefix: 'apps/server/src/api/controllers/volunteer-controller.ts',
-    specPaths: ['tests/scheduling/us5-live-changes.spec.ts'],
+    specPaths: [
+      'tests/scheduling/us5-live-changes.spec.ts',
+      ...NOTIFICATION_BELL_SPEC_PATHS,
+    ],
   },
 ];

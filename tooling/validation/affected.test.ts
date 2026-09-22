@@ -109,6 +109,78 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
+  it('selects the admin-plan journey for a planning-cycles route change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/_authenticated/_active-church/scheduling/planning-cycles/new.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/planning-nav-restructure.spec.ts',
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us1-admin-plan.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the admin-plan journey for a planning-admin feature component change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/scheduling/components/planning-admin/create-cycle-form.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toContain(
+      'tests/scheduling/us1-admin-plan.spec.ts',
+    );
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the leader-tailor journey for a tailoring route change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us2-leader-tailor.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the leader-tailor journey for the tailoring API client', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/infrastructure/api/tailoring.ts'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/us2-leader-tailor.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects both planning journeys for the shared generated planning API client', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/infrastructure/api/planning.ts'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/planning-nav-restructure.spec.ts',
+      'tests/scheduling/us1-admin-plan.spec.ts',
+      'tests/scheduling/us2-leader-tailor.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
   it('runs the critical smoke set and reports the gap for an unmapped production change', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/routes/dashboard.tsx'],

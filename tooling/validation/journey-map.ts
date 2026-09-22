@@ -73,4 +73,62 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/us4-roster-publish.spec.ts',
     ],
   },
+  {
+    // PlanningCycle admin journey (#215): create cycle, build/apply the
+    // template library (including the overnight-block span rule), add
+    // manual events, resolve overlap, lock, navigate cycle/template/new
+    // URLs, and review the calendar table — proven end to end by these four
+    // specs, the only ones that exercise the planning-cycles routes and
+    // planning-admin feature components. The generic prefixes above only
+    // select smoke/us4, which never touch this dialog-driven flow.
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/scheduling/planning-cycles',
+    specPaths: [
+      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/planning-nav-restructure.spec.ts',
+      'tests/scheduling/us1-admin-plan.spec.ts',
+    ],
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/components/planning-admin/',
+    specPaths: [
+      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/planning-nav-restructure.spec.ts',
+      'tests/scheduling/us1-admin-plan.spec.ts',
+    ],
+  },
+  {
+    // Leader-tailoring journey (#215): tailoring participation, split
+    // shifts, headcounts, and firing Availability — proven end to end by
+    // us2-leader-tailor.spec.ts, the only spec that drives the tailoring
+    // routes, feature components, and its dedicated API client.
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring',
+    specPaths: ['tests/scheduling/us2-leader-tailor.spec.ts'],
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/features/scheduling/components/tailoring/',
+    specPaths: ['tests/scheduling/us2-leader-tailor.spec.ts'],
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/infrastructure/api/tailoring.ts',
+    specPaths: ['tests/scheduling/us2-leader-tailor.spec.ts'],
+  },
+  {
+    // Generated client shared by both the planning-admin (cycle/template/
+    // event CRUD) and tailoring (serving-profile, default-direction)
+    // endpoints — verified by grepping both endpoint families into this one
+    // file.
+    sourcePathPrefix: 'apps/web/src/infrastructure/api/planning.ts',
+    specPaths: [
+      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/planning-nav-restructure.spec.ts',
+      'tests/scheduling/us1-admin-plan.spec.ts',
+      'tests/scheduling/us2-leader-tailor.spec.ts',
+    ],
+  },
 ];

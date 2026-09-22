@@ -251,6 +251,90 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
+  it('selects the volunteer-dashboard journeys for the dashboard route and shell component', () => {
+    for (const changedPath of [
+      'apps/web/src/routes/_authenticated/_active-church/dashboard.tsx',
+      'apps/web/src/features/volunteers/components/volunteer-dashboard.tsx',
+      'apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts',
+    ]) {
+      const plan = classifyChanges({ changedPaths: [changedPath] });
+
+      expect(plan.e2eSpecPaths).toEqual([
+        'tests/volunteer-dashboard/us1-availability.spec.ts',
+        'tests/volunteer-dashboard/us2-assignments.spec.ts',
+        'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+      ]);
+      expect(plan.missingJourneyMappings).toEqual([]);
+    }
+  });
+
+  it('selects only the Availability journey for the availability-needed section', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/volunteers/components/availability-needed-section.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us1-availability.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects only the Assignment journey for the upcoming-assignments section', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us2-assignments.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the published-schedule journeys for the ministry-schedule section', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/volunteers/components/ministry-schedule-section.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the volunteer-dashboard, us3-availability, and roster-publish journeys for the volunteer API client', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/infrastructure/api/volunteer.ts'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/us3-volunteer-availability.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/volunteer-dashboard/us1-availability.spec.ts',
+      'tests/volunteer-dashboard/us2-assignments.spec.ts',
+      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the roster-publish journey for the rostering API client', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/infrastructure/api/rostering.ts'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
   it('runs the critical smoke set and reports the gap for an unmapped production change', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/routes/dashboard.tsx'],

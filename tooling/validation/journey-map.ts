@@ -26,6 +26,15 @@ const VOLUNTEER_TRANSFER_SPEC_PATHS = [
   'tests/identity/volunteer-transfer-journey.spec.ts',
 ];
 
+// #216 — the dashboard shell and its shared hooks/lib feed all three of the
+// Availability, Assignment, and Ministry Schedule sections at once, so a
+// change there is verified by all three specs together.
+const VOLUNTEER_DASHBOARD_SPEC_PATHS = [
+  'tests/volunteer-dashboard/us1-availability.spec.ts',
+  'tests/volunteer-dashboard/us2-assignments.spec.ts',
+  'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+];
+
 // Sourced from verified route-to-spec coupling (e.g. a spec's page.goto
 // target matches the route file's path). Each entry here is a mapped hit;
 // every production web/server path that matches none of them falls back to
@@ -193,5 +202,93 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix:
       'apps/server/src/application/db-volunteer-transfer-manager.ts',
     specPaths: VOLUNTEER_TRANSFER_SPEC_PATHS,
+  },
+  // #216 — Volunteer dashboard Availability and Assignment journeys: the
+  // "Availability needed" task/editor and the "I cannot serve" assignment
+  // response, proven end to end by these two specs, the only ones that drive
+  // the dashboard route's availability/assignments sections.
+  {
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/dashboard.tsx',
+    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/components/volunteer-dashboard.tsx',
+    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts',
+    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/hooks/use-dashboard-refresh.ts',
+    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/lib/dashboard-query-options.ts',
+    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/lib/dashboard-mappers.ts',
+    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/components/availability-needed-section.tsx',
+    specPaths: ['tests/volunteer-dashboard/us1-availability.spec.ts'],
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/components/availability-form.tsx',
+    specPaths: ['tests/volunteer-dashboard/us1-availability.spec.ts'],
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx',
+    specPaths: ['tests/volunteer-dashboard/us2-assignments.spec.ts'],
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/lib/assignment-grouping.ts',
+    specPaths: ['tests/volunteer-dashboard/us2-assignments.spec.ts'],
+  },
+  // #216 — published-schedule visibility: the ministry-schedule dashboard
+  // section is exercised directly by us4-ministry-schedule, and reused by
+  // us4-roster-publish to assert a volunteer sees a just-published shift.
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/volunteers/components/ministry-schedule-section.tsx',
+    specPaths: [
+      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+    ],
+  },
+  // #216 — the volunteer-facing generated API client backs the dashboard
+  // (Availability/Assignment/ministry-schedule), the availability-check
+  // journey (#210's initial smoke set), and roster-publish's volunteer-side
+  // assertion; verified by grepping each endpoint's only caller.
+  {
+    sourcePathPrefix: 'apps/web/src/infrastructure/api/volunteer.ts',
+    specPaths: [
+      ...VOLUNTEER_DASHBOARD_SPEC_PATHS,
+      'tests/scheduling/us3-volunteer-availability.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+    ],
+  },
+  // #216 — the rostering (assignment/publish) generated API client backs the
+  // cycle-builder used at the rostering route; already the exact spec pair
+  // the critical-smoke fallback would run, made explicit rather than
+  // incidental.
+  {
+    sourcePathPrefix: 'apps/web/src/infrastructure/api/rostering.ts',
+    specPaths: [
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+    ],
   },
 ];

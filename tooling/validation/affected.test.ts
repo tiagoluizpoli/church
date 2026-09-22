@@ -69,6 +69,46 @@ describe('classifyChanges', () => {
     expect(plan.requiresFullE2e).toBe(false);
   });
 
+  it('selects both redemption journeys for a chained-invitation route change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/invitations/church/$invitationId.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/redemption-existing-member.spec.ts',
+      'tests/identity/redemption-new-user.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects both redemption journeys for a ministry-invitation route change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/_authenticated/invitations/ministry/$invitationId.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/redemption-existing-member.spec.ts',
+      'tests/identity/redemption-new-user.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects both redemption journeys for a redemption API client change', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/infrastructure/api/redemption.ts'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/redemption-existing-member.spec.ts',
+      'tests/identity/redemption-new-user.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
   it('runs the critical smoke set and reports the gap for an unmapped production change', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/routes/dashboard.tsx'],

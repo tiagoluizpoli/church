@@ -181,6 +181,33 @@ async function assignGraceHopper() {
   await user.click(await screen.findByTestId('suggestion-option'));
 }
 
+describe('CycleBuilder rail selection wiring (#217)', () => {
+  // apps/web/tests/scheduling/builder-reverse-highlight.spec.ts (moved down):
+  // the override/unqualified/none tiers already have direct cell-level proof
+  // (cycle-builder-cell.component.test.tsx) and the rail's own selection
+  // toggle has card-level proof (volunteer-card.component.test.tsx); what was
+  // still only proven end-to-end was the plumbing this composed render
+  // exercises — a rail pick reaching the matching cell as the 'ready' tier,
+  // and clearing it putting the board back.
+  it('lights the cell a selected volunteer fits and clearing the pick puts it back', async () => {
+    const user = userEvent.setup();
+    renderBuilder();
+
+    const cell = screen.getByTestId('cycle-requirement-shift-1-role-1');
+    expect(cell).toHaveAttribute('data-selected-fit', 'none');
+
+    const selectSlot = screen.getAllByTestId('volunteer-select-slot')[0];
+    await user.click(selectSlot);
+
+    expect(cell).toHaveAttribute('data-selected-fit', 'ready');
+    expect(selectSlot).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(selectSlot);
+
+    expect(cell).toHaveAttribute('data-selected-fit', 'none');
+  });
+});
+
 describe('CycleBuilder header (B-4)', () => {
   it('replaces the hero with the cycle, its window, and how much of it is done', () => {
     renderBuilder();

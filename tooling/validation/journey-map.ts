@@ -35,6 +35,16 @@ const VOLUNTEER_DASHBOARD_SPEC_PATHS = [
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
 ];
 
+// #217 — Church isolation on the planning-cycles list and $cycleId route,
+// the two lock edge cases (network failure, double-submit), and the
+// Church-local-time create-event journey all load through the same
+// planning-cycles route, feature components, and generated API client.
+const PLANNING_CYCLE_EDGE_SPEC_PATHS = [
+  'tests/scheduling/cross-cutting.spec.ts',
+  'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
+  'tests/scheduling/single-create-event-ui.spec.ts',
+];
+
 // Sourced from verified route-to-spec coupling (e.g. a spec's page.goto
 // target matches the route file's path). Each entry here is a mapped hit;
 // every production web/server path that matches none of them falls back to
@@ -66,11 +76,22 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/identity/active-church-switching.spec.ts'],
   },
   {
+    // #217 — the scheduling capability index (the `/scheduling` landing
+    // route) is a distinct route from the three named below; its guard and
+    // capability specs load routes under this whole family, so they belong
+    // at this broad prefix rather than one of the narrower ones.
+    // a11y-builder.spec.ts and a11y-planning-nav.spec.ts (below) are
+    // deliberately NOT classified here — #217's own scope is "authorization,
+    // Church isolation, time, and edge-case coverage"; accessibility
+    // coverage is #219's ("Right-size web-shell coverage") to classify,
+    // including whether it needs new lower-layer a11y tooling.
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/scheduling',
     specPaths: [
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      'tests/scheduling/capability-index.spec.ts',
     ],
   },
   {
@@ -84,6 +105,13 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
+      // #217 — right-sized: qualification/eligibility guard, the one
+      // remaining boundary-crossing focus-rail assignment, and the
+      // cross-route denial matrix all render through this feature's
+      // components.
+      'tests/scheduling/qualification.spec.ts',
+      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
   },
   {
@@ -101,6 +129,14 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/planning-cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
+      // #217 — right-sized: Church isolation on the list and the $cycleId
+      // route, the two lock edge cases (network failure, double-submit), the
+      // Church-local-time create-event journey, and the cross-route guard
+      // matrix's ChurchAdmin-facing route all load through this route
+      // family. Accessibility (a11y-planning-nav.spec.ts) is out of #217's
+      // scope — see the comment on the broad scheduling prefix above.
+      ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
   },
   {
@@ -111,6 +147,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/planning-cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
+      ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
     ],
   },
   {
@@ -120,7 +157,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // routes, feature components, and its dedicated API client.
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring',
-    specPaths: ['tests/scheduling/us2-leader-tailor.spec.ts'],
+    specPaths: [
+      'tests/scheduling/us2-leader-tailor.spec.ts',
+      // #217 — the matrix's Volunteer-denial case and the merged-in Leader
+      // positive control both load this bare index route directly.
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
+    ],
   },
   {
     sourcePathPrefix: 'apps/web/src/features/scheduling/components/tailoring/',
@@ -142,6 +184,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-tailor.spec.ts',
+      ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
     ],
   },
   // #214 — Church isolation (Ministry Invitation minting/resend) proven by
@@ -250,7 +293,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix:
       'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx',
-    specPaths: ['tests/volunteer-dashboard/us2-assignments.spec.ts'],
+    specPaths: [
+      'tests/volunteer-dashboard/us2-assignments.spec.ts',
+      // #217 — the volunteer-side confirm/cancel affordance us5-live-changes
+      // drives to prove the leader-notify and cross-volunteer-denial edges.
+      'tests/scheduling/us5-live-changes.spec.ts',
+    ],
   },
   {
     sourcePathPrefix:
@@ -289,6 +337,40 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: [
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
+      // #217 — team-scoped assignment/removal (qualification), the focused
+      // pick-me commit (builder-slot-focus), and the volunteer-notify/leader-
+      // reassign flow (us5-live-changes) all call this client's assignment
+      // endpoints.
+      'tests/scheduling/qualification.spec.ts',
+      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/us5-live-changes.spec.ts',
     ],
+  },
+  // #217 — the church-admin-controller owns every planning-cycle and event
+  // endpoint these specs drive: list/detail isolation and the lock edge
+  // cases (cross-cutting, DL4-X1/X2/X3), the $cycleId isolation route
+  // (planning-cross-tenant-isolation), and quick-create's Church-local
+  // Instant (single-create-event-ui).
+  {
+    sourcePathPrefix:
+      'apps/server/src/api/controllers/church-admin-controller.ts',
+    specPaths: PLANNING_CYCLE_EDGE_SPEC_PATHS,
+  },
+  // #217 — the rostering controller owns shift assignment, unassignment, and
+  // reassignment: qualification's team-boundary 403, builder-slot-focus's
+  // focused commit, and us5-live-changes's mid-cycle reassign.
+  {
+    sourcePathPrefix: 'apps/server/src/api/controllers/rostering-controller.ts',
+    specPaths: [
+      'tests/scheduling/qualification.spec.ts',
+      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/us5-live-changes.spec.ts',
+    ],
+  },
+  // #217 — the volunteer controller's own-assignment cancel endpoint is what
+  // proves a different volunteer gets a 403, not just a UI affordance.
+  {
+    sourcePathPrefix: 'apps/server/src/api/controllers/volunteer-controller.ts',
+    specPaths: ['tests/scheduling/us5-live-changes.spec.ts'],
   },
 ];

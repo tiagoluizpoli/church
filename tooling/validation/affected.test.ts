@@ -187,9 +187,14 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/capability-index.spec.ts',
+      'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/planning-cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      'tests/scheduling/single-create-event-ui.spec.ts',
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
@@ -218,6 +223,8 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/capability-index.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us2-leader-tailor.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
@@ -242,9 +249,12 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/planning-cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
+      'tests/scheduling/single-create-event-ui.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-tailor.spec.ts',
     ]);
@@ -281,7 +291,7 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects only the Assignment journey for the upcoming-assignments section', () => {
+  it('selects the Assignment and #217 live-changes journeys for the upcoming-assignments section', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx',
@@ -289,6 +299,7 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/us5-live-changes.spec.ts',
       'tests/volunteer-dashboard/us2-assignments.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
@@ -323,16 +334,111 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the roster-publish journey for the rostering API client', () => {
+  it('selects the roster-publish and #217 guard/edge journeys for the rostering API client', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/infrastructure/api/rostering.ts'],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/qualification.spec.ts',
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/scheduling/us5-live-changes.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the Church-isolation and lock-edge-case journeys for the planning-cycles route', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/_authenticated/_active-church/scheduling/planning-cycles.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toContain(
+      'tests/scheduling/cross-cutting.spec.ts',
+    );
+    expect(plan.e2eSpecPaths).toContain(
+      'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
+    );
+    expect(plan.e2eSpecPaths).toContain(
+      'tests/scheduling/single-create-event-ui.spec.ts',
+    );
+    expect(plan.e2eSpecPaths).toContain(
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
+    );
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the guard-matrix journey for the tailoring route and the scheduling route family', () => {
+    const tailoringPlan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring.tsx',
+      ],
+    });
+    expect(tailoringPlan.e2eSpecPaths).toContain(
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
+    );
+
+    const indexPlan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
+      ],
+    });
+    expect(indexPlan.e2eSpecPaths).toEqual([
+      'tests/scheduling/capability-index.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
     ]);
+  });
+
+  it('selects the eligibility and cross-route guard journeys for the scheduling feature', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/scheduling/hooks/use-cycle-builder.ts',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      'tests/scheduling/qualification.spec.ts',
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us3-volunteer-availability.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+    ]);
     expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the #217 guard/edge journeys for the church-admin, rostering, and volunteer controllers', () => {
+    const churchAdminPlan = classifyChanges({
+      changedPaths: [
+        'apps/server/src/api/controllers/church-admin-controller.ts',
+      ],
+    });
+    expect(churchAdminPlan.e2eSpecPaths).toEqual([
+      'tests/scheduling/cross-cutting.spec.ts',
+      'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
+      'tests/scheduling/single-create-event-ui.spec.ts',
+    ]);
+
+    const rosteringPlan = classifyChanges({
+      changedPaths: ['apps/server/src/api/controllers/rostering-controller.ts'],
+    });
+    expect(rosteringPlan.e2eSpecPaths).toEqual([
+      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/qualification.spec.ts',
+      'tests/scheduling/us5-live-changes.spec.ts',
+    ]);
+
+    const volunteerControllerPlan = classifyChanges({
+      changedPaths: ['apps/server/src/api/controllers/volunteer-controller.ts'],
+    });
+    expect(volunteerControllerPlan.e2eSpecPaths).toEqual([
+      'tests/scheduling/us5-live-changes.spec.ts',
+    ]);
   });
 
   it('runs the critical smoke set and reports the gap for an unmapped production change', () => {

@@ -14,11 +14,16 @@ interface CommandInput {
   command: string;
 }
 
+interface CollectChangedPathsInput {
+  baseRef?: string;
+}
+
 interface ParseArgumentsInput {
   args: string[];
 }
 
 interface ParseArgumentsResult {
+  baseRef?: string;
   dryRun: boolean;
   e2eSpecPaths: string[];
 }
@@ -40,8 +45,20 @@ interface RunValidationInput {
   plan: ValidationPlan;
 }
 
-function collectChangedPaths(): string[] {
+function collectChangedPaths({ baseRef }: CollectChangedPathsInput): string[] {
+  // CI checks out a merge commit with a clean tree, so the working-tree
+  // diffs below are always empty there. --base compares against the PR's
+  // target branch instead, which is what a checked-out, committed CI ref
+  // needs; local runs omit it to keep diffing uncommitted work.
+  const baseComparisonPaths = baseRef
+    ? runCommand({
+        args: ['diff', '--name-only', `${baseRef}...HEAD`],
+        command: 'git',
+      })
+    : [];
+
   return [
+    ...baseComparisonPaths,
     ...runCommand({ args: ['diff', '--name-only'], command: 'git' }),
     ...runCommand({
       args: ['diff', '--cached', '--name-only'],
@@ -56,14 +73,25 @@ function collectChangedPaths(): string[] {
   );
 }
 
-function parseArguments({ args }: ParseArgumentsInput): ParseArgumentsResult {
+export function parseArguments({
+  args,
+}: ParseArgumentsInput): ParseArgumentsResult {
   const e2eSpecPaths: string[] = [];
   let dryRun = false;
+  let baseRef: string | undefined;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === '--dry-run') {
       dryRun = true;
+      continue;
+    }
+
+    if (arg === '--base') {
+      const baseRefValue = args[index + 1];
+      if (!baseRefValue) throw new Error('--base requires a ref.');
+      baseRef = baseRefValue;
+      index += 1;
       continue;
     }
 
@@ -75,7 +103,7 @@ function parseArguments({ args }: ParseArgumentsInput): ParseArgumentsResult {
     }
   }
 
-  return { dryRun, e2eSpecPaths };
+  return { baseRef, dryRun, e2eSpecPaths };
 }
 
 function runCommand({ args, command }: CommandInput): string[] {
@@ -200,7 +228,7 @@ function runTurboTask({
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
   const plan = classifyChanges({
-    changedPaths: collectChangedPaths(),
+    changedPaths: collectChangedPaths({ baseRef: argumentsResult.baseRef }),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
   });
 

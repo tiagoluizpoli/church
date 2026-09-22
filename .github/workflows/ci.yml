@@ -4,15 +4,85 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
+    branches: [master, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  develop-gate:
+    name: Develop Gate (Fast + Affected)
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_test
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:3000
+      CORS_ORIGIN: http://localhost:5173
+      UNLEASH_API_URL: http://localhost:4242/api
+      UNLEASH_API_TOKEN: ci-test-token
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - name: Record job start time
+        run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-church-ci
+
+      - name: Validation tests (affected-plan, date-time seam fixture)
+        run: bun run test:validation
+
+      - name: Determine affected plan
+        id: plan
+        run: |
+          bun tooling/validation/affected.ts --dry-run --base "origin/${{ github.base_ref }}" > affected-plan.json
+          cat affected-plan.json
+          needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' affected-plan.json)
+          echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
+
+      - name: Install Playwright browsers
+        if: steps.plan.outputs.needs_e2e == 'true'
+        run: bunx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Fast + affected gate
+        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}"
+
+      - name: Record elapsed-time evidence
+        if: always()
+        run: |
+          elapsed=$(( $(date +%s) - JOB_START_TIME ))
+          echo "### Develop gate elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          # Matches this job's `timeout-minutes: 10` budget above — keep both in sync.
+          echo "${elapsed}s (target: 600s, job start to gate completion)" >> "$GITHUB_STEP_SUMMARY"
+
   fast-gate:
     name: Fast Gate
+    if: github.event_name != 'pull_request' || github.base_ref == 'master'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -45,19 +115,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Cache bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-church-ci
 
       - name: Type check
         run: bun run typecheck
@@ -67,15 +125,6 @@ jobs:
 
       - name: Validation tests (affected-plan, date-time seam fixture)
         run: bun run test:validation
-
-      - name: Create .env for test runner
-        run: |
-          printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=test\nENABLE_DEBUG_ENDPOINTS=true\n' \
-            "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
-            "$CORS_ORIGIN" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" > .env
-
-      - name: Run database migrations
-        run: bun run db:migrate
 
       - name: Run tests with coverage
         run: bunx turbo test:unit test:integration -- --coverage
@@ -117,32 +166,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Cache bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-church-ci
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
         working-directory: apps/web
-
-      - name: Create .env for test runner
-        run: |
-          printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nVITE_SERVER_URL=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=test\nENABLE_DEBUG_ENDPOINTS=true\n' \
-            "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
-            "$CORS_ORIGIN" "$VITE_SERVER_URL" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" > .env
-
-      - name: Run database migrations
-        run: bun run db:migrate
 
       - name: Run E2E tests
         run: bun run test:e2e

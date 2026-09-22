@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'bun:test';
-import { classifyChanges } from './affected';
+import { classifyChanges, parseArguments } from './affected';
 import { CRITICAL_SMOKE_SPEC_PATHS } from './journey-map';
+
+describe('parseArguments', () => {
+  it('defaults to no base ref for a local working-tree diff', () => {
+    const result = parseArguments({ args: [] });
+
+    expect(result.baseRef).toBeUndefined();
+  });
+
+  it('reads --base as the ref to diff against for a CI merge-base diff', () => {
+    const result = parseArguments({ args: ['--base', 'origin/develop'] });
+
+    expect(result.baseRef).toBe('origin/develop');
+  });
+
+  it('throws when --base is missing its ref', () => {
+    expect(() => parseArguments({ args: ['--base'] })).toThrow(
+      '--base requires a ref.',
+    );
+  });
+});
 
 describe('classifyChanges', () => {
   it('selects the web unit layer for an isolated web source change', () => {

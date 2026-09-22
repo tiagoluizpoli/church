@@ -44,7 +44,7 @@ For instructions on how to add new backlog items or edit existing ones, see the 
 
 Real gaps that are **not queued**. Each has a written promotion trigger: a falsifiable condition that, when it happens, moves the item into the ranked table. The threshold for usage-gated items is deliberately the **second occurrence** — one request is an anecdote, two is a pattern.
 
-Parked items have no rank and no GitHub issue.
+Parked items have no rank.
 
 | ID | Title | Category | Promotion trigger |
 | :--- | :--- | :--- | :--- |
@@ -61,6 +61,7 @@ Parked items have no rank and no GitHub issue.
 | [BL-028](./items/BL-028.md) | Centralize test trees and make repository rules agent-enforceable | Repository Architecture / Test Infrastructure / Agent Governance | The next planned implementation that adds, moves, or substantially rewrites a unit, component, integration, contract, or test-support file, **or** one additional test file is added beside production code after 2026-08-11. |
 | [BL-029](./items/BL-029.md) | Planning managers read wall-clock `new Date()`, so time-relative tests rot | Test Infrastructure / Scheduling (Planning managers) | A **second** time-rot failure lands on `master` or blocks a PR (a dated test failing only because the wall clock moved past its fixtures), **or** a planned change needs a clock injected into `DbPlanningEventManager` / `DbPlanningCycleManager` for a feature reason. |
 | [BL-030](./items/BL-030.md) | Duplicate TimeSlot CRUD / Event-cancel REST surfaces between `church-admin-controller.ts` and `event-controller.ts`/`time-slot-controller.ts` | Backend Architecture | A real behavior drift surfaces between the two paths (a fix applied to one manager's slot/cancel implementation but not its twin), **or** a future pass touches either route tree for an unrelated reason and consolidating rides along for free. |
+| [BL-031](./items/BL-031.md) | Decide the production operating model from the Twelve-Factor audit | Production Architecture / Operations | A production deployment target or availability/scaling requirement is selected, **or** first-release preparation begins; open a Wayfinder map before creating implementation tickets. |
 
 ---
 

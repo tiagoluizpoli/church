@@ -30,7 +30,7 @@ backlog/
 Since 2026-07-26, [index.md](./index.md) is the **source of truth for order**, not just a list. It has three sections, and every item lives in exactly one of them:
 
 - **Ranked Backlog** — queued work. Carries `Rank` (a strict ordinal), `Wave` (the tier of the ordering criterion), `Blocked by`, and `Issue`. Every ranked item has a `backlog`-labelled GitHub issue.
-- **Parked** — a real gap that is **not queued**. No rank, no issue. Carries a **promotion trigger**: a falsifiable condition that moves it into the ranked table.
+- **Parked** — a real gap that is **not queued**. No rank. Carries a **promotion trigger**: a falsifiable condition that moves it into the ranked table.
 - **Closed during reconciliation** — verdict recorded, file kept for history.
 
 The ordering criterion is **pain now → rework cost → new capability**, mapped onto waves 1/2/3. Waves are purely ordinal: no dates, no effort estimates.

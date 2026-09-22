@@ -1,3 +1,5 @@
+import { CRITICAL_SMOKE_SPEC_PATHS, JOURNEY_MAP } from './journey-map';
+
 export type TestLayer = 'test:unit' | 'test:integration';
 
 export interface ClassifyChangesInput {
@@ -8,6 +10,7 @@ export interface ClassifyChangesInput {
 export interface ValidationPlan {
   e2eSpecPaths: string[];
   lintPaths: string[];
+  missingJourneyMappings: string[];
   requiresFullE2e: boolean;
   testLayers: TestLayer[];
   testTargets: TestTarget[];
@@ -43,6 +46,15 @@ interface GetTestLayerInput {
 interface GetTestTargetInput {
   changedPath: string;
   workspace: Workspace;
+}
+
+interface GetJourneySpecPathsInput {
+  changedPath: string;
+}
+
+interface IsProductionSourcePathInput {
+  changedPath: string;
+  workspaceName: string;
 }
 
 const WORKSPACES: Workspace[] = [
@@ -108,7 +120,9 @@ export function classifyChanges({
   const testLayers = new Set<TestLayer>();
   const testTargets: TestTarget[] = [];
   const selectedE2eSpecPaths = new Set(e2eSpecPaths);
+  const missingJourneyMappings = new Set<string>();
   let requiresFullE2e = false;
+  let hasUnmappedProductionChange = false;
 
   for (const changedPath of changedPaths) {
     if (ROOT_INFRASTRUCTURE_PATHS.has(changedPath)) {
@@ -118,7 +132,8 @@ export function classifyChanges({
       continue;
     }
 
-    if (FULL_E2E_PATHS.has(changedPath)) requiresFullE2e = true;
+    const isSharedE2eInfrastructure = FULL_E2E_PATHS.has(changedPath);
+    if (isSharedE2eInfrastructure) requiresFullE2e = true;
 
     const workspace = WORKSPACES.find(({ path }) =>
       changedPath.startsWith(path),
@@ -132,6 +147,27 @@ export function classifyChanges({
       workspaceName: workspace.name,
       workspaceNames,
     });
+
+    if (
+      !isSharedE2eInfrastructure &&
+      isProductionSourcePath({ changedPath, workspaceName: workspace.name })
+    ) {
+      const journeySpecPaths = getJourneySpecPaths({ changedPath });
+      if (journeySpecPaths.length > 0) {
+        for (const specPath of journeySpecPaths) {
+          selectedE2eSpecPaths.add(specPath);
+        }
+      } else {
+        hasUnmappedProductionChange = true;
+        missingJourneyMappings.add(changedPath);
+      }
+    }
+  }
+
+  if (hasUnmappedProductionChange) {
+    for (const specPath of CRITICAL_SMOKE_SPEC_PATHS) {
+      selectedE2eSpecPaths.add(specPath);
+    }
   }
 
   for (const workspaceName of workspaceNames) {
@@ -141,11 +177,32 @@ export function classifyChanges({
   return {
     e2eSpecPaths: [...selectedE2eSpecPaths].sort(),
     lintPaths: changedPaths.filter(isLintablePath),
+    missingJourneyMappings: [...missingJourneyMappings].sort(),
     requiresFullE2e,
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
     workspaceNames: [...workspaceNames].sort(),
   };
+}
+
+function isProductionSourcePath({
+  changedPath,
+  workspaceName,
+}: IsProductionSourcePathInput): boolean {
+  if (workspaceName !== 'web' && workspaceName !== 'server') return false;
+  if (!/\.tsx?$/.test(changedPath)) return false;
+  if (changedPath.includes('.test.')) return false;
+  if (changedPath.includes('/tests/')) return false;
+
+  return true;
+}
+
+function getJourneySpecPaths({
+  changedPath,
+}: GetJourneySpecPathsInput): string[] {
+  return JOURNEY_MAP.filter(({ sourcePathPrefix }) =>
+    changedPath.startsWith(sourcePathPrefix),
+  ).flatMap(({ specPaths }) => specPaths);
 }
 
 function addWorkspaceAndDependents({

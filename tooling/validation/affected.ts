@@ -205,5 +205,10 @@ if (import.meta.main) {
   });
 
   console.log(JSON.stringify(plan, null, 2));
+  if (plan.missingJourneyMappings.length > 0) {
+    console.warn(
+      `No journey mapping for: ${plan.missingJourneyMappings.join(', ')}. Running the critical smoke set as a conservative fallback — add a tooling/validation/journey-map.ts entry to select the specific journey instead.`,
+    );
+  }
   if (!argumentsResult.dryRun) runValidation({ plan });
 }

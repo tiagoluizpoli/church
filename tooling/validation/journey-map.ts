@@ -22,6 +22,10 @@ const REDEMPTION_SPEC_PATHS = [
   'tests/identity/redemption-existing-member.spec.ts',
 ];
 
+const VOLUNTEER_TRANSFER_SPEC_PATHS = [
+  'tests/identity/volunteer-transfer-journey.spec.ts',
+];
+
 // Sourced from verified route-to-spec coupling (e.g. a spec's page.goto
 // target matches the route file's path). Each entry here is a mapped hit;
 // every production web/server path that matches none of them falls back to
@@ -72,5 +76,64 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
     ],
+  },
+  // #214 — Church isolation (Ministry Invitation minting/resend) proven by
+  // cross-tenant-invitation-isolation.spec.ts, coupled to the admin surface
+  // that mints/resends invitations and the manager whose ensureMintableScope
+  // returns the indistinguishable not-found (#68).
+  {
+    sourcePathPrefix: 'apps/server/src/api/controllers/ministry-controller.ts',
+    specPaths: ['tests/identity/cross-tenant-invitation-isolation.spec.ts'],
+  },
+  {
+    sourcePathPrefix:
+      'apps/server/src/application/db-ministry-invitation-manager.ts',
+    specPaths: ['tests/identity/cross-tenant-invitation-isolation.spec.ts'],
+  },
+  // #214 — route protection and deep-link return (#66), coupled to the
+  // authenticated guard, the sign-in route's redirect-away and landing
+  // redirect. validateInternalReturnTarget's open-redirect rejection has its
+  // own unit test and is deliberately not re-proven at this layer, but this
+  // file still drives the redirect target the spec asserts on.
+  {
+    sourcePathPrefix: 'apps/web/src/routes/_authenticated.tsx',
+    specPaths: ['tests/identity/route-protection.spec.ts'],
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/routes/login.tsx',
+    specPaths: ['tests/identity/route-protection.spec.ts'],
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/shared/utils/return-target.ts',
+    specPaths: ['tests/identity/route-protection.spec.ts'],
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/index.tsx',
+    specPaths: ['tests/identity/route-protection.spec.ts'],
+  },
+  // #214 — Volunteer Transfer (#65): the split screen and its three
+  // confirmation layers live in the ministry-invitation route and the
+  // volunteer-transfer feature; the server side is the redemption
+  // controller's transfer preview/confirm endpoints (which also serve plain
+  // redemption, hence both spec sets) and the transfer manager.
+  {
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/invitations/ministry/',
+    specPaths: VOLUNTEER_TRANSFER_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/features/volunteer-transfer/',
+    specPaths: VOLUNTEER_TRANSFER_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/server/src/api/controllers/redemption-controller.ts',
+    specPaths: [...REDEMPTION_SPEC_PATHS, ...VOLUNTEER_TRANSFER_SPEC_PATHS],
+  },
+  {
+    sourcePathPrefix:
+      'apps/server/src/application/db-volunteer-transfer-manager.ts',
+    specPaths: VOLUNTEER_TRANSFER_SPEC_PATHS,
   },
 ];

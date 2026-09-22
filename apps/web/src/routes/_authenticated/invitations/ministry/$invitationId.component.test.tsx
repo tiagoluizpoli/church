@@ -142,6 +142,79 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     ).toBeVisible();
   });
 
+  // #214 — the Volunteer Transfer flow's own confirmation-layer gating
+  // (review acknowledgement, name-match, password length) is isolated
+  // component interaction (spec's Testing Decisions), so it belongs here
+  // rather than being the sole proof carried by the E2E journey
+  // (tests/identity/volunteer-transfer-journey.spec.ts), which stays scoped
+  // to the real cross-boundary walk.
+  it('gates the review and confirm layers until acknowledged, name-matched, and password-length valid', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
+    acceptMinistryInvitation.mockResolvedValue({
+      kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      ministryInvitationId: 'invitation-1',
+    });
+    getVolunteerTransferPreview.mockResolvedValue({
+      kind: 'reviewable',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      endedMemberships: [{ ministryName: 'Youth' }],
+      withdrawnAssignments: [],
+    });
+    confirmVolunteerTransfer.mockResolvedValue({
+      kind: 'transferred',
+      destinationVolunteerId: 'volunteer-2',
+    });
+
+    const { router } = renderRoute({
+      initialPath: '/invitations/ministry/invitation-1',
+    });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    await user.click(
+      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
+    );
+
+    const continueButton = await screen.findByRole('button', {
+      name: 'Continue',
+    });
+    expect(continueButton).toBeDisabled();
+    await user.click(screen.getByRole('checkbox'));
+    expect(continueButton).toBeEnabled();
+    await user.click(continueButton);
+
+    const confirmButton = await screen.findByRole('button', {
+      name: 'Confirm Volunteer Transfer',
+    });
+    expect(confirmButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText('Password'), 'short');
+    await user.type(
+      screen.getByLabelText(/Type St\. Peter to confirm/),
+      'Not St. Peter',
+    );
+    expect(confirmButton).toBeDisabled();
+
+    await user.clear(screen.getByLabelText('Password'));
+    await user.type(screen.getByLabelText('Password'), 'a-strong-password');
+    await user.clear(screen.getByLabelText(/Type St\. Peter to confirm/));
+    await user.type(
+      screen.getByLabelText(/Type St\. Peter to confirm/),
+      'St. Peter',
+    );
+    expect(confirmButton).toBeEnabled();
+
+    await user.click(confirmButton);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/dashboard');
+    });
+  });
+
   it('on a double-submit race where the invitation was already accepted, still continues into the Church rather than stranding the caller', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);

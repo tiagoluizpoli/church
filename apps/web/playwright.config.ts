@@ -29,6 +29,7 @@ process.env.PW_WEB_URL = WEB_URL;
 
 export default defineConfig({
   testDir: './tests',
+  testMatch: '**/*.spec.ts',
   globalSetup: './tests/global-setup.ts',
   globalTeardown: './tests/global-teardown.ts',
   timeout: 90_000,
@@ -69,7 +70,10 @@ export default defineConfig({
     {
       command: 'bun run --cwd ../server dev',
       url: `${SERVER_URL}/api/auth/get-session`,
-      reuseExistingServer: !process.env.CI,
+      // An already-running process may target a different database or API
+      // origin than this run's global setup. Failing on a port collision is
+      // safer than silently executing against that mixed stack.
+      reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
       // Root .env pins PORT/CORS_ORIGIN/BETTER_AUTH_URL to the normal dev
@@ -87,7 +91,8 @@ export default defineConfig({
     {
       command: 'bun run dev',
       url: WEB_URL,
-      reuseExistingServer: !process.env.CI,
+      // Keep the browser and seed process paired with the server above.
+      reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
       // See apps/web/vite.config.ts — `server.port` reads `process.env.PORT`

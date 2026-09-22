@@ -5,8 +5,7 @@ import {
   usePlanningTemplateLibraryStats,
 } from './planning-admin-context';
 import { Badge } from '@/components/ui/badge';
-import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatDayOf } from '@/shared/utils/church-time';
+import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 interface PlanningCycleHeaderProps {
   showName?: boolean;
@@ -40,8 +39,6 @@ export function PlanningCycleHeader({
   showName = true,
 }: PlanningCycleHeaderProps) {
   const { nameAndStatus, period, counts } = usePlanningCycleHeader();
-  const { churchTimezone } = useTimezone();
-
   if (!nameAndStatus || !period || !counts) {
     return null;
   }
@@ -72,7 +69,7 @@ export function PlanningCycleHeader({
       <HeaderStatChip
         testId="planning-cycle-period-chip"
         label="Window"
-        value={`${formatDayOf({ value: period.startDate, timeZone: churchTimezone })} → ${formatDayOf({ value: period.endDate, timeZone: churchTimezone })}`}
+        value={`${formatCalendarDateOnly({ value: period.startDate })} → ${formatCalendarDateOnly({ value: period.endDate })}`}
       />
       <HeaderStatChip
         testId="planning-cycle-event-count-chip"

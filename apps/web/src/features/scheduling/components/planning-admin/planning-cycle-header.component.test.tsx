@@ -38,10 +38,6 @@ async function selectTheOnlyCycle() {
   return user;
 }
 
-// Period bounds are fixed UTC instants, not bare `yyyy-MM-dd` days: the header
-// formats them as instants in the Church Timezone, and a bare day parses at
-// the runner's local midnight — which made the rendered day depend on the
-// ambient TZ the suite pins (vitest.config.ts).
 describe('PlanningCycleHeader (T058)', () => {
   it('renders nothing when no cycle is selected', () => {
     listPlanningCycles.mockResolvedValue({ cycles: [] });
@@ -62,8 +58,8 @@ describe('PlanningCycleHeader (T058)', () => {
         {
           id: 'cycle-1',
           name: 'August 2026',
-          startDate: '2026-08-01T00:00:00.000Z',
-          endDate: '2026-08-31T00:00:00.000Z',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
           state: 'locked',
         },
       ],
@@ -72,8 +68,8 @@ describe('PlanningCycleHeader (T058)', () => {
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
-        startDate: '2026-08-01T00:00:00.000Z',
-        endDate: '2026-08-31T00:00:00.000Z',
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
         state: 'locked',
       },
       events: [],
@@ -177,12 +173,12 @@ describe('PlanningCycleHeader (T058)', () => {
     expect(slotCountChip).toHaveTextContent('3');
   });
 
-  it('changes the window chip dates with the Church Timezone', async () => {
+  it('renders CalendarDay bounds independently of the Church Timezone', async () => {
     const cycle = {
       id: 'cycle-1',
       name: 'August 2026',
-      startDate: '2026-08-01T00:00:00.000Z',
-      endDate: '2026-08-31T00:00:00.000Z',
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
       state: 'draft' as const,
     };
     listPlanningCycles.mockResolvedValue({ cycles: [cycle] });
@@ -196,14 +192,12 @@ describe('PlanningCycleHeader (T058)', () => {
 
     cleanup();
 
-    // Niue is UTC-11: the fixed instants above (Aug 1/31 00:00 UTC) read as
-    // the previous CalendarDay there, unlike Kiritimati (UTC+14, same day).
     render({ churchTimezone: 'Pacific/Niue' });
     await selectTheOnlyCycle();
     const niuePeriodText = (
       await screen.findByTestId('planning-cycle-period-chip')
     ).textContent;
 
-    expect(niuePeriodText).not.toBe(utcPeriodText);
+    expect(niuePeriodText).toBe(utcPeriodText);
   });
 });

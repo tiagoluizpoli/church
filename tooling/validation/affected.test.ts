@@ -83,7 +83,7 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects both redemption journeys for a ministry-invitation route change', () => {
+  it('selects both redemption journeys and the transfer journey for a ministry-invitation route change', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/invitations/ministry/$invitationId.tsx',
@@ -93,6 +93,76 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
+      'tests/identity/volunteer-transfer-journey.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the cross-tenant isolation journey for the Ministry Invitation admin controller', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/server/src/api/controllers/ministry-controller.ts'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the cross-tenant isolation journey for the Ministry Invitation manager', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/server/src/application/db-ministry-invitation-manager.ts',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the route-protection journey for the authenticated guard, sign-in route, and landing redirect', () => {
+    for (const changedPath of [
+      'apps/web/src/routes/_authenticated.tsx',
+      'apps/web/src/routes/login.tsx',
+      'apps/web/src/shared/utils/return-target.ts',
+      'apps/web/src/routes/_authenticated/_active-church/index.tsx',
+    ]) {
+      const plan = classifyChanges({ changedPaths: [changedPath] });
+
+      expect(plan.e2eSpecPaths).toEqual([
+        'tests/identity/route-protection.spec.ts',
+      ]);
+      expect(plan.missingJourneyMappings).toEqual([]);
+    }
+  });
+
+  it('selects the transfer journey for the volunteer-transfer feature and its transfer manager', () => {
+    for (const changedPath of [
+      'apps/web/src/features/volunteer-transfer/components/volunteer-transfer-flow.tsx',
+      'apps/server/src/application/db-volunteer-transfer-manager.ts',
+    ]) {
+      const plan = classifyChanges({ changedPaths: [changedPath] });
+
+      expect(plan.e2eSpecPaths).toEqual([
+        'tests/identity/volunteer-transfer-journey.spec.ts',
+      ]);
+      expect(plan.missingJourneyMappings).toEqual([]);
+    }
+  });
+
+  it('selects both redemption journeys and the transfer journey for the shared redemption controller', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/server/src/api/controllers/redemption-controller.ts',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/redemption-existing-member.spec.ts',
+      'tests/identity/redemption-new-user.spec.ts',
+      'tests/identity/volunteer-transfer-journey.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });

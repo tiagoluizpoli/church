@@ -1,0 +1,41 @@
+name: Setup Church CI environment
+description: >-
+  Install the Bun toolchain, install dependencies, write the CI .env, and run
+  database migrations. Runs after actions/checkout@v4, which callers must run
+  first (a local composite action can't be loaded before the repo it lives in
+  is checked out).
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Cache bun dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: bun-${{ runner.os }}-
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+
+    - name: Create .env for test runner
+      shell: bash
+      run: |
+        printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=%s\nENABLE_DEBUG_ENDPOINTS=%s\n' \
+          "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
+          "$CORS_ORIGIN" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" \
+          "$NODE_ENV" "$ENABLE_DEBUG_ENDPOINTS" > .env
+        # VITE_SERVER_URL is only set by the e2e job; the fast/develop gates
+        # don't build the web app, so they don't set it.
+        if [ -n "$VITE_SERVER_URL" ]; then
+          printf 'VITE_SERVER_URL=%s\n' "$VITE_SERVER_URL" >> .env
+        fi
+
+    - name: Run database migrations
+      shell: bash
+      run: bun run db:migrate

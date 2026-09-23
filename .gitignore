@@ -60,3 +60,8 @@ SKILLS_OVERVIEW.md
 /*.png
 test-results
 
+# tooling/validation/affected.ts --dry-run debug output — never a source
+# file; if left inside the tree it gets picked up as a "changed" untracked
+# path by the planner's own next run and fed into lint (see ci.yml).
+/affected-plan.json
+

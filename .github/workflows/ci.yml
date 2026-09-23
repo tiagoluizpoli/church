@@ -59,9 +59,18 @@ jobs:
       - name: Determine affected plan
         id: plan
         run: |
-          bun tooling/validation/affected.ts --dry-run --base "origin/${{ github.base_ref }}" > affected-plan.json
-          cat affected-plan.json
-          needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' affected-plan.json)
+          # Written under $RUNNER_TEMP, outside the repo working tree — the
+          # later "Fast + affected gate" step re-runs the same planner, whose
+          # changed-path scan includes untracked files (`git ls-files
+          # --others`); a dump left inside the tree was picked up as a
+          # "changed" file and fed into `bun run lint:files`, where Biome's
+          # JSON formatter flagged its own array-formatting choices as a
+          # lint violation — a debug artifact should never be lint-scoped
+          # source in the first place.
+          plan_file="$RUNNER_TEMP/affected-plan.json"
+          bun tooling/validation/affected.ts --dry-run --base "origin/${{ github.base_ref }}" > "$plan_file"
+          cat "$plan_file"
+          needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' "$plan_file")
           echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
 
       - name: Install Playwright browsers

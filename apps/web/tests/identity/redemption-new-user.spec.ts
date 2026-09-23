@@ -15,14 +15,14 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS). The web package stays DB-tooling-free, so specs reference these
 // well-known UUIDs directly — same convention as the scheduling specs.
-const CHURCH_ID = 'e2e11111-1111-1111-1111-111111111111';
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
+const CHURCH_ID = 'e2e11111-1111-1111-a111-111111111111';
+const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
 // The second tenant `global-setup.ts` provisions alongside CHURCH_ID — the
 // "two-Church" half of the environment this outsider redeems into. Naming
 // its real id/name lets the isolation assertion below prove absence, not
 // just an empty-looking list (spec 024 §11.2).
-const CHURCH_B_ID = 'e2ebbbbb-1111-1111-1111-111111111111';
+const CHURCH_B_ID = 'e2ebbbbb-1111-1111-a111-111111111111';
 const CHURCH_B_NAME = 'E2E ChurchB';
 
 interface MintedInvitation {

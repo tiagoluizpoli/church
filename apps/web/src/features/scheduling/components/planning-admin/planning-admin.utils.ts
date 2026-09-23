@@ -1,9 +1,9 @@
 import {
   addMilliseconds,
-  fromTimeColumn,
   type Instant,
   millisecondsBetween,
   parseInstant,
+  parseTimeOfDay,
   type TimeOfDay,
   timeOfDaySpan,
 } from '@church/time';
@@ -143,8 +143,8 @@ export function createTemplateFormFromTemplate({
       .map((block) => ({
         id: block.id,
         label: block.label,
-        startTime: fromTimeColumn({ value: block.startTime }),
-        endTime: fromTimeColumn({ value: block.endTime }),
+        startTime: parseTimeOfDay({ value: block.startTime }),
+        endTime: parseTimeOfDay({ value: block.endTime }),
       })),
   };
 }

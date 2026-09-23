@@ -17,10 +17,10 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // E2E_IDS). The web package stays DB-tooling-free, so specs reference these
 // well-known UUIDs directly instead of importing the seed module — same
 // convention as smoke.spec.ts / a11y-builder.spec.ts.
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const CARE_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333332';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
-const CARE_HOST_ROLE_ID = 'e2e55555-5555-5555-5555-555555555553';
+const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const CARE_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333332';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
+const CARE_HOST_ROLE_ID = 'e2e55555-5555-5555-a555-555555555553';
 
 interface OverlapPlanningMonth {
   cycleName: string;

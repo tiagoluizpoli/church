@@ -10,7 +10,7 @@ test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
 
 // Fixed E2E seed identifier (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS.planningCycle) — same convention as cross-cutting.spec.ts.
-const CHURCH_A_CYCLE_ID = 'e2e21111-1111-1111-1111-111111111111';
+const CHURCH_A_CYCLE_ID = 'e2e21111-1111-1111-a111-111111111111';
 
 test('planning-cycle breadcrumb has no critical or serious WCAG violations', async ({
   page,

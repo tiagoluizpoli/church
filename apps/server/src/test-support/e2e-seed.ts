@@ -76,68 +76,68 @@ const DATABASE_URL =
   'postgresql://postgres:postgres@localhost:5444/church';
 
 export const E2E_IDS = {
-  church: 'e2e11111-1111-1111-1111-111111111111',
-  planningCycle: 'e2e21111-1111-1111-1111-111111111111',
-  ministry: 'e2e33333-3333-3333-3333-333333333331',
-  ministryCare: 'e2e33333-3333-3333-3333-333333333332',
-  leaderVolunteer: 'e2e44444-4444-4444-4444-444444444441',
-  ministryLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444445',
-  schedulingVolunteer: 'e2e44444-4444-4444-4444-444444444442',
-  teamLeaderVolunteer: 'e2e44444-4444-4444-4444-444444444446',
-  team1: 'e2eaaaa1-0000-0000-0000-000000000001',
-  careTeam: 'e2eaaaa1-0000-0000-0000-000000000002',
-  roleUsher: 'e2e55555-5555-5555-5555-555555555551',
-  roleGreeter: 'e2e55555-5555-5555-5555-555555555552',
-  roleCareHost: 'e2e55555-5555-5555-5555-555555555553',
+  church: 'e2e11111-1111-1111-a111-111111111111',
+  planningCycle: 'e2e21111-1111-1111-a111-111111111111',
+  ministry: 'e2e33333-3333-3333-a333-333333333331',
+  ministryCare: 'e2e33333-3333-3333-a333-333333333332',
+  leaderVolunteer: 'e2e44444-4444-4444-a444-444444444441',
+  ministryLeaderVolunteer: 'e2e44444-4444-4444-a444-444444444445',
+  schedulingVolunteer: 'e2e44444-4444-4444-a444-444444444442',
+  teamLeaderVolunteer: 'e2e44444-4444-4444-a444-444444444446',
+  team1: 'e2eaaaa1-0000-1000-a000-000000000001',
+  careTeam: 'e2eaaaa1-0000-1000-a000-000000000002',
+  roleUsher: 'e2e55555-5555-5555-a555-555555555551',
+  roleGreeter: 'e2e55555-5555-5555-a555-555555555552',
+  roleCareHost: 'e2e55555-5555-5555-a555-555555555553',
   // Primary event — used by US1, US5, smoke, a11y tests.
-  event: 'e2e66666-6666-6666-6666-666666666661',
-  slot: 'e2e77777-7777-7777-7777-777777777771',
+  event: 'e2e66666-6666-6666-a666-666666666661',
+  slot: 'e2e77777-7777-7777-a777-777777777771',
   // Override event — reserved for US2 conflict override journey.
-  eventOverride: 'e2e66666-6666-6666-6666-666666666662',
-  slotOverride: 'e2e77777-7777-7777-7777-777777777772',
+  eventOverride: 'e2e66666-6666-6666-a666-666666666662',
+  slotOverride: 'e2e77777-7777-7777-a777-777777777772',
   // Decline event — reserved for US3 volunteer decline journey.
-  declineEvent: 'e2e66666-6666-6666-6666-666666666663',
-  declineSlot: 'e2e77777-7777-7777-7777-777777777773',
-  declineAssignment: 'e2e99999-9999-9999-9999-999999999991',
+  declineEvent: 'e2e66666-6666-6666-a666-666666666663',
+  declineSlot: 'e2e77777-7777-7777-a777-777777777773',
+  declineAssignment: 'e2e99999-9999-1999-9999-999999999991',
   // TeamLeader event — reserved for US6 TeamLeader journey.
-  us6Event: 'e2e66666-6666-6666-6666-666666666664',
-  us6Slot: 'e2e77777-7777-7777-7777-777777777774',
-  careEvent: 'e2e66666-6666-6666-6666-666666666665',
-  careSlot: 'e2e77777-7777-7777-7777-777777777775',
-  careAssignment: 'e2e99999-9999-9999-9999-999999999992',
+  us6Event: 'e2e66666-6666-6666-a666-666666666664',
+  us6Slot: 'e2e77777-7777-7777-a777-777777777774',
+  careEvent: 'e2e66666-6666-6666-a666-666666666665',
+  careSlot: 'e2e77777-7777-7777-a777-777777777775',
+  careAssignment: 'e2e99999-9999-1999-9999-999999999992',
   // US4 owns its own cycle: publish is cycle-wide, so a publishing spec can't
   // share one without other specs moving its participation states.
-  us4PlanningCycle: 'e2e21111-2222-2222-2222-222222222222',
-  us4Event: 'e2e66666-6666-6666-6666-666666666666',
-  us4Slot: 'e2e77777-7777-7777-7777-777777777776',
-  us4Participation: 'e2e61111-1111-1111-1111-111111111117',
-  us4CareParticipation: 'e2e61111-1111-1111-1111-111111111118',
-  us4Shift: 'e2e71111-1111-1111-1111-111111111117',
-  us4CareShift: 'e2e71111-1111-1111-1111-111111111118',
-  us4UsherRequirement: 'e2e88888-8888-8888-8888-888888888888',
-  us4CareRequirement: 'e2e88888-8888-8888-8888-888888888889',
+  us4PlanningCycle: 'e2e21111-2222-2222-a222-222222222222',
+  us4Event: 'e2e66666-6666-6666-a666-666666666666',
+  us4Slot: 'e2e77777-7777-7777-a777-777777777776',
+  us4Participation: 'e2e61111-1111-1111-a111-111111111117',
+  us4CareParticipation: 'e2e61111-1111-1111-a111-111111111118',
+  us4Shift: 'e2e71111-1111-1111-a111-111111111117',
+  us4CareShift: 'e2e71111-1111-1111-a111-111111111118',
+  us4UsherRequirement: 'e2e88888-8888-8888-a888-888888888888',
+  us4CareRequirement: 'e2e88888-8888-8888-a888-888888888889',
   // Second tenant — used only by cross-cutting church-isolation specs
   // (DL4-X1, #68) and the volunteer-transfer journey (#65, which needs a real
   // assignable Role to seat the dual-membership fixture before it transfers
   // away). Deliberately minimal otherwise: one church, one admin, one locked
   // cycle, one Ministry (its own known-valid id for the identity-surface
   // cross-tenant journey — #68 mints a real Ministry Invitation against it).
-  churchB: 'e2ebbbbb-1111-1111-1111-111111111111',
-  churchBAdminVolunteer: 'e2ebbbbb-4444-4444-4444-444444444441',
-  churchBPlanningCycle: 'e2ebbbbb-2111-1111-1111-111111111111',
-  churchBMinistry: 'e2ebbbbb-3333-3333-3333-333333333331',
-  churchBRoleUsher: 'e2ebbbbb-5555-5555-5555-555555555551',
+  churchB: 'e2ebbbbb-1111-1111-a111-111111111111',
+  churchBAdminVolunteer: 'e2ebbbbb-4444-4444-a444-444444444441',
+  churchBPlanningCycle: 'e2ebbbbb-2111-1111-a111-111111111111',
+  churchBMinistry: 'e2ebbbbb-3333-3333-a333-333333333331',
+  churchBRoleUsher: 'e2ebbbbb-5555-5555-a555-555555555551',
 } as const;
 
 export const CHURCH_B_PLANNING_CYCLE_NAME = 'E2E ChurchB Isolated Cycle';
 export const CHURCH_B_MINISTRY_NAME = 'E2E ChurchB Ministry';
 
 const PARTICIPATION_IDS = {
-  [E2E_IDS.event]: 'e2e61111-1111-1111-1111-111111111111',
-  [E2E_IDS.eventOverride]: 'e2e61111-1111-1111-1111-111111111112',
-  [E2E_IDS.declineEvent]: 'e2e61111-1111-1111-1111-111111111113',
-  [E2E_IDS.us6Event]: 'e2e61111-1111-1111-1111-111111111114',
-  [E2E_IDS.careEvent]: 'e2e61111-1111-1111-1111-111111111115',
+  [E2E_IDS.event]: 'e2e61111-1111-1111-a111-111111111111',
+  [E2E_IDS.eventOverride]: 'e2e61111-1111-1111-a111-111111111112',
+  [E2E_IDS.declineEvent]: 'e2e61111-1111-1111-a111-111111111113',
+  [E2E_IDS.us6Event]: 'e2e61111-1111-1111-a111-111111111114',
+  [E2E_IDS.careEvent]: 'e2e61111-1111-1111-a111-111111111115',
 } as const;
 
 const EVENT_SLOT_IDS = {
@@ -149,19 +149,19 @@ const EVENT_SLOT_IDS = {
 } as const;
 
 const SHIFT_IDS = {
-  [E2E_IDS.slot]: 'e2e71111-1111-1111-1111-111111111111',
-  [E2E_IDS.slotOverride]: 'e2e71111-1111-1111-1111-111111111112',
-  [E2E_IDS.declineSlot]: 'e2e71111-1111-1111-1111-111111111113',
-  [E2E_IDS.us6Slot]: 'e2e71111-1111-1111-1111-111111111114',
-  [E2E_IDS.careSlot]: 'e2e71111-1111-1111-1111-111111111115',
+  [E2E_IDS.slot]: 'e2e71111-1111-1111-a111-111111111111',
+  [E2E_IDS.slotOverride]: 'e2e71111-1111-1111-a111-111111111112',
+  [E2E_IDS.declineSlot]: 'e2e71111-1111-1111-a111-111111111113',
+  [E2E_IDS.us6Slot]: 'e2e71111-1111-1111-a111-111111111114',
+  [E2E_IDS.careSlot]: 'e2e71111-1111-1111-a111-111111111115',
 } as const;
 
-const US4_SHARED_CARE_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111116';
-const US4_SHARED_CARE_SHIFT_ID = 'e2e71111-1111-1111-1111-111111111116';
+const US4_SHARED_CARE_PARTICIPATION_ID = 'e2e61111-1111-1111-a111-111111111116';
+const US4_SHARED_CARE_SHIFT_ID = 'e2e71111-1111-1111-a111-111111111116';
 
 const POOL_VOLUNTEERS = [
   {
-    id: 'e2e44444-4444-4444-4444-4444444444a1',
+    id: 'e2e44444-4444-4444-a444-4444444444a1',
     userId: 'e2e-pool-user-1',
     name: 'Grace Hopper',
     email: 'grace@e2e.test',
@@ -170,7 +170,7 @@ const POOL_VOLUNTEERS = [
     teamId: E2E_IDS.team1,
   },
   {
-    id: 'e2e44444-4444-4444-4444-4444444444a2',
+    id: 'e2e44444-4444-4444-a444-4444444444a2',
     userId: 'e2e-pool-user-2',
     name: 'Ada Lovelace',
     email: 'ada@e2e.test',
@@ -178,7 +178,7 @@ const POOL_VOLUNTEERS = [
     teamId: null,
   },
   {
-    id: 'e2e44444-4444-4444-4444-4444444444a3',
+    id: 'e2e44444-4444-4444-a444-4444444444a3',
     userId: 'e2e-pool-user-3',
     name: 'Alan Turing',
     email: 'alan@e2e.test',
@@ -188,7 +188,7 @@ const POOL_VOLUNTEERS = [
   {
     // Conflicted volunteer — marked unavailable for the event window so the
     // override flow (US2) can be exercised end-to-end.
-    id: 'e2e44444-4444-4444-4444-4444444444a4',
+    id: 'e2e44444-4444-4444-a444-4444444444a4',
     userId: 'e2e-pool-user-4',
     name: 'Mallory Knox',
     email: 'mallory@e2e.test',
@@ -203,7 +203,7 @@ interface PoolMembershipIdInput {
 
 /** Stable membership id for the i-th pool volunteer, shared by both inserts. */
 function poolMembershipId({ index }: PoolMembershipIdInput): string {
-  return `e2eccccc-cccc-cccc-cccc-cccccccccc0${index + 2}`;
+  return `e2eccccc-cccc-1ccc-accc-cccccccccc0${index + 2}`;
 }
 
 /**
@@ -212,19 +212,19 @@ function poolMembershipId({ index }: PoolMembershipIdInput): string {
  * member fully qualified, an eligibility bug would be invisible.
  */
 export const UNQUALIFIED_VOLUNTEER = {
-  id: 'e2e44444-4444-4444-4444-4444444444a8',
+  id: 'e2e44444-4444-4444-a444-4444444444a8',
   userId: 'e2e-unqualified-user',
   name: 'Ursula Unqualified',
   email: 'ursula@e2e.test',
-  membershipId: 'e2eccccc-cccc-cccc-cccc-cccccccccca8',
+  membershipId: 'e2eccccc-cccc-1ccc-accc-cccccccccca8',
 } as const;
 
 /** Every membership in `E2E_IDS.ministry`: the three named ones plus the pool. */
 const MINISTRY_MEMBERSHIP_IDS = [
-  'e2eccccc-cccc-cccc-cccc-ccccccccccc1',
-  'e2eccccc-cccc-cccc-cccc-ccccccccccc2',
-  'e2eccccc-cccc-cccc-cccc-cccccccccca6',
-  'e2eccccc-cccc-cccc-cccc-cccccccccca7',
+  'e2eccccc-cccc-1ccc-accc-ccccccccccc1',
+  'e2eccccc-cccc-1ccc-accc-ccccccccccc2',
+  'e2eccccc-cccc-1ccc-accc-cccccccccca6',
+  'e2eccccc-cccc-1ccc-accc-cccccccccca7',
   ...POOL_VOLUNTEERS.map((_, index) => poolMembershipId({ index })),
 ] as const;
 
@@ -521,7 +521,7 @@ export async function seedE2e({
       .insert(ministryVolunteer)
       .values([
         {
-          id: 'e2eccccc-cccc-cccc-cccc-ccccccccccc1',
+          id: 'e2eccccc-cccc-1ccc-accc-ccccccccccc1',
           churchId: E2E_IDS.church,
           volunteerId: leaderVolunteerId,
           ministryId: E2E_IDS.ministry,
@@ -529,7 +529,7 @@ export async function seedE2e({
           status: 'active',
         },
         {
-          id: 'e2eccccc-cccc-cccc-cccc-ccccccccccc2',
+          id: 'e2eccccc-cccc-1ccc-accc-ccccccccccc2',
           churchId: E2E_IDS.church,
           volunteerId: ministryLeaderVolunteerId,
           ministryId: E2E_IDS.ministry,
@@ -537,7 +537,7 @@ export async function seedE2e({
           status: 'active',
         },
         {
-          id: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          id: 'e2eccccc-cccc-1ccc-accc-ccccccccccc7',
           churchId: E2E_IDS.church,
           volunteerId: leaderVolunteerId,
           ministryId: E2E_IDS.ministryCare,
@@ -546,7 +546,7 @@ export async function seedE2e({
         },
         {
           // Dashboard specs authenticate as an ordinary volunteer in both ministries.
-          id: 'e2eccccc-cccc-cccc-cccc-cccccccccca9',
+          id: 'e2eccccc-cccc-1ccc-accc-cccccccccca9',
           churchId: E2E_IDS.church,
           volunteerId: schedulingVolunteerId,
           ministryId: E2E_IDS.ministryCare,
@@ -557,7 +557,7 @@ export async function seedE2e({
           // TeamLeader of team1 (see ministryVolunteerTeam below) — an
           // ordinary Ministry Member at the ministry level, per CONTEXT.md's
           // TeamLeader being orthogonal to Ministry Access Level.
-          id: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
+          id: 'e2eccccc-cccc-1ccc-accc-cccccccccca6',
           churchId: E2E_IDS.church,
           volunteerId: teamLeaderVolunteerId,
           ministryId: E2E_IDS.ministry,
@@ -565,7 +565,7 @@ export async function seedE2e({
           status: 'active',
         },
         {
-          id: 'e2eccccc-cccc-cccc-cccc-cccccccccca7',
+          id: 'e2eccccc-cccc-1ccc-accc-cccccccccca7',
           churchId: E2E_IDS.church,
           volunteerId: schedulingVolunteerId,
           ministryId: E2E_IDS.ministry,
@@ -599,19 +599,19 @@ export async function seedE2e({
       .values([
         {
           churchId: E2E_IDS.church,
-          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          ministryVolunteerId: 'e2eccccc-cccc-1ccc-accc-ccccccccccc7',
           teamId: E2E_IDS.careTeam,
         },
         {
           churchId: E2E_IDS.church,
-          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca9',
+          ministryVolunteerId: 'e2eccccc-cccc-1ccc-accc-cccccccccca9',
           teamId: E2E_IDS.careTeam,
         },
         {
           // TeamLeader of team1: team-scoped access level, orthogonal to the
           // 'volunteer' ministryAccessLevel set above.
           churchId: E2E_IDS.church,
-          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca6',
+          ministryVolunteerId: 'e2eccccc-cccc-1ccc-accc-cccccccccca6',
           teamId: E2E_IDS.team1,
           accessLevel: 'leader',
         },
@@ -655,12 +655,12 @@ export async function seedE2e({
         ),
         {
           churchId: E2E_IDS.church,
-          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-ccccccccccc7',
+          ministryVolunteerId: 'e2eccccc-cccc-1ccc-accc-ccccccccccc7',
           roleId: E2E_IDS.roleCareHost,
         },
         {
           churchId: E2E_IDS.church,
-          ministryVolunteerId: 'e2eccccc-cccc-cccc-cccc-cccccccccca9',
+          ministryVolunteerId: 'e2eccccc-cccc-1ccc-accc-cccccccccca9',
           roleId: E2E_IDS.roleCareHost,
         },
       ])
@@ -931,7 +931,7 @@ export async function seedE2e({
       .values([
         // Primary event: 2 Usher slots (US1 assigns one via suggestion accept).
         {
-          id: 'e2e88888-8888-8888-8888-888888888881',
+          id: 'e2e88888-8888-8888-a888-888888888881',
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.event],
           shiftId: SHIFT_IDS[E2E_IDS.slot],
@@ -940,7 +940,7 @@ export async function seedE2e({
         },
         // Override event: 1 Usher slot (US2 assigns Mallory to trigger conflict).
         {
-          id: 'e2e88888-8888-8888-8888-888888888882',
+          id: 'e2e88888-8888-8888-a888-888888888882',
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.eventOverride],
           shiftId: SHIFT_IDS[E2E_IDS.slotOverride],
@@ -949,7 +949,7 @@ export async function seedE2e({
         },
         // Decline event: 1 Usher slot (US3 — pre-seeded as declined assignment).
         {
-          id: 'e2e88888-8888-8888-8888-888888888883',
+          id: 'e2e88888-8888-8888-a888-888888888883',
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.declineEvent],
           shiftId: SHIFT_IDS[E2E_IDS.declineSlot],
@@ -958,7 +958,7 @@ export async function seedE2e({
         },
         // US6 event: Greeter slot scoped to team1 (TeamLeader can interact).
         {
-          id: 'e2e88888-8888-8888-8888-888888888884',
+          id: 'e2e88888-8888-8888-a888-888888888884',
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.us6Event],
           shiftId: SHIFT_IDS[E2E_IDS.us6Slot],
@@ -968,7 +968,7 @@ export async function seedE2e({
         },
         // US6 event: Usher slot NOT team-scoped (TeamLeader sees it as read-only).
         {
-          id: 'e2e88888-8888-8888-8888-888888888885',
+          id: 'e2e88888-8888-8888-a888-888888888885',
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.us6Event],
           shiftId: SHIFT_IDS[E2E_IDS.us6Slot],
@@ -976,7 +976,7 @@ export async function seedE2e({
           requiredCount: 1,
         },
         {
-          id: 'e2e88888-8888-8888-8888-888888888886',
+          id: 'e2e88888-8888-8888-a888-888888888886',
           churchId: E2E_IDS.church,
           participationId: PARTICIPATION_IDS[E2E_IDS.careEvent],
           shiftId: SHIFT_IDS[E2E_IDS.careSlot],
@@ -985,7 +985,7 @@ export async function seedE2e({
           teamId: E2E_IDS.careTeam,
         },
         {
-          id: 'e2e88888-8888-8888-8888-888888888887',
+          id: 'e2e88888-8888-8888-a888-888888888887',
           churchId: E2E_IDS.church,
           participationId: US4_SHARED_CARE_PARTICIPATION_ID,
           shiftId: US4_SHARED_CARE_SHIFT_ID,
@@ -1041,10 +1041,10 @@ export async function seedE2e({
       .onConflictDoNothing();
 
     const availabilityChecks = POOL_VOLUNTEERS.map((_volunteer, index) => ({
-      id: `e2eacccc-cccc-cccc-cccc-cccccccccc0${index + 1}`,
+      id: `e2eacccc-cccc-1ccc-accc-cccccccccc0${index + 1}`,
       churchId: E2E_IDS.church,
       planningCycleId: E2E_IDS.planningCycle,
-      ministryVolunteerId: `e2eccccc-cccc-cccc-cccc-cccccccccc0${index + 2}`,
+      ministryVolunteerId: `e2eccccc-cccc-1ccc-accc-cccccccccc0${index + 2}`,
     }));
     await db
       .insert(availabilityCheck)
@@ -1053,7 +1053,7 @@ export async function seedE2e({
     await db
       .insert(availability)
       .values({
-        id: 'e2eaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04',
+        id: 'e2eaaaaa-aaaa-1aaa-aaaa-aaaaaaaaaa04',
         churchId: E2E_IDS.church,
         availabilityCheckId: availabilityChecks[3]?.id as string,
         shiftId: SHIFT_IDS[E2E_IDS.slotOverride],
@@ -1063,7 +1063,7 @@ export async function seedE2e({
     await db
       .insert(volunteerNotification)
       .values({
-        id: 'e2ef1111-1111-1111-1111-111111111111',
+        id: 'e2ef1111-1111-1111-a111-111111111111',
         churchId: E2E_IDS.church,
         volunteerId: schedulingVolunteerId,
         ministryId: E2E_IDS.ministry,

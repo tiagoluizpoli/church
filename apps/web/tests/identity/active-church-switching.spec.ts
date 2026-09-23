@@ -28,12 +28,12 @@ const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS) — same convention as the other identity specs.
-const CHURCH_A_ID = 'e2e11111-1111-1111-1111-111111111111';
-const CHURCH_B_ID = 'e2ebbbbb-1111-1111-1111-111111111111';
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
-const DECEMBER_CYCLE_ID = 'e2e21111-1111-1111-1111-111111111111';
-const US4_CYCLE_ID = 'e2e21111-2222-2222-2222-222222222222';
+const CHURCH_A_ID = 'e2e11111-1111-1111-a111-111111111111';
+const CHURCH_B_ID = 'e2ebbbbb-1111-1111-a111-111111111111';
+const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
+const DECEMBER_CYCLE_ID = 'e2e21111-1111-1111-a111-111111111111';
+const US4_CYCLE_ID = 'e2e21111-2222-2222-a222-222222222222';
 const CHURCH_A_NAME = 'E2E Church';
 const CHURCH_B_NAME = 'E2E ChurchB';
 // Real values that only exist inside Church A — the negative assertion
@@ -282,25 +282,19 @@ test.describe('#67 — Active Church selection and switching', () => {
     expect((await statusAfterB.json()).churchId).toBe(CHURCH_B_ID);
 
     // AC3 — Church A's real name/identifiers appear nowhere in the
-    // rendered page. Nothing in this test has reloaded the page since
-    // `/login`, so the client-side query cache built while Church A was
-    // active is still live in memory — a `page.goto` here would wipe it and
-    // prove nothing (TanStack Query's `ensureQueryData`, which
-    // `planning-cycles.tsx`'s `beforeLoad` calls, returns an existing cache
-    // entry immediately without a network request whenever one is present,
-    // stale or not: see `ensureQueryData` in
-    // `@tanstack/query-core/src/queryClient.ts`). Re-entering the route via
-    // a real in-app link click is the only way this check can actually fail
-    // against a broken `clearActiveChurchScopedCache` that left Church A's
-    // `['planning-cycles']` entry behind. This dual member also has no
-    // Ministry access in Church B, so a correctly-cleared cache/session
-    // makes this route's own guard bounce straight back to `/dashboard` —
-    // never rendering, let alone leaking, Church A's cycle list.
-    await page
-      .getByTestId('sidebar')
-      .getByRole('link', { name: 'Cycles' })
-      .click();
-    await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
+    // rendered page. This dual member has no Ministry (nor Church-admin)
+    // access in Church B, so `useCallerRoles`' `scheduling-capability` query
+    // — cleared and refetched fresh by `clearActiveChurchScopedCache` on
+    // every switch (`active-church-switch.ts`) — resolves
+    // `canAccessScheduling: false` for B, and `AppShell` omits the whole
+    // Scheduling nav branch (`Cycles` included) rather than rendering a link
+    // that would 403 through the route guard. A `Cycles` link that survived
+    // the switch would itself be the leak this AC guards against — the
+    // in-app control from which Church A's Planning Cycle data was ever
+    // reachable, so its absence here is exactly what "no remnant" requires.
+    await expect(
+      page.getByTestId('sidebar').getByRole('link', { name: 'Cycles' }),
+    ).not.toBeVisible();
 
     const bodyText = await page.locator('body').innerText();
     expect(bodyText).not.toContain(CHURCH_A_DECEMBER_CYCLE_NAME);

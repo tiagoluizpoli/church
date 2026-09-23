@@ -6,16 +6,16 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // to be hardcoded as "SERVER_URL's port + 1", which broke once the e2e run
 // moved off the normal-dev 4000/4001 pair (see playwright.config.ts).
 const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4001';
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const CARE_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333332';
+const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const CARE_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333332';
 // Publish is cycle-wide, so this spec owns a cycle no other spec touches
 // (`us4PlanningCycle` in `e2e-seed.ts`). Sharing December let run-order decide
 // the start state.
-const PLANNING_CYCLE_ID = 'e2e21111-2222-2222-2222-222222222222';
-const WORSHIP_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111117';
-const CARE_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111118';
-const WORSHIP_SHIFT_ID = 'e2e71111-1111-1111-1111-111111111117';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
+const PLANNING_CYCLE_ID = 'e2e21111-2222-2222-a222-222222222222';
+const WORSHIP_PARTICIPATION_ID = 'e2e61111-1111-1111-a111-111111111117';
+const CARE_PARTICIPATION_ID = 'e2e61111-1111-1111-a111-111111111118';
+const WORSHIP_SHIFT_ID = 'e2e71111-1111-1111-a111-111111111117';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
 const EVENT_TITLE = 'E2E US4 Publish Service';
 const VOLUNTEER_NAME = 'E2E Volunteer';
 // Rail + dashboard abbreviate via formatVolunteerName (FR-013); the chip shows

@@ -17,11 +17,11 @@ const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS) — same convention as the other identity/scheduling specs.
-const CHURCH_ID = 'e2e11111-1111-1111-1111-111111111111';
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const CARE_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333332';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
-const CARE_HOST_ROLE_ID = 'e2e55555-5555-5555-5555-555555555553';
+const CHURCH_ID = 'e2e11111-1111-1111-a111-111111111111';
+const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const CARE_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333332';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
+const CARE_HOST_ROLE_ID = 'e2e55555-5555-5555-a555-555555555553';
 
 const PASSWORD = 'correct-horse-battery-staple';
 

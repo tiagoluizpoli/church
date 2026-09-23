@@ -8,17 +8,14 @@ function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** Mirrors `useTimezone().format(date, 'PP')`, which every event display
- * renders through — assertions against `planning-events-list` must match its
- * human-readable output, not the `YYYY-MM-DD` the day was picked with. */
+/** Mirrors `formatDayOf` (apps/web/src/shared/utils/church-time.ts), which
+ * every event display renders through — assertions against
+ * `planning-events-list` must match its fixed `dd/MM/yyyy` output, not the
+ * `YYYY-MM-DD` the day was picked with. */
 function toDisplayDate(isoDate: string): string {
   const [year, month, day] = isoDate.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-    year: 'numeric',
-  });
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(day)}/${pad(month)}/${year}`;
 }
 
 async function assertCanonicalCreateEventForm(dialog: Locator): Promise<void> {

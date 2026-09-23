@@ -387,13 +387,28 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
 
     await dayRow.getByRole('button', { name: /^Edit day/ }).click();
     const editDayDialog = page.getByRole('dialog', { name: 'Edit day' });
-    const startInput = editDayDialog.getByLabel('Start');
-    const currentStart = await startInput.inputValue();
-    const shiftedStart = new Date(currentStart);
-    shiftedStart.setDate(shiftedStart.getDate() + 1);
+    // `InstantField` (src/components/instant-field.tsx) pairs a
+    // `DatePickerField` with a `TimeOfDayField`, not a single labelled
+    // input — read the date picker trigger's displayed `dd/MM/yyyy`
+    // (`formatCalendarDay`) and shift it a day; the time field is left
+    // untouched.
+    const startDateTrigger = editDayDialog.getByTestId('edit-event-start-date');
+    const currentStartDate = await startDateTrigger.textContent();
+    const [currentDay, currentMonth, currentYear] = (currentStartDate ?? '')
+      .trim()
+      .split('/')
+      .map(Number);
+    const shiftedStart = new Date(
+      Date.UTC(currentYear ?? 0, (currentMonth ?? 1) - 1, currentDay ?? 1),
+    );
+    shiftedStart.setUTCDate(shiftedStart.getUTCDate() + 1);
     const pad = (value: number) => String(value).padStart(2, '0');
-    const shiftedStartValue = `${shiftedStart.getFullYear()}-${pad(shiftedStart.getMonth() + 1)}-${pad(shiftedStart.getDate())}T${pad(shiftedStart.getHours())}:${pad(shiftedStart.getMinutes())}`;
-    await startInput.fill(shiftedStartValue);
+    const shiftedStartValue = `${shiftedStart.getUTCFullYear()}-${pad(shiftedStart.getUTCMonth() + 1)}-${pad(shiftedStart.getUTCDate())}`;
+    await fillDatePickerField({
+      page,
+      trigger: startDateTrigger,
+      date: shiftedStartValue,
+    });
     await editDayDialog.getByRole('button', { name: 'Save' }).click();
     await expect(editDayDialog).not.toBeAttached();
 
@@ -620,7 +635,7 @@ test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
   // The e2e-provisioned Church's timezone is UTC (no timezone passed to
   // `provisionChurch`). Europe/London is UTC+1 in May, so a card rendering
-  // the browser's zone instead of the Church's would show 10:00 AM here.
+  // the browser's zone instead of the Church's would show 10:00 here.
   test.use({ timezoneId: 'Europe/London' });
 
   test('the card list shows the Worship block at its Church Timezone (UTC) time, not the browser zone', async ({
@@ -636,8 +651,8 @@ test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
     // The Worship block is entered as 09:00-10:00; a card rendering the
     // browser's zone instead of the Church's (UTC) would shift this whole
     // range an hour later.
-    await expect(firstCard).toContainText('9:00 AM – 10:00 AM');
-    await expect(firstCard).not.toContainText('10:00 AM – 11:00 AM');
+    await expect(firstCard).toContainText('09:00 – 10:00');
+    await expect(firstCard).not.toContainText('10:00 – 11:00');
   });
 });
 

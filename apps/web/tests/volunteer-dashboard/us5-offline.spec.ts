@@ -6,12 +6,23 @@ test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 test('US5: volunteer keeps cached dashboard data readable across all three tabs after reloading offline', async ({
   page,
 }) => {
+  // The Ministry Schedule tab's data fetches eagerly on mount (independent
+  // of which tab is active) and only lands in the offline-readable cache
+  // once this response resolves — waiting on the default tab's content
+  // alone doesn't guarantee it, so a slow response under load can lose the
+  // race against the offline simulation below.
+  const ministryScheduleResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/volunteer/ministries/') &&
+      response.url().includes('/schedule'),
+  );
   await page.goto('/dashboard');
 
   await expect(
     page.getByText('My Upcoming Assignments', { exact: true }),
   ).toBeVisible();
   await expect(page.getByText('E2E Care Gathering').first()).toBeVisible();
+  await ministryScheduleResponse;
 
   await page.addInitScript(() => {
     Object.defineProperty(window.navigator, 'onLine', {

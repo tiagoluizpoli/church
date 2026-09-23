@@ -188,8 +188,8 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
             {
               id: 'block-1',
               label: 'Welcome',
-              startTime: '09:00:00',
-              endTime: '09:30:00',
+              startTime: '09:00',
+              endTime: '09:30',
               order: 0,
             },
           ],
@@ -246,8 +246,8 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
             {
               id: 'block-1',
               label: 'Welcome',
-              startTime: '09:00:00',
-              endTime: '09:30:00',
+              startTime: '09:00',
+              endTime: '09:30',
               order: 0,
             },
           ],

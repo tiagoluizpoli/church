@@ -29,16 +29,16 @@ const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS) — same convention as the other identity specs.
-const CHURCH_A_ID = 'e2e11111-1111-1111-1111-111111111111';
+const CHURCH_A_ID = 'e2e11111-1111-1111-a111-111111111111';
 const CHURCH_A_NAME = 'E2E Church';
-const CHURCH_A_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const CHURCH_A_ROLE_USHER_ID = 'e2e55555-5555-5555-5555-555555555551';
+const CHURCH_A_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const CHURCH_A_ROLE_USHER_ID = 'e2e55555-5555-5555-a555-555555555551';
 
-const CHURCH_B_ID = 'e2ebbbbb-1111-1111-1111-111111111111';
+const CHURCH_B_ID = 'e2ebbbbb-1111-1111-a111-111111111111';
 const CHURCH_B_NAME = 'E2E ChurchB';
-const CHURCH_B_MINISTRY_ID = 'e2ebbbbb-3333-3333-3333-333333333331';
+const CHURCH_B_MINISTRY_ID = 'e2ebbbbb-3333-3333-a333-333333333331';
 const CHURCH_B_MINISTRY_NAME = 'E2E ChurchB Ministry';
-const CHURCH_B_ROLE_USHER_ID = 'e2ebbbbb-5555-5555-5555-555555555551';
+const CHURCH_B_ROLE_USHER_ID = 'e2ebbbbb-5555-5555-a555-555555555551';
 
 const PASSWORD = 'correct-horse-battery-staple';
 

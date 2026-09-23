@@ -19,18 +19,23 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
  */
 
 const BUILDER_URL =
-  '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111';
+  '/scheduling/rostering/e2e33333-3333-3333-a333-333333333331/e2e21111-1111-1111-a111-111111111111';
 
-const TEAM_ID = 'e2eaaaa1-0000-0000-0000-000000000001';
-const US6_EVENT_ID = 'e2e66666-6666-6666-6666-666666666664';
-const US6_SHIFT_ID = 'e2e71111-1111-1111-1111-111111111114';
-const GREETER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555552';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
-const GRACE_HOPPER_ID = 'e2e44444-4444-4444-4444-4444444444a1';
+const TEAM_ID = 'e2eaaaa1-0000-1000-a000-000000000001';
+const US6_EVENT_ID = 'e2e66666-6666-6666-a666-666666666664';
+const US6_SHIFT_ID = 'e2e71111-1111-1111-a111-111111111114';
+const GREETER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555552';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
+const GRACE_HOPPER_ID = 'e2e44444-4444-4444-a444-4444444444a1';
 
 const UNQUALIFIED_NAME = 'Ursula Unqualified';
 const QUALIFIED_NAME = 'Grace Hopper';
-const OUTSIDE_TEAM_NAME = 'Ada Lovelace';
+// The volunteer-pool rail abbreviates via formatVolunteerName (FR-013) —
+// "First L." — while the assignment chip shows the full name. Both forms are
+// asserted where each appears (see us4-roster-publish.spec.ts).
+const UNQUALIFIED_SHORT_NAME = 'Ursula U.';
+const QUALIFIED_SHORT_NAME = 'Grace H.';
+const OUTSIDE_TEAM_SHORT_NAME = 'Ada L.';
 
 test.describe('qualification governs candidacy', () => {
   test.use({ storageState: LEADER_STORAGE_STATE });
@@ -93,17 +98,18 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     const rail = page.getByTestId('volunteer-pool');
     await expect(rail).toBeVisible();
 
-    // Grace shares team1 with the TeamLeader and is qualified: visible.
-    await expect(rail.getByText(QUALIFIED_NAME, { exact: false })).toHaveCount(
-      1,
-    );
+    // Grace shares team1 with the TeamLeader and is qualified: visible. The
+    // rail abbreviates to "First L." (FR-013), so match that form.
+    await expect(
+      rail.getByText(QUALIFIED_SHORT_NAME, { exact: false }),
+    ).toHaveCount(1);
     // Ursula shares the same team, so her absence isolates qualification as
     // the cause — team scoping alone would have let her through.
     await expect(
-      rail.getByText(UNQUALIFIED_NAME, { exact: false }),
+      rail.getByText(UNQUALIFIED_SHORT_NAME, { exact: false }),
     ).toHaveCount(0);
     await expect(
-      rail.getByText(OUTSIDE_TEAM_NAME, { exact: false }),
+      rail.getByText(OUTSIDE_TEAM_SHORT_NAME, { exact: false }),
     ).toHaveCount(0);
   });
 
@@ -120,7 +126,7 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
       storageState: LEADER_STORAGE_STATE,
     });
     const scheduleResponse = await leaderContext.request.patch(
-      `${SERVER_URL}/api/v1/admin/planning-cycles/e2e21111-1111-1111-1111-111111111111/events/${US6_EVENT_ID}`,
+      `${SERVER_URL}/api/v1/admin/planning-cycles/e2e21111-1111-1111-a111-111111111111/events/${US6_EVENT_ID}`,
       { data: {} },
     );
     expect(scheduleResponse.ok()).toBeTruthy();
@@ -167,6 +173,9 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
       .getByTestId('assignment-picker')
       .getByRole('button', { name: 'Unassign' })
       .click();
+    // "Unassign" opens a confirm dialog rather than deleting outright — the
+    // DELETE only fires once the leader confirms.
+    await page.getByRole('button', { name: 'Remove assignment' }).click();
     expect((await removeResponse).status()).toBe(204);
     await expect(ledRequirement.getByTestId('assignment-chip')).toHaveCount(0);
 
@@ -178,12 +187,17 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
           .includes(`/api/v1/rostering/shifts/${US6_SHIFT_ID}/assignments`),
     );
     await ledRequirement.getByRole('button', { name: 'Add' }).click();
+    // Grace is Team1's only qualified, available, not-yet-serving candidate
+    // for this role, so she surfaces as a suggestion rather than in the
+    // plain (non-suggested) picker list.
     await page
       .getByTestId('assignment-picker')
-      .getByTestId('picker-option')
+      .getByTestId('suggestion-option')
       .filter({ hasText: QUALIFIED_NAME })
       .click();
-    expect((await createResponse).status()).toBe(201);
+    const createdResponse = await createResponse;
+    expect(createdResponse.status()).toBe(201);
+    const { assignment: recreatedAssignment } = await createdResponse.json();
     await expect(ledRequirement.getByTestId('assignment-chip')).toContainText(
       QUALIFIED_NAME,
     );
@@ -200,13 +214,23 @@ test.describe('TeamLeader roster discovery composes with qualification', () => {
     );
     expect(unledResponse.status()).toBe(403);
     await expect(ledRequirement.getByTestId('assignment-chip')).toBeVisible();
+
+    // This shift/role is a shared fixture other specs (e.g. smoke.spec.ts)
+    // expect to find unstaffed — undo the re-add above via a direct API call
+    // (bypassing the UI, since the test's own assertions are already done)
+    // so the fixture returns to its pre-test state for whichever spec runs
+    // next.
+    const cleanupResponse = await page.request.delete(
+      `${SERVER_URL}/api/v1/rostering/assignments/${recreatedAssignment.id}?teamId=${TEAM_ID}`,
+    );
+    expect(cleanupResponse.status()).toBe(204);
   });
 
   test('a wrong-Team roster link returns to Scheduling without roster data', async ({
     page,
   }) => {
     await page.goto(
-      '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331?teamId=e2eaaaa1-0000-0000-0000-000000000002',
+      '/scheduling/rostering/e2e33333-3333-3333-a333-333333333331?teamId=e2eaaaa1-0000-1000-a000-000000000002',
     );
 
     await expect(page).toHaveURL(/\/scheduling$/);

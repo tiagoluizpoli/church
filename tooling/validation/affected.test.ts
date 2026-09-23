@@ -207,6 +207,7 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/a11y-planning-nav.spec.ts',
       'tests/scheduling/capability-index.spec.ts',
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
@@ -624,5 +625,49 @@ describe('classifyChanges', () => {
         workspaceName: 'server',
       },
     ]);
+  });
+
+  // #219 — a11y-builder.spec.ts and a11y-planning-nav.spec.ts stayed at the
+  // Playwright layer (axe-core needs real browser paint) and were mapped
+  // precisely so an unrelated web-shell change doesn't pull them in.
+  it('selects the a11y-builder journey for a schedule builder feature component change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/scheduling/components/builder/cycle-builder-header.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toContain(
+      'tests/scheduling/a11y-builder.spec.ts',
+    );
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the a11y-builder journey for a rostering route change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/a11y-builder.spec.ts',
+      'tests/scheduling/capability-index.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the a11y-planning-nav journey for an app-shell change', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/components/app-shell.tsx'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/scheduling/a11y-planning-nav.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
   });
 });

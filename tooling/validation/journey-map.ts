@@ -3,6 +3,20 @@ export interface JourneyMapping {
   sourcePathPrefix: string;
 }
 
+// #219 ("Right-size web-shell coverage") classified desktop-layout,
+// mobile-layout, home-landing, search, theme, and timezone against the
+// critical-journey criterion: each crossed at most one of
+// browser/API/database/authentication/real-time (pure client UI, routing, or
+// theme state, no server/API/DB boundary). None qualified as critical, so
+// all six were deleted and their coverage moved to component tests
+// (app-shell.component.test.tsx, command-palette.component.test.tsx,
+// mode-toggle.component.test.tsx, user-menu.component.test.tsx, and the
+// volunteer-dashboard/`_active-church` index route tests) — no new entries
+// were added to JOURNEY_MAP for them. a11y-builder.spec.ts and
+// a11y-planning-nav.spec.ts were also #219's to classify; both stayed at
+// this layer (see their entries below) because axe-core's WCAG scan needs
+// real browser paint that a jsdom component test cannot reproduce.
+
 // The initial critical smoke set (#210): identity redemption, active-Church
 // isolation, planning builder, Availability, and roster publishing. Runs
 // whenever a production web or server change has no entry in JOURNEY_MAP
@@ -91,11 +105,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // route) is a distinct route from the three named below; its guard and
     // capability specs load routes under this whole family, so they belong
     // at this broad prefix rather than one of the narrower ones.
-    // a11y-builder.spec.ts and a11y-planning-nav.spec.ts (below) are
-    // deliberately NOT classified here — #217's own scope is "authorization,
-    // Church isolation, time, and edge-case coverage"; accessibility
-    // coverage is #219's ("Right-size web-shell coverage") to classify,
-    // including whether it needs new lower-layer a11y tooling.
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/scheduling',
     specPaths: [
@@ -144,10 +153,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       // route, the two lock edge cases (network failure, double-submit), the
       // Church-local-time create-event journey, and the cross-route guard
       // matrix's ChurchAdmin-facing route all load through this route
-      // family. Accessibility (a11y-planning-nav.spec.ts) is out of #217's
-      // scope — see the comment on the broad scheduling prefix above.
+      // family.
       ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      // #219 — this route family renders the breadcrumb a11y-planning-nav
+      // scans and exact-match-tests.
+      'tests/scheduling/a11y-planning-nav.spec.ts',
     ],
   },
   {
@@ -219,6 +230,14 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix: 'apps/web/src/routes/_authenticated.tsx',
     specPaths: ['tests/identity/route-protection.spec.ts'],
+  },
+  // #219 — the breadcrumb component a11y-planning-nav.spec.ts scans and
+  // exact-match-tests (aria-current) lives in the shared shell, not in a
+  // per-feature file; a change here is what the T067 regression (falsely
+  // marking ancestor breadcrumb links as the current page) came from.
+  {
+    sourcePathPrefix: 'apps/web/src/components/app-shell.tsx',
+    specPaths: ['tests/scheduling/a11y-planning-nav.spec.ts'],
   },
   {
     sourcePathPrefix: 'apps/web/src/routes/login.tsx',
@@ -415,6 +434,21 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/builder-slot-focus.spec.ts',
       'tests/scheduling/us5-live-changes.spec.ts',
     ],
+  },
+  // #219 — the schedule builder route and its feature components are what
+  // a11y-builder.spec.ts's axe-core scan drives. Scoped narrower than the
+  // broad `.../scheduling` prefix above (which also matches planning-cycles
+  // and tailoring changes this a11y spec never touches) — real browser paint
+  // is needed for a WCAG contrast/semantics scan, which is why this stays at
+  // the Playwright layer instead of moving down like #219's other six specs.
+  {
+    sourcePathPrefix:
+      'apps/web/src/routes/_authenticated/_active-church/scheduling/rostering',
+    specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/features/scheduling/components/builder/',
+    specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
   },
   // #217 — the church-admin-controller owns every planning-cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge

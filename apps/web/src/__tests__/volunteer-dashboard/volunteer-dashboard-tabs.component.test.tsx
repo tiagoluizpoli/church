@@ -189,4 +189,33 @@ describe('VolunteerDashboard tabs', () => {
       screen.queryByText('My Upcoming Assignments'),
     ).not.toBeInTheDocument();
   });
+
+  // #219, right-sized from home-landing.spec.ts, which looped over 4 role
+  // storage states: '/' unconditionally redirects here
+  // (route-protection.spec.ts proves the redirect itself) for every role.
+  // A single render covers all four because neither link in the chain
+  // between the route and this component branches on caller role — verified
+  // by reading both: the dashboard route (dashboard.tsx's RouteComponent)
+  // only reads session.data?.user.name (greeting text) and search params,
+  // and VolunteerDashboard itself (grepped for `role`) has none either. The
+  // starter-template ASCII banner and the standalone Scheduling
+  // EventList/"New Event" affordance were both leftover scaffolding that
+  // must never resurface on this surface.
+  it('never renders the leftover starter-template banner or a duplicate Events list', () => {
+    mockedUseVolunteerDashboard.mockReturnValue(
+      createVolunteerDashboardHookResult({
+        availabilityTasks: availabilityTasksFixture,
+      }),
+    );
+
+    renderWithProviders(<VolunteerDashboard />);
+
+    expect(screen.queryByText(/██████╗/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Events' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'New Event' }),
+    ).not.toBeInTheDocument();
+  });
 });

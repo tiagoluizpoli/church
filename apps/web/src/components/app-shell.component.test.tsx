@@ -53,6 +53,16 @@ function navLabels(landmark: HTMLElement): (string | undefined)[] {
     .map((link) => link.textContent?.trim());
 }
 
+async function findDrawerNav(): Promise<HTMLElement> {
+  const drawer = await screen.findByTestId('mobile-drawer-content');
+  return within(drawer).getByRole('navigation');
+}
+
+// h-12 = 12 * 4px = 48px against this repo's unmodified default Tailwind
+// spacing scale (`--spacing: 0.25rem`, see src/index.css — no override),
+// at or above the 44px touch-target minimum.
+const TOUCH_TARGET_HEIGHT_CLASS = /\bh-12\b/;
+
 describe('AppShell role-scoped navigation', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -193,9 +203,7 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('mobile-drawer-trigger'));
 
-    const drawerNav = (
-      await screen.findByTestId('mobile-drawer-content')
-    ).querySelector('nav') as HTMLElement;
+    const drawerNav = await findDrawerNav();
     const childLink = within(drawerNav).getByRole('link', { name: 'Cycles' });
     const childRow = childLink.closest('[data-nav-child]');
 
@@ -214,9 +222,7 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('mobile-drawer-trigger'));
 
-    const drawerNav = (
-      await screen.findByTestId('mobile-drawer-content')
-    ).querySelector('nav') as HTMLElement;
+    const drawerNav = await findDrawerNav();
 
     expect(navLabels(drawerNav)).toEqual([
       'Dashboard',
@@ -237,6 +243,152 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
     });
     expect(cyclesLink).not.toHaveClass('font-semibold');
     expect(cyclesLink).toHaveAttribute('href', '/scheduling/planning-cycles');
+  });
+});
+
+describe('AppShell desktop sidebar collapse (#219, right-sized from desktop-layout.spec.ts)', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    mockPathname = '/dashboard';
+    mockHref = '/dashboard';
+  });
+
+  it('flips the toggle label and collapsed markup on each click, round-tripping back to expanded', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+    const toggle = screen.getByTestId('sidebar-toggle');
+
+    const sidebar = screen.getByTestId('sidebar');
+
+    // Expanded: full title block, toggle offers to collapse.
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBe(
+      toggle,
+    );
+    expect(within(sidebar).getByText('Church CRM')).toBeVisible();
+
+    await user.click(toggle);
+
+    // Collapsed: title block replaced by the icon-only header, toggle now
+    // offers to expand — the same signal desktop-layout.spec.ts inferred
+    // from the sidebar's animated boundingBox width.
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBe(toggle);
+    expect(within(sidebar).queryByText('Church CRM')).not.toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBe(
+      toggle,
+    );
+    expect(within(sidebar).getByText('Church CRM')).toBeVisible();
+  });
+});
+
+describe('AppShell responsive visibility contract (#219, right-sized from mobile-layout.spec.ts)', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    mockPathname = '/dashboard';
+    mockHref = '/dashboard';
+  });
+
+  it('hides the desktop sidebar and shows the mobile shell below md, and the reverse above it', () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    // jsdom has no real breakpoint layout, so this asserts the Tailwind
+    // class contract each element ships (hidden below/above `md`) rather
+    // than a rendered boundingBox — the same source that made the real
+    // browser hide/show them.
+    expect(screen.getByTestId('sidebar').className).toContain('md:flex');
+    expect(screen.getByTestId('sidebar').className).toContain('hidden');
+    expect(screen.getByTestId('mobile-top-header').className).toContain(
+      'md:hidden',
+    );
+    expect(screen.getByTestId('mobile-bottom-nav').className).toContain(
+      'md:hidden',
+    );
+  });
+
+  it('only links to routes that exist in the bottom nav and drawer for a Volunteer-only caller', async () => {
+    const VOLUNTEER_ALLOWED_HREFS = ['/dashboard', '/availability'];
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+
+    for (const link of within(
+      screen.getByTestId('mobile-bottom-nav'),
+    ).getAllByRole('link')) {
+      expect(VOLUNTEER_ALLOWED_HREFS).toContain(link.getAttribute('href'));
+    }
+
+    await user.click(screen.getByTestId('mobile-drawer-trigger'));
+    const drawerNav = await findDrawerNav();
+    for (const link of within(drawerNav).getAllByRole('link')) {
+      expect(VOLUNTEER_ALLOWED_HREFS).toContain(link.getAttribute('href'));
+    }
+  });
+
+  it('sizes bottom-nav and drawer links at or above the 44px touch-target minimum', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+    const user = userEvent.setup();
+
+    // jsdom has no layout engine, so boundingBox() (what mobile-layout.spec.ts
+    // used) can't be reproduced here — this asserts the Tailwind height class
+    // that actually produced that pixel size in the real browser instead
+    // (TOUCH_TARGET_HEIGHT_CLASS above).
+    for (const link of within(
+      screen.getByTestId('mobile-bottom-nav'),
+    ).getAllByRole('link')) {
+      expect(link.className).toMatch(TOUCH_TARGET_HEIGHT_CLASS);
+    }
+
+    await user.click(screen.getByTestId('mobile-drawer-trigger'));
+    const drawerNav = await findDrawerNav();
+    for (const link of within(drawerNav).getAllByRole('link')) {
+      expect(link.className).toMatch(TOUCH_TARGET_HEIGHT_CLASS);
+    }
+  });
+});
+
+describe('AppShell command palette shortcut (#219, right-sized from search.spec.ts)', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    mockPathname = '/dashboard';
+    mockHref = '/dashboard';
+  });
+
+  it('opens the command palette on Ctrl+K and closes it on a second press', async () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Control>}k{/Control}');
+    expect(await screen.findByTestId('command-palette')).toBeVisible();
+
+    await userEvent.keyboard('{Control>}k{/Control}');
+    expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
   });
 });
 

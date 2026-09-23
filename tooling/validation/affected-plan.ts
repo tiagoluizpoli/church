@@ -4,6 +4,15 @@ export type TestLayer = 'test:unit' | 'test:integration';
 
 export interface ClassifyChangesInput {
   changedPaths: string[];
+  /**
+   * The daily gate (task-branch to develop) never requires the full E2E
+   * suite — per #210's Implementation Decisions, only a develop-to-master
+   * release gate does, and only once #121 is repeatedly green. Set this for
+   * that gate's invocation so a change to shared E2E infrastructure (e.g.
+   * playwright.config.ts) still selects its normal mapped/critical-journey
+   * specs, but never escalates to the full suite.
+   */
+  dailyGate?: boolean;
   e2eSpecPaths?: string[];
 }
 
@@ -114,6 +123,7 @@ const TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
 
 export function classifyChanges({
   changedPaths,
+  dailyGate = false,
   e2eSpecPaths = [],
 }: ClassifyChangesInput): ValidationPlan {
   const workspaceNames = new Set<string>();
@@ -133,7 +143,7 @@ export function classifyChanges({
     }
 
     const isSharedE2eInfrastructure = FULL_E2E_PATHS.has(changedPath);
-    if (isSharedE2eInfrastructure) requiresFullE2e = true;
+    if (isSharedE2eInfrastructure && !dailyGate) requiresFullE2e = true;
 
     const workspace = WORKSPACES.find(({ path }) =>
       changedPath.startsWith(path),

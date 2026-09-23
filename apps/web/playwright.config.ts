@@ -48,22 +48,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: '**/mobile-layout.spec.ts',
-    },
-    // Real device emulation (touch, mobile UA, viewport) for the one spec
-    // that's purely mobile-shell coverage. Every other spec exercises both
-    // layouts inside one flow via `test.use({ viewport })` per describe
-    // block — those stay on `chromium` so a single seeded cycle/session
-    // isn't driven twice per project.
-    {
-      name: 'mobile-chromium',
-      // Pixel 5, not iPhone 12 — every device preset in the iPhone family
-      // defaults `defaultBrowserType` to `webkit`, which isn't installed in
-      // this repo's Playwright setup (chromium-only, see webServer above).
-      // Pixel 5 gives the same isMobile/hasTouch/viewport emulation on
-      // chromium.
-      use: { ...devices['Pixel 5'] },
-      testMatch: '**/mobile-layout.spec.ts',
     },
   ],
   webServer: [

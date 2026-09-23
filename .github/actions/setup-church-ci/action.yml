@@ -30,11 +30,25 @@ runs:
           "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
           "$CORS_ORIGIN" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" \
           "$NODE_ENV" "$ENABLE_DEBUG_ENDPOINTS" > .env
-        # VITE_SERVER_URL is only set by the e2e job; the fast/develop gates
-        # don't build the web app, so they don't set it.
+        # VITE_SERVER_URL is only set (as a job-level env) by the e2e job,
+        # for its real dev-server build — apps/web/vite.config.ts reads the
+        # repo root as its envDir, matching this file.
         if [ -n "$VITE_SERVER_URL" ]; then
           printf 'VITE_SERVER_URL=%s\n' "$VITE_SERVER_URL" >> .env
         fi
+
+    - name: Create apps/web/.env for vitest
+      shell: bash
+      run: |
+        # apps/web/vitest.config.ts deliberately points `envDir` at this
+        # package, not the repo root (see its own comment), so
+        # packages/env/src/web.ts's Zod validation of VITE_SERVER_URL —
+        # which runs at module-import time, before any test body, for any
+        # web component test that transitively imports the generated API
+        # client (e.g. via NotificationBell) — needs it here too. No gate
+        # actually calls this URL from test:unit (network calls are mocked),
+        # so a placeholder satisfies the validation everywhere.
+        printf 'VITE_SERVER_URL=%s\n' "${VITE_SERVER_URL:-http://localhost:3000}" >> apps/web/.env
 
     - name: Run database migrations
       shell: bash

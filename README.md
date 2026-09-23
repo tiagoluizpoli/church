@@ -128,6 +128,21 @@ fixtures per Playwright run; it needs no manual reset step beyond running the
 suite (`bun run test:e2e`), which calls
 `globalSetup` before every run.
 
+## Test Policy: What To Run
+
+See [ADR-0004](docs/adr/0004-test-strategy-and-ci-gate-policy.md) for the full
+policy and its trade-offs. Day to day, pick the command by what changed:
+
+| Change type | Command |
+| --- | --- |
+| One file, while iterating | `bun run --cwd <app or package> test <path>` |
+| Any local change, before a PR | `bun run validate:affected` |
+| A story's own E2E spec, once done | `bun run test:e2e -- tests/[path].spec.ts` |
+| Task branch → `develop` PR (CI) | fast gate + `validate:affected --daily-gate` |
+| `develop` → `master` PR (CI, once #121 is green) | complete validation gate |
+| Final handoff / merge validation | `bun run validate` |
+| New Playwright spec | only if critical-journey (ADR-0004); add its `JOURNEY_MAP` entry |
+
 ## Available Scripts
 
 - `bun run dev`: Start all applications in development mode

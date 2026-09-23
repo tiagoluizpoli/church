@@ -26,6 +26,9 @@ Default canonical labels (needs-triage, needs-info, ready-for-agent, ready-for-h
 
 Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
 
+### Test strategy and CI gates
+
+Before a PR, run `bun run validate:affected`, not `bun run validate` (final-handoff only). See [ADR-0004](docs/adr/0004-test-strategy-and-ci-gate-policy.md) and the README's "Test Policy: What To Run" table.
 
 ### Rules
 - Test files ALWAYS goes in the "test" directory of the project

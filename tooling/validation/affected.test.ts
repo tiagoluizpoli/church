@@ -293,6 +293,7 @@ describe('classifyChanges', () => {
         'tests/volunteer-dashboard/us1-availability.spec.ts',
         'tests/volunteer-dashboard/us2-assignments.spec.ts',
         'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+        'tests/volunteer-dashboard/us5-offline.spec.ts',
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
     }
@@ -325,6 +326,84 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
+  it('selects only the offline journey for the offline-specific dashboard files', () => {
+    for (const changedPath of [
+      'apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx',
+    ]) {
+      const plan = classifyChanges({ changedPaths: [changedPath] });
+
+      expect(plan.e2eSpecPaths).toEqual([
+        'tests/volunteer-dashboard/us5-offline.spec.ts',
+      ]);
+      expect(plan.missingJourneyMappings).toEqual([]);
+    }
+  });
+
+  it('selects the offline and availability journeys for the availability form', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/volunteers/components/availability-form.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us1-availability.spec.ts',
+      'tests/volunteer-dashboard/us5-offline.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects both the dashboard and notification-bell journeys for use-online-state', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/volunteers/hooks/use-online-state.ts',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
+      'tests/volunteer-dashboard/us1-availability.spec.ts',
+      'tests/volunteer-dashboard/us2-assignments.spec.ts',
+      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+      'tests/volunteer-dashboard/us5-offline.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects only the notification-bell journey for the bell, inbox route, and inbox hook', () => {
+    for (const changedPath of [
+      'apps/web/src/components/notification-bell/notification-bell.tsx',
+      'apps/web/src/routes/_authenticated/_active-church/notifications.tsx',
+      'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
+      'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',
+      'apps/web/src/features/volunteers/lib/notification-navigation.ts',
+    ]) {
+      const plan = classifyChanges({ changedPaths: [changedPath] });
+
+      expect(plan.e2eSpecPaths).toEqual([
+        'tests/volunteer-dashboard/us-notification-bell.spec.ts',
+      ]);
+      expect(plan.missingJourneyMappings).toEqual([]);
+    }
+  });
+
+  it('selects the dashboard and notification-bell journeys for dashboard-query-options', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/features/volunteers/lib/dashboard-query-options.ts',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
+      'tests/volunteer-dashboard/us1-availability.spec.ts',
+      'tests/volunteer-dashboard/us2-assignments.spec.ts',
+      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+      'tests/volunteer-dashboard/us5-offline.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
   it('selects the published-schedule journeys for the ministry-schedule section', () => {
     const plan = classifyChanges({
       changedPaths: [
@@ -339,7 +418,7 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the volunteer-dashboard, us3-availability, and roster-publish journeys for the volunteer API client', () => {
+  it('selects the volunteer-dashboard, notification-bell, us3-availability, and roster-publish journeys for the volunteer API client', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/infrastructure/api/volunteer.ts'],
     });
@@ -347,9 +426,11 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       'tests/volunteer-dashboard/us1-availability.spec.ts',
       'tests/volunteer-dashboard/us2-assignments.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+      'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -458,6 +539,7 @@ describe('classifyChanges', () => {
     });
     expect(volunteerControllerPlan.e2eSpecPaths).toEqual([
       'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
     ]);
   });
 

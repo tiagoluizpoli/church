@@ -68,7 +68,7 @@ jobs:
           # lint violation — a debug artifact should never be lint-scoped
           # source in the first place.
           plan_file="$RUNNER_TEMP/affected-plan.json"
-          bun tooling/validation/affected.ts --dry-run --base "origin/${{ github.base_ref }}" > "$plan_file"
+          bun tooling/validation/affected.ts --dry-run --daily-gate --base "origin/${{ github.base_ref }}" > "$plan_file"
           cat "$plan_file"
           needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' "$plan_file")
           echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
@@ -79,7 +79,14 @@ jobs:
         working-directory: apps/web
 
       - name: Fast + affected gate
-        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}"
+        # --daily-gate: per #210's Implementation Decisions, a task-branch to
+        # develop PR only ever requires the fast+affected gate — the full E2E
+        # suite is release-gate-only (develop to master), gated on #121 being
+        # repeatedly green, and that release gate (#222) doesn't exist yet. A
+        # change to shared E2E infrastructure (e.g. playwright.config.ts)
+        # still selects its normal mapped/critical-journey specs here; it
+        # just never escalates to the full suite.
+        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate
 
       - name: Record elapsed-time evidence
         if: always()

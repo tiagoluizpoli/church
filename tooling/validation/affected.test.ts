@@ -20,6 +20,11 @@ describe('parseArguments', () => {
       '--base requires a ref.',
     );
   });
+
+  it('defaults dailyGate to false, and reads --daily-gate as a standalone flag', () => {
+    expect(parseArguments({ args: [] }).dailyGate).toBe(false);
+    expect(parseArguments({ args: ['--daily-gate'] }).dailyGate).toBe(true);
+  });
 });
 
 describe('classifyChanges', () => {
@@ -63,6 +68,18 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.requiresFullE2e).toBe(true);
+  });
+
+  // #210's Implementation Decisions: the daily (task-branch to develop) gate
+  // never requires the full E2E suite — only a develop to master release
+  // gate does, gated on #121 being repeatedly green.
+  it('never requires the complete E2E suite in daily-gate mode, even for Playwright infrastructure changes', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/playwright.config.ts'],
+      dailyGate: true,
+    });
+
+    expect(plan.requiresFullE2e).toBe(false);
   });
 
   it('runs an explicitly declared E2E spec without selecting the complete suite', () => {

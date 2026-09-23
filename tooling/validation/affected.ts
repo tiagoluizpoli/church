@@ -24,6 +24,7 @@ interface ParseArgumentsInput {
 
 interface ParseArgumentsResult {
   baseRef?: string;
+  dailyGate: boolean;
   dryRun: boolean;
   e2eSpecPaths: string[];
 }
@@ -78,12 +79,18 @@ export function parseArguments({
 }: ParseArgumentsInput): ParseArgumentsResult {
   const e2eSpecPaths: string[] = [];
   let dryRun = false;
+  let dailyGate = false;
   let baseRef: string | undefined;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === '--dry-run') {
       dryRun = true;
+      continue;
+    }
+
+    if (arg === '--daily-gate') {
+      dailyGate = true;
       continue;
     }
 
@@ -103,7 +110,7 @@ export function parseArguments({
     }
   }
 
-  return { baseRef, dryRun, e2eSpecPaths };
+  return { baseRef, dailyGate, dryRun, e2eSpecPaths };
 }
 
 function runCommand({ args, command }: CommandInput): string[] {
@@ -229,6 +236,7 @@ if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
   const plan = classifyChanges({
     changedPaths: collectChangedPaths({ baseRef: argumentsResult.baseRef }),
+    dailyGate: argumentsResult.dailyGate,
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
   });
 

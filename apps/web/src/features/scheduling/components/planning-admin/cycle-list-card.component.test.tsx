@@ -108,8 +108,9 @@ describe('CycleListCard table view (US1)', () => {
     const user = userEvent.setup();
     render(onSelectCycle);
 
-    const first = await screen.findByTestId('planning-cycle-row-cycle-1');
-    const second = screen.getByTestId('planning-cycle-row-cycle-2');
+    const table = await screen.findByRole('grid');
+    const first = within(table).getByTestId('planning-cycle-row-cycle-1');
+    const second = within(table).getByTestId('planning-cycle-row-cycle-2');
     expect(first).toHaveAttribute('aria-selected', 'false');
     expect(second).toHaveAttribute('aria-selected', 'false');
 
@@ -153,8 +154,9 @@ describe('CycleListCard table view (US1)', () => {
         <CycleListCard selectedCycleId="cycle-1" />
       </PlanningAdminProvider>,
     );
-    const first = await screen.findByTestId('planning-cycle-row-cycle-1');
-    const second = screen.getByTestId('planning-cycle-row-cycle-2');
+    const table = await screen.findByRole('grid');
+    const first = within(table).getByTestId('planning-cycle-row-cycle-1');
+    const second = within(table).getByTestId('planning-cycle-row-cycle-2');
     expect(first).toHaveAttribute('aria-selected', 'true');
     expect(second).toHaveAttribute('aria-selected', 'false');
 

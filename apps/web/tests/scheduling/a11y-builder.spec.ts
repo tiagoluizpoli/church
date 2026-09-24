@@ -7,7 +7,7 @@ import { LEADER_STORAGE_STATE } from '../global-setup';
 test.use({ storageState: LEADER_STORAGE_STATE });
 
 const BUILDER_URL =
-  '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111';
+  '/scheduling/rostering/e2e33333-3333-3333-a333-333333333331/e2e21111-1111-1111-a111-111111111111';
 
 test('schedule builder has no critical or serious WCAG violations', async ({
   page,

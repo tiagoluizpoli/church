@@ -58,7 +58,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
     events: { id: string }[];
   };
   const existingEventId = existingEventsBody.events.find(
-    (e) => e.id === 'e2e66666-6666-6666-6666-666666666661',
+    (e) => e.id === 'e2e66666-6666-6666-a666-666666666661',
   )?.id;
   if (!existingEventId) throw new Error('E2E Seed Event not found');
   expect(existingEventId).toBeTruthy();

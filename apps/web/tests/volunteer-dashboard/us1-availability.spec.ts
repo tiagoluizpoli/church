@@ -4,7 +4,7 @@ import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
 test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
 const DASHBOARD_URL =
-  '/dashboard?section=availability&eventId=e2e66666-6666-6666-6666-666666666661';
+  '/dashboard?section=availability&eventId=e2e66666-6666-6666-a666-666666666661';
 
 test('US1: volunteer finds availability task and opens event editor within 10 seconds', async ({
   page,

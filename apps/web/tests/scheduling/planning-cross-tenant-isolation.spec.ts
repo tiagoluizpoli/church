@@ -11,7 +11,7 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // E2E_IDS.churchBPlanningCycle / CHURCH_B_PLANNING_CYCLE_NAME) — same
 // convention as cross-cutting.spec.ts: the web package stays
 // DB-tooling-free, so this spec references the well-known values directly.
-const CHURCH_B_CYCLE_ID = 'e2ebbbbb-2111-1111-1111-111111111111';
+const CHURCH_B_CYCLE_ID = 'e2ebbbbb-2111-1111-a111-111111111111';
 const CHURCH_B_CYCLE_NAME = 'E2E ChurchB Isolated Cycle';
 
 test.describe('DL4-X1 cross-tenant isolation on the $cycleId route', () => {

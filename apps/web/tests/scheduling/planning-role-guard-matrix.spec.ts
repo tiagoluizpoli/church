@@ -27,7 +27,7 @@ test.describe('Leader direct access to the other scheduling routes', () => {
     await expect(page).toHaveURL('/scheduling/tailoring');
 
     await page.goto(
-      '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111',
+      '/scheduling/rostering/e2e33333-3333-3333-a333-333333333331/e2e21111-1111-1111-a111-111111111111',
     );
     await expect(page.getByTestId('cycle-builder')).toBeVisible();
   });
@@ -51,7 +51,7 @@ test.describe('Volunteer-only denial across all 3 scheduling routes', () => {
     ).toHaveCount(0);
 
     await page.goto(
-      '/scheduling/rostering/e2e33333-3333-3333-3333-333333333331/e2e21111-1111-1111-1111-111111111111',
+      '/scheduling/rostering/e2e33333-3333-3333-a333-333333333331/e2e21111-1111-1111-a111-111111111111',
     );
     await expect(page.getByTestId('cycle-builder')).toHaveCount(0);
     await expect(

@@ -8,9 +8,9 @@ test.use({
   viewport: { width: 375, height: 812 },
 });
 
-const MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const PLANNING_CYCLE_ID = 'e2e21111-1111-1111-1111-111111111111';
-const WORSHIP_PARTICIPATION_ID = 'e2e61111-1111-1111-1111-111111111114';
+const MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const PLANNING_CYCLE_ID = 'e2e21111-1111-1111-a111-111111111111';
+const WORSHIP_PARTICIPATION_ID = 'e2e61111-1111-1111-a111-111111111114';
 const BUILDER_URL = `/scheduling/rostering/${MINISTRY_ID}/${PLANNING_CYCLE_ID}`;
 
 test('builder renders the cycle board, volunteer rail, and publish control', async ({
@@ -46,7 +46,7 @@ test('builder renders the cycle board, volunteer rail, and publish control', asy
   await page.getByRole('button', { name: /^Show only .*\b28\b/i }).click();
   await expect(
     page.getByTestId(
-      'cycle-requirement-e2e71111-1111-1111-1111-111111111114-e2e55555-5555-5555-5555-555555555552',
+      'cycle-requirement-e2e71111-1111-1111-a111-111111111114-e2e55555-5555-5555-a555-555555555552',
     ),
   ).toBeVisible();
 });
@@ -72,10 +72,10 @@ test('a draft assignment persists through publish and can be reassigned', async 
   page,
 }) => {
   const firstRequirement = page.getByTestId(
-    'cycle-requirement-e2e71111-1111-1111-1111-111111111111-e2e55555-5555-5555-5555-555555555551',
+    'cycle-requirement-e2e71111-1111-1111-a111-111111111111-e2e55555-5555-5555-a555-555555555551',
   );
   const requirement = page.getByTestId(
-    'cycle-requirement-e2e71111-1111-1111-1111-111111111114-e2e55555-5555-5555-5555-555555555552',
+    'cycle-requirement-e2e71111-1111-1111-a111-111111111114-e2e55555-5555-5555-a555-555555555552',
   );
 
   // The picker's first option is whichever candidate the ranking surfaces —

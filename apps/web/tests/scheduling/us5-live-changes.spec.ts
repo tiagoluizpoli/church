@@ -15,9 +15,9 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS). The web package stays DB-tooling-free, so specs reference these
 // well-known UUIDs directly — same convention as us1/us3/us4 specs.
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-3333-333333333331';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-5555-555555555551';
-const TEAM_LEADER_VOLUNTEER_ID = 'e2e44444-4444-4444-4444-444444444446';
+const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
+const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
+const TEAM_LEADER_VOLUNTEER_ID = 'e2e44444-4444-4444-a444-444444444446';
 
 // VOLUNTEER_STORAGE_STATE's volunteer belongs to Worship, seeded as
 // "E2E Volunteer". TEAM_LEADER_STORAGE_STATE's volunteer ("E2E Team Leader",

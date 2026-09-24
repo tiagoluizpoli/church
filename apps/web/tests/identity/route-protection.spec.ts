@@ -22,7 +22,7 @@ const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifier (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS.church) — same convention as the other identity specs.
-const CHURCH_ID = 'e2e11111-1111-1111-1111-111111111111';
+const CHURCH_ID = 'e2e11111-1111-1111-a111-111111111111';
 const PASSWORD = 'correct-horse-battery-staple';
 const DEEP_LINK_PATH = '/scheduling/planning-cycles';
 

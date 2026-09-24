@@ -58,8 +58,8 @@ export const E2E_AUTH_META = path.resolve(dirname, '.auth/e2e-users.json');
 // Mirrors `apps/server/src/test-support/e2e-seed.ts`'s `E2E_IDS.church` /
 // `E2E_IDS.churchB` — pinned so the domain fixture's hardcoded ids still
 // resolve against the Church this setup provisions.
-const CHURCH_A_ID = 'e2e11111-1111-1111-1111-111111111111';
-const CHURCH_B_ID = 'e2ebbbbb-1111-1111-1111-111111111111';
+const CHURCH_A_ID = 'e2e11111-1111-1111-a111-111111111111';
+const CHURCH_B_ID = 'e2ebbbbb-1111-1111-a111-111111111111';
 
 const LEADER_BASE = {
   password: 'e2e-Password-123',

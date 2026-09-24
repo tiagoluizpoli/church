@@ -18,7 +18,7 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // E2E_IDS.churchBMinistry / CHURCH_B_MINISTRY_NAME) — same convention as
 // the other identity/scheduling specs: the web package stays DB-tooling-
 // free, so this spec references the well-known values directly.
-const CHURCH_B_MINISTRY_ID = 'e2ebbbbb-3333-3333-3333-333333333331';
+const CHURCH_B_MINISTRY_ID = 'e2ebbbbb-3333-3333-a333-333333333331';
 const CHURCH_B_MINISTRY_NAME = 'E2E ChurchB Ministry';
 const CHURCH_B_NAME = 'E2E ChurchB';
 const CHURCH_B_SLUG = 'e2e-church-b';

@@ -12,7 +12,7 @@ const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 // E2E_IDS) — same convention as the other scheduling specs: the web package
 // stays DB-tooling-free, so specs reference these well-known values directly.
 const CHURCH_A_CYCLE_NAME = 'E2E December cycle';
-const CHURCH_A_CYCLE_ID = 'e2e21111-1111-1111-1111-111111111111';
+const CHURCH_A_CYCLE_ID = 'e2e21111-1111-1111-a111-111111111111';
 const CHURCH_B_CYCLE_NAME = 'E2E ChurchB Isolated Cycle';
 
 interface PlanningCycleSummaryResponse {

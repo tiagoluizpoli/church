@@ -30,6 +30,13 @@ runs:
           "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
           "$CORS_ORIGIN" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" \
           "$NODE_ENV" "$ENABLE_DEBUG_ENDPOINTS" > .env
+        # packages/db/src/test-database-url.ts reads TEST_DATABASE_URL (or
+        # DATABASE_URL_TEST), not DATABASE_URL — without this, every
+        # integration/scheduling-reshape test falls through to that helper's
+        # hardcoded localhost:5444 default, which doesn't exist in CI.
+        if [ -n "$TEST_DATABASE_URL" ]; then
+          printf 'TEST_DATABASE_URL=%s\n' "$TEST_DATABASE_URL" >> .env
+        fi
         # VITE_SERVER_URL is only set (as a job-level env) by the e2e job,
         # for its real dev-server build — apps/web/vite.config.ts reads the
         # repo root as its envDir, matching this file.

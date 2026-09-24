@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
-import { DataTable, type DataTableColumn } from './data-table';
+import {
+  DataTable,
+  type DataTableCellInput,
+  type DataTableColumn,
+  type DataTableItemInput,
+} from './data-table';
 
 interface Row {
   id: string;
@@ -22,13 +27,13 @@ const COLUMNS: DataTableColumn[] = [
   { id: 'actions', name: 'Actions' },
 ];
 
-function renderCell({ item, column }: { item: Row; column: DataTableColumn }) {
+function renderCell({ item, column }: DataTableCellInput<Row>) {
   if (column.id === 'name') return item.name;
   if (column.id === 'count') return item.count;
   return null;
 }
 
-function renderMobileCard({ item }: { item: Row }) {
+function renderMobileCard({ item }: DataTableItemInput<Row>) {
   return <div data-testid={`mobile-card-${item.id}`}>{item.name}</div>;
 }
 
@@ -55,7 +60,7 @@ describe('DataTable', () => {
   });
 
   it('renders row actions in the desktop actions column and appended under each mobile card', () => {
-    const rowActions = vi.fn(({ item }: { item: Row }) => (
+    const rowActions = vi.fn(({ item }: DataTableItemInput<Row>) => (
       <button type="button" data-testid={`action-${item.id}`}>
         Act on {item.name}
       </button>

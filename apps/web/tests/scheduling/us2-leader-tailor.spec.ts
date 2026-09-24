@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { LEADER_STORAGE_STATE } from '../global-setup';
+import { allocatedYear } from './planning-cycle-year.helpers';
 
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 
@@ -15,7 +16,7 @@ function toDateString(date: Date): string {
 
 function createPlanningMonth(): PlanningMonth {
   const now = new Date();
-  const year = 2150 + (Math.floor(now.getTime() / 1000) % 50);
+  const year = allocatedYear('us2-leader-tailor:create-planning-month');
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

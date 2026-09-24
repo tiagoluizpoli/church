@@ -4,6 +4,7 @@ import {
   TEAM_LEADER_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
+import { allocatedYear } from './planning-cycle-year.helpers';
 
 // DL4-US5 (P4, test-plan.md): a volunteer cancels their own published
 // assignment — the leader is notified and the slot reopens (FR-028, SC-004,
@@ -38,7 +39,7 @@ function toDateString(date: Date): string {
 
 function createLiveChangesMonth(): LiveChangesMonth {
   const now = new Date();
-  const year = 2350 + (Math.floor(now.getTime() / 1000) % 50);
+  const year = allocatedYear('us5-live-changes:create-live-changes-month');
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

@@ -3,6 +3,7 @@ import {
   LEADER_STORAGE_STATE,
   TEAM_LEADER_STORAGE_STATE,
 } from '../global-setup';
+import { allocatedYear } from './planning-cycle-year.helpers';
 
 // DL4-US3 (P2, test-plan.md): a volunteer who belongs to two ministries opens
 // their availability checks (one per ministry for the locked cycle), marks a
@@ -34,7 +35,9 @@ function toDateString(date: Date): string {
 
 function createOverlapPlanningMonth(): OverlapPlanningMonth {
   const now = new Date();
-  const year = 2200 + (Math.floor(now.getTime() / 1000) % 50);
+  const year = allocatedYear(
+    'us3-volunteer-availability:create-overlap-planning-month',
+  );
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

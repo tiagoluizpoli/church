@@ -3,6 +3,10 @@ import {
   CHURCH_ADMIN_STORAGE_STATE,
   CHURCH_B_ADMIN_STORAGE_STATE,
 } from '../global-setup';
+import {
+  allocatedYear,
+  type PlanningCycleYearCallSiteId,
+} from './planning-cycle-year.helpers';
 
 // DL4-X1/X2/X3 (test-plan.md): cross-cutting checks that apply across every
 // user story rather than to one of them.
@@ -41,15 +45,16 @@ interface FreshDraftMonth {
   endDate: string;
 }
 
-// `yearBase` must be a distinct multiple of 50 per call site so concurrent
-// tests (this file runs fullyParallel) never land on the same date range and
-// trip the real overlap guard (OVERLAPPING_CYCLE) against each other.
+// `callSiteId` must be distinct per call site (and registered in
+// planning-cycle-year.helpers.ts) so concurrent tests (this file runs
+// fullyParallel) never land on the same date range and trip the real
+// overlap guard against each other, or against another spec file (#241).
 function createFreshDraftMonth(
   label: string,
-  yearBase: number,
+  callSiteId: PlanningCycleYearCallSiteId,
 ): FreshDraftMonth {
   const now = new Date();
-  const year = yearBase + (Math.floor(now.getTime() / 1000) % 50);
+  const year = allocatedYear(callSiteId);
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));
@@ -141,7 +146,10 @@ test.describe('DL4-X2 network failure on lock', () => {
   test('a network failure on lock shows an error and leaves the cycle in draft', async ({
     page,
   }) => {
-    const month = createFreshDraftMonth('X2 Network Failure', 2500);
+    const month = createFreshDraftMonth(
+      'X2 Network Failure',
+      'cross-cutting:x2-network-failure',
+    );
     const cycleResponse = await page.request.post(
       `${SERVER_URL}/api/v1/admin/planning-cycles`,
       {
@@ -199,7 +207,10 @@ test.describe('DL4-X3 double-submit has no duplicate side effect', () => {
   test('two concurrent lock requests for the same cycle produce exactly one success', async ({
     page,
   }) => {
-    const month = createFreshDraftMonth('X3 Double Submit', 2600);
+    const month = createFreshDraftMonth(
+      'X3 Double Submit',
+      'cross-cutting:x3-double-submit',
+    );
     const cycleResponse = await page.request.post(
       `${SERVER_URL}/api/v1/admin/planning-cycles`,
       {

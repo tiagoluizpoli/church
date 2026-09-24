@@ -1,6 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
+import {
+  allocatedYear,
+  allocatedYearSequence,
+} from './planning-cycle-year.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
 
 test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
@@ -12,16 +16,14 @@ interface SeededCycle {
   cycleMonth: number;
 }
 
-// A fixed time-bucketed year (`Date.now()` mod N) gives every cycle created
-// within the same run a high chance of landing on the same year: this file
-// alone seeds a cycle per test (11+ calls across ~90s), well inside a single
-// bucket, so cycles collided on the backend's overlap check ("Planning cycle
-// overlaps an existing cycle"). RUN_YEAR_OFFSET is randomized once per test
-// run (still keeps distinct runs from colliding with any leftover data), and
-// the counter guarantees every cycle created *within* this run gets its own
-// year deterministically, not probabilistically.
-const RUN_YEAR_OFFSET = Math.floor(Math.random() * 500);
-let cycleSequence = 0;
+// This file alone seeds a cycle per test (11+ calls across ~90s). `nextYear`
+// hands out a distinct year per call within this run (never colliding with
+// each other), from a band no other E2E spec file uses (never colliding
+// across files, #241) — see planning-cycle-year.helpers.ts.
+const nextYear = allocatedYearSequence(
+  'planning-cycles-table-view:create-cycle-with-sunday-template',
+  20,
+);
 
 async function createCycleWithSundayTemplateApplied({
   page,
@@ -31,7 +33,7 @@ async function createCycleWithSundayTemplateApplied({
   const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
   const cycleName = `Table View ${uniqueSuffix}`;
   const templateName = `Sunday ${uniqueSuffix}`;
-  const year = 2100 + RUN_YEAR_OFFSET + cycleSequence++;
+  const year = nextYear();
   const month = new Date().getUTCMonth();
   const startDate = new Date(Date.UTC(year, month, 1))
     .toISOString()
@@ -273,7 +275,7 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
     const cycleName = `US3 Edit ${uniqueSuffix}`;
     const templateName = `US3 Template ${uniqueSuffix}`;
     const now = new Date();
-    const year = 2100 + (Math.floor(now.getTime() / 1000) % 50);
+    const year = allocatedYear('planning-cycles-table-view:us3-edit-delete');
     const month = now.getUTCMonth();
     const startDate = new Date(Date.UTC(year, month, 1))
       .toISOString()

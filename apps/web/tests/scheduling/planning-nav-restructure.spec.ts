@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
+import { allocatedYear } from './planning-cycle-year.helpers';
 
 test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
 
@@ -12,7 +13,9 @@ test('planning-cycles, new, and $cycleId are distinct addressable URLs with work
   page,
 }) => {
   const now = new Date();
-  const year = 2300 + (Math.floor(now.getTime() / 1000) % 50);
+  const year = allocatedYear(
+    'planning-nav-restructure:distinct-addressable-urls',
+  );
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

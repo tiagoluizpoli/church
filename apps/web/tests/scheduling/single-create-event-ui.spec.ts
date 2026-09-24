@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { LEADER_STORAGE_STATE } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
+import { allocatedYear } from './planning-cycle-year.helpers';
 
 test.use({ storageState: LEADER_STORAGE_STATE });
 
@@ -43,7 +44,9 @@ async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
   }
 
   const now = new Date();
-  const year = 2200 + (Math.floor(now.getTime() / 1000) % 50);
+  const year = allocatedYear(
+    'single-create-event-ui:ensure-unlocked-cycle-selected',
+  );
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));
@@ -109,10 +112,8 @@ test.describe('quick-create stores church-local Instants (#149)', () => {
     await page.goto('/scheduling/planning-cycles');
 
     const now = new Date();
-    const year = 2200 + (Math.floor(now.getTime() / 1000) % 50);
-    // A month distinct from `ensureUnlockedCycleSelected`'s, so this test's
-    // own cycle can never overlap one created elsewhere in this spec file.
-    const month = (now.getUTCMonth() + 3) % 12;
+    const year = allocatedYear('single-create-event-ui:calendar-day-timezone');
+    const month = now.getUTCMonth();
     const start = new Date(Date.UTC(year, month, 1));
     const end = new Date(Date.UTC(year, month + 1, 1));
     const pickedDate = toDateString(new Date(Date.UTC(year, month, 15)));

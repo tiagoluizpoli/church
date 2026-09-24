@@ -5,6 +5,7 @@ import {
   VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
+import { allocatedYear } from './planning-cycle-year.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
 
 interface PlanningMonth {
@@ -95,7 +96,7 @@ function countMatchingWeekdays({
 
 function createPlanningMonth(): PlanningMonth {
   const now = new Date();
-  const year = 2400 + (Math.floor(now.getTime() / 1000) % 50);
+  const year = allocatedYear('us1-admin-plan:create-planning-month');
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

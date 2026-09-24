@@ -97,9 +97,68 @@ jobs:
           # Matches this job's `timeout-minutes: 10` budget above — keep both in sync.
           echo "${elapsed}s (target: 600s, job start to gate completion)" >> "$GITHUB_STEP_SUMMARY"
 
+  release-gate:
+    name: Release Gate (Complete Validation)
+    # Per #210/#222: a develop -> master pull request requires complete
+    # validation, including the full E2E suite. This is the only PR-time
+    # gate for master; fast-gate below covers the post-merge push instead.
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_e2e
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_e2e?application_name=test
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:3000
+      CORS_ORIGIN: http://localhost:4001
+      VITE_SERVER_URL: http://localhost:3000
+      UNLEASH_API_URL: http://localhost:4242/api
+      UNLEASH_API_TOKEN: ci-test-token
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - name: Record job start time
+        run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-church-ci
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Complete validation (lint, typecheck, unit, integration, full E2E)
+        run: bun run validate
+
+      - name: Record elapsed-time evidence
+        if: always()
+        run: |
+          elapsed=$(( $(date +%s) - JOB_START_TIME ))
+          echo "### Release gate elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (job start to complete validation)" >> "$GITHUB_STEP_SUMMARY"
+
   fast-gate:
     name: Fast Gate
-    if: github.event_name != 'pull_request' || github.base_ref == 'master'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -149,6 +208,8 @@ jobs:
 
   e2e:
     name: E2E
+    # Post-merge safety net on master (release-gate above already ran the
+    # full suite pre-merge on the develop -> master PR).
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
     needs: [fast-gate]

@@ -72,18 +72,28 @@ Vitest file can never silently execute as (or be skipped as) an E2E test.
   `validate:affected --daily-gate`. Targets a 10-minute elapsed ceiling
   (enforced via each job's `timeout-minutes: 10` and measured in the job
   summary). Never runs the full E2E suite.
-- **Release gate** — `develop` → `master` pull requests. Requires complete
-  validation (`bun run validate`), including the full E2E suite, plus a
-  post-merge safety rerun on `master` push. This gate is deliberately deferred:
-  it activates only once [#121](https://github.com/tiagoluizpoli/church/issues/121)
-  has demonstrated a repeatedly green full suite, and its branch-protection
-  wiring is [#222](https://github.com/tiagoluizpoli/church/issues/222)'s to
-  build. Until then, `master` gets the fast gate on push plus a post-merge E2E
-  run as a safety net, not yet a required PR check.
+- **Release gate** — `develop` → `master` pull requests. Runs complete
+  validation (`bun run validate`), including the full E2E suite, as the
+  `Release Gate (Complete Validation)` CI job, plus a post-merge safety rerun
+  (`fast-gate` + `e2e`) on `master` push.
 
-Both `develop` and `master` reject direct pushes and require their respective
-checks once configured; a routine bypass is forbidden, and an emergency bypass
-is explicit and followed by a repair pull request.
+`master` rejects direct pushes, force pushes, and deletions (branch
+protection requires a pull request; `enforce_admins` is on). The release-gate
+job is *not yet* a required status check: [#222](https://github.com/tiagoluizpoli/church/issues/222)
+built the gate mechanism, but per this ADR's own activation rule it only
+becomes a required check once it has run green at least 3 times on real
+`develop` → `master` PRs — that evidence didn't exist yet when #222 closed
+(the [#121](https://github.com/tiagoluizpoli/church/issues/121) fix had just
+landed on `develop`, with zero release-gate runs recorded). Making it required
+is a follow-up: once 3 green release-gate runs and 3 green daily-gate runs are
+observed, add `"Release Gate (Complete Validation)"` to `master`'s
+`required_status_checks.contexts` (mirroring how `develop`'s protection
+already requires `"Develop Gate (Fast + Affected)"`) and record the
+before/after elapsed-time evidence from those runs' job summaries.
+
+`develop` already rejects direct pushes and requires its daily gate. A
+routine bypass is forbidden on either branch; an emergency bypass is explicit
+and followed by a repair pull request.
 
 ### Failure handling
 

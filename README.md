@@ -139,7 +139,7 @@ policy and its trade-offs. Day to day, pick the command by what changed:
 | Any local change, before a PR | `bun run validate:affected` |
 | A story's own E2E spec, once done | `bun run test:e2e -- tests/[path].spec.ts` |
 | Task branch → `develop` PR (CI) | fast gate + `validate:affected --daily-gate` |
-| `develop` → `master` PR (CI, once #121 is green) | complete validation gate |
+| `develop` → `master` PR (CI) | release gate (complete validation, incl. full E2E) |
 | Final handoff / merge validation | `bun run validate` |
 | New Playwright spec | only if critical-journey (ADR-0004); add its `JOURNEY_MAP` entry |
 

@@ -82,6 +82,19 @@ describe('classifyChanges', () => {
     expect(plan.requiresFullE2e).toBe(false);
   });
 
+  it('selects the critical smoke set for Playwright infrastructure changes in daily-gate mode', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/playwright.config.ts'],
+      dailyGate: true,
+    });
+
+    expect(plan.requiresFullE2e).toBe(false);
+    expect(plan.missingJourneyMappings).toEqual([]);
+    for (const specPath of CRITICAL_SMOKE_SPEC_PATHS) {
+      expect(plan.e2eSpecPaths).toContain(specPath);
+    }
+  });
+
   it('runs an explicitly declared E2E spec without selecting the complete suite', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/README.md'],
@@ -92,6 +105,18 @@ describe('classifyChanges', () => {
       'tests/scheduling/builder-slot-focus.spec.ts',
     ]);
     expect(plan.requiresFullE2e).toBe(false);
+  });
+
+  it('never drops an explicitly declared spec when a changed path also selects mapped journeys', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/shared/utils/active-church-switch.ts'],
+      e2eSpecPaths: ['tests/scheduling/builder-slot-focus.spec.ts'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/active-church-switching.spec.ts',
+      'tests/scheduling/builder-slot-focus.spec.ts',
+    ]);
   });
 
   it('selects the mapped critical journey for a source change with a journey-map entry', () => {

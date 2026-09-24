@@ -143,7 +143,17 @@ export function classifyChanges({
     }
 
     const isSharedE2eInfrastructure = FULL_E2E_PATHS.has(changedPath);
-    if (isSharedE2eInfrastructure && !dailyGate) requiresFullE2e = true;
+    if (isSharedE2eInfrastructure) {
+      if (dailyGate) {
+        // Daily gate never escalates to the full suite, but a shared
+        // E2E-infrastructure change still needs *some* E2E coverage — the
+        // critical smoke set stands in for "its normal mapped run" here,
+        // same as an unmapped production change.
+        hasUnmappedProductionChange = true;
+      } else {
+        requiresFullE2e = true;
+      }
+    }
 
     const workspace = WORKSPACES.find(({ path }) =>
       changedPath.startsWith(path),

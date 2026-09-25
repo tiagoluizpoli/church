@@ -4,7 +4,10 @@ import { QuickCreateEventModal } from '../quick-create-event-modal';
 import {
   buildVisibleCalendarRows,
   CALENDAR_TABLE_COLUMNS,
-  CalendarRow,
+  type CalendarVisibleRow,
+  calendarRowEventId,
+  calendarRowKey,
+  renderCalendarCell,
   type StartCreateSlotInput,
   type StartEditEventInput,
   type StartEditSlotInput,
@@ -30,12 +33,7 @@ import { useCycleReviewCard } from './planning-admin-context';
 import { PlanningEventCard } from './planning-event-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableColumn,
-  TableHeader,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 interface CycleReviewCardProps {
@@ -389,6 +387,14 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
     });
   }
 
+  const visibleCalendarRows = buildVisibleCalendarRows({
+    rows: cycleEvents.map(
+      (eventGroup): CycleCalendarTableRow =>
+        toCycleCalendarTableRow({ eventGroup }),
+    ),
+    expandedEventIds: calendarRowsState.expandedEventIds,
+  });
+
   return (
     <Card className="surface-panel">
       <CardContent className="space-y-4">
@@ -426,36 +432,6 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
 
             {cycleEvents.length > 0 ? (
               <>
-                <div
-                  className="space-y-3 md:hidden"
-                  data-testid="planning-events-list"
-                >
-                  {!isReadOnly ? (
-                    <Button
-                      type="button"
-                      size="touch"
-                      variant="outline"
-                      onClick={() => setAddEventOpen(true)}
-                    >
-                      Add day-event
-                    </Button>
-                  ) : null}
-                  {cycleEvents.map((eventGroup) => (
-                    <PlanningEventCard
-                      key={eventGroup.event.id}
-                      row={toCycleCalendarTableRow({ eventGroup })}
-                      isReadOnly={isReadOnly}
-                      deleteEventPending={deleteEventPending}
-                      deleteSlotPending={deleteSlotPending}
-                      onAddSlotRequest={startCreateSlot}
-                      onEditEventRequest={startEditEvent}
-                      onDeleteEventConfirm={handleDeleteEvent}
-                      onEditSlotRequest={startEditSlot}
-                      onDeleteSlotConfirm={handleDeleteSlot}
-                    />
-                  ))}
-                </div>
-
                 <div className="hidden md:block">
                   <div className="mb-2 flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={expandAll}>
@@ -469,89 +445,105 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                       Collapse all
                     </Button>
                   </div>
-                  <Table aria-label="Calendar review">
-                    <TableHeader columns={CALENDAR_TABLE_COLUMNS}>
-                      {(column) => (
-                        <TableColumn isRowHeader={column.id === 'event'}>
-                          {column.name}
-                        </TableColumn>
-                      )}
-                    </TableHeader>
-                    <TableBody
-                      dependencies={[
-                        calendarRowsState,
-                        dialogState,
-                        isReadOnly,
-                        deleteEventPending,
-                        deleteSlotPending,
-                        cycleEvents,
-                      ]}
-                      items={buildVisibleCalendarRows({
-                        rows: cycleEvents.map(
-                          (eventGroup): CycleCalendarTableRow =>
-                            toCycleCalendarTableRow({ eventGroup }),
-                        ),
-                        expandedEventIds: calendarRowsState.expandedEventIds,
-                      })}
-                    >
-                      {(visibleRow) => {
-                        const rowEventId =
-                          visibleRow.kind === 'parent'
-                            ? visibleRow.row.eventId
-                            : visibleRow.parentId;
-
-                        return (
-                          <CalendarRow
-                            key={visibleRowId({ visibleRow })}
-                            visibleRow={visibleRow}
-                            isExpanded={calendarRowsState.expandedEventIds.has(
-                              rowEventId,
-                            )}
-                            isReadOnly={isReadOnly}
-                            isConfirmingDeleteEvent={isConfirmingDeleteEvent({
-                              dialogState,
-                              eventId: rowEventId,
-                            })}
-                            isConfirmingDeleteSlot={
-                              visibleRow.kind === 'slot' &&
-                              isConfirmingDeleteSlot({
-                                dialogState,
-                                slotId: visibleRow.slotId,
-                              })
-                            }
-                            deleteEventPending={deleteEventPending}
-                            deleteSlotPending={deleteSlotPending}
-                            timeZone={churchTimezone}
-                            onToggleExpand={toggleEventExpanded}
-                            onAddSlotRequest={startCreateSlot}
-                            onEditEventRequest={startEditEvent}
-                            onDeleteEventOpenChange={({ eventId, open }) =>
-                              dispatchDialog(
-                                open
-                                  ? { type: 'confirm-delete-event', eventId }
-                                  : { type: 'close' },
-                              )
-                            }
-                            onDeleteEventConfirm={({ eventId }) =>
-                              handleDeleteEvent({ eventId })
-                            }
-                            onEditSlotRequest={startEditSlot}
-                            onDeleteSlotOpenChange={({ slotId, open }) =>
-                              dispatchDialog(
-                                open
-                                  ? { type: 'confirm-delete-slot', slotId }
-                                  : { type: 'close' },
-                              )
-                            }
-                            onDeleteSlotConfirm={({ eventId, slotId }) =>
-                              handleDeleteSlot({ eventId, slotId })
-                            }
-                          />
-                        );
-                      }}
-                    </TableBody>
-                  </Table>
                 </div>
+
+                <DataTable<CalendarVisibleRow>
+                  aria-label="Calendar review"
+                  columns={CALENDAR_TABLE_COLUMNS}
+                  items={visibleCalendarRows}
+                  mobileListTestId="planning-events-list"
+                  mobileListHeader={
+                    !isReadOnly ? (
+                      <Button
+                        type="button"
+                        size="touch"
+                        variant="outline"
+                        onClick={() => setAddEventOpen(true)}
+                      >
+                        Add day-event
+                      </Button>
+                    ) : null
+                  }
+                  rowId={({ item }) => visibleRowId({ visibleRow: item })}
+                  rowKey={({ item }) =>
+                    calendarRowKey({
+                      visibleRow: item,
+                      isExpanded: calendarRowsState.expandedEventIds.has(
+                        calendarRowEventId({ visibleRow: item }),
+                      ),
+                      isConfirmingDeleteEvent: isConfirmingDeleteEvent({
+                        dialogState,
+                        eventId: calendarRowEventId({ visibleRow: item }),
+                      }),
+                      isConfirmingDeleteSlot:
+                        item.kind === 'slot' &&
+                        isConfirmingDeleteSlot({
+                          dialogState,
+                          slotId: item.slotId,
+                        }),
+                      deleteEventPending,
+                      deleteSlotPending,
+                    })
+                  }
+                  renderCell={({ item, column }) =>
+                    renderCalendarCell({
+                      item,
+                      column,
+                      isExpanded: calendarRowsState.expandedEventIds.has(
+                        calendarRowEventId({ visibleRow: item }),
+                      ),
+                      isReadOnly,
+                      isConfirmingDeleteEvent: isConfirmingDeleteEvent({
+                        dialogState,
+                        eventId: calendarRowEventId({ visibleRow: item }),
+                      }),
+                      isConfirmingDeleteSlot:
+                        item.kind === 'slot' &&
+                        isConfirmingDeleteSlot({
+                          dialogState,
+                          slotId: item.slotId,
+                        }),
+                      deleteEventPending,
+                      deleteSlotPending,
+                      timeZone: churchTimezone,
+                      onToggleExpand: toggleEventExpanded,
+                      onAddSlotRequest: startCreateSlot,
+                      onEditEventRequest: startEditEvent,
+                      onDeleteEventOpenChange: ({ eventId, open }) =>
+                        dispatchDialog(
+                          open
+                            ? { type: 'confirm-delete-event', eventId }
+                            : { type: 'close' },
+                        ),
+                      onDeleteEventConfirm: ({ eventId }) =>
+                        handleDeleteEvent({ eventId }),
+                      onEditSlotRequest: startEditSlot,
+                      onDeleteSlotOpenChange: ({ slotId, open }) =>
+                        dispatchDialog(
+                          open
+                            ? { type: 'confirm-delete-slot', slotId }
+                            : { type: 'close' },
+                        ),
+                      onDeleteSlotConfirm: ({ eventId, slotId }) =>
+                        handleDeleteSlot({ eventId, slotId }),
+                    })
+                  }
+                  renderMobileCard={({ item }) =>
+                    item.kind === 'parent' ? (
+                      <PlanningEventCard
+                        row={item.row}
+                        isReadOnly={isReadOnly}
+                        deleteEventPending={deleteEventPending}
+                        deleteSlotPending={deleteSlotPending}
+                        onAddSlotRequest={startCreateSlot}
+                        onEditEventRequest={startEditEvent}
+                        onDeleteEventConfirm={handleDeleteEvent}
+                        onEditSlotRequest={startEditSlot}
+                        onDeleteSlotConfirm={handleDeleteSlot}
+                      />
+                    ) : null
+                  }
+                />
               </>
             ) : (
               <p className="text-muted-foreground text-sm">

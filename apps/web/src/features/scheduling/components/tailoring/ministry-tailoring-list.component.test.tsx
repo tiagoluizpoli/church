@@ -124,9 +124,9 @@ describe('MinistryTailoringList mobile card list (US1/T011)', () => {
     );
 
     const list = screen.getByRole('listbox');
-    const card = within(list).getByTestId('ministry-tailoring-card-ministry-2');
+    const row = within(list).getByTestId('ministry-tailoring-row-ministry-2');
     await user.click(
-      within(card).getByTestId('ministry-tailoring-button-ministry-2'),
+      within(row).getByTestId('ministry-tailoring-button-ministry-2'),
     );
 
     expect(onSelectMinistry).toHaveBeenCalledWith({ ministryId: 'ministry-2' });

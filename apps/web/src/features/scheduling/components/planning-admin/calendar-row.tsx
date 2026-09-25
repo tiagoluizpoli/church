@@ -14,16 +14,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TableCell, TableRow } from '@/components/ui/table';
+import type { DataTableColumn } from '@/components/ui/data-table';
 import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 
-export const CALENDAR_TABLE_COLUMNS = [
-  { id: 'event', name: 'Event' },
+export const CALENDAR_TABLE_COLUMNS: DataTableColumn[] = [
+  { id: 'event', name: 'Event', isRowHeader: true },
   { id: 'window', name: 'Date / Time' },
   { id: 'slots', name: 'Slots' },
   { id: 'status', name: 'Status' },
   { id: 'actions', name: 'Actions' },
-] as const;
+];
 
 export type CalendarVisibleRow =
   | { kind: 'parent'; row: CycleCalendarTableRow }
@@ -78,6 +78,52 @@ export function visibleRowId({ visibleRow }: VisibleRowIdInput): string {
   return visibleRow.kind === 'parent'
     ? `event-${visibleRow.row.eventId}`
     : `slot-${visibleRow.parentId}-${visibleRow.slotId}`;
+}
+
+export interface CalendarRowEventIdInput {
+  visibleRow: CalendarVisibleRow;
+}
+
+export function calendarRowEventId({
+  visibleRow,
+}: CalendarRowEventIdInput): string {
+  return visibleRow.kind === 'parent'
+    ? visibleRow.row.eventId
+    : visibleRow.parentId;
+}
+
+export interface CalendarRowKeyInput {
+  visibleRow: CalendarVisibleRow;
+  isExpanded: boolean;
+  isConfirmingDeleteEvent: boolean;
+  isConfirmingDeleteSlot: boolean;
+  deleteEventPending: boolean;
+  deleteSlotPending: boolean;
+}
+
+/** `DataTable` keys and identifies each react-aria row by this wrapper's
+ * `rowId` return value alone (it has no separate `TableBody` `dependencies`
+ * passthrough). React Aria's row Collection memoizes a row's rendered
+ * content by that id independent of the items array identity, so every prop
+ * a cell actually displays — dialog/pending interaction state as well as the
+ * row's own data — must be folded into the id, or state changes (an expand
+ * toggle, a delete's pending flag, an edited title) silently fail to reach
+ * the DOM. */
+export function calendarRowKey({
+  visibleRow,
+  isExpanded,
+  isConfirmingDeleteEvent,
+  isConfirmingDeleteSlot,
+  deleteEventPending,
+  deleteSlotPending,
+}: CalendarRowKeyInput): string {
+  const id = visibleRowId({ visibleRow });
+  const dataFingerprint =
+    visibleRow.kind === 'parent'
+      ? `${visibleRow.row.title}-${visibleRow.row.start}-${visibleRow.row.status}-${visibleRow.row.slots.length}`
+      : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlySlotInEvent}`;
+
+  return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteSlotPending ? 'slot-pending' : 'slot-idle'}`;
 }
 
 interface ConfirmDeleteDialogContentProps {
@@ -154,8 +200,9 @@ export interface ConfirmDeleteSlotInput {
   slotId: string;
 }
 
-export interface CalendarRowProps {
-  visibleRow: CalendarVisibleRow;
+export interface RenderCalendarCellInput {
+  item: CalendarVisibleRow;
+  column: DataTableColumn;
   isExpanded: boolean;
   isReadOnly: boolean;
   isConfirmingDeleteEvent: boolean;
@@ -173,20 +220,13 @@ export interface CalendarRowProps {
   onDeleteSlotConfirm: (input: ConfirmDeleteSlotInput) => void;
 }
 
-/** One calendar row: either a day/event parent row or (when its parent is
- * expanded) one of its slot rows. Split out of `CycleReviewCard` so the
- * per-column render logic for both row kinds lives in one place. Must stay a
- * `<TableRow columns={...}>{(column) => ...}</TableRow>` — react-aria's
- * dynamic-column `Collection` model (see `ui/table.tsx`) requires the
- * per-column render prop, a plain `.map()` over cells won't register
- * correctly with the table's collection. That same Collection model also
- * memoizes a row's rendered content independent of the `TableBody`
- * `dependencies` array once built, so `rowKey` folds in every prop that must
- * force a fresh render (dialog open state, delete-pending state) — without
- * it, e.g. a delete mutation's pending flag flips in React state but never
- * reaches the DOM. */
-export function CalendarRow({
-  visibleRow,
+/** Cell content for one calendar `DataTable` row: either a day/event parent
+ * row or (when its parent is expanded) one of its slot rows. `DataTable`
+ * owns the `TableRow`/`TableCell` wrapper; this only renders what goes
+ * inside a given column's cell. */
+export function renderCalendarCell({
+  item,
+  column,
   isExpanded,
   isReadOnly,
   isConfirmingDeleteEvent,
@@ -202,62 +242,39 @@ export function CalendarRow({
   onEditSlotRequest,
   onDeleteSlotOpenChange,
   onDeleteSlotConfirm,
-}: CalendarRowProps) {
-  const id = visibleRowId({ visibleRow });
-  // The Collection model's memoization (see comment above) only re-renders a
-  // row's DOM when `rowKey` itself changes — so besides interaction state,
-  // this must also fold in every field the cell actually displays. Without
-  // this, editing a day's date/title or a slot's label/time updates
-  // react-query's cache correctly but the row silently keeps showing the old
-  // values, since none of the *interaction* flags changed.
-  const dataFingerprint =
-    visibleRow.kind === 'parent'
-      ? `${visibleRow.row.title}-${visibleRow.row.start}-${visibleRow.row.status}-${visibleRow.row.slots.length}`
-      : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlySlotInEvent}`;
-  const rowKey = `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteSlotPending ? 'slot-pending' : 'slot-idle'}`;
-
-  return (
-    <TableRow key={rowKey} id={id} columns={CALENDAR_TABLE_COLUMNS}>
-      {(column) => (
-        <TableCell>
-          {visibleRow.kind === 'parent' ? (
-            <ParentRowCell
-              column={column}
-              row={visibleRow.row}
-              isExpanded={isExpanded}
-              isReadOnly={isReadOnly}
-              isConfirmingDelete={isConfirmingDeleteEvent}
-              deletePending={deleteEventPending}
-              timeZone={timeZone}
-              onToggleExpand={onToggleExpand}
-              onAddSlotRequest={onAddSlotRequest}
-              onEditEventRequest={onEditEventRequest}
-              onDeleteOpenChange={onDeleteEventOpenChange}
-              onDeleteConfirm={onDeleteEventConfirm}
-            />
-          ) : (
-            <SlotRowCell
-              column={column}
-              visibleRow={visibleRow}
-              isReadOnly={isReadOnly}
-              isConfirmingDelete={isConfirmingDeleteSlot}
-              deletePending={deleteSlotPending}
-              timeZone={timeZone}
-              onEditSlotRequest={onEditSlotRequest}
-              onDeleteOpenChange={onDeleteSlotOpenChange}
-              onDeleteConfirm={onDeleteSlotConfirm}
-            />
-          )}
-        </TableCell>
-      )}
-    </TableRow>
+}: RenderCalendarCellInput) {
+  return item.kind === 'parent' ? (
+    <ParentRowCell
+      column={column}
+      row={item.row}
+      isExpanded={isExpanded}
+      isReadOnly={isReadOnly}
+      isConfirmingDelete={isConfirmingDeleteEvent}
+      deletePending={deleteEventPending}
+      timeZone={timeZone}
+      onToggleExpand={onToggleExpand}
+      onAddSlotRequest={onAddSlotRequest}
+      onEditEventRequest={onEditEventRequest}
+      onDeleteOpenChange={onDeleteEventOpenChange}
+      onDeleteConfirm={onDeleteEventConfirm}
+    />
+  ) : (
+    <SlotRowCell
+      column={column}
+      visibleRow={item}
+      isReadOnly={isReadOnly}
+      isConfirmingDelete={isConfirmingDeleteSlot}
+      deletePending={deleteSlotPending}
+      timeZone={timeZone}
+      onEditSlotRequest={onEditSlotRequest}
+      onDeleteOpenChange={onDeleteSlotOpenChange}
+      onDeleteConfirm={onDeleteSlotConfirm}
+    />
   );
 }
 
-type CalendarTableColumn = (typeof CALENDAR_TABLE_COLUMNS)[number];
-
 interface ParentRowCellProps {
-  column: CalendarTableColumn;
+  column: DataTableColumn;
   row: CycleCalendarTableRow;
   isExpanded: boolean;
   isReadOnly: boolean;
@@ -367,7 +384,7 @@ function ParentRowCell({
 }
 
 interface SlotRowCellProps {
-  column: CalendarTableColumn;
+  column: DataTableColumn;
   visibleRow: Extract<CalendarVisibleRow, { kind: 'slot' }>;
   isReadOnly: boolean;
   isConfirmingDelete: boolean;

@@ -89,6 +89,26 @@ describe('DataTable', () => {
     );
   });
 
+  it('renders mobileItems in the mobile list when it differs from the desktop items', () => {
+    render(
+      <DataTable
+        aria-label="Rows"
+        columns={COLUMNS}
+        items={ROWS}
+        mobileItems={[ROWS[0] as Row]}
+        rowId={({ item }) => item.id}
+        renderCell={renderCell}
+        renderMobileCard={renderMobileCard}
+      />,
+    );
+
+    const table = screen.getByRole('grid', { name: 'Rows' });
+    expect(within(table).getAllByRole('row')).toHaveLength(3); // header + 2 rows
+
+    expect(screen.getByTestId('mobile-card-row-1')).toHaveTextContent('Alpha');
+    expect(screen.queryByTestId('mobile-card-row-2')).not.toBeInTheDocument();
+  });
+
   it('shows the loading state instead of any table or card content', () => {
     render(
       <DataTable

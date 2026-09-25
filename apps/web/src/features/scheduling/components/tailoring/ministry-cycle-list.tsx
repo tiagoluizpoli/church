@@ -9,18 +9,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import {
   FormControlSizeProvider,
   useFormControlSize,
 } from '@/components/ui/form-control-size';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 export interface OnSelectCycleInput {
@@ -43,14 +36,14 @@ export interface MinistryCycleListProps {
   filters?: ReactNode;
 }
 
-const CYCLE_TABLE_COLUMNS = [
-  { id: 'name', name: 'Name', allowsSorting: true },
+const CYCLE_TABLE_COLUMNS: DataTableColumn[] = [
+  { id: 'name', name: 'Name', allowsSorting: true, isRowHeader: true },
   { id: 'window', name: 'Window', allowsSorting: true },
   { id: 'events', name: 'Events', allowsSorting: true },
   { id: 'slots', name: 'Slots', allowsSorting: true },
   { id: 'status', name: 'Status', allowsSorting: true },
   { id: 'actions', name: 'Actions', allowsSorting: false },
-] as const;
+];
 
 const DEFAULT_SORT_DESCRIPTOR: SortDescriptor = {
   column: 'window',
@@ -159,98 +152,72 @@ export function MinistryCycleList({
            * horizontal padding this token is supposed to provide. Matches how
            * `WorkspaceIntroPanel` avoids the same trap. */
           <div
-            className="workspace-panel-lg space-y-3"
+            className="workspace-panel-lg"
             data-testid="ministry-cycle-list-panel"
           >
-            <div className="space-y-3 md:hidden">
-              {sortedCycles.map((cycle) => (
+            <DataTable<TailoringCycleSummary>
+              aria-label="Cycles"
+              columns={CYCLE_TABLE_COLUMNS}
+              items={sortedCycles}
+              rowId={({ item }) => item.id}
+              rowTestId={({ item }) => `ministry-cycle-row-${item.id}`}
+              sortDescriptor={sortDescriptor}
+              onSortChange={setSortDescriptor}
+              renderCell={({ item, column }) => (
+                <>
+                  {column.id === 'name' ? item.name : null}
+                  {column.id === 'window' ? item.window : null}
+                  {column.id === 'events' ? item.eventCount : null}
+                  {column.id === 'slots' ? item.slotCount : null}
+                  {column.id === 'status' ? (
+                    <Badge
+                      variant={cycleTailoringStatusBadgeVariant({
+                        status: item.status,
+                      })}
+                    >
+                      {cycleTailoringStatusLabel({ status: item.status })}
+                    </Badge>
+                  ) : null}
+                  {column.id === 'actions' ? (
+                    <CycleRowActions
+                      ministryId={ministryId}
+                      cycle={item}
+                      onSelectCycle={onSelectCycle}
+                    />
+                  ) : null}
+                </>
+              )}
+              renderMobileCard={({ item }) => (
                 <div
-                  key={cycle.id}
-                  data-testid={`ministry-cycle-card-${cycle.id}`}
+                  data-testid={`ministry-cycle-card-${item.id}`}
                   className="surface-subtle workspace-panel space-y-3"
                 >
                   <div className="flex w-full items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="font-medium">{cycle.name}</div>
+                      <div className="font-medium">{item.name}</div>
                       <div className="text-muted-foreground text-xs">
-                        {cycle.window}
+                        {item.window}
                       </div>
                       <div className="text-muted-foreground text-xs">
-                        {cycle.eventCount} events · {cycle.slotCount} slots
+                        {item.eventCount} events · {item.slotCount} slots
                       </div>
                     </div>
                     <Badge
                       variant={cycleTailoringStatusBadgeVariant({
-                        status: cycle.status,
+                        status: item.status,
                       })}
                     >
-                      {cycleTailoringStatusLabel({ status: cycle.status })}
+                      {cycleTailoringStatusLabel({ status: item.status })}
                     </Badge>
                   </div>
                   <CycleRowActions
                     ministryId={ministryId}
-                    cycle={cycle}
+                    cycle={item}
                     onSelectCycle={onSelectCycle}
                   />
                 </div>
-              ))}
-            </div>
-
-            <div className="hidden md:block">
-              <Table
-                aria-label="Cycles"
-                sortDescriptor={sortDescriptor}
-                onSortChange={setSortDescriptor}
-              >
-                <TableHeader columns={CYCLE_TABLE_COLUMNS}>
-                  {(column) => (
-                    <TableColumn
-                      isRowHeader={column.id === 'name'}
-                      allowsSorting={column.allowsSorting}
-                    >
-                      {column.name}
-                    </TableColumn>
-                  )}
-                </TableHeader>
-                <TableBody items={sortedCycles}>
-                  {(cycle) => (
-                    <TableRow
-                      key={cycle.id}
-                      id={cycle.id}
-                      columns={CYCLE_TABLE_COLUMNS}
-                      data-testid={`ministry-cycle-row-${cycle.id}`}
-                    >
-                      {(column) => (
-                        <TableCell>
-                          {column.id === 'name' ? cycle.name : null}
-                          {column.id === 'window' ? cycle.window : null}
-                          {column.id === 'events' ? cycle.eventCount : null}
-                          {column.id === 'slots' ? cycle.slotCount : null}
-                          {column.id === 'status' ? (
-                            <Badge
-                              variant={cycleTailoringStatusBadgeVariant({
-                                status: cycle.status,
-                              })}
-                            >
-                              {cycleTailoringStatusLabel({
-                                status: cycle.status,
-                              })}
-                            </Badge>
-                          ) : null}
-                          {column.id === 'actions' ? (
-                            <CycleRowActions
-                              ministryId={ministryId}
-                              cycle={cycle}
-                              onSelectCycle={onSelectCycle}
-                            />
-                          ) : null}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+              )}
+            />
           </div>
         )}
       </Card>

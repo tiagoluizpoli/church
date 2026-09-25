@@ -42,6 +42,7 @@ export interface TemplateLibraryTableRow {
   name: string;
   weekday: string;
   blockCount: number;
+  description: string;
 }
 
 export interface CycleCalendarSlotRow {

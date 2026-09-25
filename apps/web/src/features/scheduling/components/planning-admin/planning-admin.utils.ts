@@ -364,6 +364,7 @@ export function toTemplateLibraryTableRow({
     name: template.name,
     weekday: WEEKDAYS[template.weekday] ?? 'Unknown',
     blockCount: template.blocks.length,
+    description: describeTemplate({ template }),
   };
 }
 

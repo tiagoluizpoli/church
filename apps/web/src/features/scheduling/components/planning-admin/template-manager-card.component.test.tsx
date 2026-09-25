@@ -127,6 +127,59 @@ describe('TemplateManagerCard table view (US1)', () => {
     );
   });
 
+  it('renders the mobile card with the same name, description, and reachable actions as the table row', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          weekday: 0,
+          blocks: [
+            {
+              id: 'b1',
+              label: 'Worship',
+              startTime: '09:00',
+              endTime: '10:00',
+              order: 0,
+            },
+          ],
+        },
+      ],
+    });
+
+    render();
+
+    const mobileRow = await screen.findByTestId('saved-template-row');
+    expect(mobileRow).toHaveTextContent('Sunday Service');
+    expect(
+      within(mobileRow).getByTestId('open-edit-template-dialog-button'),
+    ).toBeInTheDocument();
+    expect(
+      within(mobileRow).getByTestId('delete-template-button'),
+    ).toBeInTheDocument();
+  });
+
+  it('deletes a template from the mobile card action', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          weekday: 0,
+          blocks: [],
+        },
+      ],
+    });
+
+    const user = userEvent.setup();
+    render();
+
+    const mobileRow = await screen.findByTestId('saved-template-row');
+    await user.click(within(mobileRow).getByTestId('delete-template-button'));
+
+    expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
+  });
+
   it('shows the empty-state message instead of an empty table when there are no templates', async () => {
     listEventTemplates.mockResolvedValue({ templates: [] });
 

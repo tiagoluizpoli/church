@@ -101,18 +101,15 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/identity/active-church-switching.spec.ts'],
   },
   {
-    // #217 — the scheduling capability index (the `/scheduling` landing
-    // route) is a distinct route from the three named below; its guard and
-    // capability specs load routes under this whole family, so they belong
-    // at this broad prefix rather than one of the narrower ones.
+    // #288 — this prefix used to be the bare `.../scheduling` ancestor,
+    // which (via startsWith) also matched every planning-cycles/tailoring/
+    // rostering path below it, pulling smoke/roster-publish/guard-matrix/
+    // capability-index into unrelated route changes. Narrowed to the exact
+    // index route file: capability-index.spec.ts is the only spec that
+    // navigates to the bare `/scheduling` landing page it renders.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/scheduling',
-    specPaths: [
-      'tests/scheduling/smoke.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
-      'tests/scheduling/planning-role-guard-matrix.spec.ts',
-      'tests/scheduling/capability-index.spec.ts',
-    ],
+      'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
+    specPaths: ['tests/scheduling/capability-index.spec.ts'],
   },
   {
     sourcePathPrefix:

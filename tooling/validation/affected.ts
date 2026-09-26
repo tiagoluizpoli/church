@@ -360,10 +360,18 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
     }
   }
 
-  lines.push(
-    '',
-    `Test layers selected: ${plan.testLayers.length > 0 ? plan.testLayers.join(', ') : '(none)'}`,
-  );
+  lines.push('', 'Test layers selected:');
+  if (plan.testLayers.length === 0) lines.push('  (none)');
+  for (const testLayer of plan.testLayers) {
+    lines.push(`  - ${testLayer}`);
+    for (const reason of plan.testLayerSelectionReasons.filter(
+      (r) => r.testLayer === testLayer,
+    )) {
+      lines.push(
+        `      ${reason.detail} <- ${reason.changedPath} (${reason.workspaceName})`,
+      );
+    }
+  }
 
   lines.push('', 'Browser journeys selected:');
   for (const specPath of plan.e2eSpecPaths) {

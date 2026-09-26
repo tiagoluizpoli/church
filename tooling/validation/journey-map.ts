@@ -70,6 +70,43 @@ const PLANNING_CYCLE_EDGE_SPEC_PATHS = [
   'tests/scheduling/single-create-event-ui.spec.ts',
 ];
 
+// #289 — verified via each spec's page.goto target. smoke.spec.ts navigates
+// both the rostering builder and the tailoring route; qualification.spec.ts
+// and builder-slot-focus.spec.ts navigate only the rostering builder;
+// us4-roster-publish.spec.ts navigates only the tailoring route;
+// planning-role-guard-matrix.spec.ts navigates all three scheduling routes
+// (planning-cycles, tailoring, and the rostering builder — asserting
+// directly on the builder's `cycle-builder` testid), so it belongs in all
+// three journeys' maps. None of these navigate /volunteer/availability, so
+// that journey stays out.
+const PLANNING_ADMIN_SPEC_PATHS = [
+  'tests/scheduling/overnight-time-block.spec.ts',
+  'tests/scheduling/planning-cycles-table-view.spec.ts',
+  'tests/scheduling/planning-nav-restructure.spec.ts',
+  'tests/scheduling/planning-role-guard-matrix.spec.ts',
+  'tests/scheduling/us1-admin-plan.spec.ts',
+  ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
+];
+
+const TAILORING_SPEC_PATHS = [
+  'tests/scheduling/planning-role-guard-matrix.spec.ts',
+  'tests/scheduling/smoke.spec.ts',
+  'tests/scheduling/us2-leader-tailor.spec.ts',
+  'tests/scheduling/us4-roster-publish.spec.ts',
+];
+
+const BUILDER_SPEC_PATHS = [
+  'tests/scheduling/a11y-builder.spec.ts',
+  'tests/scheduling/builder-slot-focus.spec.ts',
+  'tests/scheduling/planning-role-guard-matrix.spec.ts',
+  'tests/scheduling/qualification.spec.ts',
+  'tests/scheduling/smoke.spec.ts',
+];
+
+const AVAILABILITY_STATUS_SPEC_PATHS = [
+  'tests/scheduling/us3-volunteer-availability.spec.ts',
+];
+
 // Sourced from verified route-to-spec coupling (e.g. a spec's page.goto
 // target matches the route file's path). Each entry here is a mapped hit;
 // every production web/server path that matches none of them falls back to
@@ -101,38 +138,89 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/identity/active-church-switching.spec.ts'],
   },
   {
-    // #217 — the scheduling capability index (the `/scheduling` landing
-    // route) is a distinct route from the three named below; its guard and
-    // capability specs load routes under this whole family, so they belong
-    // at this broad prefix rather than one of the narrower ones.
+    // #288 — this prefix used to be the bare `.../scheduling` ancestor,
+    // which (via startsWith) also matched every planning-cycles/tailoring/
+    // rostering path below it, pulling smoke/roster-publish/guard-matrix/
+    // capability-index into unrelated route changes. Narrowed to the exact
+    // index route file: capability-index.spec.ts is the only spec that
+    // navigates to the bare `/scheduling` landing page it renders.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/scheduling',
-    specPaths: [
-      'tests/scheduling/smoke.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
-      'tests/scheduling/planning-role-guard-matrix.spec.ts',
-      'tests/scheduling/capability-index.spec.ts',
-    ],
+      'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
+    specPaths: ['tests/scheduling/capability-index.spec.ts'],
   },
   {
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/volunteer',
     specPaths: ['tests/scheduling/us3-volunteer-availability.spec.ts'],
   },
+  // #289 — narrows to the individual files verified against each spec's
+  // page.goto target; see PLANNING_ADMIN_SPEC_PATHS/TAILORING_SPEC_PATHS/
+  // BUILDER_SPEC_PATHS/AVAILABILITY_STATUS_SPEC_PATHS above. The removed
+  // blanket `apps/web/src/features/scheduling/` prefix used to pull
+  // smoke/us3/us4/qualification/builder-slot-focus/guard-matrix into every
+  // change under this tree regardless of which journey it belonged to.
   {
-    sourcePathPrefix: 'apps/web/src/features/scheduling/',
-    specPaths: [
-      'tests/scheduling/smoke.spec.ts',
-      'tests/scheduling/us3-volunteer-availability.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
-      // #217 — right-sized: qualification/eligibility guard, the one
-      // remaining boundary-crossing focus-rail assignment, and the
-      // cross-route denial matrix all render through this feature's
-      // components.
-      'tests/scheduling/qualification.spec.ts',
-      'tests/scheduling/builder-slot-focus.spec.ts',
-      'tests/scheduling/planning-role-guard-matrix.spec.ts',
-    ],
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/components/availability-status-section.tsx',
+    specPaths: AVAILABILITY_STATUS_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/utils/availability-status.ts',
+    specPaths: AVAILABILITY_STATUS_SPEC_PATHS,
+  },
+  {
+    // Rendered only within the planning-admin surface (planning-admin.tsx
+    // itself, and cycle-review-card.tsx inside components/planning-admin/).
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/components/planning-admin.tsx',
+    specPaths: PLANNING_ADMIN_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/components/quick-create-event-modal.tsx',
+    specPaths: PLANNING_ADMIN_SPEC_PATHS,
+  },
+  {
+    // Shared by every tailoring component and route (manual-split-editor,
+    // ministry-tailoring-list, tailoring-slot-list, tailoring-filters,
+    // tailoring-calendar, cycle-list.utils).
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/components/participation-tailoring.utils.ts',
+    specPaths: TAILORING_SPEC_PATHS,
+  },
+  {
+    // The rostering builder's assignment/staffing logic — used only by
+    // components/builder/ and the rostering route.
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/hooks/use-cycle-builder',
+    specPaths: BUILDER_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/hooks/use-volunteer-pool.ts',
+    specPaths: BUILDER_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/hooks/use-cycle-board-drag-scroll.ts',
+    specPaths: BUILDER_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/features/scheduling/utils/builder/',
+    specPaths: BUILDER_SPEC_PATHS,
+  },
+  {
+    // Feeds the breadcrumb app-shell.tsx renders on every planning route,
+    // the same one a11y-planning-nav.spec.ts scans.
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/hooks/use-ministry-breadcrumb.ts',
+    specPaths: ['tests/scheduling/a11y-planning-nav.spec.ts'],
+  },
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/hooks/use-planning-cycle-breadcrumb.ts',
+    specPaths: ['tests/scheduling/a11y-planning-nav.spec.ts'],
   },
   {
     // PlanningCycle admin journey (#215): create cycle, build/apply the
@@ -162,15 +250,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   },
   {
+    // #289 — added planning-role-guard-matrix.spec.ts: verified via its
+    // page.goto('/scheduling/planning-cycles'), which renders this
+    // directory's components, matching the route-level entry above.
     sourcePathPrefix:
       'apps/web/src/features/scheduling/components/planning-admin/',
-    specPaths: [
-      'tests/scheduling/overnight-time-block.spec.ts',
-      'tests/scheduling/planning-cycles-table-view.spec.ts',
-      'tests/scheduling/planning-nav-restructure.spec.ts',
-      'tests/scheduling/us1-admin-plan.spec.ts',
-      ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
-    ],
+    specPaths: PLANNING_ADMIN_SPEC_PATHS,
   },
   {
     // BL-023 (#25): the shared DataTable convention wrapper is consumed by
@@ -204,8 +289,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   },
   {
+    // #289 — added smoke.spec.ts and us4-roster-publish.spec.ts, verified
+    // via their page.goto to a tailoring route, which renders this
+    // directory's components; matches TAILORING_SPEC_PATHS used above.
     sourcePathPrefix: 'apps/web/src/features/scheduling/components/tailoring/',
-    specPaths: ['tests/scheduling/us2-leader-tailor.spec.ts'],
+    specPaths: TAILORING_SPEC_PATHS,
   },
   {
     sourcePathPrefix: 'apps/web/src/infrastructure/api/tailoring.ts',
@@ -464,8 +552,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
   },
   {
+    // #289 — added smoke/builder-slot-focus/qualification, verified via
+    // their page.goto to the rostering builder URL this directory renders;
+    // matches BUILDER_SPEC_PATHS used above for the hooks/utils it owns.
     sourcePathPrefix: 'apps/web/src/features/scheduling/components/builder/',
-    specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
+    specPaths: BUILDER_SPEC_PATHS,
   },
   // #217 — the church-admin-controller owns every planning-cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge

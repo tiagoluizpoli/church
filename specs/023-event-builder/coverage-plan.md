@@ -2,7 +2,7 @@
 
 **Feature**: `023-event-builder` | **Date**: 2026-07-14 | **Authority**: test-master (`/test.master` step 1 — Plan)
 
-Maps the 8 scenario classes across the testing pyramid onto this feature's surfaces. Adapted to the repo stack — **Vitest** (unit/schema/integration), **React Testing Library + user-event** (component), **Playwright** (E2E), **Drizzle + Dockerized PostgreSQL** (repo integration). There is **no Appwrite**; the authorization axis (Class 4) is **RBAC (`canManageMinistry`) + multi-tenant `churchId` isolation** (R2/R8). Consume this plan with `/test.generate` during `/speckit-implement`; each scenario is a checkbox so progress is trackable.
+Maps the 8 scenario classes across the testing pyramid onto this feature's surfaces. Adapted to the repo stack — **Vitest** (unit/schema/integration), **React Testing Library + user-event** (component), **Playwright** (E2E), **Drizzle + Dockerized PostgreSQL** (repo integration). There is **no Appwrite**; the authorization axis (Class 4) is **RBAC (`canManageMinistry`) + multi-tenant `churchId` isolation** (R2/R8). Use this plan during implementation; each scenario is a checkbox so progress is trackable.
 
 Scenario classes: **C1** Happy · **C2** Edge · **C3** Invalid input · **C4** Permission/isolation · **C5** System/infra · **C6** Concurrency · **C7** State transition · **C8** Catastrophic.
 

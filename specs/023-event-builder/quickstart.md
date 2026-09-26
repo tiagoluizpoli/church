@@ -22,16 +22,18 @@ How to build, run, and verify this feature. Read alongside `plan.md`, `research.
 8. **Migrate e2e** — the 5 legacy builder specs to the new route/testids.
 9. **Delete legacy** — 3 legacy routes, the 4 slot-management `builder/` files, `mobile-interstitial.tsx`.
 
-## Verify (constitution Quality Gates — run per phase, per `agents.local.md`)
+## Verify (run per implementation phase)
 
 ```bash
-bun run check         # Biome lint + format
-bun run check-types   # tsc — zero errors, no any/unknown
-bun run test          # Vitest unit/integration (incl. two-church isolation tests, R8)
-bun run test:e2e      # Playwright — migrated builder specs green
+bun run lint                 # lint
+bun run typecheck            # TypeScript checks
+bun run test:unit            # unit/component tests
+bun run test:integration     # integration tests, including two-church isolation (R8)
+bun run test:e2e -- <path>   # relevant migrated Playwright spec
+bun run validate:affected    # affected validation
 ```
 
-Then run `/review` (or `code-review` skill) on the modified files before declaring a phase complete.
+Review the modified files and repair every finding before declaring a phase complete. See [tooling guidance](../../docs/agents/tooling.md) for the authoritative command list.
 
 ## Manual smoke (per user story)
 

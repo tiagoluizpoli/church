@@ -42,9 +42,9 @@ Backend surface is **three new endpoints on `LeaderRosteringController`** (build
 | II. Full-Stack Type Safety | 3 new endpoints follow the existing `LeaderRosteringController` Fastify + Zod-DTO pattern (`getCycleParticipation`/`publishParticipation` precedents); new DTOs compose existing atomic schemas; frontend consumes via orval regen — no hand-maintained types, no `any`/`unknown` | PASS |
 | III. Container-Ready Infrastructure | No infra changes; integration tests use the Dockerized Postgres already in `docker-compose.yml` | PASS (N/A) |
 | IV. Environment Discipline | No new env vars (the R4 fairness-scope flag is an existing Unleash flag, not a new env secret) | PASS (N/A) |
-| V. Automated Code Standards | Biome/Lefthook gates apply; no suppression directives (agents.local.md) | PASS |
+| V. Automated Code Standards | Repository lint and validation gates apply; suppression directives require explicit permission | PASS |
 | VI. Maximum Context Specification | Traversed `manual-planning/0001-volunteer-scheduling/specifications-list.md` and its linked `specifications/R2-drizzle-repos.md` before finalizing backend design; applicable R2 rules folded into research.md R8 (church isolation, relational-query-where-possible, transactions for the publish write, mandatory Dockerized integration + two-church isolation tests) | PASS |
-| VII. Explicit Parameter Contracts | All new manager/repository/controller functions and new React hooks/components take a single named-`interface`/`type` object parameter; no inline object typing or `as { … }` in touched files; existing violations in touched files corrected | PASS (enforced at `/speckit-implement` + review) |
+| VII. Explicit Parameter Contracts | All new manager/repository/controller functions and new React hooks/components take a single named-`interface`/`type` object parameter; no inline object typing or `as { … }` in touched files; existing violations in touched files corrected | PASS (enforced during implementation and review) |
 | Mandatory Frontend Rule (Strict shadcn/ui) | Cycle board, lanes, cards, volunteer rail, recommendation lists, publish/override dialogs compose existing shadcn primitives (reuse the 7 presentational builder components as-is; rebuilt components stay shadcn-based) — no from-scratch primitives (R2) | PASS |
 
 No violations — Complexity Tracking section omitted.
@@ -62,8 +62,8 @@ specs/023-event-builder/
 ├── contracts/
 │   └── leader-rostering-endpoints.md  # Phase 1 — 3 new endpoints + derived-field delta
 ├── checklists/
-│   └── requirements.md  # spec quality checklist (from /speckit-specify)
-└── tasks.md             # Phase 2 — /speckit-tasks (NOT created here)
+│   └── requirements.md  # spec quality checklist
+└── tasks.md             # implementation task list
 ```
 
 ### Source Code (repository root)
@@ -120,7 +120,7 @@ Complete: [data-model.md](./data-model.md), [contracts/leader-rostering-endpoint
 
 ## Phase 2 — Task planning approach
 
-`/speckit-tasks` will generate `tasks.md`. Expected shape, following the R3 cutover ordering (backend → new route additively → repoint → migrate e2e → delete legacy) and mapping to the spec's prioritized user stories:
+`tasks.md` records the implementation order, following the R3 cutover ordering (backend → new route additively → repoint → migrate e2e → delete legacy) and mapping to the spec's prioritized user stories:
 
 1. **Backend read + publish + audit** (US1/US2/US5 foundation): the 3 endpoints across all 4 layers each, DTOs, orval regen — each with Dockerized integration + two-church isolation tests (R8).
 2. **Derived field** (US4): `availabilityFiredForAny` down the chain + orval regen.
@@ -131,7 +131,7 @@ Complete: [data-model.md](./data-model.md), [contracts/leader-rostering-endpoint
 7. **Entry + retirement** (US4): Assign button/gating/copy/testids; repoint 4 entry points; migrate 5 e2e specs; delete 3 legacy routes + 4 slot-management files + `mobile-interstitial`.
 8. **Mobile parity** (US6): responsive board scroll + stacked rail (interstitial already deleted).
 
-Each phase ends with the `agents.local.md` quality-gate loop (`bun run check` / `check-types` / `test` / `test:e2e`) + `/review` before proceeding.
+Each phase ends with targeted tests, `bun run validate:affected`, the relevant E2E coverage, and review of the modified files before proceeding.
 
 ## Complexity Tracking
 

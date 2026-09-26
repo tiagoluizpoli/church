@@ -1,34 +1,24 @@
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at `specs/023-event-builder/plan.md`.
-<!-- SPECKIT END -->
+# Church guidance
 
-## Repository Instructions
+## Project entry
 
-Before changing code, read and follow:
+Before changing application code, read the
+[constitution](.specify/memory/constitution.md) and the applicable routes
+below. This entry composes with the global baseline and language profiles;
+project guidance overrides them.
 
-- `agents.local.md` for project architecture, coding rules, and verification requirements.
-- `CONTEXT.md` for the project's domain language.
-- `.specify/memory/constitution.md` for non-negotiable project governance.
+### Testing and tooling
 
-## Agent skills
+Run repository commands from the root through its Bun scripts. Use
+`bun run validate:affected` after a changed implementation slice; reserve
+`bun run validate` for final handoff or merge validation. Test files belong in
+the owning project's `test` directory. Details: [tooling](docs/agents/tooling.md).
 
-### Issue tracker
+### Routes
 
-Issues live in GitHub Issues (tiagoluizpoli/church), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Default canonical labels (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
-
-### Test strategy and CI gates
-
-Before a PR, run `bun run validate:affected`, not `bun run validate` (final-handoff only). See [ADR-0004](docs/adr/0004-test-strategy-and-ci-gate-policy.md) and the README's "Test Policy: What To Run" table.
-
-### Rules
-- Test files ALWAYS goes in the "test" directory of the project
+- Domain or planning: [domain docs](docs/agents/domain.md), the applicable
+  `docs/adr/` decisions, and the relevant plan/specification.
+- Backend, API, database, security, or tenancy: [backend guidance](docs/agents/backend.md).
+- Frontend or UI: [frontend guidance](docs/agents/frontend.md).
+- GitHub issue work: [issue tracker](docs/agents/issue-tracker.md).
+- Triage: [triage labels](docs/agents/triage-labels.md).

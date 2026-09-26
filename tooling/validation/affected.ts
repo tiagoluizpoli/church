@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync } from 'node:fs';
 import {
   classifyChanges,
   type TestLayer,
@@ -18,6 +18,11 @@ interface CollectChangedPathsInput {
   baseRef?: string;
 }
 
+interface CollectChangedPathsResult {
+  baseRef: string | undefined;
+  changedPaths: string[];
+}
+
 interface ParseArgumentsInput {
   args: string[];
 }
@@ -27,6 +32,8 @@ interface ParseArgumentsResult {
   dailyGate: boolean;
   dryRun: boolean;
   e2eSpecPaths: string[];
+  onlyE2e: boolean;
+  skipE2e: boolean;
 }
 
 interface RunTestLayerInput {
@@ -43,22 +50,63 @@ interface RunTurboTaskInput {
 }
 
 interface RunValidationInput {
+  onlyE2e: boolean;
   plan: ValidationPlan;
+  skipE2e: boolean;
 }
 
-function collectChangedPaths({ baseRef }: CollectChangedPathsInput): string[] {
+interface RunValidationResult {
+  timings: CheckTiming[];
+}
+
+export interface CheckTiming {
+  label: string;
+  ms: number;
+}
+
+interface TimeCheckInput<T> {
+  label: string;
+  run: () => T;
+  timings: CheckTiming[];
+}
+
+/**
+ * A clean worktree with committed branch changes must not report nothing to
+ * check — a working-tree-only diff sees no uncommitted changes and silently
+ * skips them. With no explicit `--base`, fall back to the task branch's
+ * likely target so committed work is still included, using its merge base
+ * (not its tip) so unrelated changes landing on the target after the branch
+ * forked don't inflate the local plan.
+ */
+function resolveDefaultBaseRef(): string | undefined {
+  for (const candidate of ['develop', 'origin/develop']) {
+    try {
+      execFileSync('git', ['rev-parse', '--verify', '--quiet', candidate], {
+        stdio: 'ignore',
+      });
+      return candidate;
+    } catch {}
+  }
+  return undefined;
+}
+
+function collectChangedPaths({
+  baseRef,
+}: CollectChangedPathsInput): CollectChangedPathsResult {
+  const resolvedBaseRef = baseRef ?? resolveDefaultBaseRef();
+
   // CI checks out a merge commit with a clean tree, so the working-tree
-  // diffs below are always empty there. --base compares against the PR's
-  // target branch instead, which is what a checked-out, committed CI ref
-  // needs; local runs omit it to keep diffing uncommitted work.
-  const baseComparisonPaths = baseRef
+  // diffs below are always empty there; --base there is always explicit
+  // (the PR's target branch). Locally, `...` diffs against the merge base so
+  // committed branch work is included alongside the uncommitted diffs below.
+  const baseComparisonPaths = resolvedBaseRef
     ? runCommand({
-        args: ['diff', '--name-only', `${baseRef}...HEAD`],
+        args: ['diff', '--name-only', `${resolvedBaseRef}...HEAD`],
         command: 'git',
       })
     : [];
 
-  return [
+  const changedPaths = [
     ...baseComparisonPaths,
     ...runCommand({ args: ['diff', '--name-only'], command: 'git' }),
     ...runCommand({
@@ -72,6 +120,8 @@ function collectChangedPaths({ baseRef }: CollectChangedPathsInput): string[] {
   ].filter(
     (path, index, paths) => path.length > 0 && paths.indexOf(path) === index,
   );
+
+  return { baseRef: resolvedBaseRef, changedPaths };
 }
 
 export function parseArguments({
@@ -81,6 +131,8 @@ export function parseArguments({
   let dryRun = false;
   let dailyGate = false;
   let baseRef: string | undefined;
+  let skipE2e = false;
+  let onlyE2e = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -91,6 +143,16 @@ export function parseArguments({
 
     if (arg === '--daily-gate') {
       dailyGate = true;
+      continue;
+    }
+
+    if (arg === '--skip-e2e') {
+      skipE2e = true;
+      continue;
+    }
+
+    if (arg === '--only-e2e') {
+      onlyE2e = true;
       continue;
     }
 
@@ -110,7 +172,11 @@ export function parseArguments({
     }
   }
 
-  return { baseRef, dailyGate, dryRun, e2eSpecPaths };
+  if (skipE2e && onlyE2e) {
+    throw new Error('--skip-e2e and --only-e2e are mutually exclusive.');
+  }
+
+  return { baseRef, dailyGate, dryRun, e2eSpecPaths, onlyE2e, skipE2e };
 }
 
 function runCommand({ args, command }: CommandInput): string[] {
@@ -118,49 +184,90 @@ function runCommand({ args, command }: CommandInput): string[] {
   return output.split('\n').filter(Boolean);
 }
 
-function runValidation({ plan }: RunValidationInput): void {
-  // A deleted file is still a changed path — it must keep its package in
-  // scope for typecheck and tests — but Biome cannot read it, and reports
-  // each one as an internal error. Drop them at the lint step only.
-  const lintPaths = plan.lintPaths.filter((lintPath) => existsSync(lintPath));
-  if (lintPaths.length > 0) {
-    execFileSync('bun', ['run', 'lint:files', '--', ...lintPaths], {
-      stdio: 'inherit',
-    });
-  }
+function timeCheck<T>({ label, run, timings }: TimeCheckInput<T>): T {
+  const startedAt = performance.now();
+  const result = run();
+  timings.push({ label, ms: Math.round(performance.now() - startedAt) });
+  return result;
+}
 
-  if (plan.workspaceNames.length > 0) {
-    const filters = plan.workspaceNames.flatMap((workspaceName) => [
-      '--filter',
-      workspaceName,
-    ]);
-    execFileSync(
-      'bunx',
-      ['turbo', 'typecheck', '--concurrency=2', ...filters],
-      {
-        stdio: 'inherit',
-      },
-    );
+function runValidation({
+  onlyE2e,
+  plan,
+  skipE2e,
+}: RunValidationInput): RunValidationResult {
+  const timings: CheckTiming[] = [];
 
-    for (const testLayer of plan.testLayers) {
-      runTestLayer({
-        testLayer,
-        testTargets: plan.testTargets,
-        workspaceNames: plan.workspaceNames,
+  if (!onlyE2e) {
+    // A deleted file is still a changed path — it must keep its package in
+    // scope for typecheck and tests — but Biome cannot read it, and reports
+    // each one as an internal error. Drop them at the lint step only.
+    const lintPaths = plan.lintPaths.filter((lintPath) => existsSync(lintPath));
+    if (lintPaths.length > 0) {
+      timeCheck({
+        label: 'lint',
+        run: () =>
+          execFileSync('bun', ['run', 'lint:files', '--', ...lintPaths], {
+            stdio: 'inherit',
+          }),
+        timings,
       });
+    }
+
+    if (plan.workspaceNames.length > 0) {
+      const filters = plan.workspaceNames.flatMap((workspaceName) => [
+        '--filter',
+        workspaceName,
+      ]);
+      timeCheck({
+        label: 'typecheck',
+        run: () =>
+          execFileSync(
+            'bunx',
+            ['turbo', 'typecheck', '--concurrency=2', ...filters],
+            { stdio: 'inherit' },
+          ),
+        timings,
+      });
+
+      for (const testLayer of plan.testLayers) {
+        timeCheck({
+          label: testLayer,
+          run: () =>
+            runTestLayer({
+              testLayer,
+              testTargets: plan.testTargets,
+              workspaceNames: plan.workspaceNames,
+            }),
+          timings,
+        });
+      }
     }
   }
 
+  if (skipE2e) return { timings };
+
   if (plan.requiresFullE2e) {
-    execFileSync('bun', ['run', 'test:e2e'], { stdio: 'inherit' });
-    return;
+    timeCheck({
+      label: 'test:e2e (full suite)',
+      run: () => execFileSync('bun', ['run', 'test:e2e'], { stdio: 'inherit' }),
+      timings,
+    });
+    return { timings };
   }
 
   if (plan.e2eSpecPaths.length > 0) {
-    execFileSync('bun', ['run', 'test:e2e', '--', ...plan.e2eSpecPaths], {
-      stdio: 'inherit',
+    timeCheck({
+      label: 'test:e2e (affected journeys)',
+      run: () =>
+        execFileSync('bun', ['run', 'test:e2e', '--', ...plan.e2eSpecPaths], {
+          stdio: 'inherit',
+        }),
+      timings,
     });
   }
+
+  return { timings };
 }
 
 function runTestLayer({
@@ -232,10 +339,76 @@ function runTurboTask({
   );
 }
 
+interface ExplainPlanInput {
+  baseRef: string | undefined;
+  plan: ValidationPlan;
+}
+
+export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
+  const lines: string[] = [
+    `Base ref: ${baseRef ?? '(none — working tree only)'}`,
+    '',
+    'Workspaces selected:',
+  ];
+
+  for (const workspaceName of plan.workspaceNames) {
+    lines.push(`  - ${workspaceName}`);
+    for (const reason of plan.workspaceSelectionReasons.filter(
+      (r) => r.workspaceName === workspaceName,
+    )) {
+      lines.push(`      ${reason.detail} <- ${reason.changedPath}`);
+    }
+  }
+
+  lines.push(
+    '',
+    `Test layers selected: ${plan.testLayers.length > 0 ? plan.testLayers.join(', ') : '(none)'}`,
+  );
+
+  lines.push('', 'Browser journeys selected:');
+  for (const specPath of plan.e2eSpecPaths) {
+    lines.push(`  - ${specPath}`);
+    for (const reason of plan.journeySelectionReasons.filter(
+      (r) => r.specPath === specPath,
+    )) {
+      lines.push(
+        `      ${reason.detail}${reason.changedPath ? ` <- ${reason.changedPath}` : ''}`,
+      );
+    }
+  }
+
+  if (plan.missingJourneyMappings.length > 0) {
+    lines.push(
+      '',
+      'Missing journey mappings (fell back to critical smoke set):',
+    );
+    for (const path of plan.missingJourneyMappings) lines.push(`  - ${path}`);
+  }
+
+  return lines.join('\n');
+}
+
+interface FormatTimingSummaryInput {
+  timings: CheckTiming[];
+}
+
+export function formatTimingSummary({
+  timings,
+}: FormatTimingSummaryInput): string {
+  const lines = ['| Check | Elapsed |', '| --- | --- |'];
+  for (const { label, ms } of timings) {
+    lines.push(`| ${label} | ${(ms / 1000).toFixed(1)}s |`);
+  }
+  return lines.join('\n');
+}
+
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+  const { baseRef, changedPaths } = collectChangedPaths({
+    baseRef: argumentsResult.baseRef,
+  });
   const plan = classifyChanges({
-    changedPaths: collectChangedPaths({ baseRef: argumentsResult.baseRef }),
+    changedPaths,
     dailyGate: argumentsResult.dailyGate,
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
   });
@@ -246,5 +419,27 @@ if (import.meta.main) {
       `No journey mapping for: ${plan.missingJourneyMappings.join(', ')}. Running the critical smoke set as a conservative fallback — add a tooling/validation/journey-map.ts entry to select the specific journey instead.`,
     );
   }
-  if (!argumentsResult.dryRun) runValidation({ plan });
+
+  if (argumentsResult.dryRun) {
+    // CI redirects --dry-run's stdout to a file and parses it as JSON with
+    // jq (see ci.yml's "Determine affected plan" step) — the explanation
+    // must stay off stdout so that stays valid JSON.
+    console.error('');
+    console.error(explainPlan({ baseRef, plan }));
+  } else {
+    const { timings } = runValidation({
+      onlyE2e: argumentsResult.onlyE2e,
+      plan,
+      skipE2e: argumentsResult.skipE2e,
+    });
+    const summary = formatTimingSummary({ timings });
+    console.log('');
+    console.log(summary);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      appendFileSync(
+        process.env.GITHUB_STEP_SUMMARY,
+        `\n### Check timings\n\n${summary}\n`,
+      );
+    }
+  }
 }

@@ -11,8 +11,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  develop-gate:
-    name: Develop Gate (Fast + Affected)
+  # #286: the daily gate used to be one job that ran lint, typecheck, unit,
+  # integration, and any affected browser journeys sequentially — the
+  # journeys' Playwright setup and run time sat on the critical path even
+  # when the fast checks were already done. Splitting into two independent
+  # workers behind one required aggregate keeps them concurrent instead. Each
+  # worker plans for itself (--dry-run is a sub-second pure function over
+  # `git diff`) rather than fanning out from a shared planning job, since a
+  # dedicated plan job's own checkout+setup overhead would cost more than the
+  # planning step it would save.
+  develop-fast:
+    name: Develop Gate / Fast + Affected (non-browser)
     if: github.event_name == 'pull_request' && github.base_ref == 'develop'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -57,11 +66,69 @@ jobs:
       - name: Validation tests (affected-plan, date-time seam fixture)
         run: bun run test:validation
 
+      - name: Fast + affected gate (lint, typecheck, unit, integration)
+        # --daily-gate: per #210's Implementation Decisions, a task-branch to
+        # develop PR only ever requires the fast+affected gate — the full E2E
+        # suite is release-gate-only (develop to master). --skip-e2e: any
+        # affected browser journeys run in the sibling develop-browser job
+        # instead, concurrently.
+        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --skip-e2e
+
+      - name: Record elapsed-time evidence
+        if: always()
+        run: |
+          elapsed=$(( $(date +%s) - JOB_START_TIME ))
+          echo "### Develop Gate / Fast + Affected elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (target: 600s, job start to completion)" >> "$GITHUB_STEP_SUMMARY"
+
+  develop-browser:
+    name: Develop Gate / Browser Journeys
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_test?application_name=test
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:3000
+      CORS_ORIGIN: http://localhost:5173
+      UNLEASH_API_URL: http://localhost:4242/api
+      UNLEASH_API_TOKEN: ci-test-token
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - name: Record job start time
+        run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-church-ci
+
       - name: Determine affected plan
         id: plan
         run: |
           # Written under $RUNNER_TEMP, outside the repo working tree — the
-          # later "Fast + affected gate" step re-runs the same planner, whose
+          # later "Browser journeys" step re-runs the same planner, whose
           # changed-path scan includes untracked files (`git ls-files
           # --others`); a dump left inside the tree was picked up as a
           # "changed" file and fed into `bun run lint:files`, where Biome's
@@ -76,26 +143,52 @@ jobs:
 
       - name: Install Playwright browsers
         if: steps.plan.outputs.needs_e2e == 'true'
-        run: bunx playwright install --with-deps chromium
+        id: install-browsers
+        run: |
+          start=$(date +%s)
+          bunx playwright install --with-deps chromium
+          elapsed=$(( $(date +%s) - start ))
+          echo "### Develop Gate / Browser setup elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (Playwright browser install)" >> "$GITHUB_STEP_SUMMARY"
         working-directory: apps/web
 
-      - name: Fast + affected gate
-        # --daily-gate: per #210's Implementation Decisions, a task-branch to
-        # develop PR only ever requires the fast+affected gate — the full E2E
-        # suite is release-gate-only (develop to master), gated on #121 being
-        # repeatedly green, and that release gate (#222) doesn't exist yet. A
-        # change to shared E2E infrastructure (e.g. playwright.config.ts)
-        # still selects its normal mapped/critical-journey specs here; it
-        # just never escalates to the full suite.
-        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate
+      - name: Browser journeys (affected or critical smoke set)
+        # An intentional no-op when the plan selected no journey (e.g. a
+        # docs-only or otherwise unaffected change): --only-e2e with no
+        # selected specs and requiresFullE2e false runs nothing and exits 0,
+        # so this step — and therefore the job — still succeeds without
+        # waiting on browser setup.
+        if: steps.plan.outputs.needs_e2e == 'true'
+        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --only-e2e
 
       - name: Record elapsed-time evidence
         if: always()
         run: |
           elapsed=$(( $(date +%s) - JOB_START_TIME ))
-          echo "### Develop gate elapsed time" >> "$GITHUB_STEP_SUMMARY"
-          # Matches this job's `timeout-minutes: 10` budget above — keep both in sync.
-          echo "${elapsed}s (target: 600s, job start to gate completion)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Develop Gate / Browser Journeys elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (target: 600s, job start to completion)" >> "$GITHUB_STEP_SUMMARY"
+
+  develop-gate:
+    name: Develop Gate (Fast + Affected)
+    # The required status check branch protection points at. Aggregates the
+    # two concurrent workers above so parallelism can't hide a failed or
+    # cancelled required check (#286 US14): this job fails whenever either
+    # worker's result isn't 'success', and 'if: always()' (mirroring its own
+    # applicability condition) makes sure it still runs — and reports — even
+    # if a worker failed outright.
+    if: always() && github.event_name == 'pull_request' && github.base_ref == 'develop'
+    needs: [develop-fast, develop-browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require both workers to have succeeded
+        run: |
+          if [ "${{ needs.develop-fast.result }}" != "success" ] || [ "${{ needs.develop-browser.result }}" != "success" ]; then
+            echo "develop-fast: ${{ needs.develop-fast.result }}"
+            echo "develop-browser: ${{ needs.develop-browser.result }}"
+            echo "One or more required workers did not succeed." >&2
+            exit 1
+          fi
 
   release-gate:
     name: Release Gate (Complete Validation)

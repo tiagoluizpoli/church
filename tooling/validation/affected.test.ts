@@ -750,6 +750,48 @@ describe('classifyChanges', () => {
     });
   });
 
+  it('records why each selected test layer was chosen, mirroring its workspace reason', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/core/src/entity.ts'],
+    });
+
+    expect(plan.testLayerSelectionReasons).toContainEqual({
+      changedPath: 'packages/core/src/entity.ts',
+      detail: 'direct',
+      testLayer: 'test:unit',
+      workspaceName: '@church/core',
+    });
+    expect(plan.testLayerSelectionReasons).toContainEqual({
+      changedPath: 'packages/core/src/entity.ts',
+      detail: 'dependent-of:@church/core',
+      testLayer: 'test:unit',
+      workspaceName: 'server',
+    });
+    expect(plan.testLayerSelectionReasons).toContainEqual({
+      changedPath: 'packages/core/src/entity.ts',
+      detail: 'dependent-of:@church/core',
+      testLayer: 'test:integration',
+      workspaceName: 'server',
+    });
+  });
+
+  it('records a root-infrastructure test-layer reason for every workspace on a root-infra change', () => {
+    const plan = classifyChanges({ changedPaths: ['package.json'] });
+
+    expect(plan.testLayerSelectionReasons).toContainEqual({
+      changedPath: 'package.json',
+      detail: 'root-infrastructure',
+      testLayer: 'test:unit',
+      workspaceName: '@church/config',
+    });
+    expect(plan.testLayerSelectionReasons).toContainEqual({
+      changedPath: 'package.json',
+      detail: 'root-infrastructure',
+      testLayer: 'test:integration',
+      workspaceName: '@church/config',
+    });
+  });
+
   it('records the critical-smoke-fallback reason for an unmapped production change', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/routes/dashboard.tsx'],
@@ -791,7 +833,11 @@ describe('explainPlan', () => {
     expect(explanation).toContain(
       'direct <- apps/web/src/shared/utils/active-church-switch.ts',
     );
-    expect(explanation).toContain('Test layers selected: test:unit');
+    expect(explanation).toContain('Test layers selected:');
+    expect(explanation).toContain('  - test:unit');
+    expect(explanation).toContain(
+      'direct <- apps/web/src/shared/utils/active-church-switch.ts (web)',
+    );
     expect(explanation).toContain(
       'tests/identity/active-church-switching.spec.ts',
     );

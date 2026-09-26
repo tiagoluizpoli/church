@@ -22,6 +22,7 @@ export interface ValidationPlan {
   lintPaths: string[];
   missingJourneyMappings: string[];
   requiresFullE2e: boolean;
+  testLayerSelectionReasons: TestLayerSelectionReason[];
   testLayers: TestLayer[];
   testTargets: TestTarget[];
   workspaceNames: string[];
@@ -45,6 +46,18 @@ export interface WorkspaceSelectionReason {
   workspaceName: string;
 }
 
+/**
+ * Why a test layer was selected for a workspace, mirroring
+ * `WorkspaceSelectionReason`'s detail values — a test layer is only ever
+ * selected because its workspace was selected for that same reason.
+ */
+export interface TestLayerSelectionReason {
+  changedPath: string;
+  detail: 'direct' | 'root-infrastructure' | `dependent-of:${string}`;
+  testLayer: TestLayer;
+  workspaceName: string;
+}
+
 export interface TestTarget {
   testLayer: TestLayer;
   testPath: string;
@@ -61,8 +74,21 @@ interface AddTestLayersInput {
   workspaceName: string;
 }
 
+interface GetTestLayersForWorkspaceInput {
+  workspaceName: string;
+}
+
+interface PushTestLayerSelectionReasonsInput {
+  changedPath: string;
+  detail: TestLayerSelectionReason['detail'];
+  testLayerSelectionReasons: TestLayerSelectionReason[];
+  testLayers: TestLayer[];
+  workspaceName: string;
+}
+
 interface AddWorkspaceAndDependentsInput {
   changedPath: string;
+  testLayerSelectionReasons: TestLayerSelectionReason[];
   workspaceName: string;
   workspaceNames: Set<string>;
   workspaceSelectionReasons: WorkspaceSelectionReason[];
@@ -149,6 +175,7 @@ export function classifyChanges({
   const selectedE2eSpecPaths = new Set(e2eSpecPaths);
   const missingJourneyMappings = new Set<string>();
   const workspaceSelectionReasons: WorkspaceSelectionReason[] = [];
+  const testLayerSelectionReasons: TestLayerSelectionReason[] = [];
   const journeySelectionReasons: JourneySelectionReason[] = e2eSpecPaths.map(
     (specPath) => ({ changedPath: null, detail: 'explicit', specPath }),
   );
@@ -162,6 +189,13 @@ export function classifyChanges({
         workspaceSelectionReasons.push({
           changedPath,
           detail: 'root-infrastructure',
+          workspaceName: workspace.name,
+        });
+        pushTestLayerSelectionReasons({
+          changedPath,
+          detail: 'root-infrastructure',
+          testLayerSelectionReasons,
+          testLayers: TEST_LAYERS,
           workspaceName: workspace.name,
         });
       }
@@ -193,6 +227,7 @@ export function classifyChanges({
 
     addWorkspaceAndDependents({
       changedPath,
+      testLayerSelectionReasons,
       workspaceName: workspace.name,
       workspaceNames,
       workspaceSelectionReasons,
@@ -244,6 +279,7 @@ export function classifyChanges({
     lintPaths: changedPaths.filter(isLintablePath),
     missingJourneyMappings: [...missingJourneyMappings].sort(),
     requiresFullE2e,
+    testLayerSelectionReasons,
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
     workspaceNames: [...workspaceNames].sort(),
@@ -265,6 +301,7 @@ function isProductionSourcePath({
 
 function addWorkspaceAndDependents({
   changedPath,
+  testLayerSelectionReasons,
   workspaceName,
   workspaceNames,
   workspaceSelectionReasons,
@@ -275,6 +312,13 @@ function addWorkspaceAndDependents({
     detail: 'direct',
     workspaceName,
   });
+  pushTestLayerSelectionReasons({
+    changedPath,
+    detail: 'direct',
+    testLayerSelectionReasons,
+    testLayers: getTestLayersForWorkspace({ workspaceName }),
+    workspaceName,
+  });
 
   for (const dependent of DEPENDENTS[workspaceName] ?? []) {
     workspaceNames.add(dependent);
@@ -283,26 +327,57 @@ function addWorkspaceAndDependents({
       detail: `dependent-of:${workspaceName}`,
       workspaceName: dependent,
     });
+    pushTestLayerSelectionReasons({
+      changedPath,
+      detail: `dependent-of:${workspaceName}`,
+      testLayerSelectionReasons,
+      testLayers: getTestLayersForWorkspace({ workspaceName: dependent }),
+      workspaceName: dependent,
+    });
   }
+}
+
+function pushTestLayerSelectionReasons({
+  changedPath,
+  detail,
+  testLayerSelectionReasons,
+  testLayers,
+  workspaceName,
+}: PushTestLayerSelectionReasonsInput): void {
+  for (const testLayer of testLayers) {
+    testLayerSelectionReasons.push({
+      changedPath,
+      detail,
+      testLayer,
+      workspaceName,
+    });
+  }
+}
+
+function getTestLayersForWorkspace({
+  workspaceName,
+}: GetTestLayersForWorkspaceInput): TestLayer[] {
+  if (workspaceName === '@church/core' || workspaceName === 'web') {
+    return ['test:unit'];
+  }
+
+  if (workspaceName === '@church/auth' || workspaceName === '@church/db') {
+    return ['test:integration'];
+  }
+
+  if (workspaceName === 'server') {
+    return ['test:unit', 'test:integration'];
+  }
+
+  return [];
 }
 
 function addTestLayers({
   testLayers,
   workspaceName,
 }: AddTestLayersInput): void {
-  if (workspaceName === '@church/core' || workspaceName === 'web') {
-    testLayers.add('test:unit');
-    return;
-  }
-
-  if (workspaceName === '@church/auth' || workspaceName === '@church/db') {
-    testLayers.add('test:integration');
-    return;
-  }
-
-  if (workspaceName === 'server') {
-    testLayers.add('test:unit');
-    testLayers.add('test:integration');
+  for (const testLayer of getTestLayersForWorkspace({ workspaceName })) {
+    testLayers.add(testLayer);
   }
 }
 

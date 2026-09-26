@@ -18,12 +18,31 @@ export interface ClassifyChangesInput {
 
 export interface ValidationPlan {
   e2eSpecPaths: string[];
+  journeySelectionReasons: JourneySelectionReason[];
   lintPaths: string[];
   missingJourneyMappings: string[];
   requiresFullE2e: boolean;
   testLayers: TestLayer[];
   testTargets: TestTarget[];
   workspaceNames: string[];
+  workspaceSelectionReasons: WorkspaceSelectionReason[];
+}
+
+/**
+ * Why a browser journey spec was selected. `changedPath` is null for an
+ * explicitly requested spec (--e2e) or a critical-smoke-fallback entry, since
+ * those aren't tied to one specific mapping hit.
+ */
+export interface JourneySelectionReason {
+  changedPath: string | null;
+  detail: 'critical-smoke-fallback' | 'explicit' | `mapped:${string}`;
+  specPath: string;
+}
+
+export interface WorkspaceSelectionReason {
+  changedPath: string;
+  detail: 'direct' | 'root-infrastructure' | `dependent-of:${string}`;
+  workspaceName: string;
 }
 
 export interface TestTarget {
@@ -43,8 +62,10 @@ interface AddTestLayersInput {
 }
 
 interface AddWorkspaceAndDependentsInput {
+  changedPath: string;
   workspaceName: string;
   workspaceNames: Set<string>;
+  workspaceSelectionReasons: WorkspaceSelectionReason[];
 }
 
 interface GetTestLayerInput {
@@ -55,10 +76,6 @@ interface GetTestLayerInput {
 interface GetTestTargetInput {
   changedPath: string;
   workspace: Workspace;
-}
-
-interface GetJourneySpecPathsInput {
-  changedPath: string;
 }
 
 interface IsProductionSourcePathInput {
@@ -131,12 +148,23 @@ export function classifyChanges({
   const testTargets: TestTarget[] = [];
   const selectedE2eSpecPaths = new Set(e2eSpecPaths);
   const missingJourneyMappings = new Set<string>();
+  const workspaceSelectionReasons: WorkspaceSelectionReason[] = [];
+  const journeySelectionReasons: JourneySelectionReason[] = e2eSpecPaths.map(
+    (specPath) => ({ changedPath: null, detail: 'explicit', specPath }),
+  );
   let requiresFullE2e = false;
   let hasUnmappedProductionChange = false;
 
   for (const changedPath of changedPaths) {
     if (ROOT_INFRASTRUCTURE_PATHS.has(changedPath)) {
-      for (const workspace of WORKSPACES) workspaceNames.add(workspace.name);
+      for (const workspace of WORKSPACES) {
+        workspaceNames.add(workspace.name);
+        workspaceSelectionReasons.push({
+          changedPath,
+          detail: 'root-infrastructure',
+          workspaceName: workspace.name,
+        });
+      }
       testLayers.add('test:unit');
       testLayers.add('test:integration');
       continue;
@@ -164,18 +192,29 @@ export function classifyChanges({
     if (testTarget) testTargets.push(testTarget);
 
     addWorkspaceAndDependents({
+      changedPath,
       workspaceName: workspace.name,
       workspaceNames,
+      workspaceSelectionReasons,
     });
 
     if (
       !isSharedE2eInfrastructure &&
       isProductionSourcePath({ changedPath, workspaceName: workspace.name })
     ) {
-      const journeySpecPaths = getJourneySpecPaths({ changedPath });
-      if (journeySpecPaths.length > 0) {
-        for (const specPath of journeySpecPaths) {
-          selectedE2eSpecPaths.add(specPath);
+      const journeyMappings = JOURNEY_MAP.filter(({ sourcePathPrefix }) =>
+        changedPath.startsWith(sourcePathPrefix),
+      );
+      if (journeyMappings.length > 0) {
+        for (const { sourcePathPrefix, specPaths } of journeyMappings) {
+          for (const specPath of specPaths) {
+            selectedE2eSpecPaths.add(specPath);
+            journeySelectionReasons.push({
+              changedPath,
+              detail: `mapped:${sourcePathPrefix}`,
+              specPath,
+            });
+          }
         }
       } else {
         hasUnmappedProductionChange = true;
@@ -187,6 +226,11 @@ export function classifyChanges({
   if (hasUnmappedProductionChange) {
     for (const specPath of CRITICAL_SMOKE_SPEC_PATHS) {
       selectedE2eSpecPaths.add(specPath);
+      journeySelectionReasons.push({
+        changedPath: null,
+        detail: 'critical-smoke-fallback',
+        specPath,
+      });
     }
   }
 
@@ -196,12 +240,14 @@ export function classifyChanges({
 
   return {
     e2eSpecPaths: [...selectedE2eSpecPaths].sort(),
+    journeySelectionReasons,
     lintPaths: changedPaths.filter(isLintablePath),
     missingJourneyMappings: [...missingJourneyMappings].sort(),
     requiresFullE2e,
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
     workspaceNames: [...workspaceNames].sort(),
+    workspaceSelectionReasons,
   };
 }
 
@@ -217,22 +263,26 @@ function isProductionSourcePath({
   return true;
 }
 
-function getJourneySpecPaths({
-  changedPath,
-}: GetJourneySpecPathsInput): string[] {
-  return JOURNEY_MAP.filter(({ sourcePathPrefix }) =>
-    changedPath.startsWith(sourcePathPrefix),
-  ).flatMap(({ specPaths }) => specPaths);
-}
-
 function addWorkspaceAndDependents({
+  changedPath,
   workspaceName,
   workspaceNames,
+  workspaceSelectionReasons,
 }: AddWorkspaceAndDependentsInput): void {
   workspaceNames.add(workspaceName);
+  workspaceSelectionReasons.push({
+    changedPath,
+    detail: 'direct',
+    workspaceName,
+  });
 
   for (const dependent of DEPENDENTS[workspaceName] ?? []) {
     workspaceNames.add(dependent);
+    workspaceSelectionReasons.push({
+      changedPath,
+      detail: `dependent-of:${workspaceName}`,
+      workspaceName: dependent,
+    });
   }
 }
 

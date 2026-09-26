@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { classifyChanges, parseArguments } from './affected';
+import {
+  classifyChanges,
+  explainPlan,
+  formatTimingSummary,
+  parseArguments,
+} from './affected';
 import { CRITICAL_SMOKE_SPEC_PATHS } from './journey-map';
 
 describe('parseArguments', () => {
@@ -24,6 +29,21 @@ describe('parseArguments', () => {
   it('defaults dailyGate to false, and reads --daily-gate as a standalone flag', () => {
     expect(parseArguments({ args: [] }).dailyGate).toBe(false);
     expect(parseArguments({ args: ['--daily-gate'] }).dailyGate).toBe(true);
+  });
+
+  it('defaults skipE2e and onlyE2e to false, and reads each as a standalone flag', () => {
+    const defaults = parseArguments({ args: [] });
+    expect(defaults.skipE2e).toBe(false);
+    expect(defaults.onlyE2e).toBe(false);
+
+    expect(parseArguments({ args: ['--skip-e2e'] }).skipE2e).toBe(true);
+    expect(parseArguments({ args: ['--only-e2e'] }).onlyE2e).toBe(true);
+  });
+
+  it('rejects --skip-e2e combined with --only-e2e', () => {
+    expect(() =>
+      parseArguments({ args: ['--skip-e2e', '--only-e2e'] }),
+    ).toThrow('--skip-e2e and --only-e2e are mutually exclusive.');
   });
 });
 
@@ -711,5 +731,117 @@ describe('classifyChanges', () => {
       'tests/scheduling/a11y-planning-nav.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('records why each selected workspace and journey was chosen', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/core/src/entity.ts'],
+    });
+
+    expect(plan.workspaceSelectionReasons).toContainEqual({
+      changedPath: 'packages/core/src/entity.ts',
+      detail: 'direct',
+      workspaceName: '@church/core',
+    });
+    expect(plan.workspaceSelectionReasons).toContainEqual({
+      changedPath: 'packages/core/src/entity.ts',
+      detail: 'dependent-of:@church/core',
+      workspaceName: 'server',
+    });
+  });
+
+  it('records the critical-smoke-fallback reason for an unmapped production change', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/routes/dashboard.tsx'],
+    });
+
+    expect(plan.journeySelectionReasons).toContainEqual({
+      changedPath: null,
+      detail: 'critical-smoke-fallback',
+      specPath: 'tests/scheduling/smoke.spec.ts',
+    });
+  });
+
+  it('records the explicit reason for an --e2e-requested spec', () => {
+    const plan = classifyChanges({
+      changedPaths: [],
+      e2eSpecPaths: ['tests/scheduling/builder-slot-focus.spec.ts'],
+    });
+
+    expect(plan.journeySelectionReasons).toEqual([
+      {
+        changedPath: null,
+        detail: 'explicit',
+        specPath: 'tests/scheduling/builder-slot-focus.spec.ts',
+      },
+    ]);
+  });
+});
+
+describe('explainPlan', () => {
+  it('renders the base ref, selected workspaces with reasons, and selected journeys with reasons', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/shared/utils/active-church-switch.ts'],
+    });
+
+    const explanation = explainPlan({ baseRef: 'develop', plan });
+
+    expect(explanation).toContain('Base ref: develop');
+    expect(explanation).toContain('web');
+    expect(explanation).toContain(
+      'direct <- apps/web/src/shared/utils/active-church-switch.ts',
+    );
+    expect(explanation).toContain('Test layers selected: test:unit');
+    expect(explanation).toContain(
+      'tests/identity/active-church-switching.spec.ts',
+    );
+    expect(explanation).toContain(
+      'mapped:apps/web/src/shared/utils/active-church-switch.ts',
+    );
+  });
+
+  it('renders a fallback label when no base ref was resolved', () => {
+    const plan = classifyChanges({ changedPaths: [] });
+
+    expect(explainPlan({ baseRef: undefined, plan })).toContain(
+      'Base ref: (none — working tree only)',
+    );
+  });
+
+  it('lists missing journey mappings when the smoke set falls back', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/routes/dashboard.tsx'],
+    });
+
+    const explanation = explainPlan({ baseRef: 'develop', plan });
+
+    expect(explanation).toContain('Missing journey mappings');
+    expect(explanation).toContain('apps/web/src/routes/dashboard.tsx');
+  });
+});
+
+describe('formatTimingSummary', () => {
+  it('renders a markdown table with each check and its elapsed seconds', () => {
+    const summary = formatTimingSummary({
+      timings: [
+        { label: 'lint', ms: 1234 },
+        { label: 'typecheck', ms: 5000 },
+      ],
+    });
+
+    expect(summary).toBe(
+      [
+        '| Check | Elapsed |',
+        '| --- | --- |',
+        '| lint | 1.2s |',
+        '| typecheck | 5.0s |',
+      ].join('\n'),
+    );
+  });
+
+  it('renders just the header rows for no timings', () => {
+    expect(formatTimingSummary({ timings: [] })).toBe(
+      ['| Check | Elapsed |', '| --- | --- |'].join('\n'),
+    );
   });
 });

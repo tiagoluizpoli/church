@@ -981,4 +981,22 @@ describe('formatTimingSummary', () => {
       ['| Check | Elapsed |', '| --- | --- |'].join('\n'),
     );
   });
+
+  it('renders a skipped check as "skipped" instead of a zero duration', () => {
+    const summary = formatTimingSummary({
+      timings: [
+        { label: 'lint', ms: 0, skipped: true },
+        { label: 'typecheck', ms: 5000 },
+      ],
+    });
+
+    expect(summary).toBe(
+      [
+        '| Check | Elapsed |',
+        '| --- | --- |',
+        '| lint | skipped |',
+        '| typecheck | 5.0s |',
+      ].join('\n'),
+    );
+  });
 });

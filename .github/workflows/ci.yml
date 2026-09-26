@@ -190,6 +190,20 @@ jobs:
             exit 1
           fi
 
+      # #290: develop-fast and develop-browser each report only their own
+      # elapsed time now that they run concurrently — summing them double
+      # counts the overlap. github.run_started_at is the workflow run's own
+      # start, so this is the single wall-clock figure for the whole gate,
+      # start to completion, that #286's US11 target (under three minutes)
+      # is measured against.
+      - name: Record daily gate total wall-clock time
+        if: always()
+        run: |
+          start_epoch=$(date -d "${{ github.run_started_at }}" +%s)
+          elapsed=$(( $(date +%s) - start_epoch ))
+          echo "### Develop Gate total wall-clock time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (workflow run start to gate completion; target: under 180s)" >> "$GITHUB_STEP_SUMMARY"
+
   release-gate:
     name: Release Gate (Complete Validation)
     # Per #210/#222: a develop -> master pull request requires complete

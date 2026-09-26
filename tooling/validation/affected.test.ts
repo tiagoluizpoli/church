@@ -270,7 +270,6 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/a11y-planning-nav.spec.ts',
-      'tests/scheduling/capability-index.spec.ts',
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/overnight-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
@@ -278,9 +277,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
-      'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -306,11 +303,8 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
-      'tests/scheduling/capability-index.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
-      'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us2-leader-tailor.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -535,7 +529,7 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the guard-matrix journey for the tailoring route and the scheduling route family', () => {
+  it('selects the guard-matrix journey for the tailoring route, and only the capability-index journey for the scheduling index route', () => {
     const tailoringPlan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring.tsx',
@@ -545,6 +539,10 @@ describe('classifyChanges', () => {
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     );
 
+    // #288 — the index route's own spec (capability-index.spec.ts) is the
+    // only one that navigates to the bare `/scheduling` route this file
+    // renders; it no longer pulls in smoke/roster-publish/guard-matrix via
+    // the removed broad `.../scheduling` prefix.
     const indexPlan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
@@ -552,9 +550,6 @@ describe('classifyChanges', () => {
     });
     expect(indexPlan.e2eSpecPaths).toEqual([
       'tests/scheduling/capability-index.spec.ts',
-      'tests/scheduling/planning-role-guard-matrix.spec.ts',
-      'tests/scheduling/smoke.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
     ]);
   });
 
@@ -705,19 +700,18 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the a11y-builder journey for a rostering route change', () => {
+  it('selects only the a11y-builder journey for a rostering route change', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId.tsx',
       ],
     });
 
+    // #288 — previously also picked up capability-index/guard-matrix/smoke/
+    // roster-publish solely via the removed broad `.../scheduling` prefix;
+    // none of those specs navigate to a rostering-only URL.
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/a11y-builder.spec.ts',
-      'tests/scheduling/capability-index.spec.ts',
-      'tests/scheduling/planning-role-guard-matrix.spec.ts',
-      'tests/scheduling/smoke.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });

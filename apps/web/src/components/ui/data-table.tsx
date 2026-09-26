@@ -36,6 +36,12 @@ export interface DataTableProps<T extends object> {
   'aria-label': string;
   columns: DataTableColumn[];
   items: T[];
+  /** Items rendered in the mobile card list. Defaults to `items`. A consumer
+   * whose desktop rows include entries with no mobile card representation
+   * (`renderMobileCard` returning `null` for them, e.g. expandable child
+   * rows) passes a filtered subset here instead, so the mobile listbox
+   * doesn't end up with empty placeholder entries for rows it can't render. */
+  mobileItems?: T[];
   rowId: (input: DataTableItemInput<T>) => string;
   /** React reconciliation key for a row, separate from `rowId`. Defaults to
    * `rowId`'s return value. A consumer whose cells depend on interaction
@@ -103,6 +109,7 @@ export function DataTable<T extends object>({
   'aria-label': ariaLabel,
   columns,
   items,
+  mobileItems = items,
   rowId,
   rowKey,
   renderCell,
@@ -140,7 +147,7 @@ export function DataTable<T extends object>({
         data-testid={mobileListTestId}
       >
         {mobileListHeader}
-        {items.map((item) => {
+        {mobileItems.map((item) => {
           const id = rowId({ item });
           const key = rowKey ? rowKey({ item }) : id;
           return (

@@ -1094,6 +1094,42 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
     expect(within(table).queryByText('Slot')).not.toBeInTheDocument();
   });
 
+  it('does not leak expanded slot rows into the mobile card list', async () => {
+    listPlanningCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    getPlanningCycle.mockResolvedValue(
+      twoEventCycleResponse({ state: 'draft' }),
+    );
+
+    render();
+    await selectTheOnlyCycle();
+    const mobileList = await screen.findByTestId('planning-events-list');
+    expect(
+      within(mobileList).getAllByTestId('planning-event-card'),
+    ).toHaveLength(2);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+
+    // Expanding on desktop must not add slot rows to the mobile list, which
+    // has no card representation for them (`renderMobileCard` renders
+    // nothing for a slot row) and would otherwise leak empty placeholder
+    // elements into the mobile listbox.
+    expect(
+      within(mobileList).getAllByTestId('planning-event-card'),
+    ).toHaveLength(2);
+    expect(mobileList.children).toHaveLength(3); // "Add day-event" button + 2 cards
+  });
+
   it('is one-shot, not a synced toggle: re-collapsing one row after "Expand all" still lets "Collapse all" collapse everything', async () => {
     listPlanningCycles.mockResolvedValue({
       cycles: [

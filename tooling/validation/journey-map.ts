@@ -173,12 +173,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   },
   {
-    // BL-023 (#25): the shared DataTable convention wrapper is currently
-    // only consumed by the planning-admin cycle list/review tables (#270,
-    // #272, #275), so it maps to that same verified spec set instead of
-    // falling back to CRITICAL_SMOKE_SPEC_PATHS. Widen this entry as later
-    // BL-023 children (#271, #273, #274) migrate DataTable's other
-    // consumers onto it.
+    // BL-023 (#25): the shared DataTable convention wrapper is consumed by
+    // both the planning-admin cycle list/review/template tables (#270,
+    // #272, #274, #275) and the tailoring ministry/cycle tables (#271,
+    // #273), so a change here maps to both journeys' verified spec sets
+    // instead of falling back to CRITICAL_SMOKE_SPEC_PATHS.
     sourcePathPrefix: 'apps/web/src/components/ui/data-table.tsx',
     specPaths: [
       'tests/scheduling/overnight-time-block.spec.ts',
@@ -186,6 +185,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
+      'tests/scheduling/us2-leader-tailor.spec.ts',
+      'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
   },
   {

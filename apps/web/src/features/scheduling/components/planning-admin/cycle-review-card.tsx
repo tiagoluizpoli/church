@@ -451,6 +451,9 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                   aria-label="Calendar review"
                   columns={CALENDAR_TABLE_COLUMNS}
                   items={visibleCalendarRows}
+                  mobileItems={visibleCalendarRows.filter(
+                    (row) => row.kind === 'parent',
+                  )}
                   mobileListTestId="planning-events-list"
                   mobileListHeader={
                     !isReadOnly ? (

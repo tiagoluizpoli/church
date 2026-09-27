@@ -65,6 +65,7 @@
     "validate:date-time-seam": "bun tooling/validation/date-time-seam-guards.ts",
     "validate:affected": "bun tooling/validation/affected.ts",
     "validate": "bun run lint && bun run typecheck && bun run test",
+    "push:safe": "bash tooling/git-safe-push.sh",
     "commit": "cz"
   },
   "dependencies": {

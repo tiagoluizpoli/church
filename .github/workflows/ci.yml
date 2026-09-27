@@ -87,21 +87,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: church_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
+    # No `services.postgres` block here (unlike the other jobs): this job is
+    # a no-op on any PR whose affected plan selects no browser journey, and a
+    # `services:` container starts unconditionally at job boot, before any
+    # step (and its `if:`) can be evaluated — that would pay for a database
+    # container on every no-op run. "Start Postgres" below starts one only
+    # when the plan says a journey is actually selected (#291).
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_test
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_test?application_name=test
@@ -122,7 +113,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # skip-migrate: this job doesn't know yet whether it needs a database
+      # at all — the plan step right below decides that — and migrations
+      # need Postgres reachable, which isn't true yet either way.
       - uses: ./.github/actions/setup-church-ci
+        with:
+          skip-migrate: 'true'
 
       - name: Determine affected plan
         id: plan
@@ -140,6 +136,30 @@ jobs:
           cat "$plan_file"
           needs_e2e=$(jq -r 'if .requiresFullE2e or ((.e2eSpecPaths | length) > 0) then "true" else "false" end' "$plan_file")
           echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
+
+      - name: Start Postgres (only when a browser journey is selected)
+        if: steps.plan.outputs.needs_e2e == 'true'
+        # Mirrors the sibling jobs' services.postgres health-check
+        # (--health-interval 5s --health-retries 5) by hand, since a
+        # manually-started container can't use that declarative field.
+        run: |
+          docker run -d --name church-e2e-postgres \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=church_test \
+            -p 5432:5432 postgres:16-alpine
+          health_retries=5
+          health_interval_seconds=5
+          for _ in $(seq 1 "$health_retries"); do
+            if docker exec church-e2e-postgres pg_isready -U postgres >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep "$health_interval_seconds"
+          done
+          echo "Postgres did not become ready in time" >&2
+          exit 1
+
+      - name: Run database migrations
+        if: steps.plan.outputs.needs_e2e == 'true'
+        run: bun run db:migrate
 
       - name: Install Playwright browsers
         if: steps.plan.outputs.needs_e2e == 'true'

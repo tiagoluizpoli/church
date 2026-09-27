@@ -1,0 +1,2 @@
+# A worktree must have its own local binaries before any hooks or agent work run.
+pre-start = "bun install --frozen-lockfile"

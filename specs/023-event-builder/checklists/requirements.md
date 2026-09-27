@@ -32,5 +32,5 @@
 ## Notes
 
 - Every decision was pre-resolved by the wayfinder map (#1) and its six closed tickets, so the spec carries zero [NEEDS CLARIFICATION] markers.
-- Implementation-flavoured facts from the tickets (endpoint shapes, route paths, component reuse inventory) were deliberately kept **out** of the spec body and left to `/speckit-plan`; the spec references ticket #5 only as a pointer, not as a requirement of specific files.
-- Items marked incomplete would require spec updates before `/speckit-clarify` or `/speckit-plan`. None are incomplete.
+- Implementation-flavoured facts from the tickets (endpoint shapes, route paths, component reuse inventory) were deliberately kept **out** of the spec body and captured in the plan; the spec references ticket #5 only as a pointer, not as a requirement of specific files.
+- Items marked incomplete would require spec updates before implementation planning. None are incomplete.

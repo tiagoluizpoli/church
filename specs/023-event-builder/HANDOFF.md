@@ -1,8 +1,8 @@
-# Handoff — Event Builder (023) `/speckit-implement`
+# Handoff — Event Builder (023)
 
 **Branch**: `023-event-builder` · **Date**: 2026-07-14 · **Session stopped at**: ~77% session usage (paused before the 96% cutoff per operator instruction).
 
-Resume by re-running `/speckit-implement` (or continue the task list in [tasks.md](./tasks.md)). Read [plan.md](./plan.md), [research.md](./research.md), [data-model.md](./data-model.md), [contracts/leader-rostering-endpoints.md](./contracts/leader-rostering-endpoints.md) for design; obey `agents.local.md` (single-object params, named types, no linter suppression, shadcn-only UI, per-phase gate loop).
+Resume from [tasks.md](./tasks.md). Read [plan.md](./plan.md), [research.md](./research.md), [data-model.md](./data-model.md), and [contracts/leader-rostering-endpoints.md](./contracts/leader-rostering-endpoints.md) for design; then follow [CLAUDE.md](../../CLAUDE.md) and its applicable backend, frontend, and tooling routes.
 
 ## What is DONE and VERIFIED
 
@@ -47,5 +47,5 @@ tasks.md marked `[X]`: T001–T007, T010–T014, T022, T024–T026 (US2 backend)
 - `getCycleBuilderData`/`publishCycle` operate over **all cycle events for the ministry** via `getOrCreateParticipation` (same set `getCycleParticipation` shows) — consistent by design.
 - orval regen flow: `cd apps/server && bun --env-file=../../.env run src/scripts/export-openapi.ts` then `cd <root> && bun run orval`. Never hand-edit `apps/web/src/infrastructure/api/`.
 - Integration/vitest needs `bun --env-file=../../.env run vitest run <path>` from `apps/server`; church-db Docker container must be up (it is).
-- Per-phase gate loop still owed on the frontend work: `bun run check` / `check-types` / `test` / `test:e2e` + `/review`.
+- Per-phase verification is still owed on the frontend work: run targeted tests, `bun run validate:affected`, the relevant E2E coverage, and review the modified files.
 - Operator wants a usage check (`claude -p "/usage" | grep "Current session:"`) after tasks and a fresh handoff if it nears 96%.

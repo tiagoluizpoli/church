@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 
-export type ExecutionPurpose = 'development' | 'integration' | 'e2e';
+export type ExecutionPurpose = 'development' | 'unit' | 'integration' | 'e2e';
 
 export interface RunWithPurposeInput {
   /**

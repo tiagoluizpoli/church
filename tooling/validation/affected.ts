@@ -62,6 +62,7 @@ interface RunValidationResult {
 export interface CheckTiming {
   label: string;
   ms: number;
+  skipped?: boolean;
 }
 
 interface TimeCheckInput<T> {
@@ -69,6 +70,13 @@ interface TimeCheckInput<T> {
   run: () => T;
   timings: CheckTiming[];
 }
+
+interface PushSkippedInput {
+  label: string;
+  timings: CheckTiming[];
+}
+
+const ALL_TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
 
 /**
  * A clean worktree with committed branch changes must not report nothing to
@@ -191,6 +199,10 @@ function timeCheck<T>({ label, run, timings }: TimeCheckInput<T>): T {
   return result;
 }
 
+function pushSkipped({ label, timings }: PushSkippedInput): void {
+  timings.push({ label, ms: 0, skipped: true });
+}
+
 function runValidation({
   onlyE2e,
   plan,
@@ -212,6 +224,8 @@ function runValidation({
           }),
         timings,
       });
+    } else {
+      pushSkipped({ label: 'lint', timings });
     }
 
     if (plan.workspaceNames.length > 0) {
@@ -229,8 +243,12 @@ function runValidation({
           ),
         timings,
       });
+    } else {
+      pushSkipped({ label: 'typecheck', timings });
+    }
 
-      for (const testLayer of plan.testLayers) {
+    for (const testLayer of ALL_TEST_LAYERS) {
+      if (plan.testLayers.includes(testLayer)) {
         timeCheck({
           label: testLayer,
           run: () =>
@@ -241,11 +259,16 @@ function runValidation({
             }),
           timings,
         });
+      } else {
+        pushSkipped({ label: testLayer, timings });
       }
     }
   }
 
-  if (skipE2e) return { timings };
+  if (skipE2e) {
+    pushSkipped({ label: 'test:e2e', timings });
+    return { timings };
+  }
 
   if (plan.requiresFullE2e) {
     timeCheck({
@@ -265,6 +288,8 @@ function runValidation({
         }),
       timings,
     });
+  } else {
+    pushSkipped({ label: 'test:e2e', timings });
   }
 
   return { timings };
@@ -404,8 +429,10 @@ export function formatTimingSummary({
   timings,
 }: FormatTimingSummaryInput): string {
   const lines = ['| Check | Elapsed |', '| --- | --- |'];
-  for (const { label, ms } of timings) {
-    lines.push(`| ${label} | ${(ms / 1000).toFixed(1)}s |`);
+  for (const { label, ms, skipped } of timings) {
+    lines.push(
+      `| ${label} | ${skipped ? 'skipped' : `${(ms / 1000).toFixed(1)}s`} |`,
+    );
   }
   return lines.join('\n');
 }
@@ -441,12 +468,15 @@ if (import.meta.main) {
       skipE2e: argumentsResult.skipE2e,
     });
     const summary = formatTimingSummary({ timings });
+    const explanation = explainPlan({ baseRef, plan });
     console.log('');
     console.log(summary);
+    console.log('');
+    console.log(explanation);
     if (process.env.GITHUB_STEP_SUMMARY) {
       appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
-        `\n### Check timings\n\n${summary}\n`,
+        `\n### Check timings\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
       );
     }
   }

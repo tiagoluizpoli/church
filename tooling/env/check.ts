@@ -2,15 +2,18 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import type { ExecutionPurpose } from './run-with-purpose';
 
-interface CheckServiceSchemaInput {
+interface ServiceSchema {
   label: string;
   schemaDir: string;
+}
+
+interface CheckServiceSchemaInput extends ServiceSchema {
   purpose: ExecutionPurpose;
 }
 
 const REPO_ROOT = resolve(import.meta.dir, '../..');
 
-const SERVICE_SCHEMAS: Array<{ label: string; schemaDir: string }> = [
+const SERVICE_SCHEMAS: ServiceSchema[] = [
   { label: 'server', schemaDir: resolve(REPO_ROOT, 'apps/server') },
   { label: 'web', schemaDir: resolve(REPO_ROOT, 'apps/web') },
   { label: 'db', schemaDir: resolve(REPO_ROOT, 'packages/db') },

@@ -13,11 +13,11 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { getTestDatabaseUrl } from '@church/db/test-database-url';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
-const DATABASE_URL = getTestDatabaseUrl();
+const DATABASE_URL = getIntegrationDatabaseUrl();
 
 export const schedulingTestPool = new pg.Pool({
   connectionString: DATABASE_URL,

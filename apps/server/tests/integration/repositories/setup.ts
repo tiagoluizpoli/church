@@ -16,11 +16,11 @@ import {
   timeSlot,
   volunteer,
 } from '@church/db';
-import { getTestDatabaseUrl } from '@church/db/test-database-url';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
-const DATABASE_URL = getTestDatabaseUrl();
+const DATABASE_URL = getIntegrationDatabaseUrl();
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 export const testDb = drizzle(pool, { schema });

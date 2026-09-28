@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import * as schema from '@church/db';
 import { createChurch } from '@church/db';
-import { getTestDatabaseUrl } from '@church/db/test-database-url';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -9,7 +9,7 @@ import { DbActiveChurchSelectionManager } from '../../../src/application/db-acti
 import { ChurchId } from '../../../src/domain/branded-ids';
 import { DrizzleChurchRepository } from '../../../src/infrastructure/repositories/drizzle-church.repository';
 
-const DATABASE_URL = getTestDatabaseUrl();
+const DATABASE_URL = getIntegrationDatabaseUrl();
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 const testDb = drizzle(pool, { schema });
 

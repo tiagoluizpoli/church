@@ -24,6 +24,7 @@ import {
   volunteer,
   volunteerNotification,
 } from '@church/db';
+import { getE2eDatabaseUrl } from '@church/db/e2e-database-url';
 import { parseInstant, toDate } from '@church/time';
 import { inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -71,9 +72,6 @@ export const VOLUNTEER_STORAGE_STATE = path.resolve(
  * Links the TeamLeader volunteer to `--team-leader-user-id` so
  * `authorizeScheduleBuilderAccess` resolves them as a TeamLeader of team1.
  */
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  'postgresql://postgres:postgres@localhost:5444/church';
 
 export const E2E_IDS = {
   church: 'e2e11111-1111-1111-a111-111111111111',
@@ -229,7 +227,7 @@ const MINISTRY_MEMBERSHIP_IDS = [
 ] as const;
 
 function makeDb() {
-  const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
+  const pool = new pg.Pool({ connectionString: getE2eDatabaseUrl(), max: 2 });
   return { pool, db: drizzle(pool, { schema }) };
 }
 

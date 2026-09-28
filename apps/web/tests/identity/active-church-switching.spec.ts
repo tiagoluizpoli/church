@@ -225,6 +225,17 @@ function churchOptionRow({ page, churchId }: ChurchOptionRowInput) {
   );
 }
 
+interface PlanningCycleRowInput {
+  page: Page;
+  cycleId: string;
+}
+
+/** Same DataTable dual-render (mobile card + desktop table row) as
+ * `churchOptionRow` above — `:visible` picks the one on screen. */
+function planningCycleRow({ page, cycleId }: PlanningCycleRowInput) {
+  return page.locator(`[data-testid="planning-cycle-row-${cycleId}"]:visible`);
+}
+
 test.describe('#67 — Active Church selection and switching', () => {
   test('a dual-membership User selects Church A, switches to Church B, and Church A leaves no remnant', async ({
     page,
@@ -257,10 +268,10 @@ test.describe('#67 — Active Church selection and switching', () => {
     await page.goto('/scheduling/planning-cycles');
     await expect(page.getByTestId('planning-admin-page')).toBeVisible();
     await expect(
-      page.getByTestId(`planning-cycle-row-${DECEMBER_CYCLE_ID}`),
+      planningCycleRow({ page, cycleId: DECEMBER_CYCLE_ID }),
     ).toContainText(CHURCH_A_DECEMBER_CYCLE_NAME);
     await expect(
-      page.getByTestId(`planning-cycle-row-${US4_CYCLE_ID}`),
+      planningCycleRow({ page, cycleId: US4_CYCLE_ID }),
     ).toContainText(CHURCH_A_US4_CYCLE_NAME);
 
     // The sidebar switcher (#54) — spec 024 §1.5 places it above the

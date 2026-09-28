@@ -1,4 +1,8 @@
-import { formatDatabaseTargetPreflight } from './database-target-resolver';
+import {
+  reportDatabaseTarget,
+  requireDatabaseUrl,
+  requireExecPurpose,
+} from './purpose-database-url-guard';
 
 const DEVELOPMENT_DATABASE_NAME = 'church';
 const UNSPECIFIED_WORKTREE_LABEL = 'unspecified';
@@ -9,25 +13,6 @@ interface GetDatabaseNameInput {
 
 function getDatabaseName(input: GetDatabaseNameInput): string {
   return input.parsedUrl.pathname.replace(/^\//, '');
-}
-
-interface ReportIntegrationTargetInput {
-  parsedUrl: URL;
-  databaseName: string;
-}
-
-function reportIntegrationTarget(input: ReportIntegrationTargetInput): void {
-  console.log(
-    formatDatabaseTargetPreflight({
-      identity: {
-        purpose: 'integration',
-        worktree: process.env.CHURCH_WORKTREE ?? UNSPECIFIED_WORKTREE_LABEL,
-        host: input.parsedUrl.hostname,
-        port: input.parsedUrl.port ? Number(input.parsedUrl.port) : 5432,
-        database: input.databaseName,
-      },
-    }),
-  );
 }
 
 /**
@@ -41,19 +26,12 @@ function reportIntegrationTarget(input: ReportIntegrationTargetInput): void {
  * comparable across all three integration runners.
  */
 export function getIntegrationDatabaseUrl(): string {
-  if (process.env.CHURCH_EXEC_PURPOSE !== 'integration') {
-    throw new Error(
-      'getIntegrationDatabaseUrl() requires CHURCH_EXEC_PURPOSE=integration. Run this command through Varlock with the integration purpose instead of relying on a default database target.',
-    );
-  }
+  requireExecPurpose({
+    purpose: 'integration',
+    functionName: 'getIntegrationDatabaseUrl',
+  });
 
-  const databaseUrl = process.env.DATABASE_URL;
-
-  if (!databaseUrl) {
-    throw new Error(
-      'DATABASE_URL was not resolved for the integration purpose. Integration has no fallback or legacy alias precedence.',
-    );
-  }
+  const databaseUrl = requireDatabaseUrl({ purpose: 'integration' });
 
   const parsedUrl = new URL(databaseUrl);
   const databaseName = getDatabaseName({ parsedUrl });
@@ -64,7 +42,15 @@ export function getIntegrationDatabaseUrl(): string {
     );
   }
 
-  reportIntegrationTarget({ parsedUrl, databaseName });
+  reportDatabaseTarget({
+    identity: {
+      purpose: 'integration',
+      worktree: process.env.CHURCH_WORKTREE ?? UNSPECIFIED_WORKTREE_LABEL,
+      host: parsedUrl.hostname,
+      port: parsedUrl.port ? Number(parsedUrl.port) : 5432,
+      database: databaseName,
+    },
+  });
 
   return databaseUrl;
 }

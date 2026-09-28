@@ -34,7 +34,7 @@ export interface DatabaseTargetErrorInput {
   message: string;
 }
 
-interface ExpectedDatabaseNameInput {
+export interface ExpectedDatabaseNameInput {
   purpose: DatabasePurpose;
   worktree: string;
 }
@@ -62,7 +62,7 @@ export class DatabaseTargetError extends Error {
   }
 }
 
-function expectedDatabaseName(input: ExpectedDatabaseNameInput): string {
+export function expectedDatabaseName(input: ExpectedDatabaseNameInput): string {
   if (input.purpose === 'development' && input.worktree === PRIMARY_WORKTREE) {
     return 'church';
   }

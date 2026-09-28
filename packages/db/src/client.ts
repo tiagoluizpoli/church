@@ -1,6 +1,7 @@
 import { env } from '@church/env/server';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { getE2eDatabaseUrl } from './e2e-database-url';
 import { getIntegrationDatabaseUrl } from './integration-database-url';
 import * as schema from './schema';
 import { getTestDatabaseUrl } from './test-database-url';
@@ -8,6 +9,10 @@ import { getTestDatabaseUrl } from './test-database-url';
 function resolveConnectionString(): string {
   if (process.env.CHURCH_EXEC_PURPOSE === 'integration') {
     return getIntegrationDatabaseUrl();
+  }
+
+  if (process.env.CHURCH_EXEC_PURPOSE === 'e2e') {
+    return getE2eDatabaseUrl();
   }
 
   // Legacy path, still relied on by unmigrated runners (ADR-0005).

@@ -4,28 +4,26 @@ const DEVELOPMENT_DATABASE_NAME = 'church';
 const UNSPECIFIED_WORKTREE_LABEL = 'unspecified';
 
 interface GetDatabaseNameInput {
-  databaseUrl: string;
+  parsedUrl: URL;
 }
 
 function getDatabaseName(input: GetDatabaseNameInput): string {
-  return new URL(input.databaseUrl).pathname.replace(/^\//, '');
+  return input.parsedUrl.pathname.replace(/^\//, '');
 }
 
 interface ReportIntegrationTargetInput {
-  databaseUrl: string;
+  parsedUrl: URL;
   databaseName: string;
 }
 
 function reportIntegrationTarget(input: ReportIntegrationTargetInput): void {
-  const parsedUrl = new URL(input.databaseUrl);
-
   console.log(
     formatDatabaseTargetPreflight({
       identity: {
         purpose: 'integration',
         worktree: process.env.CHURCH_WORKTREE ?? UNSPECIFIED_WORKTREE_LABEL,
-        host: parsedUrl.hostname,
-        port: parsedUrl.port ? Number(parsedUrl.port) : 5432,
+        host: input.parsedUrl.hostname,
+        port: input.parsedUrl.port ? Number(input.parsedUrl.port) : 5432,
         database: input.databaseName,
       },
     }),
@@ -57,7 +55,8 @@ export function getIntegrationDatabaseUrl(): string {
     );
   }
 
-  const databaseName = getDatabaseName({ databaseUrl });
+  const parsedUrl = new URL(databaseUrl);
+  const databaseName = getDatabaseName({ parsedUrl });
 
   if (databaseName === DEVELOPMENT_DATABASE_NAME) {
     throw new Error(
@@ -65,7 +64,7 @@ export function getIntegrationDatabaseUrl(): string {
     );
   }
 
-  reportIntegrationTarget({ databaseUrl, databaseName });
+  reportIntegrationTarget({ parsedUrl, databaseName });
 
   return databaseUrl;
 }

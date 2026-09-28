@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getE2eDatabaseUrl } from '../src/e2e-database-url';
 
-const DEVELOPMENT_URL = 'postgresql://postgres:postgres@localhost:5444/church';
 const E2E_URL =
   'postgresql://postgres:postgres@localhost:5444/church_develop_e2e';
+const DEVELOPMENT_URL = 'postgresql://postgres:postgres@localhost:5444/church';
 const INTEGRATION_URL =
   'postgresql://postgres:postgres@localhost:5444/church_develop_int';
 const UNMANAGED_URL = 'postgresql://postgres:postgres@localhost:5444/postgres';
@@ -11,7 +11,6 @@ const UNMANAGED_URL = 'postgresql://postgres:postgres@localhost:5444/postgres';
 function resetEnv(): void {
   delete process.env.CHURCH_EXEC_PURPOSE;
   delete process.env.DATABASE_URL;
-  delete process.env.DEVELOPMENT_DATABASE_URL;
   delete process.env.CHURCH_WORKTREE;
 }
 
@@ -24,7 +23,6 @@ describe('getE2eDatabaseUrl', () => {
   it('returns DATABASE_URL when running under the e2e purpose', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL = E2E_URL;
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
     process.env.CHURCH_WORKTREE = 'develop';
 
     expect(getE2eDatabaseUrl()).toBe(E2E_URL);
@@ -33,7 +31,6 @@ describe('getE2eDatabaseUrl', () => {
   it('reports a redacted preflight identity for the resolved target', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL = E2E_URL;
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
     process.env.CHURCH_WORKTREE = 'develop';
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -50,7 +47,6 @@ describe('getE2eDatabaseUrl', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL =
       'postgresql://postgres:postgres@localhost:5444/church_feature-x_e2e';
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
     process.env.CHURCH_WORKTREE = 'feature-x';
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -64,7 +60,6 @@ describe('getE2eDatabaseUrl', () => {
   it('rejects a call made outside the e2e purpose', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
     process.env.DATABASE_URL = E2E_URL;
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
 
     expect(() => getE2eDatabaseUrl()).toThrow(
       /requires CHURCH_EXEC_PURPOSE=e2e/,
@@ -73,7 +68,6 @@ describe('getE2eDatabaseUrl', () => {
 
   it('rejects a missing CHURCH_EXEC_PURPOSE', () => {
     process.env.DATABASE_URL = E2E_URL;
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
 
     expect(() => getE2eDatabaseUrl()).toThrow(
       /requires CHURCH_EXEC_PURPOSE=e2e/,
@@ -82,26 +76,15 @@ describe('getE2eDatabaseUrl', () => {
 
   it('rejects a missing DATABASE_URL with no fallback', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
 
     expect(() => getE2eDatabaseUrl()).toThrow(
       /was not resolved for the e2e purpose/,
     );
   });
 
-  it('rejects a missing DEVELOPMENT_DATABASE_URL', () => {
-    process.env.CHURCH_EXEC_PURPOSE = 'e2e';
-    process.env.DATABASE_URL = E2E_URL;
-
-    expect(() => getE2eDatabaseUrl()).toThrow(
-      /DEVELOPMENT_DATABASE_URL was not resolved/,
-    );
-  });
-
   it('refuses the development database', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL = DEVELOPMENT_URL;
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
     process.env.CHURCH_WORKTREE = 'develop';
 
     expect(() => getE2eDatabaseUrl()).toThrow(
@@ -112,7 +95,6 @@ describe('getE2eDatabaseUrl', () => {
   it('refuses an integration database', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL = INTEGRATION_URL;
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
     process.env.CHURCH_WORKTREE = 'develop';
 
     expect(() => getE2eDatabaseUrl()).toThrow(
@@ -123,7 +105,6 @@ describe('getE2eDatabaseUrl', () => {
   it('refuses a database outside the managed "church" namespace', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL = UNMANAGED_URL;
-    process.env.DEVELOPMENT_DATABASE_URL = DEVELOPMENT_URL;
     process.env.CHURCH_WORKTREE = 'develop';
 
     expect(() => getE2eDatabaseUrl()).toThrow(

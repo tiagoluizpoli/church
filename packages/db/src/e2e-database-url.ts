@@ -1,4 +1,7 @@
-import { resolveDatabaseTarget } from './database-target-resolver';
+import {
+  expectedDatabaseName,
+  resolveDatabaseTarget,
+} from './database-target-resolver';
 import {
   reportDatabaseTarget,
   requireDatabaseUrl,
@@ -6,6 +9,27 @@ import {
 } from './purpose-database-url-guard';
 
 const UNSPECIFIED_WORKTREE_LABEL = 'unspecified';
+
+interface DevelopmentCandidateFromInput {
+  e2eDatabaseUrl: string;
+  worktree: string;
+}
+
+/**
+ * Synthesizes the development-database candidate `resolveDatabaseTarget`
+ * compares against, from the e2e URL's own host/port (ADR-0005: every
+ * purpose's database lives on the same worktree Postgres instance, only the
+ * database name differs). Avoids depending on a separate injected env var
+ * that Varlock only forwards for `@required` keys — this stays derivable
+ * from what CHURCH_EXEC_PURPOSE=e2e already guarantees is present.
+ */
+function developmentCandidateFrom(
+  input: DevelopmentCandidateFromInput,
+): string {
+  const developmentUrl = new URL(input.e2eDatabaseUrl);
+  developmentUrl.pathname = `/${expectedDatabaseName({ purpose: 'development', worktree: input.worktree })}`;
+  return developmentUrl.toString();
+}
 
 /**
  * Returns the E2E database target Varlock injected for this process
@@ -23,19 +47,18 @@ export function getE2eDatabaseUrl(): string {
   requireExecPurpose({ purpose: 'e2e', functionName: 'getE2eDatabaseUrl' });
 
   const databaseUrl = requireDatabaseUrl({ purpose: 'e2e' });
-
-  const developmentDatabaseUrl = process.env.DEVELOPMENT_DATABASE_URL;
-
-  if (!developmentDatabaseUrl) {
-    throw new Error(
-      'DEVELOPMENT_DATABASE_URL was not resolved for the e2e purpose. It is required to guard e2e work from targeting the development database.',
-    );
-  }
+  const worktree = process.env.CHURCH_WORKTREE ?? UNSPECIFIED_WORKTREE_LABEL;
 
   const identity = resolveDatabaseTarget({
     purpose: 'e2e',
-    worktree: process.env.CHURCH_WORKTREE ?? UNSPECIFIED_WORKTREE_LABEL,
-    candidates: { development: developmentDatabaseUrl, e2e: databaseUrl },
+    worktree,
+    candidates: {
+      development: developmentCandidateFrom({
+        e2eDatabaseUrl: databaseUrl,
+        worktree,
+      }),
+      e2e: databaseUrl,
+    },
   });
 
   reportDatabaseTarget({ identity });

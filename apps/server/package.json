@@ -21,7 +21,7 @@
     "db:init-system": "bun --env-file=../../.env run src/scripts/init-system.ts",
     "seed:e2e": "bun --env-file=../../.env run src/test-support/e2e-seed.ts",
     "test:unit": "bun --env-file=../../.env run vitest run --project unit",
-    "test:integration": "bun --env-file=../../.env run vitest run --project integration",
+    "test:integration": "CHURCH_EXEC_PURPOSE=integration varlock run --path . -- bun vitest run --project integration",
     "test": "bun run test:unit && bun run test:integration"
   },
   "dependencies": {

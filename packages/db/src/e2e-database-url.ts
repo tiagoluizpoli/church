@@ -1,18 +1,11 @@
+import { resolveDatabaseTarget } from './database-target-resolver';
 import {
-  type DatabaseTargetIdentity,
-  formatDatabaseTargetPreflight,
-  resolveDatabaseTarget,
-} from './database-target-resolver';
+  reportDatabaseTarget,
+  requireDatabaseUrl,
+  requireExecPurpose,
+} from './purpose-database-url-guard';
 
 const UNSPECIFIED_WORKTREE_LABEL = 'unspecified';
-
-interface ReportE2eTargetInput {
-  identity: DatabaseTargetIdentity;
-}
-
-function reportE2eTarget(input: ReportE2eTargetInput): void {
-  console.log(formatDatabaseTargetPreflight({ identity: input.identity }));
-}
 
 /**
  * Returns the E2E database target Varlock injected for this process
@@ -27,19 +20,9 @@ function reportE2eTarget(input: ReportE2eTargetInput): void {
  * namespace, and every caller logs the same redacted preflight line.
  */
 export function getE2eDatabaseUrl(): string {
-  if (process.env.CHURCH_EXEC_PURPOSE !== 'e2e') {
-    throw new Error(
-      'getE2eDatabaseUrl() requires CHURCH_EXEC_PURPOSE=e2e. Run this command through Varlock with the e2e purpose instead of relying on a default database target.',
-    );
-  }
+  requireExecPurpose({ purpose: 'e2e', functionName: 'getE2eDatabaseUrl' });
 
-  const databaseUrl = process.env.DATABASE_URL;
-
-  if (!databaseUrl) {
-    throw new Error(
-      'DATABASE_URL was not resolved for the e2e purpose. E2E has no fallback or legacy alias precedence.',
-    );
-  }
+  const databaseUrl = requireDatabaseUrl({ purpose: 'e2e' });
 
   const developmentDatabaseUrl = process.env.DEVELOPMENT_DATABASE_URL;
 
@@ -55,7 +38,7 @@ export function getE2eDatabaseUrl(): string {
     candidates: { development: developmentDatabaseUrl, e2e: databaseUrl },
   });
 
-  reportE2eTarget({ identity });
+  reportDatabaseTarget({ identity });
 
   return databaseUrl;
 }

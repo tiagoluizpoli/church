@@ -28,10 +28,10 @@
     "db:seed": "bun --env-file=../../.env src/seed/index.ts",
     "db:seed:reset": "bun --env-file=../../.env src/seed/index.ts --reset",
     "db:seed:dashboard-demo": "bun --env-file=../../.env src/scripts/seed-volunteer-dashboard-demo.ts",
-    "db:setup-test": "bun --env-file=../../.env src/setup-test-db.ts",
+    "db:setup-test": "CHURCH_EXEC_PURPOSE=integration varlock run --path . -- bun src/setup-test-db.ts",
     "db:clean": "bun --env-file=../../.env src/scripts/clean-db.ts",
     "typecheck": "tsc --noEmit",
-    "test:integration": "bun --env-file=../../.env vitest run",
+    "test:integration": "CHURCH_EXEC_PURPOSE=integration varlock run --path . -- bun vitest run",
     "test": "bun run test:integration"
   },
   "dependencies": {

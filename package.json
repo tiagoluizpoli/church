@@ -57,7 +57,7 @@
     "orval": "orval",
     "api:generate": "bun run --cwd apps/server export:openapi && orval",
     "test:unit": "TZ=Asia/Kolkata turbo test:unit --concurrency=2 && bun run test:validation",
-    "test:integration": "TZ=Asia/Kolkata turbo test:integration --concurrency=1",
+    "test:integration": "CHURCH_EXEC_PURPOSE=integration TZ=Asia/Kolkata turbo test:integration --concurrency=1",
     "test:e2e": "turbo test:e2e --filter=web --",
     "test:e2e:ui": "turbo test:e2e:ui --filter=web --",
     "test": "bun run test:unit && bun run test:integration && bun run test:e2e",

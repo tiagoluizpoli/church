@@ -17,6 +17,7 @@ const SERVICE_SCHEMAS: ServiceSchema[] = [
   { label: 'server', schemaDir: resolve(REPO_ROOT, 'apps/server') },
   { label: 'web', schemaDir: resolve(REPO_ROOT, 'apps/web') },
   { label: 'db', schemaDir: resolve(REPO_ROOT, 'packages/db') },
+  { label: 'auth', schemaDir: resolve(REPO_ROOT, 'packages/auth') },
 ];
 
 function checkServiceSchema(input: CheckServiceSchemaInput): boolean {

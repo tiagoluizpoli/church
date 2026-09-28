@@ -1,10 +1,9 @@
-import 'dotenv/config';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
-import { getTestDatabaseUrl } from './test-database-url';
+import { getIntegrationDatabaseUrl } from './integration-database-url';
 
 function getAdminDatabaseUrl(databaseUrl: string): string {
   const parsedUrl = new URL(databaseUrl);
@@ -59,10 +58,10 @@ async function migrateDatabase(databaseUrl: string): Promise<void> {
 }
 
 export async function setupTestDatabase(): Promise<void> {
-  const testDatabaseUrl = getTestDatabaseUrl();
+  const integrationDatabaseUrl = getIntegrationDatabaseUrl();
 
-  await ensureDatabaseExists(testDatabaseUrl);
-  await migrateDatabase(testDatabaseUrl);
+  await ensureDatabaseExists(integrationDatabaseUrl);
+  await migrateDatabase(integrationDatabaseUrl);
 }
 
 if (import.meta.main) {

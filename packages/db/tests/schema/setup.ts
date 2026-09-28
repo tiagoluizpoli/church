@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { getIntegrationDatabaseUrl } from '../../src/integration-database-url';
 import * as schema from '../../src/schema';
-import { getTestDatabaseUrl } from '../../src/test-database-url';
 
 const pool = new pg.Pool({
-  connectionString: getTestDatabaseUrl(),
+  connectionString: getIntegrationDatabaseUrl(),
   max: 2,
 });
 

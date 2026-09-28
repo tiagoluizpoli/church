@@ -35,9 +35,35 @@ function checkServiceSchema(input: CheckServiceSchemaInput): boolean {
   }
 }
 
+interface ParseArgsInput {
+  argv: string[];
+}
+
+interface ParsedArgs {
+  purpose: ExecutionPurpose;
+  labels: string[] | undefined;
+}
+
+const SERVICES_FLAG_PREFIX = '--services=';
+
+export function parseArgs(input: ParseArgsInput): ParsedArgs {
+  const purpose = (input.argv[0] ?? 'development') as ExecutionPurpose;
+  const servicesFlag = input.argv.find((arg) =>
+    arg.startsWith(SERVICES_FLAG_PREFIX),
+  );
+  const labels = servicesFlag
+    ? servicesFlag.slice(SERVICES_FLAG_PREFIX.length).split(',')
+    : undefined;
+
+  return { purpose, labels };
+}
+
 function main(): void {
-  const purpose = (process.argv[2] ?? 'development') as ExecutionPurpose;
-  const results = SERVICE_SCHEMAS.map((service) =>
+  const { purpose, labels } = parseArgs({ argv: process.argv.slice(2) });
+  const services = labels
+    ? SERVICE_SCHEMAS.filter((service) => labels.includes(service.label))
+    : SERVICE_SCHEMAS;
+  const results = services.map((service) =>
     checkServiceSchema({ ...service, purpose }),
   );
 
@@ -46,4 +72,6 @@ function main(): void {
   }
 }
 
-main();
+if (import.meta.main) {
+  main();
+}

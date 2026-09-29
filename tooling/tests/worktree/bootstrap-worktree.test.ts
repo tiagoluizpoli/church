@@ -35,12 +35,13 @@ interface RunResult {
   output: string;
 }
 
-/** A PATH command that records its arguments and fails when they contain
- * `$FAIL_ON`. */
+/** A PATH command that records its command line and fails when that line
+ * is exactly `$FAIL_ON`. */
 function recorder(): string {
   return `#!/bin/sh
-echo "$(basename "$0") $*" >> "${log}"
-case "$(basename "$0") $*" in *"$FAIL_ON"*) [ -n "$FAIL_ON" ] && exit 3 ;; esac
+line="$(basename "$0") $*"
+echo "$line" >> "${log}"
+[ "$line" = "$FAIL_ON" ] && exit 3
 exit 0
 `;
 }
@@ -91,11 +92,25 @@ describe('worktree:bootstrap', () => {
   });
 
   it('stops at the first failing step, names it, and points to the rerun', () => {
-    const result = run({ failOn: 'env:local' });
+    const result = run({ failOn: 'bun run env:local' });
 
     expect(result.status).not.toBe(0);
     expect(recorded()).not.toContain('bun run db:bootstrap');
     expect(result.output).toContain('failed at "configuration"');
     expect(result.output).toContain('bun run worktree:bootstrap');
+  });
+
+  it('generates nothing when the shared PostgreSQL never becomes healthy', () => {
+    const result = run({
+      failOn:
+        'docker compose --file docker-compose.yml up --detach --wait --no-recreate db',
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(recorded()).toEqual([
+      'bun install --frozen-lockfile',
+      'docker compose --file docker-compose.yml up --detach --wait --no-recreate db',
+    ]);
+    expect(result.output).toContain('failed at "postgres"');
   });
 });

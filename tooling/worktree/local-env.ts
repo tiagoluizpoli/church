@@ -257,7 +257,7 @@ function sharedValuesPath(input: CommonDirInput): string {
 }
 
 interface SharedValuesInput extends CommonDirInput {
-  generated: Map<string, string>;
+  generatedKeys: ReadonlySet<string>;
 }
 
 /** Values every worktree on this machine shares, from the ignored file in
@@ -265,7 +265,9 @@ interface SharedValuesInput extends CommonDirInput {
 function readSharedValues(input: SharedValuesInput): Map<string, string> {
   const path = sharedValuesPath(input);
   const shared = parseValues({ content: readContent({ path }) ?? '' });
-  const refused = [...shared.keys()].filter((key) => input.generated.has(key));
+  const refused = [...shared.keys()].filter((key) =>
+    input.generatedKeys.has(key),
+  );
 
   if (refused.length > 0) {
     throw new Error(
@@ -495,7 +497,7 @@ function generateLocalEnv(input: GenerateInput): void {
     generated: worktreeValues,
     shared: readSharedValues({
       commonDir: context.commonDir,
-      generated: worktreeValues,
+      generatedKeys: new Set(worktreeValues.keys()),
     }),
   });
 

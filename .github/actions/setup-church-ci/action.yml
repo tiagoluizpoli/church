@@ -1,9 +1,9 @@
 name: Setup Church CI environment
 description: >-
-  Install the Bun toolchain, install dependencies, write the CI .env, and run
-  database migrations. Runs after actions/checkout@v4, which callers must run
-  first (a local composite action can't be loaded before the repo it lives in
-  is checked out).
+  Install the Bun toolchain, install dependencies, optionally write the
+  legacy CI value files, and run database migrations. Runs after
+  actions/checkout@v4, which callers must run first (a local composite action
+  can't be loaded before the repo it lives in is checked out).
 
 inputs:
   skip-migrate:
@@ -14,6 +14,14 @@ inputs:
       step and runs its own migration step once its database is actually up.
     required: false
     default: 'false'
+  write-env-files:
+    description: >-
+      Set to 'false' for a job whose commands take their configuration from
+      the job environment alone (ADR-0005: Varlock validates and injects it).
+      The E2E lane does; the remaining jobs still rely on the legacy value
+      files until their runners migrate.
+    required: false
+    default: 'true'
 
 runs:
   using: composite
@@ -34,6 +42,7 @@ runs:
       run: bun install --frozen-lockfile
 
     - name: Create .env for test runner
+      if: inputs.write-env-files == 'true'
       shell: bash
       run: |
         printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=%s\nENABLE_DEBUG_ENDPOINTS=%s\n' \
@@ -55,6 +64,7 @@ runs:
         fi
 
     - name: Create apps/web/.env for vitest
+      if: inputs.write-env-files == 'true'
       shell: bash
       run: |
         # apps/web/vitest.config.ts deliberately points `envDir` at this

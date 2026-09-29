@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { request } from '@playwright/test';
 import { z } from 'zod';
 import { assertE2eEnvironment } from '../../../tooling/env/e2e-environment';
+import {
+  assertServedFromPinnedTarget,
+  runE2eServerScript,
+} from './fixtures/e2e-target';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -122,20 +126,6 @@ function makeUniqueEmail({ label }: MakeUniqueEmailInput): string {
   return `${label}-${suffix}@test.com`;
 }
 
-interface RunServerScriptInput {
-  scriptPath: string;
-  args: string[];
-}
-
-function runServerScript({ scriptPath, args }: RunServerScriptInput): string {
-  // Inherits this process's environment (the e2e purpose, target, and URL
-  // set `assertE2eEnvironment` just validated) — no value file is loaded, so
-  // the working directory cannot change which environment the script sees.
-  return execFileSync('bun', ['--no-env-file', 'run', scriptPath, ...args], {
-    cwd: SERVER_DIR,
-  }).toString();
-}
-
 /** Parses the last non-empty stdout line as JSON — scripts may log incidental lines before it. */
 function parseLastJsonLine<T>(output: string): T {
   const lastLine = output
@@ -165,9 +155,10 @@ interface ProvisionE2eChurchResult {
 function provisionE2eChurch(
   input: ProvisionE2eChurchInput,
 ): ProvisionE2eChurchResult {
-  const output = runServerScript({
+  const output = runE2eServerScript({
     scriptPath: 'src/scripts/e2e-provision-church.ts',
     args: [input.id, input.name, input.slug, input.adminEmail],
+    step: `provision ${input.name}`,
   });
   return parseLastJsonLine<ProvisionE2eChurchResult>(output);
 }
@@ -188,8 +179,9 @@ interface MintE2eChurchInvitationResult {
 function mintE2eChurchInvitation(
   input: MintE2eChurchInvitationInput,
 ): MintE2eChurchInvitationResult {
-  const output = runServerScript({
+  const output = runE2eServerScript({
     scriptPath: 'src/scripts/e2e-mint-church-invitation.ts',
+    step: `mint Church Invitation for ${input.role}`,
     args: [
       input.inviterEmail,
       input.inviterPassword,
@@ -212,9 +204,10 @@ async function authUser({
   creds,
   invitationId,
 }: AuthUserInput): Promise<string> {
-  runServerScript({
+  runE2eServerScript({
     scriptPath: 'src/scripts/e2e-redeem-church-invitation.ts',
     args: [creds.email, creds.name, creds.password, invitationId],
+    step: `redeem Church Invitation for ${creds.name}`,
   });
   const res = await ctx.post(`${SERVER_URL}/api/auth/sign-in/email`, {
     data: { email: creds.email, password: creds.password },
@@ -224,6 +217,10 @@ async function authUser({
       `Auth failed for ${creds.email} (${res.status()}): ${await res.text()}`,
     );
   }
+  assertServedFromPinnedTarget({
+    response: res,
+    step: `sign in ${creds.name}`,
+  });
   return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
 }
 

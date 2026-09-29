@@ -16,6 +16,8 @@ import {
 } from 'fastify-type-provider-zod';
 import pino from 'pino';
 import PinoPretty from 'pino-pretty';
+import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
+import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
@@ -76,6 +78,8 @@ export async function createFastify() {
     : isProd
       ? createFastifyInstance({ logger: true })
       : createFastifyInstance({ loggerInstance: devLogger });
+
+  registerE2eTargetHeader({ app, enabled: debugEndpointsEnabled() });
 
   await app.register(fastifyCors, {
     origin: env.CORS_ORIGIN,

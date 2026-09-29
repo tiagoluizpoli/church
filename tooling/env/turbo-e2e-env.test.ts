@@ -43,3 +43,13 @@ describe('turbo E2E tasks', () => {
     });
   }
 });
+
+// #253: CI migrates its E2E database from the job environment alone — no
+// generated value file — so the migration task must see the injected target.
+describe('turbo db:migrate task', () => {
+  it('passes the injected DATABASE_URL through', () => {
+    expect(turboConfig.tasks['db:migrate']?.passThroughEnv).toEqual(
+      expect.arrayContaining(['DATABASE_URL']),
+    );
+  });
+});

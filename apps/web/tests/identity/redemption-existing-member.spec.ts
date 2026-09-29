@@ -1,7 +1,8 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { expect, type Page, request, test } from '@playwright/test';
+import {
+  assertServedFromPinnedTarget,
+  runE2eServerScript,
+} from '../fixtures/e2e-target';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 
 // #64/DL#107 — a Church Member who does not yet volunteer (spec 024 §11.3's
@@ -12,8 +13,6 @@ import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 // invitation.
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4101';
-const dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS) — same convention as the other identity/scheduling specs.
@@ -55,6 +54,10 @@ async function mintInvitation({
       `Failed to mint invitation (${res.status()}): ${await res.text()}`,
     );
   }
+  assertServedFromPinnedTarget({
+    response: res,
+    step: 'provision Ministry Invitation',
+  });
   const invitation = (await res.json()) as MintedInvitation;
   await adminCtx.dispose();
   return invitation;
@@ -117,22 +120,21 @@ async function bootstrapChurchMemberOnly({
       `Failed to invite Church Member (${res.status()}): ${await res.text()}`,
     );
   }
+  assertServedFromPinnedTarget({
+    response: res,
+    step: 'provision Church Invitation',
+  });
   const invitation = (await res.json()) as InviteChurchMemberResponse;
   await adminCtx.dispose();
 
-  execFileSync(
-    'bun',
-    [
-      '--env-file=../../.env',
-      'run',
-      'src/scripts/e2e-redeem-church-invitation.ts',
-      email,
-      name,
-      PASSWORD,
-      invitation.id,
-    ],
-    { cwd: SERVER_DIR },
-  );
+  // Redeemed in a separate process from the server that provisioned it —
+  // the cross-process shape of the original failure; the runner asserts the
+  // script resolved the same pinned target.
+  runE2eServerScript({
+    scriptPath: 'src/scripts/e2e-redeem-church-invitation.ts',
+    args: [email, name, PASSWORD, invitation.id],
+    step: 'redeem Church Invitation',
+  });
 }
 
 function uniqueMemberEmail(label: string): string {
@@ -185,6 +187,12 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
       ),
       page.getByRole('button', { name: 'Accept' }).click(),
     ]);
+    // #253 redemption gate: provisioned (above) and redeemed here against
+    // the run's one pinned target.
+    assertServedFromPinnedTarget({
+      response: acceptResponse,
+      step: 'redeem Ministry Invitation',
+    });
     const acceptOutcome =
       (await acceptResponse.json()) as AcceptMinistryInvitationOutcome;
     expect(acceptOutcome.kind).toBe('full-success');

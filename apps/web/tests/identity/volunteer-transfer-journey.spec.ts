@@ -1,7 +1,4 @@
-import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   type APIRequestContext,
   type APIResponse,
@@ -10,6 +7,7 @@ import {
   request,
   test,
 } from '@playwright/test';
+import { runE2eServerScript } from '../fixtures/e2e-target';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   CHURCH_B_ADMIN_STORAGE_STATE,
@@ -24,8 +22,6 @@ import {
 // Church B's roster showing the vacated seat.
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4101';
-const dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS) — same convention as the other identity specs.
@@ -99,19 +95,11 @@ function redeemChurchInvitation({
   name,
   invitationId,
 }: RedeemChurchInvitationInput): void {
-  execFileSync(
-    'bun',
-    [
-      '--env-file=../../.env',
-      'run',
-      'src/scripts/e2e-redeem-church-invitation.ts',
-      email,
-      name,
-      PASSWORD,
-      invitationId,
-    ],
-    { cwd: SERVER_DIR },
-  );
+  runE2eServerScript({
+    scriptPath: 'src/scripts/e2e-redeem-church-invitation.ts',
+    args: [email, name, PASSWORD, invitationId],
+    step: 'redeem Church Invitation',
+  });
 }
 
 interface InviteChurchMemberInput {

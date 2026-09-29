@@ -17,6 +17,8 @@ and task ordering.
 | Final validation | `bun run validate` |
 | Reset development DB | `bun run db:seed:reset` |
 | Seed development users | `bun run db:seed:dev-users` |
+| Generate worktree `.env.local` | `bun run env:local` |
+| Revalidate its ports before launch | `bun run env:local -- --revalidate` |
 
 Use root Bun scripts by default. The focused-workspace exception is
 `bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API

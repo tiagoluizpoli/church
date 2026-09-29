@@ -1,17 +1,29 @@
+import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { getDevelopmentDatabaseUrl } from '../development-database-url';
 
-async function resetDatabase(): Promise<void> {
+function isPrimaryWorktree(): boolean {
+  const [gitDir, commonDir] = execFileSync(
+    'git',
+    ['rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir'],
+    { encoding: 'utf8' },
+  )
+    .trim()
+    .split('\n');
+
+  return gitDir === commonDir;
+}
+
+async function resetDevelopmentDatabase(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Database reset is disabled in production');
   }
 
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) throw new Error('DATABASE_URL is required');
-
+  const databaseUrl = getDevelopmentDatabaseUrl({ isPrimaryWorktree });
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
 
   try {
@@ -31,10 +43,11 @@ async function resetDatabase(): Promise<void> {
 }
 
 if (import.meta.main) {
-  resetDatabase()
-    .then(() => console.log('Database reset complete.'))
-    .catch((error) => {
-      console.error('Database reset failed.', error);
+  resetDevelopmentDatabase()
+    .then(() => console.log('Development database reset complete.'))
+    .catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : 'unknown error';
+      console.error(`Development database reset failed: ${reason}`);
       process.exitCode = 1;
     });
 }

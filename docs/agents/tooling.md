@@ -19,6 +19,7 @@ and task ordering.
 | Seed development users | `bun run db:seed:dev-users` |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
+| Create + migrate its dev/int/E2E databases | `bun run db:bootstrap` |
 
 Use root Bun scripts by default. The focused-workspace exception is
 `bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API

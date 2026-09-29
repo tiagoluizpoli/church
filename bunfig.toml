@@ -1,2 +1,8 @@
+# Root `bun <file>` tooling must not auto-load `.env`/`.env.local`: those
+# values would leak into Varlock-wrapped children (e.g. validate:affected →
+# test:e2e) as process-environment overrides and defeat purpose selection.
+# Varlock alone loads value files (ADR-0005).
+env = false
+
 [test]
 pathIgnorePatterns = ["**/e2e/**", "**/*.spec.ts"]

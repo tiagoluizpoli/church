@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDevelopmentDatabaseUrl } from '../src/development-database-url';
 
 const PRIMARY_URL = 'postgresql://postgres:postgres@localhost:5444/church';
@@ -15,6 +15,9 @@ function resetEnv(): void {
 }
 
 describe('getDevelopmentDatabaseUrl', () => {
+  // Varlock injects the worktree's own CHURCH_WORKTREE from `.env.local`.
+  beforeEach(resetEnv);
+
   afterEach(() => {
     resetEnv();
     vi.restoreAllMocks();

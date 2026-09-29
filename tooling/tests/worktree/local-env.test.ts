@@ -17,10 +17,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
  * leaves behind: its exit status and each worktree's `.env.local`.
  */
 
-const LOCAL_ENV_SCRIPT = resolve(
-  import.meta.dir,
-  '../../worktree/local-env.ts',
-);
+const REPO_ROOT = resolve(import.meta.dir, '../../..');
+const LOCAL_ENV_SCRIPT = resolve(REPO_ROOT, 'tooling/worktree/local-env.ts');
+const VARLOCK = resolve(REPO_ROOT, 'node_modules/.bin/varlock');
 
 let sandbox: string;
 let primary: string;
@@ -76,6 +75,34 @@ function portsOf(values: Record<string, string>): number[] {
     values.PW_SERVER_PORT,
     values.PW_WEB_PORT,
   ].map(Number);
+}
+
+interface ResolvedDatabaseInput extends WorktreeInput {
+  purpose: string;
+}
+
+/** The DATABASE_URL Varlock injects for `purpose` through the real root and
+ * database-owned schemas, copied beside the generated `.env.local`. */
+function resolvedDatabaseName(input: ResolvedDatabaseInput): string {
+  const schemaDir = join(input.cwd, 'packages/db');
+  mkdirSync(schemaDir, { recursive: true });
+  for (const schema of ['.env.schema', 'packages/db/.env.schema']) {
+    writeFileSync(
+      join(input.cwd, schema),
+      readFileSync(join(REPO_ROOT, schema), 'utf8'),
+    );
+  }
+
+  const url = execFileSync(
+    VARLOCK,
+    ['printenv', '--path', schemaDir, 'DATABASE_URL'],
+    {
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH, CHURCH_EXEC_PURPOSE: input.purpose },
+    },
+  ).trim();
+
+  return new URL(url).pathname.slice(1);
 }
 
 function generate(input: WorktreeInput): Record<string, string> {
@@ -180,6 +207,39 @@ describe('env:local', () => {
     expect(values.VITE_SERVER_URL).toBe(`http://localhost:${server}`);
     expect(values.CORS_ORIGIN).toBe(`http://localhost:${web}`);
     expect(values.BETTER_AUTH_SECRET).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("selects the worktree's database for each execution purpose", () => {
+    generate({ cwd: featureA });
+
+    expect(
+      ['development', 'integration', 'e2e'].map((purpose) =>
+        resolvedDatabaseName({ cwd: featureA, purpose }),
+      ),
+    ).toEqual([
+      'church_feature_a_dev',
+      'church_feature_a_int',
+      'church_feature_a_e2e',
+    ]);
+  });
+
+  it('resolves no database for the unit purpose', () => {
+    generate({ cwd: featureA });
+
+    expect(() =>
+      resolvedDatabaseName({ cwd: featureA, purpose: 'unit' }),
+    ).toThrow();
+  });
+
+  it('keeps church as the primary development database', () => {
+    generate({ cwd: primary });
+
+    expect(resolvedDatabaseName({ cwd: primary, purpose: 'development' })).toBe(
+      'church',
+    );
+    expect(resolvedDatabaseName({ cwd: primary, purpose: 'e2e' })).toBe(
+      'church_develop_e2e',
+    );
   });
 
   it('derives a hashed identity for a branch the readable form would alter', () => {
@@ -367,6 +427,22 @@ describe('env:local', () => {
     expect(result.output).toContain('VITE_SERVER_URL');
     expect(result.output).not.toContain('BETTER_AUTH_URL');
     expect(result.output).not.toContain('192.168.0.200');
+  });
+
+  it('warns about package-local value files that shadow generated values', () => {
+    mkdirSync(join(primary, 'apps/server'), { recursive: true });
+    writeFileSync(
+      join(primary, 'apps/server/.env'),
+      'DATABASE_URL="postgresql://postgres:hunter2@127.0.0.1:5444/church"\nRESEND_API_KEY=re_x\n',
+    );
+
+    const result = run({ cwd: primary });
+
+    expect(result.status, result.output).toBe(0);
+    expect(result.output).toContain('apps/server/.env');
+    expect(result.output).toContain('DATABASE_URL');
+    expect(result.output).not.toContain('RESEND_API_KEY');
+    expect(result.output).not.toContain('hunter2');
   });
 
   it('names a checkout without commits after its unborn branch', () => {

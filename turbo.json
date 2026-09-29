@@ -70,7 +70,7 @@
       "cache": false,
       "persistent": true
     },
-    "db:reset": {
+    "db:reset:dev": {
       "cache": false
     },
     "db:studio": {

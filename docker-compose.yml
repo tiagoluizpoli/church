@@ -1,3 +1,8 @@
+# Canonical local infrastructure (ADR-0005): the only Compose entrypoint for
+# local PostgreSQL and Unleash. The fixed project name keeps service, network,
+# and volume identity stable across every worktree checkout.
+name: church
+
 services:
   db:
     image: postgres:16-alpine

@@ -62,8 +62,13 @@ church_<worktree>_e2e
 The primary worktree also receives dedicated integration and E2E databases.
 The root Compose project is the only local infrastructure entrypoint; the stale
 `packages/db/docker-compose.yml` is removed. Production and Dokploy Compose
-configuration are outside this decision. One local Unleash instance remains
-shared.
+configuration are outside this decision. Development Unleash is not part of
+this Compose project: every worktree uses one shared instance hosted outside
+it, whose URL and token are machine-shared values rather than generated ones.
+
+Local Compose services are shared dependencies. Every worktree starts,
+verifies, and stops them through the primary checkout's Compose file, never
+its own branch copy.
 
 Every destructive command declares its purpose. `db:reset:dev` may reset only
 the current worktree's development database. Integration and E2E setup and

@@ -29,7 +29,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: [['list']],
+  // The outcome reporter lets global teardown keep a failed run's E2E
+  // database state for diagnosis instead of cleaning it.
+  reporter: [['list'], ['./tests/fixtures/e2e-run-outcome.ts']],
   use: {
     baseURL: WEB_URL,
     trace: 'on-first-retry',
@@ -50,6 +52,11 @@ export default defineConfig({
       // origin than this run's global setup. Failing on a port collision is
       // safer than silently executing against that mixed stack.
       reuseExistingServer: false,
+      // Without a graceful signal Playwright SIGKILLs the command's process
+      // group, which kills Varlock before it can forward the signal to its
+      // child (in its own process group), leaving the server running on the
+      // run's port. SIGTERM lets Varlock stop the whole tree.
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
       stdout: 'pipe',
       stderr: 'pipe',
       // start:e2e runs through Varlock with the e2e purpose, so the server
@@ -64,6 +71,7 @@ export default defineConfig({
       url: WEB_URL,
       // Keep the browser and seed process paired with the server above.
       reuseExistingServer: false,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
       stdout: 'pipe',
       stderr: 'pipe',
       // See apps/web/vite.config.ts: `server.port` reads `process.env.PORT`.

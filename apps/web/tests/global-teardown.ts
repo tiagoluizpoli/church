@@ -3,13 +3,34 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertE2eEnvironment } from '../../../tooling/env/e2e-environment';
+import { readE2eRunFailure } from './fixtures/e2e-run-outcome';
 import { E2E_AUTH_META, E2E_AUTH_META_SCHEMA } from './global-setup';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_DIR = path.resolve(dirname, '../../server');
 
-/** Removes the seeded E2E domain data (church cascade + pool users). */
+// Set by `test:e2e:ui`: UI mode does not run the configured reporters, so its
+// teardown cannot tell a failed session from a passing one.
+const KEEP_STATE_VARIABLE = 'CHURCH_E2E_KEEP_STATE';
+
+/** Removes the seeded E2E domain data (church cascade + pool users) after a
+ * passing run. A failed run or a UI session keeps it for diagnosis; the next
+ * run's global setup resets the target before seeding. */
 export default function globalTeardown(): void {
+  const failure = readE2eRunFailure();
+  const keepReason = failure
+    ? `E2E run failed (${failure})`
+    : process.env[KEEP_STATE_VARIABLE] === '1'
+      ? 'E2E UI session ended'
+      : undefined;
+
+  if (keepReason) {
+    console.warn(
+      `⚠ ${keepReason}: keeping the E2E database state for diagnosis. The next E2E run resets it.`,
+    );
+    return;
+  }
+
   // Cleanup deletes data: refuse a mismatched purpose, target, or URL set.
   assertE2eEnvironment();
   cleanupE2eData();

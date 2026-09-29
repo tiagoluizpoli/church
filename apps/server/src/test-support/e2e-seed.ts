@@ -12,7 +12,6 @@ import {
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
-  organization,
   participationSlotInclusion,
   planningCycle,
   role,
@@ -26,7 +25,7 @@ import {
 } from '@church/db';
 import { getE2eDatabaseUrl } from '@church/db/e2e-database-url';
 import { parseInstant, toDate } from '@church/time';
-import { inArray } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
@@ -1086,44 +1085,31 @@ export async function seedE2e({
   }
 }
 
-export interface CleanupE2eOptions {
-  leaderUserId?: string;
-  ministryLeaderUserId?: string;
-  teamLeaderUserId?: string;
-  volunteerUserId?: string;
-  churchBAdminUserId?: string;
+interface PublicTableRow extends Record<string, unknown> {
+  tablename: string;
 }
 
-export async function cleanupE2e({
-  leaderUserId,
-  ministryLeaderUserId,
-  teamLeaderUserId,
-  volunteerUserId,
-  churchBAdminUserId,
-}: CleanupE2eOptions = {}): Promise<void> {
+/**
+ * Empties every table of this worktree's E2E database, so each run starts
+ * from nothing: the users journeys create for themselves and whatever an
+ * aborted setup left behind included. `getE2eDatabaseUrl` refuses any target
+ * but the E2E database. Migration history lives in the `drizzle` schema and
+ * is untouched.
+ */
+export async function resetE2eDatabase(): Promise<void> {
   const { pool, db } = makeDb();
   try {
-    // Delete the organization, not the church extension row: cascading from
-    // the extension would leave the organization, its members and its
-    // invitations standing, which resurfaces later as authorization failures.
-    await db
-      .delete(organization)
-      .where(inArray(organization.id, [E2E_IDS.church, E2E_IDS.churchB]));
-    // Pool users and disposable auth users are not reachable by church
-    // cascade — remove them too.
-    const cleanupUserIds = [
-      ...POOL_VOLUNTEERS.map((v) => v.userId),
-      UNQUALIFIED_VOLUNTEER.userId,
-      leaderUserId,
-      ministryLeaderUserId,
-      teamLeaderUserId,
-      volunteerUserId,
-      churchBAdminUserId,
-    ].filter((value): value is string => Boolean(value));
+    const tables = await db.execute<PublicTableRow>(
+      sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
+    );
 
-    if (cleanupUserIds.length > 0) {
-      await db.delete(user).where(inArray(user.id, cleanupUserIds));
-    }
+    if (tables.rows.length === 0) return;
+
+    const tableList = sql.join(
+      tables.rows.map((row) => sql.identifier(row.tablename)),
+      sql`, `,
+    );
+    await db.execute(sql`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
   } finally {
     await pool.end();
   }
@@ -1139,22 +1125,13 @@ function parseArg({ argv, flag }: ParseArgInput): string | undefined {
 }
 
 // CLI entry: `bun run seed:e2e -- --leader-user-id=<id> --team-leader-user-id=<id>`
-// or: `bun run seed:e2e -- cleanup`
+// or: `bun run seed:e2e -- reset`
 if (import.meta.main) {
   const argv = process.argv.slice(2);
   const run = async () => {
-    if (argv.includes('cleanup')) {
-      await cleanupE2e({
-        leaderUserId: parseArg({ argv, flag: 'leader-user-id' }),
-        ministryLeaderUserId: parseArg({
-          argv,
-          flag: 'ministry-leader-user-id',
-        }),
-        teamLeaderUserId: parseArg({ argv, flag: 'team-leader-user-id' }),
-        volunteerUserId: parseArg({ argv, flag: 'volunteer-user-id' }),
-        churchBAdminUserId: parseArg({ argv, flag: 'church-b-admin-user-id' }),
-      });
-      console.log('[e2e-seed] cleaned up');
+    if (argv.includes('reset')) {
+      await resetE2eDatabase();
+      console.log('[e2e-seed] reset');
       return;
     }
     const leaderUserId = parseArg({ argv, flag: 'leader-user-id' });

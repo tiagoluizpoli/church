@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanupE2e, seedE2e } from '../../src/test-support/e2e-seed';
+import { resetE2eDatabase, seedE2e } from '../../src/test-support/e2e-seed';
 
 function resetEnv(): void {
   delete process.env.CHURCH_EXEC_PURPOSE;
@@ -30,7 +30,7 @@ describe('e2e-seed target resolution', () => {
     ).rejects.toThrow(/requires CHURCH_EXEC_PURPOSE=e2e/);
   });
 
-  it('cleanupE2e refuses to target the development database', async () => {
+  it('resetE2eDatabase refuses to target the development database', async () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL =
       'postgresql://postgres:postgres@localhost:5444/church';
@@ -38,12 +38,12 @@ describe('e2e-seed target resolution', () => {
       'postgresql://postgres:postgres@localhost:5444/church';
     process.env.CHURCH_WORKTREE = 'develop';
 
-    await expect(cleanupE2e()).rejects.toThrow(
+    await expect(resetE2eDatabase()).rejects.toThrow(
       /may not target the development database/,
     );
   });
 
-  it('cleanupE2e refuses an unmanaged database', async () => {
+  it('resetE2eDatabase refuses an unmanaged database', async () => {
     process.env.CHURCH_EXEC_PURPOSE = 'e2e';
     process.env.DATABASE_URL =
       'postgresql://postgres:postgres@localhost:5444/postgres';
@@ -51,7 +51,7 @@ describe('e2e-seed target resolution', () => {
       'postgresql://postgres:postgres@localhost:5444/church';
     process.env.CHURCH_WORKTREE = 'develop';
 
-    await expect(cleanupE2e()).rejects.toThrow(
+    await expect(resetE2eDatabase()).rejects.toThrow(
       /is outside the managed "church" namespace/,
     );
   });

@@ -52,13 +52,14 @@ succeeds.
   switch. `cd` into the worktree (`wt switch` does not rerun `pre-start`), fix
   the cause it printed, and rerun `bun run worktree:bootstrap`. Every step is
   idempotent; completed databases are kept.
-- **Non-generated values**: `env:local` also writes local defaults
-  (`ENABLE_DEBUG_ENDPOINTS=true`, the local `UNLEASH_API_URL`). Machine-shared
-  values, such as the local `UNLEASH_API_TOKEN` and optional `RESEND_*`, live
+- **Non-generated values**: `env:local` also writes the local default
+  `ENABLE_DEBUG_ENDPOINTS=true`. Machine-shared values, such as
+  `UNLEASH_API_URL` and `UNLEASH_API_TOKEN` (whichever Unleash this machine
+  uses, local Compose or elsewhere) and optional `RESEND_*`, live
   once in the ignored `church-shared.env` in the shared Git directory, which
   every worktree's `.env.local` copies; rerun `env:local` after editing it. It
   may override a default, never a generated key. Seed it from the primary:
-  `grep -E '^(UNLEASH_API_TOKEN|RESEND_[A-Z_]+)=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
+  `grep -E '^(UNLEASH_API_(URL|TOKEN)|RESEND_[A-Z_]+)=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
 - **Primary checkout**: run `bun run worktree:bootstrap` once, explicitly.
   First remove the keys `env:local` warns about from `apps/server/.env`,
   especially `DATABASE_URL`: package value files beat the root `.env.local`.

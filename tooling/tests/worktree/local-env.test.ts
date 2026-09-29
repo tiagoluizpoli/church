@@ -477,7 +477,10 @@ describe('env:local values beyond the generated set', () => {
     const values = generate({ cwd: featureA });
 
     expect(values.ENABLE_DEBUG_ENDPOINTS).toBe('true');
-    expect(values.UNLEASH_API_URL).toBe('http://localhost:4242/api');
+  });
+
+  it('assumes no Unleash location; it is machine-shared, not a local default', () => {
+    expect(generate({ cwd: featureA }).UNLEASH_API_URL).toBeUndefined();
   });
 
   it('copies the machine-shared values from the Git common directory into every worktree', () => {
@@ -504,13 +507,13 @@ describe('env:local values beyond the generated set', () => {
   });
 
   it('lets a shared value replace a local default', () => {
-    writeSharedValues({ content: 'UNLEASH_API_URL=http://unleash.lan/api\n' });
+    writeSharedValues({ content: 'ENABLE_DEBUG_ENDPOINTS=false\n' });
 
     const values = generate({ cwd: featureA });
 
-    expect(values.UNLEASH_API_URL).toBe('http://unleash.lan/api');
+    expect(values.ENABLE_DEBUG_ENDPOINTS).toBe('false');
     expect(
-      readRaw({ cwd: featureA }).match(/^UNLEASH_API_URL=/gm),
+      readRaw({ cwd: featureA }).match(/^ENABLE_DEBUG_ENDPOINTS=/gm),
     ).toHaveLength(1);
   });
 

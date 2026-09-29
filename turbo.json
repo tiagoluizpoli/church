@@ -26,10 +26,34 @@
     },
     "test:e2e": {
       "dependsOn": ["^test:e2e"],
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CORS_ORIGIN",
+        "UNLEASH_API_URL",
+        "UNLEASH_API_TOKEN",
+        "NODE_ENV",
+        "ENABLE_DEBUG_ENDPOINTS",
+        "VITE_SERVER_URL",
+        "CHURCH_WORKTREE"
+      ],
       "cache": false
     },
     "test:e2e:ui": {
       "dependsOn": ["^test:e2e:ui"],
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CORS_ORIGIN",
+        "UNLEASH_API_URL",
+        "UNLEASH_API_TOKEN",
+        "NODE_ENV",
+        "ENABLE_DEBUG_ENDPOINTS",
+        "VITE_SERVER_URL",
+        "CHURCH_WORKTREE"
+      ],
       "cache": false
     },
     "dev": {

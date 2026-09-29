@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { request } from '@playwright/test';
 import { z } from 'zod';
+import { assertE2eEnvironment } from '../../../tooling/env/e2e-environment';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -127,11 +128,12 @@ interface RunServerScriptInput {
 }
 
 function runServerScript({ scriptPath, args }: RunServerScriptInput): string {
-  return execFileSync(
-    'bun',
-    ['--env-file=../../.env', 'run', scriptPath, ...args],
-    { cwd: SERVER_DIR },
-  ).toString();
+  // Inherits this process's environment (the e2e purpose, target, and URL
+  // set `assertE2eEnvironment` just validated) — no value file is loaded, so
+  // the working directory cannot change which environment the script sees.
+  return execFileSync('bun', ['--no-env-file', 'run', scriptPath, ...args], {
+    cwd: SERVER_DIR,
+  }).toString();
 }
 
 /** Parses the last non-empty stdout line as JSON — scripts may log incidental lines before it. */
@@ -225,11 +227,15 @@ async function authUser({
   return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
 }
 
-import globalTeardown from './global-teardown';
+import { cleanupE2eData } from './global-teardown';
 
 export default async function globalSetup(): Promise<void> {
+  // Before anything provisions or deletes: a mismatched purpose, database
+  // target, or URL set fails here, ahead of the destructive cleanup below.
+  assertE2eEnvironment();
+
   // Clean up any stale data from previous aborted runs before seeding.
-  globalTeardown();
+  cleanupE2eData();
 
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const ministryLeaderCtx = await request.newContext({ baseURL: SERVER_URL });

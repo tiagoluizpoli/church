@@ -1,4 +1,5 @@
 import {
+  type DatabaseTargetIdentity,
   expectedDatabaseName,
   resolveDatabaseTarget,
 } from './database-target-resolver';
@@ -44,6 +45,23 @@ function developmentCandidateFrom(
  * namespace, and every caller logs the same redacted preflight line.
  */
 export function getE2eDatabaseUrl(): string {
+  const { identity, databaseUrl } = resolveE2eDatabaseTarget();
+
+  reportDatabaseTarget({ identity });
+
+  return databaseUrl;
+}
+
+export interface ResolvedE2eDatabaseTarget {
+  identity: DatabaseTargetIdentity;
+  databaseUrl: string;
+}
+
+/**
+ * Same resolution and refusals as `getE2eDatabaseUrl`, without the preflight
+ * log — for callers that compare or re-report the target's fingerprint.
+ */
+export function resolveE2eDatabaseTarget(): ResolvedE2eDatabaseTarget {
   requireExecPurpose({ purpose: 'e2e', functionName: 'getE2eDatabaseUrl' });
 
   const databaseUrl = requireDatabaseUrl({ purpose: 'e2e' });
@@ -61,7 +79,5 @@ export function getE2eDatabaseUrl(): string {
     },
   });
 
-  reportDatabaseTarget({ identity });
-
-  return databaseUrl;
+  return { identity, databaseUrl };
 }

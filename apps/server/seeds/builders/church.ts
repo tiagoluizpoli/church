@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../src/domain/authority/types';
 import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
 import { provisionChurch } from '../../src/scripts/provision-church';
+import { SEED_PLATFORM_OPERATOR_ID } from '../blueprints/credentials';
 import type { SeedWriter } from '../recipe';
 
 const ChurchAccessLevelSchema = z.enum(CHURCH_ACCESS_LEVEL_OPTIONS);
@@ -20,6 +21,7 @@ export interface BuildProvisionedChurchInput {
   slug: string;
   timezone: string;
   adminEmail: string;
+  adminInvitationId: string;
 }
 
 export interface ProvisionedChurch {
@@ -40,8 +42,12 @@ export async function buildProvisionedChurch({
   slug,
   timezone,
   adminEmail,
+  adminInvitationId,
 }: BuildProvisionedChurchInput): Promise<ProvisionedChurch> {
-  const operator = await ensurePlatformOperator({ db });
+  const operator = await ensurePlatformOperator({
+    db,
+    id: SEED_PLATFORM_OPERATOR_ID,
+  });
   const provisioned = await provisionChurch({
     db,
     id,
@@ -50,6 +56,9 @@ export async function buildProvisionedChurch({
     timezone,
     adminEmail,
     operatorUserId: operator.id,
+    invitationId: adminInvitationId,
+    // The seed redeems the invitation itself, so its path is already spent.
+    reportRedemptionPath: false,
   });
 
   return {
@@ -62,6 +71,7 @@ export interface RedeemChurchInvitationInput {
   db: SeedWriter;
   invitationId: string;
   userId: string;
+  churchMembershipId: string;
 }
 
 /**
@@ -75,6 +85,7 @@ export async function redeemChurchInvitation({
   db,
   invitationId,
   userId,
+  churchMembershipId,
 }: RedeemChurchInvitationInput): Promise<void> {
   const [pending] = await db
     .select()
@@ -108,5 +119,6 @@ export async function redeemChurchInvitation({
     churchId: pending.organizationId,
     userId,
     accessLevel,
+    id: churchMembershipId,
   });
 }

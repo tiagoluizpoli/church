@@ -80,6 +80,8 @@ export interface AddChurchMemberInput {
   churchId: string;
   userId: string;
   accessLevel?: ChurchAccessLevel;
+  /** Supply only when a fixture pins the Church Membership's identifier. */
+  id?: string;
 }
 
 export interface FindChurchBySlugInput {
@@ -251,7 +253,7 @@ export async function addChurchMember(
   }
 
   await input.db.insert(schema.member).values({
-    id: crypto.randomUUID(),
+    id: input.id ?? crypto.randomUUID(),
     organizationId: churchId,
     userId,
     role: accessLevel,

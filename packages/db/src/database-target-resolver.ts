@@ -7,7 +7,8 @@ export type DatabaseTargetRejectionReason =
   | 'invalid-url'
   | 'unmanaged-target'
   | 'purpose-name-mismatch'
-  | 'development-target-forbidden';
+  | 'development-target-forbidden'
+  | 'production-like-target';
 
 export interface DatabaseTargetCandidates {
   development: string;

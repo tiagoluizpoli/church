@@ -15,6 +15,7 @@ and task ordering.
 | Complete test suite | `bun run test` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
+| Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
 | Reset development DB | `bun run db:seed:reset` |
 | Seed development users | `bun run db:seed:dev-users` |
 | Generate worktree `.env.local` | `bun run env:local` |

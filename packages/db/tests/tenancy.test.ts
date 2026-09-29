@@ -92,6 +92,34 @@ describe('tenancy primitives', () => {
     expect(membership?.role).toBe('admin');
   });
 
+  it('creates a Church Membership under a pinned id when a fixture supplies one', async () => {
+    const membershipId = 'd0000000-0000-4000-8000-0000000000a1';
+    await createChurch({
+      db: testDb,
+      id: FIRST_CHURCH_ID,
+      name: 'First Church',
+      slug: 'first-church',
+    });
+    await testDb.insert(schema.user).values({
+      id: USER_ID,
+      name: 'Tenancy User',
+      email: 'tenancy-user@example.com',
+    });
+
+    await addChurchMember({
+      db: testDb,
+      churchId: FIRST_CHURCH_ID,
+      userId: USER_ID,
+      id: membershipId,
+    });
+
+    const [membership] = await testDb
+      .select({ id: schema.member.id })
+      .from(schema.member)
+      .where(eq(schema.member.userId, USER_ID));
+    expect(membership?.id).toBe(membershipId);
+  });
+
   it('rolls back the organization when the extension row cannot be written', async () => {
     await expect(
       createChurch({

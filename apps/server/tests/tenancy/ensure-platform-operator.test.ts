@@ -31,4 +31,12 @@ describe('ensurePlatformOperator', () => {
     const rows = await testDb.select({ value: count() }).from(user);
     expect(rows[0]?.value).toBe(1);
   });
+
+  it('creates the operator under a pinned id when a fixture supplies one', async () => {
+    const id = '5eed0000-0000-4000-8000-00000000f002';
+
+    const operator = await ensurePlatformOperator({ db: testDb, id });
+
+    expect(operator.id).toBe(id);
+  });
 });

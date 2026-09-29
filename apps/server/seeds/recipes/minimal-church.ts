@@ -67,6 +67,7 @@ async function loadMinimalChurch({
     db,
     invitationId: adminInvitationId,
     userId: churchAdmin.id,
+    churchMembershipId: blueprint.personas.churchAdmin.churchMembershipId,
   });
 
   const ministry = await buildMinistry({
@@ -105,6 +106,7 @@ async function loadMinimalChurch({
     churchId: church.id,
     userId: volunteerUser.id,
     accessLevel: 'member',
+    id: volunteerPersona.churchMembershipId,
   });
   const volunteer = await buildVolunteer({
     db,

@@ -6,9 +6,15 @@ import { request } from '@playwright/test';
 import { z } from 'zod';
 import { assertE2eEnvironment } from '../../../tooling/env/e2e-environment';
 import {
+  clearE2eRunFailure,
+  describeE2eFailure,
+  recordE2eRunFailure,
+} from './fixtures/e2e-run-outcome';
+import {
   assertServedFromPinnedTarget,
   runE2eServerScript,
 } from './fixtures/e2e-target';
+import { cleanupE2eData } from './global-teardown';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -224,14 +230,29 @@ async function authUser({
   return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
 }
 
-import { cleanupE2eData } from './global-teardown';
-
+/** Starts a run: forgets the previous run's outcome, and records a failure
+ * here itself — Playwright runs global teardown before any reporter hears of
+ * a global-setup error, and teardown must keep this state for diagnosis. */
 export default async function globalSetup(): Promise<void> {
+  clearE2eRunFailure();
+
+  try {
+    await provisionE2eRun();
+  } catch (error) {
+    recordE2eRunFailure({
+      reason: `global setup failed: ${describeE2eFailure({ error })}`,
+    });
+    throw error;
+  }
+}
+
+async function provisionE2eRun(): Promise<void> {
   // Before anything provisions or deletes: a mismatched purpose, database
   // target, or URL set fails here, ahead of the destructive cleanup below.
   assertE2eEnvironment();
 
-  // Clean up any stale data from previous aborted runs before seeding.
+  // Reset the target before seeding: a failed or aborted run leaves its data
+  // in place for diagnosis (see global-teardown.ts).
   cleanupE2eData();
 
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });

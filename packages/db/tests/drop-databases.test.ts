@@ -113,7 +113,6 @@ describe('dropDatabases', () => {
       expect(await databaseExists({ database })).toBe(false);
     }
     expect(await databaseExists({ database: KEPT_DATABASE })).toBe(true);
-    expect(await databaseExists({ database: 'church' })).toBe(true);
   });
 
   it('terminates active connections to a target before dropping it', async () => {

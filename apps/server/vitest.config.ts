@@ -105,6 +105,7 @@ export default defineConfig({
             'tests/behavior/**/*.test.ts',
             'tests/http/**/*.test.ts',
             'tests/integration/**/*.test.ts',
+            'tests/seeds/**/*.test.ts',
             // These lists are explicit, not globs: a new tests/ directory runs
             // only once it is named here.
             'tests/tenancy/truncation-root.test.ts',

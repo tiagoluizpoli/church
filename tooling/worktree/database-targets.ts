@@ -12,7 +12,7 @@ import {
 
 // Loopback IPv4: Compose may publish only on 127.0.0.1, which `localhost`
 // can miss when it resolves to ::1 first.
-const LOCAL_DATABASE_SERVER_URL =
+export const LOCAL_DATABASE_SERVER_URL =
   'postgresql://postgres:postgres@127.0.0.1:5444';
 
 export const WORKTREE_DATABASE_PURPOSES: DatabasePurpose[] = [

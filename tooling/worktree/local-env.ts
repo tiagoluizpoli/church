@@ -320,6 +320,63 @@ function claimsOfOtherWorktrees(input: ContextInput): OtherWorktreeClaims {
   return claims;
 }
 
+export interface ActiveWorktreeIdentitiesInput {
+  cwd: string;
+  /** Leave out the worktree containing `cwd`. */
+  excludeCurrent?: boolean;
+}
+
+/**
+ * Every identity an active worktree of this repository holds or would
+ * derive: the one persisted in its generated `.env.local`, plus the one its
+ * branch (or directory, when detached) derives, which protects a worktree
+ * still bootstrapping. The primary checkout's is always included. A worktree
+ * whose directory is gone (Git marks it prunable) is no longer active.
+ */
+export function activeWorktreeIdentities(
+  input: ActiveWorktreeIdentitiesInput,
+): Set<string> {
+  const excludedRoot = input.excludeCurrent
+    ? worktreeContext({ cwd: input.cwd }).root
+    : undefined;
+  // Porcelain lists the primary checkout first, one blank-line-separated
+  // record per worktree.
+  const records = git({
+    cwd: input.cwd,
+    args: ['worktree', 'list', '--porcelain'],
+  })
+    .split('\n\n')
+    .map((record) => record.split('\n'));
+
+  const identities = new Set([PRIMARY_WORKTREE_IDENTITY]);
+
+  for (const [index, lines] of records.entries()) {
+    const root = lines
+      .find((line) => line.startsWith('worktree '))
+      ?.slice('worktree '.length);
+    const isGone = lines.some((line) => line.startsWith('prunable'));
+    if (!root || isGone || root === excludedRoot) continue;
+
+    const branch = lines
+      .find((line) => line.startsWith('branch refs/heads/'))
+      ?.slice('branch refs/heads/'.length);
+    identities.add(
+      deriveWorktreeIdentity({
+        name: branch ?? basename(root),
+        isPrimary: index === 0,
+      }),
+    );
+
+    const content = readContent({ path: join(root, LOCAL_ENV_FILE) });
+    if (!content || !hasGeneratedHeader({ content })) continue;
+
+    const identity = parseValues({ content }).get('CHURCH_WORKTREE');
+    if (identity) identities.add(identity);
+  }
+
+  return identities;
+}
+
 interface ListenerCheckInput {
   hostname: string;
   port: number;

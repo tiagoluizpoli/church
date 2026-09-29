@@ -429,6 +429,22 @@ describe('env:local', () => {
     expect(result.output).not.toContain('192.168.0.200');
   });
 
+  it('warns about package-local value files that shadow generated values', () => {
+    mkdirSync(join(primary, 'apps/server'), { recursive: true });
+    writeFileSync(
+      join(primary, 'apps/server/.env'),
+      'DATABASE_URL="postgresql://postgres:hunter2@127.0.0.1:5444/church"\nRESEND_API_KEY=re_x\n',
+    );
+
+    const result = run({ cwd: primary });
+
+    expect(result.status, result.output).toBe(0);
+    expect(result.output).toContain('apps/server/.env');
+    expect(result.output).toContain('DATABASE_URL');
+    expect(result.output).not.toContain('RESEND_API_KEY');
+    expect(result.output).not.toContain('hunter2');
+  });
+
   it('names a checkout without commits after its unborn branch', () => {
     const fresh = join(sandbox, 'fresh');
     execFileSync('git', ['init', '-q', '-b', 'develop', fresh]);

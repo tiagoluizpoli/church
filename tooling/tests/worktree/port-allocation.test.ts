@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { allocatePorts } from './port-allocation';
+import { allocatePorts } from '../../worktree/port-allocation';
 
 const REPOSITORY = 'church';
 const WORKTREE = 'feature_foo';

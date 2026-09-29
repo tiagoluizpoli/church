@@ -97,12 +97,10 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
-      # a worktree-scoped `church_<worktree>_e2e` name. Varlock only
-      # forwards schema-declared vars into the wrapped child process, and
-      # CHURCH_WORKTREE isn't declared anywhere (#255 will own that), so it
-      # always resolves to the "unspecified" fallback here — this database
-      # name matches that, rather than setting a CHURCH_WORKTREE that would
-      # silently never reach the process.
+      # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
+      # `.env.local` (tooling/worktree/local-env.ts) and sets no
+      # CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback — this database name matches that.
       # #253: the E2E lane's only configuration is this job environment —
       # no value file is generated (write-env-files: 'false' below). The URL
       # set is the run's own loopback set (tooling/env/e2e-environment.ts:
@@ -267,12 +265,10 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e?application_name=test
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
-      # a worktree-scoped `church_<worktree>_e2e` name. Varlock only
-      # forwards schema-declared vars into the wrapped child process, and
-      # CHURCH_WORKTREE isn't declared anywhere (#255 will own that), so it
-      # always resolves to the "unspecified" fallback here — this database
-      # name matches that, rather than setting a CHURCH_WORKTREE that would
-      # silently never reach the process.
+      # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
+      # `.env.local` (tooling/worktree/local-env.ts) and sets no
+      # CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback — this database name matches that.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
       BETTER_AUTH_URL: http://localhost:3000
       CORS_ORIGIN: http://localhost:4001
@@ -383,12 +379,10 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
-      # a worktree-scoped `church_<worktree>_e2e` name. Varlock only
-      # forwards schema-declared vars into the wrapped child process, and
-      # CHURCH_WORKTREE isn't declared anywhere (#255 will own that), so it
-      # always resolves to the "unspecified" fallback here — this database
-      # name matches that, rather than setting a CHURCH_WORKTREE that would
-      # silently never reach the process.
+      # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
+      # `.env.local` (tooling/worktree/local-env.ts) and sets no
+      # CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback — this database name matches that.
       # #253: the E2E lane's only configuration is this job environment —
       # no value file is generated (write-env-files: 'false' below). The URL
       # set is the run's own loopback set (tooling/env/e2e-environment.ts:

@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -16,7 +17,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
  * leaves behind: its exit status and each worktree's `.env.local`.
  */
 
-const LOCAL_ENV_SCRIPT = resolve(import.meta.dir, 'local-env.ts');
+const LOCAL_ENV_SCRIPT = resolve(
+  import.meta.dir,
+  '../../worktree/local-env.ts',
+);
 
 let sandbox: string;
 let primary: string;
@@ -349,5 +353,37 @@ describe('env:local', () => {
 
     expect(waitedMs).toBeGreaterThanOrEqual(800);
     expect(values.CHURCH_WORKTREE).toBe('feature_a');
+  });
+
+  it('warns about legacy root .env values the generated file now overrides', () => {
+    writeFileSync(
+      join(primary, '.env'),
+      'VITE_SERVER_URL="http://192.168.0.200:3100"\nBETTER_AUTH_URL=http://localhost:3100\n',
+    );
+
+    const result = run({ cwd: primary });
+
+    expect(result.status, result.output).toBe(0);
+    expect(result.output).toContain('VITE_SERVER_URL');
+    expect(result.output).not.toContain('BETTER_AUTH_URL');
+    expect(result.output).not.toContain('192.168.0.200');
+  });
+
+  it('names a checkout without commits after its unborn branch', () => {
+    const fresh = join(sandbox, 'fresh');
+    execFileSync('git', ['init', '-q', '-b', 'develop', fresh]);
+
+    expect(generate({ cwd: fresh }).CHURCH_WORKTREE).toBe('develop');
+  });
+
+  it('reports a failure outside a Git checkout without a stack trace', () => {
+    const plain = join(sandbox, 'not-a-repo');
+    mkdirSync(plain);
+
+    const result = run({ cwd: plain });
+
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain('✖ env:local failed');
+    expect(result.output).not.toContain('    at ');
   });
 });

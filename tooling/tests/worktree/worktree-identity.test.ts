@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { expectedDatabaseName } from '../../packages/db/src/database-target-resolver';
-import { deriveWorktreeIdentity } from './worktree-identity';
+import { expectedDatabaseName } from '../../../packages/db/src/database-target-resolver';
+import { deriveWorktreeIdentity } from '../../worktree/worktree-identity';
 
 const POSTGRES_IDENTIFIER_LIMIT = 63;
 

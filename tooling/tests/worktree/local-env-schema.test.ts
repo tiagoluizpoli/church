@@ -9,7 +9,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { runWithPurpose } from '../env/run-with-purpose';
+import { runWithPurpose } from '../../env/run-with-purpose';
 
 /**
  * Uses the real root `.env.schema` beneath a service schema that imports it,
@@ -18,7 +18,7 @@ import { runWithPurpose } from '../env/run-with-purpose';
  * Varlock-wrapped child, and a malformed one stops the command instead.
  */
 
-const ROOT_SCHEMA = resolve(import.meta.dir, '../../.env.schema');
+const ROOT_SCHEMA = resolve(import.meta.dir, '../../../.env.schema');
 
 const GENERATED_VALUES = {
   CHURCH_WORKTREE: 'feature_a',

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   getDateTimeSeamGuardFailures,
   readApplicationSourceFiles,
-} from './date-time-seam-guards';
+} from '../../validation/date-time-seam-guards';
 
 describe('date-time seam CI guards', () => {
   it('rejects suppressions of either seam rule', () => {

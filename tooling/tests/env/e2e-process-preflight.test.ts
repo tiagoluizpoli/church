@@ -9,7 +9,10 @@ import { describe, expect, it } from 'bun:test';
  * refusal through its exit code and redacted output.
  */
 
-const PREFLIGHT = resolve(import.meta.dir, 'e2e-process-preflight.ts');
+const PREFLIGHT = resolve(
+  import.meta.dir,
+  '../../env/e2e-process-preflight.ts',
+);
 const SECRET = 'preflight-secret-password';
 const FINGERPRINT =
   'purpose=e2e worktree=unspecified host=localhost port=5432 database=church_unspecified_e2e';

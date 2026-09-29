@@ -4,8 +4,8 @@ import {
   explainPlan,
   formatTimingSummary,
   parseArguments,
-} from './affected';
-import { CRITICAL_SMOKE_SPEC_PATHS } from './journey-map';
+} from '../../validation/affected';
+import { CRITICAL_SMOKE_SPEC_PATHS } from '../../validation/journey-map';
 
 describe('parseArguments', () => {
   it('defaults to no base ref for a local working-tree diff', () => {

@@ -11,7 +11,9 @@ const FINGERPRINT_VARIABLE = 'CHURCH_E2E_TARGET_FINGERPRINT';
 // binds (4000 API / 4001 web) so a run can sit beside a live dev server.
 const DEFAULT_SERVER_PORT = '4100';
 const DEFAULT_WEB_PORT = '4101';
-const DEFAULT_SERVER_URL = 'http://localhost:4000';
+// Loopback, never the manual worktree hostname: E2E and CI must not depend
+// on private DNS (ADR-0005).
+const E2E_HOSTNAME = 'localhost';
 
 export interface E2eUrlSet {
   serverPort: string;
@@ -26,20 +28,17 @@ export interface DeriveE2eUrlSetInput {
 
 /**
  * Derives the one URL set every E2E process shares (ADR-0005: server, web,
- * CORS, and authentication URLs are consistent within a process set). The
- * host mirrors whatever `VITE_SERVER_URL` already names; only ports differ.
+ * CORS, and authentication URLs are consistent within a process set), on
+ * loopback whatever host the manual `VITE_SERVER_URL` names.
  */
 export function deriveE2eUrlSet(input: DeriveE2eUrlSetInput): E2eUrlSet {
   const serverPort = input.env.PW_SERVER_PORT ?? DEFAULT_SERVER_PORT;
   const webPort = input.env.PW_WEB_PORT ?? DEFAULT_WEB_PORT;
-  const host = new URL(input.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL)
-    .hostname;
-
   return {
     serverPort,
     webPort,
-    serverUrl: `http://${host}:${serverPort}`,
-    webUrl: `http://${host}:${webPort}`,
+    serverUrl: `http://${E2E_HOSTNAME}:${serverPort}`,
+    webUrl: `http://${E2E_HOSTNAME}:${webPort}`,
   };
 }
 

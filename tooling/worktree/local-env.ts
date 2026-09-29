@@ -6,6 +6,7 @@ import {
   WORKTREE_DATABASE_PURPOSES,
   worktreeDatabaseUrls,
 } from './database-targets';
+import { worktreeHostname } from './dev-hostname';
 import {
   allocatePorts,
   PORT_SERVICES,
@@ -21,10 +22,11 @@ import {
 /**
  * `bun run env:local [--revalidate]`: generates the worktree's one ignored
  * root `.env.local` (ADR-0005) — its identity, service ports, the URL set
- * derived from them, and a unique Better Auth secret. Reruns reproduce the
- * file. `--revalidate` (for launch) keeps it while every persisted port is
- * still free, and otherwise reallocates the whole port set and rewrites
- * every dependent URL in one atomic replace.
+ * derived from them on its private `dev.home.arpa` hostname, and a unique
+ * Better Auth secret. Reruns reproduce the file. `--revalidate` (for
+ * launch) keeps it while every persisted port is still free, and otherwise
+ * reallocates the whole port set and rewrites every dependent URL in one
+ * atomic replace.
  *
  * Below the generated values it writes the local-only defaults a fresh
  * worktree needs to serve and test, then the machine-shared values (where
@@ -58,8 +60,6 @@ const LOCAL_DEFAULTS = new Map([['ENABLE_DEBUG_ENDPOINTS', 'true']]);
 const OVERRIDABLE_VALUES_HEADER = `# Local defaults, then values from the shared Git directory's ${SHARED_VALUES_FILE}.`;
 const LOCK_HELD_VARIABLE = 'CHURCH_LOCAL_ENV_LOCK_HELD';
 const REVALIDATE_FLAG = '--revalidate';
-// Loopback until the private `dev.home.arpa` naming lands (#259).
-const URL_HOST = 'localhost';
 const AUTH_SECRET_BYTES = 32;
 
 const PORT_VARIABLES: Record<PortService, string> = {
@@ -209,8 +209,11 @@ function databaseUrlSelector(input: WorktreeInput): string {
 
 function generatedValues(input: LocalEnvInput): Map<string, string> {
   const { worktree, ports, betterAuthSecret } = input.localEnv;
-  const serverUrl = `http://${URL_HOST}:${ports.server}`;
-  const webUrl = `http://${URL_HOST}:${ports.web}`;
+  // Manual development only: E2E derives its own loopback URL set from the
+  // PW_* ports (tooling/env/e2e-environment.ts).
+  const host = worktreeHostname({ worktree });
+  const serverUrl = `http://${host}:${ports.server}`;
+  const webUrl = `http://${host}:${ports.web}`;
 
   return new Map([
     ['CHURCH_WORKTREE', worktree],

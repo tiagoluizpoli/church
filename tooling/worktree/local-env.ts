@@ -353,15 +353,25 @@ interface LegacyOverridesInput {
  * Varlock and Vite prefer `.env.local`, while not-yet-migrated scripts still
  * read `.env` alone, so such keys now diverge between commands.
  */
+interface RawValueInput {
+  value: string | undefined;
+}
+
+/** A dotenv value without its surrounding quotes, for comparison. */
+function unquoted(input: RawValueInput): string | undefined {
+  return input.value?.replace(/^(['"])(.*)\1$/, '$2');
+}
+
 function legacyOverrides(input: LegacyOverridesInput): string[] {
   const legacy = parseValues({
     content: readContent({ path: join(input.root, LEGACY_ENV_FILE) }) ?? '',
   });
 
   return [...input.generated.keys()].filter((key) => {
-    const legacyValue = legacy.get(key)?.replace(/^(['"])(.*)\1$/, '$2');
+    const legacyValue = unquoted({ value: legacy.get(key) });
     return (
-      legacyValue !== undefined && legacyValue !== input.generated.get(key)
+      legacyValue !== undefined &&
+      legacyValue !== unquoted({ value: input.generated.get(key) })
     );
   });
 }

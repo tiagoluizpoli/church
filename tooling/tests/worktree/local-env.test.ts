@@ -506,6 +506,16 @@ describe('env:local values beyond the generated set', () => {
     expect(present.output).not.toContain('church-shared.env');
   });
 
+  it('does not report a quoted shared value the legacy .env repeats as an override', () => {
+    writeSharedValues({ content: 'UNLEASH_API_TOKEN="token"\n' });
+    writeFileSync(join(primary, '.env'), 'UNLEASH_API_TOKEN="token"\n');
+
+    const result = run({ cwd: primary });
+
+    expect(result.status, result.output).toBe(0);
+    expect(result.output).not.toContain('UNLEASH_API_TOKEN');
+  });
+
   it('lets a shared value replace a local default', () => {
     writeSharedValues({ content: 'ENABLE_DEBUG_ENDPOINTS=false\n' });
 

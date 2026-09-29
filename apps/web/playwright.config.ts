@@ -1,31 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
+import {
+  applyE2eUrlSet,
+  deriveE2eUrlSet,
+  serverProcessEnv,
+  webProcessEnv,
+} from '../../tooling/env/e2e-environment';
 
-// Dedicated ports for the e2e run, distinct from the ports `bun run dev`
-// binds (4000 API / 4001 web) — so `bunx playwright test` can run alongside
-// an already-running local dev server instead of stealing its ports.
-// Override via PW_SERVER_PORT/PW_WEB_PORT if these also collide.
-const PW_SERVER_PORT = process.env.PW_SERVER_PORT ?? '4100';
-const PW_WEB_PORT = process.env.PW_WEB_PORT ?? '4101';
-
-// Host mirrors whatever `VITE_SERVER_URL` already points at (localhost, or a
-// LAN IP for on-device mobile testing per apps/web/.env) — only the port
-// changes.
-const HOST = new URL(process.env.VITE_SERVER_URL ?? 'http://localhost:4000')
-  .hostname;
-const SERVER_URL = `http://${HOST}:${PW_SERVER_PORT}`;
-const WEB_URL = `http://${HOST}:${PW_WEB_PORT}`;
-
-// global-setup.ts and specs that build their own SERVER_URL the same way
-// apps/web's client code does (e.g. us4-roster-publish.spec.ts) read
-// `process.env.VITE_SERVER_URL` directly — overriding it here, before
-// Playwright spawns global-setup or any worker, keeps every consumer
-// pointed at this e2e-only server instance instead of whatever `bun dev`
-// is bound to. PW_WEB_URL is this same idea for the handful of specs that
-// need a second browser context's own `baseURL` (multi-session specs) —
-// read it instead of re-deriving the web port, which used to be hardcoded
-// as "SERVER_URL's port + 1" and silently broke once the ports diverged.
-process.env.VITE_SERVER_URL = SERVER_URL;
-process.env.PW_WEB_URL = WEB_URL;
+// One URL set for the whole run (ADR-0005): pinned into process.env before
+// Playwright spawns global setup or any worker, so setup, the provisioning
+// scripts, specs (VITE_SERVER_URL, PW_WEB_URL) and both webServers agree on
+// server, web, CORS and authentication origins instead of a value file's.
+const urlSet = deriveE2eUrlSet({ env: process.env });
+const SERVER_URL = urlSet.serverUrl;
+const WEB_URL = urlSet.webUrl;
+applyE2eUrlSet({ env: process.env, urlSet });
 
 export default defineConfig({
   testDir: './tests',
@@ -52,7 +40,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'bun run --cwd ../server dev',
+      command: 'bun run --cwd ../server start:e2e',
       url: `${SERVER_URL}/api/auth/get-session`,
       // An already-running process may target a different database or API
       // origin than this run's global setup. Failing on a port collision is
@@ -60,17 +48,11 @@ export default defineConfig({
       reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
-      // Root .env pins PORT/CORS_ORIGIN/BETTER_AUTH_URL to the normal dev
-      // ports (4000/4001) for everyday `bun run dev`. These win over that
-      // file — the server's own `--env-file=../../.env` load only fills in
-      // variables not already set in process.env, so the e2e instance binds
-      // to PW_SERVER_PORT and trusts WEB_URL as its CORS/auth origin instead
-      // of colliding with (or being rejected by) a locally-running server.
-      env: {
-        PORT: PW_SERVER_PORT,
-        CORS_ORIGIN: WEB_URL,
-        BETTER_AUTH_URL: SERVER_URL,
-      },
+      // start:e2e runs through Varlock with the e2e purpose, so the server
+      // resolves its database through the typed E2E target and logs the
+      // same fingerprint as setup. These win over any value file: Varlock
+      // never overrides a variable already present in the process env.
+      env: serverProcessEnv({ urlSet }),
     },
     {
       command: 'bun run dev',
@@ -79,12 +61,8 @@ export default defineConfig({
       reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
-      // See apps/web/vite.config.ts — `server.port` reads `process.env.PORT`
-      // with the normal-dev 4001 as fallback.
-      env: {
-        PORT: PW_WEB_PORT,
-        VITE_SERVER_URL: SERVER_URL,
-      },
+      // See apps/web/vite.config.ts: `server.port` reads `process.env.PORT`.
+      env: webProcessEnv({ urlSet }),
     },
   ],
 });

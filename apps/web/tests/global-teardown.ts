@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertE2eEnvironment } from '../../../tooling/env/e2e-environment';
 import { E2E_AUTH_META, E2E_AUTH_META_SCHEMA } from './global-setup';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -9,6 +10,9 @@ const SERVER_DIR = path.resolve(dirname, '../../server');
 
 /** Removes the seeded E2E domain data (church cascade + pool users). */
 export default function globalTeardown(): void {
+  // Cleanup deletes data: refuse a mismatched purpose, target, or URL set.
+  assertE2eEnvironment();
+
   const args = ['run', 'seed:e2e', 'cleanup'];
 
   if (existsSync(E2E_AUTH_META)) {

@@ -9,8 +9,11 @@ import { defineConfig } from 'vitest/config';
  *   - component:   jsdom env + RTL + MSW     — `*.component.test.{ts,tsx}`
  *   - integration: node env, real services   — `*.integration.test.ts`
  *
- * `envDir` points at this package so `apps/web/.env` (VITE_SERVER_URL) loads,
- * which `@church/env/web` validates at import time.
+ * VITE_SERVER_URL, which `@church/env/web` validates at import time, is
+ * pinned to a placeholder here so tests need no value file (ADR-0005: unit
+ * execution needs no local values). Network calls are mocked; nothing dials
+ * it. It must be set before Vite resolves `import.meta.env`, which
+ * `test.env` is too late for.
  *
  * Ambient timezone: pinned to a far-from-UTC zone (unless `TZ` is already
  * set) before any worker starts, so tests that render in a Church Timezone
@@ -18,10 +21,10 @@ import { defineConfig } from 'vitest/config';
  * UTC runner. Set `TZ` explicitly to check the suite under another zone.
  */
 process.env.TZ ||= 'Pacific/Auckland';
+process.env.VITE_SERVER_URL = 'http://localhost:3000';
 
 export default defineConfig({
   plugins: [react()],
-  envDir: path.resolve(__dirname),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

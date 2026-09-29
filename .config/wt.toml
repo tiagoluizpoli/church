@@ -1,2 +1,4 @@
-# A worktree must have its own local binaries before any hooks or agent work run.
-pre-start = "bun install --frozen-lockfile"
+# Blocks until the new worktree is ready: dependencies, the shared PostgreSQL,
+# `.env.local`, and migrated databases (tooling/worktree/bootstrap-worktree.ts).
+# Changing this command requires every developer to approve it again.
+pre-start = "bun run worktree:bootstrap"

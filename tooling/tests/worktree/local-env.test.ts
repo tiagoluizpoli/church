@@ -463,3 +463,92 @@ describe('env:local', () => {
     expect(result.output).not.toContain('    at ');
   });
 });
+
+interface SharedValuesInput {
+  content: string;
+}
+
+describe('env:local values beyond the generated set', () => {
+  function writeSharedValues(input: SharedValuesInput): void {
+    writeFileSync(join(primary, '.git', 'church-shared.env'), input.content);
+  }
+
+  it('writes the local-only defaults a fresh worktree needs to serve and test', () => {
+    const values = generate({ cwd: featureA });
+
+    expect(values.ENABLE_DEBUG_ENDPOINTS).toBe('true');
+  });
+
+  it('assumes no Unleash location; it is machine-shared, not a local default', () => {
+    expect(generate({ cwd: featureA }).UNLEASH_API_URL).toBeUndefined();
+  });
+
+  it('copies the machine-shared values from the Git common directory into every worktree', () => {
+    writeSharedValues({
+      content: '# local Unleash\nUNLEASH_API_TOKEN="default:development.abc"\n',
+    });
+
+    expect(generate({ cwd: featureA }).UNLEASH_API_TOKEN).toBe(
+      '"default:development.abc"',
+    );
+    expect(generate({ cwd: primary }).UNLEASH_API_TOKEN).toBe(
+      '"default:development.abc"',
+    );
+  });
+
+  it('warns, naming the shared file, when the machine-shared values are missing', () => {
+    const missing = run({ cwd: featureA });
+    writeSharedValues({ content: 'UNLEASH_API_TOKEN=token\n' });
+    const present = run({ cwd: featureA });
+
+    expect(missing.status, missing.output).toBe(0);
+    expect(missing.output).toContain('church-shared.env');
+    expect(present.output).not.toContain('church-shared.env');
+  });
+
+  it('does not report a quoted shared value the legacy .env repeats as an override', () => {
+    writeSharedValues({ content: 'UNLEASH_API_TOKEN="token"\n' });
+    writeFileSync(join(primary, '.env'), 'UNLEASH_API_TOKEN="token"\n');
+
+    const result = run({ cwd: primary });
+
+    expect(result.status, result.output).toBe(0);
+    expect(result.output).not.toContain('UNLEASH_API_TOKEN');
+  });
+
+  it('lets a shared value replace a local default', () => {
+    writeSharedValues({ content: 'ENABLE_DEBUG_ENDPOINTS=false\n' });
+
+    const values = generate({ cwd: featureA });
+
+    expect(values.ENABLE_DEBUG_ENDPOINTS).toBe('false');
+    expect(
+      readRaw({ cwd: featureA }).match(/^ENABLE_DEBUG_ENDPOINTS=/gm),
+    ).toHaveLength(1);
+  });
+
+  it('picks up a changed shared value on rerun and keeps the rest', () => {
+    const first = generate({ cwd: featureA });
+    writeSharedValues({ content: 'RESEND_API_KEY=re_new\n' });
+
+    const second = generate({ cwd: featureA });
+
+    expect(second.RESEND_API_KEY).toBe('re_new');
+    expect(second.BETTER_AUTH_SECRET).toBe(first.BETTER_AUTH_SECRET);
+    expect(portsOf(second)).toEqual(portsOf(first));
+  });
+
+  it('refuses a shared value for a key it generates, without echoing the value', () => {
+    writeSharedValues({
+      content: 'DATABASE_URL=postgresql://postgres:hunter2@localhost/church\n',
+    });
+
+    const result = run({ cwd: featureA });
+
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain('church-shared.env');
+    expect(result.output).toContain('DATABASE_URL');
+    expect(result.output).not.toContain('hunter2');
+    expect(existsSync(localEnvPath({ cwd: featureA }))).toBe(false);
+  });
+});

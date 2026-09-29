@@ -1,8 +1,8 @@
 <!--
 ## Sync Impact Report
-- Version change: 1.4.0 → 1.4.1
-- Modified principle: VII. Explicit Parameter Contracts
-- Updated: Core Rules with the expanded named object parameter and no-inline-object-typing requirement
+- Version change: 1.4.1 → 1.5.0
+- Modified principle: III. Container-Ready Infrastructure
+- Updated: the root `docker-compose.yml` defines shared development dependencies only; shared services hosted outside it (development Unleash) and a separate production Compose are allowed
 - Templates requiring updates: None; existing Constitution Check is generic
 - Follow-up TODOs: None
 -->
@@ -20,8 +20,10 @@ End-to-end type safety is non-negotiable. Use Fastify + orval + OpenAPI for API 
 validation, and Drizzle for database interactions. Avoid `any` at all costs.
 
 ### III. Container-Ready Infrastructure
-All infrastructure must be reproducible via Docker Compose. The `docker-compose.yml` is the 
-single source of truth for the local development environment.
+All infrastructure must be reproducible via Docker Compose. The root `docker-compose.yml` is the
+single source of truth for local development dependencies, shared by every worktree. A shared
+development service hosted outside it (Unleash) is configured through machine-shared values;
+production has its own Compose definition.
 
 ### IV. Environment Discipline
 Environment variables must be strictly managed via `.env` files and validated using the 
@@ -76,4 +78,4 @@ type. Existing violations encountered in modified code MUST be corrected as part
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.4.1 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-07-03
+**Version**: 1.5.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-09-29

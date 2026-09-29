@@ -46,6 +46,7 @@
     "db:down": "turbo -F @church/db db:down",
     "db:init": "bun run --cwd apps/server db:init-system",
     "db:clean": "turbo -F @church/db db:clean",
+    "db:reseed:dev": "bun run --cwd apps/server db:reseed:dev",
     "db:seed": "turbo -F @church/db db:seed",
     "db:seed:reset": "turbo -F @church/db db:seed:reset",
     "db:seed:dev-users": "bun run --cwd apps/server seed:dev-users",

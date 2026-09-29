@@ -5,6 +5,7 @@ import {
   volunteer,
 } from '@church/db';
 import type { SeedWriter } from '../recipe';
+import { deriveSeedId } from './derived-id';
 import { requireInsertedRow } from './require-inserted-row';
 
 export type SeededVolunteer = typeof volunteer.$inferSelect;
@@ -83,6 +84,10 @@ export async function buildMinistryMembership({
   if (roleIds.length > 0) {
     await db.insert(ministryVolunteerRole).values(
       roleIds.map((roleId) => ({
+        id: deriveSeedId({
+          kind: 'ministry-volunteer-role',
+          parentIds: [membership.id, roleId],
+        }),
         churchId,
         ministryVolunteerId: membership.id,
         roleId,
@@ -93,6 +98,10 @@ export async function buildMinistryMembership({
   if (teams.length > 0) {
     await db.insert(ministryVolunteerTeam).values(
       teams.map((teamMembership) => ({
+        id: deriveSeedId({
+          kind: 'ministry-volunteer-team',
+          parentIds: [membership.id, teamMembership.teamId],
+        }),
         churchId,
         ministryVolunteerId: membership.id,
         teamId: teamMembership.teamId,

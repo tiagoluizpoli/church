@@ -119,6 +119,11 @@ export interface ProvisionChurchInput {
   id?: string;
   /** The Church Timezone; omitted, the Church is created in UTC. */
   timezone?: string;
+  /** Supply only when a fixture pins the first Church Invitation's identifier. */
+  invitationId?: string;
+  /** Omitted, the redemption path is printed for the operator. A seed that
+   * redeems the invitation itself turns it off: the path is already spent. */
+  reportRedemptionPath?: boolean;
 }
 
 export interface ProvisionChurchResult {
@@ -160,7 +165,7 @@ export async function provisionChurch(
       throw error;
     }
 
-    const newInvitationId = crypto.randomUUID();
+    const newInvitationId = input.invitationId ?? crypto.randomUUID();
     await tx.insert(invitation).values({
       id: newInvitationId,
       organizationId: createdChurch.id,
@@ -174,10 +179,10 @@ export async function provisionChurch(
     return { church: createdChurch, invitationId: newInvitationId };
   });
 
-  const redemptionPath = printRedemptionPath({
-    invitationId,
-    baseUrl: input.baseUrl,
-  });
+  const redemptionPath =
+    input.reportRedemptionPath === false
+      ? redemptionPathFor({ invitationId })
+      : printRedemptionPath({ invitationId, baseUrl: input.baseUrl });
 
   return { church, invitationId, redemptionPath };
 }

@@ -103,6 +103,10 @@ migration — schema changes (the TimeBlock crosses-midnight constraint drop,
 the `_date` column rename) already shipped as ordinary migrations in
 `packages/db/src/migrations/`.
 
+> Rebuilding a worktree's development database now goes through
+> `bun run db:reseed:dev` (see [tooling](docs/agents/tooling.md)); the legacy
+> commands below are retired by #330.
+
 To cut an environment over to seam-correct data:
 
 1. Apply any pending schema migrations: `bun run db:migrate`.

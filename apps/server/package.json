@@ -17,6 +17,7 @@
     "dev": "node --env-file=../../.env --import tsx/esm --watch src/main/server.ts",
     "start": "bun run dist/index.mjs",
     "export:openapi": "bun --env-file=../../.env run src/scripts/export-openapi.ts",
+    "db:reseed:dev": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun seeds/development/reseed-dev.ts",
     "seed:dev-users": "bun --env-file=../../.env run src/scripts/seed-dev-users.ts",
     "db:init-system": "bun --env-file=../../.env run src/scripts/init-system.ts",
     "start:e2e": "CHURCH_EXEC_PURPOSE=e2e varlock run --path . -- sh -c 'bun --no-env-file ../../tooling/env/e2e-process-preflight.ts server && exec node --import tsx/esm src/main/server.ts'",

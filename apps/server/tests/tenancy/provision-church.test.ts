@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { invitation, organization, user } from '@church/db';
 import { count, eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ChurchSlugTakenError } from '../../src/domain/errors/church-slug-taken';
 import {
@@ -67,6 +67,29 @@ describe('provisionChurch', () => {
 
     expect(result.redemptionPath).toBe(
       `/invitations/church/${result.invitationId}`,
+    );
+  });
+
+  it('pins the first Church Invitation and stays silent when a fixture asks', async () => {
+    const invitationId = '5eed0000-0000-4000-8000-00000000f001';
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const result = await provisionChurch({
+      db: testDb,
+      churchName: 'Pinned Church',
+      churchSlug: 'pinned-church',
+      adminEmail: 'admin@pinned-church.test',
+      operatorUserId: OPERATOR_USER_ID,
+      invitationId,
+      reportRedemptionPath: false,
+    });
+    const printed = logSpy.mock.calls.flat();
+    logSpy.mockRestore();
+
+    expect(result.invitationId).toBe(invitationId);
+    expect(result.redemptionPath).toBe(`/invitations/church/${invitationId}`);
+    expect(printed).not.toContainEqual(
+      expect.stringContaining('Redemption path'),
     );
   });
 

@@ -6,6 +6,8 @@ const PLATFORM_OPERATOR_NAME = 'Local Platform Operator';
 
 export interface EnsurePlatformOperatorInput {
   db: TenancyWriter;
+  /** Used only when the operator is created; supply it when a fixture pins it. */
+  id?: string;
 }
 
 export interface PlatformOperator {
@@ -20,6 +22,7 @@ export interface PlatformOperator {
  */
 export async function ensurePlatformOperator({
   db,
+  id,
 }: EnsurePlatformOperatorInput): Promise<PlatformOperator> {
   const existing = await db.query.user.findFirst({
     where: eq(user.email, PLATFORM_OPERATOR_EMAIL),
@@ -30,7 +33,7 @@ export async function ensurePlatformOperator({
   const [created] = await db
     .insert(user)
     .values({
-      id: crypto.randomUUID(),
+      id: id ?? crypto.randomUUID(),
       email: PLATFORM_OPERATOR_EMAIL,
       name: PLATFORM_OPERATOR_NAME,
       emailVerified: true,

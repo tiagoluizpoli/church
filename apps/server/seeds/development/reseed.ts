@@ -76,7 +76,10 @@ export function resolveReseedAnchor({
   return anchor ?? today({ instant, timeZone });
 }
 
-export type ReseedPhase = 'reset' | 'migrate' | 'load' | 'verify';
+/** The only order the destructive workflow may run in. */
+const RESEED_PHASE_ORDER = ['reset', 'migrate', 'load', 'verify'] as const;
+
+export type ReseedPhase = (typeof RESEED_PHASE_ORDER)[number];
 
 export interface VerifyReseedInput<TResult> {
   seeded: TResult;
@@ -130,11 +133,8 @@ export interface RunReseedPhasesInput<TResult> {
 
 interface RunPhaseInput<T> {
   phase: ReseedPhase;
-  position: number;
   run: () => Promise<T>;
 }
-
-const PHASE_COUNT = 4;
 
 /**
  * Runs reset, migrate, load and verify in order, stopping at the first
@@ -145,35 +145,31 @@ export async function runReseedPhases<TResult>({
   phases,
   report,
 }: RunReseedPhasesInput<TResult>): Promise<TResult> {
-  const runPhase = async <T>({
-    phase,
-    position,
-    run,
-  }: RunPhaseInput<T>): Promise<T> => {
+  const runPhase = async <T>({ phase, run }: RunPhaseInput<T>): Promise<T> => {
     let value: T;
     try {
       value = await run();
     } catch (cause) {
       throw new ReseedPhaseError({ phase, cause });
     }
-    report({ message: `[${position}/${PHASE_COUNT}] ${phase}: ok` });
+    const position = RESEED_PHASE_ORDER.indexOf(phase) + 1;
+    report({
+      message: `[${position}/${RESEED_PHASE_ORDER.length}] ${phase}: ok`,
+    });
     return value;
   };
 
-  await runPhase({ phase: 'reset', position: 1, run: () => phases.reset() });
+  await runPhase({ phase: 'reset', run: () => phases.reset() });
   await runPhase({
     phase: 'migrate',
-    position: 2,
     run: () => phases.migrate(),
   });
   const seeded = await runPhase({
     phase: 'load',
-    position: 3,
     run: () => phases.load(),
   });
   await runPhase({
     phase: 'verify',
-    position: 4,
     run: () => phases.verify({ seeded }),
   });
 

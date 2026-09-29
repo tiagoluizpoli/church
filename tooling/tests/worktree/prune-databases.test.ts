@@ -97,7 +97,18 @@ describe('activeWorktreeIdentities', () => {
     sandbox = mkdtempSync(join(tmpdir(), 'church-prune-'));
     primary = join(sandbox, 'repo');
     execFileSync('git', ['init', '-q', '-b', 'develop', primary]);
-    git(['commit', '-q', '--allow-empty', '-m', 'init']);
+    // CI runners have no Git identity.
+    git([
+      '-c',
+      'user.name=test',
+      '-c',
+      'user.email=test@example.com',
+      'commit',
+      '-q',
+      '--allow-empty',
+      '-m',
+      'init',
+    ]);
   });
 
   afterEach(() => {

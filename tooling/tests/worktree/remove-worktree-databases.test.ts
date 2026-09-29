@@ -40,7 +40,18 @@ beforeEach(() => {
   primary = join(sandbox, 'repo');
   feature = join(sandbox, 'repo.feature-a');
   execFileSync('git', ['init', '-q', '-b', 'develop', primary]);
-  git(['commit', '-q', '--allow-empty', '-m', 'init']);
+  // CI runners have no Git identity.
+  git([
+    '-c',
+    'user.name=test',
+    '-c',
+    'user.email=test@example.com',
+    'commit',
+    '-q',
+    '--allow-empty',
+    '-m',
+    'init',
+  ]);
   git(['worktree', 'add', '-q', '-b', 'feature-a', feature]);
 });
 

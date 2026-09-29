@@ -10,7 +10,7 @@ This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece"
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md), [02-event-slots.md](./specifications/02-event-slots.md), [03-assignments-availability.md](./specifications/03-assignments-availability.md), [05-onboarding-links.md](./specifications/05-onboarding-links.md)
 - **[✅ Spec S2: Migration Strategy](./specifications/S2-migration-strategy.md)**: Transitioning from existing Better Auth tables.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md)
-- **[✅ Spec S3: Local Development Seeding](./specifications/S3-local-seeding.md)**: Generators for realistic mock data (Ministries, Roles, Teams, Volunteers) for UI testing.
+- **[Spec S3: Cohesive Seed Data and Fixture Workflows](./specifications/S3-local-seeding.md)**: One server-owned system of shared builders and purpose-specific development, integration, and E2E recipes. Supersedes the completed legacy local-seeding design; implementation is tracked by [#320](https://github.com/tiagoluizpoli/church/issues/320).
 - **[✅ Spec S4: Timezone & Date Policy](./specifications/S4-timezone-policy.md)**: Strict policies for storing dates in UTC and displaying them in local time securely.
 
 ## Phase 2: Domain Layer (The Entities & Services)

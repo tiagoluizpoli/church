@@ -117,6 +117,8 @@ export interface ProvisionChurchInput {
   baseUrl?: string;
   /** Supply only when a fixture pins the identifier; production provisioning never does. */
   id?: string;
+  /** The Church Timezone; omitted, the Church is created in UTC. */
+  timezone?: string;
 }
 
 export interface ProvisionChurchResult {
@@ -149,6 +151,7 @@ export async function provisionChurch(
         id: input.id,
         name: input.churchName,
         slug: input.churchSlug,
+        timezone: input.timezone,
       });
     } catch (error) {
       if (isSlugUniqueViolation({ error })) {

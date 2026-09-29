@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
  * against actual `git` plumbing rather than a mocked diff.
  */
 
-const REPO_ROOT = resolve(import.meta.dir, '../..');
+const REPO_ROOT = resolve(import.meta.dir, '../../..');
 const SCRIPT_PATH = join(REPO_ROOT, 'tooling/validation/affected.ts');
 
 let repoDir: string;

@@ -63,6 +63,7 @@
     "test": "bun run test:unit && bun run test:integration && bun run test:e2e",
     "test:validation": "bun test tooling && bun run validate:date-time-seam",
     "env:check": "bun tooling/env/check.ts",
+    "env:local": "bun tooling/worktree/local-env.ts",
     "validate:date-time-seam": "bun tooling/validation/date-time-seam-guards.ts",
     "validate:affected": "bun tooling/validation/affected.ts",
     "validate": "bun run lint && bun run typecheck && bun run test",

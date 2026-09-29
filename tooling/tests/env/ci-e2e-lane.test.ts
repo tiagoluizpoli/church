@@ -42,7 +42,7 @@ interface CompositeAction {
   runs: { steps: ActionStep[] };
 }
 
-const ROOT = resolve(import.meta.dir, '../..');
+const ROOT = resolve(import.meta.dir, '../../..');
 const workflow = Bun.YAML.parse(
   readFileSync(resolve(ROOT, '.github/workflows/ci.yml'), 'utf8'),
 ) as Workflow;

@@ -18,7 +18,7 @@ interface TurboConfig {
 }
 
 const turboConfig = JSON.parse(
-  readFileSync(resolve(import.meta.dir, '../../turbo.json'), 'utf8'),
+  readFileSync(resolve(import.meta.dir, '../../../turbo.json'), 'utf8'),
 ) as TurboConfig;
 
 const REQUIRED_E2E_ENV = [

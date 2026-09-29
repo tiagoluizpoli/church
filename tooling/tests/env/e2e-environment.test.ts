@@ -7,7 +7,7 @@ import {
   resolveE2eTargetFingerprint,
   serverProcessEnv,
   webProcessEnv,
-} from './e2e-environment';
+} from '../../env/e2e-environment';
 
 const E2E_DATABASE_URL =
   'postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e';

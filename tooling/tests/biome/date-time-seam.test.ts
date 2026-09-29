@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
  * against fixture files laid out at repo-shaped paths.
  */
 
-const REPO_ROOT = resolve(import.meta.dir, '../..');
+const REPO_ROOT = resolve(import.meta.dir, '../../..');
 const RULE_PATH = join(REPO_ROOT, 'tooling/biome/date-time-seam.grit');
 const BIOME_BIN = join(REPO_ROOT, 'node_modules/.bin/biome');
 

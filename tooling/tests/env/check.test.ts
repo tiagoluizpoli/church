@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { parseArgs } from './check';
+import { parseArgs } from '../../env/check';
 
 describe('parseArgs', () => {
   it('defaults to the development purpose and every service when given no args', () => {

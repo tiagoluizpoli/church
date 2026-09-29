@@ -2,7 +2,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { type ExecutionPurpose, runWithPurpose } from './run-with-purpose';
+import {
+  type ExecutionPurpose,
+  runWithPurpose,
+} from '../../env/run-with-purpose';
 
 /**
  * Exercises the real Varlock CLI (ADR-0005: purpose selection is explicit,

@@ -14,7 +14,7 @@ import {
   assertServedFromPinnedTarget,
   runE2eServerScript,
 } from './fixtures/e2e-target';
-import { cleanupE2eData } from './global-teardown';
+import { resetE2eDatabase } from './global-teardown';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -253,7 +253,7 @@ async function provisionE2eRun(): Promise<void> {
 
   // Reset the target before seeding: a failed or aborted run leaves its data
   // in place for diagnosis (see global-teardown.ts).
-  cleanupE2eData();
+  resetE2eDatabase();
 
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const ministryLeaderCtx = await request.newContext({ baseURL: SERVER_URL });

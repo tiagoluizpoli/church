@@ -67,6 +67,7 @@
     "env:local": "bun tooling/worktree/local-env.ts",
     "db:bootstrap": "bun tooling/worktree/bootstrap-databases.ts",
     "worktree:bootstrap": "bun tooling/worktree/bootstrap-worktree.ts",
+    "db:prune": "bun tooling/worktree/prune-databases.ts",
     "validate:date-time-seam": "bun tooling/validation/date-time-seam-guards.ts",
     "validate:affected": "bun tooling/validation/affected.ts",
     "validate": "bun run lint && bun run typecheck && bun run test",

@@ -22,6 +22,7 @@ and task ordering.
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
 | Create + migrate its dev/int/E2E databases | `bun run db:bootstrap` |
 | Make a worktree ready (all of the above) | `bun run worktree:bootstrap` |
+| Report databases of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
 
 Use root Bun scripts by default. The focused-workspace exception is
 `bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API
@@ -136,6 +137,27 @@ assigned ports or this URL set yet.
 No repository change or `env:local` rerun is needed: the hostnames do not
 depend on IP addresses. If a client still gets stale answers, check its
 DNS configuration with `tailscale dns status`.
+
+## Worktree removal
+
+`wt remove` runs the checked-in `pre-remove` hook, which drops exactly the
+removed worktree's three databases (`church_<worktree>_dev|int|e2e`, named by
+its generated `.env.local`) after terminating their connections. It runs the
+primary checkout's copy of `tooling/worktree/remove-worktree-databases.ts`, so
+it also cleans worktrees branched before the script existed. It never drops
+the primary's databases, nor an identity another active worktree also holds.
+It never blocks the removal: with PostgreSQL down, a primary checkout without
+the script, or any other failure, it warns and keeps the databases.
+
+`bun run db:prune` recovers what removal left behind (PostgreSQL was down, or
+`--no-hooks`). It compares the `church_<worktree>_dev|int|e2e` databases with
+the identities of every active worktree (one whose directory was deleted
+without `wt remove` no longer counts) and lists the stale ones. An active
+worktree owns every `church_<worktree>_…` database, its test scratch
+databases included, so a worktree that still exists is never touched; only
+`bun run db:prune -- --apply` drops them. `church`, `church_test`, and every
+other database outside that shape are never selected. Worktrunk asks to
+approve the hook once, as for `pre-start`.
 
 Finish the current implementation phase before review. Run targeted tests,
 then affected validation, plus the relevant story E2E when one exists; review

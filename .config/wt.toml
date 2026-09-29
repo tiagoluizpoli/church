@@ -2,3 +2,10 @@
 # `.env.local`, and migrated databases (tooling/worktree/bootstrap-worktree.ts).
 # Changing this command requires every developer to approve it again.
 pre-start = "bun run worktree:bootstrap"
+
+# Drops the removed worktree's three databases (runs in that worktree, which
+# holds their identity). The primary checkout's copy of the script runs, so
+# worktrees branched before it existed are cleaned too. Never blocks removal:
+# the script only warns, and the fallback covers a primary that lacks it; in
+# both cases `bun run db:prune` recovers later.
+pre-remove = "bun {{ primary_worktree_path }}/tooling/worktree/remove-worktree-databases.ts || echo '⚠ worktree removal: database cleanup did not run; run bun run db:prune later.'"

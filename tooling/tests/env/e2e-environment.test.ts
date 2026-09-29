@@ -45,13 +45,13 @@ afterEach(() => {
 });
 
 describe('deriveE2eUrlSet', () => {
-  it('uses the dedicated e2e ports on the host VITE_SERVER_URL already names', () => {
+  it('stays on loopback whatever host the manual VITE_SERVER_URL names', () => {
     const urlSet = deriveE2eUrlSet({
-      env: { VITE_SERVER_URL: 'http://192.168.1.10:4000' },
+      env: { VITE_SERVER_URL: 'http://church-feature-a.dev.home.arpa:27520' },
     });
 
-    expect(urlSet.serverUrl).toBe('http://192.168.1.10:4100');
-    expect(urlSet.webUrl).toBe('http://192.168.1.10:4101');
+    expect(urlSet.serverUrl).toBe('http://localhost:4100');
+    expect(urlSet.webUrl).toBe('http://localhost:4101');
   });
 
   it('honours PW_SERVER_PORT and PW_WEB_PORT overrides', () => {

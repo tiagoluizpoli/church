@@ -4,6 +4,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { DEV_HOSTNAME_SUFFIX } from '../../tooling/worktree/dev-hostname';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -40,6 +41,10 @@ export default defineConfig(({ mode }) => {
       // Playwright's webServer overrides PORT so e2e can run on its own ports
       // alongside a normal `bun run dev` — see apps/web/playwright.config.ts.
       port: Number(env.PORT) || 4001,
+      // `--host` listens on every interface; beyond localhost and IP
+      // literals, remote clients are accepted only on the private worktree
+      // hostnames (ADR-0005), e.g. church-<worktree>.dev.home.arpa.
+      allowedHosts: [`.${DEV_HOSTNAME_SUFFIX}`],
     },
   };
 });

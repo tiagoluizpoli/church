@@ -20,6 +20,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
 const LOCAL_ENV_SCRIPT = resolve(REPO_ROOT, 'tooling/worktree/local-env.ts');
 const VARLOCK = resolve(REPO_ROOT, 'node_modules/.bin/varlock');
+const FEATURE_A_HOST = 'church-feature-a.dev.home.arpa';
+const PRIMARY_HOST = 'church-develop.dev.home.arpa';
 
 let sandbox: string;
 let primary: string;
@@ -203,10 +205,22 @@ describe('env:local', () => {
       expect(port).toBeLessThan(32000);
     }
     expect(new Set([server, web, e2eServer, e2eWeb]).size).toBe(4);
-    expect(values.BETTER_AUTH_URL).toBe(`http://localhost:${server}`);
-    expect(values.VITE_SERVER_URL).toBe(`http://localhost:${server}`);
-    expect(values.CORS_ORIGIN).toBe(`http://localhost:${web}`);
+    expect(values.BETTER_AUTH_URL).toBe(`http://${FEATURE_A_HOST}:${server}`);
+    expect(values.VITE_SERVER_URL).toBe(`http://${FEATURE_A_HOST}:${server}`);
+    expect(values.CORS_ORIGIN).toBe(`http://${FEATURE_A_HOST}:${web}`);
     expect(values.BETTER_AUTH_SECRET).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('keeps the E2E ports off the manual URL set', () => {
+    const values = generate({ cwd: featureA });
+    const urlPorts = [
+      values.BETTER_AUTH_URL,
+      values.VITE_SERVER_URL,
+      values.CORS_ORIGIN,
+    ].map((url) => new URL(url ?? '').port);
+
+    expect(urlPorts).not.toContain(values.PW_SERVER_PORT);
+    expect(urlPorts).not.toContain(values.PW_WEB_PORT);
   });
 
   it("selects the worktree's database for each execution purpose", () => {
@@ -243,8 +257,11 @@ describe('env:local', () => {
   });
 
   it('derives a hashed identity for a branch the readable form would alter', () => {
-    expect(generate({ cwd: featureB }).CHURCH_WORKTREE).toMatch(
-      /^feature_b__[0-9a-f]{8}$/,
+    const values = generate({ cwd: featureB });
+
+    expect(values.CHURCH_WORKTREE).toMatch(/^feature_b__[0-9a-f]{8}$/);
+    expect(values.CORS_ORIGIN).toMatch(
+      /^http:\/\/church-feature-b--[0-9a-f]{8}\.dev\.home\.arpa:\d+$/,
     );
   });
 
@@ -323,9 +340,9 @@ describe('env:local', () => {
     const after = readValues({ cwd: featureA });
     const [server, web] = portsOf(after);
     expect(after.CHURCH_SERVER_PORT).not.toBe(before.CHURCH_SERVER_PORT);
-    expect(after.BETTER_AUTH_URL).toBe(`http://localhost:${server}`);
-    expect(after.VITE_SERVER_URL).toBe(`http://localhost:${server}`);
-    expect(after.CORS_ORIGIN).toBe(`http://localhost:${web}`);
+    expect(after.BETTER_AUTH_URL).toBe(`http://${FEATURE_A_HOST}:${server}`);
+    expect(after.VITE_SERVER_URL).toBe(`http://${FEATURE_A_HOST}:${server}`);
+    expect(after.CORS_ORIGIN).toBe(`http://${FEATURE_A_HOST}:${web}`);
     expect(after.CHURCH_WORKTREE).toBe(before.CHURCH_WORKTREE);
     expect(after.BETTER_AUTH_SECRET).toBe(before.BETTER_AUTH_SECRET);
   });
@@ -345,6 +362,8 @@ describe('env:local', () => {
 
     expect(values.CHURCH_WORKTREE).toBe('develop');
     expect(portsOf(values)).toEqual([3100, 3101, 4100, 4101]);
+    expect(values.VITE_SERVER_URL).toBe(`http://${PRIMARY_HOST}:3100`);
+    expect(values.CORS_ORIGIN).toBe(`http://${PRIMARY_HOST}:3101`);
     expect(existsSync(localEnvPath({ cwd: featureA }))).toBe(false);
   });
 
@@ -418,7 +437,7 @@ describe('env:local', () => {
   it('warns about legacy root .env values the generated file now overrides', () => {
     writeFileSync(
       join(primary, '.env'),
-      'VITE_SERVER_URL="http://192.168.0.200:3100"\nBETTER_AUTH_URL=http://localhost:3100\n',
+      `VITE_SERVER_URL="http://192.168.0.200:3100"\nBETTER_AUTH_URL=http://${PRIMARY_HOST}:3100\n`,
     );
 
     const result = run({ cwd: primary });

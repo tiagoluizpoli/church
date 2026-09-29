@@ -72,9 +72,70 @@ change takes effect once it is in the primary checkout.
   First remove the keys `env:local` warns about from `apps/server/.env`,
   especially `DATABASE_URL`: package value files beat the root `.env.local`.
   Its generated URL set and secret then override the legacy root `.env`
-  (`localhost` URLs; existing sessions are logged out), and pending migrations
-  are applied to the live `church` database. Sequence it with the private
-  worktree naming work (#259).
+  (`church-develop.dev.home.arpa` URLs, see below; existing sessions are
+  logged out), and pending migrations are applied to the live `church`
+  database.
+
+## Private worktree URLs
+
+`env:local` puts each worktree's manual URL set (`BETTER_AUTH_URL`,
+`VITE_SERVER_URL`, `CORS_ORIGIN`) on one private hostname and its assigned
+ports (ADR-0005):
+
+```text
+http://church-<identity, _ as ->.dev.home.arpa:<CHURCH_WEB_PORT>     web
+http://church-<identity, _ as ->.dev.home.arpa:<CHURCH_SERVER_PORT>  API
+```
+
+The primary checkout is `church-develop.dev.home.arpa` on ports 3101 (web)
+and 3100 (API). Read a worktree's values from its `.env.local`. Each
+worktree has its own hostname, so its session cookies stay separate.
+
+Vite listens on every interface. It accepts `*.dev.home.arpa`, `localhost`,
+and IP literals as `Host`, and refuses other names with 403. E2E and CI
+never use these names: Playwright pins a `localhost` URL set on the
+`PW_*` ports (`tooling/env/e2e-environment.ts`), whatever `.env.local`
+says.
+
+### One-time DNS setup
+
+There is no reverse proxy, local certificate authority, or per-worktree DNS
+entry. Two manual rules cover every worktree. Repository automation never
+changes them.
+
+1. **Wildcard record** in the home DNS resolver: answer `dev.home.arpa` and
+   every name below it with the homelab server's Tailscale IPv4 address
+   (`tailscale ip -4` on that server). Pick the form your resolver uses:
+   - dnsmasq or Pi-hole (`/etc/dnsmasq.d/*.conf`):
+     `address=/dev.home.arpa/<server-tailscale-ip>`
+   - AdGuard Home (Filters → DNS rewrites): `*.dev.home.arpa` →
+     `<server-tailscale-ip>`
+2. **Tailscale split DNS**: in the admin console, go to DNS → Nameservers →
+   Add nameserver → Custom. Enter the resolver's Tailscale IP, enable
+   "Restrict to search domain", and enter `dev.home.arpa`. The resolver must be
+   reachable over the tailnet: use its Tailscale IP, or a subnet route if
+   it runs off-tailnet. MagicDNS is not required.
+
+To check from any tailnet client, run
+`tailscale dns query church-develop.dev.home.arpa` (Tailscale 1.76+) or
+`dig +short church-develop.dev.home.arpa`. Both should print the server's
+Tailscale IP.
+
+Until #263 moves the development scripts onto Varlock, the server `dev`
+script reads the legacy root `.env`, and Vite binds `PORT`. Neither uses the
+assigned ports or this URL set yet.
+
+### Recovery after replacing infrastructure
+
+- **Homelab server replaced or re-joined to the tailnet** (new Tailscale
+  IP): update the wildcard record's address.
+- **Resolver replaced or moved**: recreate the wildcard record there, and
+  point the split-DNS nameserver at its new Tailscale IP.
+- **Tailnet recreated**: redo both steps.
+
+No repository change or `env:local` rerun is needed: the hostnames do not
+depend on IP addresses. If a client still gets stale answers, check its
+DNS configuration with `tailscale dns status`.
 
 Finish the current implementation phase before review. Run targeted tests,
 then affected validation, plus the relevant story E2E when one exists; review

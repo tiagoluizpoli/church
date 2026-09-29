@@ -1,4 +1,11 @@
-import { getE2eDatabaseUrl } from '../../packages/db/src/e2e-database-url';
+import { formatDatabaseTargetPreflight } from '../../packages/db/src/database-target-resolver';
+import {
+  getE2eDatabaseUrl,
+  resolveE2eDatabaseTarget,
+} from '../../packages/db/src/e2e-database-url';
+
+const E2E_PURPOSE = 'e2e';
+const FINGERPRINT_VARIABLE = 'CHURCH_E2E_TARGET_FINGERPRINT';
 
 // Dedicated ports for the e2e run, distinct from the ports `bun run dev`
 // binds (4000 API / 4001 web) so a run can sit beside a live dev server.
@@ -77,7 +84,7 @@ export interface E2eProcessEnvInput {
 
 export function serverProcessEnv(input: E2eProcessEnvInput): E2eProcessEnv {
   return {
-    CHURCH_EXEC_PURPOSE: 'e2e',
+    CHURCH_EXEC_PURPOSE: E2E_PURPOSE,
     PORT: input.urlSet.serverPort,
     CORS_ORIGIN: input.urlSet.webUrl,
     BETTER_AUTH_URL: input.urlSet.serverUrl,
@@ -86,7 +93,7 @@ export function serverProcessEnv(input: E2eProcessEnvInput): E2eProcessEnv {
 
 export function webProcessEnv(input: E2eProcessEnvInput): E2eProcessEnv {
   return {
-    CHURCH_EXEC_PURPOSE: 'e2e',
+    CHURCH_EXEC_PURPOSE: E2E_PURPOSE,
     PORT: input.urlSet.webPort,
     VITE_SERVER_URL: input.urlSet.serverUrl,
   };
@@ -107,6 +114,11 @@ export class E2eEnvironmentMismatchError extends Error {
  * target fingerprint every other E2E support process logs.
  */
 export function assertE2eEnvironment(): void {
+  assertUrlSetConsistent();
+  getE2eDatabaseUrl();
+}
+
+function assertUrlSetConsistent(): void {
   const expected = urlVariables({
     urlSet: deriveE2eUrlSet({ env: process.env }),
   });
@@ -124,6 +136,74 @@ export function assertE2eEnvironment(): void {
         .join(', ')}.`,
     );
   }
+}
 
-  getE2eDatabaseUrl();
+/**
+ * The redacted database-target fingerprint the whole run is pinned to. The
+ * Playwright config computes it once (when a database is configured) and
+ * every child process inherits it as `CHURCH_E2E_TARGET_FINGERPRINT`.
+ */
+export function resolveE2eTargetFingerprint(): string {
+  return formatDatabaseTargetPreflight({
+    identity: resolveE2eDatabaseTarget().identity,
+  });
+}
+
+export type E2eProcessRole = 'server' | 'web';
+
+export interface AssertE2eProcessEnvironmentInput {
+  role: E2eProcessRole;
+}
+
+/**
+ * Per-process preflight for the webServer processes (Fastify, Vite): run in
+ * the process's own environment before it starts. Fails when the purpose,
+ * URL set, or bound `PORT` disagree with the run, or when the process
+ * resolves a different database target than the fingerprint the run pinned.
+ * Passing logs that fingerprint, so every process reports the same line.
+ */
+export function assertE2eProcessEnvironment(
+  input: AssertE2eProcessEnvironmentInput,
+): void {
+  assertUrlSetConsistent();
+
+  const urlSet = deriveE2eUrlSet({ env: process.env });
+  const expectedPort =
+    input.role === 'server' ? urlSet.serverPort : urlSet.webPort;
+
+  if (process.env.PORT !== expectedPort) {
+    throw new E2eEnvironmentMismatchError(
+      `E2E ${input.role} process has PORT=${process.env.PORT ?? '<unset>'} (expected ${expectedPort}).`,
+    );
+  }
+
+  const pinned = process.env[FINGERPRINT_VARIABLE];
+
+  if (!pinned) {
+    throw new E2eEnvironmentMismatchError(
+      `${FINGERPRINT_VARIABLE} is not set: the run did not pin a target for this ${input.role} process.`,
+    );
+  }
+
+  const resolved = resolveE2eTargetFingerprint();
+
+  if (resolved !== pinned) {
+    throw new E2eEnvironmentMismatchError(
+      `E2E ${input.role} process resolved a different target fingerprint (${resolved}) than the run pinned (${pinned}).`,
+    );
+  }
+
+  console.log(`[e2e:${input.role}] ${resolved}`);
+}
+
+/** Pins the run's target fingerprint into `env` when a database is configured
+ * (a `playwright test --list` run has none and needs none). */
+export function pinE2eTargetFingerprint(input: PinE2eTargetInput): void {
+  if (input.env.DATABASE_URL && input.env.CHURCH_EXEC_PURPOSE === E2E_PURPOSE) {
+    input.env[FINGERPRINT_VARIABLE] = resolveE2eTargetFingerprint();
+  }
+}
+
+interface PinE2eTargetInput {
+  env: NodeJS.ProcessEnv;
 }

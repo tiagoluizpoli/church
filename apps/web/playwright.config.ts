@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import {
   applyE2eUrlSet,
   deriveE2eUrlSet,
+  pinE2eTargetFingerprint,
   serverProcessEnv,
   webProcessEnv,
 } from '../../tooling/env/e2e-environment';
@@ -14,6 +15,9 @@ const urlSet = deriveE2eUrlSet({ env: process.env });
 const SERVER_URL = urlSet.serverUrl;
 const WEB_URL = urlSet.webUrl;
 applyE2eUrlSet({ env: process.env, urlSet });
+// Every process below inherits the pinned target fingerprint and refuses to
+// start when it resolves a different one.
+pinE2eTargetFingerprint({ env: process.env });
 
 export default defineConfig({
   testDir: './tests',
@@ -55,7 +59,8 @@ export default defineConfig({
       env: serverProcessEnv({ urlSet }),
     },
     {
-      command: 'bun run dev',
+      command:
+        'bun --no-env-file ../../tooling/env/e2e-process-preflight.ts web && bun run dev',
       url: WEB_URL,
       // Keep the browser and seed process paired with the server above.
       reuseExistingServer: false,

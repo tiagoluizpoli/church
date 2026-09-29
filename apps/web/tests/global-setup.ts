@@ -131,7 +131,7 @@ function runServerScript({ scriptPath, args }: RunServerScriptInput): string {
   // Inherits this process's environment (the e2e purpose, target, and URL
   // set `assertE2eEnvironment` just validated) — no value file is loaded, so
   // the working directory cannot change which environment the script sees.
-  return execFileSync('bun', ['run', scriptPath, ...args], {
+  return execFileSync('bun', ['--no-env-file', 'run', scriptPath, ...args], {
     cwd: SERVER_DIR,
   }).toString();
 }
@@ -227,7 +227,7 @@ async function authUser({
   return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
 }
 
-import globalTeardown from './global-teardown';
+import { cleanupE2eData } from './global-teardown';
 
 export default async function globalSetup(): Promise<void> {
   // Before anything provisions or deletes: a mismatched purpose, database
@@ -235,7 +235,7 @@ export default async function globalSetup(): Promise<void> {
   assertE2eEnvironment();
 
   // Clean up any stale data from previous aborted runs before seeding.
-  globalTeardown();
+  cleanupE2eData();
 
   const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
   const ministryLeaderCtx = await request.newContext({ baseURL: SERVER_URL });

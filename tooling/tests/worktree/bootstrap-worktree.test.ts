@@ -12,9 +12,9 @@ import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
 /**
- * Drives the real `worktree:bootstrap` command with `bun` and `docker`
- * replaced on PATH by recorders, asserting the commands it runs, their
- * order, and how it reports a failed step.
+ * Drives the real `worktree:bootstrap` command with `bun` replaced on PATH
+ * by a recorder, asserting the commands it runs, their order, and how it
+ * reports a failed step.
  */
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
@@ -68,10 +68,8 @@ function recorded(): string[] {
 beforeEach(() => {
   sandbox = mkdtempSync(join(tmpdir(), 'church-bootstrap-'));
   log = join(sandbox, 'commands.log');
-  for (const command of ['bun', 'docker']) {
-    writeFileSync(join(sandbox, command), recorder());
-    chmodSync(join(sandbox, command), 0o755);
-  }
+  writeFileSync(join(sandbox, 'bun'), recorder());
+  chmodSync(join(sandbox, 'bun'), 0o755);
 });
 
 afterEach(() => {
@@ -85,7 +83,7 @@ describe('worktree:bootstrap', () => {
     expect(result.status, result.output).toBe(0);
     expect(recorded()).toEqual([
       'bun install --frozen-lockfile',
-      'docker compose --file docker-compose.yml up --detach --wait --no-recreate db',
+      'bun run db:start',
       'bun run env:local',
       'bun run db:bootstrap',
     ]);
@@ -102,14 +100,13 @@ describe('worktree:bootstrap', () => {
 
   it('generates nothing when the shared PostgreSQL never becomes healthy', () => {
     const result = run({
-      failOn:
-        'docker compose --file docker-compose.yml up --detach --wait --no-recreate db',
+      failOn: 'bun run db:start',
     });
 
     expect(result.status).not.toBe(0);
     expect(recorded()).toEqual([
       'bun install --frozen-lockfile',
-      'docker compose --file docker-compose.yml up --detach --wait --no-recreate db',
+      'bun run db:start',
     ]);
     expect(result.output).toContain('failed at "postgres"');
   });

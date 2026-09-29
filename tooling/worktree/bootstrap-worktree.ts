@@ -18,23 +18,9 @@ interface BootstrapStep {
 
 const BOOTSTRAP_STEPS: BootstrapStep[] = [
   { name: 'dependencies', command: ['bun', 'install', '--frozen-lockfile'] },
-  // The fixed Compose project name makes this the one shared PostgreSQL
-  // container; `--no-recreate` keeps a branch's Compose edits from replacing
-  // it, and `--wait` blocks until its healthcheck passes.
-  {
-    name: 'postgres',
-    command: [
-      'docker',
-      'compose',
-      '--file',
-      'docker-compose.yml',
-      'up',
-      '--detach',
-      '--wait',
-      '--no-recreate',
-      'db',
-    ],
-  },
+  // Starts or verifies the shared services from the primary checkout's
+  // Compose file, never this worktree's copy, and waits until healthy.
+  { name: 'postgres', command: ['bun', 'run', 'db:start'] },
   { name: 'configuration', command: ['bun', 'run', 'env:local'] },
   { name: 'databases', command: ['bun', 'run', 'db:bootstrap'] },
 ];

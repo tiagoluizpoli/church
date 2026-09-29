@@ -1,4 +1,5 @@
 import { expect, type Page, request, test } from '@playwright/test';
+import { assertServedFromPinnedTarget } from '../fixtures/e2e-target';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 
 // #63/DL#100 — a person outside the Church (the "outsider" — never before
@@ -57,6 +58,10 @@ async function mintChainedInvitation({
       `Failed to mint invitation (${res.status()}): ${await res.text()}`,
     );
   }
+  assertServedFromPinnedTarget({
+    response: res,
+    step: 'provision chained invitation',
+  });
   const invitation = (await res.json()) as MintedInvitation;
   await adminCtx.dispose();
   return invitation;
@@ -166,6 +171,13 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
       ),
       page.getByRole('button', { name: 'Join' }).click(),
     ]);
+    // #253 redemption gate: the invitation above was provisioned and is now
+    // redeemed against the run's one pinned target (the original failure
+    // redeemed against a different database: INVITATION_NOT_FOUND).
+    assertServedFromPinnedTarget({
+      response: redeemResponse,
+      step: 'redeem chained invitation',
+    });
     const redeemOutcome = (await redeemResponse.json()) as RedeemOutcome;
     expect(redeemOutcome.kind).toBe('full-success');
     if (redeemOutcome.kind === 'full-success') {

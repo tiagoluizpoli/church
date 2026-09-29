@@ -1,0 +1,152 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'bun:test';
+
+/**
+ * #253 / ADR-0005: the CI E2E lane injects its target explicitly through the
+ * job environment at the PostgreSQL port the job provisions, generates no
+ * environment value files, and never depends on home-network DNS or
+ * Worktrunk hooks.
+ */
+
+interface WorkflowStep {
+  name?: string;
+  uses?: string;
+  run?: string;
+  with?: Record<string, string>;
+}
+
+interface WorkflowService {
+  env?: Record<string, string>;
+  ports?: string[];
+}
+
+interface WorkflowJob {
+  env?: Record<string, string>;
+  services?: Record<string, WorkflowService>;
+  steps: WorkflowStep[];
+}
+
+interface Workflow {
+  jobs: Record<string, WorkflowJob>;
+}
+
+interface ActionStep {
+  name?: string;
+  if?: string;
+  run?: string;
+}
+
+interface CompositeAction {
+  inputs: Record<string, unknown>;
+  runs: { steps: ActionStep[] };
+}
+
+const ROOT = resolve(import.meta.dir, '../..');
+const workflow = Bun.YAML.parse(
+  readFileSync(resolve(ROOT, '.github/workflows/ci.yml'), 'utf8'),
+) as Workflow;
+const setupAction = Bun.YAML.parse(
+  readFileSync(
+    resolve(ROOT, '.github/actions/setup-church-ci/action.yml'),
+    'utf8',
+  ),
+) as CompositeAction;
+
+const E2E_JOBS = ['develop-browser', 'e2e'];
+const SETUP_ACTION = './.github/actions/setup-church-ci';
+const VALUE_FILE_WRITE = /(>>?|tee)\s*\S*\.env\b/;
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);
+
+interface JobInput {
+  job: WorkflowJob;
+}
+
+/** The `docker run` of a job that starts Postgres only when needed. */
+function dockerRunPostgres({ job }: JobInput): string | undefined {
+  return job.steps
+    .map((step) => step.run ?? '')
+    .find((run) => run.includes('docker run') && run.includes('postgres'));
+}
+
+/** The host port the job binds its PostgreSQL to: the `services` mapping, or
+ * the `docker run -p` of a job that starts Postgres only when needed. */
+function provisionedPostgresPort({ job }: JobInput): string | undefined {
+  const servicePort = job.services?.postgres?.ports?.[0];
+  if (servicePort) return servicePort.split(':')[0];
+
+  return dockerRunPostgres({ job })?.match(/-p\s+(\d+):5432/)?.[1];
+}
+
+function provisionedPostgresDatabase({ job }: JobInput): string | undefined {
+  const serviceDb = job.services?.postgres?.env?.POSTGRES_DB;
+  if (serviceDb) return serviceDb;
+
+  return dockerRunPostgres({ job })?.match(/POSTGRES_DB=(\S+)/)?.[1];
+}
+
+describe('CI E2E lane', () => {
+  for (const name of E2E_JOBS) {
+    const job = workflow.jobs[name];
+
+    describe(name, () => {
+      it('exists', () => {
+        expect(job).toBeDefined();
+      });
+
+      it('injects the E2E database URL at the port it provisions', () => {
+        const url = new URL(job?.env?.DATABASE_URL ?? '');
+        const port = provisionedPostgresPort({ job: job as WorkflowJob });
+
+        expect(LOOPBACK_HOSTS.has(url.hostname)).toBe(true);
+        expect(port).toBeDefined();
+        expect(url.port).toBe(port as string);
+        expect(url.pathname).toBe(
+          `/${provisionedPostgresDatabase({ job: job as WorkflowJob })}`,
+        );
+        expect(url.pathname).toMatch(/^\/church_[a-z0-9-]+_e2e$/);
+      });
+
+      it('declares no legacy integration target', () => {
+        expect(job?.env?.TEST_DATABASE_URL).toBeUndefined();
+      });
+
+      it('uses only loopback URLs, never home-network DNS', () => {
+        const urls = Object.values(job?.env ?? {}).filter((value) =>
+          /^[a-z]+:\/\//.test(value),
+        );
+
+        expect(urls.length).toBeGreaterThan(0);
+        for (const value of urls) {
+          expect(LOOPBACK_HOSTS.has(new URL(value).hostname)).toBe(true);
+        }
+      });
+
+      it('asks the setup action not to generate value files', () => {
+        const setup = job?.steps.find((step) => step.uses === SETUP_ACTION);
+
+        expect(setup?.with?.['write-env-files']).toBe('false');
+      });
+
+      it('writes no value file and runs no Worktrunk hook in its own steps', () => {
+        for (const step of job?.steps ?? []) {
+          expect(step.run ?? '').not.toMatch(VALUE_FILE_WRITE);
+          expect(step.run ?? '').not.toMatch(/\bwt\s/);
+        }
+      });
+    });
+  }
+
+  it('the setup action gates every value-file write on write-env-files', () => {
+    expect(setupAction.inputs['write-env-files']).toBeDefined();
+
+    const writers = setupAction.runs.steps.filter((step) =>
+      VALUE_FILE_WRITE.test(step.run ?? ''),
+    );
+
+    expect(writers.length).toBeGreaterThan(0);
+    for (const step of writers) {
+      expect(step.if).toBe("inputs.write-env-files == 'true'");
+    }
+  });
+});

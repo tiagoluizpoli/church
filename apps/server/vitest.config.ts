@@ -73,6 +73,7 @@ export default defineConfig({
             'tests/api/auth/active-church-pre-validation.test.ts',
             'tests/api/auth/resolve-active-church-and-persist.test.ts',
             'tests/api/controllers/rostering-controller.test.ts',
+            'tests/api/utils/e2e-target-header.test.ts',
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',

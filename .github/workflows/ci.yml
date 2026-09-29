@@ -95,7 +95,6 @@ jobs:
     # when the plan says a journey is actually selected (#291).
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
-      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e?application_name=test
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. Varlock only
@@ -104,9 +103,15 @@ jobs:
       # always resolves to the "unspecified" fallback here — this database
       # name matches that, rather than setting a CHURCH_WORKTREE that would
       # silently never reach the process.
+      # #253: the E2E lane's only configuration is this job environment —
+      # no value file is generated (write-env-files: 'false' below). The URL
+      # set is the run's own loopback set (tooling/env/e2e-environment.ts:
+      # server 4100, web 4101), so nothing here is a fallback the run
+      # silently overrides, and nothing depends on home-network DNS.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
-      BETTER_AUTH_URL: http://localhost:3000
-      CORS_ORIGIN: http://localhost:5173
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      VITE_SERVER_URL: http://localhost:4100
       UNLEASH_API_URL: http://localhost:4242/api
       UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
@@ -127,6 +132,7 @@ jobs:
       - uses: ./.github/actions/setup-church-ci
         with:
           skip-migrate: 'true'
+          write-env-files: 'false'
 
       - name: Determine affected plan
         id: plan
@@ -375,7 +381,6 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e
-      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_e2e?application_name=test
       # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
       # resolves the e2e target through resolveDatabaseTarget, which expects
       # a worktree-scoped `church_<worktree>_e2e` name. Varlock only
@@ -384,10 +389,15 @@ jobs:
       # always resolves to the "unspecified" fallback here — this database
       # name matches that, rather than setting a CHURCH_WORKTREE that would
       # silently never reach the process.
+      # #253: the E2E lane's only configuration is this job environment —
+      # no value file is generated (write-env-files: 'false' below). The URL
+      # set is the run's own loopback set (tooling/env/e2e-environment.ts:
+      # server 4100, web 4101), so nothing here is a fallback the run
+      # silently overrides, and nothing depends on home-network DNS.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
-      BETTER_AUTH_URL: http://localhost:3000
-      CORS_ORIGIN: http://localhost:4001
-      VITE_SERVER_URL: http://localhost:3000
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      VITE_SERVER_URL: http://localhost:4100
       UNLEASH_API_URL: http://localhost:4242/api
       UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
@@ -398,6 +408,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-church-ci
+        with:
+          write-env-files: 'false'
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium

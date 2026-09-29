@@ -67,6 +67,7 @@
       "cache": false
     },
     "db:migrate": {
+      "passThroughEnv": ["DATABASE_URL"],
       "cache": false,
       "persistent": true
     },

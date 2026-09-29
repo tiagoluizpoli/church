@@ -1,7 +1,5 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { expect, type Page, request, test } from '@playwright/test';
+import { runE2eServerScript } from '../fixtures/e2e-target';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
@@ -17,8 +15,6 @@ import {
 // here.
 const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
 const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4101';
-const dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_DIR = path.resolve(dirname, '../../../server');
 
 // Fixed E2E seed identifier (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS.church) — same convention as the other identity specs.
@@ -66,19 +62,11 @@ async function bootstrapChurchAdmin({
   const invitation = (await res.json()) as InviteChurchAdminResponse;
   await adminCtx.dispose();
 
-  execFileSync(
-    'bun',
-    [
-      '--env-file=../../.env',
-      'run',
-      'src/scripts/e2e-redeem-church-invitation.ts',
-      email,
-      name,
-      PASSWORD,
-      invitation.id,
-    ],
-    { cwd: SERVER_DIR },
-  );
+  runE2eServerScript({
+    scriptPath: 'src/scripts/e2e-redeem-church-invitation.ts',
+    args: [email, name, PASSWORD, invitation.id],
+    step: 'redeem Church Invitation',
+  });
 }
 
 function uniqueAdminEmail(): string {

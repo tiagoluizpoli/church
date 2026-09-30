@@ -4,7 +4,6 @@ import pg from 'pg';
 import { getE2eDatabaseUrl } from './e2e-database-url';
 import { getIntegrationDatabaseUrl } from './integration-database-url';
 import * as schema from './schema';
-import { getTestDatabaseUrl } from './test-database-url';
 
 function resolveConnectionString(): string {
   if (process.env.CHURCH_EXEC_PURPOSE === 'integration') {
@@ -15,10 +14,9 @@ function resolveConnectionString(): string {
     return getE2eDatabaseUrl();
   }
 
-  // Legacy path, still relied on by unmigrated runners (ADR-0005).
-  return process.env.NODE_ENV === 'test'
-    ? getTestDatabaseUrl()
-    : env.DATABASE_URL;
+  // Development and production: the target Varlock (or the deployment)
+  // injected. `NODE_ENV` never selects a database (ADR-0005).
+  return env.DATABASE_URL;
 }
 
 export function createDb() {

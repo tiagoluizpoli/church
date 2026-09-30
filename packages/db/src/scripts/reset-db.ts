@@ -1,13 +1,12 @@
 import pg from 'pg';
 import {
   dropDevelopmentSchema,
-  isPrimaryWorktree,
   migrateDevelopmentSchema,
 } from '../development-database-reset';
 import { getDevelopmentDatabaseUrl } from '../development-database-url';
 
 async function resetDevelopmentDatabase(): Promise<void> {
-  const databaseUrl = getDevelopmentDatabaseUrl({ isPrimaryWorktree });
+  const databaseUrl = getDevelopmentDatabaseUrl();
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
 
   try {

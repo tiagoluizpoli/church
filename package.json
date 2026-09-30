@@ -68,6 +68,8 @@
     "db:bootstrap": "bun tooling/diagnostics/run-managed.ts db:bootstrap -- bun tooling/worktree/bootstrap-databases.ts",
     "worktree:bootstrap": "bun tooling/worktree/bootstrap-worktree.ts",
     "db:prune": "bun tooling/diagnostics/run-managed.ts db:prune -- bun tooling/worktree/prune-databases.ts",
+    "dns:start": "bun tooling/worktree/dev-dns.ts start",
+    "dns:stop": "bun tooling/worktree/dev-dns.ts stop",
     "validate:date-time-seam": "bun tooling/validation/date-time-seam-guards.ts",
     "validate:affected": "bun tooling/validation/affected.ts",
     "validate": "bun run lint && bun run typecheck && bun run test",

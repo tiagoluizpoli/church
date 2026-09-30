@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
 interface SignOutOptions {
@@ -70,6 +70,23 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     getSession.mockResolvedValue({
       data: { user: { id: 'u1' }, session: {} },
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('renders on a plain-HTTP origin without crypto.randomUUID', async () => {
+    // Plain HTTP off localhost (a LAN IP or `*.dev.home.arpa`) is not a
+    // secure context: the browser has `getRandomValues` but no `randomUUID`.
+    vi.stubGlobal('crypto', {
+      getRandomValues: crypto.getRandomValues.bind(crypto),
+    });
+    getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+
+    expect(await screen.findByText('Join Care')).toBeVisible();
   });
 
   it('renders only the permitted preview fields, with the email read-only', async () => {

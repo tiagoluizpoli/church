@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
@@ -74,6 +74,10 @@ function notFoundError(): AxiosError {
 describe('the chained-invitation redemption route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('renders only the permitted preview fields with the email read-only', async () => {
@@ -362,6 +366,20 @@ describe('the chained-invitation redemption route', () => {
     );
     expect(
       screen.getByRole('button', { name: /Move my Volunteer profile/ }),
+    ).toBeVisible();
+  });
+
+  it('reaches the transfer flow on a plain-HTTP origin without crypto.randomUUID', async () => {
+    // Plain HTTP off localhost (a LAN IP or `*.dev.home.arpa`) is not a
+    // secure context: the browser has `getRandomValues` but no `randomUUID`.
+    vi.stubGlobal('crypto', {
+      getRandomValues: crypto.getRandomValues.bind(crypto),
+    });
+
+    await redeemToSplit();
+
+    expect(
+      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
     ).toBeVisible();
   });
 

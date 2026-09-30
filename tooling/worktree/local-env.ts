@@ -80,7 +80,7 @@ interface RenderLocalEnvInput {
   shared: Map<string, string>;
 }
 
-interface WorktreeContext {
+export interface WorktreeContext {
   root: string;
   commonDir: string;
   repository: string;
@@ -113,11 +113,11 @@ function currentBranch(input: CwdInput): string | undefined {
   }
 }
 
-interface CwdInput {
+export interface CwdInput {
   cwd: string;
 }
 
-function worktreeContext(input: CwdInput): WorktreeContext {
+export function worktreeContext(input: CwdInput): WorktreeContext {
   const [root = '', gitDir, commonDir = ''] = git({
     cwd: input.cwd,
     args: [
@@ -492,6 +492,31 @@ export function readGeneratedWorktreeIdentity(
   }
 
   return identity;
+}
+
+/** The ports persisted in this worktree's generated `.env.local`;
+ * undefined when the file is absent, not generated, or incomplete. */
+export function readGeneratedPorts(input: CwdInput): PortSet | undefined {
+  const context = worktreeContext(input);
+  const content = readContent({ path: join(context.root, LOCAL_ENV_FILE) });
+  if (content === undefined || !hasGeneratedHeader({ content })) {
+    return undefined;
+  }
+
+  return portsFrom({ values: parseValues({ content }) });
+}
+
+/** Every value file this worktree's commands may read: its root and
+ * package-local files and the shared Git directory's machine-shared values. */
+export function valueFilePaths(input: CwdInput): string[] {
+  const context = worktreeContext(input);
+
+  return [
+    ...[LOCAL_ENV_FILE, LEGACY_ENV_FILE, ...PACKAGE_VALUE_FILES].map((file) =>
+      join(context.root, file),
+    ),
+    sharedValuesPath({ commonDir: context.commonDir }),
+  ];
 }
 
 interface GenerateInput {

@@ -1,6 +1,13 @@
 import { execFileSync } from 'node:child_process';
 
-export type ExecutionPurpose = 'development' | 'unit' | 'integration' | 'e2e';
+export const EXECUTION_PURPOSES = [
+  'development',
+  'unit',
+  'integration',
+  'e2e',
+] as const;
+
+export type ExecutionPurpose = (typeof EXECUTION_PURPOSES)[number];
 
 export interface RunWithPurposeInput {
   /**

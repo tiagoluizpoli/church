@@ -1,9 +1,20 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { removeWorktreeDatabases } from '../../worktree/remove-worktree-databases';
+import type { Instant } from '../../../packages/time/src';
+import {
+  removeWorktreeDatabases,
+  reportRemoval,
+} from '../../worktree/remove-worktree-databases';
 
 /**
  * The outcomes the `pre-remove` hook reports without a reachable PostgreSQL;
@@ -22,6 +33,14 @@ const UNREACHABLE_SERVER_URL = 'postgresql://postgres:postgres@127.0.0.1:1';
 let sandbox: string;
 let primary: string;
 let feature: string;
+
+interface DirInput {
+  dir: string;
+}
+
+function bundlesIn(input: DirInput): string[] {
+  return existsSync(input.dir) ? readdirSync(input.dir) : [];
+}
 
 function git(args: string[]): void {
   execFileSync('git', args, { cwd: primary, stdio: 'ignore' });
@@ -135,5 +154,55 @@ describe('worktree:remove-databases', () => {
 
     expect(result.status, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toContain('no databases to drop');
+  });
+
+  it('leaves a failure bundle in the shared Git directory when it keeps the databases', async () => {
+    generateLocalEnv({ cwd: feature });
+    const bundlesDir = join(primary, '.git', 'church-failure-bundles');
+    const outcome = await removeWorktreeDatabases({
+      cwd: feature,
+      serverUrl: UNREACHABLE_SERVER_URL,
+    });
+
+    reportRemoval({
+      cwd: feature,
+      outcome,
+      startedAt: '2026-09-29T12:00:00.000Z' as Instant,
+    });
+    rmSync(feature, { recursive: true, force: true });
+
+    expect(bundlesIn({ dir: bundlesDir })).toHaveLength(1);
+    const path = join(bundlesDir, bundlesIn({ dir: bundlesDir })[0] ?? '');
+    expect(
+      JSON.parse(readFileSync(join(path, 'bundle.json'), 'utf8')),
+    ).toMatchObject({
+      command: 'worktree:remove',
+      step: 'databases',
+      exitStatus: 0,
+      worktree: 'feature_a',
+    });
+    expect(readFileSync(join(path, 'output.log'), 'utf8')).toContain(
+      'PostgreSQL is unavailable',
+    );
+  });
+
+  it('leaves no bundle when the databases were dropped or never existed', () => {
+    const bundlesDir = join(primary, '.git', 'church-failure-bundles');
+
+    reportRemoval({
+      cwd: feature,
+      outcome: { kind: 'no-identity' },
+      startedAt: '2026-09-29T12:00:00.000Z' as Instant,
+    });
+    reportRemoval({
+      cwd: feature,
+      outcome: {
+        kind: 'dropped',
+        databases: [{ database: 'church_feature_a_dev', existed: true }],
+      },
+      startedAt: '2026-09-29T12:00:00.000Z' as Instant,
+    });
+
+    expect(bundlesIn({ dir: bundlesDir })).toEqual([]);
   });
 });

@@ -57,7 +57,8 @@ change takes effect once it is in the primary checkout.
   skips it, leaving the worktree unbootstrapped.
 - **Recovery**: a failed hook keeps the worktree and branch but aborts the
   switch. `cd` into the worktree (`wt switch` does not rerun `pre-start`), fix
-  the cause it printed, and rerun `bun run worktree:bootstrap`. Every step is
+  the cause it printed (its failure bundle keeps the output; see "Failure
+  bundles"), and rerun `bun run worktree:bootstrap`. Every step is
   idempotent; completed databases are kept.
 - **Non-generated values**: `env:local` also writes the local default
   `ENABLE_DEBUG_ENDPOINTS=true`. Machine-shared values, such as
@@ -158,6 +159,36 @@ databases included, so a worktree that still exists is never touched; only
 `bun run db:prune -- --apply` drops them. `church`, `church_test`, and every
 other database outside that shape are never selected. Worktrunk asks to
 approve the hook once, as for `pre-start`.
+
+## Failure bundles
+
+A failed `env:local`, `db:bootstrap`, `db:prune`, or `worktree:bootstrap`
+step, and a removal that keeps its databases, leaves one diagnostic bundle
+and prints its path. Bundles live in the shared Git directory
+(`$(git rev-parse --git-common-dir)/church-failure-bundles/<time>-<command>-<worktree>-<suffix>/`),
+so they outlive a removed worktree. Successful commands leave nothing.
+
+- `bundle.json`: command, failed step, command line, timing, exit status
+  (a removal that keeps its databases records the hook's 0), worktree
+  identity and path, commit, execution purpose, assigned ports, and the
+  worktree's three database targets as host, port, and name. `purpose` is
+  the command's `CHURCH_EXEC_PURPOSE`: null for these lifecycle commands,
+  which serve every purpose.
+- `output.log`: the command's output, sanitized, then cut to its first 100
+  and last 300 lines, each at most 1,000 characters.
+
+Sanitizing (`tooling/diagnostics/sanitize.ts`) removes sensitive values
+from every value file (`.env.local`, `.env`, package files,
+`church-shared.env`), URL credentials, query strings and fragments, cookie,
+authorization, and API-key headers, secret-named assignments, JSON fields,
+and flags, JWTs, private keys, and email addresses. Bundles never copy value
+files or the environment.
+
+Recording a bundle deletes bundles older than 14 days; nothing else in the
+directory is touched. `run-managed.ts` (`tooling/diagnostics/`) wraps the
+managed scripts; a managed command nested in another only passes through,
+so one failure yields one bundle.
+`CHURCH_FAILURE_BUNDLES_DIR` redirects bundles elsewhere (tests, CI).
 
 Finish the current implementation phase before review. Run targeted tests,
 then affected validation, plus the relevant story E2E when one exists; review

@@ -4,6 +4,12 @@ import {
   type DroppedDatabase,
   dropDatabases,
 } from '../../packages/db/src/drop-databases';
+import type { Instant } from '../../packages/time/src/brands';
+import { now } from '../../packages/time/src/now';
+import {
+  errorMessage,
+  tryRecordFailureBundle,
+} from '../diagnostics/failure-bundle';
 import {
   LOCAL_DATABASE_SERVER_URL,
   WORKTREE_DATABASE_PURPOSES,
@@ -20,7 +26,8 @@ import { PRIMARY_WORKTREE_IDENTITY } from './worktree-identity';
  * generated `.env.local`, after terminating their active connections. It
  * never blocks the removal: when PostgreSQL is unavailable, another active
  * worktree holds the same identity, or the drop fails, it warns, keeps the
- * databases, and points to `db:prune`.
+ * databases, points to `db:prune`, and leaves a diagnostic bundle in the
+ * shared Git directory, which outlives the removed worktree.
  */
 
 const PRUNE_HINT =
@@ -37,16 +44,6 @@ export type RemovalOutcome =
 export interface RemoveWorktreeDatabasesInput {
   cwd: string;
   serverUrl: string;
-}
-
-interface ReasonInput {
-  error: unknown;
-}
-
-function reasonOf(input: ReasonInput): string {
-  return input.error instanceof Error
-    ? input.error.message
-    : String(input.error);
 }
 
 export async function removeWorktreeDatabases(
@@ -75,61 +72,109 @@ export async function removeWorktreeDatabases(
     };
   } catch (error) {
     if (error instanceof DatabaseDropError && error.step === 'connect') {
-      return { kind: 'unavailable', reason: reasonOf({ error }) };
+      return { kind: 'unavailable', reason: errorMessage({ error }) };
     }
-    return { kind: 'failed', reason: reasonOf({ error }) };
+    return { kind: 'failed', reason: errorMessage({ error }) };
   }
 }
 
-interface ReportRemovalInput {
+interface OutcomeInput {
   outcome: RemovalOutcome;
 }
 
-function reportRemoval(input: ReportRemovalInput): void {
+interface RemovalReport {
+  /** The databases were kept although the worktree is going away. */
+  kept: boolean;
+  lines: string[];
+}
+
+function describeRemoval(input: OutcomeInput): RemovalReport {
   const { outcome } = input;
 
   switch (outcome.kind) {
     case 'dropped':
-      for (const { database, existed } of outcome.databases) {
-        console.log(
-          `worktree removal ${database}: ${existed ? 'dropped' : 'already absent'}`,
-        );
-      }
-      return;
+      return {
+        kept: false,
+        lines: outcome.databases.map(
+          ({ database, existed }) =>
+            `worktree removal ${database}: ${existed ? 'dropped' : 'already absent'}`,
+        ),
+      };
     case 'no-identity':
-      console.log(
-        'worktree removal: no generated .env.local identity, so no databases to drop.',
-      );
-      return;
+      return {
+        kept: false,
+        lines: [
+          'worktree removal: no generated .env.local identity, so no databases to drop.',
+        ],
+      };
     case 'primary':
-      console.log(
-        'worktree removal: the primary checkout keeps its databases.',
-      );
-      return;
+      return {
+        kept: false,
+        lines: ['worktree removal: the primary checkout keeps its databases.'],
+      };
     case 'shared-identity':
-      console.warn(
-        `⚠ worktree removal: another active worktree also holds identity "${outcome.worktree}", so its databases were kept.`,
-      );
-      return;
+      return {
+        kept: true,
+        lines: [
+          `⚠ worktree removal: another active worktree also holds identity "${outcome.worktree}", so its databases were kept.`,
+        ],
+      };
     case 'unavailable':
-      console.warn(
-        `⚠ worktree removal: PostgreSQL is unavailable (${outcome.reason}); this worktree's databases were kept. ${PRUNE_HINT}`,
-      );
-      return;
+      return {
+        kept: true,
+        lines: [
+          `⚠ worktree removal: PostgreSQL is unavailable (${outcome.reason}); this worktree's databases were kept. ${PRUNE_HINT}`,
+        ],
+      };
     case 'failed':
-      console.warn(
-        `⚠ worktree removal: ${outcome.reason}; this worktree's databases were kept. ${PRUNE_HINT}`,
-      );
-      return;
+      return {
+        kept: true,
+        lines: [
+          `⚠ worktree removal: ${outcome.reason}; this worktree's databases were kept. ${PRUNE_HINT}`,
+        ],
+      };
   }
 }
 
+export interface ReportRemovalInput {
+  cwd: string;
+  outcome: RemovalOutcome;
+  startedAt: Instant;
+}
+
+/** Prints the outcome; kept databases also leave a failure bundle. The
+ * hook still exits 0, so the bundle records that status. */
+export function reportRemoval(input: ReportRemovalInput): void {
+  const { kept, lines } = describeRemoval({ outcome: input.outcome });
+  const print = kept ? console.warn : console.log;
+  for (const line of lines) print(line);
+  if (!kept) return;
+
+  tryRecordFailureBundle({
+    cwd: input.cwd,
+    record: {
+      command: 'worktree:remove',
+      step: 'databases',
+      commandLine: ['bun', 'tooling/worktree/remove-worktree-databases.ts'],
+      purpose: null,
+      startedAt: input.startedAt,
+      finishedAt: now(),
+      exitStatus: 0,
+      signal: null,
+      output: `${lines.join('\n')}\n`,
+    },
+  });
+}
+
 async function main(): Promise<void> {
+  const startedAt = now();
   reportRemoval({
+    cwd: process.cwd(),
     outcome: await removeWorktreeDatabases({
       cwd: process.cwd(),
       serverUrl: LOCAL_DATABASE_SERVER_URL,
     }),
+    startedAt,
   });
 }
 

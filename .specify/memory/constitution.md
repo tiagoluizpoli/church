@@ -1,8 +1,8 @@
 <!--
 ## Sync Impact Report
-- Version change: 1.4.1 → 1.5.0
-- Modified principle: III. Container-Ready Infrastructure
-- Updated: the root `docker-compose.yml` defines shared development dependencies only; shared services hosted outside it (development Unleash) and a separate production Compose are allowed
+- Version change: 1.5.0 → 1.6.0
+- Modified principle: IV. Environment Discipline
+- Updated: committed Varlock `.env.schema` files replace `.env.example` templates; values live only in the generated root `.env.local` and the machine-shared `church-shared.env`, loaded through Varlock (ADR-0005, #263)
 - Templates requiring updates: None; existing Constitution Check is generic
 - Follow-up TODOs: None
 -->
@@ -26,9 +26,10 @@ development service hosted outside it (Unleash) is configured through machine-sh
 production has its own Compose definition.
 
 ### IV. Environment Discipline
-Environment variables must be strictly managed via `.env` files and validated using the 
-`@church/env` package. Never commit secrets; always provide `.env.example` 
-templates.
+Environment variables are declared in committed Varlock `.env.schema` files, which serve as
+the templates, and validated by the `@church/env` Zod contracts. Values live only in the
+generated, ignored root `.env.local` and the machine-shared `church-shared.env`; Varlock alone
+loads them. Never commit secrets or package-local value files.
 
 ### V. Automated Code Standards
 Adhere to Biome for linting and formatting. Lefthook manages pre-commit hooks to ensure every 
@@ -78,4 +79,4 @@ type. Existing violations encountered in modified code MUST be corrected as part
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.5.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-09-29
+**Version**: 1.6.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-09-30

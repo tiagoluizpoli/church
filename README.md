@@ -30,16 +30,22 @@ bun install
 
 ## Database Setup
 
-This project uses PostgreSQL with Drizzle ORM.
+This project uses PostgreSQL with Drizzle ORM, run from the root
+`docker-compose.yml` and shared by every worktree.
 
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
+Each worktree gets its own generated `.env.local` (ports, URL set, secret,
+and its development, integration, and E2E databases). Creating a worktree
+with Worktrunk (`wt switch --create <branch>`) prepares it automatically; in
+the primary checkout, run once:
 
 ```bash
-bun run db:push
+bun run worktree:bootstrap
 ```
+
+Machine-shared values (Unleash, optional Resend) live in `church-shared.env`
+in the shared Git directory. The committed `.env.schema` files declare every
+variable; there are no per-package value files. See
+[docs/agents/tooling.md](docs/agents/tooling.md), "Worktree bootstrap".
 
 Then, run the development server:
 
@@ -47,8 +53,9 @@ Then, run the development server:
 bun run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+The web application and the API listen on the worktree's `CHURCH_WEB_PORT`
+and `CHURCH_SERVER_PORT` (see its `.env.local`), on its private
+`church-<worktree>.dev.home.arpa` hostname.
 
 ## UI Customization
 

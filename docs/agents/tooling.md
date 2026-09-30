@@ -25,6 +25,17 @@ and task ordering.
 | Report databases of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
 | Start / stop this machine's opt-in URL resolver | `bun run dns:start` / `bun run dns:stop` |
 
+Every command that reads configuration runs through Varlock from its
+package directory, so the root and the package directory resolve the same
+targets. Development commands declare `CHURCH_EXEC_PURPOSE=development`;
+the destructive ones (`db:reset:dev`, `db:reseed:dev`, `db:seed:reset`,
+`db:clean`) print a redacted preflight and refuse any database but this
+worktree's development one. `db:generate` reads no values, so it is the
+one database script outside Varlock. Nothing else loads value files: no
+`--env-file`, no `dotenv`, and each package's `bunfig.toml` turns off Bun's
+automatic `.env` loading. Unit tests read no values at all; the server's
+unit project pins placeholders (`apps/server/vitest.config.ts`).
+
 Use root Bun scripts by default. The focused-workspace exception is
 `bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API
 client only with `bun run api:generate`.
@@ -73,12 +84,17 @@ change takes effect once it is in the primary checkout.
   (default disabled). Seed the file from the primary:
   `grep -E '^(UNLEASH_API_(URL|TOKEN)|RESEND_[A-Z_]+)=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
 - **Primary checkout**: run `bun run worktree:bootstrap` once, explicitly.
-  First remove the keys `env:local` warns about from `apps/server/.env`,
-  especially `DATABASE_URL`: package value files beat the root `.env.local`.
-  Its generated URL set and secret then override the legacy root `.env`
-  (`church-develop.<CHURCH_DEV_DOMAIN>` URLs, or `church-develop.localhost`
-  without a domain, see below; existing sessions are logged out), and pending migrations are applied to the live `church`
-  database.
+  `env:local` refuses to run while a package value file exists
+  (`apps/{server,web}/.env[.local]`, `packages/{db,auth}/.env[.local]`):
+  Varlock would prefer it over the root `.env.local`. Move any
+  machine-shared value it holds into `church-shared.env` (above), then
+  delete it. The generated URL set and secret then override the legacy root
+  `.env` (`church-develop.<CHURCH_DEV_DOMAIN>` URLs, or
+  `church-develop.localhost` without a domain, see below; existing sessions
+  are logged out), and pending migrations are applied to the live `church`
+  database. No command reads the legacy root `.env` directly; Varlock still
+  loads it beneath `.env.local`, so delete it once `church-shared.env` holds
+  its machine-shared values.
 
 ## Private worktree URLs
 
@@ -105,9 +121,9 @@ domain (when outside that suffix), `localhost` names, and IP literals as
 Playwright pins a `localhost` URL set on the `PW_*` ports
 (`tooling/env/e2e-environment.ts`), whatever `.env.local` says.
 
-Until #263 moves the development scripts onto Varlock, the server `dev`
-script reads the legacy root `.env`, and Vite binds `PORT`. Neither uses the
-assigned ports or this URL set yet.
+`bun run dev` serves this URL set: the server and web `dev` scripts run
+through Varlock, whose service schemas map `CHURCH_SERVER_PORT` and
+`CHURCH_WEB_PORT` to each process's `PORT`.
 
 ### Per-machine setup
 

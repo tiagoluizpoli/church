@@ -90,6 +90,12 @@ describe('apps/server .env.schema', () => {
     ).toBe('27999');
   });
 
+  // CI has no generated `.env.local`: the Zod contract defaults PORT, and a
+  // Playwright run sets its own; the schema must not demand one.
+  it('leaves PORT unset without a worktree port, as in CI', () => {
+    expect(serverValue({ rootValues: [], key: 'PORT' })).toBe('');
+  });
+
   // Playwright's E2E webServer sets its own PORT.
   it('lets a process PORT win over the worktree port', () => {
     expect(

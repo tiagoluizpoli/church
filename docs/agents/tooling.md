@@ -163,32 +163,54 @@ approve the hook once, as for `pre-start`.
 ## Failure bundles
 
 A failed `env:local`, `db:bootstrap`, `db:prune`, or `worktree:bootstrap`
-step, and a removal that keeps its databases, leaves one diagnostic bundle
-and prints its path. Bundles live in the shared Git directory
+step, a failed package `test:integration` or `test:e2e` run, and a removal
+that keeps its databases, leaves one diagnostic bundle and prints its path.
+Bundles live in the shared Git directory
 (`$(git rev-parse --git-common-dir)/church-failure-bundles/<time>-<command>-<worktree>-<suffix>/`),
 so they outlive a removed worktree. Successful commands leave nothing.
 
 - `bundle.json`: command, failed step, command line, timing, exit status
   (a removal that keeps its databases records the hook's 0), worktree
-  identity and path, commit, execution purpose, assigned ports, and the
-  worktree's three database targets as host, port, and name. `purpose` is
-  the command's `CHURCH_EXEC_PURPOSE`: null for these lifecycle commands,
-  which serve every purpose.
+  identity and path, commit, execution purpose, assigned ports, the
+  worktree's three database targets as host, port, and name, and the
+  bundle's artifact files. `purpose` is the command's `CHURCH_EXEC_PURPOSE`:
+  null for the lifecycle commands, which serve every purpose. An
+  integration bundle's `step` names the package that failed.
 - `output.log`: the command's output, sanitized, then cut to its first 100
   and last 300 lines, each at most 1,000 characters.
+- `artifacts/` (E2E only): Playwright's `apps/web/test-results` for the
+  run: `error-context.md` reports and traces. Playwright
+  keeps a trace for every failed test (`retain-on-failure`). Text files are
+  sanitized; each `trace.zip` is rewritten without its storage state,
+  cookie and local-storage values, authentication headers, or secret-named
+  fields, and every value found there is also redacted wherever else it
+  appears in the trace (`tooling/diagnostics/sanitize-trace.ts`).
+  Images (trace screencast frames, any screenshot) are copied unchanged,
+  so what the page showed, such as a seeded E2E account's email, remains
+  visible as pixels.
 
 Sanitizing (`tooling/diagnostics/sanitize.ts`) removes sensitive values
 from every value file (`.env.local`, `.env`, package files,
 `church-shared.env`), URL credentials, query strings and fragments, cookie,
 authorization, and API-key headers, secret-named assignments, JSON fields,
-and flags, JWTs, private keys, and email addresses. Bundles never copy value
-files or the environment.
+and flags, JWTs, private keys, email addresses, and invitation identifiers.
+Sensitive-named variables of the process environment count as known values
+too, since CI secrets arrive only through the job environment. Bundles
+never copy value files, the environment, or `tests/.auth` storage states.
 
 Recording a bundle deletes bundles older than 14 days; nothing else in the
 directory is touched. `run-managed.ts` (`tooling/diagnostics/`) wraps the
-managed scripts; a managed command nested in another only passes through,
-so one failure yields one bundle.
-`CHURCH_FAILURE_BUNDLES_DIR` redirects bundles elsewhere (tests, CI).
+managed scripts, including each package's `test:integration`
+(`--step <package>`); `e2e-local-lifecycle.ts --artifacts <dir>` records
+E2E failures. A managed command nested in another only passes through, so
+one failure yields one bundle.
+`CHURCH_FAILURE_BUNDLES_DIR` redirects bundles elsewhere (tests, CI); Turbo
+passes it to the integration and E2E tasks.
+
+In CI, `setup-church-ci` points `CHURCH_FAILURE_BUNDLES_DIR` at
+`$RUNNER_TEMP/church-failure-bundles`. Each job that runs integration or
+E2E tests uploads it as the `failure-bundles-<job>-<attempt>` artifact only
+when the job fails; GitHub deletes it after seven days.
 
 Finish the current implementation phase before review. Run targeted tests,
 then affected validation, plus the relevant story E2E when one exists; review

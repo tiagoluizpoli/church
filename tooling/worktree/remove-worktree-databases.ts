@@ -163,6 +163,7 @@ export function reportRemoval(input: ReportRemovalInput): void {
       signal: null,
       output: `${lines.join('\n')}\n`,
     },
+    artifacts: null,
   });
 }
 

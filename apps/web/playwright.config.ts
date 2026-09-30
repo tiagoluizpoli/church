@@ -34,7 +34,9 @@ export default defineConfig({
   reporter: [['list'], ['./tests/fixtures/e2e-run-outcome.ts']],
   use: {
     baseURL: WEB_URL,
-    trace: 'on-first-retry',
+    // Every failure keeps a trace for its failure bundle (ADR-0005), which
+    // sanitizes it; a local run has no retry to record one on.
+    trace: 'retain-on-failure',
     headless: true,
     locale: 'pt-BR',
   },

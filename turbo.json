@@ -22,6 +22,7 @@
     },
     "test:integration": {
       "dependsOn": ["^test:integration"],
+      "passThroughEnv": ["CHURCH_FAILURE_BUNDLES_DIR"],
       "cache": false
     },
     "test:e2e": {
@@ -36,7 +37,8 @@
         "NODE_ENV",
         "ENABLE_DEBUG_ENDPOINTS",
         "VITE_SERVER_URL",
-        "CHURCH_WORKTREE"
+        "CHURCH_WORKTREE",
+        "CHURCH_FAILURE_BUNDLES_DIR"
       ],
       "cache": false
     },
@@ -52,7 +54,8 @@
         "NODE_ENV",
         "ENABLE_DEBUG_ENDPOINTS",
         "VITE_SERVER_URL",
-        "CHURCH_WORKTREE"
+        "CHURCH_WORKTREE",
+        "CHURCH_FAILURE_BUNDLES_DIR"
       ],
       "cache": false
     },

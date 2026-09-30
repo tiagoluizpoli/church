@@ -41,6 +41,12 @@ runs:
       shell: bash
       run: bun install --frozen-lockfile
 
+    - name: Keep failure bundles in runner-temporary storage
+      # ADR-0005: CI has no shared Git directory to keep bundles in; the
+      # calling job uploads this directory only when it fails.
+      shell: bash
+      run: echo "CHURCH_FAILURE_BUNDLES_DIR=$RUNNER_TEMP/church-failure-bundles" >> "$GITHUB_ENV"
+
     - name: Create .env for test runner
       if: inputs.write-env-files == 'true'
       shell: bash

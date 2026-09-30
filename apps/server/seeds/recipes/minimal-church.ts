@@ -9,7 +9,11 @@ import {
 import { buildAuthenticatableUser } from '../builders/identity';
 import { buildMinistry, buildRole, buildTeam } from '../builders/ministry';
 import { buildMinistryMembership, buildVolunteer } from '../builders/volunteer';
-import type { SeedRecipe, SeedRecipeLoadInput } from '../recipe';
+import type {
+  SeededChurchSummary,
+  SeedRecipe,
+  SeedRecipeLoadInput,
+} from '../recipe';
 
 export interface SeededPersona {
   userId: string;
@@ -20,11 +24,6 @@ export interface SeededPersona {
 export interface SeededVolunteerPersona extends SeededPersona {
   volunteerId: string;
   ministryMembershipId: string;
-}
-
-export interface SeededChurchSummary {
-  id: string;
-  slug: string;
 }
 
 export interface SeededMinistrySummary {

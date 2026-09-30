@@ -45,11 +45,15 @@ interface LifecycleInput {
   env?: Record<string, string>;
 }
 
+// A CI job's bundle directory would collect this suite's deliberate
+// failures; without it they stay in the sandbox's shared Git directory.
+const ISOLATED_KEYS = new Set(['CI', 'CHURCH_FAILURE_BUNDLES_DIR']);
+
 /** Environment without CI markers, so the local lock applies by default. */
 function localEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && key !== 'CI') env[key] = value;
+    if (value !== undefined && !ISOLATED_KEYS.has(key)) env[key] = value;
   }
   return env;
 }

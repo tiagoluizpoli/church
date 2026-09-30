@@ -23,6 +23,7 @@ and task ordering.
 | Create + migrate its dev/int/E2E databases | `bun run db:bootstrap` |
 | Make a worktree ready (all of the above) | `bun run worktree:bootstrap` |
 | Report databases of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
+| Start / stop this machine's opt-in URL resolver | `bun run dns:start` / `bun run dns:stop` |
 
 Use root Bun scripts by default. The focused-workspace exception is
 `bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API
@@ -63,7 +64,8 @@ change takes effect once it is in the primary checkout.
 - **Non-generated values**: `env:local` also writes the local default
   `ENABLE_DEBUG_ENDPOINTS=true`. Machine-shared values, such as
   `UNLEASH_API_URL` and `UNLEASH_API_TOKEN` (whichever Unleash this machine
-  uses, local Compose or elsewhere) and optional `RESEND_*`, live
+  uses, local Compose or elsewhere), optional `RESEND_*`, and optional
+  `CHURCH_DEV_DOMAIN`/`CHURCH_DEV_ADDRESS` (see "Private worktree URLs"), live
   once in the ignored `church-shared.env` in the shared Git directory, which
   every worktree's `.env.local` copies; rerun `env:local` after editing it. It
   may override a default, never a generated key. Unleash itself runs outside
@@ -74,70 +76,93 @@ change takes effect once it is in the primary checkout.
   First remove the keys `env:local` warns about from `apps/server/.env`,
   especially `DATABASE_URL`: package value files beat the root `.env.local`.
   Its generated URL set and secret then override the legacy root `.env`
-  (`church-develop.dev.home.arpa` URLs, see below; existing sessions are
-  logged out), and pending migrations are applied to the live `church`
+  (`church-develop.<CHURCH_DEV_DOMAIN>` URLs, or `church-develop.localhost`
+  without a domain, see below; existing sessions are logged out), and pending migrations are applied to the live `church`
   database.
 
 ## Private worktree URLs
 
 `env:local` puts each worktree's manual URL set (`BETTER_AUTH_URL`,
 `VITE_SERVER_URL`, `CORS_ORIGIN`) on one private hostname and its assigned
-ports (ADR-0005):
+ports (ADR-0005). The hostname's domain is this machine's, so worktrees are
+reached on whichever machine runs them:
 
 ```text
-http://church-<identity, _ as ->.dev.home.arpa:<CHURCH_WEB_PORT>     web
-http://church-<identity, _ as ->.dev.home.arpa:<CHURCH_SERVER_PORT>  API
+http://church-<identity, _ as ->.<CHURCH_DEV_DOMAIN>:<CHURCH_WEB_PORT>     web
+http://church-<identity, _ as ->.<CHURCH_DEV_DOMAIN>:<CHURCH_SERVER_PORT>  API
 ```
 
-The primary checkout is `church-develop.dev.home.arpa` on ports 3101 (web)
-and 3100 (API). Read a worktree's values from its `.env.local`. Each
+Without `CHURCH_DEV_DOMAIN`, the domain is `localhost`
+(`church-<identity>.localhost`): Chrome and Firefox resolve it to loopback
+with no setup and treat it as a secure context, so it works only on this
+machine. The primary checkout is `church-develop.<domain>` on ports 3101
+(web) and 3100 (API). Read a worktree's values from its `.env.local`. Each
 worktree has its own hostname, so its session cookies stay separate.
 
-Vite listens on every interface. It accepts `*.dev.home.arpa`, `localhost`,
-and IP literals as `Host`, and refuses other names with 403. E2E and CI
-never use these names: Playwright pins a `localhost` URL set on the
-`PW_*` ports (`tooling/env/e2e-environment.ts`), whatever `.env.local`
-says.
-
-### One-time DNS setup
-
-There is no reverse proxy, local certificate authority, or per-worktree DNS
-entry. Two manual rules cover every worktree. Repository automation never
-changes them.
-
-1. **Wildcard record** in the home DNS resolver: answer `dev.home.arpa` and
-   every name below it with the homelab server's Tailscale IPv4 address
-   (`tailscale ip -4` on that server). Pick the form your resolver uses:
-   - dnsmasq or Pi-hole (`/etc/dnsmasq.d/*.conf`):
-     `address=/dev.home.arpa/<server-tailscale-ip>`
-   - AdGuard Home (Filters → DNS rewrites): `*.dev.home.arpa` →
-     `<server-tailscale-ip>`
-2. **Tailscale split DNS**: in the admin console, go to DNS → Nameservers →
-   Add nameserver → Custom. Enter the resolver's Tailscale IP, enable
-   "Restrict to search domain", and enter `dev.home.arpa`. The resolver must be
-   reachable over the tailnet: use its Tailscale IP, or a subnet route if
-   it runs off-tailnet. MagicDNS is not required.
-
-To check from any tailnet client, run
-`tailscale dns query church-develop.dev.home.arpa` (Tailscale 1.76+) or
-`dig +short church-develop.dev.home.arpa`. Both should print the server's
-Tailscale IP.
+Vite listens on every interface. It accepts `*.dev.home.arpa`, the machine
+domain (when outside that suffix), `localhost` names, and IP literals as
+`Host`, and refuses other names with 403. E2E and CI never use these names:
+Playwright pins a `localhost` URL set on the `PW_*` ports
+(`tooling/env/e2e-environment.ts`), whatever `.env.local` says.
 
 Until #263 moves the development scripts onto Varlock, the server `dev`
 script reads the legacy root `.env`, and Vite binds `PORT`. Neither uses the
 assigned ports or this URL set yet.
 
-### Recovery after replacing infrastructure
+### Per-machine setup
 
-- **Homelab server replaced or re-joined to the tailnet** (new Tailscale
-  IP): update the wildcard record's address.
-- **Resolver replaced or moved**: recreate the wildcard record there, and
-  point the split-DNS nameserver at its new Tailscale IP.
-- **Tailnet recreated**: redo both steps.
+Nothing in the repository names a machine or an address; each machine
+configures itself in its ignored `church-shared.env`
+(`$(git rev-parse --git-common-dir)/church-shared.env`):
 
-No repository change or `env:local` rerun is needed: the hostnames do not
-depend on IP addresses. If a client still gets stale answers, check its
-DNS configuration with `tailscale dns status`.
+- `CHURCH_DEV_DOMAIN`: this machine's domain, e.g. `homelab.dev.home.arpa`
+  or `laptop.dev.home.arpa`. A lowercase DNS name; `env:local` refuses a
+  malformed one.
+- `CHURCH_DEV_ADDRESS` (optional): the IPv4 address other devices reach this
+  machine on. Defaults to `tailscale ip -4`; a LAN IP is allowed.
+
+1. Set them, then run `bun run env:local` in every worktree whose URLs should
+   move (it rewrites them), and `bun run dns:start`.
+2. **Tailscale split DNS**, once per machine: in the admin console, go to
+   DNS → Nameservers → Add nameserver → Custom. Enter this machine's
+   Tailscale IP, enable "Restrict to search domain", and enter
+   `<CHURCH_DEV_DOMAIN>`. MagicDNS is not required.
+3. Optional, for LAN devices without Tailscale: on the LAN resolver
+   (currently 192.168.0.201), conditionally forward `<CHURCH_DEV_DOMAIN>` to
+   this machine's LAN IP, and set `CHURCH_DEV_ADDRESS` to that LAN IP.
+
+`bun run dns:start` renders `church-dnsmasq.conf` beside `church-shared.env`
+and starts only the `dns` service of the primary checkout's Compose file (as
+`db:start` does, so the service exists once that file has it). The resolver
+answers `<CHURCH_DEV_DOMAIN>` and every name below it with
+`CHURCH_DEV_ADDRESS`, returns no data for other record types there, refuses
+every other name, and listens only on that address, port 53. The service sits
+behind the `dns` Compose profile, so `db:start`, `worktree:bootstrap`, CI, and
+E2E never start it. It restarts with Docker until `bun run dns:stop`; run
+that before `bun run db:down`, which leaves the resolver alone.
+
+To check from any tailnet client, run
+`tailscale dns query church-develop.<CHURCH_DEV_DOMAIN>` (Tailscale 1.76+) or
+`dig +short church-develop.<CHURCH_DEV_DOMAIN>`. Both should print the
+machine's address. Two machines with different domains resolve independently:
+query one name under each domain from a third device.
+
+### Recovery
+
+- **Names stop resolving after a reboot**: Docker may start before the
+  machine has its address (for example before Tailscale is up), and it does
+  not retry a failed port binding. Check with
+  `docker ps --filter name=church-dns`, then rerun `bun run dns:start`.
+- **Machine address changed** (re-joined the tailnet, new LAN lease): update
+  `CHURCH_DEV_ADDRESS`, or rely on the `tailscale ip -4` default, and rerun
+  `bun run dns:start`. Then point that machine's split-DNS nameserver (and
+  any LAN forward) at the new IP.
+- **Domain changed**: rerun `bun run env:local` in each worktree and
+  `bun run dns:start`, then change the split-DNS rule's search domain.
+- **Tailnet recreated**: redo the split-DNS rule on every machine.
+
+If a client still gets stale answers, check its DNS configuration with
+`tailscale dns status`.
 
 ## Worktree removal
 

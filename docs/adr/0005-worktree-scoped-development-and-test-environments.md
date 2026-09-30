@@ -114,17 +114,29 @@ launch operation reallocates the related web, server, CORS, and authentication
 URL set atomically.
 
 Manual development uses a direct, reusable hostname convention with no reverse
-proxy or local certificate authority:
+proxy or local certificate authority. Each development machine names its own
+private domain, so worktrees are served by whichever machine runs them:
 
 ```text
-<project>-<worktree>.dev.home.arpa:<assigned-port>
+<project>-<worktree>.<machine-domain>:<assigned-port>
 ```
 
-One wildcard rule in the existing DNS resolver maps `*.dev.home.arpa` to the
-homelab server's Tailscale address, and one Tailscale split-DNS rule delegates
-`dev.home.arpa` to that resolver. These are one-time manual infrastructure
-steps and are documented rather than mutated by repository automation. Vite
-accepts only the controlled development suffix.
+The machine domain (`CHURCH_DEV_DOMAIN`, e.g. `laptop.dev.home.arpa`) and the
+address other devices reach the machine on (`CHURCH_DEV_ADDRESS`, default: its
+Tailscale IPv4) are machine-shared values; nothing in the repository names a
+machine or an address. Without a domain, worktrees fall back to
+`<project>-<worktree>.localhost`, which Chrome and Firefox resolve to
+loopback with no setup (RFC 6761) and treat as a secure context, with cookies
+kept per hostname.
+
+Each machine can opt into a repository-owned resolver: a dnsmasq service in
+the shared Compose file, behind its own profile, whose configuration is
+generated from those two values. It answers only the machine domain, on the
+machine's address. Bootstrap, CI, and E2E never start it. The remaining manual
+step per machine is one Tailscale split-DNS rule delegating its domain to it
+(and, optionally, a LAN resolver's conditional forward). Vite accepts the
+controlled `dev.home.arpa` suffix plus the machine domain when it falls
+outside that suffix.
 
 Within a manual-development process set, `CORS_ORIGIN`, `BETTER_AUTH_URL`, and
 `VITE_SERVER_URL` consistently use that worktree hostname and its assigned
@@ -184,6 +196,9 @@ home-network DNS.
   making this repository own a homelab-wide development gateway.
 - **Use public wildcard DNS:** rejected because private development should not
   depend on an external resolver or expose private addressing unnecessarily.
+- **One manual `*.dev.home.arpa` wildcard to the homelab server:** superseded.
+  It pointed every machine's worktree names at one server, so work on another
+  machine (a laptop) was not reachable under its own names.
 - **Allow concurrent local E2E runs:** rejected for the current host because
   separate Chromium and application stacks create avoidable memory pressure.
 
@@ -193,8 +208,10 @@ home-network DNS.
   Worktrunk hooks; hook commands require reapproval when they change.
 - Local database names visibly identify their owning worktree, and stale
   databases have an explicit, reviewable cleanup path.
-- Manual browser access requires the documented one-time DNS and Tailscale
-  configuration. No per-worktree DNS entry or client certificate is required.
+- Manual browser access from the same machine needs no setup (`*.localhost`).
+  Access from other devices needs a machine domain, the opt-in resolver, and
+  one Tailscale split-DNS rule per machine. No per-worktree DNS entry or
+  client certificate is required.
 - A worktree's ignored `.env.local` is generated state, not a source of truth.
   Committed schemas and lifecycle code define how to reproduce it.
 - Production secrets, deployment configuration, and product behavior remain

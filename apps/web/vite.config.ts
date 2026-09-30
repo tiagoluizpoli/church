@@ -4,10 +4,16 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { DEV_HOSTNAME_SUFFIX } from '../../tooling/worktree/dev-hostname';
+import { devAllowedHosts } from '../../tooling/worktree/dev-hostname';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // This machine's domain, copied into the root `.env.local` by env:local.
+  const { CHURCH_DEV_DOMAIN: devDomain } = loadEnv(
+    mode,
+    path.resolve(__dirname, '../..'),
+    'CHURCH_DEV_',
+  );
 
   return {
     envDir: '../../',
@@ -43,8 +49,8 @@ export default defineConfig(({ mode }) => {
       port: Number(env.PORT) || 4001,
       // `--host` listens on every interface; beyond localhost and IP
       // literals, remote clients are accepted only on the private worktree
-      // hostnames (ADR-0005), e.g. church-<worktree>.dev.home.arpa.
-      allowedHosts: [`.${DEV_HOSTNAME_SUFFIX}`],
+      // hostnames (ADR-0005), e.g. church-<worktree>.<CHURCH_DEV_DOMAIN>.
+      allowedHosts: devAllowedHosts({ domain: devDomain }),
     },
   };
 });

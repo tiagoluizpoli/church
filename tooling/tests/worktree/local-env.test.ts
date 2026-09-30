@@ -20,8 +20,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
 const LOCAL_ENV_SCRIPT = resolve(REPO_ROOT, 'tooling/worktree/local-env.ts');
 const VARLOCK = resolve(REPO_ROOT, 'node_modules/.bin/varlock');
-const FEATURE_A_HOST = 'church-feature-a.dev.home.arpa';
-const PRIMARY_HOST = 'church-develop.dev.home.arpa';
+const FEATURE_A_HOST = 'church-feature-a.localhost';
+const PRIMARY_HOST = 'church-develop.localhost';
 
 let sandbox: string;
 let primary: string;
@@ -261,7 +261,7 @@ describe('env:local', () => {
 
     expect(values.CHURCH_WORKTREE).toMatch(/^feature_b__[0-9a-f]{8}$/);
     expect(values.CORS_ORIGIN).toMatch(
-      /^http:\/\/church-feature-b--[0-9a-f]{8}\.dev\.home\.arpa:\d+$/,
+      /^http:\/\/church-feature-b--[0-9a-f]{8}\.localhost:\d+$/,
     );
   });
 
@@ -555,6 +555,45 @@ describe('env:local values beyond the generated set', () => {
     expect(second.RESEND_API_KEY).toBe('re_new');
     expect(second.BETTER_AUTH_SECRET).toBe(first.BETTER_AUTH_SECRET);
     expect(portsOf(second)).toEqual(portsOf(first));
+  });
+
+  it("puts the URL set on the machine's development domain", () => {
+    writeSharedValues({
+      content: 'CHURCH_DEV_DOMAIN="laptop.dev.home.arpa"\n',
+    });
+
+    const values = generate({ cwd: featureA });
+    const [server, web] = portsOf(values);
+
+    const host = 'church-feature-a.laptop.dev.home.arpa';
+    expect(values.BETTER_AUTH_URL).toBe(`http://${host}:${server}`);
+    expect(values.VITE_SERVER_URL).toBe(`http://${host}:${server}`);
+    expect(values.CORS_ORIGIN).toBe(`http://${host}:${web}`);
+    expect(values.CHURCH_DEV_DOMAIN).toBe('"laptop.dev.home.arpa"');
+  });
+
+  it('moves every worktree URL when the machine domain changes', () => {
+    const before = generate({ cwd: primary });
+    writeSharedValues({ content: 'CHURCH_DEV_DOMAIN=homelab.dev.home.arpa\n' });
+
+    const after = generate({ cwd: primary });
+
+    expect(before.CORS_ORIGIN).toBe(`http://${PRIMARY_HOST}:3101`);
+    expect(after.CORS_ORIGIN).toBe(
+      'http://church-develop.homelab.dev.home.arpa:3101',
+    );
+    expect(after.BETTER_AUTH_SECRET).toBe(before.BETTER_AUTH_SECRET);
+  });
+
+  it('refuses a malformed machine domain, naming the shared file', () => {
+    writeSharedValues({ content: 'CHURCH_DEV_DOMAIN=http://Laptop\n' });
+
+    const result = run({ cwd: featureA });
+
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain('church-shared.env');
+    expect(result.output).toContain('CHURCH_DEV_DOMAIN');
+    expect(existsSync(localEnvPath({ cwd: featureA }))).toBe(false);
   });
 
   it('refuses a shared value for a key it generates, without echoing the value', () => {

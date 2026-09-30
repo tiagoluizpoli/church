@@ -7,7 +7,7 @@ export const PRIMARY_WORKTREE_IDENTITY = 'develop';
 const RESERVED_IDENTITIES = new Set([PRIMARY_WORKTREE_IDENTITY, 'unspecified']);
 
 // `church_<identity>_dev` must fit PostgreSQL's 63-byte identifier limit.
-const MAX_IDENTITY_LENGTH = 52;
+export const MAX_IDENTITY_LENGTH = 52;
 const HASH_LENGTH = 8;
 const HASH_SEPARATOR = '__';
 const MAX_SLUG_LENGTH =

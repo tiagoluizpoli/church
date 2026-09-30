@@ -562,12 +562,19 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
 
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
 
-    // The transferred User is now an active Volunteer of Church A.
-    const selectRes = await page.request.post(
-      `${SERVER_URL}/api/v1/active-church/select`,
-      { data: { churchId: CHURCH_A_ID } },
+    // #342 — the app itself made Church A active: the User belongs to both
+    // Churches now, so without that selection the dashboard guard would have
+    // sent them to /select-church.
+    const statusRes = await page.request.get(
+      `${SERVER_URL}/api/v1/active-church/status`,
     );
-    await assertOk({ res: selectRes, action: 'select Church A as active' });
+    await assertOk({ res: statusRes, action: 'read the Active Church' });
+    expect(await statusRes.json()).toMatchObject({
+      status: 'resolved',
+      churchId: CHURCH_A_ID,
+    });
+
+    // The transferred User is now an active Volunteer of Church A.
     const dashboardRes = await page.request.get(
       `${SERVER_URL}/api/v1/volunteer/dashboard`,
     );

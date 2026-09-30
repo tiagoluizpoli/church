@@ -232,6 +232,107 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     });
   });
 
+  // #342 — the User now belongs to both Churches, so without an explicit
+  // selection the dashboard guard would send them to /select-church.
+  async function acceptIntoSplit() {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
+    acceptMinistryInvitation.mockResolvedValue({
+      kind: 'church-only',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      ministryInvitationId: 'invitation-1',
+    });
+    listActiveChurchOptions.mockResolvedValue({ churches: [CHURCH_OPTION] });
+    selectActiveChurch.mockResolvedValue({ churchId: 'church-1' });
+
+    const { router } = renderRoute({
+      initialPath: '/invitations/ministry/invitation-1',
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Accept' }));
+    return { router, user };
+  }
+
+  it('after the transfer commits, makes the destination Church active and continues into it', async () => {
+    getVolunteerTransferPreview.mockResolvedValue({
+      kind: 'reviewable',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      endedMemberships: [{ ministryName: 'Youth' }],
+      withdrawnAssignments: [],
+    });
+    confirmVolunteerTransfer.mockResolvedValue({
+      kind: 'transferred',
+      destinationVolunteerId: 'volunteer-2',
+    });
+    const { router, user } = await acceptIntoSplit();
+
+    await user.click(
+      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
+    );
+    await user.click(await screen.findByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.type(
+      await screen.findByLabelText('Password'),
+      'a-strong-password',
+    );
+    await user.type(
+      screen.getByLabelText(/Type St\. Peter to confirm/),
+      'St. Peter',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
+    );
+
+    await waitFor(() => {
+      expect(selectActiveChurch).toHaveBeenCalledWith({
+        churchId: 'church-1',
+      });
+    });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/dashboard');
+    });
+  });
+
+  it('continuing as a member makes the destination Church active and continues into it', async () => {
+    const { router, user } = await acceptIntoSplit();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Continue to St. Peter as a member',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(selectActiveChurch).toHaveBeenCalledWith({
+        churchId: 'church-1',
+      });
+    });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/dashboard');
+    });
+  });
+
+  it('falls back to /dashboard, selecting nothing, when the destination is not among the caller options', async () => {
+    const { router, user } = await acceptIntoSplit();
+    listActiveChurchOptions.mockResolvedValue({ churches: [] });
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Continue to St. Peter as a member',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).not.toBe(
+        '/invitations/ministry/invitation-1',
+      );
+    });
+    expect(listActiveChurchOptions).toHaveBeenCalled();
+    expect(selectActiveChurch).not.toHaveBeenCalled();
+  });
+
   it('on a double-submit race where the invitation was already accepted, still continues into the Church rather than stranding the caller', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);

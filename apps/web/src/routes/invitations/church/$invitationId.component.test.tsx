@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { activeChurchApiMock } from '@/__tests__/setup/active-church';
 import type { ChildrenProps } from '@/__tests__/setup/children-props';
 import { renderRoute } from '@/__tests__/setup/render-route';
 
@@ -452,6 +453,79 @@ describe('the chained-invitation redemption route', () => {
         password: 'correct-horse-staple',
       }),
     );
+  });
+
+  // #342 — the User now belongs to both Churches, so without an explicit
+  // selection the dashboard guard would send them to /select-church.
+  function givenDestinationChurchOption() {
+    activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({
+      churches: [
+        {
+          churchId: 'church-1',
+          name: 'St. Peter',
+          timezone: 'UTC',
+          accessLevel: 'member',
+          availableAreas: ['dashboard'],
+          lastOpenedAt: null,
+        },
+      ],
+    });
+    activeChurchApiMock.selectActiveChurch.mockResolvedValue({
+      churchId: 'church-1',
+    });
+  }
+
+  it('after the transfer commits, makes the destination Church active', async () => {
+    getVolunteerTransferPreview.mockResolvedValue({
+      kind: 'reviewable',
+      sourceChurchName: 'Riverside Fellowship',
+      destinationChurchName: 'St. Peter',
+      endedMemberships: [{ ministryName: 'Hospitality' }],
+      withdrawnAssignments: [],
+    });
+    confirmVolunteerTransfer.mockResolvedValue({
+      kind: 'transferred',
+      destinationVolunteerId: 'vol-new',
+    });
+    givenDestinationChurchOption();
+    const user = await redeemToSplit();
+
+    await user.click(
+      await screen.findByRole('button', { name: /Move my Volunteer profile/ }),
+    );
+    await user.click(await screen.findByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.type(
+      await screen.findByLabelText('Password'),
+      'correct-horse-staple',
+    );
+    await user.type(screen.getByLabelText(/Type .* to confirm/), 'St. Peter');
+    await user.click(
+      screen.getByRole('button', { name: 'Confirm Volunteer Transfer' }),
+    );
+
+    await waitFor(() => {
+      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
+        churchId: 'church-1',
+      });
+    });
+  });
+
+  it('continuing as a member makes the destination Church active', async () => {
+    givenDestinationChurchOption();
+    const user = await redeemToSplit();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Continue to St. Peter as a member',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
+        churchId: 'church-1',
+      });
+    });
   });
 
   it('shows an inline error on a password mismatch and stays on the confirm step', async () => {

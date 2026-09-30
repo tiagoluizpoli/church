@@ -1,5 +1,5 @@
 import { formatRelative, parseInstant } from '@church/time';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -17,15 +17,11 @@ import type {
   AcceptMinistryInvitation200,
   DeclineMinistryInvitation200,
   GetMinistryInvitationStatus200,
-  ListActiveChurchOptions200ChurchesItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
-import {
-  finishRedemptionAtDashboard,
-  switchActiveChurch,
-} from '@/shared/utils/active-church-switch';
+import { useContinueToChurch } from '@/shared/hooks/use-continue-to-church';
 import { randomId } from '@/shared/utils/id';
-import { activeChurchApi, redemptionApi } from '@/utils/api-instances';
+import { redemptionApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
   '/_authenticated/invitations/ministry/$invitationId',
@@ -42,27 +38,6 @@ type RedeemableStatus = Extract<
   GetMinistryInvitationStatus200,
   { kind: 'redeemable' }
 >;
-
-interface ChurchLookupInput {
-  churchId?: string;
-  churchName?: string;
-}
-
-interface ResolveChurchOptionInput extends ChurchLookupInput {
-  churches: ListActiveChurchOptions200ChurchesItem[];
-}
-
-function resolveChurchOption({
-  churches,
-  churchId,
-  churchName,
-}: ResolveChurchOptionInput):
-  | ListActiveChurchOptions200ChurchesItem
-  | undefined {
-  if (churchId) return churches.find((church) => church.churchId === churchId);
-  if (churchName) return churches.find((church) => church.name === churchName);
-  return undefined;
-}
 
 interface AcceptFailureDescription {
   title: string;
@@ -120,7 +95,6 @@ function describeDeclineFailure({
 function MinistryInvitationRoute() {
   const { invitationId } = Route.useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [idempotencyKey] = useState(() => randomId());
   const [confirmingDecline, setConfirmingDecline] = useState(false);
   const [confirmingSwitch, setConfirmingSwitch] = useState(false);
@@ -130,25 +104,7 @@ function MinistryInvitationRoute() {
     queryFn: () => redemptionApi.getMinistryInvitationStatus(invitationId),
   });
 
-  async function continueToChurch(input: ChurchLookupInput): Promise<void> {
-    const { churches } = await activeChurchApi.listActiveChurchOptions();
-    const church = resolveChurchOption({ churches, ...input });
-    if (!church) {
-      navigate({ to: '/dashboard' });
-      return;
-    }
-    await switchActiveChurch({
-      availableAreas: church.availableAreas,
-      churchId: church.churchId,
-      churchName: church.name,
-      destination: '/dashboard',
-      navigate: ({ destination }) => navigate({ to: destination }),
-      queryClient,
-      selectActiveChurch: async ({ churchId }) => {
-        await activeChurchApi.selectActiveChurch({ churchId });
-      },
-    });
-  }
+  const continueToChurch = useContinueToChurch();
 
   const continueMutation = useMutation({
     mutationFn: continueToChurch,
@@ -257,20 +213,17 @@ function MinistryInvitationRoute() {
 
   if (acceptMutation.data?.kind === 'church-only') {
     const split = acceptMutation.data;
-    const finishAtDashboard = (): Promise<void> =>
-      finishRedemptionAtDashboard({
-        queryClient,
-        getSession: authClient.getSession,
-        navigateToDashboard: () => navigate({ to: '/dashboard' }),
-      });
+    // The User now belongs to both Churches: land in the one just joined.
+    const continueToDestination = (): Promise<void> =>
+      continueToChurch({ churchName: split.destinationChurchName });
     return (
       <InvitationShell>
         <VolunteerTransferFlow
           invitationId={invitationId}
           sourceChurchName={split.sourceChurchName}
           destinationChurchName={split.destinationChurchName}
-          onContinueAsMember={finishAtDashboard}
-          onTransferred={finishAtDashboard}
+          onContinueAsMember={continueToDestination}
+          onTransferred={continueToDestination}
         />
       </InvitationShell>
     );

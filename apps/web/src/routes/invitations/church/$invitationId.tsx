@@ -15,6 +15,7 @@ import type {
   RedeemChurchInvitation200,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
+import { useContinueToChurch } from '@/shared/hooks/use-continue-to-church';
 import { finishRedemptionAtDashboard } from '@/shared/utils/active-church-switch';
 import { randomId } from '@/shared/utils/id';
 import { redemptionApi } from '@/utils/api-instances';
@@ -110,6 +111,7 @@ function ChurchInvitationRedemptionRoute() {
   const { invitationId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const continueToChurch = useContinueToChurch();
   const [idempotencyKey] = useState(() => randomId());
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => nowAsDate().getTime());
@@ -214,14 +216,17 @@ function ChurchInvitationRedemptionRoute() {
   }
 
   if (outcome?.kind === 'church-only') {
+    // The User now belongs to both Churches: land in the one just joined.
+    const continueToDestination = (): Promise<void> =>
+      continueToChurch({ churchName: outcome.destinationChurchName });
     return (
       <RedemptionShell>
         <VolunteerTransferFlow
           invitationId={invitationId}
           sourceChurchName={outcome.sourceChurchName}
           destinationChurchName={outcome.destinationChurchName}
-          onContinueAsMember={finishAtDashboard}
-          onTransferred={finishAtDashboard}
+          onContinueAsMember={continueToDestination}
+          onTransferred={continueToDestination}
         />
       </RedemptionShell>
     );

@@ -152,10 +152,10 @@ interface FinishRedemptionAtDashboardInput {
 }
 
 /**
- * Shared by every redemption outcome that lands the caller on `/dashboard`
- * with a fresh session and no stale Church-scoped cache — full success,
- * "continue as a member" off the cross-Church split, and a completed
- * Volunteer Transfer alike.
+ * Lands a full-success redemption on `/dashboard` with a fresh session and
+ * no stale Church-scoped cache; the entry gate resolves its one Church. The
+ * cross-Church split's outcomes, which leave the User in several Churches,
+ * select the destination instead (`useContinueToChurch`).
  */
 export async function finishRedemptionAtDashboard({
   queryClient,

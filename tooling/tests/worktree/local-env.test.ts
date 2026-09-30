@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
 /**
@@ -448,20 +448,45 @@ describe('env:local', () => {
     expect(result.output).not.toContain('192.168.0.200');
   });
 
-  it('warns about package-local value files that shadow generated values', () => {
-    mkdirSync(join(primary, 'apps/server'), { recursive: true });
-    writeFileSync(
-      join(primary, 'apps/server/.env'),
-      'DATABASE_URL="postgresql://postgres:hunter2@127.0.0.1:5444/church"\nRESEND_API_KEY=re_x\n',
-    );
+  // #263: Varlock still loads the legacy root `.env` beneath `.env.local`, so
+  // a key only it sets reaches every command.
+  it('warns whenever a legacy root .env exists, without naming its values', () => {
+    writeFileSync(join(primary, '.env'), 'RESEND_API_KEY=re_hunter2\n');
 
     const result = run({ cwd: primary });
 
     expect(result.status, result.output).toBe(0);
-    expect(result.output).toContain('apps/server/.env');
-    expect(result.output).toContain('DATABASE_URL');
-    expect(result.output).not.toContain('RESEND_API_KEY');
+    expect(result.output).toContain('legacy .env');
+    expect(result.output).toContain('church-shared.env');
     expect(result.output).not.toContain('hunter2');
+  });
+
+  it('does not warn about a legacy root .env that does not exist', () => {
+    const result = run({ cwd: primary });
+
+    expect(result.output).not.toContain('legacy .env');
+  });
+
+  // #263: Varlock prefers a package value file over the root `.env.local`
+  // for commands run through that package, so none may exist.
+  it.each([
+    [
+      'apps/server/.env',
+      'DATABASE_URL="postgresql://postgres:hunter2@127.0.0.1:5444/church"\n',
+    ],
+    ['packages/db/.env.local', 'RESEND_API_KEY=re_hunter2\n'],
+  ])('refuses to run while the package value file %s exists', (file, content) => {
+    mkdirSync(join(primary, dirname(file)), { recursive: true });
+    writeFileSync(join(primary, file), content);
+
+    const result = run({ cwd: primary });
+
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain(file);
+    expect(result.output).toContain('Delete');
+    expect(result.output).not.toContain('hunter2');
+    expect(result.output).not.toContain('Error:');
+    expect(existsSync(join(primary, '.env.local'))).toBe(false);
   });
 
   it('names a checkout without commits after its unborn branch', () => {

@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
   LEADER_STORAGE_STATE,
   TEAM_LEADER_STORAGE_STATE,
 } from '../global-setup';
 
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 /**
  * 023 qualification + multi-team model.

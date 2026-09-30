@@ -1,4 +1,5 @@
 import { expect, request, test } from '@playwright/test';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   CHURCH_B_ADMIN_STORAGE_STATE,
@@ -12,7 +13,7 @@ import {
 // `DbMinistryInvitationManager.ensureMintableScope` deliberately returns
 // for a nonexistent, unauthorized, *or* cross-Church Ministry — never a
 // peek at Church B's real Ministry name.
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS.churchBMinistry / CHURCH_B_MINISTRY_NAME) — same convention as

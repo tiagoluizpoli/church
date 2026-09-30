@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
   LEADER_STORAGE_STATE,
   TEAM_LEADER_STORAGE_STATE,
@@ -12,7 +13,7 @@ import { allocatedYear } from './planning-cycle-year.helpers';
 // VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE flag (FR-020, SC-007). This used to
 // also cover the leader seeing per-volunteer acknowledgement state on the
 // tailoring page — see the KNOWN GAP note in the first test below.
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS). The web package stays DB-tooling-free, so specs reference these

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
   LEADER_STORAGE_STATE,
   TEAM_LEADER_STORAGE_STATE,
@@ -11,7 +12,7 @@ import { allocatedYear } from './planning-cycle-year.helpers';
 // SC-008). A volunteer may not cancel someone else's assignment. A leader can
 // then reassign a still-open assignment to a different volunteer mid-cycle
 // (FR-029).
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS). The web package stays DB-tooling-free, so specs reference these

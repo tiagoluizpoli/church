@@ -14,6 +14,7 @@ import {
   assertServedFromPinnedTarget,
   runE2eServerScript,
 } from './fixtures/e2e-target';
+import { requiredE2eUrl } from './fixtures/e2e-urls';
 import { resetE2eDatabase } from './global-teardown';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,7 +41,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
  * ChurchAdmin and legacy leader states share one session; the Ministry-leader
  * state stays separate so browser coverage can prove scope-specific access.
  */
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 const SERVER_DIR = path.resolve(dirname, '../../server');
 
 export const CHURCH_ADMIN_STORAGE_STATE = path.resolve(

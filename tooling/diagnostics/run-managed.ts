@@ -8,17 +8,19 @@ import {
 import { errorMessage, tryRecordFailureBundle } from './failure-bundle';
 
 /**
- * `bun tooling/diagnostics/run-managed.ts <name> -- <command...>`: runs a
- * managed command with its output streamed as usual, and when it fails
- * leaves one diagnostic bundle (ADR-0005) and prints its path. It keeps the
- * command's exit status; a success leaves nothing behind.
+ * `bun tooling/diagnostics/run-managed.ts <name> [--step <step>] --
+ * <command...>`: runs a managed command with its output streamed as usual,
+ * and when it fails leaves one diagnostic bundle (ADR-0005) and prints its
+ * path. It keeps the command's exit status; a success leaves nothing
+ * behind.
  *
  * A managed command running inside another (a `worktree:bootstrap` step
  * running `env:local`) only passes through, so the outermost one, which
  * knows the failed step, records the single bundle.
  */
 
-const OWNER_VARIABLE = 'CHURCH_FAILURE_BUNDLE_OWNER';
+/** Set for everything a managed command runs; a nested one passes through. */
+export const OWNER_VARIABLE = 'CHURCH_FAILURE_BUNDLE_OWNER';
 // POSIX shells report a command that cannot be found with 127.
 const NOT_STARTED_STATUS = 127;
 
@@ -43,14 +45,14 @@ interface SpawnInput {
   owner: string;
 }
 
-interface PumpInput {
+export interface PumpInput {
   stream: ReadableStream<Uint8Array>;
   sink: NodeJS.WriteStream;
   chunks: string[];
 }
 
 /** Forwards a child stream to ours as it arrives, keeping a copy. */
-async function pump(input: PumpInput): Promise<void> {
+export async function pump(input: PumpInput): Promise<void> {
   const decoder = new TextDecoder();
   for await (const chunk of input.stream) {
     input.sink.write(chunk);
@@ -96,7 +98,7 @@ async function runCapturing(input: SpawnInput): Promise<ProcessResult> {
   };
 }
 
-function purposeFromEnvironment(): ExecutionPurpose | null {
+export function purposeFromEnvironment(): ExecutionPurpose | null {
   const purpose = process.env.CHURCH_EXEC_PURPOSE;
   return EXECUTION_PURPOSES.find((known) => known === purpose) ?? null;
 }
@@ -134,25 +136,45 @@ export async function runManaged(input: RunManagedInput): Promise<number> {
         signal: result.signal,
         output: result.output,
       },
+      artifacts: null,
     });
   }
 
   return result.exitStatus;
 }
 
-async function main(): Promise<void> {
-  const [command, separator, ...argv] = process.argv.slice(2);
+interface ArgvInput {
+  argv: string[];
+}
 
-  if (!command || separator !== '--' || argv.length === 0) {
+interface ManagedArguments {
+  command: string;
+  step: string | null;
+  argv: string[];
+}
+
+/** `<name> [--step <step>] -- <command...>` */
+function parseArguments(input: ArgvInput): ManagedArguments | undefined {
+  const [command, ...rest] = input.argv;
+  const [step, remaining] =
+    rest[0] === '--step' ? [rest[1] ?? null, rest.slice(2)] : [null, rest];
+  const [separator, ...argv] = remaining;
+
+  if (!command || separator !== '--' || argv.length === 0) return undefined;
+  return { command, step, argv };
+}
+
+async function main(): Promise<void> {
+  const args = parseArguments({ argv: process.argv.slice(2) });
+
+  if (args === undefined) {
     console.error(
-      'Usage: bun tooling/diagnostics/run-managed.ts <name> -- <command...>',
+      'Usage: bun tooling/diagnostics/run-managed.ts <name> [--step <step>] -- <command...>',
     );
     process.exit(2);
   }
 
-  process.exit(
-    await runManaged({ command, step: null, argv, cwd: process.cwd() }),
-  );
+  process.exit(await runManaged({ ...args, cwd: process.cwd() }));
 }
 
 if (import.meta.main) {

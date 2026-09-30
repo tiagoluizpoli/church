@@ -74,6 +74,18 @@ jobs:
         # instead, concurrently.
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --skip-e2e
 
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Record elapsed-time evidence
         if: always()
         run: |
@@ -193,6 +205,18 @@ jobs:
         if: steps.plan.outputs.needs_e2e == 'true'
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --only-e2e
 
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Record elapsed-time evidence
         if: always()
         run: |
@@ -294,6 +318,18 @@ jobs:
       - name: Complete validation (lint, typecheck, unit, integration, full E2E)
         run: bun run validate
 
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Record elapsed-time evidence
         if: always()
         run: |
@@ -350,6 +386,18 @@ jobs:
 
       - name: Run tests with coverage
         run: bunx turbo test:unit test:integration -- --coverage
+
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
 
   e2e:
     name: E2E
@@ -411,3 +459,15 @@ jobs:
 
       - name: Run E2E tests
         run: bun run test:e2e
+
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore

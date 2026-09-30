@@ -31,7 +31,7 @@
     "db:setup-test": "CHURCH_EXEC_PURPOSE=integration varlock run --path . -- bun src/setup-test-db.ts",
     "db:clean": "bun --env-file=../../.env src/scripts/clean-db.ts",
     "typecheck": "tsc --noEmit",
-    "test:integration": "CHURCH_EXEC_PURPOSE=integration varlock run --path . -- bun vitest run",
+    "test:integration": "CHURCH_EXEC_PURPOSE=integration bun ../../tooling/diagnostics/run-managed.ts test:integration --step @church/db -- varlock run --path . -- bun vitest run",
     "test": "bun run test:integration"
   },
   "dependencies": {

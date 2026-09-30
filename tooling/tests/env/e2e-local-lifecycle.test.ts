@@ -1,5 +1,11 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
@@ -16,6 +22,8 @@ const LIFECYCLE_SCRIPT = resolve(
   REPO_ROOT,
   'tooling/env/e2e-local-lifecycle.ts',
 );
+
+const LIFECYCLE_EVENT = 'npm_lifecycle_event';
 
 let sandbox: string;
 let primary: string;
@@ -37,11 +45,15 @@ interface LifecycleInput {
   env?: Record<string, string>;
 }
 
+// A CI job's bundle directory would collect this suite's deliberate
+// failures; without it they stay in the sandbox's shared Git directory.
+const ISOLATED_KEYS = new Set(['CI', 'CHURCH_FAILURE_BUNDLES_DIR']);
+
 /** Environment without CI markers, so the local lock applies by default. */
 function localEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && key !== 'CI') env[key] = value;
+    if (value !== undefined && !ISOLATED_KEYS.has(key)) env[key] = value;
   }
   return env;
 }
@@ -57,6 +69,19 @@ function startLifecycle(input: LifecycleInput) {
 
 function runLifecycle(input: LifecycleInput) {
   return spawnSync('bun', [LIFECYCLE_SCRIPT, 'sh', '-c', input.script], {
+    cwd: input.cwd,
+    env: { ...localEnv(), ...input.env },
+    encoding: 'utf8',
+  });
+}
+
+interface ArtifactLifecycleInput extends LifecycleInput {
+  artifacts: string;
+}
+
+function runWithArtifacts(input: ArtifactLifecycleInput) {
+  const args = [LIFECYCLE_SCRIPT, '--artifacts', input.artifacts];
+  return spawnSync('bun', [...args, 'sh', '-c', input.script], {
     cwd: input.cwd,
     env: { ...localEnv(), ...input.env },
     encoding: 'utf8',
@@ -250,5 +275,84 @@ describe('local E2E lifecycle', () => {
 
     expect(concurrent.status, concurrent.stderr).toBe(0);
     expect(logLines()).toEqual(['concurrent', 'holder-end']);
+  });
+
+  describe('failure bundles', () => {
+    const bundleEnv = () => ({
+      CHURCH_FAILURE_BUNDLES_DIR: join(sandbox, 'bundles'),
+      CHURCH_EXEC_PURPOSE: 'e2e',
+      // What `bun run test:e2e` sets; names the bundle.
+      [LIFECYCLE_EVENT]: 'test:e2e',
+    });
+    const bundles = () =>
+      existsSync(join(sandbox, 'bundles'))
+        ? readdirSync(join(sandbox, 'bundles'))
+        : [];
+
+    it('streams the output of a failed run and records it with its sanitized test artifacts', () => {
+      const run = runWithArtifacts({
+        cwd: feature,
+        env: bundleEnv(),
+        artifacts: 'test-results',
+        script: [
+          'mkdir -p test-results/redemption',
+          'echo "invited owner@church.example" > test-results/redemption/error-context.md',
+          'echo "1 failed: redemption.spec.ts"',
+          'echo "Error: timed out" >&2',
+          'exit 4',
+        ].join('; '),
+      });
+
+      expect(run.status).toBe(4);
+      expect(run.stdout).toContain('1 failed: redemption.spec.ts');
+      expect(run.stderr).toContain('Error: timed out');
+      expect(bundles()).toHaveLength(1);
+
+      const path = join(sandbox, 'bundles', bundles()[0] ?? '');
+      expect(run.stderr).toContain(`test:e2e failure bundle: ${path}`);
+      const metadata = JSON.parse(
+        readFileSync(join(path, 'bundle.json'), 'utf8'),
+      );
+      expect(metadata).toMatchObject({
+        command: 'test:e2e',
+        purpose: 'e2e',
+        exitStatus: 4,
+        artifacts: ['artifacts/redemption/error-context.md'],
+      });
+      expect(readFileSync(join(path, 'output.log'), 'utf8')).toContain(
+        'Error: timed out',
+      );
+      expect(
+        readFileSync(
+          join(path, 'artifacts/redemption/error-context.md'),
+          'utf8',
+        ),
+      ).toBe('invited [email]\n');
+    });
+
+    it('records nothing for a successful run', () => {
+      const run = runWithArtifacts({
+        cwd: feature,
+        env: bundleEnv(),
+        artifacts: 'test-results',
+        script: 'mkdir -p test-results; echo passed',
+      });
+
+      expect(run.status, run.stderr).toBe(0);
+      expect(run.stdout).toContain('passed');
+      expect(bundles()).toEqual([]);
+    });
+
+    it('records the failure in CI too', () => {
+      const run = runWithArtifacts({
+        cwd: feature,
+        env: { ...bundleEnv(), CI: 'true' },
+        artifacts: 'test-results',
+        script: 'exit 2',
+      });
+
+      expect(run.status).toBe(2);
+      expect(bundles()).toHaveLength(1);
+    });
   });
 });

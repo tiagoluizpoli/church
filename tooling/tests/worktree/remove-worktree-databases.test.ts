@@ -54,7 +54,11 @@ function generateLocalEnv(input: CwdInput): void {
   execFileSync('bun', [LOCAL_ENV_SCRIPT], { cwd: input.cwd, stdio: 'ignore' });
 }
 
+// CI points bundles at runner storage; these tests assert the default.
+const bundlesDirOverride = process.env.CHURCH_FAILURE_BUNDLES_DIR;
+
 beforeEach(() => {
+  delete process.env.CHURCH_FAILURE_BUNDLES_DIR;
   sandbox = mkdtempSync(join(tmpdir(), 'church-remove-'));
   primary = join(sandbox, 'repo');
   feature = join(sandbox, 'repo.feature-a');
@@ -75,6 +79,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  if (bundlesDirOverride !== undefined) {
+    process.env.CHURCH_FAILURE_BUNDLES_DIR = bundlesDirOverride;
+  }
   rmSync(sandbox, { recursive: true, force: true });
 });
 

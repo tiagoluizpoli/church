@@ -12,11 +12,13 @@ import {
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import type { Instant } from '../../../packages/time/src';
 import {
   type FailureRecord,
   recordFailureBundle,
 } from '../../diagnostics/failure-bundle';
+import { testArtifacts } from '../../diagnostics/test-artifacts';
 
 /**
  * Records bundles for a throwaway repository's feature worktree whose
@@ -59,11 +61,16 @@ interface BundleFiles {
   files: string[];
 }
 
-function record(failureRecord: FailureRecord): BundleFiles {
+function record(
+  failureRecord: FailureRecord,
+  artifactsDir: string | null = null,
+): BundleFiles {
   const path = recordFailureBundle({
     cwd: feature,
     bundlesDir,
     record: failureRecord,
+    artifacts:
+      artifactsDir === null ? null : testArtifacts({ dir: artifactsDir }),
   });
   if (path === undefined) throw new Error('no bundle recorded');
 
@@ -160,6 +167,7 @@ describe('recordFailureBundle', () => {
         },
       ],
       output: { file: 'output.log', totalLines: 1, omittedLines: 0 },
+      artifacts: [],
     });
     expect(bundle.output).toBe('Error: boom\n');
   });
@@ -379,5 +387,73 @@ describe('recordFailureBundle', () => {
     const bundle = record(failure());
 
     expect(bundle.files).toEqual(['bundle.json', 'output.log']);
+  });
+
+  it('includes test reports and traces, sanitized, and leaves binary evidence intact', () => {
+    const authSecret = localEnvValue('BETTER_AUTH_SECRET');
+    const invitationId = '8b0e7f0c-5d3a-4c61-9b7e-2f1a6c9d4e13';
+    const screenshot = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0xff, 0x00]);
+    const artifactsDir = join(sandbox, 'test-results');
+    const specDir = join(artifactsDir, 'redemption-new-user-chromium');
+    mkdirSync(specDir, { recursive: true });
+    writeFileSync(
+      join(specDir, 'error-context.md'),
+      `# Error\nInvitation: ${invitationId} for owner@church.example\nsecret ${authSecret}\nexpect(locator).toBeVisible() failed\n`,
+    );
+    writeFileSync(join(specDir, 'test-failed-1.png'), screenshot);
+    writeFileSync(
+      join(specDir, 'trace.zip'),
+      zipSync({
+        'trace.network': strToU8(
+          `${JSON.stringify({
+            snapshot: {
+              request: {
+                url: 'http://localhost:4100/api/auth/get-session',
+                cookies: [{ name: 'session', value: 'trace-cookie-5521' }],
+              },
+            },
+          })}\n`,
+        ),
+      }),
+    );
+    writeFileSync(join(artifactsDir, '.last-run.json'), '{"status":"failed"}');
+
+    const bundle = record(failure({ command: 'test:e2e' }), artifactsDir);
+
+    expect(bundle.metadata.artifacts).toEqual([
+      'artifacts/.last-run.json',
+      'artifacts/redemption-new-user-chromium/error-context.md',
+      'artifacts/redemption-new-user-chromium/test-failed-1.png',
+      'artifacts/redemption-new-user-chromium/trace.zip',
+    ]);
+    const artifact = (name: string) =>
+      readFileSync(join(bundle.path, 'artifacts', name));
+
+    const report = artifact(
+      'redemption-new-user-chromium/error-context.md',
+    ).toString();
+    expect(report).toContain('toBeVisible() failed');
+    for (const secret of [invitationId, 'owner@church.example', authSecret]) {
+      expect(report).not.toContain(secret);
+    }
+    expect(
+      new Uint8Array(
+        artifact('redemption-new-user-chromium/test-failed-1.png'),
+      ),
+    ).toEqual(screenshot);
+    const trace = strFromU8(
+      unzipSync(
+        new Uint8Array(artifact('redemption-new-user-chromium/trace.zip')),
+      )['trace.network'] ?? new Uint8Array(),
+    );
+    expect(trace).toContain('http://localhost:4100/api/auth/get-session');
+    expect(trace).not.toContain('trace-cookie-5521');
+  });
+
+  it('records without artifacts when the artifact directory is absent', () => {
+    const bundle = record(failure(), join(sandbox, 'never-created'));
+
+    expect(bundle.files).toEqual(['bundle.json', 'output.log']);
+    expect(bundle.metadata.artifacts).toEqual([]);
   });
 });

@@ -11,11 +11,11 @@
     "typecheck": "vite build && tsc --noEmit",
     "generate-pwa-assets": "pwa-assets-generator",
     "test:unit": "vitest run --project unit --project component",
-    "test:integration": "vitest run --project integration",
+    "test:integration": "CHURCH_EXEC_PURPOSE=integration bun ../../tooling/diagnostics/run-managed.ts test:integration --step web -- vitest run --project integration",
     "test": "bun run test:unit && bun run test:integration",
     "test:watch": "vitest",
-    "test:e2e": "CHURCH_EXEC_PURPOSE=e2e bun ../../tooling/env/e2e-local-lifecycle.ts varlock run --path ../../apps/server -- playwright test",
-    "test:e2e:ui": "CHURCH_EXEC_PURPOSE=e2e CHURCH_E2E_KEEP_STATE=1 bun ../../tooling/env/e2e-local-lifecycle.ts varlock run --path ../../apps/server -- playwright test --ui"
+    "test:e2e": "CHURCH_EXEC_PURPOSE=e2e bun ../../tooling/env/e2e-local-lifecycle.ts --artifacts test-results varlock run --path ../../apps/server -- playwright test",
+    "test:e2e:ui": "CHURCH_EXEC_PURPOSE=e2e CHURCH_E2E_KEEP_STATE=1 bun ../../tooling/env/e2e-local-lifecycle.ts --artifacts test-results varlock run --path ../../apps/server -- playwright test --ui"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

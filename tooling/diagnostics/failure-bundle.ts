@@ -31,9 +31,10 @@ import { knownSecretsOf, sanitize } from './sanitize';
 
 /**
  * The diagnostic bundle a failed managed command leaves behind (ADR-0005):
- * one directory holding allowlisted metadata (`bundle.json`) and bounded,
- * sanitized output (`output.log`, see ./sanitize.ts). It never copies value
- * files or the process environment.
+ * one directory holding allowlisted metadata (`bundle.json`), bounded,
+ * sanitized output (`output.log`, see ./sanitize.ts), and for a test run its
+ * sanitized reports and traces (`artifacts/`). It never copies value files,
+ * the process environment, or browser authentication state.
  */
 
 const BUNDLES_DIR_NAME = 'church-failure-bundles';
@@ -65,10 +66,22 @@ export interface FailureRecord {
   output: string;
 }
 
+export interface CopyArtifactsInput {
+  bundlePath: string;
+  /** Known secrets, for artifacts that sanitize text. */
+  secrets: RegExp[];
+}
+
+/** Copies a test run's sanitized evidence into a new bundle and returns
+ * the copied paths, relative to it (./test-artifacts.ts). Injected, since
+ * this module must load before dependencies are installed. */
+export type ArtifactCopier = (input: CopyArtifactsInput) => string[];
+
 export interface RecordFailureBundleInput {
   cwd: string;
   bundlesDir: string;
   record: FailureRecord;
+  artifacts: ArtifactCopier | null;
 }
 
 interface DatabaseTargetSummary {
@@ -251,7 +264,7 @@ function pruneExpiredBundles(input: PruneInput): void {
 export function recordFailureBundle(input: RecordFailureBundleInput): string {
   const { record } = input;
   const summary = worktreeSummaryOf({ cwd: input.cwd });
-  const secrets = knownSecretsOf({ cwd: input.cwd });
+  const secrets = knownSecretsOf({ cwd: input.cwd, env: process.env });
   // Sanitized before bounding, so no cut can split a secret it would match.
   const output = bound({ text: sanitize({ text: record.output, secrets }) });
 
@@ -262,6 +275,7 @@ export function recordFailureBundle(input: RecordFailureBundleInput): string {
       bundlePrefix({ record, worktree: summary.worktree }),
     ),
   );
+  const artifacts = input.artifacts?.({ bundlePath: path, secrets }) ?? [];
 
   writeFileSync(
     join(path, BUNDLE_METADATA_FILE),
@@ -289,6 +303,7 @@ export function recordFailureBundle(input: RecordFailureBundleInput): string {
           totalLines: output.totalLines,
           omittedLines: output.omittedLines,
         },
+        artifacts,
       },
       null,
       2,
@@ -316,6 +331,7 @@ export function errorMessage(input: ErrorInput): string {
 export interface TryRecordFailureBundleInput {
   cwd: string;
   record: FailureRecord;
+  artifacts: ArtifactCopier | null;
 }
 
 /** Records into the resolved bundle directory and prints the path. A
@@ -328,6 +344,7 @@ export function tryRecordFailureBundle(
       cwd: input.cwd,
       bundlesDir: resolveBundlesDir({ cwd: input.cwd }),
       record: input.record,
+      artifacts: input.artifacts,
     });
     console.error(`✖ ${input.record.command} failure bundle: ${path}`);
   } catch (error) {

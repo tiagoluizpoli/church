@@ -13,7 +13,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test:integration": "CHURCH_EXEC_PURPOSE=integration varlock run --path . -- bun vitest run",
+    "test:integration": "CHURCH_EXEC_PURPOSE=integration bun ../../tooling/diagnostics/run-managed.ts test:integration --step @church/auth -- varlock run --path . -- bun vitest run",
     "test": "bun run test:integration"
   },
   "dependencies": {

@@ -31,6 +31,9 @@ function git(args: string[]): void {
 interface RunInput {
   name: string;
   command: string[];
+  /** Options between the name and `--`, e.g. `--step`. */
+  options?: string[];
+  env?: Record<string, string>;
 }
 
 interface RunResult {
@@ -46,8 +49,8 @@ function run(input: RunInput): RunResult {
 
   const result = spawnSync(
     process.execPath,
-    [RUN_MANAGED, input.name, '--', ...input.command],
-    { cwd: feature, encoding: 'utf8', env },
+    [RUN_MANAGED, input.name, ...(input.options ?? []), '--', ...input.command],
+    { cwd: feature, encoding: 'utf8', env: { ...env, ...input.env } },
   );
   return {
     status: result.status,
@@ -170,6 +173,32 @@ describe('run-managed', () => {
     expect(metadata.command).toBe('worktree:bootstrap');
     expect(readFileSync(join(path, 'output.log'), 'utf8')).toContain(
       'inner failure',
+    );
+  });
+
+  it('records the step and execution purpose of a test command', () => {
+    const result = run({
+      name: 'test:integration',
+      options: ['--step', '@church/server'],
+      command: ['sh', '-c', 'echo "1 test failed" >&2; exit 1'],
+      env: { CHURCH_EXEC_PURPOSE: 'integration' },
+    });
+
+    expect(result.status).toBe(1);
+    expect(bundles()).toHaveLength(1);
+
+    const path = join(bundlesDir, bundles()[0] ?? '');
+    expect(
+      JSON.parse(readFileSync(join(path, 'bundle.json'), 'utf8')),
+    ).toMatchObject({
+      command: 'test:integration',
+      step: '@church/server',
+      purpose: 'integration',
+      exitStatus: 1,
+      artifacts: [],
+    });
+    expect(readFileSync(join(path, 'output.log'), 'utf8')).toBe(
+      '1 test failed\n',
     );
   });
 

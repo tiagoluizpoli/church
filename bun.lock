@@ -19,6 +19,7 @@
         "@types/three": "^0.184.0",
         "commitizen": "^4.3.1",
         "cz-conventional-changelog": "^3.3.0",
+        "fflate": "^0.8.2",
         "lefthook": "^2.1.4",
         "orval": "^8.19.0",
         "turbo": "^2.8.12",

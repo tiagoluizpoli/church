@@ -1,12 +1,20 @@
 import { openSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { now } from '../../packages/time/src/now';
+import { tryRecordFailureBundle } from '../diagnostics/failure-bundle';
+import {
+  OWNER_VARIABLE,
+  pump,
+  purposeFromEnvironment,
+} from '../diagnostics/run-managed';
+import { testArtifacts } from '../diagnostics/test-artifacts';
 
 /**
  * Runs one local E2E command (Playwright, its browser and both webServers)
  * at a time across every worktree of this repository, so parallel runs
  * cannot exhaust the host.
  *
- *   bun tooling/env/e2e-local-lifecycle.ts <command> [args...]
+ *   bun tooling/env/e2e-local-lifecycle.ts [--artifacts <dir>] <command> [args...]
  *
  * The lock is a kernel `flock` on a file in the shared Git directory, held
  * by this process for the whole command: the kernel releases it on success,
@@ -19,6 +27,11 @@ import { join } from 'node:path';
  * the same for whatever a killed holder left behind. Processes marked for
  * another repository's lock are never touched. Hosted CI jobs share neither
  * host nor Git directory, so CI runs the command without the lock.
+ *
+ * Locally and in CI, a failed command leaves one diagnostic bundle
+ * (ADR-0005) with its output and the sanitized contents of `--artifacts`
+ * (Playwright's output directory: reports, screenshots, traces), and prints
+ * its path. It is named after the package script (`test:e2e`).
  */
 
 const LOCK_FILE = 'church-e2e.lock';
@@ -29,6 +42,13 @@ const STOP_POLL_MS = 50;
 const STOP_ROUNDS = 5;
 const FORWARDED_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 const COMMAND_NOT_FOUND = 127;
+const ARTIFACTS_OPTION = '--artifacts';
+// `bun run test:e2e` or `test:e2e:ui`: names the failure bundle.
+const COMMAND_NAME = process.env.npm_lifecycle_event ?? 'test:e2e';
+// A process that escaped the command keeps its output pipes open; after the
+// command exits, its output is awaited only this long, so the leftover is
+// still stopped instead of holding the run open.
+const OUTPUT_DRAIN_MS = 500;
 
 interface CommandInput {
   command: string[];
@@ -200,24 +220,36 @@ interface RunCommandInput extends CommandInput {
   env: NodeJS.ProcessEnv;
 }
 
-/** Runs the command to completion in its own process group and returns its
- * exit status. A terminal's Ctrl-C, or a signal from Turbo, reaches only this
- * process, which forwards it exactly once: Playwright force-quits instead of
- * tearing down when it receives a second interrupt. */
-async function runCommand(input: RunCommandInput): Promise<number> {
-  let child: Bun.Subprocess;
+interface CommandResult {
+  exitStatus: number;
+  signal: NodeJS.Signals | null;
+  output: string;
+}
+
+/** Runs the command to completion in its own process group, streaming its
+ * output while keeping a copy. A terminal's Ctrl-C, or a signal from Turbo,
+ * reaches only this process, which forwards it exactly once: Playwright
+ * force-quits instead of tearing down when it receives a second interrupt. */
+async function runCommand(input: RunCommandInput): Promise<CommandResult> {
+  let child: Bun.Subprocess<'inherit', 'pipe', 'pipe'>;
 
   try {
     child = Bun.spawn(input.command, {
-      stdio: ['inherit', 'inherit', 'inherit'],
-      env: input.env,
+      stdio: ['inherit', 'pipe', 'pipe'],
+      // Piped output would otherwise lose the colors of a terminal run.
+      env: process.stdout.isTTY
+        ? { FORCE_COLOR: '1', ...input.env }
+        : input.env,
       detached: true,
     });
   } catch (error) {
-    console.error(
-      `✖ could not start ${input.command[0]}: ${describeError({ error })}`,
-    );
-    return COMMAND_NOT_FOUND;
+    const message = `✖ could not start ${input.command[0]}: ${describeError({ error })}`;
+    console.error(message);
+    return {
+      exitStatus: COMMAND_NOT_FOUND,
+      signal: null,
+      output: `${message}\n`,
+    };
   }
 
   const forward = (signal: NodeJS.Signals) => child.kill(signal);
@@ -225,41 +257,104 @@ async function runCommand(input: RunCommandInput): Promise<number> {
   for (const signal of FORWARDED_SIGNALS) process.on(signal, forward);
 
   try {
+    const chunks: string[] = [];
+    const output = Promise.all([
+      pump({ stream: child.stdout, sink: process.stdout, chunks }),
+      pump({ stream: child.stderr, sink: process.stderr, chunks }),
+    ]);
     // Resolves to 128 + the signal number when a signal ended the command.
-    return await child.exited;
+    const exitStatus = await child.exited;
+    await Promise.race([output, Bun.sleep(OUTPUT_DRAIN_MS)]);
+    return { exitStatus, signal: child.signalCode, output: chunks.join('') };
   } finally {
     for (const signal of FORWARDED_SIGNALS) process.off(signal, forward);
   }
 }
 
-async function runLocally(input: CommandInput): Promise<number> {
+async function runLocally(input: RunCommandInput): Promise<CommandResult> {
   const lockPath = await acquireLock();
   await stopLifecycleProcesses({ lockPath });
 
   try {
     return await runCommand({
       command: input.command,
-      env: { ...process.env, [LIFECYCLE_MARKER]: lockPath },
+      env: { ...input.env, [LIFECYCLE_MARKER]: lockPath },
     });
   } finally {
     await stopLifecycleProcesses({ lockPath });
   }
 }
 
-async function main(): Promise<void> {
-  const command = process.argv.slice(2);
+interface LifecycleArguments extends CommandInput {
+  artifactsDir: string | null;
+}
 
-  if (command.length === 0) {
-    console.error('usage: e2e-local-lifecycle.ts <command> [args...]');
+interface ArgvInput {
+  argv: string[];
+}
+
+function parseArguments(input: ArgvInput): LifecycleArguments {
+  const [option, dir, ...command] = input.argv;
+  return option === ARTIFACTS_OPTION && dir !== undefined
+    ? { artifactsDir: resolve(dir), command }
+    : { artifactsDir: null, command: input.argv };
+}
+
+interface RecordFailureInput extends LifecycleArguments {
+  startedAt: ReturnType<typeof now>;
+  result: CommandResult;
+}
+
+/** One bundle per failure: a lifecycle nested in another managed command
+ * leaves it to that command. */
+function recordFailure(input: RecordFailureInput): void {
+  if (input.result.exitStatus === 0 || process.env[OWNER_VARIABLE]) return;
+
+  tryRecordFailureBundle({
+    cwd: process.cwd(),
+    record: {
+      command: COMMAND_NAME,
+      step: null,
+      commandLine: input.command,
+      purpose: purposeFromEnvironment(),
+      startedAt: input.startedAt,
+      finishedAt: now(),
+      exitStatus: input.result.exitStatus,
+      signal: input.result.signal,
+      output: input.result.output,
+    },
+    artifacts:
+      input.artifactsDir === null
+        ? null
+        : testArtifacts({ dir: input.artifactsDir }),
+  });
+}
+
+async function main(): Promise<void> {
+  const args = parseArguments({ argv: process.argv.slice(2) });
+
+  if (args.command.length === 0) {
+    console.error(
+      'usage: e2e-local-lifecycle.ts [--artifacts <dir>] <command> [args...]',
+    );
     process.exit(2);
   }
 
+  const commandRun = {
+    command: args.command,
+    env: {
+      ...process.env,
+      [OWNER_VARIABLE]: COMMAND_NAME,
+    },
+  };
+
   try {
-    process.exit(
-      process.env.CI
-        ? await runCommand({ command, env: process.env })
-        : await runLocally({ command }),
-    );
+    const startedAt = now();
+    const result = process.env.CI
+      ? await runCommand(commandRun)
+      : await runLocally(commandRun);
+    recordFailure({ ...args, startedAt, result });
+    process.exit(result.exitStatus);
   } catch (error) {
     console.error(`✖ local E2E: ${describeError({ error })}`);
     process.exit(1);

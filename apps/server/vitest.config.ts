@@ -1,8 +1,22 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
+// Unit execution needs no database or local values (#203): modules that read
+// the Zod server env at import get fixed placeholders, never a value file.
+// Nothing listens at these addresses; a unit test that reaches one fails.
+const UNIT_ENV = {
+  DATABASE_URL:
+    'postgresql://unit:unit@127.0.0.1:9/church_unit_has_no_database',
+  BETTER_AUTH_SECRET: 'unit-test-placeholder-secret-0123456789',
+  BETTER_AUTH_URL: 'http://127.0.0.1:9',
+  CORS_ORIGIN: 'http://127.0.0.1:9',
+  UNLEASH_API_URL: 'http://127.0.0.1:9/api',
+  UNLEASH_API_TOKEN: 'unit-test-placeholder-token',
+  // The debug-only routes' controller tests exercise them.
+  ENABLE_DEBUG_ENDPOINTS: 'true',
+};
+
 export default defineConfig({
-  envDir: resolve(__dirname, '../..'),
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
@@ -67,6 +81,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
+          env: UNIT_ENV,
           include: [
             'src/**/*.test.ts',
             'tests/api/auth/authority-guard.test.ts',

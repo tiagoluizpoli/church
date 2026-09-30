@@ -49,6 +49,7 @@ afterEach(() => {
 interface ServerValueInput {
   rootValues: string[];
   key: string;
+  processEnv?: Record<string, string>;
 }
 
 function serverValue(input: ServerValueInput): string {
@@ -59,7 +60,11 @@ function serverValue(input: ServerValueInput): string {
 
   return execFileSync(VARLOCK, ['printenv', '--path', serverDir, input.key], {
     encoding: 'utf8',
-    env: { PATH: process.env.PATH, CHURCH_EXEC_PURPOSE: 'e2e' },
+    env: {
+      PATH: process.env.PATH,
+      CHURCH_EXEC_PURPOSE: 'e2e',
+      ...input.processEnv,
+    },
   }).trim();
 }
 
@@ -77,5 +82,28 @@ describe('apps/server .env.schema', () => {
     expect(
       serverValue({ rootValues: [], key: 'ENABLE_DEBUG_ENDPOINTS' }),
     ).not.toBe('true');
+  });
+
+  it('binds the worktree server port', () => {
+    expect(
+      serverValue({ rootValues: ['CHURCH_SERVER_PORT=27999'], key: 'PORT' }),
+    ).toBe('27999');
+  });
+
+  // Playwright's E2E webServer sets its own PORT.
+  it('lets a process PORT win over the worktree port', () => {
+    expect(
+      serverValue({
+        rootValues: ['CHURCH_SERVER_PORT=27999'],
+        key: 'PORT',
+        processEnv: { PORT: '4100' },
+      }),
+    ).toBe('4100');
+  });
+
+  it('lets the root set NODE_ENV', () => {
+    expect(
+      serverValue({ rootValues: ['NODE_ENV=test'], key: 'NODE_ENV' }),
+    ).toBe('test');
   });
 });

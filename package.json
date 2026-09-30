@@ -8,7 +8,6 @@
       "packages/*"
     ],
     "catalog": {
-      "dotenv": "^17.2.2",
       "zod": "^4.1.13",
       "@types/bun": "^1.3.4",
       "better-auth": "1.5.5",
@@ -78,7 +77,6 @@
   },
   "dependencies": {
     "@church/env": "workspace:*",
-    "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

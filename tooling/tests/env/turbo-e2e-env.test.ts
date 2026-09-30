@@ -34,9 +34,11 @@ const REQUIRED_E2E_ENV = [
   'CHURCH_WORKTREE',
 ];
 
-describe('turbo E2E tasks', () => {
-  for (const task of ['test:e2e', 'test:e2e:ui']) {
-    it(`${task} passes the injected E2E environment through`, () => {
+// #263: CI's integration runners also take their configuration from the job
+// environment alone, with no generated value file.
+describe('turbo integration and E2E tasks', () => {
+  for (const task of ['test:integration', 'test:e2e', 'test:e2e:ui']) {
+    it(`${task} passes the injected environment through`, () => {
       expect(turboConfig.tasks[task]?.passThroughEnv).toEqual(
         expect.arrayContaining(REQUIRED_E2E_ENV),
       );

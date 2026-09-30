@@ -14,6 +14,7 @@ import {
 } from './reseed';
 
 const COMMAND = 'db:reseed:dev';
+const BLUEPRINT_LOCATION = 'apps/server/seeds/blueprints/directory/';
 
 function report({ message }: ReseedReportInput): void {
   console.log(`${COMMAND} ${message}`);
@@ -25,11 +26,16 @@ interface ReportSeededGraphInput {
 
 function reportSeededGraph({ seeded }: ReportSeededGraphInput): void {
   report({
-    message: `complete: Church ${seeded.church.slug}, anchor ${seeded.anchor}.`,
+    message: `complete: Churches ${seeded.church.slug} and ${seeded.secondChurch.slug}, anchor ${seeded.anchor}.`,
   });
-  console.log(`  ChurchAdmin  ${seeded.personas.churchAdmin.email}`);
-  console.log(`  Volunteer    ${seeded.personas.volunteer.email}`);
-  console.log(`  Password     ${SEED_PERSONA_PASSWORD}`);
+  const width = Math.max(
+    ...seeded.keyPersonas.map(({ label }) => label.length),
+  );
+  for (const persona of seeded.keyPersonas) {
+    console.log(`  ${persona.label.padEnd(width)}  ${persona.email}`);
+  }
+  console.log(`  ${'Password'.padEnd(width)}  ${SEED_PERSONA_PASSWORD}`);
+  console.log(`  Every other sign-in: ${BLUEPRINT_LOCATION}`);
 }
 
 /**

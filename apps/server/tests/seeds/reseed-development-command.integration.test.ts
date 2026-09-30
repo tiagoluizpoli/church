@@ -152,10 +152,15 @@ interface PublicTableRow {
 
 type GraphSnapshot = Record<string, string[]>;
 
+interface VerifiesPasswordInput {
+  hash: string;
+}
+
 /**
  * Every row of every application table, minus the columns the clock stamps.
  * The salted credential hash differs per hash by design, so it is compared by
- * whether it still verifies the development password.
+ * whether it still verifies the development password — once per distinct
+ * hash, since every persona shares one and hashing is deliberately slow.
  */
 async function snapshotGraph({
   database,
@@ -167,6 +172,19 @@ async function snapshotGraph({
         "select tablename from pg_tables where schemaname = 'public' order by tablename",
       );
       const snapshot: GraphSnapshot = {};
+      const verifiedByHash = new Map<string, boolean>();
+      const verifiesPassword = async ({
+        hash,
+      }: VerifiesPasswordInput): Promise<boolean> => {
+        const known = verifiedByHash.get(hash);
+        if (known !== undefined) return known;
+        const verified = await verifyPassword({
+          hash,
+          password: SEED_PERSONA_PASSWORD,
+        });
+        verifiedByHash.set(hash, verified);
+        return verified;
+      };
 
       for (const { tablename } of tables.rows) {
         const rows = await pool.query<Record<string, unknown>>(
@@ -181,10 +199,7 @@ async function snapshotGraph({
             if (TIME_DERIVED_OR_AUDIT_COLUMNS.has(column)) continue;
             kept[column] =
               tablename === 'account' && column === 'password'
-                ? await verifyPassword({
-                    hash: String(value),
-                    password: SEED_PERSONA_PASSWORD,
-                  })
+                ? await verifiesPassword({ hash: String(value) })
                 : value;
           }
           normalized.push(JSON.stringify(kept));

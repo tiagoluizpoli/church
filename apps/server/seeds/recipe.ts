@@ -3,6 +3,12 @@ import type { TenancyWriter } from '@church/db';
 /** Every builder writes through the recipe's transaction, never the pooled db. */
 export type SeedWriter = TenancyWriter;
 
+/** The identifiers a recipe reports for each Church it seeded. */
+export interface SeededChurchSummary {
+  id: string;
+  slug: string;
+}
+
 export interface SeedRecipeLoadInput {
   db: SeedWriter;
 }

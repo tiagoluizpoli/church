@@ -35,6 +35,7 @@ const CHURCH_B_NAME = 'E2E ChurchB';
 const CHURCH_B_MINISTRY_ID = 'e2ebbbbb-3333-3333-a333-333333333331';
 const CHURCH_B_MINISTRY_NAME = 'E2E ChurchB Ministry';
 const CHURCH_B_ROLE_USHER_ID = 'e2ebbbbb-5555-5555-a555-555555555551';
+const CHURCH_B_CYCLE_BASE_YEAR = 2027;
 
 const PASSWORD = 'correct-horse-battery-staple';
 
@@ -230,15 +231,21 @@ function findShiftId({
 async function makeChurchBAssignableSeat({
   churchBAdminCtx,
 }: ChurchBSeatInput): Promise<ChurchBSeat> {
+  // A retry or repeat reuses the run's E2E database, where the previous
+  // attempt's cycle still stands; planning cycles may not overlap, so each
+  // attempt takes its own year: one per retry, and a block of ten years per
+  // `--repeat-each` index (room for up to nine retries each).
+  const { retry, repeatEachIndex } = test.info();
+  const year = CHURCH_B_CYCLE_BASE_YEAR + repeatEachIndex * 10 + retry;
   const eventTitle = `E2E ChurchB Transfer Service ${Date.now()}`;
-  const start = '2027-03-10T09:00:00.000Z';
-  const end = '2027-03-10T11:00:00.000Z';
+  const start = `${year}-03-10T09:00:00.000Z`;
+  const end = `${year}-03-10T11:00:00.000Z`;
 
   const cycleRes = await churchBAdminCtx.post('/api/v1/admin/planning-cycles', {
     data: {
       name: `E2E ChurchB Transfer Cycle ${Date.now()}`,
-      startDate: '2027-03-01',
-      endDate: '2027-04-01',
+      startDate: `${year}-03-01`,
+      endDate: `${year}-04-01`,
     },
   });
   await assertOk({ res: cycleRes, action: 'create Church B planning cycle' });

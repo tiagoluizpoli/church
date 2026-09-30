@@ -14,8 +14,8 @@ function randomBytes(length: number): Uint8Array {
     crypto.getRandomValues(bytes);
     return bytes;
   }
-  // Last resort for an environment with no Web Crypto at all. These ids never
-  // leave the client — they only tag rows the UI invented — so collision
+  // Last resort for an environment with no Web Crypto at all. These ids tag
+  // rows the UI invented or serve as idempotency keys, so collision
   // resistance matters, unpredictability does not.
   for (let index = 0; index < length; index += 1) {
     bytes[index] = Math.floor(Math.random() * 256);

@@ -10,6 +10,7 @@ import type {
   ConfirmVolunteerTransfer200,
   GetVolunteerTransferPreview200,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { randomId } from '@/shared/utils/id';
 import { redemptionApi } from '@/utils/api-instances';
 
 type ReviewablePreview = Extract<
@@ -45,7 +46,7 @@ export function VolunteerTransferFlow({
   onTransferred,
 }: VolunteerTransferFlowProps) {
   const [step, setStep] = useState<Step>('split');
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => randomId());
 
   if (step === 'split') {
     return (

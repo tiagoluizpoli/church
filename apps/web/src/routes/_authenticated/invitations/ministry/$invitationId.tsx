@@ -24,6 +24,7 @@ import {
   finishRedemptionAtDashboard,
   switchActiveChurch,
 } from '@/shared/utils/active-church-switch';
+import { randomId } from '@/shared/utils/id';
 import { activeChurchApi, redemptionApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
@@ -120,7 +121,7 @@ function MinistryInvitationRoute() {
   const { invitationId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => randomId());
   const [confirmingDecline, setConfirmingDecline] = useState(false);
   const [confirmingSwitch, setConfirmingSwitch] = useState(false);
 

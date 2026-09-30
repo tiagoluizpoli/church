@@ -16,6 +16,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { authClient } from '@/lib/auth-client';
 import { finishRedemptionAtDashboard } from '@/shared/utils/active-church-switch';
+import { randomId } from '@/shared/utils/id';
 import { redemptionApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute('/invitations/church/$invitationId')({
@@ -109,7 +110,7 @@ function ChurchInvitationRedemptionRoute() {
   const { invitationId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => randomId());
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => nowAsDate().getTime());
 

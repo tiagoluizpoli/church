@@ -24,6 +24,8 @@ export function createDb() {
   const pool = new pg.Pool({
     connectionString,
     max: process.env.NODE_ENV === 'test' ? 2 : 10,
+    // Let short-lived scripts exit once idle instead of lingering on the 10 s idle timeout.
+    allowExitOnIdle: true,
   });
   return drizzle(pool, { schema });
 }

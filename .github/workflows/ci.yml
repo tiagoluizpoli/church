@@ -186,13 +186,11 @@ jobs:
       - name: Install Playwright browsers
         if: steps.plan.outputs.needs_e2e == 'true'
         id: install-browsers
-        run: |
-          start=$(date +%s)
-          bunx playwright install --with-deps chromium
-          elapsed=$(( $(date +%s) - start ))
-          echo "### Develop Gate / Browser setup elapsed time" >> "$GITHUB_STEP_SUMMARY"
-          echo "${elapsed}s (Playwright browser install)" >> "$GITHUB_STEP_SUMMARY"
-        working-directory: apps/web
+        # Cached per locked Playwright version; the action keeps the elapsed
+        # time evidence this step used to write inline.
+        uses: ./.github/actions/install-playwright-chromium
+        with:
+          summary-title: Develop Gate / Browser setup elapsed time
 
       - name: Browser journeys (affected or critical smoke set)
         # An intentional no-op when the plan selected no journey (e.g. a
@@ -309,8 +307,7 @@ jobs:
       - uses: ./.github/actions/setup-church-ci
 
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
-        working-directory: apps/web
+        uses: ./.github/actions/install-playwright-chromium
 
       - name: Complete validation (lint, typecheck, unit, integration, full E2E)
         run: bun run validate
@@ -448,8 +445,7 @@ jobs:
       - uses: ./.github/actions/setup-church-ci
 
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
-        working-directory: apps/web
+        uses: ./.github/actions/install-playwright-chromium
 
       - name: Run E2E tests
         run: bun run test:e2e

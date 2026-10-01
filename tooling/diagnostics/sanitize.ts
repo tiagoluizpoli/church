@@ -48,6 +48,13 @@ const ASSIGNMENT = new RegExp(
   'gi',
 );
 const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+// EMAIL_PATTERN tried from every position of a long local-part run (an
+// inline base64 source map) rescans the run each time: quadratic. Every
+// position of one run reaches the same `@`, so a run either matches from
+// its start or not at all; addresses glued to the end of a previous one,
+// which the unanchored search tried right there, repeat the group.
+const EMAIL_RUN_PATTERN =
+  /(?<![a-z0-9._%+-])(?:[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})+/gi;
 // A UUID right after an `invitation…` word: `/invitations/ministry/<id>`,
 // `"invitationId":"<id>"` (also JSON-escaped), `Invitation: <id>`. Other
 // identifiers (users, Churches) stay readable.
@@ -175,6 +182,8 @@ export function sanitize(input: SanitizeInput): string {
     .replace(JSON_FIELD, `$1"${REDACTED}"`)
     .replace(FLAG, `$1$2${REDACTED}`)
     .replace(ASSIGNMENT, `$1$2${REDACTED}`)
-    .replace(EMAIL_PATTERN, '[email]')
+    .replace(EMAIL_RUN_PATTERN, (emails) =>
+      emails.replace(EMAIL_PATTERN, '[email]'),
+    )
     .replace(INVITATION_ID_PATTERN, '$1[invitation]');
 }

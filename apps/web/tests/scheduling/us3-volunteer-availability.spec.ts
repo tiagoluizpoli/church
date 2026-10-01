@@ -36,9 +36,9 @@ function toDateString(date: Date): string {
 
 function createOverlapPlanningMonth(): OverlapPlanningMonth {
   const now = new Date();
-  const year = allocatedYear(
-    'us3-volunteer-availability:create-overlap-planning-month',
-  );
+  const year = allocatedYear({
+    callSiteId: 'us3-volunteer-availability:create-overlap-planning-month',
+  });
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

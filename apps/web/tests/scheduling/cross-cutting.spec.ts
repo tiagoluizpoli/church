@@ -55,7 +55,7 @@ function createFreshDraftMonth(
   callSiteId: PlanningCycleYearCallSiteId,
 ): FreshDraftMonth {
   const now = new Date();
-  const year = allocatedYear(callSiteId);
+  const year = allocatedYear({ callSiteId });
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

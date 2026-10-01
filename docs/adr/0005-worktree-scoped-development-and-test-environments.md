@@ -152,6 +152,13 @@ fixture processes. The kernel releases the lock after normal exit or a crash,
 so no stale-lock cleanup is required. CI jobs use their own runners and do not
 share this local lock.
 
+Playwright workers within one run share that run's single stack: one server,
+one Vite, one E2E database, one URL set and one target fingerprint. They add
+only browser contexts, so they need neither the lock nor a per-worker target;
+the `flock` still serializes separate runs. Specs coupled through shared seed
+state run in a one-worker lane (`apps/web/tests/fixtures/e2e-lanes.ts`) until
+their journeys own their data.
+
 E2E setup resets the dedicated E2E target before the next run. Failed E2E
 database state is preserved for diagnosis; successful runs may clean normally,
 and Worktrunk removal ultimately drops the database.

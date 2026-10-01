@@ -124,6 +124,13 @@ interface AuthUserInput {
   invitationId: string;
 }
 
+const ACTIVE_CHURCH_STATUS_SCHEMA = z.object({ status: z.string() });
+
+interface ResolveActiveChurchInput {
+  ctx: Awaited<ReturnType<typeof request.newContext>>;
+  name: string;
+}
+
 interface MakeUniqueEmailInput {
   label: string;
 }
@@ -229,6 +236,28 @@ async function authUser({
     step: `sign in ${creds.name}`,
   });
   return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
+}
+
+/**
+ * Persists the session's Active Church before any worker starts. Workers
+ * share these sessions; left unresolved, their first concurrent requests
+ * each auto-select it and touch the same Membership row in a
+ * repeatable-read transaction, and Postgres fails all but one with a
+ * serialization error (500).
+ */
+async function resolveActiveChurch({
+  ctx,
+  name,
+}: ResolveActiveChurchInput): Promise<void> {
+  const res = await ctx.get(`${SERVER_URL}/api/v1/active-church/status`);
+  const body = res.ok()
+    ? ACTIVE_CHURCH_STATUS_SCHEMA.parse(await res.json())
+    : null;
+  if (body?.status !== 'resolved') {
+    throw new Error(
+      `Active Church did not resolve for ${name} (${res.status()}): ${JSON.stringify(body)}`,
+    );
+  }
 }
 
 /** Starts a run: forgets the previous run's outcome, and records a failure
@@ -378,6 +407,20 @@ async function provisionE2eRun(): Promise<void> {
       }),
     ),
   );
+
+  await Promise.all([
+    resolveActiveChurch({ ctx: leaderCtx, name: leaderCreds.name }),
+    resolveActiveChurch({
+      ctx: ministryLeaderCtx,
+      name: ministryLeaderCreds.name,
+    }),
+    resolveActiveChurch({ ctx: teamLeaderCtx, name: teamLeaderCreds.name }),
+    resolveActiveChurch({ ctx: volunteerCtx, name: volunteerCreds.name }),
+    resolveActiveChurch({
+      ctx: churchBAdminCtx,
+      name: churchBAdminCreds.name,
+    }),
+  ]);
 
   await Promise.all([
     leaderCtx.storageState({ path: CHURCH_ADMIN_STORAGE_STATE }),

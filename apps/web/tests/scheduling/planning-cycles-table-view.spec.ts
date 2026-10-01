@@ -2,6 +2,11 @@ import { expect, type Page, test } from '@playwright/test';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
 import {
+  applyTemplatesViaApi,
+  createEventTemplateViaApi,
+  createPlanningCycleViaApi,
+} from './planning-cycle-api.helpers';
+import {
   allocatedYear,
   allocatedYearSequence,
 } from './planning-cycle-year.helpers';
@@ -16,20 +21,25 @@ interface SeededCycle {
   cycleMonth: number;
 }
 
-// This file alone seeds a cycle per test (11+ calls across ~90s). `nextYear`
-// hands out a distinct year per call within this run (never colliding with
-// each other), from a band no other E2E spec file uses (never colliding
-// across files, #241) — see planning-cycle-year.helpers.ts.
-const nextYear = allocatedYearSequence(
-  'planning-cycles-table-view:create-cycle-with-sunday-template',
-  20,
-);
+// This file alone seeds a cycle per test (11 tests). `nextYear` hands out a
+// distinct year per call within a worker, from that worker's slice of a band
+// no other spec file uses (#241). The reserve is the max cycles one worker
+// can create here (all 11 tests, +1 margin) — see planning-cycle-year.helpers.ts.
+const nextYear = allocatedYearSequence({
+  callSiteId: 'planning-cycles-table-view:create-cycle-with-sunday-template',
+  reserveForSequence: 12,
+});
 
+interface CreateCycleWithSundayTemplateAppliedParams {
+  page: Page;
+}
+
+// Setup only: the create/template/apply UI flow is asserted by the US3 edit
+// test below and us1-admin-plan, so this reaches the same state through the
+// API and then opens the cycle, as the UI flow leaves it.
 async function createCycleWithSundayTemplateApplied({
   page,
-}: {
-  page: Page;
-}): Promise<SeededCycle> {
+}: CreateCycleWithSundayTemplateAppliedParams): Promise<SeededCycle> {
   const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
   const cycleName = `Table View ${uniqueSuffix}`;
   const templateName = `Sunday ${uniqueSuffix}`;
@@ -42,59 +52,28 @@ async function createCycleWithSundayTemplateApplied({
     .toISOString()
     .slice(0, 10);
 
-  await page.goto('/scheduling/planning-cycles');
-
-  await page.getByTestId('open-create-cycle-dialog-button').click();
-  const createCycleDialog = page.getByRole('dialog', { name: 'Create cycle' });
-  await createCycleDialog.getByTestId('cycle-name-input').fill(cycleName);
-  await fillDatePickerField({
+  const cycle = await createPlanningCycleViaApi({
     page,
-    trigger: createCycleDialog.getByTestId('cycle-start-date-input'),
-    date: startDate,
+    name: cycleName,
+    startDate,
+    endDate,
   });
-  await fillDatePickerField({
+  const template = await createEventTemplateViaApi({
     page,
-    trigger: createCycleDialog.getByTestId('cycle-end-date-input'),
-    date: endDate,
+    name: templateName,
+    weekday: 0,
+    blocks: [
+      { label: 'Worship', startTime: '09:00', endTime: '10:00', order: 0 },
+    ],
   });
-  await createCycleDialog.getByTestId('create-cycle-button').click();
+  await applyTemplatesViaApi({
+    page,
+    cycleId: cycle.id,
+    templateIds: [template.id],
+  });
 
+  await page.goto(`/scheduling/planning-cycles/${cycle.id}`);
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
-
-  await page.getByTestId('open-template-library-button').click();
-  await page.getByTestId('open-create-template-dialog-button').click();
-  const createTemplateDialog = page.getByRole('dialog', {
-    name: 'Create template',
-  });
-  await createTemplateDialog
-    .getByTestId('template-name-input')
-    .fill(templateName);
-  await createTemplateDialog.getByTestId('template-weekday-select').click();
-  await page.getByTestId('template-weekday-option-0').click();
-  const block = createTemplateDialog.getByTestId('template-block-row').first();
-  await block.getByTestId('template-block-label-input').fill('Worship');
-  await fillTimeOfDayField({
-    field: block.getByTestId('template-block-start-time-input'),
-    time: '09:00',
-  });
-  await fillTimeOfDayField({
-    field: block.getByTestId('template-block-end-time-input'),
-    time: '10:00',
-  });
-  await createTemplateDialog.getByTestId('create-template-button').click();
-  await expect(createTemplateDialog).not.toBeAttached();
-
-  await page.getByTestId('back-from-template-library-button').click();
-  await page.getByTestId('open-apply-templates-dialog-button').click();
-  const applyTemplatesDialog = page.getByRole('dialog', {
-    name: 'Apply templates',
-  });
-  await applyTemplatesDialog
-    .getByTestId('apply-template-option')
-    .filter({ hasText: templateName })
-    .getByTestId('template-select-checkbox')
-    .check();
-  await applyTemplatesDialog.getByTestId('apply-templates-button').click();
   await expect(page.getByTestId('planning-event-card').first()).toBeAttached();
 
   return { cycleName, templateName, cycleYear: year, cycleMonth: month };
@@ -275,7 +254,9 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
     const cycleName = `US3 Edit ${uniqueSuffix}`;
     const templateName = `US3 Template ${uniqueSuffix}`;
     const now = new Date();
-    const year = allocatedYear('planning-cycles-table-view:us3-edit-delete');
+    const year = allocatedYear({
+      callSiteId: 'planning-cycles-table-view:us3-edit-delete',
+    });
     const month = now.getUTCMonth();
     const startDate = new Date(Date.UTC(year, month, 1))
       .toISOString()

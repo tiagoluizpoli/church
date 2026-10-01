@@ -96,7 +96,9 @@ function countMatchingWeekdays({
 
 function createPlanningMonth(): PlanningMonth {
   const now = new Date();
-  const year = allocatedYear('us1-admin-plan:create-planning-month');
+  const year = allocatedYear({
+    callSiteId: 'us1-admin-plan:create-planning-month',
+  });
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

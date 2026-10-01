@@ -17,7 +17,9 @@ function toDateString(date: Date): string {
 
 function createPlanningMonth(): PlanningMonth {
   const now = new Date();
-  const year = allocatedYear('us2-leader-tailor:create-planning-month');
+  const year = allocatedYear({
+    callSiteId: 'us2-leader-tailor:create-planning-month',
+  });
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

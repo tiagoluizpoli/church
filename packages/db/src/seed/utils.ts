@@ -1,8 +1,16 @@
 import { env } from '@church/env/server';
-import { sql } from 'drizzle-orm';
-import { db } from '../client';
+import type pg from 'pg';
 
-export async function truncateAllTables() {
+export interface TruncateAllTablesInput {
+  /** Connected to the target the caller already resolved. */
+  pool: pg.Pool;
+}
+
+interface TableNameRow {
+  tableName: string;
+}
+
+export async function truncateAllTables({ pool }: TruncateAllTablesInput) {
   if (env.NODE_ENV === 'production') {
     throw new Error('🚫 Cannot reset database in production environment');
   }
@@ -10,26 +18,19 @@ export async function truncateAllTables() {
   console.log('🔄 Resetting database using TRUNCATE CASCADE...');
 
   // Get all table names from the public schema
-  const query = sql`
-    SELECT table_name 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public' 
+  const tables = await pool.query<TableNameRow>(`
+    SELECT table_name AS "tableName"
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
     AND table_type = 'BASE TABLE'
     AND table_name != 'drizzle_migrations'
     ORDER BY table_name;
-  `;
-
-  const tables = (await db.execute(query)) as unknown as {
-    // biome-ignore lint/style/useNamingConvention: table_name is a raw DB column name
-    rows: { table_name: string }[];
-  };
+  `);
 
   if (tables.rows.length === 0) return;
 
-  const tableNames = tables.rows.map((row) => `"${row.table_name}"`).join(', ');
-  await db.execute(
-    sql.raw(`TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE;`),
-  );
+  const tableNames = tables.rows.map((row) => `"${row.tableName}"`).join(', ');
+  await pool.query(`TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE;`);
 
   console.log('✨ Database reset complete.');
 }

@@ -1,11 +1,18 @@
-import { sql } from 'drizzle-orm';
-import { db } from '../index';
+import pg from 'pg';
+import { getDevelopmentDatabaseUrl } from '../development-database-url';
 
 export async function cleanDatabase() {
+  // Refuses any target but this worktree's development database, after a
+  // redacted preflight (same guard as db:reset:dev).
+  const pool = new pg.Pool({
+    connectionString: getDevelopmentDatabaseUrl(),
+    max: 1,
+  });
   console.log('🧹 Cleaning database...');
 
-  await db.transaction(async (tx) => {
-    await tx.execute(sql`
+  try {
+    // One DO block: a single statement, so it runs atomically.
+    await pool.query(`
       DO $$ 
       DECLARE 
           r RECORD;
@@ -15,7 +22,9 @@ export async function cleanDatabase() {
           END LOOP;
       END $$;
     `);
-  });
+  } finally {
+    await pool.end();
+  }
 
   console.log('✅ Database cleaned successfully.');
 }

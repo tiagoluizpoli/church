@@ -5,6 +5,7 @@ import {
   TEAM_LEADER_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
 } from '../global-setup';
+import { requiredE2eUrl } from './e2e-urls';
 
 /**
  * E2E auth fixtures (T126).
@@ -26,7 +27,7 @@ export {
   VOLUNTEER_STORAGE_STATE,
 };
 
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 const LEADER = {
   email: 'e2e-leader@test.com',

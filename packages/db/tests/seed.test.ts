@@ -16,7 +16,7 @@ import { truncateAllTables } from '../src/seed/utils';
 describe('Local Seeder', () => {
   beforeEach(async () => {
     // Ensure a clean state before each test
-    await truncateAllTables();
+    await truncateAllTables({ pool: db.$client });
   });
 
   describe('T007: Integration - Structure', () => {
@@ -97,7 +97,7 @@ describe('Local Seeder', () => {
       const snapshot1 = await getSnapshot();
 
       // Reset and second run
-      await truncateAllTables();
+      await truncateAllTables({ pool: db.$client });
       faker.seed(SEED_CONFIG.GLOBAL_SEED);
       await seedDatabase();
       const snapshot2 = await getSnapshot();

@@ -1,5 +1,7 @@
 import { env } from '@church/env/server';
 import { faker } from '@faker-js/faker';
+import pg from 'pg';
+import { getDevelopmentDatabaseUrl } from '../development-database-url';
 import { SEED_CONFIG } from './constants';
 import { generateAssignmentsAndAvailability } from './factories/assignment.factory';
 // Factories
@@ -66,7 +68,17 @@ async function main() {
 
   try {
     if (isReset) {
-      await truncateAllTables();
+      // Refuses any target but this worktree's development database, after a
+      // redacted preflight, before truncating (same guard as db:reset:dev).
+      const pool = new pg.Pool({
+        connectionString: getDevelopmentDatabaseUrl(),
+        max: 1,
+      });
+      try {
+        await truncateAllTables({ pool });
+      } finally {
+        await pool.end();
+      }
     }
 
     await seedDatabase();

@@ -51,7 +51,8 @@ import {
 const LOCAL_ENV_FILE = '.env.local';
 const LEGACY_ENV_FILE = '.env';
 // Value files beside the service schemas Varlock runs from (`--path`); unlike
-// the root `.env`, they take precedence over the root `.env.local`.
+// the root `.env`, they would take precedence over the root `.env.local`, so
+// env:local refuses to run while any exists (#263).
 const PACKAGE_VALUE_FILES = [
   'apps/server/.env',
   'apps/server/.env.local',
@@ -390,8 +391,7 @@ interface LegacyOverridesInput {
 
 /**
  * Keys whose value in the legacy root `.env` differs from the generated one.
- * Varlock and Vite prefer `.env.local`, while not-yet-migrated scripts still
- * read `.env` alone, so such keys now diverge between commands.
+ * Varlock prefers `.env.local`, so the `.env` value is silently ignored.
  */
 function legacyOverrides(input: LegacyOverridesInput): string[] {
   const legacy = parseValues({
@@ -407,26 +407,16 @@ function legacyOverrides(input: LegacyOverridesInput): string[] {
   });
 }
 
-interface PackageShadow {
-  file: string;
-  keys: string[];
+interface RootInput {
+  root: string;
 }
 
-/**
- * Generated keys a package-local value file also sets. Varlock prefers the
- * package file for commands run through that package, so the generated value
- * (e.g. the purpose-selected DATABASE_URL) never reaches them.
- */
-function packageShadows(input: LegacyOverridesInput): PackageShadow[] {
-  return PACKAGE_VALUE_FILES.map((file) => {
-    const values = parseValues({
-      content: readContent({ path: join(input.root, file) }) ?? '',
-    });
-    return {
-      file,
-      keys: [...input.generated.keys()].filter((key) => values.has(key)),
-    };
-  }).filter((shadow) => shadow.keys.length > 0);
+/** Package value files present in this worktree (ADR-0005: packages never
+ * hold values; the root `.env.local` does). */
+function presentPackageValueFiles(input: RootInput): string[] {
+  return PACKAGE_VALUE_FILES.filter((file) =>
+    existsSync(join(input.root, file)),
+  );
 }
 
 interface WriteAtomicallyInput {
@@ -509,6 +499,14 @@ function generateLocalEnv(input: GenerateInput): void {
     );
   }
 
+  const packageValueFiles = presentPackageValueFiles({ root: context.root });
+
+  if (packageValueFiles.length > 0) {
+    throw new Error(
+      `${packageValueFiles.join(', ')} would take precedence over the generated values for commands run through ${packageValueFiles.length === 1 ? 'that package' : 'those packages'}. Delete ${packageValueFiles.length === 1 ? 'it' : 'them'} (move machine-shared values to church-shared.env; see docs/agents/tooling.md), then rerun.`,
+    );
+  }
+
   const existing = parseValues({ content: existingContent ?? '' });
   const worktree =
     existing.get('CHURCH_WORKTREE') ??
@@ -583,19 +581,19 @@ function generateLocalEnv(input: GenerateInput): void {
 
   if (overridden.length > 0) {
     console.warn(
-      `⚠ env:local overrides values from the legacy ${LEGACY_ENV_FILE} for: ${overridden.join(', ')}. Varlock-wrapped commands and Vite now use the generated values; scripts still reading ${LEGACY_ENV_FILE} directly do not.`,
+      `⚠ env:local overrides values from the legacy ${LEGACY_ENV_FILE} for: ${overridden.join(', ')}. Every managed command loads values through Varlock, where the generated values win.`,
+    );
+  }
+
+  if (existsSync(join(context.root, LEGACY_ENV_FILE))) {
+    console.warn(
+      `⚠ The legacy ${LEGACY_ENV_FILE} still exists: Varlock loads it beneath ${LOCAL_ENV_FILE}, so any key only it sets reaches every command. Move its machine-shared values into ${SHARED_VALUES_FILE} (docs/agents/tooling.md, "Worktree bootstrap"), then delete it.`,
     );
   }
 
   if (!existsSync(shared.path)) {
     console.warn(
       `⚠ ${shared.path} does not exist, so machine-shared values such as UNLEASH_API_URL and UNLEASH_API_TOKEN are missing and server commands will fail validation. Create it (docs/agents/tooling.md, "Worktree bootstrap"), then rerun.`,
-    );
-  }
-
-  for (const shadow of packageShadows({ root: context.root, generated })) {
-    console.warn(
-      `⚠ ${shadow.file} sets ${shadow.keys.join(', ')}, which take${shadow.keys.length === 1 ? 's' : ''} precedence over the generated values for commands run through that package. Remove ${shadow.keys.length === 1 ? 'it' : 'them'} from ${shadow.file}.`,
     );
   }
 }

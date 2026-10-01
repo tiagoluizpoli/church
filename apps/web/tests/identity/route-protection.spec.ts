@@ -1,5 +1,6 @@
 import { expect, type Page, request, test } from '@playwright/test';
 import { runE2eServerScript } from '../fixtures/e2e-target';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   VOLUNTEER_STORAGE_STATE,
@@ -13,8 +14,8 @@ import {
 // relative/backslash/encoded/script-scheme targets is a pure function
 // (`validateInternalReturnTarget`, its own unit test) and is not repeated
 // here.
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
-const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4101';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
+const WEB_URL = requiredE2eUrl({ variable: 'PW_WEB_URL' });
 
 // Fixed E2E seed identifier (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS.church) — same convention as the other identity specs.

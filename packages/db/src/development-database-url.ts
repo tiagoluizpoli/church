@@ -9,26 +9,18 @@ import {
   requireExecPurpose,
 } from './purpose-database-url-guard';
 
-const PRIMARY_WORKTREE = 'develop';
-
 // Every managed development database is published by the root Compose
 // project on loopback; anything else may be a shared or deployed server.
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
-export interface GetDevelopmentDatabaseUrlInput {
-  /** Consulted only when CHURCH_WORKTREE is absent: the primary checkout is
-   * the `develop` worktree; a linked worktree has no implicit identity. */
-  isPrimaryWorktree: () => boolean;
-}
-
-function currentWorktree(input: GetDevelopmentDatabaseUrlInput): string {
+/** `env:local` declares CHURCH_WORKTREE in every checkout, the primary
+ * (`develop`) included; a checkout without one has no implicit identity. */
+function currentWorktree(): string {
   const declaredWorktree = process.env.CHURCH_WORKTREE;
   if (declaredWorktree) return declaredWorktree;
 
-  if (input.isPrimaryWorktree()) return PRIMARY_WORKTREE;
-
   throw new Error(
-    'CHURCH_WORKTREE is not set and this checkout is a linked worktree. Refusing to guess its development database; declare CHURCH_WORKTREE for this worktree.',
+    'CHURCH_WORKTREE is not set. Refusing to guess the development database; run `bun run env:local` to declare this worktree.',
   );
 }
 
@@ -69,9 +61,7 @@ function assertNotProductionLike({
  * production runtime or a non-loopback host). Logs the redacted preflight
  * line before returning.
  */
-export function getDevelopmentDatabaseUrl(
-  input: GetDevelopmentDatabaseUrlInput,
-): string {
+export function getDevelopmentDatabaseUrl(): string {
   requireExecPurpose({
     purpose: 'development',
     functionName: 'getDevelopmentDatabaseUrl',
@@ -81,7 +71,7 @@ export function getDevelopmentDatabaseUrl(
 
   const identity = resolveDatabaseTarget({
     purpose: 'development',
-    worktree: currentWorktree(input),
+    worktree: currentWorktree(),
     candidates: { development: databaseUrl },
   });
   assertNotProductionLike({ identity });

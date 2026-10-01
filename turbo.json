@@ -6,6 +6,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "passThroughEnv": ["VITE_SERVER_URL"],
       "outputs": ["dist/**"]
     },
     "lint": {
@@ -22,7 +23,19 @@
     },
     "test:integration": {
       "dependsOn": ["^test:integration"],
-      "passThroughEnv": ["CHURCH_FAILURE_BUNDLES_DIR"],
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CORS_ORIGIN",
+        "UNLEASH_API_URL",
+        "UNLEASH_API_TOKEN",
+        "NODE_ENV",
+        "ENABLE_DEBUG_ENDPOINTS",
+        "VITE_SERVER_URL",
+        "CHURCH_WORKTREE",
+        "CHURCH_FAILURE_BUNDLES_DIR"
+      ],
       "cache": false
     },
     "test:e2e": {

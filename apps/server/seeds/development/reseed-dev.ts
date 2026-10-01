@@ -1,4 +1,3 @@
-import { isPrimaryWorktree } from '@church/db/development-database-reset';
 import { getDevelopmentDatabaseUrl } from '@church/db/development-database-url';
 import { type CalendarDay, now } from '@church/time';
 import pg from 'pg';
@@ -56,7 +55,7 @@ async function reseedDevelopmentDatabase(): Promise<void> {
   let databaseUrl: string;
   try {
     // Prints the redacted preflight line once the target is accepted.
-    databaseUrl = getDevelopmentDatabaseUrl({ isPrimaryWorktree });
+    databaseUrl = getDevelopmentDatabaseUrl();
   } catch (error) {
     throw new Error(`refused the target: ${reasonOf({ error })}`);
   }

@@ -90,6 +90,27 @@ export function serverProcessEnv(input: E2eProcessEnvInput): E2eProcessEnv {
   };
 }
 
+export interface WithoutEnclosingVarlockConfigInput {
+  command: string;
+}
+
+// What an enclosing `varlock run` hands its children: its resolved config.
+const VARLOCK_CONFIG_VARIABLE = '__VARLOCK_ENV';
+
+/**
+ * Runs `command` without the config an enclosing `varlock run` passes down.
+ * Playwright runs inside the server schema's Varlock run; the web server's
+ * own Varlock run would otherwise resolve against that server config, which
+ * lacks web-only keys such as VITE_SERVER_URL, instead of its web schema and
+ * the real environment. Only CI showed it: locally the root `.env.local`
+ * filled the gap.
+ */
+export function withoutEnclosingVarlockConfig(
+  input: WithoutEnclosingVarlockConfigInput,
+): string {
+  return `env -u ${VARLOCK_CONFIG_VARIABLE} ${input.command}`;
+}
+
 export function webProcessEnv(input: E2eProcessEnvInput): E2eProcessEnv {
   return {
     CHURCH_EXEC_PURPOSE: E2E_PURPOSE,

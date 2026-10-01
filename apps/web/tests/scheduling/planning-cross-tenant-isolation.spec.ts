@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 
 // P9/T064 (test-master, catastrophic-failure coverage): a ChurchAdmin from
 // Church A must never see Church B's cycle data through the new
 // `/scheduling/planning-cycles/$cycleId` dynamic segment (T059), even when
 // visiting it directly by URL with a known-valid foreign id.
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS.churchBPlanningCycle / CHURCH_B_PLANNING_CYCLE_NAME) — same

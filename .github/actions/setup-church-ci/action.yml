@@ -1,7 +1,8 @@
 name: Setup Church CI environment
 description: >-
-  Install the Bun toolchain, install dependencies, optionally write the
-  legacy CI value files, and run database migrations. Runs after
+  Install the Bun toolchain, install dependencies, and run database
+  migrations. It writes no value file: every job injects its configuration
+  through the job environment (ADR-0005). Runs after
   actions/checkout@v4, which callers must run first (a local composite action
   can't be loaded before the repo it lives in is checked out).
 
@@ -14,14 +15,6 @@ inputs:
       step and runs its own migration step once its database is actually up.
     required: false
     default: 'false'
-  write-env-files:
-    description: >-
-      Set to 'false' for a job whose commands take their configuration from
-      the job environment alone (ADR-0005: Varlock validates and injects it).
-      The E2E lane does; the remaining jobs still rely on the legacy value
-      files until their runners migrate.
-    required: false
-    default: 'true'
 
 runs:
   using: composite
@@ -46,28 +39,6 @@ runs:
       # calling job uploads this directory only when it fails.
       shell: bash
       run: echo "CHURCH_FAILURE_BUNDLES_DIR=$RUNNER_TEMP/church-failure-bundles" >> "$GITHUB_ENV"
-
-    - name: Create .env for test runner
-      if: inputs.write-env-files == 'true'
-      shell: bash
-      run: |
-        printf 'DATABASE_URL=%s\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\nCORS_ORIGIN=%s\nUNLEASH_API_URL=%s\nUNLEASH_API_TOKEN=%s\nNODE_ENV=%s\nENABLE_DEBUG_ENDPOINTS=%s\n' \
-          "$DATABASE_URL" "$BETTER_AUTH_SECRET" "$BETTER_AUTH_URL" \
-          "$CORS_ORIGIN" "$UNLEASH_API_URL" "$UNLEASH_API_TOKEN" \
-          "$NODE_ENV" "$ENABLE_DEBUG_ENDPOINTS" > .env
-        # packages/db/src/test-database-url.ts reads TEST_DATABASE_URL (or
-        # DATABASE_URL_TEST), not DATABASE_URL — without this, every
-        # integration/scheduling-reshape test falls through to that helper's
-        # hardcoded localhost:5444 default, which doesn't exist in CI.
-        if [ -n "$TEST_DATABASE_URL" ]; then
-          printf 'TEST_DATABASE_URL=%s\n' "$TEST_DATABASE_URL" >> .env
-        fi
-        # VITE_SERVER_URL is only set (as a job-level env) by the e2e job,
-        # for its real dev-server build — apps/web/vite.config.ts reads the
-        # repo root as its envDir, matching this file.
-        if [ -n "$VITE_SERVER_URL" ]; then
-          printf 'VITE_SERVER_URL=%s\n' "$VITE_SERVER_URL" >> .env
-        fi
 
     - name: Run database migrations
       if: inputs.skip-migrate != 'true'

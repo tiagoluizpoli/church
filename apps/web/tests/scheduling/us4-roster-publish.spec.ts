@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import { LEADER_STORAGE_STATE, VOLUNTEER_STORAGE_STATE } from '../global-setup';
 
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 // Set by playwright.config.ts alongside VITE_SERVER_URL — the web port used
 // to be hardcoded as "SERVER_URL's port + 1", which broke once the e2e run
 // moved off the normal-dev 4000/4001 pair (see playwright.config.ts).
-const WEB_URL = process.env.PW_WEB_URL ?? 'http://localhost:4001';
+const WEB_URL = requiredE2eUrl({ variable: 'PW_WEB_URL' });
 const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
 const CARE_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333332';
 // Publish is cycle-wide, so this spec owns a cycle no other spec touches

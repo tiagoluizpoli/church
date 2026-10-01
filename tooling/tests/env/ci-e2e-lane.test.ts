@@ -3,10 +3,10 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'bun:test';
 
 /**
- * #253 / ADR-0005: the CI E2E lane injects its target explicitly through the
- * job environment at the PostgreSQL port the job provisions, generates no
- * environment value files, and never depends on home-network DNS or
- * Worktrunk hooks.
+ * #253 / #263 / ADR-0005: every CI job injects its configuration explicitly
+ * through the job environment, generates no environment value files, shares
+ * one loopback URL set, and never depends on home-network DNS or Worktrunk
+ * hooks. The E2E lane targets the PostgreSQL port the job provisions.
  */
 
 interface WorkflowStep {
@@ -38,7 +38,7 @@ interface ActionStep {
 }
 
 interface CompositeAction {
-  inputs: Record<string, unknown>;
+  inputs?: Record<string, unknown>;
   runs: { steps: ActionStep[] };
 }
 
@@ -53,7 +53,14 @@ const setupAction = Bun.YAML.parse(
   ),
 ) as CompositeAction;
 
-const E2E_JOBS = ['develop-browser', 'e2e'];
+// release-gate runs the full E2E suite inside `bun run validate`.
+const E2E_JOBS = ['develop-browser', 'e2e', 'release-gate'];
+// The E2E run's own loopback set (tooling/env/e2e-environment.ts).
+const CI_URL_SET: Record<string, string> = {
+  BETTER_AUTH_URL: 'http://localhost:4100',
+  CORS_ORIGIN: 'http://localhost:4101',
+  VITE_SERVER_URL: 'http://localhost:4100',
+};
 const SETUP_ACTION = './.github/actions/setup-church-ci';
 const VALUE_FILE_WRITE = /(>>?|tee)\s*\S*\.env\b/;
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -107,10 +114,6 @@ describe('CI E2E lane', () => {
         expect(url.pathname).toMatch(/^\/church_[a-z0-9-]+_e2e$/);
       });
 
-      it('declares no legacy integration target', () => {
-        expect(job?.env?.TEST_DATABASE_URL).toBeUndefined();
-      });
-
       it('uses only loopback URLs, never home-network DNS', () => {
         const urls = Object.values(job?.env ?? {}).filter((value) =>
           /^[a-z]+:\/\//.test(value),
@@ -121,32 +124,38 @@ describe('CI E2E lane', () => {
           expect(LOOPBACK_HOSTS.has(new URL(value).hostname)).toBe(true);
         }
       });
+    });
+  }
+});
 
-      it('asks the setup action not to generate value files', () => {
-        const setup = job?.steps.find((step) => step.uses === SETUP_ACTION);
-
-        expect(setup?.with?.['write-env-files']).toBe('false');
+describe('CI jobs', () => {
+  for (const [name, job] of Object.entries(workflow.jobs)) {
+    describe(name, () => {
+      it('declares only the shared loopback URL set', () => {
+        for (const [key, value] of Object.entries(CI_URL_SET)) {
+          if (job.env?.[key] !== undefined) expect(job.env[key]).toBe(value);
+        }
       });
 
       it('writes no value file and runs no Worktrunk hook in its own steps', () => {
-        for (const step of job?.steps ?? []) {
+        for (const step of job.steps) {
           expect(step.run ?? '').not.toMatch(VALUE_FILE_WRITE);
           expect(step.run ?? '').not.toMatch(/\bwt\s/);
         }
       });
+
+      it('passes the setup action no value-file option', () => {
+        const setup = job.steps.find((step) => step.uses === SETUP_ACTION);
+
+        expect(setup?.with?.['write-env-files']).toBeUndefined();
+      });
     });
   }
 
-  it('the setup action gates every value-file write on write-env-files', () => {
-    expect(setupAction.inputs['write-env-files']).toBeDefined();
-
-    const writers = setupAction.runs.steps.filter((step) =>
-      VALUE_FILE_WRITE.test(step.run ?? ''),
-    );
-
-    expect(writers.length).toBeGreaterThan(0);
-    for (const step of writers) {
-      expect(step.if).toBe("inputs.write-env-files == 'true'");
+  it('the setup action writes no value file', () => {
+    expect(setupAction.inputs?.['write-env-files']).toBeUndefined();
+    for (const step of setupAction.runs.steps) {
+      expect(step.run ?? '').not.toMatch(VALUE_FILE_WRITE);
     }
   });
 });

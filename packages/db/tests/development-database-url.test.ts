@@ -5,9 +5,6 @@ const PRIMARY_URL = 'postgresql://postgres:postgres@localhost:5444/church';
 const FEATURE_URL =
   'postgresql://postgres:postgres@localhost:5444/church_feature-x_dev';
 
-const primaryCheckout = { isPrimaryWorktree: () => true };
-const linkedCheckout = { isPrimaryWorktree: () => false };
-
 function resetEnv(): void {
   delete process.env.CHURCH_EXEC_PURPOSE;
   delete process.env.DATABASE_URL;
@@ -27,9 +24,10 @@ describe('getDevelopmentDatabaseUrl', () => {
   it('resolves the primary worktree to the church database', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
     process.env.DATABASE_URL = PRIMARY_URL;
+    process.env.CHURCH_WORKTREE = 'develop';
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    expect(getDevelopmentDatabaseUrl(primaryCheckout)).toBe(PRIMARY_URL);
+    expect(getDevelopmentDatabaseUrl()).toBe(PRIMARY_URL);
     expect(logSpy).toHaveBeenCalledWith(
       'purpose=development worktree=develop host=localhost port=5444 database=church',
     );
@@ -43,7 +41,7 @@ describe('getDevelopmentDatabaseUrl', () => {
     process.env.CHURCH_WORKTREE = 'feature-x';
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    expect(getDevelopmentDatabaseUrl(linkedCheckout)).toBe(FEATURE_URL);
+    expect(getDevelopmentDatabaseUrl()).toBe(FEATURE_URL);
   });
 
   it("refuses a feature worktree pointed at the primary worktree's database", () => {
@@ -51,17 +49,19 @@ describe('getDevelopmentDatabaseUrl', () => {
     process.env.DATABASE_URL = PRIMARY_URL;
     process.env.CHURCH_WORKTREE = 'feature-x';
 
-    expect(() => getDevelopmentDatabaseUrl(linkedCheckout)).toThrow(
+    expect(() => getDevelopmentDatabaseUrl()).toThrow(
       /does not match the expected "church_feature-x_dev"/,
     );
   });
 
-  it('refuses a linked worktree with no declared identity', () => {
+  // `env:local` declares CHURCH_WORKTREE in every checkout, the primary
+  // included; there is no git-derived fallback identity.
+  it('refuses a checkout with no declared identity', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
     process.env.DATABASE_URL = PRIMARY_URL;
 
-    expect(() => getDevelopmentDatabaseUrl(linkedCheckout)).toThrow(
-      /CHURCH_WORKTREE is not set and this checkout is a linked worktree/,
+    expect(() => getDevelopmentDatabaseUrl()).toThrow(
+      /CHURCH_WORKTREE is not set/,
     );
   });
 
@@ -72,9 +72,10 @@ describe('getDevelopmentDatabaseUrl', () => {
     ['unmanaged', 'postgres'],
   ])('refuses the %s database', (_label, database) => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
+    process.env.CHURCH_WORKTREE = 'develop';
     process.env.DATABASE_URL = `postgresql://postgres:postgres@localhost:5444/${database}`;
 
-    expect(() => getDevelopmentDatabaseUrl(primaryCheckout)).toThrow();
+    expect(() => getDevelopmentDatabaseUrl()).toThrow();
   });
 
   it.each([
@@ -82,12 +83,11 @@ describe('getDevelopmentDatabaseUrl', () => {
     ['a private-network host', '10.0.0.12'],
   ])('refuses a production-like target on %s before reporting it', (_label, host) => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
+    process.env.CHURCH_WORKTREE = 'develop';
     process.env.DATABASE_URL = `postgresql://postgres:postgres@${host}:5432/church`;
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    expect(() => getDevelopmentDatabaseUrl(primaryCheckout)).toThrow(
-      /production-like/,
-    );
+    expect(() => getDevelopmentDatabaseUrl()).toThrow(/production-like/);
     expect(logSpy).not.toHaveBeenCalled();
   });
 
@@ -97,29 +97,27 @@ describe('getDevelopmentDatabaseUrl', () => {
     '[::1]',
   ])('accepts the loopback host %s', (host) => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
+    process.env.CHURCH_WORKTREE = 'develop';
     process.env.DATABASE_URL = `postgresql://postgres:postgres@${host}:5444/church`;
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    expect(getDevelopmentDatabaseUrl(primaryCheckout)).toBe(
-      process.env.DATABASE_URL,
-    );
+    expect(getDevelopmentDatabaseUrl()).toBe(process.env.DATABASE_URL);
   });
 
   it('refuses a production runtime even for its own development database', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
+    process.env.CHURCH_WORKTREE = 'develop';
     process.env.DATABASE_URL = PRIMARY_URL;
     vi.stubEnv('NODE_ENV', 'production');
 
-    expect(() => getDevelopmentDatabaseUrl(primaryCheckout)).toThrow(
-      /production-like/,
-    );
+    expect(() => getDevelopmentDatabaseUrl()).toThrow(/production-like/);
   });
 
   it('rejects a call made outside the development purpose', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'integration';
     process.env.DATABASE_URL = PRIMARY_URL;
 
-    expect(() => getDevelopmentDatabaseUrl(primaryCheckout)).toThrow(
+    expect(() => getDevelopmentDatabaseUrl()).toThrow(
       /requires CHURCH_EXEC_PURPOSE=development/,
     );
   });
@@ -127,7 +125,7 @@ describe('getDevelopmentDatabaseUrl', () => {
   it('rejects a missing DATABASE_URL', () => {
     process.env.CHURCH_EXEC_PURPOSE = 'development';
 
-    expect(() => getDevelopmentDatabaseUrl(primaryCheckout)).toThrow(
+    expect(() => getDevelopmentDatabaseUrl()).toThrow(
       /DATABASE_URL was not resolved for the development purpose/,
     );
   });

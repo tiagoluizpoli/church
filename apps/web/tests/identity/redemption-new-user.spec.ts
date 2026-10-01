@@ -1,5 +1,6 @@
 import { expect, type Page, request, test } from '@playwright/test';
 import { assertServedFromPinnedTarget } from '../fixtures/e2e-target';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 
 // #63/DL#100 — a person outside the Church (the "outsider" — never before
@@ -11,7 +12,7 @@ import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 // resolves against the real redemption API end to end. Failure copy, expiry
 // handling and checkpoint atomicity are proved below this seam (L1/L2), not
 // re-asserted here.
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS). The web package stays DB-tooling-free, so specs reference these

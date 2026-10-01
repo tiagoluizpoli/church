@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
   CHURCH_ADMIN_STORAGE_STATE,
   CHURCH_B_ADMIN_STORAGE_STATE,
@@ -10,7 +11,7 @@ import {
 
 // DL4-X1/X2/X3 (test-plan.md): cross-cutting checks that apply across every
 // user story rather than to one of them.
-const SERVER_URL = process.env.VITE_SERVER_URL ?? 'http://localhost:4000';
+const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 // Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
 // E2E_IDS) — same convention as the other scheduling specs: the web package

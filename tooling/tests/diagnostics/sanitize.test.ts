@@ -71,4 +71,20 @@ describe('sanitize', () => {
     expect(text).toContain(USER_ID);
     expect(text).toContain('http://localhost:4101/invitations/ministry/');
   });
+
+  it('sanitizes a long unbroken run, such as an inline source map, quickly', () => {
+    // A trace's inline source map: one base64 run of ~100k characters,
+    // which an email search once rescanned from every position (seconds
+    // here, minutes for a real trace's).
+    const sourceMap = `//# sourceMappingURL=data:application/json;base64,${'eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpb'.repeat(3_000)}`;
+    const startedAt = performance.now();
+
+    const text = sanitizeWith({
+      text: `${sourceMap} volunteer@church.example`,
+      env: {},
+    });
+
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+    expect(text).toBe(`${sourceMap} [email]`);
+  });
 });

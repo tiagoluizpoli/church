@@ -7,6 +7,13 @@ import {
   webProcessEnv,
   withoutEnclosingVarlockConfig,
 } from '../../tooling/env/e2e-environment';
+import {
+  assertEveryE2eSpecHasOneLane,
+  E2E_TEST_DIR,
+  ISOLATED_SPECS,
+  laneTestMatch,
+  SHARED_SEED_SPECS,
+} from './tests/fixtures/e2e-lanes';
 
 // One URL set for the whole run (ADR-0005): pinned into process.env before
 // Playwright spawns global setup or any worker, so setup, the provisioning
@@ -19,6 +26,11 @@ applyE2eUrlSet({ env: process.env, urlSet });
 // Every process below inherits the pinned target fingerprint and refuses to
 // start when it resolves a different one.
 pinE2eTargetFingerprint({ env: process.env });
+assertEveryE2eSpecHasOneLane({
+  testDir: E2E_TEST_DIR,
+  sharedSeedSpecs: SHARED_SEED_SPECS,
+  isolatedSpecs: ISOLATED_SPECS,
+});
 
 export default defineConfig({
   testDir: './tests',
@@ -29,7 +41,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: 1,
+  // In-run workers share this run's one server, Vite and E2E database
+  // (ADR-0005); the `shared-seed` project below keeps seed-coupled specs on
+  // one of them.
+  workers: process.env.CI ? 2 : 3,
   // The outcome reporter lets global teardown keep a failed run's E2E
   // database state for diagnosis instead of cleaning it.
   reporter: [['list'], ['./tests/fixtures/e2e-run-outcome.ts']],
@@ -41,9 +56,18 @@ export default defineConfig({
     headless: true,
     locale: 'pt-BR',
   },
+  // Lanes: tests/fixtures/e2e-lanes.ts.
   projects: [
     {
-      name: 'chromium',
+      name: 'shared-seed',
+      testMatch: laneTestMatch({ specs: SHARED_SEED_SPECS }),
+      workers: 1,
+      fullyParallel: false,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'isolated',
+      testMatch: laneTestMatch({ specs: ISOLATED_SPECS }),
       use: { ...devices['Desktop Chrome'] },
     },
   ],

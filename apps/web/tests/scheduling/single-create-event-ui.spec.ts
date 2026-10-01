@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { LEADER_STORAGE_STATE } from '../global-setup';
 import { fillDatePickerField } from './date-picker.helpers';
+import { createPlanningCycleViaApi } from './planning-cycle-api.helpers';
 import { allocatedYear } from './planning-cycle-year.helpers';
 
 test.use({ storageState: LEADER_STORAGE_STATE });
@@ -38,38 +39,34 @@ async function assertCanonicalCreateEventForm(dialog: Locator): Promise<void> {
   await dialog.getByRole('radio', { name: /hourly/i }).click();
 }
 
-async function ensureUnlockedCycleSelected(page: Page): Promise<void> {
+interface EnsureUnlockedCycleSelectedParams {
+  page: Page;
+}
+
+async function ensureUnlockedCycleSelected({
+  page,
+}: EnsureUnlockedCycleSelectedParams): Promise<void> {
   if (await page.getByRole('button', { name: 'Add event' }).isVisible()) {
     return;
   }
 
   const now = new Date();
-  const year = allocatedYear(
-    'single-create-event-ui:ensure-unlocked-cycle-selected',
-  );
+  const year = allocatedYear({
+    callSiteId: 'single-create-event-ui:ensure-unlocked-cycle-selected',
+  });
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));
 
-  // `.click()` auto-waits for the button to become actionable — the route's
-  // `beforeLoad` guard (Phase 8) now awaits a network fetch before the page
-  // renders, so a non-waiting `isVisible()` snapshot here would race it.
-  await page.getByTestId('open-create-cycle-dialog-button').click();
-
-  await page
-    .getByTestId('cycle-name-input')
-    .fill(`Single create-event UI check ${now.getTime()}`);
-  await fillDatePickerField({
+  // Setup only (this spec asserts the create-event UI, not cycle creation):
+  // create the cycle through the API and open it.
+  const cycle = await createPlanningCycleViaApi({
     page,
-    trigger: page.getByTestId('cycle-start-date-input'),
-    date: toDateString(start),
+    name: `Single create-event UI check ${now.getTime()}`,
+    startDate: toDateString(start),
+    endDate: toDateString(end),
   });
-  await fillDatePickerField({
-    page,
-    trigger: page.getByTestId('cycle-end-date-input'),
-    date: toDateString(end),
-  });
-  await page.getByTestId('create-cycle-button').click();
+  await page.goto(`/scheduling/planning-cycles/${cycle.id}`);
   await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
 }
 
@@ -87,7 +84,7 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
   await expect(page).toHaveURL(/\/scheduling\/planning-cycles/);
 
   // Entry point 2: the planning cycle itself — the one canonical form.
-  await ensureUnlockedCycleSelected(page);
+  await ensureUnlockedCycleSelected({ page });
   await page.getByRole('button', { name: 'Add event' }).click();
   const planningDialog = page.getByRole('dialog');
   await assertCanonicalCreateEventForm(planningDialog);
@@ -112,27 +109,21 @@ test.describe('quick-create stores church-local Instants (#149)', () => {
     await page.goto('/scheduling/planning-cycles');
 
     const now = new Date();
-    const year = allocatedYear('single-create-event-ui:calendar-day-timezone');
+    const year = allocatedYear({
+      callSiteId: 'single-create-event-ui:calendar-day-timezone',
+    });
     const month = now.getUTCMonth();
     const start = new Date(Date.UTC(year, month, 1));
     const end = new Date(Date.UTC(year, month + 1, 1));
     const pickedDate = toDateString(new Date(Date.UTC(year, month, 15)));
 
-    await page.getByTestId('open-create-cycle-dialog-button').click();
-    await page
-      .getByTestId('cycle-name-input')
-      .fill(`Church TZ boundary check ${now.getTime()}`);
-    await fillDatePickerField({
+    const cycle = await createPlanningCycleViaApi({
       page,
-      trigger: page.getByTestId('cycle-start-date-input'),
-      date: toDateString(start),
+      name: `Church TZ boundary check ${now.getTime()}`,
+      startDate: toDateString(start),
+      endDate: toDateString(end),
     });
-    await fillDatePickerField({
-      page,
-      trigger: page.getByTestId('cycle-end-date-input'),
-      date: toDateString(end),
-    });
-    await page.getByTestId('create-cycle-button').click();
+    await page.goto(`/scheduling/planning-cycles/${cycle.id}`);
     await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Add event' }).click();

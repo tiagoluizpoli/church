@@ -1,21 +1,35 @@
 /**
- * E2E specs that create planning cycles each need a year no other spec file
- * (or call site within a file) can land on, or the backend's overlap guard
+ * E2E specs that create planning cycles each need a year no other spec file,
+ * call site, or parallel worker can land on, or the backend's overlap guard
  * rejects the create with `409 OVERLAPPING_CYCLE` (#241). Every call site
  * that seeds a cycle registers itself here with its own non-overlapping
- * 50-year band, then derives its actual year from a per-run time bucket
- * inside that band — this keeps the existing "randomize per run so leftover
- * data from a previous run doesn't collide" property, while making
- * cross-file collisions structurally impossible instead of merely unlikely.
+ * 50-year band. Workers share one server and DB, so a band is carved into
+ * one disjoint slice per worker, picked by `test.info().parallelIndex`
+ * (unique among concurrently running workers, reused when one restarts).
+ *
+ * Inside its slice a worker hands out consecutive years from a random start,
+ * wrapping around the slice. The cursor lives in a file in the run's output
+ * directory, not in module state, so a worker restarted after a failure (or
+ * for a retry or `--repeat-each`) continues after the years its predecessor
+ * used instead of starting over: a slice yields `size` distinct years per
+ * run. Playwright empties the output directory at the start of every run,
+ * and setup resets the E2E database, so each run starts fresh.
+ *
+ * Slices are resolved lazily, at call time inside a test, because
+ * `test.info()` throws outside one.
  *
  * To add a new cycle-creating call site: append its id to `CALL_SITE_IDS`
  * (order doesn't matter, but never remove or reorder existing entries — that
  * would reassign every band after it) and call `allocatedYear` with that id.
  */
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { test } from '@playwright/test';
+
 const YEAR_BAND_SIZE = 50;
 const YEAR_BAND_START = 2100;
 
-const CALL_SITE_IDS = [
+export const CALL_SITE_IDS = [
   'planning-cycles-table-view:create-cycle-with-sunday-template',
   'planning-cycles-table-view:us3-edit-delete',
   'us1-admin-plan:create-planning-month',
@@ -36,33 +50,92 @@ function yearBandBase(callSiteId: PlanningCycleYearCallSiteId): number {
   return YEAR_BAND_START + index * YEAR_BAND_SIZE;
 }
 
-/**
- * A year within `callSiteId`'s dedicated band, time-bucketed so repeated
- * runs (within the same second) still land on the same year, while later
- * runs pick a different one in the band.
- */
-export function allocatedYear(callSiteId: PlanningCycleYearCallSiteId): number {
-  return (
-    yearBandBase(callSiteId) + (Math.floor(Date.now() / 1000) % YEAR_BAND_SIZE)
-  );
+interface YearSliceParams {
+  callSiteId: PlanningCycleYearCallSiteId;
+  parallelIndex: number;
+  workers: number;
+}
+
+interface YearSlice {
+  start: number;
+  size: number;
 }
 
 /**
- * For call sites that seed several cycles sequentially within one run (e.g.
- * one per test in a file): a time-bucketed offset within the reserved slice
- * of the band, plus a strictly increasing sequence number, so every cycle
- * created in the same run gets its own year deterministically rather than
- * probabilistically. `reserveForSequence` must exceed the max number of
- * cycles the call site creates in a single run.
+ * The years worker `parallelIndex` owns within `callSiteId`'s band:
+ * `[start, start + size)`. Slices of different workers never overlap.
  */
-export function allocatedYearSequence(
-  callSiteId: PlanningCycleYearCallSiteId,
-  reserveForSequence: number,
-): () => number {
-  const runOffset = Math.floor(
-    Math.random() * (YEAR_BAND_SIZE - reserveForSequence),
+export function yearSlice({
+  callSiteId,
+  parallelIndex,
+  workers,
+}: YearSliceParams): YearSlice {
+  const size = Math.floor(YEAR_BAND_SIZE / workers);
+  return { start: yearBandBase(callSiteId) + parallelIndex * size, size };
+}
+
+interface NextYearInSliceParams {
+  callSiteId: PlanningCycleYearCallSiteId;
+  reserve: number;
+}
+
+function nextYearInSlice({
+  callSiteId,
+  reserve,
+}: NextYearInSliceParams): number {
+  const { parallelIndex, config, project } = test.info();
+  const { workers } = config;
+  const { start, size } = yearSlice({ callSiteId, parallelIndex, workers });
+  if (reserve > size) {
+    throw new Error(
+      `Planning-cycle year call site "${callSiteId}" needs ${reserve} distinct years per worker, but a worker slice is ${size} years (${YEAR_BAND_SIZE}-year band / ${workers} workers); run fewer workers.`,
+    );
+  }
+
+  const cursorFile = path.join(
+    project.outputDir,
+    '.planning-cycle-years',
+    `${callSiteId.replace(':', '--')}-${parallelIndex}`,
   );
-  const base = yearBandBase(callSiteId) + runOffset;
-  let sequence = 0;
-  return () => base + sequence++;
+  let cursor: number;
+  try {
+    cursor = Number(readFileSync(cursorFile, 'utf8'));
+  } catch {
+    cursor = Math.floor(Math.random() * size);
+  }
+  mkdirSync(path.dirname(cursorFile), { recursive: true });
+  writeFileSync(cursorFile, String(cursor + 1));
+  return start + (cursor % size);
+}
+
+interface AllocatedYearParams {
+  callSiteId: PlanningCycleYearCallSiteId;
+}
+
+/**
+ * A year within this worker's slice of `callSiteId`'s band that no earlier
+ * call this run (from this worker or a restarted one) got. Must be called
+ * inside a test.
+ */
+export function allocatedYear({ callSiteId }: AllocatedYearParams): number {
+  return nextYearInSlice({ callSiteId, reserve: 1 });
+}
+
+interface AllocatedYearSequenceParams {
+  callSiteId: PlanningCycleYearCallSiteId;
+  reserveForSequence: number;
+}
+
+/**
+ * For call sites that seed several cycles (e.g. one per test in a file): each
+ * call returns a year no earlier call this run got. `reserveForSequence` is
+ * the most cycles the call site creates within ONE worker; it must fit in a
+ * worker's slice, or the call throws (too many workers). Each call must run
+ * inside a test.
+ */
+export function allocatedYearSequence({
+  callSiteId,
+  reserveForSequence,
+}: AllocatedYearSequenceParams): () => number {
+  return () => nextYearInSlice({ callSiteId, reserve: reserveForSequence });
 }

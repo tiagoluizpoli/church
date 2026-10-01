@@ -13,9 +13,9 @@ test('planning-cycles, new, and $cycleId are distinct addressable URLs with work
   page,
 }) => {
   const now = new Date();
-  const year = allocatedYear(
-    'planning-nav-restructure:distinct-addressable-urls',
-  );
+  const year = allocatedYear({
+    callSiteId: 'planning-nav-restructure:distinct-addressable-urls',
+  });
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

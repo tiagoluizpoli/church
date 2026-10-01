@@ -40,7 +40,9 @@ function toDateString(date: Date): string {
 
 function createLiveChangesMonth(): LiveChangesMonth {
   const now = new Date();
-  const year = allocatedYear('us5-live-changes:create-live-changes-month');
+  const year = allocatedYear({
+    callSiteId: 'us5-live-changes:create-live-changes-month',
+  });
   const month = now.getUTCMonth();
   const start = new Date(Date.UTC(year, month, 1));
   const end = new Date(Date.UTC(year, month + 1, 1));

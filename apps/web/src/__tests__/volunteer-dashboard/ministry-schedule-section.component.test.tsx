@@ -73,7 +73,11 @@ describe('MinistryScheduleSection', () => {
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: 'Select ministry' }));
-    await user.click(screen.getByRole('option', { name: 'Youth Ministry' }));
+    // base-ui mounts the popup (portal + positioning) after the click settles,
+    // so await the option instead of reading it synchronously.
+    await user.click(
+      await screen.findByRole('option', { name: 'Youth Ministry' }),
+    );
 
     expect(onSelectMinistry).toHaveBeenCalledWith('ministry-2');
   });

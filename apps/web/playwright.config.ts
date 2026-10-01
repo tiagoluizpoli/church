@@ -5,6 +5,7 @@ import {
   pinE2eTargetFingerprint,
   serverProcessEnv,
   webProcessEnv,
+  withoutEnclosingVarlockConfig,
 } from '../../tooling/env/e2e-environment';
 
 // One URL set for the whole run (ADR-0005): pinned into process.env before
@@ -68,8 +69,9 @@ export default defineConfig({
       env: serverProcessEnv({ urlSet }),
     },
     {
-      command:
-        'bun --no-env-file ../../tooling/env/e2e-process-preflight.ts web && bun run dev',
+      // `dev` starts its own Varlock run against the web schema; see
+      // withoutEnclosingVarlockConfig.
+      command: `bun --no-env-file ../../tooling/env/e2e-process-preflight.ts web && ${withoutEnclosingVarlockConfig({ command: 'bun run dev' })}`,
       url: WEB_URL,
       // Keep the browser and seed process paired with the server above.
       reuseExistingServer: false,

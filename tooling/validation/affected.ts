@@ -6,6 +6,12 @@ import {
   type TestTarget,
   type ValidationPlan,
 } from './affected-plan';
+import {
+  hasFailure,
+  type LaneStep,
+  runStages,
+  type StepResult,
+} from './run-lanes';
 
 export { classifyChanges } from './affected-plan';
 
@@ -36,43 +42,45 @@ interface ParseArgumentsResult {
   skipE2e: boolean;
 }
 
-interface RunTestLayerInput {
+interface BuildTestLayerStepsInput {
   testLayer: TestLayer;
   testTargets: TestTarget[];
   workspaceNames: string[];
 }
 
-interface RunTurboTaskInput {
+interface BuildTurboStepInput {
   args: string[];
   concurrency: string;
   task: string;
   workspaceNames: string[];
 }
 
-interface RunValidationInput {
+export interface RunValidationInput {
   onlyE2e: boolean;
   plan: ValidationPlan;
   skipE2e: boolean;
 }
 
 interface RunValidationResult {
+  failed: boolean;
   timings: CheckTiming[];
 }
 
 export interface CheckTiming {
+  failed?: boolean;
   label: string;
   ms: number;
   skipped?: boolean;
 }
 
-interface TimeCheckInput<T> {
+interface PushSkippedInput {
   label: string;
-  run: () => T;
   timings: CheckTiming[];
 }
 
-interface PushSkippedInput {
+interface PushLayerTimingInput {
   label: string;
+  results: StepResult[];
   timings: CheckTiming[];
 }
 
@@ -192,23 +200,50 @@ function runCommand({ args, command }: CommandInput): string[] {
   return output.split('\n').filter(Boolean);
 }
 
-function timeCheck<T>({ label, run, timings }: TimeCheckInput<T>): T {
-  const startedAt = performance.now();
-  const result = run();
-  timings.push({ label, ms: Math.round(performance.now() - startedAt) });
-  return result;
-}
-
 function pushSkipped({ label, timings }: PushSkippedInput): void {
   timings.push({ label, ms: 0, skipped: true });
 }
 
-function runValidation({
+/**
+ * A layer can be several consecutive steps (remaining workspaces plus one per
+ * targeted workspace); the summary keeps one row per layer, summing them.
+ */
+function pushLayerTiming({
+  label,
+  results,
+  timings,
+}: PushLayerTimingInput): void {
+  const ms = results.reduce((total, result) => total + result.ms, 0);
+  if (hasFailure({ results })) {
+    timings.push({ failed: true, label, ms });
+  } else if (results.every((result) => result.status === 'skipped')) {
+    pushSkipped({ label, timings });
+  } else {
+    timings.push({ label, ms });
+  }
+}
+
+export interface ValidationSteps {
+  checkLane: LaneStep[];
+  checkedLabels: string[];
+  e2eLabel: string;
+  e2eSteps: LaneStep[];
+  integrationLane: LaneStep[];
+}
+
+/**
+ * Lint, typecheck and unit tests share one lane; integration tests run in
+ * the other so the CPU-bound and DB-bound work overlap. Only the scheduling
+ * differs from running each layer in turn — the commands are unchanged.
+ */
+export function buildValidationSteps({
   onlyE2e,
   plan,
   skipE2e,
-}: RunValidationInput): RunValidationResult {
-  const timings: CheckTiming[] = [];
+}: RunValidationInput): ValidationSteps {
+  const checkedLabels: string[] = [];
+  const checkLane: LaneStep[] = [];
+  const integrationLane: LaneStep[] = [];
 
   if (!onlyE2e) {
     // A deleted file is still a changed path — it must keep its package in
@@ -216,16 +251,11 @@ function runValidation({
     // each one as an internal error. Drop them at the lint step only.
     const lintPaths = plan.lintPaths.filter((lintPath) => existsSync(lintPath));
     if (lintPaths.length > 0) {
-      timeCheck({
+      checkLane.push({
+        args: ['run', 'lint:files', '--', ...lintPaths],
+        command: 'bun',
         label: 'lint',
-        run: () =>
-          execFileSync('bun', ['run', 'lint:files', '--', ...lintPaths], {
-            stdio: 'inherit',
-          }),
-        timings,
       });
-    } else {
-      pushSkipped({ label: 'lint', timings });
     }
 
     if (plan.workspaceNames.length > 0) {
@@ -233,73 +263,82 @@ function runValidation({
         '--filter',
         workspaceName,
       ]);
-      timeCheck({
+      checkLane.push({
+        args: ['turbo', 'typecheck', '--concurrency=2', ...filters],
+        command: 'bunx',
         label: 'typecheck',
-        run: () =>
-          execFileSync(
-            'bunx',
-            ['turbo', 'typecheck', '--concurrency=2', ...filters],
-            { stdio: 'inherit' },
-          ),
-        timings,
       });
-    } else {
-      pushSkipped({ label: 'typecheck', timings });
     }
 
     for (const testLayer of ALL_TEST_LAYERS) {
-      if (plan.testLayers.includes(testLayer)) {
-        timeCheck({
-          label: testLayer,
-          run: () =>
-            runTestLayer({
-              testLayer,
-              testTargets: plan.testTargets,
-              workspaceNames: plan.workspaceNames,
-            }),
-          timings,
-        });
-      } else {
-        pushSkipped({ label: testLayer, timings });
-      }
+      if (!plan.testLayers.includes(testLayer)) continue;
+      const layerSteps = buildTestLayerSteps({
+        testLayer,
+        testTargets: plan.testTargets,
+        workspaceNames: plan.workspaceNames,
+      });
+      if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
+      else checkLane.push(...layerSteps);
     }
+    checkedLabels.push('lint', 'typecheck', ...ALL_TEST_LAYERS);
   }
 
-  if (skipE2e) {
-    pushSkipped({ label: 'test:e2e', timings });
-    return { timings };
-  }
-
-  if (plan.requiresFullE2e) {
-    timeCheck({
-      label: 'test:e2e (full suite)',
-      run: () => execFileSync('bun', ['run', 'test:e2e'], { stdio: 'inherit' }),
-      timings,
+  let e2eLabel = 'test:e2e';
+  const e2eSteps: LaneStep[] = [];
+  if (!skipE2e && plan.requiresFullE2e) {
+    e2eLabel = 'test:e2e (full suite)';
+    e2eSteps.push({
+      args: ['run', 'test:e2e'],
+      command: 'bun',
+      label: 'test:e2e',
     });
-    return { timings };
-  }
-
-  if (plan.e2eSpecPaths.length > 0) {
-    timeCheck({
-      label: 'test:e2e (affected journeys)',
-      run: () =>
-        execFileSync('bun', ['run', 'test:e2e', '--', ...plan.e2eSpecPaths], {
-          stdio: 'inherit',
-        }),
-      timings,
+  } else if (!skipE2e && plan.e2eSpecPaths.length > 0) {
+    e2eLabel = 'test:e2e (affected journeys)';
+    e2eSteps.push({
+      args: ['run', 'test:e2e', '--', ...plan.e2eSpecPaths],
+      command: 'bun',
+      label: 'test:e2e',
     });
-  } else {
-    pushSkipped({ label: 'test:e2e', timings });
   }
 
-  return { timings };
+  return { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane };
 }
 
-function runTestLayer({
+async function runValidation({
+  onlyE2e,
+  plan,
+  skipE2e,
+}: RunValidationInput): Promise<RunValidationResult> {
+  const timings: CheckTiming[] = [];
+  const { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane } =
+    buildValidationSteps({ onlyE2e, plan, skipE2e });
+
+  const results = await runStages({
+    finalSteps: e2eSteps,
+    lanes: [checkLane, integrationLane],
+  });
+
+  for (const label of checkedLabels) {
+    const layerResults = results.filter((result) => result.label === label);
+    if (layerResults.length === 0) pushSkipped({ label, timings });
+    else pushLayerTiming({ label, results: layerResults, timings });
+  }
+
+  const e2eResults = results.filter((result) => result.label === 'test:e2e');
+  if (e2eResults.length === 0) {
+    pushSkipped({ label: 'test:e2e', timings });
+  } else {
+    pushLayerTiming({ label: e2eLabel, results: e2eResults, timings });
+  }
+
+  return { failed: hasFailure({ results }), timings };
+}
+
+function buildTestLayerSteps({
   testLayer,
   testTargets,
   workspaceNames,
-}: RunTestLayerInput): void {
+}: BuildTestLayerStepsInput): LaneStep[] {
   const targetsForLayer = testTargets.filter(
     (testTarget) => testTarget.testLayer === testLayer,
   );
@@ -310,35 +349,42 @@ function runTestLayer({
     (workspaceName) => !targetedWorkspaceNames.has(workspaceName),
   );
   const concurrency = testLayer === 'test:integration' ? '1' : '2';
+  const steps: LaneStep[] = [];
 
   if (remainingWorkspaceNames.length > 0) {
-    runTurboTask({
-      args: [],
-      concurrency,
-      task: testLayer,
-      workspaceNames: remainingWorkspaceNames,
-    });
+    steps.push(
+      buildTurboStep({
+        args: [],
+        concurrency,
+        task: testLayer,
+        workspaceNames: remainingWorkspaceNames,
+      }),
+    );
   }
 
   for (const workspaceName of targetedWorkspaceNames) {
     const testPaths = targetsForLayer
       .filter((testTarget) => testTarget.workspaceName === workspaceName)
       .map((testTarget) => testTarget.testPath);
-    runTurboTask({
-      args: testPaths,
-      concurrency,
-      task: testLayer,
-      workspaceNames: [workspaceName],
-    });
+    steps.push(
+      buildTurboStep({
+        args: testPaths,
+        concurrency,
+        task: testLayer,
+        workspaceNames: [workspaceName],
+      }),
+    );
   }
+
+  return steps;
 }
 
-function runTurboTask({
+function buildTurboStep({
   args,
   concurrency,
   task,
   workspaceNames,
-}: RunTurboTaskInput): void {
+}: BuildTurboStepInput): LaneStep {
   const filters = workspaceNames.flatMap((workspaceName) => [
     '--filter',
     workspaceName,
@@ -349,9 +395,8 @@ function runTurboTask({
   // closure (classifyChanges walks DEPENDENTS itself). Without --only, that
   // fan-out runs the task in packages that don't have `args`' file paths and
   // crashes with "No test files found".
-  execFileSync(
-    'bunx',
-    [
+  return {
+    args: [
       'turbo',
       task,
       `--concurrency=${concurrency}`,
@@ -360,8 +405,9 @@ function runTurboTask({
       '--',
       ...args,
     ],
-    { stdio: 'inherit' },
-  );
+    command: 'bunx',
+    label: task,
+  };
 }
 
 interface ExplainPlanInput {
@@ -429,10 +475,14 @@ export function formatTimingSummary({
   timings,
 }: FormatTimingSummaryInput): string {
   const lines = ['| Check | Elapsed |', '| --- | --- |'];
-  for (const { label, ms, skipped } of timings) {
-    lines.push(
-      `| ${label} | ${skipped ? 'skipped' : `${(ms / 1000).toFixed(1)}s`} |`,
-    );
+  for (const { failed, label, ms, skipped } of timings) {
+    const elapsed = `${(ms / 1000).toFixed(1)}s`;
+    const status = skipped
+      ? 'skipped'
+      : failed
+        ? `failed (${elapsed})`
+        : elapsed;
+    lines.push(`| ${label} | ${status} |`);
   }
   return lines.join('\n');
 }
@@ -462,7 +512,7 @@ if (import.meta.main) {
     console.error('');
     console.error(explainPlan({ baseRef, plan }));
   } else {
-    const { timings } = runValidation({
+    const { failed, timings } = await runValidation({
       onlyE2e: argumentsResult.onlyE2e,
       plan,
       skipE2e: argumentsResult.skipE2e,
@@ -479,5 +529,6 @@ if (import.meta.main) {
         `\n### Check timings\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
       );
     }
+    if (failed) process.exitCode = 1;
   }
 }

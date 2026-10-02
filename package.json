@@ -71,7 +71,7 @@
     "dns:stop": "bun tooling/worktree/dev-dns.ts stop",
     "validate:date-time-seam": "bun tooling/validation/date-time-seam-guards.ts",
     "validate:affected": "bun tooling/validation/affected.ts",
-    "validate": "bun run lint && bun run typecheck && bun run test",
+    "validate": "bun tooling/validation/validate.ts",
     "push:safe": "bash tooling/git-safe-push.sh",
     "commit": "cz"
   },

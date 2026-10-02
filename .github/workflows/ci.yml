@@ -32,7 +32,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: church_test
+          POSTGRES_DB: &integration-database church_unspecified_int
         ports:
           - 5432:5432
         options: >-
@@ -42,7 +42,11 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_test
+      DATABASE_URL: &integration-database-url postgresql://postgres:postgres@localhost:5432/church_unspecified_int
+      # ADR-0005: getIntegrationDatabaseUrl resolves through
+      # resolveDatabaseTarget, which expects `church_<worktree>_int`. CI sets
+      # no CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback; this database name matches that.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
@@ -309,8 +313,33 @@ jobs:
       - name: Install Playwright browsers
         uses: ./.github/actions/install-playwright-chromium
 
-      - name: Complete validation (lint, typecheck, unit, integration, full E2E)
-        run: bun run validate
+      # `bun run validate`'s scripts (tooling/validation/validate.ts), one
+      # purpose per step: integration and E2E each resolve their own typed
+      # database target (ADR-0005), so integration gets its own
+      # church_unspecified_int beside the job's E2E database. The steps run
+      # in sequence, without validate's unit/integration overlap;
+      # tooling/tests/env/ci-integration-lane.test.ts keeps them in step.
+      - name: Lint
+        run: bun run lint
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      - name: Create and migrate the integration database
+        run: bun run --cwd packages/db db:setup-test
+        env:
+          DATABASE_URL: *integration-database-url
+
+      - name: Integration tests
+        run: bun run test:integration
+        env:
+          DATABASE_URL: *integration-database-url
+
+      - name: Full E2E
+        run: bun run test:e2e
 
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
@@ -343,7 +372,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: church_test
+          POSTGRES_DB: *integration-database
         ports:
           - 5432:5432
         options: >-
@@ -353,7 +382,8 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_test
+      DATABASE_URL: *integration-database-url
+      # The integration target develop-fast declares (ADR-0005).
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101

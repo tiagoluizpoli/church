@@ -2,13 +2,25 @@ import type {
   DatabasePurpose,
   DatabaseTargetIdentity,
 } from './database-target-resolver';
-import { formatDatabaseTargetPreflight } from './database-target-resolver';
+import {
+  expectedDatabaseName,
+  formatDatabaseTargetPreflight,
+} from './database-target-resolver';
 
 const PURPOSE_LABELS: Record<DatabasePurpose, string> = {
   development: 'Development',
   integration: 'Integration',
   e2e: 'E2E',
 };
+
+const UNSPECIFIED_WORKTREE = 'unspecified';
+
+/** The worktree an integration or E2E target belongs to: CHURCH_WORKTREE, or
+ * the reserved "unspecified" identity when none is declared, as in CI
+ * (ADR-0005), whose databases are `church_unspecified_<purpose>`. */
+export function worktreeOrUnspecified(): string {
+  return process.env.CHURCH_WORKTREE ?? UNSPECIFIED_WORKTREE;
+}
 
 export interface RequireExecPurposeInput {
   purpose: DatabasePurpose;
@@ -51,4 +63,24 @@ export interface ReportDatabaseTargetInput {
  * credential-free target fingerprint before returning its URL. */
 export function reportDatabaseTarget(input: ReportDatabaseTargetInput): void {
   console.log(formatDatabaseTargetPreflight({ identity: input.identity }));
+}
+
+export interface DevelopmentCandidateFromInput {
+  databaseUrl: string;
+  worktree: string;
+}
+
+/**
+ * Synthesizes the development-database candidate `resolveDatabaseTarget`
+ * compares an integration or E2E target against, from that target's own
+ * host/port (ADR-0005: every purpose's database lives on the same worktree
+ * Postgres instance, only the database name differs). Avoids depending on a
+ * separate injected env var that Varlock only forwards for `@required` keys.
+ */
+export function developmentCandidateFrom(
+  input: DevelopmentCandidateFromInput,
+): string {
+  const developmentUrl = new URL(input.databaseUrl);
+  developmentUrl.pathname = `/${expectedDatabaseName({ purpose: 'development', worktree: input.worktree })}`;
+  return developmentUrl.toString();
 }

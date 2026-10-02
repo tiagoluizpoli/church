@@ -9,13 +9,13 @@ import {
  * Unit tests are CPU-bound and integration tests are DB/IO-bound, so the two
  * lanes overlap instead of queueing; E2E needs everything else green first.
  */
-const LINT_TYPECHECK_UNIT_LANE: LaneStep[] = [
+export const LINT_TYPECHECK_UNIT_LANE: LaneStep[] = [
   { args: ['run', 'lint'], command: 'bun', label: 'lint' },
   { args: ['run', 'typecheck'], command: 'bun', label: 'typecheck' },
   { args: ['run', 'test:unit'], command: 'bun', label: 'test:unit' },
 ];
 
-const INTEGRATION_LANE: LaneStep[] = [
+export const INTEGRATION_LANE: LaneStep[] = [
   {
     args: ['run', 'test:integration'],
     command: 'bun',
@@ -23,7 +23,7 @@ const INTEGRATION_LANE: LaneStep[] = [
   },
 ];
 
-const E2E_STEPS: LaneStep[] = [
+export const E2E_STEPS: LaneStep[] = [
   { args: ['run', 'test:e2e'], command: 'bun', label: 'test:e2e' },
 ];
 

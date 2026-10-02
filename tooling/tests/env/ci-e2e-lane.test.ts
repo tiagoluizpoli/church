@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'bun:test';
+import {
+  LOOPBACK_HOSTS,
+  ROOT,
+  type WorkflowJob,
+  workflow,
+} from './ci-workflow';
 
 /**
  * #253 / #263 / ADR-0005: every CI job injects its configuration explicitly
@@ -9,43 +15,21 @@ import { describe, expect, it } from 'bun:test';
  * hooks. The E2E lane targets the PostgreSQL port the job provisions.
  */
 
-interface WorkflowStep {
-  name?: string;
-  uses?: string;
-  run?: string;
-  with?: Record<string, string>;
-}
-
-interface WorkflowService {
-  env?: Record<string, string>;
-  ports?: string[];
-}
-
-interface WorkflowJob {
-  env?: Record<string, string>;
-  services?: Record<string, WorkflowService>;
-  steps: WorkflowStep[];
-}
-
-interface Workflow {
-  jobs: Record<string, WorkflowJob>;
-}
-
 interface ActionStep {
   name?: string;
   if?: string;
   run?: string;
 }
 
-interface CompositeAction {
-  inputs?: Record<string, unknown>;
-  runs: { steps: ActionStep[] };
+interface CompositeActionRuns {
+  steps: ActionStep[];
 }
 
-const ROOT = resolve(import.meta.dir, '../../..');
-const workflow = Bun.YAML.parse(
-  readFileSync(resolve(ROOT, '.github/workflows/ci.yml'), 'utf8'),
-) as Workflow;
+interface CompositeAction {
+  inputs?: Record<string, unknown>;
+  runs: CompositeActionRuns;
+}
+
 const setupAction = Bun.YAML.parse(
   readFileSync(
     resolve(ROOT, '.github/actions/setup-church-ci/action.yml'),
@@ -53,7 +37,7 @@ const setupAction = Bun.YAML.parse(
   ),
 ) as CompositeAction;
 
-// release-gate runs the full E2E suite inside `bun run validate`.
+// release-gate runs the full E2E suite in its own step.
 const E2E_JOBS = ['develop-browser', 'e2e', 'release-gate'];
 // The E2E run's own loopback set (tooling/env/e2e-environment.ts).
 const CI_URL_SET: Record<string, string> = {
@@ -63,7 +47,6 @@ const CI_URL_SET: Record<string, string> = {
 };
 const SETUP_ACTION = './.github/actions/setup-church-ci';
 const VALUE_FILE_WRITE = /(>>?|tee)\s*\S*\.env\b/;
-const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1']);
 
 interface JobInput {
   job: WorkflowJob;

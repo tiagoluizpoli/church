@@ -1,19 +1,11 @@
+import { resolveDatabaseTarget } from './database-target-resolver';
 import {
+  developmentCandidateFrom,
   reportDatabaseTarget,
   requireDatabaseUrl,
   requireExecPurpose,
+  worktreeOrUnspecified,
 } from './purpose-database-url-guard';
-
-const DEVELOPMENT_DATABASE_NAME = 'church';
-const UNSPECIFIED_WORKTREE_LABEL = 'unspecified';
-
-interface GetDatabaseNameInput {
-  parsedUrl: URL;
-}
-
-function getDatabaseName(input: GetDatabaseNameInput): string {
-  return input.parsedUrl.pathname.replace(/^\//, '');
-}
 
 /**
  * Returns the integration database target Varlock injected for this process
@@ -21,9 +13,12 @@ function getDatabaseName(input: GetDatabaseNameInput): string {
  * `NODE_ENV`). Callers must run through Varlock with
  * `CHURCH_EXEC_PURPOSE=integration`; anything else fails fast.
  *
- * Every caller (packages/db, packages/auth, apps/server) resolves through
- * this one function, so the redacted preflight line it logs is directly
- * comparable across all three integration runners.
+ * Resolves through `resolveDatabaseTarget` (src/database-target-resolver.ts),
+ * so it refuses the development database, an E2E database, another
+ * worktree's integration database, and any database outside the managed
+ * "church" namespace. Every caller (packages/db, packages/auth, apps/server)
+ * resolves through this one function, so the redacted preflight line it logs
+ * is directly comparable across all three integration runners.
  */
 export function getIntegrationDatabaseUrl(): string {
   requireExecPurpose({
@@ -32,25 +27,18 @@ export function getIntegrationDatabaseUrl(): string {
   });
 
   const databaseUrl = requireDatabaseUrl({ purpose: 'integration' });
+  const worktree = worktreeOrUnspecified();
 
-  const parsedUrl = new URL(databaseUrl);
-  const databaseName = getDatabaseName({ parsedUrl });
-
-  if (databaseName === DEVELOPMENT_DATABASE_NAME) {
-    throw new Error(
-      `Refusing to run integration work against the development database "${DEVELOPMENT_DATABASE_NAME}". Point the integration purpose at a dedicated integration database.`,
-    );
-  }
-
-  reportDatabaseTarget({
-    identity: {
-      purpose: 'integration',
-      worktree: process.env.CHURCH_WORKTREE ?? UNSPECIFIED_WORKTREE_LABEL,
-      host: parsedUrl.hostname,
-      port: parsedUrl.port ? Number(parsedUrl.port) : 5432,
-      database: databaseName,
+  const identity = resolveDatabaseTarget({
+    purpose: 'integration',
+    worktree,
+    candidates: {
+      development: developmentCandidateFrom({ databaseUrl, worktree }),
+      integration: databaseUrl,
     },
   });
+
+  reportDatabaseTarget({ identity });
 
   return databaseUrl;
 }

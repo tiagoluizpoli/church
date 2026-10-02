@@ -25,6 +25,10 @@ and task ordering.
 | Report databases of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
 | Start / stop this machine's opt-in URL resolver | `bun run dns:start` / `bun run dns:stop` |
 
+`validate` and `validate:affected` run lint → typecheck → unit tests
+concurrently with integration tests, then E2E only if both lanes pass. Output
+lines carry a `[stage]` prefix and a final table reports each stage's status.
+
 Every command that reads configuration runs through Varlock from its
 package directory, so the root and the package directory resolve the same
 targets. Development commands declare `CHURCH_EXEC_PURPOSE=development`;

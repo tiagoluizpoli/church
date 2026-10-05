@@ -60,6 +60,12 @@ const NOTIFICATION_BELL_SPEC_PATHS = [
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
 ];
 
+// Specs whose starting graph comes from a journey recipe (#327) instead of
+// the shared E2E seed.
+const JOURNEY_RECIPE_SPEC_PATHS = [
+  'tests/volunteer-dashboard/us2-assignments.spec.ts',
+];
+
 // #217 — Church isolation on the planning-cycles list and $cycleId route,
 // the two lock edge cases (network failure, double-submit), and the
 // Church-local-time create-event journey all load through the same
@@ -589,5 +595,21 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/us5-live-changes.spec.ts',
       ...NOTIFICATION_BELL_SPEC_PATHS,
     ],
+  },
+  // #327 — journey recipes build the graph a spec starts from, through the
+  // shared seed builders, blueprints and the provisioning scripts they call:
+  // a change to any can break the journeys that load a recipe. Add each spec
+  // that moves onto a recipe (#328, #329).
+  {
+    sourcePathPrefix: 'apps/server/seeds/',
+    specPaths: JOURNEY_RECIPE_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/server/src/scripts/provision-church.ts',
+    specPaths: JOURNEY_RECIPE_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/server/src/scripts/ensure-platform-operator.ts',
+    specPaths: JOURNEY_RECIPE_SPEC_PATHS,
   },
 ];

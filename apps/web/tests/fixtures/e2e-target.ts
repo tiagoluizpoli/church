@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { z } from 'zod';
 
 /**
  * #253: proves every step of an E2E journey ran against the database target
@@ -97,4 +98,28 @@ export function runE2eServerScript(input: RunE2eServerScriptInput): string {
   assertReportedPinnedTarget({ output, step: input.step });
 
   return output;
+}
+
+export interface ParseLastJsonLineInput<TSchema extends z.ZodType> {
+  output: string;
+  schema: TSchema;
+}
+
+/**
+ * Parses the last non-empty stdout line as JSON and validates it against
+ * `schema` — scripts may log incidental lines before it.
+ */
+export function parseLastJsonLine<TSchema extends z.ZodType>({
+  output,
+  schema,
+}: ParseLastJsonLineInput<TSchema>): z.infer<TSchema> {
+  const lastLine = output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .pop();
+  if (!lastLine) {
+    throw new Error(`Expected a JSON line on stdout, got:\n${output}`);
+  }
+  return schema.parse(JSON.parse(lastLine));
 }

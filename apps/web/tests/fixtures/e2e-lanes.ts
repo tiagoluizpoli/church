@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
  * Every Playwright spec runs in exactly one lane. Workers share the run's
  * single server, Vite and E2E database (ADR-0005), so a spec that writes
  * seeded state another spec reads (the December and US4 cycles, the US6
- * event, the Worship/Care serving profiles, the E2E Volunteer's dashboard)
+ * event, the Worship/Care serving profiles, the E2E Volunteer's dashboard
+ * assignments)
  * runs in `shared-seed`: one worker, files in order. Everything else runs in
  * `isolated`, in parallel. As a journey moves onto its own recreatable data
  * (#320), move its spec to `isolated`; delete the lane once it is empty.
@@ -27,12 +28,11 @@ export const SHARED_SEED_SPECS = [
   'scheduling/us2-leader-tailor.spec.ts',
   'scheduling/us3-volunteer-availability.spec.ts',
   // Assign and publish the E2E Volunteer, whose dashboard the
-  // volunteer-dashboard specs read and decline from.
+  // volunteer-dashboard specs read.
   'scheduling/us4-roster-publish.spec.ts',
   'scheduling/us5-live-changes.spec.ts',
   'volunteer-dashboard/us-notification-bell.spec.ts',
   'volunteer-dashboard/us1-availability.spec.ts',
-  'volunteer-dashboard/us2-assignments.spec.ts',
   'volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'volunteer-dashboard/us5-offline.spec.ts',
 ] as const;
@@ -54,6 +54,8 @@ export const ISOLATED_SPECS = [
   'scheduling/planning-role-guard-matrix.spec.ts',
   'scheduling/single-create-event-ui.spec.ts',
   'scheduling/us1-admin-plan.spec.ts',
+  // Journey recipe (#327): its own Church, persona and published assignment.
+  'volunteer-dashboard/us2-assignments.spec.ts',
 ] as const;
 
 export const E2E_TEST_DIR = path.resolve(

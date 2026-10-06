@@ -1,10 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
 import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
-  LEADER_STORAGE_STATE,
-  TEAM_LEADER_STORAGE_STATE,
-} from '../global-setup';
-import { allocatedYear } from './planning-cycle-year.helpers';
+  newPersonaContext,
+  signInPersonaPage,
+} from '../fixtures/journeys/rostering-church';
+import {
+  loadVolunteerAvailabilityJourney,
+  type VolunteerAvailabilityJourney,
+} from '../fixtures/journeys/volunteer-availability';
 
 // DL4-US3 (P2, test-plan.md): a volunteer who belongs to two ministries opens
 // their availability checks (one per ministry for the locked cycle), marks a
@@ -15,40 +18,7 @@ import { allocatedYear } from './planning-cycle-year.helpers';
 // tailoring page — see the KNOWN GAP note in the first test below.
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
-// Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
-// E2E_IDS). The web package stays DB-tooling-free, so specs reference these
-// well-known UUIDs directly instead of importing the seed module — same
-// convention as smoke.spec.ts / a11y-builder.spec.ts.
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
-const CARE_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333332';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
-const CARE_HOST_ROLE_ID = 'e2e55555-5555-5555-a555-555555555553';
-
-interface OverlapPlanningMonth {
-  cycleName: string;
-  startDate: string;
-  endDate: string;
-}
-
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function createOverlapPlanningMonth(): OverlapPlanningMonth {
-  const now = new Date();
-  const year = allocatedYear({
-    callSiteId: 'us3-volunteer-availability:create-overlap-planning-month',
-  });
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 1));
-
-  return {
-    cycleName: `US3 Overlap ${year}-${String(month + 1).padStart(2, '0')} ${now.getTime()}`,
-    startDate: toDateString(start),
-    endDate: toDateString(end),
-  };
-}
+const CYCLE_NAME = 'US3 Overlap';
 
 interface PlanningCycleResponse {
   id: string;
@@ -112,11 +82,7 @@ async function fireAvailabilityForMinistry({
 
 interface SetUpTwoMinistryOverlapCycleParams {
   page: Page;
-}
-
-interface TwoMinistryOverlapCycle {
-  cycleId: string;
-  cycleName: string;
+  journey: VolunteerAvailabilityJourney;
 }
 
 // Builds one locked planning cycle, applies a single Sunday template block to
@@ -127,17 +93,19 @@ interface TwoMinistryOverlapCycle {
 // FR-020 (DL2-VA-05/06).
 async function setUpTwoMinistryOverlapCycle({
   page,
-}: SetUpTwoMinistryOverlapCycleParams): Promise<TwoMinistryOverlapCycle> {
-  const month = createOverlapPlanningMonth();
+  journey,
+}: SetUpTwoMinistryOverlapCycleParams): Promise<void> {
+  const worshipMinistryId = journey.ministries.worship.id;
+  const careMinistryId = journey.ministries.care.id;
 
   const worshipDirectionResponse = await page.request.patch(
-    `${SERVER_URL}/api/v1/admin/ministries/${WORSHIP_MINISTRY_ID}/default-direction`,
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/default-direction`,
     { data: { defaultDirection: 'all_out' } },
   );
   expect(worshipDirectionResponse.ok()).toBeTruthy();
 
   const careDirectionResponse = await page.request.patch(
-    `${SERVER_URL}/api/v1/admin/ministries/${CARE_MINISTRY_ID}/default-direction`,
+    `${SERVER_URL}/api/v1/admin/ministries/${careMinistryId}/default-direction`,
     { data: { defaultDirection: 'all_out' } },
   );
   expect(careDirectionResponse.ok()).toBeTruthy();
@@ -146,9 +114,9 @@ async function setUpTwoMinistryOverlapCycle({
     `${SERVER_URL}/api/v1/admin/planning-cycles`,
     {
       data: {
-        name: month.cycleName,
-        startDate: month.startDate,
-        endDate: month.endDate,
+        name: CYCLE_NAME,
+        startDate: journey.cycleWindow.startDate,
+        endDate: journey.cycleWindow.endDate,
       },
     },
   );
@@ -159,7 +127,7 @@ async function setUpTwoMinistryOverlapCycle({
     `${SERVER_URL}/api/v1/admin/event-templates`,
     {
       data: {
-        name: `US3 Overlap Template ${Date.now()}`,
+        name: 'US3 Overlap Template',
         weekday: 0,
         blocks: [
           {
@@ -180,7 +148,7 @@ async function setUpTwoMinistryOverlapCycle({
   }
 
   const worshipProfileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${WORSHIP_MINISTRY_ID}/serving-profile`,
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/serving-profile`,
     {
       data: {
         entries: [
@@ -188,7 +156,9 @@ async function setUpTwoMinistryOverlapCycle({
             sourceTemplateBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId: USHER_ROLE_ID, count: 1 }],
+            headcounts: [
+              { roleId: journey.ministries.worship.roles.usher.id, count: 1 },
+            ],
           },
         ],
       },
@@ -197,7 +167,7 @@ async function setUpTwoMinistryOverlapCycle({
   expect(worshipProfileResponse.ok()).toBeTruthy();
 
   const careProfileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${CARE_MINISTRY_ID}/serving-profile`,
+    `${SERVER_URL}/api/v1/admin/ministries/${careMinistryId}/serving-profile`,
     {
       data: {
         entries: [
@@ -205,7 +175,9 @@ async function setUpTwoMinistryOverlapCycle({
             sourceTemplateBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
-            headcounts: [{ roleId: CARE_HOST_ROLE_ID, count: 1 }],
+            headcounts: [
+              { roleId: journey.ministries.care.roles.careHost.id, count: 1 },
+            ],
           },
         ],
       },
@@ -227,48 +199,40 @@ async function setUpTwoMinistryOverlapCycle({
   await fireAvailabilityForMinistry({
     page,
     cycleId: cycle.id,
-    ministryId: WORSHIP_MINISTRY_ID,
+    ministryId: worshipMinistryId,
   });
   await fireAvailabilityForMinistry({
     page,
     cycleId: cycle.id,
-    ministryId: CARE_MINISTRY_ID,
+    ministryId: careMinistryId,
   });
-
-  return {
-    cycleId: cycle.id,
-    cycleName: month.cycleName,
-  };
 }
 
 interface OpenWorshipCheckAndMarkOneShiftUnavailableParams {
   page: Page;
-  cycleName: string;
+  journey: VolunteerAvailabilityJourney;
 }
 
 async function openWorshipCheckAndMarkOneShiftUnavailable({
   page,
-  cycleName,
+  journey,
 }: OpenWorshipCheckAndMarkOneShiftUnavailableParams): Promise<void> {
   await page.goto('/volunteer/availability');
 
   await expect(page.getByTestId('availability-check-list')).toBeVisible();
   // One check per ministry membership for the locked cycle: Worship (leader
-  // membership) and Care (volunteer membership). Scoped by ministry name AND
-  // this test's own (uniquely-named) cycle — the dashboard lists pending
-  // checks across every cycle, and an unrelated spec (us2-leader-tailor also
-  // fires availability for the Worship ministry, in its own cycle) can leave
-  // an extra same-ministry card that a ministry-only filter wouldn't exclude.
+  // membership) and Care (volunteer membership). The journey's own Church
+  // holds no other cycle, so the ministry name alone selects one card.
   const worshipCard = page
     .getByTestId('availability-check-card')
-    .filter({ hasText: 'E2E Worship' })
-    .filter({ hasText: cycleName });
+    .filter({ hasText: journey.ministries.worship.name })
+    .filter({ hasText: CYCLE_NAME });
   await expect(worshipCard).toHaveCount(1);
 
   const careCard = page
     .getByTestId('availability-check-card')
-    .filter({ hasText: 'E2E Care' })
-    .filter({ hasText: cycleName });
+    .filter({ hasText: journey.ministries.care.name })
+    .filter({ hasText: CYCLE_NAME });
   await expect(careCard).toHaveCount(1);
 
   await worshipCard.click();
@@ -290,15 +254,15 @@ async function openWorshipCheckAndMarkOneShiftUnavailable({
   expect(marksResponse.ok()).toBeTruthy();
 }
 
-test.use({ storageState: LEADER_STORAGE_STATE });
-
 test('volunteer in two ministries is blocked by a cross-ministry overlap', async ({
   browser,
   page,
-}) => {
-  const { cycleName } = await setUpTwoMinistryOverlapCycle({ page });
+}, testInfo) => {
+  const journey = loadVolunteerAvailabilityJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.leader });
+  await setUpTwoMinistryOverlapCycle({ page, journey });
 
-  await openWorshipCheckAndMarkOneShiftUnavailable({ page, cycleName });
+  await openWorshipCheckAndMarkOneShiftUnavailable({ page, journey });
 
   const confirmResponsePromise = page.waitForResponse(
     (response) =>
@@ -322,19 +286,19 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap', async
   // A single-ministry volunteer's clean confirm still exercises the
   // underlying availability-confirm flow, even though the leader-facing
   // verification that used to follow it is gone — see the note below.
-  // Uses the team-leader identity (Worship-only) rather than
-  // VOLUNTEER_STORAGE_STATE: e3bf3b8 gave the latter Care membership too,
-  // so it's no longer single-ministry and would hit the same overlap.
-  const singleMinistryActorContext = await browser.newContext({
-    storageState: TEAM_LEADER_STORAGE_STATE,
+  // Uses the team-leader persona, a member of Worship alone: the leader
+  // belongs to both ministries and would hit the same overlap.
+  const singleMinistryActorContext = await newPersonaContext({
+    browser,
+    persona: journey.personas.teamLeader,
   });
   const singleMinistryActorPage = await singleMinistryActorContext.newPage();
   await singleMinistryActorPage.goto('/volunteer/availability');
 
   const cleanVolunteerCard = singleMinistryActorPage
     .getByTestId('availability-check-card')
-    .filter({ hasText: cycleName })
-    .filter({ hasText: 'E2E Worship' });
+    .filter({ hasText: CYCLE_NAME })
+    .filter({ hasText: journey.ministries.worship.name });
   await expect(cleanVolunteerCard).toHaveCount(1);
   await cleanVolunteerCard.click();
   await expect(
@@ -369,14 +333,16 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap', async
 
 test('volunteer in two ministries confirms an overlapping check when overlap-save is allowed', async ({
   page,
-}) => {
+}, testInfo) => {
   test.fixme(
     true,
     'VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE cannot be toggled from this Playwright suite yet: Unleash is unreachable from the local E2E stack, so apps/server/src/infrastructure/services/unleash-feature-flag-service.ts silently resolves every flag to false and there is no per-test override for the real server process (the deterministic stub in apps/server/src/test-support/feature-flag-service-stub.ts only backs L1/L2 tests). Flip this to a real assertion once E2E gains a way to force the flag on for the server under test.',
   );
 
-  const { cycleName } = await setUpTwoMinistryOverlapCycle({ page });
-  await openWorshipCheckAndMarkOneShiftUnavailable({ page, cycleName });
+  const journey = loadVolunteerAvailabilityJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.leader });
+  await setUpTwoMinistryOverlapCycle({ page, journey });
+  await openWorshipCheckAndMarkOneShiftUnavailable({ page, journey });
 
   const confirmResponsePromise = page.waitForResponse(
     (response) =>

@@ -22,4 +22,21 @@ export const E2E_JOURNEY_RECIPES: Record<
   [E2E_JOURNEY_RECIPE_NAMES.volunteerAssignments]: async () =>
     (await import('./recipes/volunteer-assignments'))
       .createVolunteerAssignmentsRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.rosterPublish]: async () =>
+    (await import('./recipes/roster-publish')).createRosterPublishRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.volunteerDashboard]: async () =>
+    (await import('./recipes/volunteer-dashboard'))
+      .createVolunteerDashboardRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.leaderTailoring]: async () =>
+    (await import('./recipes/leader-tailoring')).createLeaderTailoringRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.volunteerAvailability]: async () =>
+    (await import('./recipes/volunteer-availability'))
+      .createVolunteerAvailabilityRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.liveChanges]: async () =>
+    (await import('./recipes/live-changes')).createLiveChangesRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.rosteringBoard]: async () =>
+    (await import('./recipes/rostering-board')).createRosteringBoardRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.rosterQualification]: async () =>
+    (await import('./recipes/roster-qualification'))
+      .createRosterQualificationRecipe,
 };

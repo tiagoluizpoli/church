@@ -1,11 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
 import { requiredE2eUrl } from '../fixtures/e2e-urls';
 import {
-  LEADER_STORAGE_STATE,
-  TEAM_LEADER_STORAGE_STATE,
-  VOLUNTEER_STORAGE_STATE,
-} from '../global-setup';
-import { allocatedYear } from './planning-cycle-year.helpers';
+  type LiveChangesJourney,
+  loadLiveChangesJourney,
+} from '../fixtures/journeys/live-changes';
+import {
+  newPersonaContext,
+  signInPersonaPage,
+} from '../fixtures/journeys/rostering-church';
 
 // DL4-US5 (P4, test-plan.md): a volunteer cancels their own published
 // assignment — the leader is notified and the slot reopens (FR-028, SC-004,
@@ -14,45 +16,7 @@ import { allocatedYear } from './planning-cycle-year.helpers';
 // (FR-029).
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
-// Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
-// E2E_IDS). The web package stays DB-tooling-free, so specs reference these
-// well-known UUIDs directly — same convention as us1/us3/us4 specs.
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
-const TEAM_LEADER_VOLUNTEER_ID = 'e2e44444-4444-4444-a444-444444444446';
-
-// VOLUNTEER_STORAGE_STATE's volunteer belongs to Worship, seeded as
-// "E2E Volunteer". TEAM_LEADER_STORAGE_STATE's volunteer ("E2E Team Leader",
-// TEAM_LEADER_VOLUNTEER_ID) is a distinct real logged-in volunteer also in
-// Worship (team1 TeamLeader) — used for the cross-volunteer permission check
-// and as the leader's reassign target.
-const OWNER_VOLUNTEER_NAME = 'E2E Volunteer';
-
-interface LiveChangesMonth {
-  cycleName: string;
-  startDate: string;
-  endDate: string;
-}
-
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function createLiveChangesMonth(): LiveChangesMonth {
-  const now = new Date();
-  const year = allocatedYear({
-    callSiteId: 'us5-live-changes:create-live-changes-month',
-  });
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 1));
-
-  return {
-    cycleName: `US5 Live Changes ${year}-${String(month + 1).padStart(2, '0')} ${now.getTime()}`,
-    startDate: toDateString(start),
-    endDate: toDateString(end),
-  };
-}
+const CYCLE_NAME = 'US5 Live Changes';
 
 interface PlanningCycleResponse {
   id: string;
@@ -94,8 +58,12 @@ interface CycleParticipationResponse {
   events: ParticipationEventViewResponse[];
 }
 
+interface AssignmentIdResponse {
+  id: string;
+}
+
 interface AssignmentResponse {
-  assignment: { id: string };
+  assignment: AssignmentIdResponse;
 }
 
 interface EligibleVolunteerResponse {
@@ -133,6 +101,7 @@ interface LiveChangesFixture {
 
 interface SetUpLiveChangesParams {
   page: Page;
+  journey: LiveChangesJourney;
 }
 
 // Builds one locked Worship participation split into two shifts, each
@@ -141,11 +110,13 @@ interface SetUpLiveChangesParams {
 // same-shift duplicate-assignment guard.
 async function setUpLiveChanges({
   page,
+  journey,
 }: SetUpLiveChangesParams): Promise<LiveChangesFixture> {
-  const month = createLiveChangesMonth();
+  const worshipMinistryId = journey.ministries.worship.id;
+  const usherRoleId = journey.ministries.worship.roles.usher.id;
 
   const directionResponse = await page.request.patch(
-    `${SERVER_URL}/api/v1/admin/ministries/${WORSHIP_MINISTRY_ID}/default-direction`,
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/default-direction`,
     { data: { defaultDirection: 'all_out' } },
   );
   expect(directionResponse.ok()).toBeTruthy();
@@ -154,9 +125,9 @@ async function setUpLiveChanges({
     `${SERVER_URL}/api/v1/admin/planning-cycles`,
     {
       data: {
-        name: month.cycleName,
-        startDate: month.startDate,
-        endDate: month.endDate,
+        name: CYCLE_NAME,
+        startDate: journey.cycleWindow.startDate,
+        endDate: journey.cycleWindow.endDate,
       },
     },
   );
@@ -167,7 +138,7 @@ async function setUpLiveChanges({
     `${SERVER_URL}/api/v1/admin/event-templates`,
     {
       data: {
-        name: `US5 Live Changes Template ${Date.now()}`,
+        name: 'US5 Live Changes Template',
         weekday: 0,
         blocks: [
           {
@@ -188,7 +159,7 @@ async function setUpLiveChanges({
   }
 
   const profileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${WORSHIP_MINISTRY_ID}/serving-profile`,
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/serving-profile`,
     {
       data: {
         entries: [
@@ -196,7 +167,7 @@ async function setUpLiveChanges({
             sourceTemplateBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 2 },
-            headcounts: [{ roleId: USHER_ROLE_ID, count: 1 }],
+            headcounts: [{ roleId: usherRoleId, count: 1 }],
           },
         ],
       },
@@ -217,7 +188,7 @@ async function setUpLiveChanges({
 
   const participationResponse = await page.request.get(
     `${SERVER_URL}/api/v1/tailoring/cycles/${cycle.id}/participation`,
-    { params: { ministryId: WORSHIP_MINISTRY_ID } },
+    { params: { ministryId: worshipMinistryId } },
   );
   expect(participationResponse.ok()).toBeTruthy();
   const participation =
@@ -248,13 +219,15 @@ async function setUpLiveChanges({
   };
 }
 
-test.use({ storageState: LEADER_STORAGE_STATE });
-
 test('volunteer cancels their own published assignment, the leader is notified and the slot reopens, another volunteer cannot cancel it, and the leader reassigns mid-cycle', async ({
   browser,
   page,
-}) => {
-  const fixture = await setUpLiveChanges({ page });
+}, testInfo) => {
+  const journey = loadLiveChangesJourney({ testInfo });
+  const { leader, owner: ownerPersona, teamLeader } = journey.personas;
+  const usherRoleId = journey.ministries.worship.roles.usher.id;
+  await signInPersonaPage({ page, persona: leader });
+  const fixture = await setUpLiveChanges({ page, journey });
 
   const eligibleResponse = await page.request.get(
     `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/eligible-volunteers`,
@@ -263,15 +236,15 @@ test('volunteer cancels their own published assignment, the leader is notified a
   const eligible =
     (await eligibleResponse.json()) as EligibleVolunteerListResponse;
   const owner = eligible.volunteers.find(
-    (volunteer) => volunteer.volunteerName === OWNER_VOLUNTEER_NAME,
+    (volunteer) => volunteer.volunteerId === ownerPersona.volunteerId,
   );
   if (!owner) {
-    throw new Error('Expected the scheduling volunteer to be eligible.');
+    throw new Error('Expected the owner persona to be eligible.');
   }
 
   const usherResponse = await page.request.post(
     `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/assignments`,
-    { data: { volunteerId: owner.volunteerId, roleId: USHER_ROLE_ID } },
+    { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
   );
   expect(usherResponse.ok()).toBeTruthy();
   const usherAssignment = ((await usherResponse.json()) as AssignmentResponse)
@@ -279,7 +252,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
 
   const secondResponse = await page.request.post(
     `${SERVER_URL}/api/v1/rostering/shifts/${fixture.secondShiftId}/assignments`,
-    { data: { volunteerId: owner.volunteerId, roleId: USHER_ROLE_ID } },
+    { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
   );
   expect(secondResponse.ok()).toBeTruthy();
   const secondAssignment = ((await secondResponse.json()) as AssignmentResponse)
@@ -293,15 +266,14 @@ test('volunteer cancels their own published assignment, the leader is notified a
 
   // Volunteer confirms the Usher assignment, then cancels it — the leader is
   // notified and the slot reopens (DL2-LC-01/03, FR-028, SC-008).
-  const volunteerContext = await browser.newContext({
-    storageState: VOLUNTEER_STORAGE_STATE,
+  const volunteerContext = await newPersonaContext({
+    browser,
+    persona: ownerPersona,
   });
   const volunteerPage = await volunteerContext.newPage();
   await volunteerPage.goto('/dashboard');
 
-  // Other specs running in parallel may seed their own assignment groups for
-  // this shared volunteer, so only one of them auto-expands on load — find
-  // ours by its unique event title and toggle it open if collapsed.
+  // Find the group by its event title and toggle it open if collapsed.
   const groupToggle = volunteerPage.getByRole('button', {
     name: new RegExp(
       `^(?:Show|Hide) assignments for ${fixture.eventTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
@@ -364,8 +336,9 @@ test('volunteer cancels their own published assignment, the leader is notified a
 
   // A different volunteer cannot cancel the still-open second Usher assignment
   // (DL2-LC-02, SC-004).
-  const teamLeaderContext = await browser.newContext({
-    storageState: TEAM_LEADER_STORAGE_STATE,
+  const teamLeaderContext = await newPersonaContext({
+    browser,
+    persona: teamLeader,
   });
   const deniedCancelResponse = await teamLeaderContext.request.post(
     `${SERVER_URL}/api/v1/volunteer/assignments/${secondAssignment.id}/cancel`,
@@ -379,7 +352,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
     `${SERVER_URL}/api/v1/rostering/assignments/${secondAssignment.id}/reassign`,
     {
       data: {
-        volunteerId: TEAM_LEADER_VOLUNTEER_ID,
+        volunteerId: teamLeader.volunteerId,
         reason: 'Original volunteer became unavailable mid-cycle',
       },
     },
@@ -388,5 +361,5 @@ test('volunteer cancels their own published assignment, the leader is notified a
   const reassigned = (
     (await reassignResponse.json()) as ReassignedAssignmentResponse
   ).volunteerId;
-  expect(reassigned).toBe(TEAM_LEADER_VOLUNTEER_ID);
+  expect(reassigned).toBe(teamLeader.volunteerId);
 });

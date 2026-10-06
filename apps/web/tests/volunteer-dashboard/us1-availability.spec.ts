@@ -1,23 +1,25 @@
 import { expect, test } from '@playwright/test';
-import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
-
-test.use({ storageState: VOLUNTEER_STORAGE_STATE });
-
-const DASHBOARD_URL =
-  '/dashboard?section=availability&eventId=e2e66666-6666-6666-a666-666666666661';
+import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
+import { loadVolunteerDashboardJourney } from '../fixtures/journeys/volunteer-dashboard';
 
 test('US1: volunteer finds availability task and opens event editor within 10 seconds', async ({
   page,
-}) => {
+}, testInfo) => {
+  // The journey owns its Volunteer persona and published schedule.
+  const journey = loadVolunteerDashboardJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.volunteer });
+  const eventTitle = journey.availabilityEvent.title;
   const startedAt = Date.now();
 
-  await page.goto(DASHBOARD_URL);
+  await page.goto(
+    `/dashboard?section=availability&eventId=${journey.availabilityEvent.id}`,
+  );
 
   await expect(
     page.getByText('Availability needed', { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText('E2E Sunday Service', { exact: true }).first(),
+    page.getByText(eventTitle, { exact: true }).first(),
   ).toBeVisible();
 
   const elapsedMs = Date.now() - startedAt;
@@ -27,7 +29,7 @@ test('US1: volunteer finds availability task and opens event editor within 10 se
     page.getByText('Availability editor', { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText('E2E Sunday Service', { exact: true }).last(),
+    page.getByText(eventTitle, { exact: true }).last(),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Save availability' }),

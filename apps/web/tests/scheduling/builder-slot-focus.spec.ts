@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import { loadRosteringBoardJourney } from '../fixtures/journeys/rostering-board';
+import {
+  rosteringBuilderPath,
+  signInPersonaPage,
+} from '../fixtures/journeys/rostering-church';
 
 /**
  * 023 phase 3 — slot-aware rail.
@@ -8,8 +12,9 @@ import { LEADER_STORAGE_STATE } from '../global-setup';
  * board, without opening the assignment popover first, and the rail must
  * *promote* that shift's eligible candidates rather than hiding everyone else.
  * Qualification, like availability, is an override path rather than a hard
- * filter (B-2) — the seed used here qualifies every candidate for their
- * ministry's roles, so an unqualified pick is not exercised by this spec.
+ * filter (B-2) — the rostering-board recipe qualifies every candidate for
+ * the Role they are offered for, so an unqualified pick is not exercised by
+ * this spec.
  *
  * #217 — right-sized: the rail-ranking and focus-toggle assertions this file
  * used to carry are pure client-side state with no boundary crossing, and
@@ -22,16 +27,19 @@ import { LEADER_STORAGE_STATE } from '../global-setup';
  * including the collision/override dialogs a real conflict can trigger.
  */
 
-const BUILDER_URL =
-  '/scheduling/rostering/e2e33333-3333-3333-a333-333333333331/e2e21111-1111-1111-a111-111111111111';
-
 test.describe('slot focus drives the volunteer rail', () => {
-  test.use({ storageState: LEADER_STORAGE_STATE });
-
   test('assigns a focused candidate straight from their card, no popover', async ({
     page,
-  }) => {
-    await page.goto(BUILDER_URL);
+  }, testInfo) => {
+    const journey = loadRosteringBoardJourney({ testInfo });
+    await signInPersonaPage({ page, persona: journey.personas.leader });
+
+    await page.goto(
+      rosteringBuilderPath({
+        ministryId: journey.ministries.worship.id,
+        cycleId: journey.cycle.id,
+      }),
+    );
     await expect(page.getByTestId('cycle-builder')).toBeVisible({
       timeout: 15_000,
     });

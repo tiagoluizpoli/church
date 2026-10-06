@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import {
   assertReportedPinnedTarget,
   assertServedFromPinnedTarget,
   E2E_TARGET_HEADER,
+  parseLastJsonLine,
 } from './e2e-target';
 
 // #253: the original failure was an invitation provisioned in one database
@@ -123,5 +125,30 @@ describe('E2E target assertions', () => {
         }),
       ).toThrow(/provision Church/);
     });
+  });
+});
+
+describe('parseLastJsonLine', () => {
+  const schema = z.object({ invitationId: z.string() });
+
+  it('returns the schema-validated last line', () => {
+    const result = parseLastJsonLine({
+      output: `${PINNED}\n{"invitationId":"abc"}\n`,
+      schema,
+    });
+
+    expect(result).toEqual({ invitationId: 'abc' });
+  });
+
+  it('rejects a last line that breaks the schema', () => {
+    expect(() =>
+      parseLastJsonLine({ output: '{"invitationId":1}\n', schema }),
+    ).toThrow();
+  });
+
+  it('rejects output with no lines', () => {
+    expect(() => parseLastJsonLine({ output: '\n', schema })).toThrow(
+      /Expected a JSON line/,
+    );
   });
 });

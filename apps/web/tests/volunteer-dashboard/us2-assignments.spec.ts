@@ -1,12 +1,10 @@
-import { expect, test } from '@playwright/test';
-import { VOLUNTEER_STORAGE_STATE } from '../global-setup';
-
-test.use({ storageState: VOLUNTEER_STORAGE_STATE });
+import { expect, test } from '../fixtures/journey-recipes';
 
 const DASHBOARD_URL = '/dashboard?section=assignments';
 
 test('US2: volunteer reviews a confirmed assignment group and responds within 30 seconds', async ({
   page,
+  volunteerAssignmentsJourney: journey,
 }) => {
   const startedAt = Date.now();
 
@@ -18,11 +16,16 @@ test('US2: volunteer reviews a confirmed assignment group and responds within 30
   await expect(
     page.getByText('My Upcoming Assignments', { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: /Hide assignments for/i }),
-  ).toBeVisible();
+  const hideGroup = page.getByRole('button', {
+    name: `Hide assignments for ${journey.assignment.eventTitle}`,
+  });
+  await expect(hideGroup).toBeVisible();
 
-  await page.getByRole('button', { name: 'I cannot serve' }).first().click();
+  // The journey persona owns exactly one assignment: a single decline
+  // button also proves no foreign assignment leaks into this dashboard.
+  const cannotServe = page.getByRole('button', { name: 'I cannot serve' });
+  await expect(cannotServe).toHaveCount(1);
+  await cannotServe.click();
   await expect(
     page.getByText('Confirm unable-to-serve notice', { exact: true }),
   ).toBeVisible();

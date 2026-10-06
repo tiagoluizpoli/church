@@ -10,11 +10,13 @@ import {
   describeE2eFailure,
   recordE2eRunFailure,
 } from './fixtures/e2e-run-outcome';
-import {
-  assertServedFromPinnedTarget,
-  runE2eServerScript,
-} from './fixtures/e2e-target';
+import { parseLastJsonLine, runE2eServerScript } from './fixtures/e2e-target';
 import { requiredE2eUrl } from './fixtures/e2e-urls';
+import {
+  type PersonaCredentials,
+  resolveActiveChurch,
+  signInPersona,
+} from './fixtures/persona-session';
 import { resetE2eDatabase } from './global-teardown';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -100,10 +102,6 @@ const CHURCH_B_ADMIN_BASE = {
   name: 'E2E ChurchB Admin',
 };
 
-const AUTH_RESPONSE_SCHEMA = z.object({
-  user: z.object({ id: z.string().min(1) }),
-});
-
 export const E2E_AUTH_META_SCHEMA = z.object({
   leaderUserId: z.string().min(1),
   ministryLeaderUserId: z.string().min(1).optional(),
@@ -112,23 +110,10 @@ export const E2E_AUTH_META_SCHEMA = z.object({
   churchBAdminUserId: z.string().min(1),
 });
 
-interface AuthUserCredentials {
-  email: string;
-  password: string;
-  name: string;
-}
-
 interface AuthUserInput {
   ctx: Awaited<ReturnType<typeof request.newContext>>;
-  creds: AuthUserCredentials;
+  creds: PersonaCredentials;
   invitationId: string;
-}
-
-const ACTIVE_CHURCH_STATUS_SCHEMA = z.object({ status: z.string() });
-
-interface ResolveActiveChurchInput {
-  ctx: Awaited<ReturnType<typeof request.newContext>>;
-  name: string;
 }
 
 interface MakeUniqueEmailInput {
@@ -140,19 +125,6 @@ function makeUniqueEmail({ label }: MakeUniqueEmailInput): string {
   return `${label}-${suffix}@test.com`;
 }
 
-/** Parses the last non-empty stdout line as JSON — scripts may log incidental lines before it. */
-function parseLastJsonLine<T>(output: string): T {
-  const lastLine = output
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .pop();
-  if (!lastLine) {
-    throw new Error(`Expected a JSON line on stdout, got:\n${output}`);
-  }
-  return JSON.parse(lastLine) as T;
-}
-
 interface ProvisionE2eChurchInput {
   id: string;
   name: string;
@@ -160,10 +132,14 @@ interface ProvisionE2eChurchInput {
   adminEmail: string;
 }
 
-interface ProvisionE2eChurchResult {
-  churchId: string;
-  invitationId: string;
-}
+const PROVISION_E2E_CHURCH_RESULT_SCHEMA = z.object({
+  churchId: z.string(),
+  invitationId: z.string(),
+});
+
+type ProvisionE2eChurchResult = z.infer<
+  typeof PROVISION_E2E_CHURCH_RESULT_SCHEMA
+>;
 
 /** Real Church Provisioning (spec 024 §2) — mints a Church Invitation to the first ChurchAdmin. */
 function provisionE2eChurch(
@@ -174,7 +150,10 @@ function provisionE2eChurch(
     args: [input.id, input.name, input.slug, input.adminEmail],
     step: `provision ${input.name}`,
   });
-  return parseLastJsonLine<ProvisionE2eChurchResult>(output);
+  return parseLastJsonLine({
+    output,
+    schema: PROVISION_E2E_CHURCH_RESULT_SCHEMA,
+  });
 }
 
 interface MintE2eChurchInvitationInput {
@@ -185,9 +164,13 @@ interface MintE2eChurchInvitationInput {
   role: 'member' | 'admin';
 }
 
-interface MintE2eChurchInvitationResult {
-  invitationId: string;
-}
+const MINT_E2E_CHURCH_INVITATION_RESULT_SCHEMA = z.object({
+  invitationId: z.string(),
+});
+
+type MintE2eChurchInvitationResult = z.infer<
+  typeof MINT_E2E_CHURCH_INVITATION_RESULT_SCHEMA
+>;
 
 /** A real Church Invitation from the ChurchAdmin to an ordinary Church Member. */
 function mintE2eChurchInvitation(
@@ -204,7 +187,10 @@ function mintE2eChurchInvitation(
       input.role,
     ],
   });
-  return parseLastJsonLine<MintE2eChurchInvitationResult>(output);
+  return parseLastJsonLine({
+    output,
+    schema: MINT_E2E_CHURCH_INVITATION_RESULT_SCHEMA,
+  });
 }
 
 /**
@@ -223,41 +209,7 @@ async function authUser({
     args: [creds.email, creds.name, creds.password, invitationId],
     step: `redeem Church Invitation for ${creds.name}`,
   });
-  const res = await ctx.post(`${SERVER_URL}/api/auth/sign-in/email`, {
-    data: { email: creds.email, password: creds.password },
-  });
-  if (!res.ok()) {
-    throw new Error(
-      `Auth failed for ${creds.email} (${res.status()}): ${await res.text()}`,
-    );
-  }
-  assertServedFromPinnedTarget({
-    response: res,
-    step: `sign in ${creds.name}`,
-  });
-  return AUTH_RESPONSE_SCHEMA.parse(await res.json()).user.id;
-}
-
-/**
- * Persists the session's Active Church before any worker starts. Workers
- * share these sessions; left unresolved, their first concurrent requests
- * each auto-select it and touch the same Membership row in a
- * repeatable-read transaction, and Postgres fails all but one with a
- * serialization error (500).
- */
-async function resolveActiveChurch({
-  ctx,
-  name,
-}: ResolveActiveChurchInput): Promise<void> {
-  const res = await ctx.get(`${SERVER_URL}/api/v1/active-church/status`);
-  const body = res.ok()
-    ? ACTIVE_CHURCH_STATUS_SCHEMA.parse(await res.json())
-    : null;
-  if (body?.status !== 'resolved') {
-    throw new Error(
-      `Active Church did not resolve for ${name} (${res.status()}): ${JSON.stringify(body)}`,
-    );
-  }
+  return signInPersona({ request: ctx, credentials: creds });
 }
 
 /** Starts a run: forgets the previous run's outcome, and records a failure
@@ -409,15 +361,15 @@ async function provisionE2eRun(): Promise<void> {
   );
 
   await Promise.all([
-    resolveActiveChurch({ ctx: leaderCtx, name: leaderCreds.name }),
+    resolveActiveChurch({ request: leaderCtx, name: leaderCreds.name }),
     resolveActiveChurch({
-      ctx: ministryLeaderCtx,
+      request: ministryLeaderCtx,
       name: ministryLeaderCreds.name,
     }),
-    resolveActiveChurch({ ctx: teamLeaderCtx, name: teamLeaderCreds.name }),
-    resolveActiveChurch({ ctx: volunteerCtx, name: volunteerCreds.name }),
+    resolveActiveChurch({ request: teamLeaderCtx, name: teamLeaderCreds.name }),
+    resolveActiveChurch({ request: volunteerCtx, name: volunteerCreds.name }),
     resolveActiveChurch({
-      ctx: churchBAdminCtx,
+      request: churchBAdminCtx,
       name: churchBAdminCreds.name,
     }),
   ]);

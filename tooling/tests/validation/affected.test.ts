@@ -687,6 +687,21 @@ describe('classifyChanges', () => {
       'tests/scheduling/us5-live-changes.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
     ]);
+
+    const journeyRecipePlan = classifyChanges({
+      changedPaths: [
+        'apps/server/seeds/e2e/recipes/volunteer-assignments.ts',
+        'apps/server/seeds/builders/scheduling.ts',
+        'apps/server/seeds/recipe.ts',
+        'apps/server/seeds/blueprints/credentials.ts',
+        'apps/server/src/scripts/provision-church.ts',
+        'apps/server/src/scripts/ensure-platform-operator.ts',
+      ],
+    });
+    expect(journeyRecipePlan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us2-assignments.spec.ts',
+    ]);
+    expect(journeyRecipePlan.missingJourneyMappings).toEqual([]);
   });
 
   it('runs the critical smoke set and reports the gap for an unmapped production change', () => {

@@ -227,7 +227,7 @@ export interface BuildShiftInput {
   id?: string;
   start: Instant;
   end: Instant;
-  label?: string;
+  label?: string | null;
 }
 
 export async function buildShift({

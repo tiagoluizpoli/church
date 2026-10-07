@@ -1,7 +1,9 @@
 import { NotFoundError } from '@church/core';
 import { shift } from '@church/db';
+import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildShift } from '../../../seeds/builders/scheduling';
 import {
   ChurchId,
   EventId,
@@ -136,12 +138,13 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
       start: new Date('2026-08-05T22:00:00.000Z'),
       end: new Date('2026-08-06T00:00:00.000Z'),
     });
-    await schedulingTestDb.insert(shift).values({
+    await buildShift({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       timeSlotId: graph.slot.id,
-      startTime: new Date('2026-08-05T22:00:00.000Z'),
-      endTime: new Date('2026-08-06T00:00:00.000Z'),
+      start: fromDate({ date: new Date('2026-08-05T22:00:00.000Z') }),
+      end: fromDate({ date: new Date('2026-08-06T00:00:00.000Z') }),
     });
     const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });
 

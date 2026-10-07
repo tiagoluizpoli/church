@@ -1,6 +1,6 @@
-import { eventTemplate, timeBlock } from '@church/db';
 import { parseTimeOfDay } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildEventTemplate } from '../../../seeds/builders/scheduling';
 import { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
 import { DrizzleMinistryServingProfileRepository } from '../../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import {
@@ -14,27 +14,21 @@ async function seedTemplateBlock(input: {
   label: string;
   order?: number;
 }) {
-  const [template] = await schedulingTestDb
-    .insert(eventTemplate)
-    .values({
-      churchId: input.churchId,
-      name: `Template for ${input.label}`,
-      weekday: 0,
-    })
-    .returning();
-  if (!template) throw new Error('template seed failed');
-
-  const [block] = await schedulingTestDb
-    .insert(timeBlock)
-    .values({
-      churchId: input.churchId,
-      templateId: template.id,
-      label: input.label,
-      startTime: '09:00:00',
-      endTime: '10:00:00',
-      order: input.order ?? 1,
-    })
-    .returning();
+  const built = await buildEventTemplate({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    name: `Template for ${input.label}`,
+    weekday: 0,
+    blocks: [
+      {
+        label: input.label,
+        startTime: '09:00:00',
+        endTime: '10:00:00',
+        order: input.order ?? 1,
+      },
+    ],
+  });
+  const [block] = built.blocks;
   if (!block) throw new Error('block seed failed');
   return block;
 }

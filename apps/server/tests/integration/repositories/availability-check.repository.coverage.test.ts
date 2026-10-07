@@ -1,6 +1,11 @@
 import { NotFoundError } from '@church/core';
+import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildAvailabilityCheck,
+  buildShift,
+} from '../../../seeds/builders/scheduling';
 import { AvailabilityCheckId, ChurchId } from '../../../src/domain/branded-ids';
 import { DrizzleAvailabilityCheckRepository } from '../../../src/infrastructure/repositories/drizzle-availability-check.repository';
 import {
@@ -46,9 +51,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
   });
 
   it('listCheckShifts defaults a missing shift label to undefined', async () => {
-    const { availabilityCheck, ministryVolunteer, shift } = await import(
-      '@church/db'
-    );
+    const { ministryVolunteer } = await import('@church/db');
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -66,18 +69,15 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       status: 'scheduled',
     });
 
-    const [shiftRow] = await schedulingTestDb
-      .insert(shift)
-      .values({
-        churchId: seed.churchAId,
-        participationId: graph.participation.id,
-        timeSlotId: graph.slot.id,
-        startTime: graph.slot.startTime,
-        endTime: graph.slot.endTime,
-        label: null,
-      })
-      .returning();
-    if (!shiftRow) throw new Error('shift seed failed');
+    const shiftRow = await buildShift({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      start: fromDate({ date: graph.slot.startTime }),
+      end: fromDate({ date: graph.slot.endTime }),
+      label: null,
+    });
 
     const [membership] = await schedulingTestDb
       .select()
@@ -86,15 +86,12 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       .limit(1);
     if (!membership) throw new Error('ministry volunteer seed missing');
 
-    const [checkRow] = await schedulingTestDb
-      .insert(availabilityCheck)
-      .values({
-        churchId: seed.churchAId,
-        planningCycleId: cycle.id,
-        ministryVolunteerId: membership.id,
-      })
-      .returning();
-    if (!checkRow) throw new Error('availability check seed failed');
+    const checkRow = await buildAvailabilityCheck({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      planningCycleId: cycle.id,
+      ministryVolunteerId: membership.id,
+    });
 
     const repo = new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,

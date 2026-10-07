@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import type { ExecutionPurpose } from './run-with-purpose';
+import { type ExecutionPurpose, VARLOCK_EXECUTABLE } from './run-with-purpose';
 
 interface ServiceSchema {
   label: string;
@@ -22,7 +22,7 @@ const SERVICE_SCHEMAS: ServiceSchema[] = [
 
 function checkServiceSchema(input: CheckServiceSchemaInput): boolean {
   try {
-    execFileSync('varlock', ['load', '--path', input.schemaDir], {
+    execFileSync(VARLOCK_EXECUTABLE, ['load', '--path', input.schemaDir], {
       env: { ...process.env, CHURCH_EXEC_PURPOSE: input.purpose },
       stdio: 'inherit',
     });

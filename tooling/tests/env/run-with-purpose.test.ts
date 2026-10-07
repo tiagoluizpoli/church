@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import {
   type ExecutionPurpose,
@@ -68,6 +68,22 @@ describe('runWithPurpose', () => {
 
   it('selects the explicit purpose overlay over the base value', () => {
     expect(runNodeAndReadOutput('integration')).toBe('integration-target');
+  });
+
+  // A raw `bun test <file>` has no node_modules/.bin on PATH; only `bun run`
+  // adds it.
+  it('finds the repository Varlock without node_modules/.bin on PATH', () => {
+    const originalPath = process.env.PATH;
+    process.env.PATH = (originalPath ?? '')
+      .split(delimiter)
+      .filter((entry) => !entry.endsWith(join('node_modules', '.bin')))
+      .join(delimiter);
+
+    try {
+      expect(runNodeAndReadOutput('development')).toBe('base');
+    } finally {
+      process.env.PATH = originalPath;
+    }
   });
 
   it('fails fast instead of running the command when a required value is missing', () => {

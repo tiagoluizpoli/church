@@ -60,6 +60,8 @@ export interface BuildMinistryMembershipInput {
   ministryId: string;
   id?: string;
   ministryAccessLevel: MinistryAccessLevel;
+  /** Active unless a fixture needs an inactive Ministry Membership. */
+  status?: SeededMinistryMembership['status'];
   /** Role qualifications — explicit grants; membership alone qualifies for nothing. */
   roleIds: string[];
   teams: SeedTeamMembership[];
@@ -73,6 +75,7 @@ export async function buildMinistryMembership({
   ministryId,
   id,
   ministryAccessLevel,
+  status = 'active',
   roleIds,
   teams,
 }: BuildMinistryMembershipInput): Promise<SeededMinistryMembership> {
@@ -85,7 +88,7 @@ export async function buildMinistryMembership({
         volunteerId,
         ministryId,
         ministryAccessLevel,
-        status: 'active',
+        status,
       })
       .returning(),
     description: `Ministry Membership ${id}`,

@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
 
 export const EXECUTION_PURPOSES = [
   'development',
@@ -8,6 +9,16 @@ export const EXECUTION_PURPOSES = [
 ] as const;
 
 export type ExecutionPurpose = (typeof EXECUTION_PURPOSES)[number];
+
+/**
+ * The repository's Varlock CLI. Spawned by path, not by name: only
+ * `bun run` puts node_modules/.bin on PATH, so a raw `bun test <file>` or
+ * `bun <script>` would not find a bare `varlock`.
+ */
+export const VARLOCK_EXECUTABLE = resolve(
+  import.meta.dir,
+  '../../node_modules/.bin/varlock',
+);
 
 export interface RunWithPurposeInput {
   /**
@@ -29,7 +40,7 @@ export interface RunWithPurposeInput {
  */
 export function runWithPurpose(input: RunWithPurposeInput): void {
   execFileSync(
-    'varlock',
+    VARLOCK_EXECUTABLE,
     ['run', '--path', input.schemaDir, '--', ...input.command],
     {
       env: { ...process.env, CHURCH_EXEC_PURPOSE: input.purpose },

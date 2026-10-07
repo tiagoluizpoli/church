@@ -763,6 +763,46 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
+  // #203 makes the redemption journeys the story gate for the cross-process
+  // invitation failure; these files choose the database every E2E process
+  // targets, so a regression in any of them must not pass the gate green.
+  const E2E_DATABASE_TARGET_PATHS = [
+    'packages/db/src/e2e-database-url.ts',
+    'packages/db/src/purpose-database-url-guard.ts',
+    'packages/db/src/database-target-resolver.ts',
+    'tooling/env/e2e-environment.ts',
+    'tooling/env/e2e-process-preflight.ts',
+    'tooling/env/e2e-local-lifecycle.ts',
+  ];
+
+  it('escalates to the full suite for E2E database-target code', () => {
+    for (const changedPath of E2E_DATABASE_TARGET_PATHS) {
+      const plan = classifyChanges({ changedPaths: [changedPath] });
+
+      expect({ changedPath, requiresFullE2e: plan.requiresFullE2e }).toEqual({
+        changedPath,
+        requiresFullE2e: true,
+      });
+    }
+  });
+
+  it('selects the redemption journeys for E2E database-target code in daily-gate mode', () => {
+    for (const changedPath of E2E_DATABASE_TARGET_PATHS) {
+      const plan = classifyChanges({
+        changedPaths: [changedPath],
+        dailyGate: true,
+      });
+
+      expect({ changedPath, e2eSpecPaths: plan.e2eSpecPaths }).toEqual({
+        changedPath,
+        e2eSpecPaths: expect.arrayContaining([
+          'tests/identity/redemption-existing-member.spec.ts',
+          'tests/identity/redemption-new-user.spec.ts',
+        ]),
+      });
+    }
+  });
+
   it('does not run E2E merely because a spec is being edited', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/tests/scheduling/builder-slot-focus.spec.ts'],

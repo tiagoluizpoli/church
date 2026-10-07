@@ -11,6 +11,10 @@ import {
 } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../seeds/builders/volunteer';
 import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';
 import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
 import { InvitationVerificationCodeManager } from '../../src/application/invitation-verification-code-manager';
@@ -515,25 +519,20 @@ describe('existing-member and lifecycle branches (#105)', () => {
       ministryAccessLevel: 'leader',
       roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
     });
-    const [existingVolunteer] = await testDb
-      .insert(volunteer)
-      .values({
-        churchId: fixture.churchA.id,
-        userId: fixture.memberNoVolunteerA,
-      })
-      .returning({ id: volunteer.id });
-    if (!existingVolunteer) throw new Error('Volunteer insert failed');
-    const [existingMembership] = await testDb
-      .insert(ministryVolunteer)
-      .values({
-        churchId: fixture.churchA.id,
-        ministryId: fixture.ministryOneA,
-        volunteerId: existingVolunteer.id,
-        ministryAccessLevel: 'volunteer',
-      })
-      .returning({ id: ministryVolunteer.id });
-    if (!existingMembership)
-      throw new Error('Ministry membership insert failed');
+    const existingVolunteer = await buildVolunteer({
+      db: testDb,
+      churchId: fixture.churchA.id,
+      userId: fixture.memberNoVolunteerA,
+    });
+    const existingMembership = await buildMinistryMembership({
+      db: testDb,
+      churchId: fixture.churchA.id,
+      ministryId: fixture.ministryOneA,
+      volunteerId: existingVolunteer.id,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+      teams: [],
+    });
 
     const { redemptionManager } = createHarness();
 

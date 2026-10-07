@@ -21,6 +21,7 @@ import type {
 } from '../blueprints/directory/types';
 import type { SeededChurchSummary, SeedWriter } from '../recipe';
 import type { DevelopmentRecipeResult } from '../recipes/development';
+import { historyProblems } from './verify-history';
 
 export interface VerifyDevelopmentGraphInput {
   db: SeedWriter;
@@ -462,6 +463,11 @@ export async function verifyDevelopmentGraph({
       blueprint: DEVELOPMENT_BLUEPRINT.second,
     })),
     ...(await graphWideProblems({ db })),
+    ...(await historyProblems({
+      db,
+      seeded,
+      blueprint: DEVELOPMENT_BLUEPRINT,
+    })),
   ];
 
   if (problems.length > 0) {

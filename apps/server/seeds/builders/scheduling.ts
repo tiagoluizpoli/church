@@ -1,16 +1,12 @@
 import {
   assignment,
   assignmentAudit,
-  availability,
-  availabilityCheck,
   event,
-  eventTemplate,
   ministryParticipation,
   participationSlotInclusion,
   planningCycle,
   shift,
   slotRequirement,
-  timeBlock,
   timeSlot,
 } from '@church/db';
 import {
@@ -101,6 +97,7 @@ export interface BuildEventInput {
   status: EventStatus;
   /** Left to the column default when a fixture does not care. */
   eventType?: EventType;
+  /** The EventTemplate it was generated from; absent for a dynamic Event. */
   sourceTemplateId?: string;
 }
 
@@ -143,6 +140,7 @@ export interface BuildTimeSlotInput {
   start: Instant;
   end: Instant;
   label?: string;
+  /** The TimeBlock it was generated from; absent for a dynamic Event. */
   sourceTemplateBlockId?: string;
 }
 
@@ -266,6 +264,7 @@ export interface BuildSlotRequirementInput {
   id?: string;
   requiredCount: number;
   teamId?: string;
+  notes?: string;
 }
 
 export async function buildSlotRequirement({
@@ -277,6 +276,7 @@ export async function buildSlotRequirement({
   id,
   requiredCount,
   teamId,
+  notes,
 }: BuildSlotRequirementInput): Promise<SeededSlotRequirement> {
   return requireInsertedRow({
     rows: await db
@@ -289,6 +289,7 @@ export async function buildSlotRequirement({
         roleId,
         requiredCount,
         teamId,
+        notes,
       })
       .returning(),
     description: `Slot Requirement ${id}`,
@@ -304,8 +305,11 @@ export interface BuildAssignmentInput {
   roleId: string;
   id?: string;
   status: AssignmentStatus;
-  /** Left to the column default (now) when a fixture does not care. */
+  /** Why it was declined or cancelled. */
+  reason?: string;
+  /** Explicit, so a graph never depends on the wall clock at load time. */
   assignedAt?: Instant;
+  /** The User who made the Assignment. */
   assignedBy?: string;
 }
 
@@ -318,6 +322,7 @@ export async function buildAssignment({
   roleId,
   id,
   status,
+  reason,
   assignedAt,
   assignedBy,
 }: BuildAssignmentInput): Promise<SeededAssignment> {
@@ -332,6 +337,7 @@ export async function buildAssignment({
         volunteerId,
         roleId,
         status,
+        reason,
         assignedAt:
           assignedAt === undefined
             ? undefined
@@ -344,28 +350,30 @@ export async function buildAssignment({
 }
 
 export type SeededAssignmentAudit = typeof assignmentAudit.$inferSelect;
-export type AuditAction = SeededAssignmentAudit['action'];
-export type SeededEventTemplate = typeof eventTemplate.$inferSelect;
-export type SeededTimeBlock = typeof timeBlock.$inferSelect;
+export type AssignmentAuditAction = SeededAssignmentAudit['action'];
 
 export interface BuildAssignmentAuditInput {
   db: SeedWriter;
   churchId: string;
   assignmentId: string;
   actorId: string;
-  action: AuditAction;
   id?: string;
-  timestamp?: Instant;
+  action: AssignmentAuditAction;
+  reason?: string;
+  /** Explicit, so a graph never depends on the wall clock at load time. */
+  occurredAt: Instant;
 }
 
+/** One entry of an Assignment's audited history. */
 export async function buildAssignmentAudit({
   db,
   churchId,
   assignmentId,
   actorId,
-  action,
   id,
-  timestamp,
+  action,
+  reason,
+  occurredAt,
 }: BuildAssignmentAuditInput): Promise<SeededAssignmentAudit> {
   return requireInsertedRow({
     rows: await db
@@ -376,127 +384,11 @@ export async function buildAssignmentAudit({
         assignmentId,
         actorId,
         action,
-        timestamp:
-          timestamp === undefined ? undefined : toDate({ instant: timestamp }),
+        reason,
+        timestamp: toDate({ instant: occurredAt }),
       })
       .returning(),
-    description: `Assignment Audit for ${assignmentId}`,
-  });
-}
-
-export interface EventTemplateBlockInput {
-  label: string;
-  /** `HH:mm`, as the `time` column stores it. */
-  startTime: string;
-  endTime: string;
-  order: number;
-}
-
-export interface BuildEventTemplateInput {
-  db: SeedWriter;
-  churchId: string;
-  name: string;
-  weekday: number;
-  blocks: EventTemplateBlockInput[];
-  id?: string;
-}
-
-export interface BuiltEventTemplate {
-  template: SeededEventTemplate;
-  blocks: SeededTimeBlock[];
-}
-
-/** An Event Template with its ordered Time Blocks. */
-export async function buildEventTemplate({
-  db,
-  churchId,
-  name,
-  weekday,
-  blocks,
-  id,
-}: BuildEventTemplateInput): Promise<BuiltEventTemplate> {
-  const template = requireInsertedRow({
-    rows: await db
-      .insert(eventTemplate)
-      .values({ id, churchId, name, weekday })
-      .returning(),
-    description: `Event Template ${name}`,
-  });
-
-  const insertedBlocks =
-    blocks.length === 0
-      ? []
-      : await db
-          .insert(timeBlock)
-          .values(
-            blocks.map((block) => ({
-              churchId,
-              templateId: template.id,
-              label: block.label,
-              startTime: block.startTime,
-              endTime: block.endTime,
-              order: block.order,
-            })),
-          )
-          .returning();
-
-  return { template, blocks: insertedBlocks };
-}
-
-export type SeededAvailabilityCheck = typeof availabilityCheck.$inferSelect;
-export type SeededAvailability = typeof availability.$inferSelect;
-export type AvailabilityCheckState = SeededAvailabilityCheck['state'];
-
-export interface BuildAvailabilityCheckInput {
-  db: SeedWriter;
-  churchId: string;
-  planningCycleId: string;
-  ministryVolunteerId: string;
-  id?: string;
-  /** Left to the column default (pending) when a fixture does not care. */
-  state?: AvailabilityCheckState;
-}
-
-/** A Ministry Membership's Availability Check for one Planning Cycle. */
-export async function buildAvailabilityCheck({
-  db,
-  churchId,
-  planningCycleId,
-  ministryVolunteerId,
-  id,
-  state,
-}: BuildAvailabilityCheckInput): Promise<SeededAvailabilityCheck> {
-  return requireInsertedRow({
-    rows: await db
-      .insert(availabilityCheck)
-      .values({ id, churchId, planningCycleId, ministryVolunteerId, state })
-      .returning(),
-    description: `Availability Check for ${ministryVolunteerId}`,
-  });
-}
-
-export interface BuildAvailabilityInput {
-  db: SeedWriter;
-  churchId: string;
-  availabilityCheckId: string;
-  shiftId: string;
-  id?: string;
-}
-
-/** One Shift a Volunteer marked available within an Availability Check. */
-export async function buildAvailability({
-  db,
-  churchId,
-  availabilityCheckId,
-  shiftId,
-  id,
-}: BuildAvailabilityInput): Promise<SeededAvailability> {
-  return requireInsertedRow({
-    rows: await db
-      .insert(availability)
-      .values({ id, churchId, availabilityCheckId, shiftId })
-      .returning(),
-    description: `Availability mark for Shift ${shiftId}`,
+    description: `Assignment Audit ${id}`,
   });
 }
 

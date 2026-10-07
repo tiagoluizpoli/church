@@ -16,9 +16,9 @@ import {
 import { fromDate, parseCalendarDay, parseInstant } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildAvailabilityCheck } from '../../seeds/builders/availability';
 import {
   buildAssignedShift,
-  buildAvailabilityCheck,
   buildEvent,
   buildMinistryParticipation,
   buildPlanningCycle,

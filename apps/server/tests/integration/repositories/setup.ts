@@ -357,7 +357,7 @@ export async function seed(): Promise<void> {
     assignmentId: confirmedAssignmentId,
     actorId: aliceId,
     action: 'created',
-    timestamp: jun1At10,
+    occurredAt: jun1At10,
   });
   await buildAssignmentAudit({
     db: testDb,
@@ -366,7 +366,7 @@ export async function seed(): Promise<void> {
     assignmentId: confirmedAssignmentId,
     actorId: aliceId,
     action: 'status_change',
-    timestamp: parseInstant({ value: '2024-06-01T11:00:00Z' }),
+    occurredAt: parseInstant({ value: '2024-06-01T11:00:00Z' }),
   });
 }
 

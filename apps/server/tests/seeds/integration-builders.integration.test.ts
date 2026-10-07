@@ -10,9 +10,13 @@ import {
   volunteer,
 } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
-import { parseCalendarDay, parseInstant } from '@church/time';
+import { parseCalendarDay, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildAvailabilityCheck,
+  buildUnavailabilityMark,
+} from '../../seeds/builders/availability';
 import {
   buildChurch,
   buildChurchMembership,
@@ -24,14 +28,12 @@ import {
   buildRole,
   buildTeam,
 } from '../../seeds/builders/ministry';
+import { buildEventTemplate } from '../../seeds/builders/planning';
 import {
   buildAssignedShift,
   buildAssignment,
   buildAssignmentAudit,
-  buildAvailability,
-  buildAvailabilityCheck,
   buildEvent,
-  buildEventTemplate,
   buildMinistryParticipation,
   buildPlanningCycle,
   buildShift,
@@ -338,7 +340,7 @@ describe('integration composition of the shared seed builders', () => {
       assignmentId: assigned.id,
       actorId: ADMIN_USER_ID,
       action: 'created',
-      timestamp: parseInstant({ value: '2024-06-01T10:00:00Z' }),
+      occurredAt: parseInstant({ value: '2024-06-01T10:00:00Z' }),
     });
 
     const membership = await buildMinistryMembership({
@@ -357,7 +359,7 @@ describe('integration composition of the shared seed builders', () => {
       planningCycleId: cycle.id,
       ministryVolunteerId: membership.id,
     });
-    await buildAvailability({
+    await buildUnavailabilityMark({
       db: testDb,
       churchId: CHURCH_ID,
       availabilityCheckId: check.id,
@@ -489,8 +491,18 @@ describe('integration composition of the shared seed builders', () => {
       name: 'Sunday',
       weekday: 0,
       blocks: [
-        { label: 'Early', startTime: '08:00', endTime: '09:00', order: 1 },
-        { label: 'Late', startTime: '10:00', endTime: '11:00', order: 2 },
+        {
+          label: 'Early',
+          startTime: parseTimeOfDay({ value: '08:00' }),
+          endTime: parseTimeOfDay({ value: '09:00' }),
+          order: 1,
+        },
+        {
+          label: 'Late',
+          startTime: parseTimeOfDay({ value: '10:00' }),
+          endTime: parseTimeOfDay({ value: '11:00' }),
+          order: 2,
+        },
       ],
     });
 

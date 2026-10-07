@@ -913,7 +913,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       assignmentId,
       actorId: seed.adminUserId,
       action: 'created',
-      timestamp: createdAt,
+      occurredAt: createdAt,
     });
 
     const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });

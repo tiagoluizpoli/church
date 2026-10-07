@@ -1,14 +1,26 @@
 import {
   account,
+  assignment,
+  availabilityCheck,
   church,
+  event,
+  eventTemplate,
   member,
   ministry,
+  ministryParticipation,
+  ministryServingProfile,
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
   organization,
+  participationSlotInclusion,
+  planningCycle,
   role,
+  shift,
+  slotRequirement,
   team,
+  timeBlock,
+  timeSlot,
   user,
   volunteer,
 } from '@church/db';
@@ -124,6 +136,51 @@ async function teamLeaderCount({
       ),
     );
   return row?.value ?? 0;
+}
+
+/** `type`s, not interfaces: `execute` rows must be index-signature records. */
+type StaffingRow = {
+  ministry: string;
+  role: string;
+  starts: string;
+  required: number;
+  assigned: number;
+};
+
+type TrailRow = {
+  email: string;
+  ministry: string;
+  starts: string;
+  status?: string;
+  reason?: string | null;
+};
+
+type AuditRow = {
+  actor: string;
+  subject: string;
+  action: string;
+  reason: string | null;
+  at: string;
+};
+
+interface TrailPersonInput {
+  email: string;
+  ministryName: string;
+  starts: string;
+}
+
+interface SundayInput {
+  day: string;
+}
+
+interface WednesdayInput extends SundayInput {
+  /** The UTC day the 22:00 end falls on. */
+  next: string;
+}
+
+interface ServedBlocksInput {
+  ministryName: string;
+  headcounts: string[];
 }
 
 /** A `type`, not an interface: `execute` rows must be index-signature records. */
@@ -393,6 +450,635 @@ describe('development seed recipe', () => {
     }
   });
 
+  it('declares the recurring gatherings as EventTemplates of the primary Church only', async () => {
+    const blocks = await testDb
+      .select({
+        churchId: eventTemplate.churchId,
+        template: eventTemplate.name,
+        weekday: eventTemplate.weekday,
+        startTime: timeBlock.startTime,
+        endTime: timeBlock.endTime,
+      })
+      .from(timeBlock)
+      .innerJoin(eventTemplate, eq(eventTemplate.id, timeBlock.templateId))
+      .orderBy(eventTemplate.weekday, timeBlock.order);
+
+    const sunday = {
+      churchId: seeded.church.id,
+      template: 'Culto de Domingo',
+      weekday: 0,
+    };
+    expect(blocks).toEqual([
+      { ...sunday, startTime: '08:00:00', endTime: '09:30:00' },
+      { ...sunday, startTime: '10:30:00', endTime: '12:30:00' },
+      { ...sunday, startTime: '18:30:00', endTime: '20:30:00' },
+      {
+        churchId: seeded.church.id,
+        template: 'Culto de Quarta',
+        weekday: 3,
+        startTime: '20:00:00',
+        endTime: '22:00:00',
+      },
+    ]);
+  });
+
+  it('declares every Ministry serving rule per TimeBlock, Kids not on Sunday at 08:00', async () => {
+    const names = new Map<string, string>();
+    for (const row of [
+      ...(await testDb.select({ id: role.id, name: role.name }).from(role)),
+      ...(await testDb.select({ id: team.id, name: team.name }).from(team)),
+    ]) {
+      names.set(row.id, row.name);
+    }
+
+    const profiles = await testDb
+      .select({
+        ministry: ministry.name,
+        weekday: eventTemplate.weekday,
+        startTime: timeBlock.startTime,
+        serves: ministryServingProfile.serves,
+        shiftSplit: ministryServingProfile.shiftSplit,
+        headcounts: ministryServingProfile.headcounts,
+      })
+      .from(ministryServingProfile)
+      .innerJoin(ministry, eq(ministry.id, ministryServingProfile.ministryId))
+      .innerJoin(
+        timeBlock,
+        eq(timeBlock.id, ministryServingProfile.sourceTemplateBlockId),
+      )
+      .innerJoin(eventTemplate, eq(eventTemplate.id, timeBlock.templateId))
+      .where(eq(ministryServingProfile.churchId, seeded.church.id))
+      .orderBy(ministry.name, eventTemplate.weekday, timeBlock.order);
+
+    const readable = profiles.map((profile) => ({
+      ministry: profile.ministry,
+      block: `${profile.weekday} ${profile.startTime.slice(0, 5)}`,
+      serves: profile.serves,
+      shiftSplit: profile.shiftSplit,
+      headcounts: profile.headcounts.map((headcount) =>
+        [
+          headcount.count,
+          names.get(headcount.roleId),
+          headcount.teamId ? names.get(headcount.teamId) : undefined,
+        ]
+          .filter((part) => part !== undefined)
+          .join(' '),
+      ),
+    }));
+    const oneShift = { kind: 'equal', count: 1 };
+    const kids = [
+      '1 Líder Kids',
+      '7 Auxiliar Kids',
+      '1 Líder Maternal',
+      '3 Auxiliar Maternal',
+    ];
+    const blocks = ['0 08:00', '0 10:30', '0 18:30', '3 20:00'];
+    const everyBlock = ({ ministryName, headcounts }: ServedBlocksInput) =>
+      blocks.map((block) => ({
+        ministry: ministryName,
+        block,
+        serves: true,
+        shiftSplit: oneShift,
+        headcounts,
+      }));
+
+    expect(readable).toEqual([
+      ...everyBlock({
+        ministryName: 'Estacionamento',
+        headcounts: ['4 Orientador de Estacionamento'],
+      }),
+      ...everyBlock({
+        ministryName: 'Intercessão',
+        headcounts: ['8 Intercessor'],
+      }),
+      {
+        ministry: 'Kids',
+        block: '0 08:00',
+        serves: false,
+        shiftSplit: oneShift,
+        headcounts: [],
+      },
+      ...everyBlock({ ministryName: 'Kids', headcounts: kids }).slice(1),
+      {
+        ministry: 'Projeção',
+        block: '0 08:00',
+        serves: true,
+        shiftSplit: oneShift,
+        headcounts: ['1 Operador de Projeção'],
+      },
+      ...everyBlock({
+        ministryName: 'Projeção',
+        headcounts: ['2 Operador de Projeção'],
+      }).slice(1),
+    ]);
+  });
+
+  it('materializes only the previous complete month as one locked PlanningCycle', async () => {
+    const cycles = await testDb
+      .select({
+        churchId: planningCycle.churchId,
+        startDate: planningCycle.startDate,
+        endDate: planningCycle.endDate,
+        state: planningCycle.state,
+      })
+      .from(planningCycle);
+
+    expect(
+      cycles.map((cycle) => ({
+        ...cycle,
+        startDate: cycle.startDate.toISOString().slice(0, 10),
+        endDate: cycle.endDate.toISOString().slice(0, 10),
+      })),
+    ).toEqual([
+      {
+        churchId: seeded.church.id,
+        startDate: '2026-02-01',
+        endDate: '2026-03-01',
+        state: 'locked',
+      },
+    ]);
+  });
+
+  it("materializes February's Sundays and Wednesdays and one manual Encontro Teens, all past", async () => {
+    const events = await testDb
+      .select({
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        status: event.status,
+        fromTemplate: sql<boolean>`${event.sourceTemplateId} is not null`,
+      })
+      .from(event)
+      .orderBy(event.start);
+
+    const sunday = ({ day }: SundayInput) => ({
+      title: 'Culto de Domingo',
+      start: `2026-02-${day}T11:00:00.000Z`,
+      end: `2026-02-${day}T23:30:00.000Z`,
+      status: 'past',
+      fromTemplate: true,
+    });
+    const wednesday = ({ day, next }: WednesdayInput) => ({
+      title: 'Culto de Quarta',
+      start: `2026-02-${day}T23:00:00.000Z`,
+      end: `2026-02-${next}T01:00:00.000Z`,
+      status: 'past',
+      fromTemplate: true,
+    });
+    expect(
+      events.map((row) => ({
+        ...row,
+        start: row.start.toISOString(),
+        end: row.end.toISOString(),
+      })),
+    ).toEqual([
+      sunday({ day: '01' }),
+      wednesday({ day: '04', next: '05' }),
+      sunday({ day: '08' }),
+      wednesday({ day: '11', next: '12' }),
+      sunday({ day: '15' }),
+      wednesday({ day: '18', next: '19' }),
+      sunday({ day: '22' }),
+      wednesday({ day: '25', next: '26' }),
+      {
+        title: 'Encontro Teens',
+        start: '2026-02-28T22:00:00.000Z',
+        end: '2026-03-01T00:00:00.000Z',
+        status: 'past',
+        fromTemplate: false,
+      },
+    ]);
+
+    const [slots] = await testDb
+      .select({
+        total: count(),
+        fromBlocks: sql<number>`count(${timeSlot.sourceTemplateBlockId})::int`,
+      })
+      .from(timeSlot);
+    expect(slots).toEqual({ total: 17, fromBlocks: 16 });
+  });
+
+  it('publishes one MinistryParticipation per serving Ministry and Event, Kids not on Sunday at 08:00', async () => {
+    const participations = await testDb
+      .select({
+        ministry: ministry.name,
+        state: ministryParticipation.state,
+        participations: countDistinct(ministryParticipation.id),
+        inclusions: count(participationSlotInclusion.id),
+      })
+      .from(ministryParticipation)
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .leftJoin(
+        participationSlotInclusion,
+        eq(
+          participationSlotInclusion.participationId,
+          ministryParticipation.id,
+        ),
+      )
+      .groupBy(ministry.name, ministryParticipation.state)
+      .orderBy(ministry.name);
+    expect(participations).toEqual([
+      {
+        ministry: 'Estacionamento',
+        state: 'published',
+        participations: 8,
+        inclusions: 16,
+      },
+      {
+        ministry: 'Intercessão',
+        state: 'published',
+        participations: 8,
+        inclusions: 16,
+      },
+      {
+        ministry: 'Kids',
+        state: 'published',
+        participations: 8,
+        inclusions: 12,
+      },
+      {
+        ministry: 'Projeção',
+        state: 'published',
+        participations: 9,
+        inclusions: 17,
+      },
+    ]);
+
+    const kidsAtEight = await queryCount({
+      query: sql`select count(*) as value from ${participationSlotInclusion} i
+        join ${ministryParticipation} p on p.id = i.participation_id
+        join ${ministry} m on m.id = p.ministry_id
+        join ${timeSlot} s on s.id = i.time_slot_id
+        where m.name = 'Kids'
+          and to_char(s.start_time at time zone 'America/Sao_Paulo', 'HH24:MI') = '08:00'`,
+    });
+    expect(kidsAtEight).toBe(0);
+
+    const [shifts] = await testDb
+      .select({
+        total: count(),
+        wholeSlot: sql<number>`count(*) filter (where ${shift.startTime} = ${timeSlot.startTime} and ${shift.endTime} = ${timeSlot.endTime})::int`,
+      })
+      .from(shift)
+      .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId));
+    expect(shifts).toEqual({ total: 61, wholeSlot: 61 });
+  });
+
+  it('requires each Ministry headcount per Shift, Projeção as one noted requirement of two', async () => {
+    const requirements = await testDb
+      .select({
+        ministry: ministry.name,
+        role: role.name,
+        team: team.name,
+        requiredCount: slotRequirement.requiredCount,
+        notes: slotRequirement.notes,
+        shifts: count(),
+      })
+      .from(slotRequirement)
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, slotRequirement.participationId),
+      )
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .innerJoin(role, eq(role.id, slotRequirement.roleId))
+      .leftJoin(team, eq(team.id, slotRequirement.teamId))
+      .groupBy(
+        ministry.name,
+        role.name,
+        team.name,
+        slotRequirement.requiredCount,
+        slotRequirement.notes,
+      )
+      .orderBy(
+        ministry.name,
+        team.name,
+        role.name,
+        slotRequirement.requiredCount,
+      );
+
+    expect(requirements).toEqual([
+      {
+        ministry: 'Estacionamento',
+        role: 'Orientador de Estacionamento',
+        team: null,
+        requiredCount: 4,
+        notes: null,
+        shifts: 16,
+      },
+      {
+        ministry: 'Intercessão',
+        role: 'Intercessor',
+        team: null,
+        requiredCount: 8,
+        notes: null,
+        shifts: 16,
+      },
+      {
+        ministry: 'Kids',
+        role: 'Auxiliar',
+        team: 'Kids',
+        requiredCount: 7,
+        notes: null,
+        shifts: 12,
+      },
+      {
+        ministry: 'Kids',
+        role: 'Líder',
+        team: 'Kids',
+        requiredCount: 1,
+        notes: null,
+        shifts: 12,
+      },
+      {
+        ministry: 'Kids',
+        role: 'Auxiliar',
+        team: 'Maternal',
+        requiredCount: 3,
+        notes: null,
+        shifts: 12,
+      },
+      {
+        ministry: 'Kids',
+        role: 'Líder',
+        team: 'Maternal',
+        requiredCount: 1,
+        notes: null,
+        shifts: 12,
+      },
+      {
+        ministry: 'Projeção',
+        role: 'Operador de Projeção',
+        team: null,
+        requiredCount: 1,
+        notes: null,
+        shifts: 5,
+      },
+      {
+        ministry: 'Projeção',
+        role: 'Operador de Projeção',
+        team: null,
+        requiredCount: 2,
+        notes: '1 Templo, 1 Kids',
+        shifts: 12,
+      },
+    ]);
+  });
+
+  it('staffs every published requirement in full except the one declared shortfall', async () => {
+    const [totals] = await testDb
+      .select({
+        required: sql<number>`sum(${slotRequirement.requiredCount})::int`,
+      })
+      .from(slotRequirement);
+    expect(totals?.required).toBe(365);
+
+    const statuses = await testDb
+      .select({ status: assignment.status, value: count() })
+      .from(assignment)
+      .groupBy(assignment.status)
+      .orderBy(assignment.status);
+    expect(statuses).toEqual([
+      { status: 'confirmed', value: 364 },
+      { status: 'declined', value: 1 },
+      { status: 'cancelled', value: 1 },
+    ]);
+
+    // Assignments name a Role, not a Team (#319), so staffing is counted per
+    // Shift and Role across that Role's requirements.
+    const result = await testDb.execute<StaffingRow>(sql`
+      select m.name as ministry, r.name as role,
+        to_char(sh.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as starts,
+        sum(sr.required_count)::int as required,
+        (select count(*) from ${assignment} a
+          where a.shift_id = sr.shift_id and a.role_id = sr.role_id
+            and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
+      from ${slotRequirement} sr
+      join ${shift} sh on sh.id = sr.shift_id
+      join ${ministryParticipation} p on p.id = sr.participation_id
+      join ${ministry} m on m.id = p.ministry_id
+      join ${role} r on r.id = sr.role_id
+      group by m.name, r.name, sh.start_time, sr.shift_id, sr.role_id`);
+    expect(result.rows.filter((row) => row.assigned !== row.required)).toEqual([
+      {
+        ministry: 'Estacionamento',
+        role: 'Orientador de Estacionamento',
+        starts: '2026-02-25 20:00',
+        required: 4,
+        assigned: 3,
+      },
+    ]);
+  });
+
+  it('never assigns an unqualified, double-booked or unavailable Volunteer', async () => {
+    expect(
+      await queryCount({
+        query: sql`select count(*) as value from ${assignment} a
+          join ${ministryParticipation} p on p.id = a.participation_id
+          where a.status in ('draft', 'pending', 'confirmed')
+            and not exists (select 1 from ${ministryVolunteer} mv
+              join ${ministryVolunteerRole} q on q.ministry_volunteer_id = mv.id
+              where mv.volunteer_id = a.volunteer_id and mv.ministry_id = p.ministry_id
+                and mv.status = 'active' and q.role_id = a.role_id)`,
+      }),
+    ).toBe(0);
+    expect(
+      await queryCount({
+        query: sql`select count(*) as value from ${assignment} a
+          join ${shift} s on s.id = a.shift_id
+          join ${assignment} b on b.volunteer_id = a.volunteer_id and b.id < a.id
+          join ${shift} t on t.id = b.shift_id
+          where a.status in ('draft', 'pending', 'confirmed')
+            and b.status in ('draft', 'pending', 'confirmed')
+            and s.start_time < t.end_time and t.start_time < s.end_time`,
+      }),
+    ).toBe(0);
+    expect(
+      await queryCount({
+        query: sql`select count(*) as value from ${assignment} a
+          join ${shift} s on s.id = a.shift_id
+          join ${ministryVolunteer} mv on mv.volunteer_id = a.volunteer_id
+          join ${availabilityCheck} c on c.ministry_volunteer_id = mv.id
+          join availability u on u.availability_check_id = c.id
+          join ${shift} t on t.id = u.shift_id
+          where a.status in ('draft', 'pending', 'confirmed')
+            and s.start_time < t.end_time and t.start_time < s.end_time`,
+      }),
+    ).toBe(0);
+  });
+
+  it('keeps a trail of unavailability, a decline, a resolved overlap, replacements and cross-Ministry service', async () => {
+    const [checks] = await testDb
+      .select({
+        total: count(),
+        confirmed: sql<number>`count(*) filter (where ${availabilityCheck.state} = 'confirmed')::int`,
+      })
+      .from(availabilityCheck);
+    expect(checks).toEqual({ total: 305, confirmed: 305 });
+
+    const marks = await testDb.execute<TrailRow>(sql`
+      select u.email, m.name as ministry,
+        to_char(s.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as starts
+      from availability a
+      join ${shift} s on s.id = a.shift_id
+      join ${ministryParticipation} p on p.id = s.participation_id
+      join ${ministry} m on m.id = p.ministry_id
+      join ${availabilityCheck} c on c.id = a.availability_check_id
+      join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+      join ${volunteer} v on v.id = mv.volunteer_id
+      join ${user} u on u.id = v.user_id
+      order by starts`);
+    expect(marks.rows).toEqual([
+      {
+        email: 'rafael.moura@igreja-semente.test',
+        ministry: 'Kids',
+        starts: '2026-02-08 10:30',
+      },
+      {
+        email: 'rafael.moura@igreja-semente.test',
+        ministry: 'Kids',
+        starts: '2026-02-08 18:30',
+      },
+    ]);
+
+    const trail = await testDb.execute<TrailRow>(sql`
+      select u.email, m.name as ministry,
+        to_char(s.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as starts,
+        a.status, a.reason
+      from ${assignment} a
+      join ${shift} s on s.id = a.shift_id
+      join ${ministryParticipation} p on p.id = a.participation_id
+      join ${ministry} m on m.id = p.ministry_id
+      join ${volunteer} v on v.id = a.volunteer_id
+      join ${user} u on u.id = v.user_id
+      where (split_part(u.email, '@', 1),
+          to_char(s.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI'))
+        in (values ('bruno.dias', '2026-02-01 10:30'), ('bruno.dias', '2026-02-01 18:30'),
+          ('rafael.moura', '2026-02-08 10:30'), ('rafael.moura', '2026-02-08 18:30'),
+          ('joao.pereira', '2026-02-11 20:00'), ('daniel.moreira', '2026-02-11 20:00'),
+          ('isabela.medeiros', '2026-02-18 20:00'), ('vanessa.campos', '2026-02-18 20:00'))
+      order by starts, ministry, email`);
+    const row = ({ email, ministryName, starts }: TrailPersonInput) => ({
+      email: `${email}@igreja-semente.test`,
+      ministry: ministryName,
+      starts,
+    });
+    expect(trail.rows).toEqual([
+      {
+        ...row({
+          email: 'bruno.dias',
+          ministryName: 'Projeção',
+          starts: '2026-02-01 10:30',
+        }),
+        status: 'confirmed',
+        reason: null,
+      },
+      {
+        ...row({
+          email: 'bruno.dias',
+          ministryName: 'Kids',
+          starts: '2026-02-01 18:30',
+        }),
+        status: 'confirmed',
+        reason: null,
+      },
+      {
+        ...row({
+          email: 'joao.pereira',
+          ministryName: 'Intercessão',
+          starts: '2026-02-11 20:00',
+        }),
+        status: 'confirmed',
+        reason: null,
+      },
+      {
+        ...row({
+          email: 'daniel.moreira',
+          ministryName: 'Projeção',
+          starts: '2026-02-11 20:00',
+        }),
+        status: 'confirmed',
+        reason: null,
+      },
+      {
+        ...row({
+          email: 'joao.pereira',
+          ministryName: 'Projeção',
+          starts: '2026-02-11 20:00',
+        }),
+        status: 'cancelled',
+        reason: 'Já escalado na Intercessão neste culto',
+      },
+      {
+        ...row({
+          email: 'isabela.medeiros',
+          ministryName: 'Intercessão',
+          starts: '2026-02-18 20:00',
+        }),
+        status: 'declined',
+        reason: 'Viagem a trabalho',
+      },
+      {
+        ...row({
+          email: 'vanessa.campos',
+          ministryName: 'Intercessão',
+          starts: '2026-02-18 20:00',
+        }),
+        status: 'confirmed',
+        reason: null,
+      },
+    ]);
+
+    const audits = await testDb.execute<AuditRow>(sql`
+      select actor.email as actor, subject.email as subject, au.action, au.reason,
+        to_char(au.timestamp at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at
+      from assignment_audit au
+      join ${user} actor on actor.id = au.actor_id
+      join ${assignment} a on a.id = au.assignment_id
+      join ${volunteer} v on v.id = a.volunteer_id
+      join ${user} subject on subject.id = v.user_id
+      order by au.timestamp`);
+    expect(audits.rows).toEqual([
+      {
+        actor: 'ana.almeida@igreja-semente.test',
+        subject: 'joao.pereira@igreja-semente.test',
+        action: 'status_change',
+        reason: 'Já escalado na Intercessão neste culto',
+        at: '2026-02-08T12:00Z',
+      },
+      {
+        actor: 'ana.almeida@igreja-semente.test',
+        subject: 'daniel.moreira@igreja-semente.test',
+        action: 'created',
+        reason: null,
+        at: '2026-02-09T13:00Z',
+      },
+      {
+        actor: 'isabela.medeiros@igreja-semente.test',
+        subject: 'isabela.medeiros@igreja-semente.test',
+        action: 'status_change',
+        reason: 'Viagem a trabalho',
+        at: '2026-02-15T12:00Z',
+      },
+      {
+        actor: 'henrique.freitas@igreja-semente.test',
+        subject: 'vanessa.campos@igreja-semente.test',
+        action: 'created',
+        reason: null,
+        at: '2026-02-16T13:00Z',
+      },
+    ]);
+
+    const crossMinistryServers = await queryCount({
+      query: sql`select count(*) as value from (
+          select a.volunteer_id from ${assignment} a
+          join ${ministryParticipation} p on p.id = a.participation_id
+          where a.status = 'confirmed'
+          group by a.volunteer_id having count(distinct p.ministry_id) > 1
+        ) as cross_ministry`,
+    });
+    expect(crossMinistryServers).toBeGreaterThanOrEqual(2);
+  });
+
   it('passes its own verification', async () => {
     await expect(
       verifyDevelopmentGraph({ db: testDb, seeded }),
@@ -448,6 +1134,113 @@ describe('development seed recipe', () => {
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${ministryVolunteerTeam} set church_id = ${seeded.secondChurch.id}
           where id = (select id from ${ministryVolunteerTeam} where church_id = ${seeded.church.id} limit 1)`);
+      },
+    },
+    {
+      label: 'an EventTemplate loses a TimeBlock',
+      problem: 'EventTemplate',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(
+          sql`delete from ${timeBlock} where start_time = '18:30'`,
+        );
+      },
+    },
+    {
+      label: 'Kids serves Sunday at 08:00',
+      problem: 'MinistryServingProfile',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(
+          sql`update ${ministryServingProfile} set serves = true where serves = false`,
+        );
+      },
+    },
+    {
+      label: 'the historical PlanningCycle is unlocked',
+      problem: 'PlanningCycle',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`update ${planningCycle} set state = 'draft'`);
+      },
+    },
+    {
+      label: "a PlanningCycle covers the anchor's month",
+      problem: 'PlanningCycle',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`insert into ${planningCycle} (church_id, name, start_date, end_date)
+          values (${seeded.church.id}, 'Março 2026', '2026-03-01', '2026-04-01')`);
+      },
+    },
+    {
+      label: 'an Event is not past',
+      problem: 'Event',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`update ${event} set status = 'scheduled'
+          where id = (select id from ${event} limit 1)`);
+      },
+    },
+    {
+      label: 'a MinistryParticipation is left unpublished',
+      problem: 'MinistryParticipation',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`update ${ministryParticipation} set state = 'rostering'
+          where id = (select id from ${ministryParticipation} limit 1)`);
+      },
+    },
+    {
+      label: 'Projeção loses its placement notes',
+      problem: 'SlotRequirement',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`update ${slotRequirement} set notes = null
+          where id = (select id from ${slotRequirement} where notes is not null limit 1)`);
+      },
+    },
+    {
+      label: 'a confirmed Assignment is removed',
+      problem: 'staffed',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`delete from ${assignment}
+          where id = (select a.id from ${assignment} a where a.status = 'confirmed'
+            and not exists (select 1 from assignment_audit au where au.assignment_id = a.id) limit 1)`);
+      },
+    },
+    {
+      label: 'a Volunteer is double-booked',
+      problem: 'overlap',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`update ${assignment} target set volunteer_id = other.volunteer_id
+          from ${assignment} other, ${shift} target_shift, ${shift} other_shift
+          where target.id = (select a.id from ${assignment} a join ${shift} s on s.id = a.shift_id
+              join ${shift} o on o.time_slot_id = s.time_slot_id and o.id <> s.id
+              join ${assignment} b on b.shift_id = o.id and b.status = 'confirmed'
+              where a.status = 'confirmed' order by a.id limit 1)
+            and target_shift.id = target.shift_id
+            and other_shift.time_slot_id = target_shift.time_slot_id
+            and other_shift.id <> target_shift.id
+            and other.shift_id = other_shift.id and other.status = 'confirmed'
+            and other.id = (select b.id from ${assignment} b where b.shift_id = other_shift.id
+              and b.status = 'confirmed' order by b.id limit 1)`);
+      },
+    },
+    {
+      label: 'a Volunteer serves a Shift they marked unavailable',
+      problem: 'unavailable',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`update ${assignment} set volunteer_id = (
+            select mv.volunteer_id from ${availabilityCheck} c
+            join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+            where exists (select 1 from availability u where u.availability_check_id = c.id) limit 1)
+          where id = (select a.id from ${assignment} a
+            where a.status = 'confirmed'
+              and a.shift_id = (select shift_id from availability limit 1)
+            limit 1)`);
+      },
+    },
+    {
+      label: 'the decline is lost from the trail',
+      problem: 'trail',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(
+          sql`update ${assignment} set status = 'cancelled' where status = 'declined'`,
+        );
       },
     },
   ])('refuses the graph when $label', async ({

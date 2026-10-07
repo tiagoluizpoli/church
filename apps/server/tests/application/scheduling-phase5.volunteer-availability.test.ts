@@ -8,11 +8,11 @@ import {
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildAvailabilityCheck } from '../../seeds/builders/availability';
 import { buildUser } from '../../seeds/builders/identity';
 import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
 import {
   buildAssignment,
-  buildAvailabilityCheck,
   buildMinistryParticipation,
   buildShift,
 } from '../../seeds/builders/scheduling';

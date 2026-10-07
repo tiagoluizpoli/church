@@ -1,6 +1,6 @@
 import * as schema from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
-import { fromDate, fromDateColumn } from '@church/time';
+import { fromDate, fromDateColumn, type TimeOfDay } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import {
@@ -9,9 +9,9 @@ import {
 } from '../../seeds/builders/church';
 import { buildUser } from '../../seeds/builders/identity';
 import { buildMinistry } from '../../seeds/builders/ministry';
+import { buildEventTemplate } from '../../seeds/builders/planning';
 import {
   buildEvent,
-  buildEventTemplate,
   buildMinistryParticipation,
   buildPlanningCycle,
   buildTimeSlot,
@@ -65,8 +65,8 @@ export interface CreatePhase3TemplateInput {
   weekday: number;
   blocks: Array<{
     label: string;
-    startTime: string;
-    endTime: string;
+    startTime: TimeOfDay;
+    endTime: TimeOfDay;
     order: number;
   }>;
 }

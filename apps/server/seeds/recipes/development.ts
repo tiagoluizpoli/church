@@ -19,6 +19,14 @@ import { buildAuthenticatableUser } from '../builders/identity';
 import { buildMinistry, buildRole, buildTeam } from '../builders/ministry';
 import { buildMinistryMembership, buildVolunteer } from '../builders/volunteer';
 import type { SeededChurchSummary, SeedRecipe, SeedWriter } from '../recipe';
+import {
+  loadGatherings,
+  type SeededMinistryStructure,
+} from './development-gatherings';
+import {
+  loadDevelopmentHistory,
+  type SeededHistoricalCycle,
+} from './development-history';
 
 export interface CreateDevelopmentRecipeInput {
   /** The day date-sensitive data is derived from; fixed for reproduction. */
@@ -30,14 +38,12 @@ export interface DevelopmentRecipeResult {
   church: SeededChurchSummary;
   secondChurch: SeededChurchSummary;
   keyPersonas: readonly KeyPersona[];
+  /** The previous complete month before the anchor's, locked and published. */
+  historicalCycle: SeededHistoricalCycle;
 }
 
 /** Ids a blueprint does not name, keyed so the same entry always gets the same id. */
-interface SeededMinistryIds {
-  ministryId: string;
-  roleIdByName: Map<string, string>;
-  teamIdByName: Map<string, string>;
-}
+type SeededMinistryIds = SeededMinistryStructure;
 
 interface ChurchDirectoryContext {
   db: SeedWriter;
@@ -202,12 +208,19 @@ interface LoadChurchDirectoryInput {
   userIdByEmail: Map<string, string>;
 }
 
+/** One loaded Church directory, as the planning data built on it needs it. */
+interface SeededChurchDirectory {
+  church: SeededChurchSummary;
+  ministries: Map<string, SeededMinistryIds>;
+  volunteerIdByEmail: Map<string, string>;
+}
+
 async function loadChurchDirectory({
   db,
   blueprint,
   passwordHash,
   userIdByEmail,
-}: LoadChurchDirectoryInput): Promise<SeededChurchSummary> {
+}: LoadChurchDirectoryInput): Promise<SeededChurchDirectory> {
   const { church, adminInvitationId } = await buildProvisionedChurch({
     db,
     id: deriveSeedId({ kind: 'church', parentIds: [blueprint.church.slug] }),
@@ -291,7 +304,11 @@ async function loadChurchDirectory({
     }
   }
 
-  return { id: church.id, slug: church.slug };
+  return {
+    church: { id: church.id, slug: church.slug },
+    ministries: ministryIdsByName,
+    volunteerIdByEmail,
+  };
 }
 
 /**
@@ -310,18 +327,19 @@ export function createDevelopmentRecipe({
       const passwordHash = await hashPassword(SEED_PERSONA_PASSWORD);
       const userIdByEmail = new Map<string, string>();
 
-      const church = await loadChurchDirectory({
+      const primary = await loadChurchDirectory({
         db,
         blueprint: blueprint.primary,
         passwordHash,
         userIdByEmail,
       });
-      const secondChurch = await loadChurchDirectory({
+      const { church: secondChurch } = await loadChurchDirectory({
         db,
         blueprint: blueprint.second,
         passwordHash,
         userIdByEmail,
       });
+      const { church } = primary;
 
       const churchIdBySlug = new Map([
         [church.slug, church.id],
@@ -354,11 +372,32 @@ export function createDevelopmentRecipe({
         });
       }
 
+      const seededGatherings = await loadGatherings({
+        db,
+        churchId: church.id,
+        blueprint: blueprint.gatherings,
+        ministries: primary.ministries,
+      });
+      const historicalCycle = await loadDevelopmentHistory({
+        db,
+        churchId: church.id,
+        timeZone: blueprint.primary.church.timezone,
+        anchor,
+        directory: blueprint.primary,
+        gatherings: blueprint.gatherings,
+        seededGatherings,
+        history: blueprint.history,
+        ministries: primary.ministries,
+        volunteerIdByEmail: primary.volunteerIdByEmail,
+        userIdByEmail,
+      });
+
       return {
         anchor,
         church,
         secondChurch,
         keyPersonas: blueprint.keyPersonas,
+        historicalCycle,
       };
     },
   };

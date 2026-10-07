@@ -23,6 +23,10 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   volunteerTransfer: 'volunteer-transfer',
   ministryRedemption: 'ministry-redemption',
   crossTenantInvitation: 'cross-tenant-invitation',
+  planningAdmin: 'planning-admin',
+  planningCycleAccess: 'planning-cycle-access',
+  planningCycleTenants: 'planning-cycle-tenants',
+  ministryWorkspaceIndex: 'ministry-workspace-index',
 } as const;
 
 export type E2eJourneyRecipeName =

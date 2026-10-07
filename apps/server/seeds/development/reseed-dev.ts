@@ -1,5 +1,5 @@
 import { getDevelopmentDatabaseUrl } from '@church/db/development-database-url';
-import { type CalendarDay, now } from '@church/time';
+import { addCalendarDays, type CalendarDay, now } from '@church/time';
 import pg from 'pg';
 import { SEED_PERSONA_PASSWORD } from '../blueprints/credentials';
 import { DEVELOPMENT_CHURCH_TIMEZONE } from '../blueprints/development';
@@ -35,6 +35,10 @@ function reportSeededGraph({ seeded }: ReportSeededGraphInput): void {
   }
   console.log(`  ${'Password'.padEnd(width)}  ${SEED_PERSONA_PASSWORD}`);
   console.log(`  Every other sign-in: ${BLUEPRINT_LOCATION}`);
+  const { startDate, endDate } = seeded.historicalCycle;
+  console.log(
+    `  History: locked PlanningCycle ${startDate} to ${addCalendarDays({ day: endDate, days: -1 })}; from ${endDate} on, nothing is planned.`,
+  );
 }
 
 /**

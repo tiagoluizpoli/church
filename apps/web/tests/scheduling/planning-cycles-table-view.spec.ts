@@ -1,5 +1,12 @@
-import { expect, type Page, test } from '@playwright/test';
-import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
+import { expect, type Page, type TestInfo, test } from '@playwright/test';
+import {
+  loadPlanningAdminJourney,
+  type PlanningAdminJourney,
+} from '../fixtures/journeys/planning-admin';
+import {
+  newPersonaContext,
+  signInPersonaPage,
+} from '../fixtures/journeys/rostering-church';
 import { fillDatePickerField } from './date-picker.helpers';
 import {
   applyTemplatesViaApi,
@@ -7,31 +14,23 @@ import {
   createPlanningCycleViaApi,
 } from './planning-cycle-api.helpers';
 import {
-  allocatedYear,
-  allocatedYearSequence,
-} from './planning-cycle-year.helpers';
+  dayOfMonth,
+  nonSundayDay,
+  planningMonth,
+} from './planning-month.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
 
-test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
-
 interface SeededCycle {
+  journey: PlanningAdminJourney;
   cycleName: string;
   templateName: string;
-  cycleYear: number;
-  cycleMonth: number;
+  /** First day of the cycle's month, `yyyy-MM-dd`. */
+  monthStart: string;
 }
-
-// This file alone seeds a cycle per test (11 tests). `nextYear` hands out a
-// distinct year per call within a worker, from that worker's slice of a band
-// no other spec file uses (#241). The reserve is the max cycles one worker
-// can create here (all 11 tests, +1 margin) — see planning-cycle-year.helpers.ts.
-const nextYear = allocatedYearSequence({
-  callSiteId: 'planning-cycles-table-view:create-cycle-with-sunday-template',
-  reserveForSequence: 12,
-});
 
 interface CreateCycleWithSundayTemplateAppliedParams {
   page: Page;
+  testInfo: TestInfo;
 }
 
 // Setup only: the create/template/apply UI flow is asserted by the US3 edit
@@ -39,18 +38,13 @@ interface CreateCycleWithSundayTemplateAppliedParams {
 // API and then opens the cycle, as the UI flow leaves it.
 async function createCycleWithSundayTemplateApplied({
   page,
+  testInfo,
 }: CreateCycleWithSundayTemplateAppliedParams): Promise<SeededCycle> {
-  const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
-  const cycleName = `Table View ${uniqueSuffix}`;
-  const templateName = `Sunday ${uniqueSuffix}`;
-  const year = nextYear();
-  const month = new Date().getUTCMonth();
-  const startDate = new Date(Date.UTC(year, month, 1))
-    .toISOString()
-    .slice(0, 10);
-  const endDate = new Date(Date.UTC(year, month + 1, 1))
-    .toISOString()
-    .slice(0, 10);
+  const journey = loadPlanningAdminJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.admin });
+  const cycleName = 'Table View';
+  const templateName = 'Sunday Service';
+  const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
 
   const cycle = await createPlanningCycleViaApi({
     page,
@@ -76,29 +70,17 @@ async function createCycleWithSundayTemplateApplied({
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
   await expect(page.getByTestId('planning-event-card').first()).toBeAttached();
 
-  return { cycleName, templateName, cycleYear: year, cycleMonth: month };
-}
-
-/** A date inside `[year, month]` that is never a Sunday, so it can't collide
- * with the Sunday-template day-events `createCycleWithSundayTemplateApplied`
- * already generated in that same window. */
-function nonSundayDateInMonth({
-  year,
-  month,
-  day,
-}: {
-  year: number;
-  month: number;
-  day: number;
-}): string {
-  const date = new Date(Date.UTC(year, month, day));
-  if (date.getUTCDay() === 0) date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
+  return { journey, cycleName, templateName, monthStart: startDate };
 }
 
 test.describe('Planning cycles table view — desktop (US1/US2)', () => {
-  test('cycles index renders as a table on desktop', async ({ page }) => {
-    const { cycleName } = await createCycleWithSundayTemplateApplied({ page });
+  test('cycles index renders as a table on desktop', async ({
+    page,
+  }, testInfo) => {
+    const { cycleName } = await createCycleWithSundayTemplateApplied({
+      page,
+      testInfo,
+    });
 
     await page.goto('/scheduling/planning-cycles');
     const cyclesTable = page.getByRole('grid', { name: 'Existing cycles' });
@@ -124,9 +106,10 @@ test.describe('Planning cycles table view — desktop (US1/US2)', () => {
 
   test('template library renders as a table on desktop with reachable actions', async ({
     page,
-  }) => {
+  }, testInfo) => {
     const { templateName } = await createCycleWithSundayTemplateApplied({
       page,
+      testInfo,
     });
     await page.getByTestId('open-template-library-button').click();
 
@@ -156,9 +139,10 @@ test.describe('Planning cycles table view — desktop (US1/US2)', () => {
 
   test('calendar review renders expandable rows and stays independent per row', async ({
     page,
-  }) => {
+  }, testInfo) => {
     const { templateName } = await createCycleWithSundayTemplateApplied({
       page,
+      testInfo,
     });
 
     const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
@@ -179,8 +163,8 @@ test.describe('Planning cycles table view — desktop (US1/US2)', () => {
 
   test('"Expand all"/"Collapse all" toggle every day row at once, one-shot not synced (US5, 021)', async ({
     page,
-  }) => {
-    await createCycleWithSundayTemplateApplied({ page });
+  }, testInfo) => {
+    await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
     await expect(calendarTable).toBeVisible();
@@ -204,8 +188,8 @@ test.describe('Planning cycles table view — desktop (US1/US2)', () => {
 
   test('locked cycle calendar review table stays read-only', async ({
     page,
-  }) => {
-    await createCycleWithSundayTemplateApplied({ page });
+  }, testInfo) => {
+    await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     await page.getByTestId('lock-cycle-button').click();
     await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
@@ -224,8 +208,8 @@ test.describe('Planning cycles table view — mobile no-regression (US3)', () =>
 
   test('all three screens keep their card/list layout below the desktop breakpoint', async ({
     page,
-  }) => {
-    await createCycleWithSundayTemplateApplied({ page });
+  }, testInfo) => {
+    await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
@@ -249,21 +233,12 @@ test.describe('Planning cycles table view — mobile no-regression (US3)', () =>
 test.describe('Planning cycles day/slot edit and delete (US3)', () => {
   test('draft cycle supports day/slot edit and delete with slot cascade; locked cycle shows no controls', async ({
     page,
-  }) => {
-    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
-    const cycleName = `US3 Edit ${uniqueSuffix}`;
-    const templateName = `US3 Template ${uniqueSuffix}`;
-    const now = new Date();
-    const year = allocatedYear({
-      callSiteId: 'planning-cycles-table-view:us3-edit-delete',
-    });
-    const month = now.getUTCMonth();
-    const startDate = new Date(Date.UTC(year, month, 1))
-      .toISOString()
-      .slice(0, 10);
-    const endDate = new Date(Date.UTC(year, month + 1, 1))
-      .toISOString()
-      .slice(0, 10);
+  }, testInfo) => {
+    const journey = loadPlanningAdminJourney({ testInfo });
+    await signInPersonaPage({ page, persona: journey.personas.admin });
+    const cycleName = 'US3 Edit';
+    const templateName = 'US3 Template';
+    const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
 
     await page.goto('/scheduling/planning-cycles');
     await page.getByTestId('open-create-cycle-dialog-button').click();
@@ -439,11 +414,9 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
 
   test('draft cycle supports mobile add/edit/delete for day-events and slots; locked cycle shows no controls', async ({
     page,
-  }) => {
-    const { templateName, cycleYear, cycleMonth } =
-      await createCycleWithSundayTemplateApplied({
-        page,
-      });
+  }, testInfo) => {
+    const { templateName, monthStart } =
+      await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     const mobileList = page.getByTestId('planning-events-list');
     await expect(mobileList).toBeVisible();
@@ -452,21 +425,16 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     await mobileList.getByRole('button', { name: 'Add day-event' }).click();
     const addDialog = page.getByRole('dialog', { name: 'New Event' });
     await expect(addDialog).toBeVisible();
-    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 100_000)}`;
-    const newEventTitle = `Mobile Added ${uniqueSuffix}`;
+    const newEventTitle = 'Mobile Added';
     await addDialog.getByLabel('Title').fill(newEventTitle);
-    // Must land inside the seeded cycle's own window (its year is
-    // dynamically assigned per test run, see createCycleWithSundayTemplateApplied)
+    // Must land inside the seeded cycle's own window (derived from the
+    // journey anchor, see createCycleWithSundayTemplateApplied)
     // and off any templated Sunday, or the create is rejected as out of
     // range / colliding with an existing day.
     await fillDatePickerField({
       page,
       trigger: addDialog.getByLabel('Date'),
-      date: nonSundayDateInMonth({
-        year: cycleYear,
-        month: cycleMonth,
-        day: 15,
-      }),
+      date: nonSundayDay({ day: dayOfMonth({ monthStart, dayOfMonth: 15 }) }),
     });
     await addDialog.getByRole('button', { name: 'Create' }).click();
     await expect(addDialog).not.toBeAttached();
@@ -559,10 +527,9 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
   test('a lock that races a mobile edit fails the save with a visible error and applies no change (FR-010)', async ({
     page,
     browser,
-  }) => {
-    const { templateName } = await createCycleWithSundayTemplateApplied({
-      page,
-    });
+  }, testInfo) => {
+    const { journey, templateName } =
+      await createCycleWithSundayTemplateApplied({ page, testInfo });
     const cycleUrl = page.url();
 
     const mobileList = page.getByTestId('planning-events-list');
@@ -580,8 +547,9 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     // drawer is still open — the "lock that occurs between page load and
     // the action" race from spec 020's FR-013, verified here specifically
     // on the mobile ResponsiveFormSurface.
-    const secondContext = await browser.newContext({
-      storageState: CHURCH_ADMIN_STORAGE_STATE,
+    const secondContext = await newPersonaContext({
+      browser,
+      persona: journey.personas.admin,
     });
     const secondPage = await secondContext.newPage();
     await secondPage.goto(cycleUrl);
@@ -616,34 +584,38 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
 
 test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
-  // The e2e-provisioned Church's timezone is UTC (no timezone passed to
-  // `provisionChurch`). Europe/London is UTC+1 in May, so a card rendering
-  // the browser's zone instead of the Church's would show 10:00 here.
+  // The journey Church's timezone is America/Sao_Paulo (UTC-3, no DST), and
+  // the template block is entered as Church-local 09:00. Europe/London is
+  // UTC+1 or UTC+0, so a card rendering the browser's zone instead of the
+  // Church's would shift the range here.
   test.use({ timezoneId: 'Europe/London' });
 
-  test('the card list shows the Worship block at its Church Timezone (UTC) time, not the browser zone', async ({
+  test('the card list shows the Worship block at its Church Timezone time, not the browser zone', async ({
     page,
-  }) => {
-    await createCycleWithSundayTemplateApplied({ page });
+  }, testInfo) => {
+    await createCycleWithSundayTemplateApplied({ page, testInfo });
 
     const mobileList = page.getByTestId('planning-events-list');
     await expect(mobileList).toBeVisible();
     await expect(mobileList.getByText(/Z/)).toHaveCount(0);
 
     const firstCard = mobileList.getByTestId('planning-event-card').first();
-    // The Worship block is entered as 09:00-10:00; a card rendering the
-    // browser's zone instead of the Church's (UTC) would shift this whole
-    // range an hour later.
+    // The Worship block is entered as 09:00-10:00 Church-local; a card
+    // rendering the browser's zone instead of the Church's would shift this
+    // whole range (to 12:00 or 13:00 in London).
     await expect(firstCard).toContainText('09:00 – 10:00');
-    await expect(firstCard).not.toContainText('10:00 – 11:00');
+    await expect(firstCard).not.toContainText(/1[23]:00 – 1[34]:00/);
   });
 });
 
 test.describe('Planning cycles table view — breakpoint crossing (US3)', () => {
   test('crossing the desktop breakpoint switches layout without losing the selected cycle', async ({
     page,
-  }) => {
-    const { cycleName } = await createCycleWithSundayTemplateApplied({ page });
+  }, testInfo) => {
+    const { cycleName } = await createCycleWithSundayTemplateApplied({
+      page,
+      testInfo,
+    });
 
     await expect(
       page.getByRole('grid', { name: 'Calendar review' }),

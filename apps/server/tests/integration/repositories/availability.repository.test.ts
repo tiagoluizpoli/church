@@ -2,10 +2,8 @@ import { ministryVolunteer } from '@church/db';
 import { fromDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  buildAvailabilityCheck,
-  buildShift,
-} from '../../../seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '../../../seeds/builders/availability';
+import { buildShift } from '../../../seeds/builders/scheduling';
 import {
   AvailabilityCheckId,
   ChurchId,

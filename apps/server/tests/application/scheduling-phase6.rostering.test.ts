@@ -3,6 +3,10 @@ import { ministry } from '@church/db';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildAvailabilityCheck,
+  buildUnavailabilityMark,
+} from '../../seeds/builders/availability';
 import { buildUser } from '../../seeds/builders/identity';
 import {
   buildMinistry,
@@ -11,8 +15,6 @@ import {
 } from '../../seeds/builders/ministry';
 import {
   buildAssignment,
-  buildAvailability,
-  buildAvailabilityCheck,
   buildMinistryParticipation,
   buildShift,
   buildSlotRequirement,
@@ -266,7 +268,7 @@ async function seedAvailabilityMark(input: SeedAvailabilityMarkInput) {
     state: 'pending',
   });
 
-  await buildAvailability({
+  await buildUnavailabilityMark({
     db: schedulingTestDb,
     churchId: input.churchId,
     availabilityCheckId: check.id,

@@ -5,7 +5,7 @@ import {
   shift as shiftTable,
   volunteerNotification,
 } from '@church/db';
-import { fromDate, parseInstant } from '@church/time';
+import { fromDate, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { buildUser } from '../../seeds/builders/identity';
@@ -899,8 +899,8 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       blocks: [
         {
           label: 'Welcome',
-          startTime: '09:00:00',
-          endTime: '09:30:00',
+          startTime: parseTimeOfDay({ value: '09:00' }),
+          endTime: parseTimeOfDay({ value: '09:30' }),
           order: 0,
         },
       ],

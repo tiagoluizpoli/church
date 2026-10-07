@@ -1,6 +1,6 @@
 import { parseTimeOfDay } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildEventTemplate } from '../../../seeds/builders/scheduling';
+import { buildEventTemplate } from '../../../seeds/builders/planning';
 import { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
 import { DrizzleMinistryServingProfileRepository } from '../../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import {
@@ -22,8 +22,8 @@ async function seedTemplateBlock(input: {
     blocks: [
       {
         label: input.label,
-        startTime: '09:00:00',
-        endTime: '10:00:00',
+        startTime: parseTimeOfDay({ value: '09:00' }),
+        endTime: parseTimeOfDay({ value: '10:00' }),
         order: input.order ?? 1,
       },
     ],

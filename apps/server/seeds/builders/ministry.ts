@@ -9,7 +9,7 @@ export type SeededRole = typeof role.$inferSelect;
 export interface BuildMinistryInput {
   db: SeedWriter;
   churchId: string;
-  id: string;
+  id?: string;
   name: string;
   /** Left to the column default when a fixture does not care. */
   enforcementType?: SeededMinistry['enforcementType'];
@@ -35,7 +35,7 @@ export interface BuildMinistryChildInput {
   db: SeedWriter;
   churchId: string;
   ministryId: string;
-  id: string;
+  id?: string;
   name: string;
 }
 

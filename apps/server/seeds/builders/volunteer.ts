@@ -58,7 +58,7 @@ export interface BuildMinistryMembershipInput {
   churchId: string;
   volunteerId: string;
   ministryId: string;
-  id: string;
+  id?: string;
   ministryAccessLevel: MinistryAccessLevel;
   /** Role qualifications — explicit grants; membership alone qualifies for nothing. */
   roleIds: string[];
@@ -121,4 +121,72 @@ export async function buildMinistryMembership({
   }
 
   return membership;
+}
+
+export type SeededRoleQualification = typeof ministryVolunteerRole.$inferSelect;
+export type SeededTeamMembership = typeof ministryVolunteerTeam.$inferSelect;
+
+export interface BuildRoleQualificationInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryVolunteerId: string;
+  roleId: string;
+}
+
+/** One explicit Role qualification added to an existing Ministry Membership. */
+export async function buildRoleQualification({
+  db,
+  churchId,
+  ministryVolunteerId,
+  roleId,
+}: BuildRoleQualificationInput): Promise<SeededRoleQualification> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(ministryVolunteerRole)
+      .values({
+        id: deriveSeedId({
+          kind: 'ministry-volunteer-role',
+          parentIds: [ministryVolunteerId, roleId],
+        }),
+        churchId,
+        ministryVolunteerId,
+        roleId,
+      })
+      .returning(),
+    description: `Role qualification ${roleId}`,
+  });
+}
+
+export interface BuildTeamMembershipInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryVolunteerId: string;
+  teamId: string;
+  accessLevel: TeamAccessLevel;
+}
+
+/** One Team Membership added to an existing Ministry Membership. */
+export async function buildTeamMembership({
+  db,
+  churchId,
+  ministryVolunteerId,
+  teamId,
+  accessLevel,
+}: BuildTeamMembershipInput): Promise<SeededTeamMembership> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(ministryVolunteerTeam)
+      .values({
+        id: deriveSeedId({
+          kind: 'ministry-volunteer-team',
+          parentIds: [ministryVolunteerId, teamId],
+        }),
+        churchId,
+        ministryVolunteerId,
+        teamId,
+        accessLevel,
+      })
+      .returning(),
+    description: `Team Membership ${teamId}`,
+  });
 }

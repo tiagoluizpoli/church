@@ -11,6 +11,8 @@ export interface BuildMinistryInput {
   churchId: string;
   id: string;
   name: string;
+  /** Left to the column default when a fixture does not care. */
+  enforcementType?: SeededMinistry['enforcementType'];
 }
 
 export async function buildMinistry({
@@ -18,9 +20,13 @@ export async function buildMinistry({
   churchId,
   id,
   name,
+  enforcementType,
 }: BuildMinistryInput): Promise<SeededMinistry> {
   return requireInsertedRow({
-    rows: await db.insert(ministry).values({ id, churchId, name }).returning(),
+    rows: await db
+      .insert(ministry)
+      .values({ id, churchId, name, enforcementType })
+      .returning(),
     description: `Ministry ${name}`,
   });
 }

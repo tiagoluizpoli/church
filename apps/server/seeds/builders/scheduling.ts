@@ -1,11 +1,14 @@
 import {
   assignment,
+  assignmentAudit,
   event,
+  eventTemplate,
   ministryParticipation,
   participationSlotInclusion,
   planningCycle,
   shift,
   slotRequirement,
+  timeBlock,
   timeSlot,
 } from '@church/db';
 import {
@@ -42,7 +45,8 @@ export type AssignmentStatus = SeededAssignment['status'];
 export interface BuildPlanningCycleInput {
   db: SeedWriter;
   churchId: string;
-  id: string;
+  /** Left to the database when a test reads the identifier from the result. */
+  id?: string;
   name: string;
   /** First day of the cycle; stored as a date, so no timezone is involved. */
   startDate: CalendarDay;
@@ -88,12 +92,14 @@ export interface BuildEventInput {
   db: SeedWriter;
   churchId: string;
   planningCycleId: string;
-  id: string;
+  id?: string;
   title: string;
   start: Instant;
   end: Instant;
   status: EventStatus;
-  eventType: EventType;
+  /** Left to the column default when a fixture does not care. */
+  eventType?: EventType;
+  sourceTemplateId?: string;
 }
 
 export async function buildEvent({
@@ -106,6 +112,7 @@ export async function buildEvent({
   end,
   status,
   eventType,
+  sourceTemplateId,
 }: BuildEventInput): Promise<SeededEvent> {
   return requireInsertedRow({
     rows: await db
@@ -119,6 +126,7 @@ export async function buildEvent({
         end: toDate({ instant: end }),
         status,
         eventType,
+        sourceTemplateId,
       })
       .returning(),
     description: `Event ${title}`,
@@ -129,10 +137,11 @@ export interface BuildTimeSlotInput {
   db: SeedWriter;
   churchId: string;
   eventId: string;
-  id: string;
+  id?: string;
   start: Instant;
   end: Instant;
   label?: string;
+  sourceTemplateBlockId?: string;
 }
 
 export async function buildTimeSlot({
@@ -143,6 +152,7 @@ export async function buildTimeSlot({
   start,
   end,
   label,
+  sourceTemplateBlockId,
 }: BuildTimeSlotInput): Promise<SeededTimeSlot> {
   return requireInsertedRow({
     rows: await db
@@ -154,6 +164,7 @@ export async function buildTimeSlot({
         startTime: toDate({ instant: start }),
         endTime: toDate({ instant: end }),
         label,
+        sourceTemplateBlockId,
       })
       .returning(),
     description: `Time Slot ${id}`,
@@ -165,7 +176,7 @@ export interface BuildMinistryParticipationInput {
   churchId: string;
   ministryId: string;
   eventId: string;
-  id: string;
+  id?: string;
   state: ParticipationState;
   /** The Time Slots the Ministry takes part in. */
   timeSlotIds: string[];
@@ -211,7 +222,7 @@ export interface BuildShiftInput {
   churchId: string;
   participationId: string;
   timeSlotId: string;
-  id: string;
+  id?: string;
   start: Instant;
   end: Instant;
   label?: string;
@@ -250,7 +261,7 @@ export interface BuildSlotRequirementInput {
   participationId: string;
   shiftId: string;
   roleId: string;
-  id: string;
+  id?: string;
   requiredCount: number;
   teamId?: string;
 }
@@ -289,8 +300,11 @@ export interface BuildAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
-  id: string;
+  id?: string;
   status: AssignmentStatus;
+  /** Left to the column default (now) when a fixture does not care. */
+  assignedAt?: Instant;
+  assignedBy?: string;
 }
 
 export async function buildAssignment({
@@ -302,6 +316,8 @@ export async function buildAssignment({
   roleId,
   id,
   status,
+  assignedAt,
+  assignedBy,
 }: BuildAssignmentInput): Promise<SeededAssignment> {
   return requireInsertedRow({
     rows: await db
@@ -314,8 +330,113 @@ export async function buildAssignment({
         volunteerId,
         roleId,
         status,
+        assignedAt:
+          assignedAt === undefined
+            ? undefined
+            : toDate({ instant: assignedAt }),
+        assignedBy,
       })
       .returning(),
     description: `Assignment ${id}`,
   });
+}
+
+export type SeededAssignmentAudit = typeof assignmentAudit.$inferSelect;
+export type AuditAction = SeededAssignmentAudit['action'];
+export type SeededEventTemplate = typeof eventTemplate.$inferSelect;
+export type SeededTimeBlock = typeof timeBlock.$inferSelect;
+
+export interface BuildAssignmentAuditInput {
+  db: SeedWriter;
+  churchId: string;
+  assignmentId: string;
+  actorId: string;
+  action: AuditAction;
+  id?: string;
+  timestamp?: Instant;
+}
+
+export async function buildAssignmentAudit({
+  db,
+  churchId,
+  assignmentId,
+  actorId,
+  action,
+  id,
+  timestamp,
+}: BuildAssignmentAuditInput): Promise<SeededAssignmentAudit> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(assignmentAudit)
+      .values({
+        id,
+        churchId,
+        assignmentId,
+        actorId,
+        action,
+        timestamp:
+          timestamp === undefined ? undefined : toDate({ instant: timestamp }),
+      })
+      .returning(),
+    description: `Assignment Audit for ${assignmentId}`,
+  });
+}
+
+export interface EventTemplateBlockInput {
+  label: string;
+  /** `HH:mm`, as the `time` column stores it. */
+  startTime: string;
+  endTime: string;
+  order: number;
+}
+
+export interface BuildEventTemplateInput {
+  db: SeedWriter;
+  churchId: string;
+  name: string;
+  weekday: number;
+  blocks: EventTemplateBlockInput[];
+  id?: string;
+}
+
+export interface BuiltEventTemplate {
+  template: SeededEventTemplate;
+  blocks: SeededTimeBlock[];
+}
+
+/** An Event Template with its ordered Time Blocks. */
+export async function buildEventTemplate({
+  db,
+  churchId,
+  name,
+  weekday,
+  blocks,
+  id,
+}: BuildEventTemplateInput): Promise<BuiltEventTemplate> {
+  const template = requireInsertedRow({
+    rows: await db
+      .insert(eventTemplate)
+      .values({ id, churchId, name, weekday })
+      .returning(),
+    description: `Event Template ${name}`,
+  });
+
+  const insertedBlocks =
+    blocks.length === 0
+      ? []
+      : await db
+          .insert(timeBlock)
+          .values(
+            blocks.map((block) => ({
+              churchId,
+              templateId: template.id,
+              label: block.label,
+              startTime: block.startTime,
+              endTime: block.endTime,
+              order: block.order,
+            })),
+          )
+          .returning();
+
+  return { template, blocks: insertedBlocks };
 }

@@ -4,6 +4,7 @@ import {
   ministryVolunteerTeam,
   volunteer,
 } from '@church/db';
+import { type Instant, toDate } from '@church/time';
 import type { SeedWriter } from '../recipe';
 import { deriveSeedId } from './derived-id';
 import { requireInsertedRow } from './require-inserted-row';
@@ -20,19 +21,28 @@ export interface BuildVolunteerInput {
   churchId: string;
   userId: string;
   id: string;
+  /** Set to retire the profile: it keeps its Church but stops being active. */
+  leftAt?: Instant;
 }
 
-/** The User's one active Volunteer profile, in `churchId`. */
+/** The User's Volunteer profile in `churchId`: active unless `leftAt` retires it. */
 export async function buildVolunteer({
   db,
   churchId,
   userId,
   id,
+  leftAt,
 }: BuildVolunteerInput): Promise<SeededVolunteer> {
   return requireInsertedRow({
     rows: await db
       .insert(volunteer)
-      .values({ id, churchId, userId, status: 'active' })
+      .values({
+        id,
+        churchId,
+        userId,
+        status: 'active',
+        leftAt: leftAt === undefined ? undefined : toDate({ instant: leftAt }),
+      })
       .returning(),
     description: `Volunteer for User ${userId}`,
   });

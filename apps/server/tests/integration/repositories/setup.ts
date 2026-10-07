@@ -1,24 +1,28 @@
 import * as schema from '@church/db';
-import {
-  addChurchMember,
-  assignment,
-  assignmentAudit,
-  createChurch,
-  event,
-  ministry,
-  ministryParticipation,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  planningCycle,
-  role,
-  shift,
-  slotRequirement,
-  timeSlot,
-  volunteer,
-} from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { parseCalendarDay, parseInstant } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import {
+  buildChurch,
+  buildChurchMembership,
+} from '../../../seeds/builders/church';
+import { buildUser } from '../../../seeds/builders/identity';
+import { buildMinistry, buildRole } from '../../../seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildAssignmentAudit,
+  buildEvent,
+  buildMinistryParticipation,
+  buildPlanningCycle,
+  buildShift,
+  buildSlotRequirement,
+  buildTimeSlot,
+} from '../../../seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../../seeds/builders/volunteer';
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 
@@ -58,29 +62,64 @@ export async function truncateAll(): Promise<void> {
 
 /**
  * Seeds stable test data matching the IDs expected by all contract specs.
- * user-1 and user-2 are seeded directly into the `user` table as Better Auth
- * does not expose a programmatic API for tests.
+ * user-1..user-3 are plain verified Users (no credential account): the specs
+ * act as them but never sign in. Construction comes from the shared seed
+ * builders; the identifiers and values below are this suite's own intent.
  */
 export async function seed(): Promise<void> {
-  // Seed auth users (Better Auth table — raw insert)
-  await testDb.execute(`
-    INSERT INTO "user" (id, name, email, email_verified, created_at, updated_at)
-    VALUES
-      ('22222222-2222-2222-2222-222222222221', 'Alice Test', 'alice@test.com', true, now(), now()),
-      ('22222222-2222-2222-2222-222222222222', 'Bob Test', 'bob@test.com', true, now(), now()),
-      ('22222222-2222-2222-2222-222222222223', 'Carol Test', 'carol@test.com', true, now(), now())
-    ON CONFLICT (id) DO NOTHING
-  `);
+  const churchId = '11111111-1111-1111-1111-111111111111';
+  const aliceId = '22222222-2222-2222-2222-222222222221';
+  const bobId = '22222222-2222-2222-2222-222222222222';
+  const carolId = '22222222-2222-2222-2222-222222222223';
+  const adultMinistryId = '33333333-3333-3333-3333-333333333331';
+  const usherRoleId = '55555555-5555-5555-5555-555555555551';
+  const volunteerOneId = '44444444-4444-4444-4444-444444444441';
+  const volunteerTwoId = '44444444-4444-4444-4444-444444444442';
+  const youthGatheringId = '66666666-6666-6666-6666-666666666661';
+  const adultServiceId = '66666666-6666-6666-6666-666666666662';
+  const morningSlotId = '77777777-7777-7777-7777-777777777771';
+  const afternoonSlotId = '77777777-7777-7777-7777-777777777772';
+  const youthParticipationId = '61616161-6161-6161-6161-616161616161';
+  const adultParticipationId = '61616161-6161-6161-6161-616161616162';
+  const morningShiftId = '71717171-7171-7171-7171-717171717171';
+  const afternoonShiftId = '71717171-7171-7171-7171-717171717172';
+  const confirmedAssignmentId = '99999999-9999-9999-9999-999999999991';
+
+  const jun1At10 = parseInstant({ value: '2024-06-01T10:00:00Z' });
+  const jun4At09 = parseInstant({ value: '2024-06-04T09:00:00Z' });
+  const jun4At11 = parseInstant({ value: '2024-06-04T11:00:00Z' });
+  const jun5At09 = parseInstant({ value: '2024-06-05T09:00:00Z' });
+  const jun5At11 = parseInstant({ value: '2024-06-05T11:00:00Z' });
+  const jun5At13 = parseInstant({ value: '2024-06-05T13:00:00Z' });
+
+  await buildUser({
+    db: testDb,
+    id: aliceId,
+    name: 'Alice Test',
+    email: 'alice@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: bobId,
+    name: 'Bob Test',
+    email: 'bob@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: carolId,
+    name: 'Carol Test',
+    email: 'carol@test.com',
+  });
 
   // Churches — an organization row plus its extension row, not a bare church.
-  await createChurch({
+  await buildChurch({
     db: testDb,
-    id: '11111111-1111-1111-1111-111111111111',
+    id: churchId,
     name: 'First Church',
     slug: 'first-church',
     timezone: 'UTC',
   });
-  await createChurch({
+  await buildChurch({
     db: testDb,
     id: '11111111-1111-1111-1111-111111111112',
     name: 'Second Church',
@@ -89,251 +128,246 @@ export async function seed(): Promise<void> {
   });
 
   // Church Membership: Alice administers church 1, Bob is a plain member.
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
-    churchId: '11111111-1111-1111-1111-111111111111',
-    userId: '22222222-2222-2222-2222-222222222221',
+    churchId,
+    userId: aliceId,
     accessLevel: 'admin',
   });
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
-    churchId: '11111111-1111-1111-1111-111111111111',
-    userId: '22222222-2222-2222-2222-222222222222',
+    churchId,
+    userId: bobId,
     accessLevel: 'member',
   });
 
   // Ministries (church-1 only — alphabetical for list test: Adult first, Youth second)
-  await testDb.insert(ministry).values([
-    {
-      id: '33333333-3333-3333-3333-333333333331',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      name: 'Adult Ministry',
-      enforcementType: 'soft',
-    },
-    {
-      id: '33333333-3333-3333-3333-333333333332',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      name: 'Youth Ministry',
-      enforcementType: 'hard',
-    },
-  ]);
+  await buildMinistry({
+    db: testDb,
+    churchId,
+    id: adultMinistryId,
+    name: 'Adult Ministry',
+    enforcementType: 'soft',
+  });
+  await buildMinistry({
+    db: testDb,
+    churchId,
+    id: '33333333-3333-3333-3333-333333333332',
+    name: 'Youth Ministry',
+    enforcementType: 'hard',
+  });
 
   // Roles (ministry-1: Greeter + Usher — alphabetical for list test)
-  await testDb.insert(role).values([
-    {
-      id: '55555555-5555-5555-5555-555555555551',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '33333333-3333-3333-3333-333333333331',
-      name: 'Usher',
-    },
-    {
-      id: '55555555-5555-5555-5555-555555555552',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '33333333-3333-3333-3333-333333333331',
-      name: 'Greeter',
-    },
-  ]);
+  await buildRole({
+    db: testDb,
+    churchId,
+    ministryId: adultMinistryId,
+    id: usherRoleId,
+    name: 'Usher',
+  });
+  await buildRole({
+    db: testDb,
+    churchId,
+    ministryId: adultMinistryId,
+    id: '55555555-5555-5555-5555-555555555552',
+    name: 'Greeter',
+  });
 
   // Volunteers
-  await testDb.insert(volunteer).values([
-    {
-      id: '44444444-4444-4444-4444-444444444441',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      userId: '22222222-2222-2222-2222-222222222221',
-      status: 'active',
-    },
-    {
-      id: '44444444-4444-4444-4444-444444444442',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      userId: '22222222-2222-2222-2222-222222222222',
-      status: 'active',
-    },
-    // Retired profile — Carol left church-1. Kept forever (never moved or
-    // deleted) so her historical assignments stay attributed here; every
-    // volunteer-by-user read must exclude her.
-    {
-      id: '44444444-4444-4444-4444-444444444443',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      userId: '22222222-2222-2222-2222-222222222223',
-      status: 'active',
-      leftAt: new Date('2024-01-01T00:00:00Z'),
-    },
-  ]);
+  await buildVolunteer({
+    db: testDb,
+    churchId,
+    userId: aliceId,
+    id: volunteerOneId,
+  });
+  await buildVolunteer({
+    db: testDb,
+    churchId,
+    userId: bobId,
+    id: volunteerTwoId,
+  });
+  // Retired profile — Carol left church-1. Kept forever (never moved or
+  // deleted) so her historical assignments stay attributed here; every
+  // volunteer-by-user read must exclude her.
+  await buildVolunteer({
+    db: testDb,
+    churchId,
+    userId: carolId,
+    id: '44444444-4444-4444-4444-444444444443',
+    leftAt: parseInstant({ value: '2024-01-01T00:00:00Z' }),
+  });
 
-  // Ministry memberships (volunteer-1 in ministry-1 only)
-  await testDb.insert(ministryVolunteer).values([
-    {
-      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      volunteerId: '44444444-4444-4444-4444-444444444441',
-      ministryId: '33333333-3333-3333-3333-333333333331',
-      ministryAccessLevel: 'volunteer',
-      status: 'active',
-    },
-  ]);
+  // Ministry memberships (volunteer-1 in ministry-1 only). Qualification
+  // hangs off the membership and is an explicit grant — membership alone no
+  // longer implies it, so volunteer-1 is qualified for Usher (role-1) and for
+  // nothing else.
+  await buildMinistryMembership({
+    db: testDb,
+    churchId,
+    volunteerId: volunteerOneId,
+    ministryId: adultMinistryId,
+    id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    ministryAccessLevel: 'volunteer',
+    roleIds: [usherRoleId],
+    teams: [],
+  });
 
-  // Role qualifications. Qualification hangs off the membership and is an
-  // explicit grant — membership alone no longer implies it, so volunteer-1 is
-  // qualified for Usher (role-1) and for nothing else.
-  await testDb.insert(ministryVolunteerRole).values([
-    {
-      churchId: '11111111-1111-1111-1111-111111111111',
-      ministryVolunteerId: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-      roleId: '55555555-5555-5555-5555-555555555551',
-    },
-  ]);
-
-  await testDb.insert(planningCycle).values({
+  const cycle = await buildPlanningCycle({
+    db: testDb,
+    churchId,
     id: '22222222-2222-2222-2222-222222222231',
-    churchId: '11111111-1111-1111-1111-111111111111',
     name: 'June cycle',
-    startDate: new Date('2024-06-01T00:00:00Z'),
-    endDate: new Date('2024-07-01T00:00:00Z'),
+    startDate: parseCalendarDay({ value: '2024-06-01' }),
+    endDate: parseCalendarDay({ value: '2024-07-01' }),
+    state: 'draft',
   });
 
   // Events (event-2 June 4 = older, event-1 June 5 = newer; list ascending by start returns event-2 first)
-  await testDb.insert(event).values([
-    {
-      id: '66666666-6666-6666-6666-666666666661',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      planningCycleId: '22222222-2222-2222-2222-222222222231',
-      title: 'Youth Gathering',
-      start: new Date('2024-06-05T09:00:00Z'),
-      end: new Date('2024-06-05T11:00:00Z'),
-      status: 'draft',
-    },
-    {
-      id: '66666666-6666-6666-6666-666666666662',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      planningCycleId: '22222222-2222-2222-2222-222222222231',
-      title: 'Adult Service',
-      start: new Date('2024-06-04T09:00:00Z'),
-      end: new Date('2024-06-04T11:00:00Z'),
-      status: 'scheduled',
-    },
-  ]);
+  await buildEvent({
+    db: testDb,
+    churchId,
+    planningCycleId: cycle.id,
+    id: youthGatheringId,
+    title: 'Youth Gathering',
+    start: jun5At09,
+    end: jun5At11,
+    status: 'draft',
+  });
+  await buildEvent({
+    db: testDb,
+    churchId,
+    planningCycleId: cycle.id,
+    id: adultServiceId,
+    title: 'Adult Service',
+    start: jun4At09,
+    end: jun4At11,
+    status: 'scheduled',
+  });
 
-  await testDb.insert(ministryParticipation).values([
-    {
-      id: '61616161-6161-6161-6161-616161616161',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '33333333-3333-3333-3333-333333333331',
-      eventId: '66666666-6666-6666-6666-666666666661',
-    },
-    {
-      id: '61616161-6161-6161-6161-616161616162',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '33333333-3333-3333-3333-333333333331',
-      eventId: '66666666-6666-6666-6666-666666666662',
-      state: 'published',
-    },
-  ]);
+  // Time slots (slot-1 for event-1 with 1 slot requirement)
+  await buildTimeSlot({
+    db: testDb,
+    churchId,
+    eventId: youthGatheringId,
+    id: morningSlotId,
+    start: jun5At09,
+    end: jun5At11,
+    label: 'Morning Service',
+  });
+  await buildTimeSlot({
+    db: testDb,
+    churchId,
+    eventId: adultServiceId,
+    id: afternoonSlotId,
+    start: jun5At11,
+    end: jun5At13,
+    label: 'Afternoon Service',
+  });
 
-  // Time slot (slot-1 for event-1 with 1 slot requirement)
-  await testDb.insert(timeSlot).values([
-    {
-      id: '77777777-7777-7777-7777-777777777771',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      eventId: '66666666-6666-6666-6666-666666666661',
-      startTime: new Date('2024-06-05T09:00:00Z'),
-      endTime: new Date('2024-06-05T11:00:00Z'),
-      label: 'Morning Service',
-    },
-    {
-      id: '77777777-7777-7777-7777-777777777772',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      eventId: '66666666-6666-6666-6666-666666666662',
-      startTime: new Date('2024-06-05T11:00:00Z'),
-      endTime: new Date('2024-06-05T13:00:00Z'),
-      label: 'Afternoon Service',
-    },
-  ]);
+  await buildMinistryParticipation({
+    db: testDb,
+    churchId,
+    ministryId: adultMinistryId,
+    eventId: youthGatheringId,
+    id: youthParticipationId,
+    state: 'tailoring',
+    timeSlotIds: [],
+  });
+  await buildMinistryParticipation({
+    db: testDb,
+    churchId,
+    ministryId: adultMinistryId,
+    eventId: adultServiceId,
+    id: adultParticipationId,
+    state: 'published',
+    timeSlotIds: [],
+  });
 
-  await testDb.insert(shift).values([
-    {
-      id: '71717171-7171-7171-7171-717171717171',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      participationId: '61616161-6161-6161-6161-616161616161',
-      timeSlotId: '77777777-7777-7777-7777-777777777771',
-      startTime: new Date('2024-06-05T09:00:00Z'),
-      endTime: new Date('2024-06-05T11:00:00Z'),
-    },
-    {
-      id: '71717171-7171-7171-7171-717171717172',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      participationId: '61616161-6161-6161-6161-616161616162',
-      timeSlotId: '77777777-7777-7777-7777-777777777772',
-      startTime: new Date('2024-06-05T11:00:00Z'),
-      endTime: new Date('2024-06-05T13:00:00Z'),
-    },
-  ]);
+  await buildShift({
+    db: testDb,
+    churchId,
+    participationId: youthParticipationId,
+    timeSlotId: morningSlotId,
+    id: morningShiftId,
+    start: jun5At09,
+    end: jun5At11,
+  });
+  await buildShift({
+    db: testDb,
+    churchId,
+    participationId: adultParticipationId,
+    timeSlotId: afternoonSlotId,
+    id: afternoonShiftId,
+    start: jun5At11,
+    end: jun5At13,
+  });
 
-  await testDb.insert(slotRequirement).values([
-    {
-      id: '88888888-8888-8888-8888-888888888881',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      participationId: '61616161-6161-6161-6161-616161616161',
-      shiftId: '71717171-7171-7171-7171-717171717171',
-      roleId: '55555555-5555-5555-5555-555555555551',
-      requiredCount: 2,
-    },
-  ]);
+  await buildSlotRequirement({
+    db: testDb,
+    churchId,
+    participationId: youthParticipationId,
+    shiftId: morningShiftId,
+    roleId: usherRoleId,
+    id: '88888888-8888-8888-8888-888888888881',
+    requiredCount: 2,
+  });
 
   // Assignments (assignment-1 confirmed, assignment-2 declined for slot-1)
-  await testDb.insert(assignment).values([
-    {
-      id: '99999999-9999-9999-9999-999999999991',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      participationId: '61616161-6161-6161-6161-616161616161',
-      shiftId: '71717171-7171-7171-7171-717171717171',
-      volunteerId: '44444444-4444-4444-4444-444444444441',
-      roleId: '55555555-5555-5555-5555-555555555551',
-      status: 'confirmed',
-      assignedAt: new Date('2024-06-01T10:00:00Z'),
-      assignedBy: '22222222-2222-2222-2222-222222222221',
-    },
-    {
-      id: '99999999-9999-9999-9999-999999999992',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      participationId: '61616161-6161-6161-6161-616161616161',
-      shiftId: '71717171-7171-7171-7171-717171717171',
-      volunteerId: '44444444-4444-4444-4444-444444444442',
-      roleId: '55555555-5555-5555-5555-555555555551',
-      status: 'declined',
-      assignedAt: new Date('2024-06-01T10:05:00Z'),
-    },
-    {
-      id: '99999999-9999-9999-9999-999999999993',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      participationId: '61616161-6161-6161-6161-616161616162',
-      shiftId: '71717171-7171-7171-7171-717171717172',
-      volunteerId: '44444444-4444-4444-4444-444444444441',
-      roleId: '55555555-5555-5555-5555-555555555551',
-      status: 'confirmed',
-      assignedAt: new Date('2024-06-01T10:10:00Z'),
-      assignedBy: '22222222-2222-2222-2222-222222222221',
-    },
-  ]);
+  await buildAssignment({
+    db: testDb,
+    churchId,
+    participationId: youthParticipationId,
+    shiftId: morningShiftId,
+    volunteerId: volunteerOneId,
+    roleId: usherRoleId,
+    id: confirmedAssignmentId,
+    status: 'confirmed',
+    assignedAt: jun1At10,
+    assignedBy: aliceId,
+  });
+  await buildAssignment({
+    db: testDb,
+    churchId,
+    participationId: youthParticipationId,
+    shiftId: morningShiftId,
+    volunteerId: volunteerTwoId,
+    roleId: usherRoleId,
+    id: '99999999-9999-9999-9999-999999999992',
+    status: 'declined',
+    assignedAt: parseInstant({ value: '2024-06-01T10:05:00Z' }),
+  });
+  await buildAssignment({
+    db: testDb,
+    churchId,
+    participationId: adultParticipationId,
+    shiftId: afternoonShiftId,
+    volunteerId: volunteerOneId,
+    roleId: usherRoleId,
+    id: '99999999-9999-9999-9999-999999999993',
+    status: 'confirmed',
+    assignedAt: parseInstant({ value: '2024-06-01T10:10:00Z' }),
+    assignedBy: aliceId,
+  });
 
   // Assignment audits (newest first: audit-2 at 11:00, audit-1 at 10:00)
-  await testDb.insert(assignmentAudit).values([
-    {
-      id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      assignmentId: '99999999-9999-9999-9999-999999999991',
-      actorId: '22222222-2222-2222-2222-222222222221',
-      action: 'created',
-      timestamp: new Date('2024-06-01T10:00:00Z'),
-    },
-    {
-      id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      assignmentId: '99999999-9999-9999-9999-999999999991',
-      actorId: '22222222-2222-2222-2222-222222222221',
-      action: 'status_change',
-      timestamp: new Date('2024-06-01T11:00:00Z'),
-    },
-  ]);
+  await buildAssignmentAudit({
+    db: testDb,
+    churchId,
+    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
+    assignmentId: confirmedAssignmentId,
+    actorId: aliceId,
+    action: 'created',
+    timestamp: jun1At10,
+  });
+  await buildAssignmentAudit({
+    db: testDb,
+    churchId,
+    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2',
+    assignmentId: confirmedAssignmentId,
+    actorId: aliceId,
+    action: 'status_change',
+    timestamp: parseInstant({ value: '2024-06-01T11:00:00Z' }),
+  });
 }
 
 export async function seedVolunteerDashboardScenario(): Promise<

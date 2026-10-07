@@ -1,16 +1,18 @@
+import type { TenancyWriter } from '@church/db';
 import {
-  addChurchMember,
-  createChurch,
-  ministry,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
-  role,
-  type TenancyWriter,
-  team,
-  user,
-  volunteer,
-} from '@church/db';
+  buildChurch,
+  buildChurchMembership,
+} from '../../seeds/builders/church';
+import { buildUser } from '../../seeds/builders/identity';
+import {
+  buildMinistry,
+  buildRole,
+  buildTeam,
+} from '../../seeds/builders/ministry';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../seeds/builders/volunteer';
 
 export interface TwoChurchIdentityFixtureInput {
   db: TenancyWriter;
@@ -51,6 +53,17 @@ export interface TwoChurchIdentityFixture {
   dualMemberABMembershipInB: string;
 }
 
+interface FixtureUser {
+  id: string;
+  name: string;
+}
+
+interface FixtureChurchMembership {
+  churchId: string;
+  userId: string;
+  accessLevel: 'member' | 'admin';
+}
+
 /**
  * One canonical two-Church identity fixture, chosen so every Ministry
  * Invitation minting rule has a real counterexample: a ChurchAdmin, two
@@ -67,15 +80,19 @@ export async function seedTwoChurchIdentityFixture(
   const { db } = input;
   const suffix = crypto.randomUUID().slice(0, 8);
 
-  const churchARecord = await createChurch({
+  const churchARecord = await buildChurch({
     db,
+    id: crypto.randomUUID(),
     name: `Northgate Community Church ${suffix}`,
     slug: `northgate-${suffix}`,
+    timezone: 'UTC',
   });
-  const churchBRecord = await createChurch({
+  const churchBRecord = await buildChurch({
     db,
+    id: crypto.randomUUID(),
     name: `Riverside Fellowship ${suffix}`,
     slug: `riverside-${suffix}`,
+    timezone: 'UTC',
   });
 
   const churchA: ChurchSummary = {
@@ -98,231 +115,154 @@ export async function seedTwoChurchIdentityFixture(
   const adminB = `fixture-admin-b-${suffix}`;
   const dualMemberAB = `fixture-dual-member-ab-${suffix}`;
 
-  await db.insert(user).values([
-    {
-      id: adminA,
-      name: 'Fixture Admin A',
-      email: `${adminA}@fixture.test`,
-      emailVerified: true,
-    },
-    {
-      id: leaderOfMinistryOneA,
-      name: 'Fixture Leader One A',
-      email: `${leaderOfMinistryOneA}@fixture.test`,
-      emailVerified: true,
-    },
-    {
-      id: leaderOfMinistryTwoA,
-      name: 'Fixture Leader Two A',
-      email: `${leaderOfMinistryTwoA}@fixture.test`,
-      emailVerified: true,
-    },
-    {
-      id: teamLeaderA,
-      name: 'Fixture Team Leader A',
-      email: `${teamLeaderA}@fixture.test`,
-      emailVerified: true,
-    },
-    {
-      id: memberNoVolunteerA,
-      name: 'Fixture Member A',
-      email: `${memberNoVolunteerA}@fixture.test`,
-      emailVerified: true,
-    },
-    {
-      id: existingChurchMemberA,
-      name: 'Fixture Existing Member A',
-      email: `${existingChurchMemberA}@fixture.test`,
-      emailVerified: true,
-    },
-    {
-      id: adminB,
-      name: 'Fixture Admin B',
-      email: `${adminB}@fixture.test`,
-      emailVerified: true,
-    },
-    {
-      id: dualMemberAB,
-      name: 'Fixture Dual Member AB',
-      email: `${dualMemberAB}@fixture.test`,
-      emailVerified: true,
-    },
-  ]);
+  const users: FixtureUser[] = [
+    { id: adminA, name: 'Fixture Admin A' },
+    { id: leaderOfMinistryOneA, name: 'Fixture Leader One A' },
+    { id: leaderOfMinistryTwoA, name: 'Fixture Leader Two A' },
+    { id: teamLeaderA, name: 'Fixture Team Leader A' },
+    { id: memberNoVolunteerA, name: 'Fixture Member A' },
+    { id: existingChurchMemberA, name: 'Fixture Existing Member A' },
+    { id: adminB, name: 'Fixture Admin B' },
+    { id: dualMemberAB, name: 'Fixture Dual Member AB' },
+  ];
+  for (const fixtureUser of users) {
+    await buildUser({
+      db,
+      id: fixtureUser.id,
+      name: fixtureUser.name,
+      email: `${fixtureUser.id}@fixture.test`,
+    });
+  }
 
-  await addChurchMember({
+  const memberships: FixtureChurchMembership[] = [
+    { churchId: churchA.id, userId: adminA, accessLevel: 'admin' },
+    {
+      churchId: churchA.id,
+      userId: leaderOfMinistryOneA,
+      accessLevel: 'member',
+    },
+    {
+      churchId: churchA.id,
+      userId: leaderOfMinistryTwoA,
+      accessLevel: 'member',
+    },
+    { churchId: churchA.id, userId: teamLeaderA, accessLevel: 'member' },
+    { churchId: churchA.id, userId: memberNoVolunteerA, accessLevel: 'member' },
+    {
+      churchId: churchA.id,
+      userId: existingChurchMemberA,
+      accessLevel: 'member',
+    },
+    { churchId: churchB.id, userId: adminB, accessLevel: 'admin' },
+    { churchId: churchA.id, userId: dualMemberAB, accessLevel: 'member' },
+    { churchId: churchB.id, userId: dualMemberAB, accessLevel: 'member' },
+  ];
+  for (const membership of memberships) {
+    await buildChurchMembership({ db, ...membership });
+  }
+
+  const ministryOneRow = await buildMinistry({
     db,
     churchId: churchA.id,
-    userId: adminA,
-    accessLevel: 'admin',
+    name: `Worship ${suffix}`,
   });
-  await addChurchMember({
+  const ministryTwoRow = await buildMinistry({
+    db,
+    churchId: churchA.id,
+    name: `Kids ${suffix}`,
+  });
+  const ministryInBRow = await buildMinistry({
+    db,
+    churchId: churchB.id,
+    name: `Hospitality ${suffix}`,
+  });
+
+  const teamOneRow = await buildTeam({
+    db,
+    churchId: churchA.id,
+    ministryId: ministryOneRow.id,
+    name: `Sound Team ${suffix}`,
+  });
+  const roleRow = await buildRole({
+    db,
+    churchId: churchA.id,
+    ministryId: ministryOneRow.id,
+    name: `Vocalist ${suffix}`,
+  });
+  const teamInBRow = await buildTeam({
+    db,
+    churchId: churchB.id,
+    ministryId: ministryInBRow.id,
+    name: `Greeter Team ${suffix}`,
+  });
+  const roleInBRow = await buildRole({
+    db,
+    churchId: churchB.id,
+    ministryId: ministryInBRow.id,
+    name: `Greeter ${suffix}`,
+  });
+
+  const leaderVolunteer = await buildVolunteer({
     db,
     churchId: churchA.id,
     userId: leaderOfMinistryOneA,
   });
-  await addChurchMember({
+  const leaderTwoVolunteer = await buildVolunteer({
     db,
     churchId: churchA.id,
     userId: leaderOfMinistryTwoA,
   });
-  await addChurchMember({ db, churchId: churchA.id, userId: teamLeaderA });
-  await addChurchMember({
+  const teamLeaderVolunteer = await buildVolunteer({
     db,
     churchId: churchA.id,
-    userId: memberNoVolunteerA,
+    userId: teamLeaderA,
   });
-  await addChurchMember({
+
+  await buildMinistryMembership({
     db,
     churchId: churchA.id,
-    userId: existingChurchMemberA,
+    volunteerId: leaderVolunteer.id,
+    ministryId: ministryOneRow.id,
+    ministryAccessLevel: 'leader',
+    roleIds: [],
+    teams: [],
   });
-  await addChurchMember({
+  await buildMinistryMembership({
     db,
-    churchId: churchB.id,
-    userId: adminB,
-    accessLevel: 'admin',
-  });
-  await addChurchMember({ db, churchId: churchA.id, userId: dualMemberAB });
-  await addChurchMember({ db, churchId: churchB.id, userId: dualMemberAB });
-
-  const [ministryOneRow] = await db
-    .insert(ministry)
-    .values({ churchId: churchA.id, name: `Worship ${suffix}` })
-    .returning();
-  const [ministryTwoRow] = await db
-    .insert(ministry)
-    .values({ churchId: churchA.id, name: `Kids ${suffix}` })
-    .returning();
-  const [ministryInBRow] = await db
-    .insert(ministry)
-    .values({ churchId: churchB.id, name: `Hospitality ${suffix}` })
-    .returning();
-  if (!ministryOneRow || !ministryTwoRow || !ministryInBRow) {
-    throw new Error('Ministry fixture insert failed');
-  }
-
-  const [teamOneRow] = await db
-    .insert(team)
-    .values({
-      churchId: churchA.id,
-      ministryId: ministryOneRow.id,
-      name: `Sound Team ${suffix}`,
-    })
-    .returning();
-  if (!teamOneRow) throw new Error('Team fixture insert failed');
-
-  const [roleRow] = await db
-    .insert(role)
-    .values({
-      churchId: churchA.id,
-      ministryId: ministryOneRow.id,
-      name: `Vocalist ${suffix}`,
-    })
-    .returning();
-  if (!roleRow) throw new Error('Role fixture insert failed');
-
-  const [teamInBRow] = await db
-    .insert(team)
-    .values({
-      churchId: churchB.id,
-      ministryId: ministryInBRow.id,
-      name: `Greeter Team ${suffix}`,
-    })
-    .returning();
-  const [roleInBRow] = await db
-    .insert(role)
-    .values({
-      churchId: churchB.id,
-      ministryId: ministryInBRow.id,
-      name: `Greeter ${suffix}`,
-    })
-    .returning();
-  if (!teamInBRow || !roleInBRow) {
-    throw new Error('Church B team/role fixture insert failed');
-  }
-
-  const [leaderVolunteer] = await db
-    .insert(volunteer)
-    .values({ churchId: churchA.id, userId: leaderOfMinistryOneA })
-    .returning();
-  const [leaderTwoVolunteer] = await db
-    .insert(volunteer)
-    .values({ churchId: churchA.id, userId: leaderOfMinistryTwoA })
-    .returning();
-  const [teamLeaderVolunteer] = await db
-    .insert(volunteer)
-    .values({ churchId: churchA.id, userId: teamLeaderA })
-    .returning();
-  if (!leaderVolunteer || !leaderTwoVolunteer || !teamLeaderVolunteer) {
-    throw new Error('Volunteer fixture insert failed');
-  }
-
-  await db.insert(ministryVolunteer).values([
-    {
-      churchId: churchA.id,
-      volunteerId: leaderVolunteer.id,
-      ministryId: ministryOneRow.id,
-      ministryAccessLevel: 'leader',
-    },
-    {
-      churchId: churchA.id,
-      volunteerId: leaderTwoVolunteer.id,
-      ministryId: ministryTwoRow.id,
-      ministryAccessLevel: 'leader',
-    },
-  ]);
-
-  const [teamLeaderMembership] = await db
-    .insert(ministryVolunteer)
-    .values({
-      churchId: churchA.id,
-      volunteerId: teamLeaderVolunteer.id,
-      ministryId: ministryOneRow.id,
-      ministryAccessLevel: 'volunteer',
-    })
-    .returning();
-  if (!teamLeaderMembership)
-    throw new Error('Membership fixture insert failed');
-
-  await db.insert(ministryVolunteerTeam).values({
     churchId: churchA.id,
-    ministryVolunteerId: teamLeaderMembership.id,
-    teamId: teamOneRow.id,
-    accessLevel: 'leader',
+    volunteerId: leaderTwoVolunteer.id,
+    ministryId: ministryTwoRow.id,
+    ministryAccessLevel: 'leader',
+    roleIds: [],
+    teams: [],
+  });
+
+  await buildMinistryMembership({
+    db,
+    churchId: churchA.id,
+    volunteerId: teamLeaderVolunteer.id,
+    ministryId: ministryOneRow.id,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [],
+    teams: [{ teamId: teamOneRow.id, accessLevel: 'leader' }],
   });
 
   // `dualMemberAB`'s one active Volunteer profile lives in Church B, with a
   // Ministry Membership, a Role qualification and a Team membership there —
   // the rows a Volunteer Transfer retires or preserves (spec §8.2).
-  const [dualVolunteerInB] = await db
-    .insert(volunteer)
-    .values({ churchId: churchB.id, userId: dualMemberAB })
-    .returning();
-  if (!dualVolunteerInB) {
-    throw new Error('dualMemberAB volunteer fixture insert failed');
-  }
-  const [dualMembershipInB] = await db
-    .insert(ministryVolunteer)
-    .values({
-      churchId: churchB.id,
-      volunteerId: dualVolunteerInB.id,
-      ministryId: ministryInBRow.id,
-      ministryAccessLevel: 'volunteer',
-    })
-    .returning();
-  if (!dualMembershipInB) {
-    throw new Error('dualMemberAB membership fixture insert failed');
-  }
-  await db.insert(ministryVolunteerRole).values({
+  const dualVolunteerInB = await buildVolunteer({
+    db,
     churchId: churchB.id,
-    ministryVolunteerId: dualMembershipInB.id,
-    roleId: roleInBRow.id,
+    userId: dualMemberAB,
   });
-  await db.insert(ministryVolunteerTeam).values({
+  const dualMembershipInB = await buildMinistryMembership({
+    db,
     churchId: churchB.id,
-    ministryVolunteerId: dualMembershipInB.id,
-    teamId: teamInBRow.id,
-    accessLevel: 'member',
+    volunteerId: dualVolunteerInB.id,
+    ministryId: ministryInBRow.id,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [roleInBRow.id],
+    teams: [{ teamId: teamInBRow.id, accessLevel: 'member' }],
   });
 
   return {

@@ -20,7 +20,7 @@ export interface BuildVolunteerInput {
   db: SeedWriter;
   churchId: string;
   userId: string;
-  id: string;
+  id?: string;
   /** Set to retire the profile: it keeps its Church but stops being active. */
   leftAt?: Instant;
 }

@@ -1,6 +1,7 @@
 import {
   assignment,
   assignmentAudit,
+  availability,
   church,
   member,
   ministryVolunteerRole,
@@ -26,6 +27,8 @@ import {
 import {
   buildAssignment,
   buildAssignmentAudit,
+  buildAvailability,
+  buildAvailabilityCheck,
   buildEvent,
   buildEventTemplate,
   buildMinistryParticipation,
@@ -337,6 +340,35 @@ describe('integration composition of the shared seed builders', () => {
       timestamp: parseInstant({ value: '2024-06-01T10:00:00Z' }),
     });
 
+    const membership = await buildMinistryMembership({
+      db: testDb,
+      churchId: CHURCH_ID,
+      volunteerId: volunteerRow.id,
+      ministryId: ministry.id,
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+      teams: [],
+    });
+    const check = await buildAvailabilityCheck({
+      db: testDb,
+      churchId: CHURCH_ID,
+      planningCycleId: cycle.id,
+      ministryVolunteerId: membership.id,
+    });
+    await buildAvailability({
+      db: testDb,
+      churchId: CHURCH_ID,
+      availabilityCheckId: check.id,
+      shiftId: shiftRow.id,
+    });
+
+    expect(check.state).toBe('pending');
+    const marks = await testDb
+      .select()
+      .from(availability)
+      .where(eq(availability.availabilityCheckId, check.id));
+    expect(marks.map((mark) => mark.shiftId)).toEqual([shiftRow.id]);
     expect(cycle.startDate).toEqual(new Date('2024-06-01T00:00:00Z'));
     expect(planned.eventType).toBe('hourly');
     const [storedAssignment] = await testDb

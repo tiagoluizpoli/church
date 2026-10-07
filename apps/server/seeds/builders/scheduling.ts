@@ -1,6 +1,8 @@
 import {
   assignment,
   assignmentAudit,
+  availability,
+  availabilityCheck,
   event,
   eventTemplate,
   ministryParticipation,
@@ -439,4 +441,61 @@ export async function buildEventTemplate({
           .returning();
 
   return { template, blocks: insertedBlocks };
+}
+
+export type SeededAvailabilityCheck = typeof availabilityCheck.$inferSelect;
+export type SeededAvailability = typeof availability.$inferSelect;
+export type AvailabilityCheckState = SeededAvailabilityCheck['state'];
+
+export interface BuildAvailabilityCheckInput {
+  db: SeedWriter;
+  churchId: string;
+  planningCycleId: string;
+  ministryVolunteerId: string;
+  id?: string;
+  /** Left to the column default (pending) when a fixture does not care. */
+  state?: AvailabilityCheckState;
+}
+
+/** A Ministry Membership's Availability Check for one Planning Cycle. */
+export async function buildAvailabilityCheck({
+  db,
+  churchId,
+  planningCycleId,
+  ministryVolunteerId,
+  id,
+  state,
+}: BuildAvailabilityCheckInput): Promise<SeededAvailabilityCheck> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(availabilityCheck)
+      .values({ id, churchId, planningCycleId, ministryVolunteerId, state })
+      .returning(),
+    description: `Availability Check for ${ministryVolunteerId}`,
+  });
+}
+
+export interface BuildAvailabilityInput {
+  db: SeedWriter;
+  churchId: string;
+  availabilityCheckId: string;
+  shiftId: string;
+  id?: string;
+}
+
+/** One Shift a Volunteer marked available within an Availability Check. */
+export async function buildAvailability({
+  db,
+  churchId,
+  availabilityCheckId,
+  shiftId,
+  id,
+}: BuildAvailabilityInput): Promise<SeededAvailability> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(availability)
+      .values({ id, churchId, availabilityCheckId, shiftId })
+      .returning(),
+    description: `Availability mark for Shift ${shiftId}`,
+  });
 }

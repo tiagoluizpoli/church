@@ -63,6 +63,11 @@ const NOTIFICATION_BELL_SPEC_PATHS = [
 // Specs whose starting graph comes from a journey recipe (#327) instead of
 // the shared E2E seed.
 const JOURNEY_RECIPE_SPEC_PATHS = [
+  'tests/identity/active-church-switching.spec.ts',
+  'tests/identity/cross-tenant-invitation-isolation.spec.ts',
+  'tests/identity/redemption-existing-member.spec.ts',
+  'tests/identity/redemption-new-user.spec.ts',
+  'tests/identity/volunteer-transfer-journey.spec.ts',
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/builder-slot-focus.spec.ts',
   'tests/scheduling/qualification.spec.ts',

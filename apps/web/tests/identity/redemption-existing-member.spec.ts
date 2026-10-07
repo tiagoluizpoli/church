@@ -1,185 +1,70 @@
-import { expect, type Page, request, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { assertServedFromPinnedTarget } from '../fixtures/e2e-target';
 import {
-  assertServedFromPinnedTarget,
-  runE2eServerScript,
-} from '../fixtures/e2e-target';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
+  type AcceptMinistryInvitationOutcome,
+  fetchActiveChurchStatus,
+  fetchVolunteerMinistryOptions,
+  type MintedMinistryInvitation,
+  mintMinistryInvitationAs,
+  signIn,
+} from '../fixtures/journeys/identity-actions';
+import {
+  loadMinistryRedemptionJourney,
+  type MinistryRedemptionJourney,
+} from '../fixtures/journeys/ministry-redemption';
 
 // #64/DL#107 — a Church Member who does not yet volunteer (spec 024 §11.3's
 // `memberOnlyA` — the member-but-not-Volunteer state), signed out, opens a
 // Ministry Invitation, signs in, returns to the invitation and accepts it,
 // gaining a Volunteer profile for the first time together with Ministry
 // access. Also proves declining a Ministry-only invitation rejects only that
-// invitation.
-const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
-const WEB_URL = requiredE2eUrl({ variable: 'PW_WEB_URL' });
-
-// Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
-// E2E_IDS) — same convention as the other identity/scheduling specs.
-const CHURCH_ID = 'e2e11111-1111-1111-a111-111111111111';
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
-const CARE_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333332';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
-const CARE_HOST_ROLE_ID = 'e2e55555-5555-5555-a555-555555555553';
-
-const PASSWORD = 'correct-horse-battery-staple';
-
-interface MintedInvitation {
-  id: string;
-  kind: 'ministry-only' | 'chained';
-  redemptionPath: string;
-}
-
+// invitation. The Church, its admin, Ministries and the Member are the
+// journey's own graph (`ministry-redemption` recipe); the invitations are
+// minted and redeemed through the product.
 interface MintInvitationInput {
+  journey: MinistryRedemptionJourney;
   ministryId: string;
-  email: string;
   roleIds: string[];
 }
 
+/** Church A's admin invites the journey's Member to one of its Ministries. */
 async function mintInvitation({
+  journey,
   ministryId,
-  email,
   roleIds,
-}: MintInvitationInput): Promise<MintedInvitation> {
-  const adminCtx = await request.newContext({
-    baseURL: SERVER_URL,
-    storageState: CHURCH_ADMIN_STORAGE_STATE,
+}: MintInvitationInput): Promise<MintedMinistryInvitation> {
+  return await mintMinistryInvitationAs({
+    persona: journey.churchA.personas.admin,
+    ministryId,
+    email: journey.memberOnly.email,
+    roleIds,
   });
-  const res = await adminCtx.post(
-    `/api/v1/ministries/${ministryId}/invitations`,
-    { data: { email, ministryAccessLevel: 'volunteer', roleIds } },
-  );
-  if (!res.ok()) {
-    throw new Error(
-      `Failed to mint invitation (${res.status()}): ${await res.text()}`,
-    );
-  }
-  assertServedFromPinnedTarget({
-    response: res,
-    step: 'provision Ministry Invitation',
-  });
-  const invitation = (await res.json()) as MintedInvitation;
-  await adminCtx.dispose();
-  return invitation;
-}
-
-interface AcceptMinistryInvitationOutcome {
-  kind: string;
-  volunteerId?: string;
-}
-
-interface MinistryOption {
-  id: string;
-  name: string;
-}
-
-interface VolunteerDashboardMinistryOptions {
-  ministryOptions: MinistryOption[];
-}
-
-interface BootstrapChurchMemberOnlyInput {
-  email: string;
-  name: string;
-}
-
-interface InviteChurchMemberResponse {
-  id: string;
-}
-
-/**
- * A genuine "member-but-not-Volunteer" Church Member (spec 024 §11.3's
- * `memberOnlyA`): a plain Better Auth Church Membership with no Ministry
- * Membership and therefore no Volunteer profile at all — the starting state
- * the browser-driven Ministry Invitation acceptance below must turn into a
- * first-ever Volunteer profile.
- *
- * Mirrors `apps/web/tests/global-setup.ts`'s bootstrap for the
- * TeamLeader/Volunteer personas: invite through Better Auth's own
- * `organization` plugin, then redeem in-process via
- * `e2e-redeem-church-invitation.ts`, since public sign-up is closed at HTTP
- * and the app has no Church-only redemption UI yet (spec 024 §14).
- */
-async function bootstrapChurchMemberOnly({
-  email,
-  name,
-}: BootstrapChurchMemberOnlyInput): Promise<void> {
-  const adminCtx = await request.newContext({
-    baseURL: SERVER_URL,
-    storageState: CHURCH_ADMIN_STORAGE_STATE,
-    // Better Auth's organization endpoints run an origin-check middleware
-    // that `request.newContext` never satisfies on its own (unlike a real
-    // browser navigation) — trust the same web origin the server's CORS
-    // config trusts for this e2e run (playwright.config.ts's `PW_WEB_URL`).
-    extraHTTPHeaders: { Origin: WEB_URL },
-  });
-  const res = await adminCtx.post('/api/auth/organization/invite-member', {
-    data: { email, role: 'member', organizationId: CHURCH_ID },
-  });
-  if (!res.ok()) {
-    throw new Error(
-      `Failed to invite Church Member (${res.status()}): ${await res.text()}`,
-    );
-  }
-  assertServedFromPinnedTarget({
-    response: res,
-    step: 'provision Church Invitation',
-  });
-  const invitation = (await res.json()) as InviteChurchMemberResponse;
-  await adminCtx.dispose();
-
-  // Redeemed in a separate process from the server that provisioned it —
-  // the cross-process shape of the original failure; the runner asserts the
-  // script resolved the same pinned target.
-  runE2eServerScript({
-    scriptPath: 'src/scripts/e2e-redeem-church-invitation.ts',
-    args: [email, name, PASSWORD, invitation.id],
-    step: 'redeem Church Invitation',
-  });
-}
-
-function uniqueMemberEmail(label: string): string {
-  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  return `e2e-existing-${label}-${suffix}@test.com`;
-}
-
-interface SignInInput {
-  email: string;
-}
-
-/** `/login` renders the sign-in view only (issue #62) — no toggle to reach it. */
-async function signIn(page: Page, { email }: SignInInput): Promise<void> {
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign In' }).click();
 }
 
 test.describe('DL#107 — an existing Church Member redeems a Ministry Invitation', () => {
   test('signed out, with Church Membership but no Volunteer profile, opens a Ministry invitation, signs in, returns, and accepts — gaining a Volunteer profile and Ministry access for the first time', async ({
     page,
-  }) => {
-    const email = uniqueMemberEmail('accept');
-    await bootstrapChurchMemberOnly({
-      email,
-      name: 'E2E Non-Volunteer Member',
-    });
+  }, testInfo) => {
+    const journey = loadMinistryRedemptionJourney({ testInfo });
+    const { memberOnly } = journey;
+    const { worship } = journey.churchA.ministries;
 
     const invitation = await mintInvitation({
-      ministryId: WORSHIP_MINISTRY_ID,
-      email,
-      roleIds: [USHER_ROLE_ID],
+      journey,
+      ministryId: worship.id,
+      roleIds: [worship.roles.usher.id],
     });
     expect(invitation.kind).toBe('ministry-only');
 
     await page.goto(invitation.redemptionPath);
     await expect(page).toHaveURL(/\/login(\?.*)?$/);
 
-    await signIn(page, { email });
+    await signIn({ page, persona: memberOnly });
     await expect(page).toHaveURL(
       new RegExp(`/invitations/ministry/${invitation.id}$`),
     );
     await expect(
-      page.getByRole('heading', { name: /Join E2E Worship/ }),
+      page.getByRole('heading', { name: `Join ${worship.name}` }),
     ).toBeVisible();
 
     const [acceptResponse] = await Promise.all([
@@ -201,44 +86,37 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
 
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
 
-    const statusResponse = await page.request.get(
-      `${SERVER_URL}/api/v1/active-church/status`,
-    );
-    expect((await statusResponse.json()).churchId).toBe(CHURCH_ID);
+    expect(
+      await fetchActiveChurchStatus({ request: page.request }),
+    ).toMatchObject({ churchId: journey.churchA.church.id });
 
-    const dashboardResponse = await page.request.get(
-      `${SERVER_URL}/api/v1/volunteer/dashboard`,
-    );
-    const { ministryOptions } =
-      (await dashboardResponse.json()) as VolunteerDashboardMinistryOptions;
-    expect(ministryOptions.map((option) => option.id)).toEqual([
-      WORSHIP_MINISTRY_ID,
-    ]);
+    const ministryOptions = await fetchVolunteerMinistryOptions({
+      request: page.request,
+    });
+    expect(ministryOptions.map((option) => option.id)).toEqual([worship.id]);
   });
 
   test('signs in and declines a Ministry-only invitation, which does not grant access', async ({
     page,
-  }) => {
-    const email = uniqueMemberEmail('decline');
-    await bootstrapChurchMemberOnly({
-      email,
-      name: 'E2E Declining Member',
-    });
+  }, testInfo) => {
+    const journey = loadMinistryRedemptionJourney({ testInfo });
+    const { memberOnly } = journey;
+    const { care } = journey.churchA.ministries;
 
     const invitation = await mintInvitation({
-      ministryId: CARE_MINISTRY_ID,
-      email,
-      roleIds: [CARE_HOST_ROLE_ID],
+      journey,
+      ministryId: care.id,
+      roleIds: [care.roles.careHost.id],
     });
     expect(invitation.kind).toBe('ministry-only');
 
     await page.goto(invitation.redemptionPath);
-    await signIn(page, { email });
+    await signIn({ page, persona: memberOnly });
     await expect(page.getByRole('button', { name: 'Decline' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Decline' }).click();
     await expect(
-      page.getByText(/only your invitation to E2E Care/),
+      page.getByText(`only your invitation to ${care.name}`),
     ).toBeVisible();
 
     const [declineResponse] = await Promise.all([

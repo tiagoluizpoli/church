@@ -1,4 +1,11 @@
-import type { Browser, BrowserContext, Page, TestInfo } from '@playwright/test';
+import {
+  type APIRequestContext,
+  type Browser,
+  type BrowserContext,
+  type Page,
+  request as playwrightRequest,
+  type TestInfo,
+} from '@playwright/test';
 import { z } from 'zod';
 import { requiredE2eUrl } from '../e2e-urls';
 import { resolveActiveChurch, signInPersona } from '../persona-session';
@@ -35,6 +42,21 @@ export const ROSTERING_PERSONA_SCHEMA = ROSTERING_POOL_VOLUNTEER_SCHEMA.extend({
 });
 
 export type RosteringPersona = z.infer<typeof ROSTERING_PERSONA_SCHEMA>;
+
+/**
+ * A User of one rostering Church who also joined another of the same graph
+ * (server `addRosteringChurchMembership`): a Church Membership only, never a
+ * second Volunteer profile. A journey with several Churches validates each
+ * Church's part with the same schemas as a single-Church journey.
+ */
+export const ROSTERING_CHURCH_MEMBERSHIP_SCHEMA = z.object({
+  id: z.string().min(1),
+  churchId: z.string().min(1),
+  userId: z.string().min(1),
+  // Mirrors the server's `CHURCH_ACCESS_LEVEL_OPTIONS`; web cannot import
+  // server code.
+  accessLevel: z.enum(['member', 'admin']),
+});
 
 /** `anchor` is the Church-local day the recipe's dates hang from. */
 export const ROSTERING_JOURNEY_BASE_SCHEMA = z.object({
@@ -283,6 +305,31 @@ export async function newPersonaContext({
     });
   } catch (error) {
     await context.close();
+    throw error;
+  }
+  return context;
+}
+
+export interface NewPersonaRequestInput {
+  persona: RosteringPersona;
+}
+
+/**
+ * An API context on the server, signed in as the persona with its Active
+ * Church resolved, for a journey acting through the API as an actor other
+ * than its page's. The caller disposes it.
+ */
+export async function newPersonaRequest({
+  persona,
+}: NewPersonaRequestInput): Promise<APIRequestContext> {
+  const context = await playwrightRequest.newContext({
+    baseURL: requiredE2eUrl({ variable: 'VITE_SERVER_URL' }),
+  });
+  try {
+    await signInPersona({ request: context, credentials: persona });
+    await resolveActiveChurch({ request: context, name: persona.name });
+  } catch (error) {
+    await context.dispose();
     throw error;
   }
   return context;

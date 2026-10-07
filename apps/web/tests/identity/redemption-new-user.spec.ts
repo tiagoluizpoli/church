@@ -1,7 +1,18 @@
-import { expect, type Page, request, test } from '@playwright/test';
+import { expect, request, test } from '@playwright/test';
 import { assertServedFromPinnedTarget } from '../fixtures/e2e-target';
 import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
+import {
+  assertOk,
+  fetchActiveChurchStatus,
+  fetchJson,
+  fetchVolunteerMinistryOptions,
+  type MintedMinistryInvitation,
+  mintMinistryInvitationAs,
+} from '../fixtures/journeys/identity-actions';
+import {
+  loadMinistryRedemptionJourney,
+  type MinistryRedemptionJourney,
+} from '../fixtures/journeys/ministry-redemption';
 
 // #63/DL#100 — a person outside the Church (the "outsider" — never before
 // registered) follows a chained Ministry Invitation link, verifies a
@@ -11,61 +22,27 @@ import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
 // visible. Proves the real emailed link (composed by `redemptionPathFor`)
 // resolves against the real redemption API end to end. Failure copy, expiry
 // handling and checkpoint atomicity are proved below this seam (L1/L2), not
-// re-asserted here.
+// re-asserted here. The inviting Church (A) and the second tenant (B) the
+// outsider must never join are the journey's own graph (`ministry-redemption`
+// recipe); the outsider is created by the redemption itself.
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
-// Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
-// E2E_IDS). The web package stays DB-tooling-free, so specs reference these
-// well-known UUIDs directly — same convention as the scheduling specs.
-const CHURCH_ID = 'e2e11111-1111-1111-a111-111111111111';
-const WORSHIP_MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
-const USHER_ROLE_ID = 'e2e55555-5555-5555-a555-555555555551';
-// The second tenant `global-setup.ts` provisions alongside CHURCH_ID — the
-// "two-Church" half of the environment this outsider redeems into. Naming
-// its real id/name lets the isolation assertion below prove absence, not
-// just an empty-looking list (spec 024 §11.2).
-const CHURCH_B_ID = 'e2ebbbbb-1111-1111-a111-111111111111';
-const CHURCH_B_NAME = 'E2E ChurchB';
-
-interface MintedInvitation {
-  id: string;
-  kind: 'ministry-only' | 'chained';
-  redemptionPath: string;
-}
-
 interface MintChainedInvitationInput {
+  journey: MinistryRedemptionJourney;
   email: string;
 }
 
 async function mintChainedInvitation({
+  journey,
   email,
-}: MintChainedInvitationInput): Promise<MintedInvitation> {
-  const adminCtx = await request.newContext({
-    baseURL: SERVER_URL,
-    storageState: CHURCH_ADMIN_STORAGE_STATE,
+}: MintChainedInvitationInput): Promise<MintedMinistryInvitation> {
+  const { worship } = journey.churchA.ministries;
+  return await mintMinistryInvitationAs({
+    persona: journey.churchA.personas.admin,
+    ministryId: worship.id,
+    email,
+    roleIds: [worship.roles.usher.id],
   });
-  const res = await adminCtx.post(
-    `/api/v1/ministries/${WORSHIP_MINISTRY_ID}/invitations`,
-    {
-      data: {
-        email,
-        ministryAccessLevel: 'volunteer',
-        roleIds: [USHER_ROLE_ID],
-      },
-    },
-  );
-  if (!res.ok()) {
-    throw new Error(
-      `Failed to mint invitation (${res.status()}): ${await res.text()}`,
-    );
-  }
-  assertServedFromPinnedTarget({
-    response: res,
-    step: 'provision chained invitation',
-  });
-  const invitation = (await res.json()) as MintedInvitation;
-  await adminCtx.dispose();
-  return invitation;
 }
 
 interface FetchDebugVerificationCodeInput {
@@ -80,37 +57,45 @@ async function fetchDebugVerificationCode({
   invitationId,
 }: FetchDebugVerificationCodeInput): Promise<string> {
   const ctx = await request.newContext({ baseURL: SERVER_URL });
-  const res = await ctx.get(
-    `/api/v1/redemption/church/${invitationId}/debug-code`,
-  );
-  if (!res.ok()) {
-    throw new Error(
-      `No verification code captured for ${invitationId} (${res.status()})`,
+  try {
+    const res = await ctx.get(
+      `/api/v1/redemption/church/${invitationId}/debug-code`,
     );
+    await assertOk({
+      res,
+      action: `read the verification code captured for ${invitationId}`,
+    });
+    const { code } = (await res.json()) as DebugVerificationCodeResponse;
+    return code;
+  } finally {
+    await ctx.dispose();
   }
-  const { code } = (await res.json()) as DebugVerificationCodeResponse;
-  await ctx.dispose();
-  return code;
+}
+
+interface FullSuccessOutcome {
+  kind: 'full-success';
+  volunteerId: string;
+}
+
+interface ChurchOnlyOutcome {
+  kind: 'church-only';
+}
+
+interface RetryableFailureOutcome {
+  kind: 'retryable-failure';
+  reason: string;
+}
+
+interface TerminalFailureOutcome {
+  kind: 'terminal-failure';
+  reason: string;
 }
 
 type RedeemOutcome =
-  | { kind: 'full-success'; volunteerId: string }
-  | { kind: 'church-only' }
-  | { kind: 'retryable-failure'; reason: string }
-  | { kind: 'terminal-failure'; reason: string };
-
-interface MinistryOption {
-  id: string;
-  name: string;
-}
-
-interface VolunteerDashboardMinistryOptions {
-  ministryOptions: MinistryOption[];
-}
-
-interface ActiveChurchStatusResponse {
-  churchId: string;
-}
+  | FullSuccessOutcome
+  | ChurchOnlyOutcome
+  | RetryableFailureOutcome
+  | TerminalFailureOutcome;
 
 interface ChurchSelectionOption {
   churchId: string;
@@ -121,21 +106,6 @@ interface ChurchOptionsResponse {
   churches: ChurchSelectionOption[];
 }
 
-interface FetchJsonInput {
-  page: Page;
-  url: string;
-}
-
-async function fetchJson<T>({ page, url }: FetchJsonInput): Promise<T> {
-  const response = await page.request.get(url);
-  if (!response.ok()) {
-    throw new Error(
-      `GET ${url} failed (${response.status()}): ${await response.text()}`,
-    );
-  }
-  return (await response.json()) as T;
-}
-
 function uniqueOutsiderEmail(): string {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `e2e-outsider-${suffix}@test.com`;
@@ -144,15 +114,18 @@ function uniqueOutsiderEmail(): string {
 test.describe('DL#100 — a new person redeems a chained invitation', () => {
   test('signs up, verifies a code, becomes a Volunteer, and lands on the dashboard with the invitation Church active', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const journey = loadMinistryRedemptionJourney({ testInfo });
     const email = uniqueOutsiderEmail();
-    const invitation = await mintChainedInvitation({ email });
+    const invitation = await mintChainedInvitation({ journey, email });
     expect(invitation.kind).toBe('chained');
 
     await page.goto(invitation.redemptionPath);
     await expect(page.getByRole('heading', { name: /Join/ })).toBeVisible();
     await expect(page.getByLabel('Email')).toHaveValue(email);
-    await expect(page.getByText('Worship')).toBeVisible();
+    await expect(
+      page.getByText(journey.churchA.ministries.worship.name),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Send code' }).click();
     await expect(
@@ -188,33 +161,30 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
 
     await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
 
-    const status = await fetchJson<ActiveChurchStatusResponse>({
-      page,
-      url: `${SERVER_URL}/api/v1/active-church/status`,
-    });
-    expect(status.churchId).toBe(CHURCH_ID);
+    const status = await fetchActiveChurchStatus({ request: page.request });
+    expect(status.churchId).toBe(journey.churchA.church.id);
 
-    const { ministryOptions } =
-      await fetchJson<VolunteerDashboardMinistryOptions>({
-        page,
-        url: `${SERVER_URL}/api/v1/volunteer/dashboard`,
-      });
+    const ministryOptions = await fetchVolunteerMinistryOptions({
+      request: page.request,
+    });
     expect(ministryOptions.map((option) => option.id)).toContain(
-      WORSHIP_MINISTRY_ID,
+      journey.churchA.ministries.worship.id,
     );
 
     // Two-Church isolation: this outsider redeemed into exactly the
     // inviting Church, never touching the environment's other real tenant.
     const { churches } = await fetchJson<ChurchOptionsResponse>({
-      page,
-      url: `${SERVER_URL}/api/v1/active-church/options`,
+      request: page.request,
+      path: '/api/v1/active-church/options',
     });
-    expect(churches.map((church) => church.churchId)).toEqual([CHURCH_ID]);
-    expect(churches.some((church) => church.churchId === CHURCH_B_ID)).toBe(
-      false,
-    );
-    expect(churches.some((church) => church.name === CHURCH_B_NAME)).toBe(
-      false,
-    );
+    expect(churches.map((church) => church.churchId)).toEqual([
+      journey.churchA.church.id,
+    ]);
+    expect(
+      churches.some((church) => church.churchId === journey.churchB.church.id),
+    ).toBe(false);
+    expect(
+      churches.some((church) => church.name === journey.churchB.church.name),
+    ).toBe(false);
   });
 });

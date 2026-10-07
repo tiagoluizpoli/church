@@ -1,16 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
+import { loadPlanningAdminJourney } from '../fixtures/journeys/planning-admin';
+import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
 import { fillTimeOfDayField } from './time-field.helpers';
 
-test.use({
-  storageState: CHURCH_ADMIN_STORAGE_STATE,
-  viewport: { width: 767, height: 1200 },
-});
+test.use({ viewport: { width: 767, height: 1200 } });
 
 test('church admin can create a template with an overnight time block', async ({
   page,
-}) => {
-  const templateName = `Overnight Watch ${Date.now()}`;
+}, testInfo) => {
+  const journey = loadPlanningAdminJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.admin });
+  const templateName = 'Overnight Watch';
 
   await page.goto('/scheduling/planning-cycles/templates');
 

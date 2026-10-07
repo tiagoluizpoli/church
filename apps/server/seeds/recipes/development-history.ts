@@ -707,6 +707,268 @@ function requireKnown({ ids, key }: RequireKnownInput): string {
   return id;
 }
 
+interface FireAvailabilityRoundInput {
+  db: SeedWriter;
+  churchId: string;
+  cycle: SeededHistoricalCycle;
+  directory: ChurchDirectoryBlueprint;
+  history: HistoryBlueprint;
+  ministries: Map<string, SeededMinistryStructure>;
+  volunteerIdByEmail: Map<string, string>;
+  shifts: readonly PlannedShift[];
+  ledger: StaffingLedger;
+  confirmedAt: Instant;
+}
+
+/**
+ * Availability was fired for every Ministry Membership and every check
+ * answered; only the blueprint's people left unavailability marks.
+ */
+async function fireAvailabilityRound({
+  db,
+  churchId,
+  cycle,
+  directory,
+  history,
+  ministries,
+  volunteerIdByEmail,
+  shifts,
+  ledger,
+  confirmedAt,
+}: FireAvailabilityRoundInput): Promise<void> {
+  const checkIdByMembership = new Map<string, string>();
+  for (const ministryBlueprint of directory.ministries) {
+    const ministry = requireMinistry({
+      ministries,
+      name: ministryBlueprint.name,
+    });
+    for (const member of ministryMembers({
+      directory,
+      ministry: ministryBlueprint,
+    })) {
+      const volunteerId = requireKnown({
+        ids: volunteerIdByEmail,
+        key: member.email,
+      });
+      const membershipId = deriveSeedId({
+        kind: 'ministry-membership',
+        parentIds: [ministry.ministryId, volunteerId],
+      });
+      const checkId = deriveSeedId({
+        kind: 'availability-check',
+        parentIds: [cycle.id, membershipId],
+      });
+      await buildConfirmedAvailabilityCheck({
+        db,
+        churchId,
+        planningCycleId: cycle.id,
+        ministryVolunteerId: membershipId,
+        id: checkId,
+        confirmedAt,
+      });
+      checkIdByMembership.set(
+        `${ministryBlueprint.name}|${member.email}`,
+        checkId,
+      );
+    }
+  }
+
+  for (const incident of history.unavailability) {
+    const checkId = requireKnown({
+      ids: checkIdByMembership,
+      key: `${incident.ministry.name}|${incident.email}`,
+    });
+    for (const gathering of incident.gatherings) {
+      const shift = findShift({
+        shifts,
+        ministryName: incident.ministry.name,
+        gathering,
+      });
+      await buildUnavailabilityMark({
+        db,
+        churchId,
+        availabilityCheckId: checkId,
+        shiftId: shift.id,
+        id: deriveSeedId({
+          kind: 'availability',
+          parentIds: [checkId, shift.id],
+        }),
+      });
+      ledger.markUnavailable({
+        email: incident.email,
+        range: { start: shift.start, end: shift.end },
+      });
+    }
+  }
+}
+
+type ShiftMoment = (input: ShiftMomentInput) => Instant;
+
+interface ApplyHistoryTrailInput {
+  ledger: StaffingLedger;
+  shifts: readonly PlannedShift[];
+  history: HistoryBlueprint;
+  rosteredAt: Instant;
+  withdrawnAt: ShiftMoment;
+  replacedAt: ShiftMoment;
+}
+
+/**
+ * The blueprint's trail placed before rotation: cross-Ministry service, the
+ * overlap a leader resolved, and the decline, each with its replacement.
+ * Returns the audit entries the withdrawals and replacements left.
+ */
+function applyHistoryTrail({
+  ledger,
+  shifts,
+  history,
+  rosteredAt,
+  withdrawnAt,
+  replacedAt,
+}: ApplyHistoryTrailInput): AuditPlan[] {
+  const audits: AuditPlan[] = [];
+  for (const incident of history.crossMinistryService) {
+    for (const servicePost of incident.posts) {
+      ledger.place({
+        target: findTarget({ shifts, post: servicePost }),
+        email: incident.email,
+        assignedAt: rosteredAt,
+      });
+    }
+  }
+
+  for (const incident of history.resolvedOverlaps) {
+    ledger.place({
+      target: findTarget({ shifts, post: incident.kept }),
+      email: incident.email,
+      assignedAt: rosteredAt,
+    });
+    const target = findTarget({ shifts, post: incident.withdrawn });
+    const withdrawn: AssignmentWrite = {
+      target,
+      email: incident.email,
+      status: 'cancelled',
+      assignedAt: rosteredAt,
+      reason: incident.reason,
+    };
+    ledger.withdraw(withdrawn);
+    const replacement = ledger.place({
+      target,
+      email: incident.replacementEmail,
+      assignedAt: replacedAt({ shift: target.shift }),
+    });
+    const leaderEmail = leaderEmailOf({
+      ministry: incident.withdrawn.ministry,
+    });
+    audits.push(
+      {
+        assignment: withdrawn,
+        actorEmail: leaderEmail,
+        action: 'status_change',
+        reason: incident.reason,
+        occurredAt: withdrawnAt({ shift: target.shift }),
+      },
+      {
+        assignment: replacement,
+        actorEmail: leaderEmail,
+        action: 'created',
+        occurredAt: replacedAt({ shift: target.shift }),
+      },
+    );
+  }
+
+  for (const incident of history.declines) {
+    const target = findTarget({ shifts, post: incident.post });
+    const declined: AssignmentWrite = {
+      target,
+      email: incident.email,
+      status: 'declined',
+      assignedAt: rosteredAt,
+      reason: incident.reason,
+    };
+    ledger.withdraw(declined);
+    const replacement = ledger.place({
+      target,
+      email: incident.replacementEmail,
+      assignedAt: replacedAt({ shift: target.shift }),
+    });
+    audits.push(
+      {
+        assignment: declined,
+        actorEmail: incident.email,
+        action: 'status_change',
+        reason: incident.reason,
+        occurredAt: withdrawnAt({ shift: target.shift }),
+      },
+      {
+        assignment: replacement,
+        actorEmail: leaderEmailOf({ ministry: incident.post.ministry }),
+        action: 'created',
+        occurredAt: replacedAt({ shift: target.shift }),
+      },
+    );
+  }
+
+  return audits;
+}
+
+interface StaffByRotationInput {
+  ledger: StaffingLedger;
+  shifts: readonly PlannedShift[];
+  history: HistoryBlueprint;
+  assignedAt: Instant;
+}
+
+/**
+ * Everyone the trail did not place, by rotation: each post's qualified
+ * people take turns, skipping whoever the ledger refuses, and leaving open
+ * only the declared shortfalls.
+ */
+function staffByRotation({
+  ledger,
+  shifts,
+  history,
+  assignedAt,
+}: StaffByRotationInput): void {
+  const missingByRequirement = new Map<string, number>();
+  for (const shortfall of history.shortfalls) {
+    const { requirement } = findTarget({ shifts, post: shortfall.post });
+    missingByRequirement.set(requirement.id, shortfall.missing);
+  }
+
+  const cursorByPool = new Map<string, number>();
+  const chronological = [...shifts].sort((left, right) =>
+    compareInstants({ left: left.start, right: right.start }),
+  );
+  for (const shift of chronological) {
+    for (const requirement of shift.requirements) {
+      const target = { shift, requirement };
+      const pool = ledger.pool(target);
+      const poolKey = `${shift.ministryName}|${requirement.roleName}|${requirement.teamName ?? ''}`;
+      let cursor = cursorByPool.get(poolKey) ?? 0;
+      let open =
+        requirement.required -
+        (missingByRequirement.get(requirement.id) ?? 0) -
+        ledger.filledCount(target);
+      for (let tried = 0; open > 0 && tried < pool.length; tried += 1) {
+        const member = pool[cursor % pool.length];
+        cursor += 1;
+        if (!member || ledger.refusal({ target, email: member.email })) {
+          continue;
+        }
+        ledger.place({ target, email: member.email, assignedAt });
+        open -= 1;
+      }
+      if (open > 0) {
+        throw new Error(
+          `Not enough qualified people to staff ${shift.ministryName} ${requirement.roleName} at ${shift.gatheringKey}.`,
+        );
+      }
+      cursorByPool.set(poolKey, cursor);
+    }
+  }
+}
+
 /**
  * The previous complete calendar month as a locked historical PlanningCycle:
  * every gathering materialized, every Ministry's slice published, mostly
@@ -802,200 +1064,34 @@ export async function loadDevelopmentHistory({
   );
   const ledger = new StaffingLedger({ directory, ministryBlueprints });
 
-  // Availability was fired for every Ministry Membership, and every check
-  // answered; only the blueprint's people left marks.
-  const checkIdByMembership = new Map<string, string>();
-  for (const ministryBlueprint of directory.ministries) {
-    const ministry = requireMinistry({
-      ministries,
-      name: ministryBlueprint.name,
-    });
-    for (const member of ministryMembers({
-      directory,
-      ministry: ministryBlueprint,
-    })) {
-      const volunteerId = requireKnown({
-        ids: volunteerIdByEmail,
-        key: member.email,
-      });
-      const membershipId = deriveSeedId({
-        kind: 'ministry-membership',
-        parentIds: [ministry.ministryId, volunteerId],
-      });
-      const checkId = deriveSeedId({
-        kind: 'availability-check',
-        parentIds: [cycle.id, membershipId],
-      });
-      await buildConfirmedAvailabilityCheck({
-        db,
-        churchId,
-        planningCycleId: cycle.id,
-        ministryVolunteerId: membershipId,
-        id: checkId,
-        confirmedAt: at({
-          day: addCalendarDays({
-            day: cycle.startDate,
-            days: -AVAILABILITY_CONFIRMED_DAYS_BEFORE,
-          }),
-          time: '20:00',
-        }),
-      });
-      checkIdByMembership.set(
-        `${ministryBlueprint.name}|${member.email}`,
-        checkId,
-      );
-    }
-  }
+  await fireAvailabilityRound({
+    db,
+    churchId,
+    cycle,
+    directory,
+    history,
+    ministries,
+    volunteerIdByEmail,
+    shifts,
+    ledger,
+    confirmedAt: at({
+      day: addCalendarDays({
+        day: cycle.startDate,
+        days: -AVAILABILITY_CONFIRMED_DAYS_BEFORE,
+      }),
+      time: '20:00',
+    }),
+  });
 
-  for (const incident of history.unavailability) {
-    const checkId = requireKnown({
-      ids: checkIdByMembership,
-      key: `${incident.ministry.name}|${incident.email}`,
-    });
-    for (const gathering of incident.gatherings) {
-      const shift = findShift({
-        shifts,
-        ministryName: incident.ministry.name,
-        gathering,
-      });
-      await buildUnavailabilityMark({
-        db,
-        churchId,
-        availabilityCheckId: checkId,
-        shiftId: shift.id,
-        id: deriveSeedId({
-          kind: 'availability',
-          parentIds: [checkId, shift.id],
-        }),
-      });
-      ledger.markUnavailable({
-        email: incident.email,
-        range: { start: shift.start, end: shift.end },
-      });
-    }
-  }
-
-  const audits: AuditPlan[] = [];
-  for (const incident of history.crossMinistryService) {
-    for (const servicePost of incident.posts) {
-      ledger.place({
-        target: findTarget({ shifts, post: servicePost }),
-        email: incident.email,
-        assignedAt: rosteredAt,
-      });
-    }
-  }
-
-  for (const incident of history.resolvedOverlaps) {
-    ledger.place({
-      target: findTarget({ shifts, post: incident.kept }),
-      email: incident.email,
-      assignedAt: rosteredAt,
-    });
-    const target = findTarget({ shifts, post: incident.withdrawn });
-    const withdrawn: AssignmentWrite = {
-      target,
-      email: incident.email,
-      status: 'cancelled',
-      assignedAt: rosteredAt,
-      reason: incident.reason,
-    };
-    ledger.withdraw(withdrawn);
-    const replacement = ledger.place({
-      target,
-      email: incident.replacementEmail,
-      assignedAt: replacedAt({ shift: target.shift }),
-    });
-    const leaderEmail = leaderEmailOf({
-      ministry: incident.withdrawn.ministry,
-    });
-    audits.push(
-      {
-        assignment: withdrawn,
-        actorEmail: leaderEmail,
-        action: 'status_change',
-        reason: incident.reason,
-        occurredAt: withdrawnAt({ shift: target.shift }),
-      },
-      {
-        assignment: replacement,
-        actorEmail: leaderEmail,
-        action: 'created',
-        occurredAt: replacedAt({ shift: target.shift }),
-      },
-    );
-  }
-
-  for (const incident of history.declines) {
-    const target = findTarget({ shifts, post: incident.post });
-    const declined: AssignmentWrite = {
-      target,
-      email: incident.email,
-      status: 'declined',
-      assignedAt: rosteredAt,
-      reason: incident.reason,
-    };
-    ledger.withdraw(declined);
-    const replacement = ledger.place({
-      target,
-      email: incident.replacementEmail,
-      assignedAt: replacedAt({ shift: target.shift }),
-    });
-    audits.push(
-      {
-        assignment: declined,
-        actorEmail: incident.email,
-        action: 'status_change',
-        reason: incident.reason,
-        occurredAt: withdrawnAt({ shift: target.shift }),
-      },
-      {
-        assignment: replacement,
-        actorEmail: leaderEmailOf({ ministry: incident.post.ministry }),
-        action: 'created',
-        occurredAt: replacedAt({ shift: target.shift }),
-      },
-    );
-  }
-
-  const missingByRequirement = new Map<string, number>();
-  for (const shortfall of history.shortfalls) {
-    const { requirement } = findTarget({ shifts, post: shortfall.post });
-    missingByRequirement.set(requirement.id, shortfall.missing);
-  }
-
-  // Everyone else by rotation: each post's qualified people take turns.
-  const cursorByPool = new Map<string, number>();
-  const chronological = [...shifts].sort((left, right) =>
-    compareInstants({ left: left.start, right: right.start }),
-  );
-  for (const shift of chronological) {
-    for (const requirement of shift.requirements) {
-      const target = { shift, requirement };
-      const pool = ledger.pool(target);
-      const poolKey = `${shift.ministryName}|${requirement.roleName}|${requirement.teamName ?? ''}`;
-      let cursor = cursorByPool.get(poolKey) ?? 0;
-      let open =
-        requirement.required -
-        (missingByRequirement.get(requirement.id) ?? 0) -
-        ledger.filledCount(target);
-      for (let tried = 0; open > 0 && tried < pool.length; tried += 1) {
-        const member = pool[cursor % pool.length];
-        cursor += 1;
-        if (!member || ledger.refusal({ target, email: member.email })) {
-          continue;
-        }
-        ledger.place({ target, email: member.email, assignedAt: rosteredAt });
-        open -= 1;
-      }
-      if (open > 0) {
-        throw new Error(
-          `Not enough qualified people to staff ${shift.ministryName} ${requirement.roleName} at ${shift.gatheringKey}.`,
-        );
-      }
-      cursorByPool.set(poolKey, cursor);
-    }
-  }
+  const audits = applyHistoryTrail({
+    ledger,
+    shifts,
+    history,
+    rosteredAt,
+    withdrawnAt,
+    replacedAt,
+  });
+  staffByRotation({ ledger, shifts, history, assignedAt: rosteredAt });
 
   const assignmentIdOf = ({ target, email }: AssignmentWrite): string =>
     deriveSeedId({

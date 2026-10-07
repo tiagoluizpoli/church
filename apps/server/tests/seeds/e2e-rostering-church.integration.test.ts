@@ -6,6 +6,7 @@ import {
   ministryVolunteerTeam,
   organization,
   user,
+  volunteer,
 } from '@church/db';
 import {
   type CalendarDay,
@@ -19,6 +20,7 @@ import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
 import { deriveSeedId } from '../../seeds/builders/derived-id';
 import {
   E2E_JOURNEY_RECIPE_NAMES,
+  type E2eJourneyRootKinds,
   type JourneySeedIdOf,
   journeyIdentity,
   journeySeedId,
@@ -26,8 +28,10 @@ import {
   resolveJourneyRoots,
 } from '../../seeds/e2e/journey-keys';
 import {
+  addRosteringChurchMembership,
   anchoredInstant,
   buildRosteringChurch,
+  mergeRootKinds,
   type RosteringChurch,
   type RosteringChurchPlan,
   rosteringChurchRootKinds,
@@ -132,24 +136,34 @@ function idOfKey({ journeyKey }: JourneyKeyInput): JourneySeedIdOf {
 interface BuildInput<TPlan extends RosteringChurchPlan>
   extends JourneyKeyInput {
   plan: TPlan;
+  scope?: string;
 }
 
 async function build<const TPlan extends RosteringChurchPlan>({
   journeyKey,
   plan,
+  scope,
 }: BuildInput<TPlan>): Promise<RosteringChurch<TPlan>> {
   return await buildRosteringChurch({
     db: testDb,
     idOf: idOfKey({ journeyKey }),
     tag: `t${journeyKey}`,
     plan,
+    scope,
   });
 }
 
+interface PurgeRootsInput extends JourneyKeyInput {
+  /** Defaults to the unscoped `PLAN`'s. */
+  kinds?: E2eJourneyRootKinds;
+}
+
 /** What `runE2eJourneyRecipe` purges: the roots the plan's kinds name. */
-async function purgeRoots({ journeyKey }: JourneyKeyInput): Promise<void> {
+async function purgeRoots({
+  journeyKey,
+  kinds = rosteringChurchRootKinds({ plan: PLAN }),
+}: PurgeRootsInput): Promise<void> {
   const idOf = idOfKey({ journeyKey });
-  const kinds = rosteringChurchRootKinds({ plan: PLAN });
   await testDb.delete(organization).where(
     inArray(
       organization.id,
@@ -361,6 +375,245 @@ describe('rostering Church base for E2E journey recipes', () => {
         },
       }),
     ).rejects.toThrow('share the email "pool-grace@');
+  });
+});
+
+/** Church B of a two-Church journey: its own admin, Ministry and pool. */
+const CHURCH_B_PLAN = {
+  ministries: {
+    worship: {
+      name: 'Louvor B',
+      roles: { usher: 'Usher' },
+      teams: {},
+    },
+  },
+  personas: {
+    leader: {
+      name: 'Bia Souza',
+      churchAccessLevel: 'admin',
+      memberships: [
+        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
+      ],
+    },
+  },
+  pool: {
+    grace: {
+      name: 'Grace B',
+      memberships: [
+        {
+          ministry: 'worship',
+          accessLevel: 'volunteer',
+          roles: ['usher'],
+          teams: [],
+        },
+      ],
+    },
+  },
+} as const satisfies RosteringChurchPlan;
+
+const TWO_CHURCH_ROOT_KINDS = mergeRootKinds({
+  rootKinds: [
+    rosteringChurchRootKinds({ plan: PLAN, scope: 'a' }),
+    rosteringChurchRootKinds({ plan: CHURCH_B_PLAN, scope: 'b' }),
+  ],
+});
+
+interface TwoChurchGraph {
+  churchA: RosteringChurch<typeof PLAN>;
+  churchB: RosteringChurch<typeof CHURCH_B_PLAN>;
+}
+
+async function buildTwoChurches({
+  journeyKey,
+}: JourneyKeyInput): Promise<TwoChurchGraph> {
+  const churchA = await build({ journeyKey, plan: PLAN, scope: 'a' });
+  const churchB = await build({ journeyKey, plan: CHURCH_B_PLAN, scope: 'b' });
+  await addRosteringChurchMembership({
+    db: testDb,
+    idOf: idOfKey({ journeyKey }),
+    church: churchB.church,
+    userId: churchA.personas.volunteer.userId,
+    accessLevel: 'member',
+  });
+  return { churchA, churchB };
+}
+
+interface GraphIdsInput {
+  graph: RosteringChurch<RosteringChurchPlan>;
+}
+
+/** Every id a graph's result names. */
+function graphIds({ graph }: GraphIdsInput): string[] {
+  return [
+    graph.church.id,
+    ...Object.values(graph.ministries).flatMap((ministry) => [
+      ministry.id,
+      ...Object.values(ministry.roles).map((role) => role.id),
+      ...Object.values(ministry.teams).map((team) => team.id),
+    ]),
+    ...[...Object.values(graph.personas), ...Object.values(graph.pool)].flatMap(
+      (row) => [row.userId, row.volunteerId],
+    ),
+  ];
+}
+
+describe('scoped rostering Churches', () => {
+  beforeEach(async () => {
+    await truncateAll();
+    await ensurePlatformOperator({
+      db: testDb,
+      id: SEED_PLATFORM_OPERATOR_ID,
+    });
+  });
+
+  it('keeps the unscoped ids, names and emails of the single-Church base', async () => {
+    const graph = await build({ journeyKey: 'alpha', plan: PLAN });
+    const idOf = idOfKey({ journeyKey: 'alpha' });
+
+    expect(graph.church).toEqual({
+      id: idOf({ kind: 'church' }),
+      slug: 'e2e-talpha',
+      name: 'Igreja E2E talpha',
+    });
+    expect(graph.personas.leader.userId).toBe(
+      idOf({ kind: 'persona-user:leader' }),
+    );
+    expect(graph.personas.leader.email).toBe('leader@talpha.e2e.test');
+    expect(rosteringChurchRootKinds({ plan: PLAN })).toEqual({
+      churchKinds: ['church'],
+      userKinds: [
+        'persona-user:leader',
+        'persona-user:teamLeader',
+        'persona-user:volunteer',
+        'pool-user:grace',
+        'pool-user:ursula',
+      ],
+    });
+  });
+
+  it('builds the same plan under two scopes and unscoped in one journey without a collision', async () => {
+    const unscoped = await build({ journeyKey: 'alpha', plan: PLAN });
+    const churchA = await build({
+      journeyKey: 'alpha',
+      plan: PLAN,
+      scope: 'a',
+    });
+    const churchB = await build({
+      journeyKey: 'alpha',
+      plan: PLAN,
+      scope: 'b',
+    });
+    const graphs = [unscoped, churchA, churchB];
+
+    const ids = graphs.flatMap((graph) => graphIds({ graph }));
+    expect(new Set(ids).size).toBe(ids.length);
+
+    expect(churchA.church.slug).toBe('e2e-a-talpha');
+    expect(churchA.church.name).toBe('Igreja E2E a talpha');
+    expect(churchA.personas.leader.email).toBe('leader@a-talpha.e2e.test');
+    expect(churchB.pool.grace.name).toBe('Grace Hopper');
+
+    // No Church's name, slug or email contains another's, so a negative
+    // assertion on one never matches the other.
+    const labels = graphs.map((graph) => [
+      graph.church.name,
+      graph.church.slug,
+      graph.personas.leader.email,
+    ]);
+    for (const [index, own] of labels.entries()) {
+      for (const [otherIndex, other] of labels.entries()) {
+        if (otherIndex === index) continue;
+        for (const [position, value] of own.entries()) {
+          expect(other[position]).not.toContain(value);
+        }
+      }
+    }
+  });
+
+  it('shares one User between two Churches as an active Volunteer of only one', async () => {
+    const { churchA, churchB } = await buildTwoChurches({
+      journeyKey: 'alpha',
+    });
+    const shared = churchA.personas.volunteer;
+
+    const memberships = await testDb
+      .select({ churchId: member.organizationId, role: member.role })
+      .from(member)
+      .where(eq(member.userId, shared.userId));
+    expect(memberships).toEqual(
+      expect.arrayContaining([
+        { churchId: churchA.church.id, role: 'member' },
+        { churchId: churchB.church.id, role: 'member' },
+      ]),
+    );
+    expect(memberships).toHaveLength(2);
+
+    const profiles = await testDb
+      .select({ id: volunteer.id, churchId: volunteer.churchId })
+      .from(volunteer)
+      .where(eq(volunteer.userId, shared.userId));
+    expect(profiles).toEqual([
+      { id: shared.volunteerId, churchId: churchA.church.id },
+    ]);
+  });
+
+  it('refuses a membership the User already holds', async () => {
+    const { churchA, churchB } = await buildTwoChurches({
+      journeyKey: 'alpha',
+    });
+    const idOf = idOfKey({ journeyKey: 'alpha' });
+
+    await expect(
+      addRosteringChurchMembership({
+        db: testDb,
+        idOf,
+        church: churchB.church,
+        userId: churchA.personas.volunteer.userId,
+        accessLevel: 'admin',
+      }),
+    ).rejects.toThrow('already a member');
+    await expect(
+      addRosteringChurchMembership({
+        db: testDb,
+        idOf,
+        church: churchA.church,
+        userId: churchA.personas.leader.userId,
+        accessLevel: 'member',
+      }),
+    ).rejects.toThrow('already a member');
+  });
+
+  it('declares merged root kinds that purge both Churches and every User', async () => {
+    const baseline = await countAllRows();
+    await buildTwoChurches({ journeyKey: 'alpha' });
+    expect(await countAllRows()).not.toEqual(baseline);
+
+    await purgeRoots({ journeyKey: 'alpha', kinds: TWO_CHURCH_ROOT_KINDS });
+
+    expect(await countAllRows()).toEqual(baseline);
+  });
+
+  it('rebuilds an identical two-Church graph after a purge, beside another journey', async () => {
+    await buildTwoChurches({ journeyKey: 'beta' });
+    const first = await buildTwoChurches({ journeyKey: 'alpha' });
+    const snapshot = await snapshotAllRows();
+
+    await purgeRoots({ journeyKey: 'alpha', kinds: TWO_CHURCH_ROOT_KINDS });
+    const second = await buildTwoChurches({ journeyKey: 'alpha' });
+
+    expect(second).toEqual(first);
+    expect(await snapshotAllRows()).toEqual(snapshot);
+  });
+
+  it('refuses a scope that is not lower-case slug-safe', async () => {
+    for (const scope of ['B', 'a_b', '-a', '']) {
+      await expect(
+        build({ journeyKey: 'alpha', plan: PLAN, scope }),
+      ).rejects.toThrow('not lower-case slug-safe');
+      expect(() => rosteringChurchRootKinds({ plan: PLAN, scope })).toThrow(
+        'not lower-case slug-safe',
+      );
+    }
   });
 });
 

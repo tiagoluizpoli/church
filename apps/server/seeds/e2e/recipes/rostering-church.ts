@@ -1,4 +1,4 @@
-import { addChurchMember } from '@church/db';
+import { addChurchMember, member } from '@church/db';
 import {
   addCalendarDays,
   type CalendarDay,
@@ -8,6 +8,7 @@ import {
   toInstant,
 } from '@church/time';
 import { hashPassword } from 'better-auth/crypto';
+import { and, eq } from 'drizzle-orm';
 import type { ChurchAccessLevel } from '../../../src/domain/authority/types';
 import { SEED_PERSONA_PASSWORD } from '../../blueprints/credentials';
 import {
@@ -38,8 +39,16 @@ import {
  * its whole graph.
  *
  * A plan names everything by key; the result is keyed the same way. The
- * kinds this module derives ids from (`church`, `persona-user:<key>`, ...)
- * are reserved: a recipe composing it uses other kinds for its own rows.
+ * kinds this module derives ids from (`church`, `persona-user:<key>`, ...,
+ * every `scope:<scope>/…` kind and `shared-church-membership:…`) are
+ * reserved: a recipe composing it uses other kinds for its own rows.
+ *
+ * A journey that needs several Churches in one graph (Church A and Church
+ * B) builds each under its own `scope`; a scope prefixes every id kind and
+ * names the slug, Church name and email domain, so two scoped Churches of
+ * one journey never collide. Without a scope, ids, names and emails are
+ * those of the single-Church base. A User of one Church joins another
+ * through `addRosteringChurchMembership`.
  */
 
 /** Key → display name. */
@@ -137,6 +146,68 @@ export interface RosteringChurch<TPlan extends RosteringChurchPlan> {
 
 const CHURCH_KIND = 'church';
 const PLAN_KEY_PATTERN = /^[A-Za-z0-9-]+$/;
+/** Lower case: a scope names a slug and an email domain. */
+const SCOPE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export interface RosteringChurchScopeInput {
+  /** Names one of several rostering Churches of a journey graph, e.g. `a`
+   * or `b`; omitted for a journey's only Church. Lower-case letters, digits
+   * and inner hyphens. */
+  scope?: string;
+}
+
+function requireValidScope({ scope }: RosteringChurchScopeInput): void {
+  if (scope !== undefined && !SCOPE_PATTERN.test(scope)) {
+    throw new Error(
+      `Rostering Church scope "${scope}" is not lower-case slug-safe.`,
+    );
+  }
+}
+
+interface ScopedKindInput extends RosteringChurchScopeInput {
+  kind: string;
+}
+
+/** The id kind of a row in the scoped Church: unchanged without a scope. */
+function scopedKind({ scope, kind }: ScopedKindInput): string {
+  return scope === undefined ? kind : `scope:${scope}/${kind}`;
+}
+
+interface ScopedIdOfInput extends RosteringChurchScopeInput {
+  idOf: JourneySeedIdOf;
+}
+
+function scopedIdOf({ idOf, scope }: ScopedIdOfInput): JourneySeedIdOf {
+  return scope === undefined
+    ? idOf
+    : ({ kind }) => idOf({ kind: scopedKind({ scope, kind }) });
+}
+
+interface ChurchNamingInput extends RosteringChurchScopeInput {
+  tag: string;
+}
+
+interface ChurchNaming {
+  name: string;
+  slug: string;
+  /** Every User's email ends `@<emailDomain>`. */
+  emailDomain: string;
+}
+
+/**
+ * The scope goes before the tag, so no scoped name, slug or email contains
+ * an unscoped one of the same journey (a negative assertion on one Church's
+ * name never matches another's).
+ */
+function churchNaming({ tag, scope }: ChurchNamingInput): ChurchNaming {
+  const label = scope === undefined ? tag : `${scope}-${tag}`;
+  return {
+    name:
+      scope === undefined ? `Igreja E2E ${tag}` : `Igreja E2E ${scope} ${tag}`,
+    slug: `e2e-${label}`,
+    emailDomain: `${label}.e2e.test`,
+  };
+}
 
 interface PlanKeyInput {
   key: string;
@@ -150,7 +221,7 @@ function poolUserKind({ key }: PlanKeyInput): string {
   return `pool-user:${key}`;
 }
 
-/** The part of a persona's email before `@<tag>.e2e.test`. */
+/** The part of a persona's email before `@<emailDomain>`. */
 function personaEmailLocalPart({ key }: PlanKeyInput): string {
   return key.toLowerCase();
 }
@@ -163,16 +234,41 @@ export interface RosteringChurchPlanInput {
   plan: RosteringChurchPlan;
 }
 
-/** The root kinds of a rostering Church: its Church and every User. */
+export interface RosteringChurchRootKindsInput
+  extends RosteringChurchPlanInput,
+    RosteringChurchScopeInput {}
+
+/**
+ * The root kinds of a rostering Church: its Church and every User, under
+ * the same `scope` it was built with. A journey with several Churches joins
+ * theirs with `mergeRootKinds`.
+ */
 export function rosteringChurchRootKinds({
   plan,
-}: RosteringChurchPlanInput): E2eJourneyRootKinds {
+  scope,
+}: RosteringChurchRootKindsInput): E2eJourneyRootKinds {
+  requireValidScope({ scope });
+  const kinds = [
+    ...Object.keys(plan.personas).map((key) => personaUserKind({ key })),
+    ...Object.keys(plan.pool).map((key) => poolUserKind({ key })),
+  ];
   return {
-    churchKinds: [CHURCH_KIND],
-    userKinds: [
-      ...Object.keys(plan.personas).map((key) => personaUserKind({ key })),
-      ...Object.keys(plan.pool).map((key) => poolUserKind({ key })),
-    ],
+    churchKinds: [scopedKind({ scope, kind: CHURCH_KIND })],
+    userKinds: kinds.map((kind) => scopedKind({ scope, kind })),
+  };
+}
+
+export interface MergeRootKindsInput {
+  rootKinds: readonly E2eJourneyRootKinds[];
+}
+
+/** One journey's root kinds from those of each of its Churches. */
+export function mergeRootKinds({
+  rootKinds,
+}: MergeRootKindsInput): E2eJourneyRootKinds {
+  return {
+    churchKinds: rootKinds.flatMap((kinds) => kinds.churchKinds),
+    userKinds: rootKinds.flatMap((kinds) => kinds.userKinds),
   };
 }
 
@@ -348,7 +444,8 @@ interface BuildPlanVolunteerInput {
   churchAccessLevel: ChurchAccessLevel;
 }
 
-export interface BuildRosteringChurchInput<TPlan extends RosteringChurchPlan> {
+export interface BuildRosteringChurchInput<TPlan extends RosteringChurchPlan>
+  extends RosteringChurchScopeInput {
   db: SeedWriter;
   /** The recipe's id function; every id of the graph derives from it. */
   idOf: JourneySeedIdOf;
@@ -366,19 +463,23 @@ export async function buildRosteringChurch<
   const TPlan extends RosteringChurchPlan,
 >({
   db,
-  idOf,
+  idOf: journeyIdOf,
   tag,
   plan,
+  scope,
 }: BuildRosteringChurchInput<TPlan>): Promise<RosteringChurch<TPlan>> {
+  requireValidScope({ scope });
   const adminKey = resolveAdminKey({ plan });
+  const idOf = scopedIdOf({ idOf: journeyIdOf, scope });
+  const naming = churchNaming({ tag, scope });
   const emailOf = ({ localPart }: EmailLocalPartInput): string =>
-    `${localPart}@${tag}.e2e.test`;
+    `${localPart}@${naming.emailDomain}`;
 
   const { church, adminInvitationId } = await buildProvisionedChurch({
     db,
     id: idOf({ kind: CHURCH_KIND }),
-    name: `Igreja E2E ${tag}`,
-    slug: `e2e-${tag}`,
+    name: naming.name,
+    slug: naming.slug,
     timezone: E2E_JOURNEY_TIMEZONE,
     adminEmail: emailOf({
       localPart: personaEmailLocalPart({ key: adminKey }),
@@ -484,6 +585,67 @@ export async function buildRosteringChurch<
     personas: personas as KeyedBy<TPlan['personas'], RosteringPersona>,
     pool: pool as KeyedBy<TPlan['pool'], RosteringPoolVolunteer>,
   };
+}
+
+export interface AddRosteringChurchMembershipInput {
+  db: SeedWriter;
+  /** The recipe's id function (unscoped). */
+  idOf: JourneySeedIdOf;
+  /** The Church the User joins: another rostering Church of the graph than
+   * the one that built the User. */
+  church: RosteringChurchSummary;
+  /** A persona or pool User of another rostering Church of the same graph,
+   * so purging that Church's roots removes the User. */
+  userId: string;
+  accessLevel: ChurchAccessLevel;
+}
+
+export interface RosteringChurchMembership {
+  id: string;
+  churchId: string;
+  userId: string;
+  accessLevel: ChurchAccessLevel;
+}
+
+/**
+ * Makes a User of one rostering Church a member of another: one User row,
+ * a Church Membership in each Church. Never a Volunteer profile: a User is
+ * an active Volunteer in only one Church (`volunteer_user_id_active_idx`),
+ * and the base already made this User one in the Church that built them.
+ * A journey that needs the User to serve in the joined Church gets there
+ * through the product (a Volunteer Transfer). Refuses a User who is already
+ * a member of `church`, whose access level it would otherwise overwrite.
+ */
+export async function addRosteringChurchMembership({
+  db,
+  idOf,
+  church,
+  userId,
+  accessLevel,
+}: AddRosteringChurchMembershipInput): Promise<RosteringChurchMembership> {
+  const [existing] = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(
+      and(eq(member.organizationId, church.id), eq(member.userId, userId)),
+    );
+  if (existing !== undefined) {
+    throw new Error(
+      `User ${userId} is already a member of Church ${church.slug}.`,
+    );
+  }
+  const id = idOf({
+    kind: `shared-church-membership:${church.id}:${userId}`,
+  });
+  // Direct state by purpose (ADR 0006), as for every non-admin persona.
+  await addChurchMember({
+    db,
+    churchId: church.id,
+    userId,
+    accessLevel,
+    id,
+  });
+  return { id, churchId: church.id, userId, accessLevel };
 }
 
 /** The wall clock most journey events start and end at. */

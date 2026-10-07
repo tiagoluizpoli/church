@@ -1,25 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { CHURCH_ADMIN_STORAGE_STATE } from '../global-setup';
+import { loadPlanningAdminJourney } from '../fixtures/journeys/planning-admin';
+import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
 import { fillDatePickerField } from './date-picker.helpers';
-import { allocatedYear } from './planning-cycle-year.helpers';
-
-test.use({ storageState: CHURCH_ADMIN_STORAGE_STATE });
-
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
+import { planningMonth } from './planning-month.helpers';
 
 test('planning-cycles, new, and $cycleId are distinct addressable URLs with working back/forward (FR-015, FR-016, SC-007)', async ({
   page,
-}) => {
-  const now = new Date();
-  const year = allocatedYear({
-    callSiteId: 'planning-nav-restructure:distinct-addressable-urls',
-  });
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 1));
-  const cycleName = `Nav restructure check ${year}-${String(month + 1).padStart(2, '0')} ${now.getTime()}`;
+}, testInfo) => {
+  const journey = loadPlanningAdminJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.admin });
+  const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
+  const cycleName = `Nav restructure check ${startDate}`;
 
   await page.goto('/scheduling/planning-cycles');
   await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
@@ -32,12 +23,12 @@ test('planning-cycles, new, and $cycleId are distinct addressable URLs with work
   await fillDatePickerField({
     page,
     trigger: createCycleDialog.getByTestId('cycle-start-date-input'),
-    date: toDateString(start),
+    date: startDate,
   });
   await fillDatePickerField({
     page,
     trigger: createCycleDialog.getByTestId('cycle-end-date-input'),
-    date: toDateString(end),
+    date: endDate,
   });
   await createCycleDialog.getByTestId('create-cycle-button').click();
 

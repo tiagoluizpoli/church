@@ -1,11 +1,14 @@
 import { expect, test } from '@playwright/test';
 import {
-  CHURCH_ADMIN_STORAGE_STATE,
-  LEADER_STORAGE_STATE,
-  VOLUNTEER_STORAGE_STATE,
-} from '../global-setup';
+  loadPlanningAdminJourney,
+  type PlanningAdminJourney,
+} from '../fixtures/journeys/planning-admin';
+import {
+  newPersonaContext,
+  signInPersonaPage,
+} from '../fixtures/journeys/rostering-church';
 import { fillDatePickerField } from './date-picker.helpers';
-import { allocatedYear } from './planning-cycle-year.helpers';
+import { planningMonth } from './planning-month.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
 
 interface PlanningMonth {
@@ -94,14 +97,19 @@ function countMatchingWeekdays({
   return dates;
 }
 
-function createPlanningMonth(): PlanningMonth {
-  const now = new Date();
-  const year = allocatedYear({
-    callSiteId: 'us1-admin-plan:create-planning-month',
-  });
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 1));
+interface CreatePlanningMonthParams {
+  journey: PlanningAdminJourney;
+}
+
+/** The calendar month after the journey's anchor, as the cycle to plan. */
+function createPlanningMonth({
+  journey,
+}: CreatePlanningMonthParams): PlanningMonth {
+  const window = planningMonth({ anchor: journey.anchor });
+  const start = new Date(`${window.startDate}T00:00:00Z`);
+  const end = new Date(`${window.endDate}T00:00:00Z`);
+  const year = start.getUTCFullYear();
+  const month = start.getUTCMonth();
   const overlapStart = new Date(Date.UTC(year, month, 15));
   const overlapEnd = new Date(Date.UTC(year, month + 1, 15));
   const sundayDates = countMatchingWeekdays({
@@ -136,7 +144,7 @@ function createPlanningMonth(): PlanningMonth {
   );
 
   return {
-    cycleName: `US1 Admin Plan ${year}-${String(month + 1).padStart(2, '0')} ${now.getTime()}`,
+    cycleName: `US1 Admin Plan ${year}-${String(month + 1).padStart(2, '0')}`,
     startDate: toDateString(start),
     endDate: toDateString(end),
     overlapStartDate: toDateString(overlapStart),
@@ -154,16 +162,15 @@ function createPlanningMonth(): PlanningMonth {
   };
 }
 
-test.use({
-  storageState: CHURCH_ADMIN_STORAGE_STATE,
-  viewport: { width: 767, height: 1200 },
-});
+test.use({ viewport: { width: 767, height: 1200 } });
 
 test('church admin can plan, review, and lock a cycle while volunteers stay hidden from it', async ({
   browser,
   page,
-}) => {
-  const month = createPlanningMonth();
+}, testInfo) => {
+  const journey = loadPlanningAdminJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.admin });
+  const month = createPlanningMonth({ journey });
   const sundayTemplateName = `Sunday Service ${month.cycleName}`;
   const wednesdayTemplateName = `Wednesday Service ${month.cycleName}`;
   const sundayGatheringName = `Sunday Gathering ${month.cycleName}`;
@@ -418,8 +425,11 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await expect(page.getByRole('button', { name: 'Add event' })).toHaveCount(0);
   await expect(page.getByTestId('open-template-library-button')).toBeVisible();
 
-  const leaderContext = await browser.newContext({
-    storageState: LEADER_STORAGE_STATE,
+  // A second session of the ChurchAdmin, who leads Worship: it sees the
+  // locked cycle too.
+  const leaderContext = await newPersonaContext({
+    browser,
+    persona: journey.personas.admin,
   });
   const leaderPage = await leaderContext.newPage();
   await leaderPage.goto('/scheduling/planning-cycles');
@@ -432,8 +442,9 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   );
   await leaderContext.close();
 
-  const volunteerContext = await browser.newContext({
-    storageState: VOLUNTEER_STORAGE_STATE,
+  const volunteerContext = await newPersonaContext({
+    browser,
+    persona: journey.personas.volunteer,
   });
   const volunteerPage = await volunteerContext.newPage();
   await volunteerPage.goto('/scheduling/planning-cycles');

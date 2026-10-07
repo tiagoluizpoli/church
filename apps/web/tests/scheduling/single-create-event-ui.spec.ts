@@ -1,14 +1,12 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import {
+  loadPlanningAdminJourney,
+  type PlanningAdminJourney,
+} from '../fixtures/journeys/planning-admin';
+import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
 import { fillDatePickerField } from './date-picker.helpers';
 import { createPlanningCycleViaApi } from './planning-cycle-api.helpers';
-import { allocatedYear } from './planning-cycle-year.helpers';
-
-test.use({ storageState: LEADER_STORAGE_STATE });
-
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
+import { dayOfMonth, planningMonth } from './planning-month.helpers';
 
 /** Mirrors `formatDayOf` (apps/web/src/shared/utils/church-time.ts), which
  * every event display renders through — assertions against
@@ -39,32 +37,25 @@ async function assertCanonicalCreateEventForm(dialog: Locator): Promise<void> {
   await dialog.getByRole('radio', { name: /hourly/i }).click();
 }
 
-interface EnsureUnlockedCycleSelectedParams {
+interface CreateOpenCycleParams {
   page: Page;
+  journey: PlanningAdminJourney;
+  name: string;
 }
 
-async function ensureUnlockedCycleSelected({
+/** Setup only (this spec asserts the create-event UI, not cycle creation):
+ * creates the journey's cycle through the API and opens it. */
+async function createOpenCycle({
   page,
-}: EnsureUnlockedCycleSelectedParams): Promise<void> {
-  if (await page.getByRole('button', { name: 'Add event' }).isVisible()) {
-    return;
-  }
-
-  const now = new Date();
-  const year = allocatedYear({
-    callSiteId: 'single-create-event-ui:ensure-unlocked-cycle-selected',
-  });
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 1));
-
-  // Setup only (this spec asserts the create-event UI, not cycle creation):
-  // create the cycle through the API and open it.
+  journey,
+  name,
+}: CreateOpenCycleParams): Promise<void> {
+  const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
   const cycle = await createPlanningCycleViaApi({
     page,
-    name: `Single create-event UI check ${now.getTime()}`,
-    startDate: toDateString(start),
-    endDate: toDateString(end),
+    name,
+    startDate,
+    endDate,
   });
   await page.goto(`/scheduling/planning-cycles/${cycle.id}`);
   await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
@@ -72,7 +63,10 @@ async function ensureUnlockedCycleSelected({
 
 test('exactly one create-event UI is reachable from every entry point (FR-012, SC-004)', async ({
   page,
-}) => {
+}, testInfo) => {
+  const journey = loadPlanningAdminJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.admin });
+
   // Entry point 1: the capability index. A ChurchAdmin may enter the one
   // church-planning workspace, rather than being redirected from a global
   // Scheduling route.
@@ -84,7 +78,11 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
   await expect(page).toHaveURL(/\/scheduling\/planning-cycles/);
 
   // Entry point 2: the planning cycle itself — the one canonical form.
-  await ensureUnlockedCycleSelected({ page });
+  await createOpenCycle({
+    page,
+    journey,
+    name: 'Single create-event UI check',
+  });
   await page.getByRole('button', { name: 'Add event' }).click();
   const planningDialog = page.getByRole('dialog');
   await assertCanonicalCreateEventForm(planningDialog);
@@ -105,30 +103,23 @@ test.describe('quick-create stores church-local Instants (#149)', () => {
 
   test('the created Event appears on the picked CalendarDay in the Church Timezone', async ({
     page,
-  }) => {
-    await page.goto('/scheduling/planning-cycles');
-
-    const now = new Date();
-    const year = allocatedYear({
-      callSiteId: 'single-create-event-ui:calendar-day-timezone',
+  }, testInfo) => {
+    const journey = loadPlanningAdminJourney({ testInfo });
+    await signInPersonaPage({ page, persona: journey.personas.admin });
+    const pickedDate = dayOfMonth({
+      monthStart: planningMonth({ anchor: journey.anchor }).startDate,
+      dayOfMonth: 15,
     });
-    const month = now.getUTCMonth();
-    const start = new Date(Date.UTC(year, month, 1));
-    const end = new Date(Date.UTC(year, month + 1, 1));
-    const pickedDate = toDateString(new Date(Date.UTC(year, month, 15)));
 
-    const cycle = await createPlanningCycleViaApi({
+    await createOpenCycle({
       page,
-      name: `Church TZ boundary check ${now.getTime()}`,
-      startDate: toDateString(start),
-      endDate: toDateString(end),
+      journey,
+      name: 'Church TZ boundary check',
     });
-    await page.goto(`/scheduling/planning-cycles/${cycle.id}`);
-    await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Add event' }).click();
     const dialog = page.getByRole('dialog');
-    const title = `Church TZ event ${now.getTime()}`;
+    const title = 'Church TZ event';
     await dialog.getByLabel('Title').fill(title);
     await fillDatePickerField({
       page,

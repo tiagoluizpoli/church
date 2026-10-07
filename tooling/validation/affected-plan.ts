@@ -170,6 +170,7 @@ const SERVER_INTEGRATION_TEST_PATHS = new Set([
   'apps/server/tests/application/scheduling-phase5.volunteer-availability.test.ts',
   'apps/server/tests/application/scheduling-phase6.rostering.test.ts',
   'apps/server/tests/application/scheduling-phase7.live-changes.test.ts',
+  'apps/server/tests/transfer/volunteer-transfer.repository.test.ts',
 ]);
 
 const TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];

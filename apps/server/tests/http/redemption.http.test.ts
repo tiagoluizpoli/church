@@ -48,12 +48,12 @@ import {
 import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
 import { createFastify } from '../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
+import { testDb, truncateAll } from '../integration/repositories/setup';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../src/test-support/identity-fixtures';
-import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '../test-support/identity-fixtures';
 
 interface TestRedemptionIdentityGatewayInput {
   db: typeof testDb;

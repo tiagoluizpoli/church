@@ -27,11 +27,11 @@ import {
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories';
 import { DrizzleVolunteerTransferRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-transfer.repository';
 import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
+import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../src/test-support/identity-fixtures';
-import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
+} from '../test-support/identity-fixtures';
 import { testDb, truncateAll } from './repositories/setup';
 
 const {

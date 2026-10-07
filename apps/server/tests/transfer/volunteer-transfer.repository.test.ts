@@ -36,11 +36,11 @@ import {
 } from '../../src/domain/branded-ids';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories';
 import { DrizzleVolunteerTransferRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-transfer.repository';
+import { testDb, truncateAll } from '../integration/repositories/setup';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../src/test-support/identity-fixtures';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '../test-support/identity-fixtures';
 
 const COMMIT = new Date('2026-09-15T12:00:00.000Z');
 const CORRELATION_ID = 'transfer-corr-0001';

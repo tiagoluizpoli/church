@@ -1,21 +1,25 @@
 import * as schema from '@church/db';
-import {
-  addChurchMember,
-  createChurch,
-  event,
-  eventTemplate,
-  ministry,
-  ministryParticipation,
-  ministryVolunteer,
-  planningCycle,
-  timeBlock,
-  timeSlot,
-  user,
-  volunteer,
-} from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { fromDate, fromDateColumn } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import {
+  buildChurch,
+  buildChurchMembership,
+} from '../../seeds/builders/church';
+import { buildUser } from '../../seeds/builders/identity';
+import { buildMinistry } from '../../seeds/builders/ministry';
+import {
+  buildEvent,
+  buildEventTemplate,
+  buildMinistryParticipation,
+  buildPlanningCycle,
+  buildTimeSlot,
+} from '../../seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../seeds/builders/volunteer';
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 
@@ -43,6 +47,18 @@ export interface CreatePhase3CycleInput {
   state?: 'draft' | 'locked' | 'archived';
 }
 
+export interface CreatePhase3EventGraphInput {
+  churchId: string;
+  cycleId: string;
+  ministryId: string;
+  sourceTemplateId?: string;
+  title: string;
+  start: Date;
+  end: Date;
+  status?: 'draft' | 'scheduled' | 'cancelled' | 'past';
+  sourceTemplateBlockId?: string;
+}
+
 export interface CreatePhase3TemplateInput {
   churchId: string;
   name: string;
@@ -64,21 +80,23 @@ export async function resetSchedulingPhase3Db(): Promise<void> {
 }
 
 export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> {
-  await schedulingTestDb.insert(user).values({
-    id: 'sched-admin-user',
+  const adminUserId = 'sched-admin-user';
+
+  await buildUser({
+    db: schedulingTestDb,
+    id: adminUserId,
     name: 'Scheduling Admin',
     email: 'sched-admin@test.com',
-    emailVerified: true,
   });
 
-  const churchA = await createChurch({
+  const churchA = await buildChurch({
     db: schedulingTestDb,
     id: '11111111-1111-4111-8111-111111111111',
     name: 'Scheduling Church A',
     slug: 'scheduling-church-a',
     timezone: 'America/Sao_Paulo',
   });
-  const churchB = await createChurch({
+  const churchB = await buildChurch({
     db: schedulingTestDb,
     id: '22222222-2222-4222-8222-222222222222',
     name: 'Scheduling Church B',
@@ -86,56 +104,49 @@ export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> 
     timezone: 'America/New_York',
   });
 
-  await addChurchMember({
+  await buildChurchMembership({
     db: schedulingTestDb,
     churchId: churchA.id,
-    userId: 'sched-admin-user',
+    userId: adminUserId,
     accessLevel: 'admin',
   });
 
-  const [adminVolunteer] = await schedulingTestDb
-    .insert(volunteer)
-    .values({
-      id: '44444444-4444-4444-8444-444444444444',
-      churchId: churchA.id,
-      userId: 'sched-admin-user',
-      status: 'active',
-    })
-    .returning();
+  const adminVolunteer = await buildVolunteer({
+    db: schedulingTestDb,
+    id: '44444444-4444-4444-8444-444444444444',
+    churchId: churchA.id,
+    userId: adminUserId,
+  });
 
-  const [ministryA, ministryB] = await schedulingTestDb
-    .insert(ministry)
-    .values([
-      {
-        id: '33333333-3333-4333-8333-333333333331',
-        churchId: churchA.id,
-        name: 'Scheduling Ministry A',
-      },
-      {
-        id: '33333333-3333-4333-8333-333333333332',
-        churchId: churchB.id,
-        name: 'Scheduling Ministry B',
-      },
-    ])
-    .returning();
+  const ministryA = await buildMinistry({
+    db: schedulingTestDb,
+    id: '33333333-3333-4333-8333-333333333331',
+    churchId: churchA.id,
+    name: 'Scheduling Ministry A',
+  });
+  const ministryB = await buildMinistry({
+    db: schedulingTestDb,
+    id: '33333333-3333-4333-8333-333333333332',
+    churchId: churchB.id,
+    name: 'Scheduling Ministry B',
+  });
 
-  if (!adminVolunteer || !ministryA || !ministryB) {
-    throw new Error('Scheduling phase 3 admin/ministry seed failed');
-  }
-
-  await schedulingTestDb.insert(ministryVolunteer).values({
+  await buildMinistryMembership({
+    db: schedulingTestDb,
     churchId: churchA.id,
     ministryId: ministryA.id,
     volunteerId: adminVolunteer.id,
+    id: '44444444-4444-4444-8444-4444444444a1',
     ministryAccessLevel: 'leader',
-    status: 'active',
+    roleIds: [],
+    teams: [],
   });
 
   return {
     churchAId: churchA.id,
     churchBId: churchB.id,
     churchATimezone: churchA.timezone,
-    adminUserId: 'sched-admin-user',
+    adminUserId,
     adminVolunteerId: adminVolunteer.id,
     ministryAId: ministryA.id,
     ministryBId: ministryB.id,
@@ -145,115 +156,63 @@ export async function seedSchedulingPhase3Base(): Promise<SchedulingPhase3Seed> 
 export async function createSchedulingPhase3Cycle(
   input: CreatePhase3CycleInput,
 ) {
-  const [cycle] = await schedulingTestDb
-    .insert(planningCycle)
-    .values({
-      churchId: input.churchId,
-      name: input.name,
-      startDate: input.startDate,
-      endDate: input.endDate,
-      state: input.state ?? 'draft',
-    })
-    .returning();
-
-  if (!cycle) {
-    throw new Error('Scheduling phase 3 cycle seed failed');
-  }
-
-  return cycle;
+  return await buildPlanningCycle({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    name: input.name,
+    startDate: fromDateColumn({ date: input.startDate }),
+    endDate: fromDateColumn({ date: input.endDate }),
+    state: input.state ?? 'draft',
+  });
 }
 
 export async function createSchedulingPhase3Template(
   input: CreatePhase3TemplateInput,
 ) {
-  const [template] = await schedulingTestDb
-    .insert(eventTemplate)
-    .values({
-      churchId: input.churchId,
-      name: input.name,
-      weekday: input.weekday,
-    })
-    .returning();
-
-  if (!template) {
-    throw new Error('Scheduling phase 3 template seed failed');
-  }
-
-  const blocks =
-    input.blocks.length === 0
-      ? []
-      : await schedulingTestDb
-          .insert(timeBlock)
-          .values(
-            input.blocks.map((block) => ({
-              churchId: input.churchId,
-              templateId: template.id,
-              label: block.label,
-              startTime: block.startTime,
-              endTime: block.endTime,
-              order: block.order,
-            })),
-          )
-          .returning();
-
-  return {
-    template,
-    blocks,
-  };
+  return await buildEventTemplate({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    name: input.name,
+    weekday: input.weekday,
+    blocks: input.blocks,
+  });
 }
 
-export async function createSchedulingPhase3EventGraph(input: {
-  churchId: string;
-  cycleId: string;
-  ministryId: string;
-  sourceTemplateId?: string;
-  title: string;
-  start: Date;
-  end: Date;
-  status?: 'draft' | 'scheduled' | 'cancelled' | 'past';
-  sourceTemplateBlockId?: string;
-}) {
-  const [planningEvent] = await schedulingTestDb
-    .insert(event)
-    .values({
-      churchId: input.churchId,
-      planningCycleId: input.cycleId,
-      sourceTemplateId: input.sourceTemplateId ?? null,
-      title: input.title,
-      start: input.start,
-      end: input.end,
-      status: input.status ?? 'draft',
-    })
-    .returning();
+export async function createSchedulingPhase3EventGraph(
+  input: CreatePhase3EventGraphInput,
+) {
+  const start = fromDate({ date: input.start });
+  const end = fromDate({ date: input.end });
 
-  if (!planningEvent) {
-    throw new Error('Scheduling phase 3 event seed failed');
-  }
+  const planningEvent = await buildEvent({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    planningCycleId: input.cycleId,
+    sourceTemplateId: input.sourceTemplateId,
+    title: input.title,
+    start,
+    end,
+    status: input.status ?? 'draft',
+  });
 
-  const [participation] = await schedulingTestDb
-    .insert(ministryParticipation)
-    .values({
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      eventId: planningEvent.id,
-    })
-    .returning();
+  const participation = await buildMinistryParticipation({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    ministryId: input.ministryId,
+    eventId: planningEvent.id,
+    state: 'tailoring',
+    timeSlotIds: [],
+  });
 
-  const [slot] = await schedulingTestDb
-    .insert(timeSlot)
-    .values({
-      churchId: input.churchId,
-      eventId: planningEvent.id,
-      sourceTemplateBlockId: input.sourceTemplateBlockId ?? null,
-      startTime: input.start,
-      endTime: input.end,
-      label: 'Generated Slot',
-    })
-    .returning();
-
-  if (!participation || !slot) {
-    throw new Error('Scheduling phase 3 event graph seed failed');
-  }
+  const slot = await buildTimeSlot({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    eventId: planningEvent.id,
+    sourceTemplateBlockId: input.sourceTemplateBlockId,
+    start,
+    end,
+    label: 'Generated Slot',
+  });
 
   return {
     event: planningEvent,

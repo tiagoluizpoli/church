@@ -12,6 +12,13 @@ import { deriveSeedId } from '../builders/derived-id';
  * names to the loader; register each in `journey-recipes.ts`. */
 export const E2E_JOURNEY_RECIPE_NAMES = {
   volunteerAssignments: 'volunteer-assignments',
+  rosterPublish: 'roster-publish',
+  volunteerDashboard: 'volunteer-dashboard',
+  leaderTailoring: 'leader-tailoring',
+  volunteerAvailability: 'volunteer-availability',
+  liveChanges: 'live-changes',
+  rosteringBoard: 'rostering-board',
+  rosterQualification: 'roster-qualification',
 } as const;
 
 export type E2eJourneyRecipeName =
@@ -112,5 +119,47 @@ export function resolveJourneyRoots({
     userIds: rootKinds.userKinds.map((kind) =>
       journeySeedId({ recipeName, journeyKey, kind }),
     ),
+  };
+}
+
+/** A row's role in the graph, passed to a recipe's id function. */
+export interface JourneyRowKind {
+  kind: string;
+}
+
+/** A recipe's `journeySeedId`, bound to its name and journey key. */
+export type JourneySeedIdOf = (input: JourneyRowKind) => string;
+
+export interface JourneyRootKindsInput {
+  rootKinds: E2eJourneyRootKinds;
+}
+
+/** One journey graph's naming: what every recipe factory derives first. */
+export interface JourneyIdentity {
+  /** Ids of this graph's rows (`journeySeedId`). */
+  idOf: JourneySeedIdOf;
+  /** Slug- and email-safe stand-in for the key (`journeyTag`). */
+  tag: string;
+  /** The graph's roots for the given kinds (`resolveJourneyRoots`). */
+  rootsOf: (input: JourneyRootKindsInput) => E2eJourneyGraphRoots;
+}
+
+/**
+ * Binds a recipe's name and journey key into its id function, tag and roots
+ * resolver. Refuses an empty key, which would make every test share one
+ * graph.
+ */
+export function journeyIdentity({
+  recipeName,
+  journeyKey,
+}: JourneyIdentityInput): JourneyIdentity {
+  if (journeyKey.length === 0) {
+    throw new Error('A journey recipe needs a non-empty journey key.');
+  }
+  return {
+    idOf: ({ kind }) => journeySeedId({ recipeName, journeyKey, kind }),
+    tag: journeyTag({ recipeName, journeyKey }),
+    rootsOf: ({ rootKinds }) =>
+      resolveJourneyRoots({ recipeName, journeyKey, rootKinds }),
   };
 }

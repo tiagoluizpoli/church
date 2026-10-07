@@ -699,7 +699,19 @@ describe('classifyChanges', () => {
       ],
     });
     expect(journeyRecipePlan.e2eSpecPaths).toEqual([
+      'tests/scheduling/a11y-builder.spec.ts',
+      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/qualification.spec.ts',
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us2-leader-tailor.spec.ts',
+      'tests/scheduling/us3-volunteer-availability.spec.ts',
+      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
+      'tests/volunteer-dashboard/us1-availability.spec.ts',
       'tests/volunteer-dashboard/us2-assignments.spec.ts',
+      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
+      'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
     expect(journeyRecipePlan.missingJourneyMappings).toEqual([]);
   });

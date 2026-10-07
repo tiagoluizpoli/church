@@ -1,22 +1,40 @@
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import {
+  loadRosteringBoardJourney,
+  type RosteringBoardJourney,
+} from '../fixtures/journeys/rostering-board';
+import {
+  dayFilterName,
+  requirementCellTestId,
+  rosteringTailoringPath,
+  signInPersonaPage,
+  worshipBuilderPath,
+} from '../fixtures/journeys/rostering-church';
 
-// T123 — Full system smoke: the seeded cycle board renders its key regions for
-// an authenticated leader.
-test.use({
-  storageState: LEADER_STORAGE_STATE,
-  viewport: { width: 375, height: 812 },
-});
+// T123 — Full system smoke: the journey's own cycle board (rostering-board
+// recipe) renders its key regions for an authenticated leader.
+test.use({ viewport: { width: 375, height: 812 } });
 
-const MINISTRY_ID = 'e2e33333-3333-3333-a333-333333333331';
-const PLANNING_CYCLE_ID = 'e2e21111-1111-1111-a111-111111111111';
-const WORSHIP_PARTICIPATION_ID = 'e2e61111-1111-1111-a111-111111111114';
-const BUILDER_URL = `/scheduling/rostering/${MINISTRY_ID}/${PLANNING_CYCLE_ID}`;
+interface JourneyInput {
+  journey: RosteringBoardJourney;
+}
+
+/** The team service's Team Alpha Greeter seat. */
+function teamGreeterCellTestId({ journey }: JourneyInput): string {
+  const { teamService } = journey.events;
+  return requirementCellTestId({
+    shiftId: teamService.shiftId,
+    roleId: teamService.requirements.greeter.roleId,
+  });
+}
 
 test('builder renders the cycle board, volunteer rail, and publish control', async ({
   page,
-}) => {
-  await page.goto(BUILDER_URL);
+}, testInfo) => {
+  const journey = loadRosteringBoardJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.leader });
+
+  await page.goto(worshipBuilderPath({ journey }));
 
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
     timeout: 15_000,
@@ -43,25 +61,37 @@ test('builder renders the cycle board, volunteer rail, and publish control', asy
   const poolBox = await volunteerPool.boundingBox();
   expect(poolBox?.y).toBeGreaterThan(boardBox?.y ?? 0);
 
-  await page.getByRole('button', { name: /^Show only .*\b28\b/i }).click();
+  await page
+    .getByRole('button', {
+      name: dayFilterName({ day: journey.events.teamService.day }),
+    })
+    .click();
   await expect(
-    page.getByTestId(
-      'cycle-requirement-e2e71111-1111-1111-a111-111111111114-e2e55555-5555-5555-a555-555555555552',
-    ),
+    page.getByTestId(teamGreeterCellTestId({ journey })),
   ).toBeVisible();
 });
 
-test('tailoring lets a leader reach the cycle builder', async ({ page }) => {
-  // Deep-link to the seeded cycle rather than picking the first row on
-  // /scheduling/tailoring. Other specs legitimately create their own cycles in
-  // this church, so "the first cycle" is whatever ran earlier — this test used
-  // to pass alone and fail in the full suite for that reason alone.
-  await page.goto(`/scheduling/tailoring/${MINISTRY_ID}/${PLANNING_CYCLE_ID}`);
+test('tailoring lets a leader reach the cycle builder', async ({
+  page,
+}, testInfo) => {
+  const journey = loadRosteringBoardJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.leader });
+
+  // Deep-link to the journey's own cycle rather than picking a row on
+  // /scheduling/tailoring.
+  await page.goto(
+    rosteringTailoringPath({
+      ministryId: journey.ministries.worship.id,
+      cycleId: journey.cycle.id,
+    }),
+  );
 
   // The cycle's own roster link; both it and the older "Assign" link on the
   // cycle list resolve to the same rostering URL.
   await page
-    .getByTestId(`open-roster-link-${WORSHIP_PARTICIPATION_ID}`)
+    .getByTestId(
+      `open-roster-link-${journey.events.teamService.participationId}`,
+    )
     .click();
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
     timeout: 15_000,
@@ -70,68 +100,46 @@ test('tailoring lets a leader reach the cycle builder', async ({ page }) => {
 
 test('a draft assignment persists through publish and can be reassigned', async ({
   page,
-}) => {
+}, testInfo) => {
+  const journey = loadRosteringBoardJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.leader });
+  const { service, teamService } = journey.events;
+
   const firstRequirement = page.getByTestId(
-    'cycle-requirement-e2e71111-1111-1111-a111-111111111111-e2e55555-5555-5555-a555-555555555551',
+    requirementCellTestId({
+      shiftId: service.shiftId,
+      roleId: service.requirements.usher.roleId,
+    }),
   );
-  const requirement = page.getByTestId(
-    'cycle-requirement-e2e71111-1111-1111-a111-111111111114-e2e55555-5555-5555-a555-555555555552',
-  );
+  const requirement = page.getByTestId(teamGreeterCellTestId({ journey }));
 
-  // The picker's first option is whichever candidate the ranking surfaces —
-  // under the full suite, other specs may have already assigned that same
-  // volunteer elsewhere in this shared cycle, which raises the "Volunteer
-  // already assigned" collision dialog instead of assigning immediately.
-  // "Assign to both" keeps the seeded fixture that other specs depend on
-  // intact while still staffing this shift. `.or()` races the two outcomes
-  // instead of polling for the dialog first, so the common (no-collision)
-  // path isn't slowed down waiting out a timeout.
-  interface AwaitAssignmentOrResolveCollisionInput {
-    chip: ReturnType<typeof page.getByTestId>;
-  }
-
-  const awaitAssignmentOrResolveCollision = async ({
-    chip,
-  }: AwaitAssignmentOrResolveCollisionInput): Promise<void> => {
-    const collisionDialog = page.getByRole('dialog', {
-      name: 'Volunteer already assigned',
-    });
-    await expect(chip.or(collisionDialog)).toBeVisible();
-    if (await collisionDialog.isVisible()) {
-      await collisionDialog
-        .getByRole('button', { name: 'Assign to both' })
-        .click();
-      await expect(chip).toBeVisible();
-    }
-  };
-
-  await page.goto(BUILDER_URL);
-  await page.getByRole('button', { name: /^Show only .*\b25\b/i }).click();
+  // The journey owns the cycle, and its Usher and Greeter pools are disjoint,
+  // so neither pick can collide with an assignment made elsewhere: each seat
+  // starts empty and ends with exactly the one chip this test adds.
+  await page.goto(worshipBuilderPath({ journey }));
+  await page
+    .getByRole('button', { name: dayFilterName({ day: service.day }) })
+    .click();
   await expect(firstRequirement).toBeVisible();
+  await expect(firstRequirement.getByTestId('assignment-chip')).toHaveCount(0);
   await firstRequirement.getByRole('button', { name: 'Add' }).first().click();
   await page
     .getByTestId('assignment-picker')
     .getByTestId('picker-option')
     .first()
     .click();
-  // This requirement needs 2 Ushers and is shared with another spec that
-  // fills one via its own suggestion-accept flow — under the full suite that
-  // slot may already be staffed, so scope to the newly-appended chip rather
-  // than assuming this is the only one.
-  await awaitAssignmentOrResolveCollision({
-    chip: firstRequirement.getByTestId('assignment-chip').last(),
-  });
+  await expect(firstRequirement.getByTestId('assignment-chip')).toHaveCount(1);
 
-  await page.getByRole('button', { name: /^Show only .*\b28\b/i }).click();
+  await page
+    .getByRole('button', { name: dayFilterName({ day: teamService.day }) })
+    .click();
   await expect(requirement).toBeVisible();
 
   await requirement.getByRole('button', { name: 'Add' }).first().click();
   const picker = page.getByTestId('assignment-picker');
   await expect(picker).toBeVisible();
   await picker.getByTestId('picker-option').first().click();
-  await awaitAssignmentOrResolveCollision({
-    chip: requirement.getByTestId('assignment-chip'),
-  });
+  await expect(requirement.getByTestId('assignment-chip')).toHaveCount(1);
 
   await page.getByRole('button', { name: 'Publish cycle' }).first().click();
   await page.getByRole('button', { name: 'Publish cycle' }).last().click();

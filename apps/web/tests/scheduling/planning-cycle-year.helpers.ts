@@ -19,8 +19,11 @@
  * `test.info()` throws outside one.
  *
  * To add a new cycle-creating call site: append its id to `CALL_SITE_IDS`
- * (order doesn't matter, but never remove or reorder existing entries — that
- * would reassign every band after it) and call `allocatedYear` with that id.
+ * and call `allocatedYear` with that id. A band follows its entry's position,
+ * so removing or reordering an entry moves the bands after it. That is safe:
+ * nothing keeps a band across runs, since each run starts with an empty
+ * output directory and a reset E2E database. Remove an entry once its call
+ * site is gone.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -33,11 +36,8 @@ export const CALL_SITE_IDS = [
   'planning-cycles-table-view:create-cycle-with-sunday-template',
   'planning-cycles-table-view:us3-edit-delete',
   'us1-admin-plan:create-planning-month',
-  'us2-leader-tailor:create-planning-month',
-  'us3-volunteer-availability:create-overlap-planning-month',
   'single-create-event-ui:ensure-unlocked-cycle-selected',
   'single-create-event-ui:calendar-day-timezone',
-  'us5-live-changes:create-live-changes-month',
   'planning-nav-restructure:distinct-addressable-urls',
   'cross-cutting:x2-network-failure',
   'cross-cutting:x3-double-submit',

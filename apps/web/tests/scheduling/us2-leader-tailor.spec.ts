@@ -1,84 +1,58 @@
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import { LEADER_STORAGE_STATE } from '../global-setup';
-import { allocatedYear } from './planning-cycle-year.helpers';
+import { loadLeaderTailoringJourney } from '../fixtures/journeys/leader-tailoring';
+import {
+  rosteringTailoringPath,
+  signInPersonaPage,
+} from '../fixtures/journeys/rostering-church';
 
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
+const CYCLE_NAME = 'US2 Tailoring';
 
-interface PlanningMonth {
-  cycleName: string;
-  startDate: string;
-  endDate: string;
+interface IdResponse {
+  id: string;
 }
 
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
+interface TemplateBlockResponse {
+  id: string;
 }
 
-function createPlanningMonth(): PlanningMonth {
-  const now = new Date();
-  const year = allocatedYear({
-    callSiteId: 'us2-leader-tailor:create-planning-month',
-  });
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 1));
-
-  return {
-    cycleName: `US2 Tailoring ${year}-${String(month + 1).padStart(2, '0')} ${now.getTime()}`,
-    startDate: toDateString(start),
-    endDate: toDateString(end),
-  };
+interface TemplateResponse extends IdResponse {
+  blocks: TemplateBlockResponse[];
 }
 
-test.use({ storageState: LEADER_STORAGE_STATE });
+interface ParticipationSummaryResponse {
+  id: string;
+  state: string;
+}
+
+interface SlotSummaryResponse {
+  id: string;
+  label?: string;
+}
+
+interface SlotEntryResponse {
+  slot: SlotSummaryResponse;
+}
+
+interface ParticipationEventResponse {
+  participation: ParticipationSummaryResponse;
+  slots: SlotEntryResponse[];
+}
+
+interface ParticipationResponse {
+  events: ParticipationEventResponse[];
+}
 
 test('leader tailors participation, splits shifts, sets headcounts, and fires availability', async ({
   page,
-}) => {
-  const month = createPlanningMonth();
-
-  const ministriesResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/ministries`,
-  );
-  expect(ministriesResponse.ok()).toBeTruthy();
-  const ministriesBody = (await ministriesResponse.json()) as {
-    ministries: { id: string; name: string }[];
-  };
-  const ministryId = ministriesBody.ministries.find(
-    (m) => m.name === 'E2E Worship',
-  )?.id;
-  if (!ministryId) throw new Error('E2E Worship ministry not found');
-  expect(ministryId).toBeTruthy();
-
-  const existingEventsResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/events`,
-    {
-      params: { ministryId },
-    },
-  );
-  expect(existingEventsResponse.ok()).toBeTruthy();
-  const existingEventsBody = (await existingEventsResponse.json()) as {
-    events: { id: string }[];
-  };
-  const existingEventId = existingEventsBody.events.find(
-    (e) => e.id === 'e2e66666-6666-6666-a666-666666666661',
-  )?.id;
-  if (!existingEventId) throw new Error('E2E Seed Event not found');
-  expect(existingEventId).toBeTruthy();
-
-  const builderDataResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/events/schedule-builder`,
-    {
-      params: { eventId: existingEventId },
-    },
-  );
-  expect(builderDataResponse.ok()).toBeTruthy();
-  const builderDataBody = (await builderDataResponse.json()) as {
-    roles: { id: string }[];
-  };
-  const roleId = builderDataBody.roles[0]?.id;
-  expect(roleId).toBeTruthy();
+}, testInfo) => {
+  // The journey owns its Church, Ministry and serving profile: no other
+  // spec can replace the profile between the PUT and apply-templates.
+  const journey = loadLeaderTailoringJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.leader });
+  const ministryId = journey.ministries.worship.id;
+  const roleId = journey.ministries.worship.roles.usher.id;
 
   const defaultDirectionResponse = await page.request.patch(
     `${SERVER_URL}/api/v1/admin/ministries/${ministryId}/default-direction`,
@@ -92,20 +66,20 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
     `${SERVER_URL}/api/v1/admin/planning-cycles`,
     {
       data: {
-        name: month.cycleName,
-        startDate: month.startDate,
-        endDate: month.endDate,
+        name: CYCLE_NAME,
+        startDate: journey.cycleWindow.startDate,
+        endDate: journey.cycleWindow.endDate,
       },
     },
   );
   expect(cycleResponse.ok()).toBeTruthy();
-  const cycleBody = (await cycleResponse.json()) as { id: string };
+  const cycleBody = (await cycleResponse.json()) as IdResponse;
 
   const templateResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/event-templates`,
     {
       data: {
-        name: `US2 Sunday Template ${Date.now()}`,
+        name: 'US2 Sunday Template',
         weekday: 0,
         blocks: [
           { label: 'Welcome', startTime: '09:00', endTime: '09:30', order: 0 },
@@ -116,10 +90,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
     },
   );
   expect(templateResponse.ok()).toBeTruthy();
-  const templateBody = (await templateResponse.json()) as {
-    id: string;
-    blocks: { id: string }[];
-  };
+  const templateBody = (await templateResponse.json()) as TemplateResponse;
 
   const servingProfileResponse = await page.request.put(
     `${SERVER_URL}/api/v1/admin/ministries/${ministryId}/serving-profile`,
@@ -163,7 +134,9 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   );
   expect(lockResponse.ok()).toBeTruthy();
 
-  await page.goto(`/scheduling/tailoring/${ministryId}/${cycleBody.id}`);
+  await page.goto(
+    rosteringTailoringPath({ ministryId, cycleId: cycleBody.id }),
+  );
 
   // The workspace groups slots by day and keys every control off real
   // slot/participation ids, not event/shift array positions — fetch the
@@ -174,12 +147,8 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
     { params: { ministryId } },
   );
   expect(participationResponse.ok()).toBeTruthy();
-  const participationBody = (await participationResponse.json()) as {
-    events: Array<{
-      participation: { id: string; state: string };
-      slots: Array<{ slot: { id: string; label?: string } }>;
-    }>;
-  };
+  const participationBody =
+    (await participationResponse.json()) as ParticipationResponse;
   const firstEvent = participationBody.events[0];
   if (!firstEvent) throw new Error('No events found for cycle participation');
   const welcomeSlot = firstEvent.slots.find((s) => s.slot.label === 'Welcome');

@@ -1,21 +1,43 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { LEADER_STORAGE_STATE } from '../global-setup';
+import { loadRosteringBoardJourney } from '../fixtures/journeys/rostering-board';
+import {
+  requirementCellTestId,
+  rosteringBuilderPath,
+  signInPersonaPage,
+} from '../fixtures/journeys/rostering-church';
 
-// T124 — Accessibility smoke. Global setup seeds an event for the leader and
-// writes the leader session; we open the populated builder and run axe.
-test.use({ storageState: LEADER_STORAGE_STATE });
-
-const BUILDER_URL =
-  '/scheduling/rostering/e2e33333-3333-3333-a333-333333333331/e2e21111-1111-1111-a111-111111111111';
-
+// T124 — Accessibility smoke. The journey's own cycle board (rostering-board
+// recipe): opening the builder can write (it creates any missing
+// Participation), so the scan runs on journey-owned data. Its rostered
+// service holds a pending, a confirmed and a declined Host; the board shows
+// the two active ones as chips, which the scan then covers.
 test('schedule builder has no critical or serious WCAG violations', async ({
   page,
-}) => {
-  await page.goto(BUILDER_URL);
+}, testInfo) => {
+  const journey = loadRosteringBoardJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.leader });
+
+  await page.goto(
+    rosteringBuilderPath({
+      ministryId: journey.ministries.worship.id,
+      cycleId: journey.cycle.id,
+    }),
+  );
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
     timeout: 15_000,
   });
+  const { rosteredService } = journey.events;
+  const rosteredChips = page
+    .getByTestId(
+      requirementCellTestId({
+        shiftId: rosteredService.shiftId,
+        roleId: rosteredService.requirements.host.roleId,
+      }),
+    )
+    .getByTestId('assignment-chip');
+  await expect(rosteredChips).toHaveCount(2);
+  await expect(rosteredChips.first()).toBeVisible();
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa'])

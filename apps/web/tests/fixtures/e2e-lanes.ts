@@ -5,37 +5,15 @@ import { fileURLToPath } from 'node:url';
 /**
  * Every Playwright spec runs in exactly one lane. Workers share the run's
  * single server, Vite and E2E database (ADR-0005), so a spec that writes
- * seeded state another spec reads (the December and US4 cycles, the US6
- * event, the Worship/Care serving profiles, the E2E Volunteer's dashboard
- * assignments)
- * runs in `shared-seed`: one worker, files in order. Everything else runs in
- * `isolated`, in parallel. As a journey moves onto its own recreatable data
- * (#320), move its spec to `isolated`; delete the lane once it is empty.
+ * seeded state another spec reads runs in `shared-seed`: one worker, files
+ * in order. Everything else runs in `isolated`, in parallel. Every journey
+ * that mutated the legacy seed now loads its own recreatable data (#320), so
+ * `shared-seed` is empty; #330 deletes it.
  *
  * A spec in neither list, in both, or listed but absent fails the config
  * load, so a new spec never silently lands in a lane.
  */
-export const SHARED_SEED_SPECS = [
-  // Assign/publish on the December cycle and the US6 event. They pass when
-  // qualification and builder-slot-focus run before smoke. Playwright sets
-  // the run order (alphabetical by path), not this list, so renaming one of
-  // these files can reorder the lane.
-  'scheduling/a11y-builder.spec.ts',
-  'scheduling/builder-slot-focus.spec.ts',
-  'scheduling/qualification.spec.ts',
-  'scheduling/smoke.spec.ts',
-  // Replace the Worship/Care serving profiles before applying templates.
-  'scheduling/us2-leader-tailor.spec.ts',
-  'scheduling/us3-volunteer-availability.spec.ts',
-  // Assign and publish the E2E Volunteer, whose dashboard the
-  // volunteer-dashboard specs read.
-  'scheduling/us4-roster-publish.spec.ts',
-  'scheduling/us5-live-changes.spec.ts',
-  'volunteer-dashboard/us-notification-bell.spec.ts',
-  'volunteer-dashboard/us1-availability.spec.ts',
-  'volunteer-dashboard/us4-ministry-schedule.spec.ts',
-  'volunteer-dashboard/us5-offline.spec.ts',
-] as const;
+export const SHARED_SEED_SPECS: readonly string[] = [];
 
 export const ISOLATED_SPECS = [
   'identity/active-church-switching.spec.ts',
@@ -54,8 +32,21 @@ export const ISOLATED_SPECS = [
   'scheduling/planning-role-guard-matrix.spec.ts',
   'scheduling/single-create-event-ui.spec.ts',
   'scheduling/us1-admin-plan.spec.ts',
-  // Journey recipe (#327): its own Church, persona and published assignment.
+  // Journey recipes (#327, #329): each test loads its own Church, personas
+  // and schedule.
+  'scheduling/a11y-builder.spec.ts',
+  'scheduling/builder-slot-focus.spec.ts',
+  'scheduling/qualification.spec.ts',
+  'scheduling/smoke.spec.ts',
+  'scheduling/us2-leader-tailor.spec.ts',
+  'scheduling/us3-volunteer-availability.spec.ts',
+  'scheduling/us4-roster-publish.spec.ts',
+  'scheduling/us5-live-changes.spec.ts',
+  'volunteer-dashboard/us-notification-bell.spec.ts',
+  'volunteer-dashboard/us1-availability.spec.ts',
   'volunteer-dashboard/us2-assignments.spec.ts',
+  'volunteer-dashboard/us4-ministry-schedule.spec.ts',
+  'volunteer-dashboard/us5-offline.spec.ts',
 ] as const;
 
 export const E2E_TEST_DIR = path.resolve(

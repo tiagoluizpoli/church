@@ -30,9 +30,7 @@ import {
   E2E_JOURNEY_RECIPE_NAMES,
   E2E_JOURNEY_TIMEZONE,
   type E2eJourneyRootKinds,
-  journeySeedId,
-  journeyTag,
-  resolveJourneyRoots,
+  journeyIdentity,
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 
@@ -75,26 +73,11 @@ export interface VolunteerAssignmentsJourney {
   assignment: VolunteerAssignmentsAssignment;
 }
 
-interface SeedIdInput {
-  kind: string;
-}
-
 export function createVolunteerAssignmentsRecipe({
   journeyKey,
   anchor,
 }: CreateJourneyRecipeInput): E2eJourneyRecipe<VolunteerAssignmentsJourney> {
-  if (journeyKey.length === 0) {
-    throw new Error('A journey recipe needs a non-empty journey key.');
-  }
-
-  const idOf = ({ kind }: SeedIdInput): string =>
-    journeySeedId({
-      recipeName: RECIPE_NAME,
-      journeyKey,
-      kind,
-    });
-
-  const tag = journeyTag({
+  const { idOf, tag, rootsOf } = journeyIdentity({
     recipeName: RECIPE_NAME,
     journeyKey,
   });
@@ -268,11 +251,7 @@ export function createVolunteerAssignmentsRecipe({
 
   return {
     name: RECIPE_NAME,
-    roots: resolveJourneyRoots({
-      recipeName: RECIPE_NAME,
-      journeyKey,
-      rootKinds: ROOT_KINDS,
-    }),
+    roots: rootsOf({ rootKinds: ROOT_KINDS }),
     load,
   };
 }

@@ -144,6 +144,16 @@ const FULL_E2E_PATHS = new Set([
   'apps/web/tests/global-setup.ts',
   'apps/web/tests/global-teardown.ts',
   'apps/server/src/test-support/e2e-seed.ts',
+  // The E2E database target: which database every E2E process (server,
+  // seed, invitation minting and redemption) resolves and refuses. A
+  // regression breaks any journey, and #203 makes the redemption journeys
+  // the story gate for it; the daily gate's critical smoke set runs them.
+  'packages/db/src/database-target-resolver.ts',
+  'packages/db/src/e2e-database-url.ts',
+  'packages/db/src/purpose-database-url-guard.ts',
+  'tooling/env/e2e-environment.ts',
+  'tooling/env/e2e-local-lifecycle.ts',
+  'tooling/env/e2e-process-preflight.ts',
 ]);
 
 const ROOT_INFRASTRUCTURE_PATHS = new Set([

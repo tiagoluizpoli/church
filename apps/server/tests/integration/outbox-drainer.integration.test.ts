@@ -1,18 +1,24 @@
 import 'reflect-metadata';
 import {
-  assignment,
-  event,
   ministryInvitation,
-  ministryParticipation,
   ministryVolunteer,
   outboxMessage,
-  planningCycle,
-  shift,
-  timeSlot,
-  volunteer,
 } from '@church/db';
+import { fromDate, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildAssignment,
+  buildEvent,
+  buildMinistryParticipation,
+  buildPlanningCycle,
+  buildShift,
+  buildTimeSlot,
+} from '../../seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../seeds/builders/volunteer';
 import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';
 import {
   ChurchId,
@@ -132,57 +138,54 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
   const transferUnitOfWork = new DrizzleUnitOfWork({ db: testDb });
 
   async function seedWithdrawnAssignment(): Promise<void> {
-    const [cycle] = await testDb
-      .insert(planningCycle)
-      .values({
-        churchId: fixture.churchB.id,
-        name: 'Transfer Cycle',
-        startDate: new Date('2024-01-01T00:00:00Z'),
-        endDate: new Date('2024-02-01T00:00:00Z'),
-      })
-      .returning({ id: planningCycle.id });
-    const [transferEvent] = await testDb
-      .insert(event)
-      .values({
-        churchId: fixture.churchB.id,
-        planningCycleId: cycle?.id ?? '',
-        title: 'Transfer Sunday',
-        start: new Date(COMMIT.getTime() - 3_600_000),
-        end: new Date(COMMIT.getTime() + 24 * 3_600_000),
-      })
-      .returning({ id: event.id });
-    const [participation] = await testDb
-      .insert(ministryParticipation)
-      .values({
-        churchId: fixture.churchB.id,
-        ministryId: fixture.ministryInB,
-        eventId: transferEvent?.id ?? '',
-      })
-      .returning({ id: ministryParticipation.id });
-    const start = new Date(COMMIT.getTime() + 3_600_000);
-    const [slot] = await testDb
-      .insert(timeSlot)
-      .values({
-        churchId: fixture.churchB.id,
-        eventId: transferEvent?.id ?? '',
-        startTime: start,
-        endTime: new Date(start.getTime() + 3_600_000),
-      })
-      .returning({ id: timeSlot.id });
-    const [slotShift] = await testDb
-      .insert(shift)
-      .values({
-        churchId: fixture.churchB.id,
-        participationId: participation?.id ?? '',
-        timeSlotId: slot?.id ?? '',
-        startTime: start,
-        endTime: new Date(start.getTime() + 3_600_000),
-      })
-      .returning({ id: shift.id });
-    await testDb.insert(assignment).values({
-      churchId: fixture.churchB.id,
-      participationId: participation?.id ?? '',
-      shiftId: slotShift?.id ?? '',
+    const churchId = fixture.churchB.id;
+    const cycle = await buildPlanningCycle({
+      db: testDb,
+      churchId,
+      name: 'Transfer Cycle',
+      startDate: parseCalendarDay({ value: '2024-01-01' }),
+      endDate: parseCalendarDay({ value: '2024-02-01' }),
+      state: 'draft',
+    });
+    const transferEvent = await buildEvent({
+      db: testDb,
+      churchId,
+      planningCycleId: cycle.id,
+      title: 'Transfer Sunday',
+      start: fromDate({ date: new Date(COMMIT.getTime() - 3_600_000) }),
+      end: fromDate({ date: new Date(COMMIT.getTime() + 24 * 3_600_000) }),
+      status: 'draft',
+    });
+    const participation = await buildMinistryParticipation({
+      db: testDb,
+      churchId,
+      ministryId: fixture.ministryInB,
+      eventId: transferEvent.id,
+      state: 'tailoring',
+      timeSlotIds: [],
+    });
+    const start = fromDate({ date: new Date(COMMIT.getTime() + 3_600_000) });
+    const end = fromDate({ date: new Date(COMMIT.getTime() + 2 * 3_600_000) });
+    const slot = await buildTimeSlot({
+      db: testDb,
+      churchId,
+      eventId: transferEvent.id,
+      start,
+      end,
+    });
+    const slotShift = await buildShift({
+      db: testDb,
+      churchId,
+      participationId: participation.id,
+      timeSlotId: slot.id,
+      start,
+      end,
+    });
+    await buildAssignment({
+      db: testDb,
+      churchId,
+      participationId: participation.id,
+      shiftId: slotShift.id,
       volunteerId: fixture.dualMemberABVolunteerInB,
       roleId: fixture.roleInMinistryInB,
       status: 'confirmed',
@@ -224,15 +227,19 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
   }
 
   it('sends a Ministry digest naming the Volunteer and the withdrawn assignment, never the destination Church', async () => {
-    const [leaderVolunteer] = await testDb
-      .insert(volunteer)
-      .values({ churchId: fixture.churchB.id, userId: fixture.adminB })
-      .returning({ id: volunteer.id });
-    await testDb.insert(ministryVolunteer).values({
+    const leaderVolunteer = await buildVolunteer({
+      db: testDb,
       churchId: fixture.churchB.id,
-      volunteerId: leaderVolunteer?.id ?? '',
+      userId: fixture.adminB,
+    });
+    await buildMinistryMembership({
+      db: testDb,
+      churchId: fixture.churchB.id,
+      volunteerId: leaderVolunteer.id,
       ministryId: fixture.ministryInB,
       ministryAccessLevel: 'leader',
+      roleIds: [],
+      teams: [],
     });
 
     const emailSender = new CaptureEmailSender();

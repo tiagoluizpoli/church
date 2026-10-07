@@ -1,6 +1,8 @@
 const PRIMARY_WORKTREE = 'develop';
 
-export type DatabasePurpose = 'development' | 'integration' | 'e2e';
+export const DATABASE_PURPOSES = ['development', 'integration', 'e2e'] as const;
+
+export type DatabasePurpose = (typeof DATABASE_PURPOSES)[number];
 
 export type DatabaseTargetRejectionReason =
   | 'missing-target'

@@ -1,5 +1,6 @@
 import {
   assignment,
+  assignmentAudit,
   event,
   ministryParticipation,
   participationSlotInclusion,
@@ -94,6 +95,8 @@ export interface BuildEventInput {
   end: Instant;
   status: EventStatus;
   eventType: EventType;
+  /** The EventTemplate it was generated from; absent for a dynamic Event. */
+  sourceTemplateId?: string;
 }
 
 export async function buildEvent({
@@ -106,6 +109,7 @@ export async function buildEvent({
   end,
   status,
   eventType,
+  sourceTemplateId,
 }: BuildEventInput): Promise<SeededEvent> {
   return requireInsertedRow({
     rows: await db
@@ -119,6 +123,7 @@ export async function buildEvent({
         end: toDate({ instant: end }),
         status,
         eventType,
+        sourceTemplateId,
       })
       .returning(),
     description: `Event ${title}`,
@@ -133,6 +138,8 @@ export interface BuildTimeSlotInput {
   start: Instant;
   end: Instant;
   label?: string;
+  /** The TimeBlock it was generated from; absent for a dynamic Event. */
+  sourceTemplateBlockId?: string;
 }
 
 export async function buildTimeSlot({
@@ -143,6 +150,7 @@ export async function buildTimeSlot({
   start,
   end,
   label,
+  sourceTemplateBlockId,
 }: BuildTimeSlotInput): Promise<SeededTimeSlot> {
   return requireInsertedRow({
     rows: await db
@@ -154,6 +162,7 @@ export async function buildTimeSlot({
         startTime: toDate({ instant: start }),
         endTime: toDate({ instant: end }),
         label,
+        sourceTemplateBlockId,
       })
       .returning(),
     description: `Time Slot ${id}`,
@@ -253,6 +262,7 @@ export interface BuildSlotRequirementInput {
   id: string;
   requiredCount: number;
   teamId?: string;
+  notes?: string;
 }
 
 export async function buildSlotRequirement({
@@ -264,6 +274,7 @@ export async function buildSlotRequirement({
   id,
   requiredCount,
   teamId,
+  notes,
 }: BuildSlotRequirementInput): Promise<SeededSlotRequirement> {
   return requireInsertedRow({
     rows: await db
@@ -276,6 +287,7 @@ export async function buildSlotRequirement({
         roleId,
         requiredCount,
         teamId,
+        notes,
       })
       .returning(),
     description: `Slot Requirement ${id}`,
@@ -291,6 +303,12 @@ export interface BuildAssignmentInput {
   roleId: string;
   id: string;
   status: AssignmentStatus;
+  /** Why it was declined or cancelled. */
+  reason?: string;
+  /** Explicit, so a graph never depends on the wall clock at load time. */
+  assignedAt?: Instant;
+  /** The User who made the Assignment. */
+  assignedBy?: string;
 }
 
 export async function buildAssignment({
@@ -302,6 +320,9 @@ export async function buildAssignment({
   roleId,
   id,
   status,
+  reason,
+  assignedAt,
+  assignedBy,
 }: BuildAssignmentInput): Promise<SeededAssignment> {
   return requireInsertedRow({
     rows: await db
@@ -314,8 +335,57 @@ export async function buildAssignment({
         volunteerId,
         roleId,
         status,
+        reason,
+        assignedAt:
+          assignedAt === undefined
+            ? undefined
+            : toDate({ instant: assignedAt }),
+        assignedBy,
       })
       .returning(),
     description: `Assignment ${id}`,
+  });
+}
+
+export type SeededAssignmentAudit = typeof assignmentAudit.$inferSelect;
+export type AssignmentAuditAction = SeededAssignmentAudit['action'];
+
+export interface BuildAssignmentAuditInput {
+  db: SeedWriter;
+  churchId: string;
+  assignmentId: string;
+  actorId: string;
+  id: string;
+  action: AssignmentAuditAction;
+  reason?: string;
+  /** Explicit, so a graph never depends on the wall clock at load time. */
+  occurredAt: Instant;
+}
+
+/** One entry of an Assignment's audited history. */
+export async function buildAssignmentAudit({
+  db,
+  churchId,
+  assignmentId,
+  actorId,
+  id,
+  action,
+  reason,
+  occurredAt,
+}: BuildAssignmentAuditInput): Promise<SeededAssignmentAudit> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(assignmentAudit)
+      .values({
+        id,
+        churchId,
+        assignmentId,
+        actorId,
+        action,
+        reason,
+        timestamp: toDate({ instant: occurredAt }),
+      })
+      .returning(),
+    description: `Assignment Audit ${id}`,
   });
 }

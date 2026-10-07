@@ -499,3 +499,58 @@ export async function buildAvailability({
     description: `Availability mark for Shift ${shiftId}`,
   });
 }
+
+export interface BuildAssignedShiftInput {
+  db: SeedWriter;
+  churchId: string;
+  eventId: string;
+  participationId: string;
+  volunteerId: string;
+  roleId: string;
+  start: Instant;
+  end: Instant;
+  status: AssignmentStatus;
+}
+
+export interface BuiltAssignedShift {
+  timeSlot: SeededTimeSlot;
+  shift: SeededShift;
+  assignment: SeededAssignment;
+}
+
+/**
+ * A Volunteer's Assignment on a Shift that covers its own Time Slot over
+ * `start`..`end`: the smallest schedule a fixture needs to hold a booking.
+ */
+export async function buildAssignedShift({
+  db,
+  churchId,
+  eventId,
+  participationId,
+  volunteerId,
+  roleId,
+  start,
+  end,
+  status,
+}: BuildAssignedShiftInput): Promise<BuiltAssignedShift> {
+  const slot = await buildTimeSlot({ db, churchId, eventId, start, end });
+  const slotShift = await buildShift({
+    db,
+    churchId,
+    participationId,
+    timeSlotId: slot.id,
+    start,
+    end,
+  });
+  const booked = await buildAssignment({
+    db,
+    churchId,
+    participationId,
+    shiftId: slotShift.id,
+    volunteerId,
+    roleId,
+    status,
+  });
+
+  return { timeSlot: slot, shift: slotShift, assignment: booked };
+}

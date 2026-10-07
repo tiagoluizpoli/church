@@ -8,12 +8,10 @@ import { fromDate, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  buildAssignment,
+  buildAssignedShift,
   buildEvent,
   buildMinistryParticipation,
   buildPlanningCycle,
-  buildShift,
-  buildTimeSlot,
 } from '../../seeds/builders/scheduling';
 import {
   buildMinistryMembership,
@@ -166,28 +164,15 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
     });
     const start = fromDate({ date: new Date(COMMIT.getTime() + 3_600_000) });
     const end = fromDate({ date: new Date(COMMIT.getTime() + 2 * 3_600_000) });
-    const slot = await buildTimeSlot({
+    await buildAssignedShift({
       db: testDb,
       churchId,
       eventId: transferEvent.id,
-      start,
-      end,
-    });
-    const slotShift = await buildShift({
-      db: testDb,
-      churchId,
       participationId: participation.id,
-      timeSlotId: slot.id,
-      start,
-      end,
-    });
-    await buildAssignment({
-      db: testDb,
-      churchId,
-      participationId: participation.id,
-      shiftId: slotShift.id,
       volunteerId: fixture.dualMemberABVolunteerInB,
       roleId: fixture.roleInMinistryInB,
+      start,
+      end,
       status: 'confirmed',
     });
   }

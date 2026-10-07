@@ -25,6 +25,7 @@ import {
   buildTeam,
 } from '../../seeds/builders/ministry';
 import {
+  buildAssignedShift,
   buildAssignment,
   buildAssignmentAudit,
   buildAvailability,
@@ -390,6 +391,88 @@ describe('integration composition of the shared seed builders', () => {
       .from(participationSlotInclusion)
       .where(eq(participationSlotInclusion.participationId, participation.id));
     expect(inclusions).toHaveLength(1);
+  });
+
+  it('builds a Time Slot, Shift and Assignment for a Volunteer in one step', async () => {
+    await buildUser({
+      db: testDb,
+      id: ADMIN_USER_ID,
+      name: 'Admin',
+      email: 'admin@builders.test',
+    });
+    await buildChurch({
+      db: testDb,
+      id: CHURCH_ID,
+      name: 'Built Church',
+      slug: 'built-church',
+      timezone: 'UTC',
+    });
+    const ministry = await buildMinistry({
+      db: testDb,
+      churchId: CHURCH_ID,
+      name: 'Hospitality',
+    });
+    const usher = await buildRole({
+      db: testDb,
+      churchId: CHURCH_ID,
+      ministryId: ministry.id,
+      name: 'Usher',
+    });
+    const volunteerRow = await buildVolunteer({
+      db: testDb,
+      churchId: CHURCH_ID,
+      userId: ADMIN_USER_ID,
+    });
+    const start = parseInstant({ value: '2024-06-05T09:00:00Z' });
+    const end = parseInstant({ value: '2024-06-05T10:00:00Z' });
+    const cycle = await buildPlanningCycle({
+      db: testDb,
+      churchId: CHURCH_ID,
+      name: 'June cycle',
+      startDate: parseCalendarDay({ value: '2024-06-01' }),
+      endDate: parseCalendarDay({ value: '2024-07-01' }),
+      state: 'draft',
+    });
+    const planned = await buildEvent({
+      db: testDb,
+      churchId: CHURCH_ID,
+      planningCycleId: cycle.id,
+      title: 'Sunday',
+      start,
+      end,
+      status: 'scheduled',
+    });
+    const participation = await buildMinistryParticipation({
+      db: testDb,
+      churchId: CHURCH_ID,
+      ministryId: ministry.id,
+      eventId: planned.id,
+      state: 'published',
+      timeSlotIds: [],
+    });
+
+    const assigned = await buildAssignedShift({
+      db: testDb,
+      churchId: CHURCH_ID,
+      eventId: planned.id,
+      participationId: participation.id,
+      volunteerId: volunteerRow.id,
+      roleId: usher.id,
+      start,
+      end,
+      status: 'confirmed',
+    });
+
+    expect(assigned.timeSlot.eventId).toBe(planned.id);
+    expect(assigned.shift).toMatchObject({
+      timeSlotId: assigned.timeSlot.id,
+      participationId: participation.id,
+    });
+    expect(assigned.assignment).toMatchObject({
+      shiftId: assigned.shift.id,
+      volunteerId: volunteerRow.id,
+      status: 'confirmed',
+    });
   });
 
   it('builds an Event Template with ordered Time Blocks', async () => {

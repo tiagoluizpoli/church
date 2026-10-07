@@ -3,23 +3,30 @@ import {
   assignment,
   assignmentAudit,
   availabilityCheck,
-  event,
   identityAudit,
   ministryInvitation,
   ministryInvitationRole,
-  ministryParticipation,
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
   outboxMessage,
-  planningCycle,
-  shift,
-  timeSlot,
   volunteer,
   volunteerTransfer,
 } from '@church/db';
+import { fromDate, parseCalendarDay, parseInstant } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildAssignedShift,
+  buildAvailabilityCheck,
+  buildEvent,
+  buildMinistryParticipation,
+  buildPlanningCycle,
+} from '../../seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../seeds/builders/volunteer';
 import {
   ChurchId,
   MinistryId,
@@ -62,34 +69,33 @@ interface SeedScheduleResult {
  * slots, spanning the commit instant to the second.
  */
 async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
-  const [cycle] = await testDb
-    .insert(planningCycle)
-    .values({
-      churchId: fixture.churchB.id,
-      name: 'Transfer Cycle',
-      startDate: new Date('2026-09-01T00:00:00Z'),
-      endDate: new Date('2026-10-01T00:00:00Z'),
-    })
-    .returning({ id: planningCycle.id });
-  const [runningEvent] = await testDb
-    .insert(event)
-    .values({
-      churchId: fixture.churchB.id,
-      planningCycleId: cycle?.id ?? '',
-      title: 'Transfer Sunday',
-      // Event runs from before to well after the commit instant.
-      start: new Date('2026-09-15T09:00:00Z'),
-      end: new Date('2026-09-15T18:00:00Z'),
-    })
-    .returning({ id: event.id });
-  const [participation] = await testDb
-    .insert(ministryParticipation)
-    .values({
-      churchId: fixture.churchB.id,
-      ministryId: fixture.ministryInB,
-      eventId: runningEvent?.id ?? '',
-    })
-    .returning({ id: ministryParticipation.id });
+  const churchId = fixture.churchB.id;
+  const cycle = await buildPlanningCycle({
+    db: testDb,
+    churchId,
+    name: 'Transfer Cycle',
+    startDate: parseCalendarDay({ value: '2026-09-01' }),
+    endDate: parseCalendarDay({ value: '2026-10-01' }),
+    state: 'draft',
+  });
+  const runningEvent = await buildEvent({
+    db: testDb,
+    churchId,
+    planningCycleId: cycle.id,
+    title: 'Transfer Sunday',
+    // Event runs from before to well after the commit instant.
+    start: parseInstant({ value: '2026-09-15T09:00:00Z' }),
+    end: parseInstant({ value: '2026-09-15T18:00:00Z' }),
+    status: 'draft',
+  });
+  const participation = await buildMinistryParticipation({
+    db: testDb,
+    churchId,
+    ministryId: fixture.ministryInB,
+    eventId: runningEvent.id,
+    state: 'tailoring',
+    timeSlotIds: [],
+  });
 
   const slotSpecs = [
     { key: 'untouchedBefore', start: new Date(COMMIT.getTime() - 1000) },
@@ -103,50 +109,29 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
 
   const ids: Partial<ScheduleAssignmentIds> = {};
   for (const spec of slotSpecs) {
-    const [slot] = await testDb
-      .insert(timeSlot)
-      .values({
-        churchId: fixture.churchB.id,
-        eventId: runningEvent?.id ?? '',
-        startTime: spec.start,
-        endTime: new Date(spec.start.getTime() + 3_600_000),
-      })
-      .returning({ id: timeSlot.id });
-    const [slotShift] = await testDb
-      .insert(shift)
-      .values({
-        churchId: fixture.churchB.id,
-        participationId: participation?.id ?? '',
-        timeSlotId: slot?.id ?? '',
-        startTime: spec.start,
-        endTime: new Date(spec.start.getTime() + 3_600_000),
-      })
-      .returning({ id: shift.id });
-    const [row] = await testDb
-      .insert(assignment)
-      .values({
-        churchId: fixture.churchB.id,
-        participationId: participation?.id ?? '',
-        shiftId: slotShift?.id ?? '',
-        volunteerId: fixture.dualMemberABVolunteerInB,
-        roleId: fixture.roleInMinistryInB,
-        status: spec.key === 'alreadyDeclined' ? 'declined' : 'confirmed',
-      })
-      .returning({ id: assignment.id });
-    ids[spec.key] = row?.id ?? '';
+    const booked = await buildAssignedShift({
+      db: testDb,
+      churchId,
+      eventId: runningEvent.id,
+      participationId: participation.id,
+      volunteerId: fixture.dualMemberABVolunteerInB,
+      roleId: fixture.roleInMinistryInB,
+      start: fromDate({ date: spec.start }),
+      end: fromDate({ date: new Date(spec.start.getTime() + 3_600_000) }),
+      status: spec.key === 'alreadyDeclined' ? 'declined' : 'confirmed',
+    });
+    ids[spec.key] = booked.assignment.id;
   }
   const assignmentIds = ids as ScheduleAssignmentIds;
 
-  const [check] = await testDb
-    .insert(availabilityCheck)
-    .values({
-      churchId: fixture.churchB.id,
-      planningCycleId: cycle?.id ?? '',
-      ministryVolunteerId: fixture.dualMemberABMembershipInB,
-    })
-    .returning({ id: availabilityCheck.id });
+  const check = await buildAvailabilityCheck({
+    db: testDb,
+    churchId,
+    planningCycleId: cycle.id,
+    ministryVolunteerId: fixture.dualMemberABMembershipInB,
+  });
 
-  return { assignmentIds, availabilityCheckId: check?.id ?? '' };
+  return { assignmentIds, availabilityCheckId: check.id };
 }
 
 async function seedPendingInvitationInChurchA(): Promise<string> {
@@ -466,15 +451,19 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
       .update(ministryVolunteer)
       .set({ ministryAccessLevel: 'leader' })
       .where(eq(ministryVolunteer.id, fixture.dualMemberABMembershipInB));
-    const [coLeaderVolunteer] = await testDb
-      .insert(volunteer)
-      .values({ churchId: fixture.churchB.id, userId: fixture.adminB })
-      .returning({ id: volunteer.id });
-    await testDb.insert(ministryVolunteer).values({
+    const coLeaderVolunteer = await buildVolunteer({
+      db: testDb,
       churchId: fixture.churchB.id,
-      volunteerId: coLeaderVolunteer?.id ?? '',
+      userId: fixture.adminB,
+    });
+    await buildMinistryMembership({
+      db: testDb,
+      churchId: fixture.churchB.id,
+      volunteerId: coLeaderVolunteer.id,
       ministryId: fixture.ministryInB,
       ministryAccessLevel: 'leader',
+      roleIds: [],
+      teams: [],
     });
 
     const outcome = await runTransfer();
@@ -488,15 +477,19 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
   it('enqueues a ministry-digest addressed to the Ministry when an active leader remains', async () => {
     // A second, unrelated Volunteer holds active leadership in `ministryInB`,
     // so the departure is routine and never escalates.
-    const [leaderVolunteer] = await testDb
-      .insert(volunteer)
-      .values({ churchId: fixture.churchB.id, userId: fixture.adminB })
-      .returning({ id: volunteer.id });
-    await testDb.insert(ministryVolunteer).values({
+    const leaderVolunteer = await buildVolunteer({
+      db: testDb,
       churchId: fixture.churchB.id,
-      volunteerId: leaderVolunteer?.id ?? '',
+      userId: fixture.adminB,
+    });
+    await buildMinistryMembership({
+      db: testDb,
+      churchId: fixture.churchB.id,
+      volunteerId: leaderVolunteer.id,
       ministryId: fixture.ministryInB,
       ministryAccessLevel: 'leader',
+      roleIds: [],
+      teams: [],
     });
 
     const outcome = await runTransfer();
@@ -523,62 +516,45 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — notifications (
     // Two more future, confirmed assignments in the same Ministry — on top of
     // the one `seedChurchBSchedule` already seeded (`cancelledAfter`), for
     // three withdrawn assignments total in this one Ministry.
-    const [cycle] = await testDb
-      .insert(planningCycle)
-      .values({
-        churchId: fixture.churchB.id,
-        name: 'Second Cycle',
-        // Non-overlapping with `seedChurchBSchedule`'s cycle — Planning Cycle
-        // date ranges for a Church must not overlap.
-        startDate: new Date('2027-01-01T00:00:00Z'),
-        endDate: new Date('2027-02-01T00:00:00Z'),
-      })
-      .returning({ id: planningCycle.id });
-    const [extraEvent] = await testDb
-      .insert(event)
-      .values({
-        churchId: fixture.churchB.id,
-        planningCycleId: cycle?.id ?? '',
-        title: 'Extra Assignments Event',
-        start: new Date(COMMIT.getTime() - 1000),
-        end: new Date(COMMIT.getTime() + 24 * 3_600_000),
-      })
-      .returning({ id: event.id });
-    const [extraParticipation] = await testDb
-      .insert(ministryParticipation)
-      .values({
-        churchId: fixture.churchB.id,
-        ministryId: fixture.ministryInB,
-        eventId: extraEvent?.id ?? '',
-      })
-      .returning({ id: ministryParticipation.id });
+    const churchId = fixture.churchB.id;
+    const cycle = await buildPlanningCycle({
+      db: testDb,
+      churchId,
+      name: 'Second Cycle',
+      // Non-overlapping with `seedChurchBSchedule`'s cycle — Planning Cycle
+      // date ranges for a Church must not overlap.
+      startDate: parseCalendarDay({ value: '2027-01-01' }),
+      endDate: parseCalendarDay({ value: '2027-02-01' }),
+      state: 'draft',
+    });
+    const extraEvent = await buildEvent({
+      db: testDb,
+      churchId,
+      planningCycleId: cycle.id,
+      title: 'Extra Assignments Event',
+      start: fromDate({ date: new Date(COMMIT.getTime() - 1000) }),
+      end: fromDate({ date: new Date(COMMIT.getTime() + 24 * 3_600_000) }),
+      status: 'draft',
+    });
+    const extraParticipation = await buildMinistryParticipation({
+      db: testDb,
+      churchId,
+      ministryId: fixture.ministryInB,
+      eventId: extraEvent.id,
+      state: 'tailoring',
+      timeSlotIds: [],
+    });
     for (const offsetMs of [2_000, 3_000]) {
       const start = new Date(COMMIT.getTime() + offsetMs);
-      const [slot] = await testDb
-        .insert(timeSlot)
-        .values({
-          churchId: fixture.churchB.id,
-          eventId: extraEvent?.id ?? '',
-          startTime: start,
-          endTime: new Date(start.getTime() + 3_600_000),
-        })
-        .returning({ id: timeSlot.id });
-      const [slotShift] = await testDb
-        .insert(shift)
-        .values({
-          churchId: fixture.churchB.id,
-          participationId: extraParticipation?.id ?? '',
-          timeSlotId: slot?.id ?? '',
-          startTime: start,
-          endTime: new Date(start.getTime() + 3_600_000),
-        })
-        .returning({ id: shift.id });
-      await testDb.insert(assignment).values({
-        churchId: fixture.churchB.id,
-        participationId: extraParticipation?.id ?? '',
-        shiftId: slotShift?.id ?? '',
+      await buildAssignedShift({
+        db: testDb,
+        churchId,
+        eventId: extraEvent.id,
+        participationId: extraParticipation.id,
         volunteerId: fixture.dualMemberABVolunteerInB,
         roleId: fixture.roleInMinistryInB,
+        start: fromDate({ date: start }),
+        end: fromDate({ date: new Date(start.getTime() + 3_600_000) }),
         status: 'confirmed',
       });
     }

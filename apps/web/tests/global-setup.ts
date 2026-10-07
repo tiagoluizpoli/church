@@ -80,6 +80,13 @@ const LEADER_BASE = {
   name: 'E2E Leader',
 };
 
+/**
+ * The shared ChurchAdmin's password. Its identity is read-only, so a spec
+ * may sign it in through the sign-in form (its email is the one of its
+ * storage state's session).
+ */
+export const E2E_CHURCH_ADMIN_PASSWORD = LEADER_BASE.password;
+
 const TEAM_LEADER_BASE = {
   password: 'e2e-Password-456',
   name: 'E2E Team Leader',

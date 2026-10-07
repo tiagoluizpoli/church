@@ -19,6 +19,10 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   liveChanges: 'live-changes',
   rosteringBoard: 'rostering-board',
   rosterQualification: 'roster-qualification',
+  activeChurchSwitching: 'active-church-switching',
+  volunteerTransfer: 'volunteer-transfer',
+  ministryRedemption: 'ministry-redemption',
+  crossTenantInvitation: 'cross-tenant-invitation',
 } as const;
 
 export type E2eJourneyRecipeName =

@@ -70,7 +70,7 @@ Not filing this as an issue now (per the "skip" recommendation above), but if Bu
 > **Title:** Pin Bun version in CI (no mise needed unless multi-runtime)
 > **Scope:** Change `bun-version: latest` to an exact pinned version (e.g. `1.2.x` matching `package.json`'s `packageManager`/engines field if present) in `.github/actions/setup-church-ci/action.yml`. Document the pinned version's rationale in a comment. Re-evaluate mise only if/when a second runtime or language needs version management alongside Bun — at that point, re-open this research doc, add a `mise.toml` with `[tools] bun = "<pinned>"` (+ the new runtime), swap `oven-sh/setup-bun@v2` for `jdx/mise-action@v4` in `setup-church-ci`, and keep the jobs' `env:` blocks and the `actions/cache@v4` step unchanged (mise env vars must not touch job-scoped secrets/DB URLs — see §3c).
 > **Out of scope:** any change to the jobs' `env:` blocks or to the database migration step in `setup-church-ci`.
-> **Verification:** CI green on `develop-gate`, `release-gate`, `fast-gate`; `bun --version` in a CI log matches the pinned value; local `bun --version` (or `mise ls bun` if mise is adopted) matches too.
+> **Verification:** CI green on `develop-gate`, `release-gate`, `fast-gate`, `e2e`; `bun --version` in a CI log matches the pinned value; local `bun --version` (or `mise ls bun` if mise is adopted) matches too.
 
 ## Sources
 

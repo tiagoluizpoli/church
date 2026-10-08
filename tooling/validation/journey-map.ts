@@ -638,6 +638,10 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: JOURNEY_RECIPE_SPEC_PATHS,
   },
   {
+    sourcePathPrefix: 'apps/server/src/scripts/init-system.ts',
+    specPaths: JOURNEY_RECIPE_SPEC_PATHS,
+  },
+  {
     sourcePathPrefix: 'apps/server/src/scripts/ensure-platform-operator.ts',
     specPaths: JOURNEY_RECIPE_SPEC_PATHS,
   },

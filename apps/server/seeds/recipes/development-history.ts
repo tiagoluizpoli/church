@@ -5,6 +5,7 @@ import {
   enumerateCalendarDays,
   type Instant,
   parseTimeOfDay,
+  today,
   toInstant,
   weekdayIndex,
 } from '@church/time';
@@ -27,6 +28,10 @@ import {
   buildUnavailabilityMark,
 } from '../builders/availability';
 import { deriveSeedId } from '../builders/derived-id';
+import {
+  buildVolunteerNotification,
+  type VolunteerNotificationType,
+} from '../builders/notification';
 import {
   type AssignmentStatus,
   buildAssignment,
@@ -65,8 +70,9 @@ const MONTH_NAMES = [
 /** When the leaders confirmed availability and rostered, before the month. */
 const AVAILABILITY_CONFIRMED_DAYS_BEFORE = 10;
 const ROSTERED_DAYS_BEFORE = 5;
-/** When a decline or withdrawal happened, and its replacement was made. */
-const WITHDRAWN_DAYS_BEFORE_GATHERING = 3;
+/** When every participation was published, the day after rostering. */
+const PUBLISHED_DAYS_BEFORE = 4;
+/** When a replacement or reassignment was made, before its gathering. */
 const REPLACED_DAYS_BEFORE_GATHERING = 2;
 
 export interface SeededHistoricalCycle {
@@ -100,7 +106,10 @@ interface PlannedRequirement {
 interface PlannedShift {
   id: string;
   participationId: string;
+  ministryId: string;
   ministryName: string;
+  eventId: string;
+  eventTitle: string;
   /** `${block}#${week}` for a regular gathering, the title for a dynamic one. */
   gatheringKey: string;
   day: CalendarDay;
@@ -393,7 +402,10 @@ async function materializeEvent({
       shifts.push({
         id: shiftId,
         participationId,
+        ministryId: ministry.ministryId,
         ministryName,
+        eventId,
+        eventTitle: plannedEvent.title,
         gatheringKey: slot.gatheringKey,
         day: plannedEvent.day,
         start: slot.start,
@@ -468,18 +480,40 @@ interface PlacementTarget {
   requirement: PlannedRequirement;
 }
 
+/**
+ * What became of an Assignment: still serving, declined by its Volunteer, or
+ * reassigned away (the product deletes that row, so it is never written).
+ */
+type AssignmentOutcome =
+  | Extract<AssignmentStatus, 'confirmed' | 'declined'>
+  | 'reassigned';
+
 interface AssignmentWrite {
   target: PlacementTarget;
   email: string;
-  status: AssignmentStatus;
+  outcome: AssignmentOutcome;
   assignedAt: Instant;
+  /** The leader who made it; every Assignment here is its Ministry leader's. */
+  assignedByEmail: string;
+  /** The row's reason: a decline's, or the override a reassignment carried. */
   reason?: string;
+  /** The override reason createAssignment also writes on its `created` audit. */
+  createdReason?: string;
 }
 
 interface PlaceInput {
   target: PlacementTarget;
   email: string;
   assignedAt: Instant;
+  createdReason?: string;
+}
+
+interface WithdrawInput {
+  target: PlacementTarget;
+  email: string;
+  outcome: Exclude<AssignmentOutcome, 'confirmed'>;
+  assignedAt: Instant;
+  reason?: string;
 }
 
 interface StaffingLedgerInput {
@@ -498,6 +532,7 @@ class StaffingLedger {
   private readonly excludedByShift = new Map<string, Set<string>>();
   private readonly filled = new Map<string, number>();
   private readonly membersByMinistry = new Map<string, PoolMember[]>();
+  private readonly leaderEmailByMinistry = new Map<string, string>();
   readonly writes: AssignmentWrite[] = [];
 
   constructor({ directory, ministryBlueprints }: StaffingLedgerInput) {
@@ -506,7 +541,17 @@ class StaffingLedger {
         name,
         ministryMembers({ directory, ministry }),
       );
+      this.leaderEmailByMinistry.set(name, leaderEmailOf({ ministry }));
     }
+  }
+
+  /** Who rosters the shift's Ministry. */
+  leaderOf({ shift }: ShiftMomentInput): string {
+    const leaderEmail = this.leaderEmailByMinistry.get(shift.ministryName);
+    if (!leaderEmail) {
+      throw new Error(`${shift.ministryName} has no Ministry leader.`);
+    }
+    return leaderEmail;
   }
 
   pool({ shift, requirement }: PlacementTarget): PoolMember[] {
@@ -566,7 +611,12 @@ class StaffingLedger {
   }
 
   /** An active Assignment; a blueprint placement the product would flag fails the load. */
-  place({ target, email, assignedAt }: PlaceInput): AssignmentWrite {
+  place({
+    target,
+    email,
+    assignedAt,
+    createdReason,
+  }: PlaceInput): AssignmentWrite {
     const refused = this.refusal({ target, email });
     if (refused) {
       throw new Error(
@@ -581,23 +631,35 @@ class StaffingLedger {
     const write: AssignmentWrite = {
       target,
       email,
-      status: 'confirmed',
+      outcome: 'confirmed',
       assignedAt,
+      assignedByEmail: this.leaderOf({ shift: target.shift }),
+      reason: createdReason,
+      createdReason,
     };
     this.writes.push(write);
     return write;
   }
 
-  /** A declined or cancelled Assignment: the person no longer serves the Shift. */
+  /** An Assignment its Volunteer declined or its leader reassigned away. */
   withdraw({
     target,
     email,
-    status,
+    outcome,
     assignedAt,
     reason,
-  }: AssignmentWrite): void {
+  }: WithdrawInput): AssignmentWrite {
     this.exclude({ email, shift: target.shift });
-    this.writes.push({ target, email, status, assignedAt, reason });
+    const write: AssignmentWrite = {
+      target,
+      email,
+      outcome,
+      assignedAt,
+      assignedByEmail: this.leaderOf({ shift: target.shift }),
+      reason,
+    };
+    this.writes.push(write);
+    return write;
   }
 }
 
@@ -689,7 +751,7 @@ function leaderEmailOf({ ministry }: LeaderOfInput): string {
 interface AuditPlan {
   assignment: AssignmentWrite;
   actorEmail: string;
-  action: 'created' | 'status_change';
+  action: 'updated';
   reason?: string;
   occurredAt: Instant;
 }
@@ -809,24 +871,28 @@ interface ApplyHistoryTrailInput {
   shifts: readonly PlannedShift[];
   history: HistoryBlueprint;
   rosteredAt: Instant;
-  withdrawnAt: ShiftMoment;
   replacedAt: ShiftMoment;
+}
+
+/** The audits and notifications a trail step wrote beyond the routine ones. */
+interface TrailRecords {
+  audits: AuditPlan[];
+  notifications: NotificationPlan[];
 }
 
 /**
  * The blueprint's trail placed before rotation: cross-Ministry service, the
- * overlap a leader resolved, and the decline, each with its replacement.
- * Returns the audit entries the withdrawals and replacements left.
+ * overlap a leader resolved by reassignment, and the decline with its
+ * replacement, each as the product records it.
  */
 function applyHistoryTrail({
   ledger,
   shifts,
   history,
   rosteredAt,
-  withdrawnAt,
   replacedAt,
-}: ApplyHistoryTrailInput): AuditPlan[] {
-  const audits: AuditPlan[] = [];
+}: ApplyHistoryTrailInput): TrailRecords {
+  const records: TrailRecords = { audits: [], notifications: [] };
   for (const incident of history.crossMinistryService) {
     for (const servicePost of incident.posts) {
       ledger.place({
@@ -837,6 +903,9 @@ function applyHistoryTrail({
     }
   }
 
+  // reassignParticipationAssignment: a new Assignment carrying the override
+  // reason (`created` and `updated` audits), the old row deleted, and both
+  // Volunteers notified about the new Assignment.
   for (const incident of history.resolvedOverlaps) {
     ledger.place({
       target: findTarget({ shifts, post: incident.kept }),
@@ -844,72 +913,68 @@ function applyHistoryTrail({
       assignedAt: rosteredAt,
     });
     const target = findTarget({ shifts, post: incident.withdrawn });
-    const withdrawn: AssignmentWrite = {
+    ledger.withdraw({
       target,
       email: incident.email,
-      status: 'cancelled',
+      outcome: 'reassigned',
       assignedAt: rosteredAt,
-      reason: incident.reason,
-    };
-    ledger.withdraw(withdrawn);
+    });
+    const reassignedAt = replacedAt({ shift: target.shift });
     const replacement = ledger.place({
       target,
       email: incident.replacementEmail,
-      assignedAt: replacedAt({ shift: target.shift }),
+      assignedAt: reassignedAt,
+      createdReason: incident.reason,
     });
-    const leaderEmail = leaderEmailOf({
-      ministry: incident.withdrawn.ministry,
+    records.audits.push({
+      assignment: replacement,
+      actorEmail: replacement.assignedByEmail,
+      action: 'updated',
+      reason: incident.reason,
+      occurredAt: reassignedAt,
     });
-    audits.push(
+    const { eventTitle } = target.shift;
+    records.notifications.push(
       {
-        assignment: withdrawn,
-        actorEmail: leaderEmail,
-        action: 'status_change',
-        reason: incident.reason,
-        occurredAt: withdrawnAt({ shift: target.shift }),
+        email: incident.email,
+        shift: target.shift,
+        assignment: replacement,
+        type: 'assignment_removed',
+        title: 'Assignment changed',
+        body: `${eventTitle} has been reassigned.`,
+        createdAt: reassignedAt,
       },
       {
+        email: incident.replacementEmail,
+        shift: target.shift,
         assignment: replacement,
-        actorEmail: leaderEmail,
-        action: 'created',
-        occurredAt: replacedAt({ shift: target.shift }),
+        type: 'assignment_added',
+        title: 'New assignment',
+        body: `You were assigned to ${eventTitle}.`,
+        createdAt: reassignedAt,
       },
     );
   }
 
+  // respondToAssignment only sets the status and reason; the leader then
+  // assigns a replacement like any other Assignment.
   for (const incident of history.declines) {
     const target = findTarget({ shifts, post: incident.post });
-    const declined: AssignmentWrite = {
+    ledger.withdraw({
       target,
       email: incident.email,
-      status: 'declined',
+      outcome: 'declined',
       assignedAt: rosteredAt,
       reason: incident.reason,
-    };
-    ledger.withdraw(declined);
-    const replacement = ledger.place({
+    });
+    ledger.place({
       target,
       email: incident.replacementEmail,
       assignedAt: replacedAt({ shift: target.shift }),
     });
-    audits.push(
-      {
-        assignment: declined,
-        actorEmail: incident.email,
-        action: 'status_change',
-        reason: incident.reason,
-        occurredAt: withdrawnAt({ shift: target.shift }),
-      },
-      {
-        assignment: replacement,
-        actorEmail: leaderEmailOf({ ministry: incident.post.ministry }),
-        action: 'created',
-        occurredAt: replacedAt({ shift: target.shift }),
-      },
-    );
   }
 
-  return audits;
+  return records;
 }
 
 interface StaffByRotationInput {
@@ -1042,13 +1107,18 @@ export async function loadDevelopmentHistory({
     day: addCalendarDays({ day: cycle.startDate, days: -ROSTERED_DAYS_BEFORE }),
     time: '10:00',
   });
-  const withdrawnAt = ({ shift }: ShiftMomentInput): Instant =>
+  const publishedAt = at({
+    day: addCalendarDays({
+      day: cycle.startDate,
+      days: -PUBLISHED_DAYS_BEFORE,
+    }),
+    time: '18:00',
+  });
+  /** People open a notification the morning after it arrives. */
+  const readAfter = ({ instant }: InstantInput): Instant =>
     at({
-      day: addCalendarDays({
-        day: shift.day,
-        days: -WITHDRAWN_DAYS_BEFORE_GATHERING,
-      }),
-      time: '09:00',
+      day: addCalendarDays({ day: today({ instant, timeZone }), days: 1 }),
+      time: '08:00',
     });
   const replacedAt = ({ shift }: ShiftMomentInput): Instant =>
     at({
@@ -1083,12 +1153,11 @@ export async function loadDevelopmentHistory({
     }),
   });
 
-  const audits = applyHistoryTrail({
+  const trail = applyHistoryTrail({
     ledger,
     shifts,
     history,
     rosteredAt,
-    withdrawnAt,
     replacedAt,
   });
   staffByRotation({ ledger, shifts, history, assignedAt: rosteredAt });
@@ -1101,10 +1170,14 @@ export async function loadDevelopmentHistory({
         requireKnown({ ids: volunteerIdByEmail, key: email }),
       ],
     });
+  const userIdOf = ({ email }: EmailInput): string =>
+    requireKnown({ ids: userIdByEmail, key: email });
+
+  // createAssignment: every Assignment with its `created` audit by the
+  // leader who made it. A reassigned-away row was deleted, audit and all.
   for (const write of ledger.writes) {
-    const ministryBlueprint = ministryBlueprints.get(
-      write.target.shift.ministryName,
-    );
+    if (write.outcome === 'reassigned') continue;
+    const assignmentId = assignmentIdOf(write);
     await buildAssignment({
       db,
       churchId,
@@ -1112,25 +1185,33 @@ export async function loadDevelopmentHistory({
       shiftId: write.target.shift.id,
       volunteerId: requireKnown({ ids: volunteerIdByEmail, key: write.email }),
       roleId: write.target.requirement.roleId,
-      id: assignmentIdOf(write),
-      status: write.status,
+      id: assignmentId,
+      status: write.outcome,
       reason: write.reason,
       assignedAt: write.assignedAt,
-      assignedBy: ministryBlueprint
-        ? requireKnown({
-            ids: userIdByEmail,
-            key: leaderEmailOf({ ministry: ministryBlueprint }),
-          })
-        : undefined,
+      assignedBy: userIdOf({ email: write.assignedByEmail }),
+    });
+    await buildAssignmentAudit({
+      db,
+      churchId,
+      assignmentId,
+      actorId: userIdOf({ email: write.assignedByEmail }),
+      id: deriveSeedId({
+        kind: 'assignment-audit',
+        parentIds: [assignmentId, 'created'],
+      }),
+      action: 'created',
+      reason: write.createdReason,
+      occurredAt: write.assignedAt,
     });
   }
-  for (const audit of audits) {
+  for (const audit of trail.audits) {
     const assignmentId = assignmentIdOf(audit.assignment);
     await buildAssignmentAudit({
       db,
       churchId,
       assignmentId,
-      actorId: requireKnown({ ids: userIdByEmail, key: audit.actorEmail }),
+      actorId: userIdOf({ email: audit.actorEmail }),
       id: deriveSeedId({
         kind: 'assignment-audit',
         parentIds: [assignmentId, audit.action],
@@ -1141,7 +1222,108 @@ export async function loadDevelopmentHistory({
     });
   }
 
+  // Publishing notified each Volunteer rostered on a participation at that
+  // moment, once per participation; later replacements were not notified.
+  const recipientsByParticipation = new Map<string, PublishRecipients>();
+  for (const write of ledger.writes) {
+    if (compareInstants({ left: write.assignedAt, right: publishedAt }) > 0) {
+      continue;
+    }
+    const { shift } = write.target;
+    const recipients = recipientsByParticipation.get(shift.participationId) ?? {
+      shift,
+      emails: new Set<string>(),
+    };
+    recipients.emails.add(write.email);
+    recipientsByParticipation.set(shift.participationId, recipients);
+  }
+  const notifications: NotificationPlan[] = [
+    ...[...recipientsByParticipation.values()].flatMap(({ shift, emails }) =>
+      [...emails].map(
+        (email): NotificationPlan => ({
+          email,
+          shift,
+          type: 'schedule_published',
+          title: 'Schedule published',
+          body: `${shift.eventTitle} is now published for your ministry.`,
+          createdAt: publishedAt,
+        }),
+      ),
+    ),
+    ...trail.notifications,
+  ];
+  const unread = new Set(history.unreadNotificationEmails);
+  for (const notification of notifications) {
+    const volunteerId = requireKnown({
+      ids: volunteerIdByEmail,
+      key: notification.email,
+    });
+    const { shift } = notification;
+    const assignmentId = notification.assignment
+      ? assignmentIdOf(notification.assignment)
+      : undefined;
+    await buildVolunteerNotification({
+      db,
+      churchId,
+      volunteerId,
+      id: deriveSeedId({
+        kind: 'volunteer-notification',
+        parentIds: [
+          notification.type,
+          assignmentId ?? shift.participationId,
+          volunteerId,
+        ],
+      }),
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      payload: assignmentId
+        ? { assignmentId, eventId: shift.eventId, ministryId: shift.ministryId }
+        : {
+            eventId: shift.eventId,
+            ministryId: shift.ministryId,
+            section: 'assignments',
+          },
+      createdAt: notification.createdAt,
+      readAt: unread.has(notification.email)
+        ? undefined
+        : readAfter({ instant: notification.createdAt }),
+      planningCycleId: cycle.id,
+      ministryId: shift.ministryId,
+      eventId: shift.eventId,
+      assignmentId,
+    });
+  }
+
   return cycle;
+}
+
+interface InstantInput {
+  instant: Instant;
+}
+
+interface EmailInput {
+  email: string;
+}
+
+interface PublishRecipients {
+  shift: PlannedShift;
+  emails: Set<string>;
+}
+
+/** A notification as the product's notifyVolunteer call would write it. */
+interface NotificationPlan {
+  email: string;
+  shift: PlannedShift;
+  /** The Assignment it is about; absent for a publish notification. */
+  assignment?: AssignmentWrite;
+  type: Extract<
+    VolunteerNotificationType,
+    'schedule_published' | 'assignment_added' | 'assignment_removed'
+  >;
+  title: string;
+  body: string;
+  createdAt: Instant;
 }
 
 interface DayTimeAtInput {

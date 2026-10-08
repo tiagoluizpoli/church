@@ -1,5 +1,6 @@
 import {
   assignment,
+  assignmentAudit,
   availability,
   availabilityCheck,
   event,
@@ -16,6 +17,9 @@ import {
   slotRequirement,
   team,
   timeBlock,
+  user,
+  volunteer,
+  volunteerNotification,
 } from '@church/db';
 import {
   addCalendarDays,
@@ -503,19 +507,45 @@ async function assignmentProblems({
       }),
       expected: history.declines.length,
     },
-    'Assignments cancelled to resolve an overlap': {
+    'cancelled Assignments (a reassignment deletes the old one)': {
       actual: await countOf({
         db,
         query: sql`select count(*) as value from ${assignment} where status = 'cancelled'`,
       }),
-      expected: history.resolvedOverlaps.length,
+      expected: 0,
     },
-    'audited withdrawals and replacements': {
+    'Assignments carrying a reassignment reason': {
       actual: await countOf({
         db,
-        query: sql`select count(*) as value from assignment_audit`,
+        query: sql`select count(*) as value from ${assignment}
+          where status = 'confirmed' and reason is not null`,
       }),
-      expected: 2 * (history.declines.length + history.resolvedOverlaps.length),
+      expected: history.resolvedOverlaps.length,
+    },
+    'Assignments without one created audit by whoever assigned it': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignment} a
+          where (select count(*) from ${assignmentAudit} au
+            where au.assignment_id = a.id and au.action = 'created'
+              and au.actor_id = a.assigned_by and au.timestamp = a.assigned_at) <> 1`,
+      }),
+      expected: 0,
+    },
+    'updated audits (one per reassignment)': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignmentAudit} where action = 'updated'`,
+      }),
+      expected: history.resolvedOverlaps.length,
+    },
+    'audits beyond created and updated': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignmentAudit}
+          where action not in ('created', 'updated')`,
+      }),
+      expected: 0,
     },
   };
   for (const [label, { actual, expected }] of Object.entries(trail)) {
@@ -544,6 +574,108 @@ async function assignmentProblems({
   return problems;
 }
 
+interface NotificationProblemsInput {
+  db: SeedWriter;
+  blueprint: DevelopmentBlueprint;
+}
+
+/**
+ * What publishing and the reassignments wrote: one `schedule_published` per
+ * Volunteer rostered on a participation when it was published, the pair a
+ * reassignment sends, each in the product's shape, read unless the
+ * blueprint says otherwise.
+ */
+async function notificationProblems({
+  db,
+  blueprint,
+}: NotificationProblemsInput): Promise<string[]> {
+  const { history } = blueprint;
+  const published = sql`(select min(created_at) from ${volunteerNotification}
+    where type = 'schedule_published')`;
+  const unreadEmails = sql.join(
+    history.unreadNotificationEmails.map((email) => sql`${email}`),
+    sql`, `,
+  );
+  const checks = {
+    'rostered Volunteers without their publish notification': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from (
+            select distinct a.participation_id, a.volunteer_id from ${assignment} a
+            where a.assigned_at <= ${published}) as rostered
+          where not exists (select 1 from ${volunteerNotification} n
+            join ${ministryParticipation} p on p.event_id = n.event_id and p.ministry_id = n.ministry_id
+            where p.id = rostered.participation_id and n.volunteer_id = rostered.volunteer_id
+              and n.type = 'schedule_published')`,
+      }),
+      expected: 0,
+    },
+    'publish notifications beyond the rostered Volunteers': {
+      actual: await countOf({
+        db,
+        query: sql`select (select count(*) from ${volunteerNotification} where type = 'schedule_published')
+          - (select count(*) from (select distinct a.participation_id, a.volunteer_id
+              from ${assignment} a where a.assigned_at <= ${published}) as rostered) as value`,
+      }),
+      // A reassignment deleted a rostered row its publish notification outlived.
+      expected: history.resolvedOverlaps.length,
+    },
+    'publish notifications not in the shape publishing writes': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${volunteerNotification} n
+          join ${event} e on e.id = n.event_id
+          where n.type = 'schedule_published'
+            and (n.title <> 'Schedule published'
+              or n.body <> e.title || ' is now published for your ministry.'
+              or n.planning_cycle_id is distinct from e.planning_cycle_id
+              or n.assignment_id is not null
+              or n.payload <> jsonb_build_object('eventId', n.event_id::text,
+                'ministryId', n.ministry_id::text, 'section', 'assignments'))`,
+      }),
+      expected: 0,
+    },
+    'reassignment notifications': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${volunteerNotification} n
+          join ${assignment} a on a.id = n.assignment_id
+          where n.type in ('assignment_added', 'assignment_removed')
+            and n.payload = jsonb_build_object('assignmentId', n.assignment_id::text,
+              'eventId', n.event_id::text, 'ministryId', n.ministry_id::text)`,
+      }),
+      expected: 2 * history.resolvedOverlaps.length,
+    },
+    'notifications of any other kind': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${volunteerNotification}
+          where type not in ('schedule_published', 'assignment_added', 'assignment_removed')`,
+      }),
+      expected: 0,
+    },
+    'notifications whose read state contradicts the blueprint': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${volunteerNotification} n
+          join ${volunteer} v on v.id = n.volunteer_id
+          join ${user} u on u.id = v.user_id
+          where (n.read_at is null) <> (u.email in (${unreadEmails}))
+            or n.read_at < n.created_at`,
+      }),
+      expected: 0,
+    },
+  };
+
+  const problems: string[] = [];
+  for (const [label, { actual, expected }] of Object.entries(checks)) {
+    if (actual !== expected) {
+      problems.push(`History has ${actual} ${label}, expected ${expected}`);
+    }
+  }
+  return problems;
+}
+
 /**
  * The gatherings and locked historical cycle against the blueprint and the
  * anchor: standing rules, the one locked cycle and nothing from the anchor's
@@ -569,5 +701,6 @@ export async function historyProblems({
       blueprint,
       directory: blueprint.primary,
     })),
+    ...(await notificationProblems({ db, blueprint })),
   ];
 }

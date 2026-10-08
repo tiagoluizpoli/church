@@ -10,9 +10,10 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { SeedDataSchema } from '@church/db/schemas/seed';
+import { SystemInitializationInputSchema } from '@church/db/schemas/system-initialization';
 import { and, eq, type InferSelectModel, isNull } from 'drizzle-orm';
-import { provisionSeedChurch } from './provision-seed-church';
+import { ensurePlatformOperator } from './ensure-platform-operator';
+import { provisionChurch } from './provision-church';
 
 const db = createDb();
 
@@ -33,7 +34,7 @@ export async function runInitSystem({
   console.log('🚀 Initializing Church system...');
 
   const rawData = JSON.parse(readFileSync(seedPath, 'utf-8'));
-  const seedData = SeedDataSchema.parse(rawData);
+  const seedData = SystemInitializationInputSchema.parse(rawData);
 
   console.log(
     `📍 Using seed data: ${seedData.churchName} (${seedData.churchSlug})`,
@@ -45,12 +46,16 @@ export async function runInitSystem({
 
     if (!church) {
       console.log(`Creating church: ${seedData.churchName}`);
-      church = await provisionSeedChurch({
+      // Church Provisioning, as the local stand-in Platform Operator.
+      const operator = await ensurePlatformOperator({ db: tx });
+      const provisioned = await provisionChurch({
         db: tx,
         churchName: seedData.churchName,
         churchSlug: seedData.churchSlug,
         adminEmail: seedData.adminEmail,
+        operatorUserId: operator.id,
       });
+      church = provisioned.church;
     } else {
       console.log(`Church already exists: ${seedData.churchSlug}`);
     }

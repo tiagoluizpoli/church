@@ -4,10 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
- * #263: `db:seed:reset` and `db:clean` resolve their target like
- * `db:reset:dev` does (getDevelopmentDatabaseUrl): a redacted preflight, and a
- * refusal before anything runs against another worktree's or another
- * purpose's database. Port 9 has no listener, so an accepted target fails on
+ * #263: `db:clean` resolves its target like `db:reset:dev` does
+ * (getDevelopmentDatabaseUrl): a redacted preflight, and a refusal before
+ * anything runs against another worktree's or another purpose's database. Port 9 has no listener, so an accepted target fails on
  * connect instead of touching a real database.
  */
 
@@ -21,10 +20,6 @@ interface DestructiveCommand {
 }
 
 const COMMANDS: DestructiveCommand[] = [
-  {
-    name: 'db:seed:reset',
-    args: [join(SOURCE_DIR, 'seed/index.ts'), '--reset'],
-  },
   { name: 'db:clean', args: [join(SOURCE_DIR, 'scripts/clean-db.ts')] },
 ];
 

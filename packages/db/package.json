@@ -25,9 +25,6 @@
     "db:watch": "sh ../../tooling/worktree/shared-compose.sh up",
     "db:stop": "sh ../../tooling/worktree/shared-compose.sh stop",
     "db:down": "sh ../../tooling/worktree/shared-compose.sh down",
-    "db:seed": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun src/seed/index.ts",
-    "db:seed:reset": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun src/seed/index.ts --reset",
-    "db:seed:dashboard-demo": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun src/scripts/seed-volunteer-dashboard-demo.ts",
     "db:setup-test": "CHURCH_EXEC_PURPOSE=integration varlock run --path . -- bun src/setup-test-db.ts",
     "db:clean": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun src/scripts/clean-db.ts",
     "typecheck": "tsc --noEmit",
@@ -45,7 +42,6 @@
   },
   "devDependencies": {
     "@church/config": "workspace:*",
-    "@faker-js/faker": "^10.4.0",
     "@types/pg": "catalog:",
     "better-auth": "1.5.5",
     "drizzle-kit": "^0.31.8",

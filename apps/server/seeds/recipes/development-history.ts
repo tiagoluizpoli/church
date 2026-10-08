@@ -528,7 +528,8 @@ interface StaffingLedgerInput {
  */
 class StaffingLedger {
   private readonly busy = new Map<string, TimeRange[]>();
-  private readonly unavailable = new Map<string, TimeRange[]>();
+  /** Marks are per Shift, as the product's UNAVAILABLE check reads them. */
+  private readonly unavailableShiftIds = new Map<string, Set<string>>();
   private readonly excludedByShift = new Map<string, Set<string>>();
   private readonly filled = new Map<string, number>();
   private readonly membersByMinistry = new Map<string, PoolMember[]>();
@@ -567,11 +568,10 @@ class StaffingLedger {
     return this.filled.get(requirement.id) ?? 0;
   }
 
-  markUnavailable({ email, range }: MarkUnavailableInput): void {
-    this.unavailable.set(email, [
-      ...(this.unavailable.get(email) ?? []),
-      range,
-    ]);
+  markUnavailable({ email, shift }: MarkUnavailableInput): void {
+    const marked = this.unavailableShiftIds.get(email) ?? new Set<string>();
+    marked.add(shift.id);
+    this.unavailableShiftIds.set(email, marked);
   }
 
   exclude({ email, shift }: ExcludeInput): void {
@@ -597,11 +597,7 @@ class StaffingLedger {
     ) {
       return 'is already serving then';
     }
-    if (
-      (this.unavailable.get(email) ?? []).some((other) =>
-        overlaps({ left: other, right: range }),
-      )
-    ) {
+    if (this.unavailableShiftIds.get(email)?.has(shift.id)) {
       return 'marked themselves unavailable';
     }
     if (this.filledCount(target) >= requirement.required) {
@@ -665,7 +661,7 @@ class StaffingLedger {
 
 interface MarkUnavailableInput {
   email: string;
-  range: TimeRange;
+  shift: PlannedShift;
 }
 
 interface ExcludeInput {
@@ -769,6 +765,62 @@ function requireKnown({ ids, key }: RequireKnownInput): string {
   return id;
 }
 
+interface MarkShiftInput {
+  email: string;
+  ministryName: string;
+  shift: PlannedShift;
+}
+
+interface ServiceKeyInput {
+  email: string;
+  shift: PlannedShift;
+}
+
+function serviceKeyOf({ email, shift }: ServiceKeyInput): string {
+  return `${email}|${shift.ministryName}|${shift.gatheringKey}`;
+}
+
+interface ScriptedServiceKeysInput {
+  history: HistoryBlueprint;
+}
+
+/** Every `email|ministry|gathering` the trail has someone serve. */
+function scriptedServiceKeys({
+  history,
+}: ScriptedServiceKeysInput): Set<string> {
+  const served = [
+    ...history.crossMinistryService.flatMap((incident) =>
+      incident.posts.map((servicePost) => ({
+        email: incident.email,
+        servicePost,
+      })),
+    ),
+    ...history.resolvedOverlaps.flatMap((incident) => [
+      { email: incident.email, servicePost: incident.kept },
+      { email: incident.replacementEmail, servicePost: incident.withdrawn },
+    ]),
+    ...history.declines.map((incident) => ({
+      email: incident.replacementEmail,
+      servicePost: incident.post,
+    })),
+  ];
+  return new Set(
+    served.map(
+      ({ email, servicePost }) =>
+        `${email}|${servicePost.ministry.name}|${gatheringKeyOf(servicePost.gathering)}`,
+    ),
+  );
+}
+
+interface WeekOfInput {
+  day: CalendarDay;
+}
+
+/** Which matching weekday of its month the day is, 1-based. */
+function weekOf({ day }: WeekOfInput): number {
+  return Math.floor((Number(day.slice(8, 10)) - 1) / 7) + 1;
+}
+
 interface FireAvailabilityRoundInput {
   db: SeedWriter;
   churchId: string;
@@ -835,31 +887,84 @@ async function fireAvailabilityRound({
     }
   }
 
-  for (const incident of history.unavailability) {
+  const markUnavailable = async ({
+    email,
+    ministryName,
+    shift,
+  }: MarkShiftInput): Promise<void> => {
     const checkId = requireKnown({
       ids: checkIdByMembership,
-      key: `${incident.ministry.name}|${incident.email}`,
+      key: `${ministryName}|${email}`,
     });
+    await buildUnavailabilityMark({
+      db,
+      churchId,
+      availabilityCheckId: checkId,
+      shiftId: shift.id,
+      id: deriveSeedId({
+        kind: 'availability',
+        parentIds: [checkId, shift.id],
+      }),
+    });
+    ledger.markUnavailable({ email, shift });
+  };
+
+  for (const incident of history.unavailability) {
     for (const gathering of incident.gatherings) {
-      const shift = findShift({
-        shifts,
+      await markUnavailable({
+        email: incident.email,
         ministryName: incident.ministry.name,
-        gathering,
-      });
-      await buildUnavailabilityMark({
-        db,
-        churchId,
-        availabilityCheckId: checkId,
-        shiftId: shift.id,
-        id: deriveSeedId({
-          kind: 'availability',
-          parentIds: [checkId, shift.id],
+        shift: findShift({
+          shifts,
+          ministryName: incident.ministry.name,
+          gathering,
         }),
       });
-      ledger.markUnavailable({
-        email: incident.email,
-        range: { start: shift.start, end: shift.end },
-      });
+    }
+  }
+
+  // confirmAvailabilityCheck refuses, with the overlap flag off, while two
+  // unmarked Shifts of different Ministries intersect, so every cross-Ministry
+  // Volunteer marked one side of each overlapping pair: the side they do not
+  // serve, or else their second Ministry on odd weeks and their first on even.
+  const scripted = scriptedServiceKeys({ history });
+  for (const group of directory.crossMinistry) {
+    for (const email of group.emails) {
+      const primary = directory.ministries.find((ministryBlueprint) =>
+        ministryBlueprint.roster.some((rosterGroup) =>
+          rosterGroup.people.some((person) => person.email === email),
+        ),
+      );
+      if (!primary) {
+        throw new Error(`Cross-Ministry seat names unknown person ${email}.`);
+      }
+      const secondaryName = group.ministry.name;
+      for (const first of shifts) {
+        if (first.ministryName !== primary.name) continue;
+        for (const second of shifts) {
+          if (second.ministryName !== secondaryName) continue;
+          if (!overlaps({ left: first, right: second })) continue;
+          const servesFirst = scripted.has(
+            serviceKeyOf({ email, shift: first }),
+          );
+          const servesSecond = scripted.has(
+            serviceKeyOf({ email, shift: second }),
+          );
+          if (servesFirst && servesSecond) {
+            throw new Error(
+              `History blueprint has ${email} serve two Ministries at ${first.gatheringKey}.`,
+            );
+          }
+          const marksSecond =
+            servesFirst ||
+            (!servesSecond && weekOf({ day: first.day }) % 2 === 1);
+          await markUnavailable({
+            email,
+            ministryName: marksSecond ? secondaryName : primary.name,
+            shift: marksSecond ? second : first,
+          });
+        }
+      }
     }
   }
 }

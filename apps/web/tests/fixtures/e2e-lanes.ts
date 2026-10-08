@@ -3,18 +3,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Every Playwright spec runs in exactly one lane. Workers share the run's
- * single server, Vite and E2E database (ADR-0005), so a spec that writes
- * seeded state another spec reads runs in `shared-seed`: one worker, files
- * in order. Everything else runs in `isolated`, in parallel. Every journey
- * that mutated the legacy seed now loads its own recreatable data (#320), so
- * `shared-seed` is empty; #330 deletes it.
+ * Every Playwright spec runs in the `isolated` lane, in parallel. Workers
+ * share the run's single server, Vite and E2E database (ADR-0005), so a spec
+ * listed here writes only data no other spec reads: a mutating journey loads
+ * its own recreatable recipe graph, and the suite's shared personas stay
+ * read-only (#320).
  *
- * A spec in neither list, in both, or listed but absent fails the config
- * load, so a new spec never silently lands in a lane.
+ * A spec missing from the list, listed twice, or listed but absent fails the
+ * config load, so a new spec is classified deliberately.
  */
-export const SHARED_SEED_SPECS: readonly string[] = [];
-
 export const ISOLATED_SPECS = [
   'identity/active-church-switching.spec.ts',
   'identity/cross-tenant-invitation-isolation.spec.ts',
@@ -83,24 +80,22 @@ function findSpecFiles({ testDir }: FindSpecFilesParams): string[] {
 
 interface AssertEveryE2eSpecHasOneLaneParams {
   testDir: string;
-  sharedSeedSpecs: readonly string[];
   isolatedSpecs: readonly string[];
 }
 
 export function assertEveryE2eSpecHasOneLane({
   testDir,
-  sharedSeedSpecs,
   isolatedSpecs,
 }: AssertEveryE2eSpecHasOneLaneParams): void {
   const onDisk = new Set(findSpecFiles({ testDir }));
-  const classified = [...sharedSeedSpecs, ...isolatedSpecs];
+  const classified = isolatedSpecs;
   const problems = [
     ...[...onDisk]
       .filter((spec) => !classified.includes(spec))
       .map((spec) => `unclassified: ${spec}`),
     ...classified
       .filter((spec, index) => classified.indexOf(spec) !== index)
-      .map((spec) => `in more than one lane: ${spec}`),
+      .map((spec) => `listed more than once: ${spec}`),
     ...classified
       .filter((spec) => !onDisk.has(spec))
       .map((spec) => `listed but not found: ${spec}`),

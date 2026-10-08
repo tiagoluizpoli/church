@@ -37,12 +37,12 @@ import { BetterAuthRedemptionIdentityGateway } from '../../src/infrastructure/se
 import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
 import { createFastify } from '../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
+import { testDb, truncateAll } from '../integration/repositories/setup';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../src/test-support/identity-fixtures';
-import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '../test-support/identity-fixtures';
 
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({ db: testDb });

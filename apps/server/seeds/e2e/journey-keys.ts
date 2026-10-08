@@ -23,6 +23,13 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   volunteerTransfer: 'volunteer-transfer',
   ministryRedemption: 'ministry-redemption',
   crossTenantInvitation: 'cross-tenant-invitation',
+  planningAdmin: 'planning-admin',
+  planningCycleAccess: 'planning-cycle-access',
+  planningCycleTenants: 'planning-cycle-tenants',
+  ministryWorkspaceIndex: 'ministry-workspace-index',
+  /** Not a journey: the suite's shared read-only personas, which global
+   * setup loads once (`recipes/shared-personas.ts`). */
+  sharedPersonas: 'shared-personas',
 } as const;
 
 export type E2eJourneyRecipeName =
@@ -89,7 +96,8 @@ export function journeyTag({
  *
  * Not part of any graph: the local Platform Operator every Church is
  * provisioned by. It is a shared prerequisite (E2E global setup creates it
- * before any worker starts), and purging never touches it.
+ * through the `shared-personas` recipe before any worker starts), and
+ * purging never touches it.
  */
 export interface E2eJourneyRootKinds {
   churchKinds: readonly string[];

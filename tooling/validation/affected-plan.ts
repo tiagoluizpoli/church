@@ -1,4 +1,9 @@
 import { CRITICAL_SMOKE_SPEC_PATHS, JOURNEY_MAP } from './journey-map';
+import {
+  assessSeedImpact,
+  SEED_CONTRACT_TARGETS,
+  type SeedImpact,
+} from './seed-impact';
 
 export type TestLayer = 'test:unit' | 'test:integration';
 
@@ -13,7 +18,21 @@ export interface ClassifyChangesInput {
    * specs, but never escalates to the full suite.
    */
   dailyGate?: boolean;
+  /**
+   * Changed paths that no longer exist in the working tree. A deletion keeps
+   * its workspace in scope (typecheck and tests still run) but there is no
+   * file left to test, and an unmapped deletion has no journey to fall back
+   * on: whatever imported it changed in the same diff and carries its own
+   * mapping.
+   */
+  deletedPaths?: string[];
   e2eSpecPaths?: string[];
+  /**
+   * Reasons from `Seed-Impact: none - <reason>` commit trailers or
+   * `--no-seed-impact`: the explicit decision that a seed-relevant change
+   * needs no seed update.
+   */
+  seedImpactAcknowledgements?: string[];
 }
 
 export interface ValidationPlan {
@@ -22,6 +41,7 @@ export interface ValidationPlan {
   lintPaths: string[];
   missingJourneyMappings: string[];
   requiresFullE2e: boolean;
+  seedImpact: SeedImpact;
   testLayerSelectionReasons: TestLayerSelectionReason[];
   testLayers: TestLayer[];
   testTargets: TestTarget[];
@@ -53,7 +73,11 @@ export interface WorkspaceSelectionReason {
  */
 export interface TestLayerSelectionReason {
   changedPath: string;
-  detail: 'direct' | 'root-infrastructure' | `dependent-of:${string}`;
+  detail:
+    | 'direct'
+    | 'root-infrastructure'
+    | `dependent-of:${string}`
+    | `seed-contract:${string}`;
   testLayer: TestLayer;
   workspaceName: string;
 }
@@ -143,7 +167,12 @@ const FULL_E2E_PATHS = new Set([
   'apps/web/playwright.config.ts',
   'apps/web/tests/global-setup.ts',
   'apps/web/tests/global-teardown.ts',
-  'apps/server/src/test-support/e2e-seed.ts',
+  // What global setup loads before any worker starts: the suite's shared
+  // personas and the E2E database reset. A regression fails every spec.
+  'apps/server/seeds/e2e/recipes/shared-personas.ts',
+  'apps/server/seeds/e2e/reset-e2e-database.ts',
+  'apps/web/tests/fixtures/shared-personas.ts',
+  'packages/db/src/e2e-database-reset.ts',
   // The E2E database target: which database every E2E process (server,
   // seed, invitation minting and redemption) resolves and refuses. A
   // regression breaks any journey, and #203 makes the redemption journeys
@@ -170,6 +199,7 @@ const SERVER_INTEGRATION_TEST_PATHS = new Set([
   'apps/server/tests/application/scheduling-phase5.volunteer-availability.test.ts',
   'apps/server/tests/application/scheduling-phase6.rostering.test.ts',
   'apps/server/tests/application/scheduling-phase7.live-changes.test.ts',
+  'apps/server/tests/transfer/volunteer-transfer.repository.test.ts',
 ]);
 
 const TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
@@ -177,8 +207,11 @@ const TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
 export function classifyChanges({
   changedPaths,
   dailyGate = false,
+  deletedPaths = [],
   e2eSpecPaths = [],
+  seedImpactAcknowledgements = [],
 }: ClassifyChangesInput): ValidationPlan {
+  const deletedPathSet = new Set(deletedPaths);
   const workspaceNames = new Set<string>();
   const testLayers = new Set<TestLayer>();
   const testTargets: TestTarget[] = [];
@@ -232,7 +265,10 @@ export function classifyChanges({
     );
     if (!workspace) continue;
 
-    const testTarget = getTestTarget({ changedPath, workspace });
+    const isDeleted = deletedPathSet.has(changedPath);
+    const testTarget = isDeleted
+      ? null
+      : getTestTarget({ changedPath, workspace });
     if (testTarget) testTargets.push(testTarget);
 
     addWorkspaceAndDependents({
@@ -261,7 +297,7 @@ export function classifyChanges({
             });
           }
         }
-      } else {
+      } else if (!isDeleted) {
         hasUnmappedProductionChange = true;
         missingJourneyMappings.add(changedPath);
       }
@@ -283,18 +319,76 @@ export function classifyChanges({
     addTestLayers({ testLayers, workspaceName });
   }
 
+  const seedImpact = assessSeedImpact({
+    acknowledgements: seedImpactAcknowledgements,
+    changedPaths,
+  });
+  if (seedImpact.contractsSelected) {
+    selectSeedContracts({
+      seedImpact,
+      testLayerSelectionReasons,
+      testTargets,
+      workspaceNames,
+    });
+  }
+
   return {
     e2eSpecPaths: [...selectedE2eSpecPaths].sort(),
     journeySelectionReasons,
     lintPaths: changedPaths.filter(isLintablePath),
     missingJourneyMappings: [...missingJourneyMappings].sort(),
     requiresFullE2e,
+    seedImpact,
     testLayerSelectionReasons,
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
     workspaceNames: [...workspaceNames].sort(),
     workspaceSelectionReasons,
   };
+}
+
+interface SelectSeedContractsInput {
+  seedImpact: SeedImpact;
+  testLayerSelectionReasons: TestLayerSelectionReason[];
+  testTargets: TestTarget[];
+  workspaceNames: Set<string>;
+}
+
+/**
+ * A workspace layer with no targeted test file already runs everything,
+ * seed contracts included. One narrowed to changed test files would skip
+ * them, so the contracts join its targets.
+ */
+function selectSeedContracts({
+  seedImpact,
+  testLayerSelectionReasons,
+  testTargets,
+  workspaceNames,
+}: SelectSeedContractsInput): void {
+  for (const contract of SEED_CONTRACT_TARGETS) {
+    if (!workspaceNames.has(contract.workspaceName)) continue;
+    const isNarrowed = testTargets.some(
+      ({ testLayer, workspaceName }) =>
+        testLayer === contract.testLayer &&
+        workspaceName === contract.workspaceName,
+    );
+    const isListed = testTargets.some(
+      ({ testLayer, testPath, workspaceName }) =>
+        testLayer === contract.testLayer &&
+        testPath === contract.testPath &&
+        workspaceName === contract.workspaceName,
+    );
+    if (isNarrowed && !isListed) testTargets.push({ ...contract });
+  }
+
+  for (const { area, changedPath } of seedImpact.changes) {
+    testLayerSelectionReasons.push({
+      changedPath,
+      detail: `seed-contract:${area}`,
+      testLayer: 'test:integration',
+      workspaceName: 'server',
+    });
+  }
 }
 
 function isProductionSourcePath({
@@ -429,6 +523,12 @@ function getTestLayer({
       changedPath.includes('/tests/behavior/') ||
       changedPath.includes('/tests/http/') ||
       changedPath.includes('/tests/integration/') ||
+      changedPath.includes('/tests/tenancy/') ||
+      changedPath.includes('/tests/transfer/') ||
+      // The seed contracts load real recipes into PostgreSQL; only the pure
+      // `.unit.test.ts` calculations beside them run in the unit project.
+      (changedPath.includes('/tests/seeds/') &&
+        !changedPath.includes('.unit.test.')) ||
       changedPath.includes('.integration.test.')
       ? 'test:integration'
       : 'test:unit';

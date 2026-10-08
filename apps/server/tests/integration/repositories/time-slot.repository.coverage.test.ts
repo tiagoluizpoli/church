@@ -1,8 +1,14 @@
 import { NotFoundError } from '@church/core';
-import { assignment, role, shift as shiftTable } from '@church/db';
+import { shift as shiftTable } from '@church/db';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildRole } from '../../../seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildEvent,
+  buildShift,
+} from '../../../seeds/builders/scheduling';
 import {
   ChurchId,
   EventId,
@@ -119,23 +125,21 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
     const churchId = ChurchId.from(seed.churchAId);
     const slotId = TimeSlotId.from(graph.slot.id);
 
-    await schedulingTestDb.insert(shiftTable).values({
+    await buildShift({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       timeSlotId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
+      start: fromDate({ date: graph.slot.startTime }),
+      end: fromDate({ date: graph.slot.endTime }),
     });
 
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Usher',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
     const roleId = RoleId.from(roleRow.id);
 
     const inserted = await repo.upsertRequirement(churchId, slotId, {
@@ -158,15 +162,12 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
     const repo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
 
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Usher',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
 
     // slot exists but no shift was ever created for it in this test
     await expect(
@@ -223,18 +224,15 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
     });
-    const [bareEvent] = await schedulingTestDb
-      .insert((await import('@church/db')).event)
-      .values({
-        churchId: seed.churchAId,
-        planningCycleId: cycle.id,
-        title: 'No participations yet',
-        start: new Date('2026-08-03T09:00:00.000Z'),
-        end: new Date('2026-08-03T11:00:00.000Z'),
-        status: 'draft',
-      })
-      .returning();
-    if (!bareEvent) throw new Error('event seed failed');
+    const bareEvent = await buildEvent({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      planningCycleId: cycle.id,
+      title: 'No participations yet',
+      start: fromDate({ date: new Date('2026-08-03T09:00:00.000Z') }),
+      end: fromDate({ date: new Date('2026-08-03T11:00:00.000Z') }),
+      status: 'draft',
+    });
 
     const created = await repo.create(churchId, {
       eventId: EventId.from(bareEvent.id),
@@ -278,41 +276,34 @@ describe('DrizzleTimeSlotRepository (extra coverage)', () => {
     const churchId = ChurchId.from(seed.churchAId);
     const slotId = TimeSlotId.from(graph.slot.id);
 
-    const [shiftRow] = await schedulingTestDb
-      .insert(shiftTable)
-      .values({
-        churchId: seed.churchAId,
-        participationId: graph.participation.id,
-        timeSlotId: graph.slot.id,
-        startTime: graph.slot.startTime,
-        endTime: graph.slot.endTime,
-      })
-      .returning();
-    if (!shiftRow) throw new Error('shift seed failed');
+    const shiftRow = await buildShift({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      start: fromDate({ date: graph.slot.startTime }),
+      end: fromDate({ date: graph.slot.endTime }),
+    });
 
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Greeter',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Greeter',
+    });
     const roleId = RoleId.from(roleRow.id);
 
     expect(await repo.countActiveAssignments(churchId, slotId, roleId)).toBe(0);
 
-    await schedulingTestDb.insert(assignment).values([
-      {
-        churchId: seed.churchAId,
-        participationId: graph.participation.id,
-        shiftId: shiftRow.id,
-        volunteerId: seed.adminVolunteerId,
-        roleId: roleRow.id,
-        status: 'confirmed',
-      },
-    ]);
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      shiftId: shiftRow.id,
+      volunteerId: seed.adminVolunteerId,
+      roleId: roleRow.id,
+      status: 'confirmed',
+    });
 
     expect(await repo.countActiveAssignments(churchId, slotId, roleId)).toBe(1);
   });

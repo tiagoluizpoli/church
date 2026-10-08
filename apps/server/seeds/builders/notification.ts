@@ -21,9 +21,13 @@ export interface BuildVolunteerNotificationInput {
   ministryId?: string;
   eventId?: string;
   assignmentId?: string;
+  /** The PlanningCycle the notification is packaged under. */
+  planningCycleId?: string;
+  /** When the Volunteer opened it; absent leaves it unread. */
+  readAt?: Instant;
 }
 
-/** Direct state by purpose (ADR 0006): an unread in-app notification of a Volunteer, as left by a schedule change. */
+/** Direct state by purpose (ADR 0006): an in-app notification of a Volunteer, as left by a schedule change; unread unless `readAt` is given. */
 export async function buildVolunteerNotification({
   db,
   churchId,
@@ -37,6 +41,8 @@ export async function buildVolunteerNotification({
   ministryId,
   eventId,
   assignmentId,
+  planningCycleId,
+  readAt,
 }: BuildVolunteerNotificationInput): Promise<SeededVolunteerNotification> {
   return requireInsertedRow({
     rows: await db
@@ -53,6 +59,8 @@ export async function buildVolunteerNotification({
         ministryId,
         eventId,
         assignmentId,
+        planningCycleId,
+        readAt: readAt === undefined ? undefined : toDate({ instant: readAt }),
       })
       .returning(),
     description: `Volunteer Notification ${id}`,

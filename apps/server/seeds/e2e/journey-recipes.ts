@@ -51,4 +51,17 @@ export const E2E_JOURNEY_RECIPES: Record<
   [E2E_JOURNEY_RECIPE_NAMES.crossTenantInvitation]: async () =>
     (await import('./recipes/cross-tenant-invitation'))
       .createCrossTenantInvitationRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.planningAdmin]: async () =>
+    (await import('./recipes/planning-admin')).createPlanningAdminRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.planningCycleAccess]: async () =>
+    (await import('./recipes/planning-cycle-access'))
+      .createPlanningCycleAccessRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.planningCycleTenants]: async () =>
+    (await import('./recipes/planning-cycle-tenants'))
+      .createPlanningCycleTenantsRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.ministryWorkspaceIndex]: async () =>
+    (await import('./recipes/ministry-workspace-index'))
+      .createMinistryWorkspaceIndexRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.sharedPersonas]: async () =>
+    (await import('./recipes/shared-personas')).createSharedPersonasRecipe,
 };

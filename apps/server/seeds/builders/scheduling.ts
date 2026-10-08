@@ -1,5 +1,6 @@
 import {
   assignment,
+  assignmentAudit,
   event,
   ministryParticipation,
   participationSlotInclusion,
@@ -42,7 +43,8 @@ export type AssignmentStatus = SeededAssignment['status'];
 export interface BuildPlanningCycleInput {
   db: SeedWriter;
   churchId: string;
-  id: string;
+  /** Left to the database when a test reads the identifier from the result. */
+  id?: string;
   name: string;
   /** First day of the cycle; stored as a date, so no timezone is involved. */
   startDate: CalendarDay;
@@ -88,12 +90,15 @@ export interface BuildEventInput {
   db: SeedWriter;
   churchId: string;
   planningCycleId: string;
-  id: string;
+  id?: string;
   title: string;
   start: Instant;
   end: Instant;
   status: EventStatus;
-  eventType: EventType;
+  /** Left to the column default when a fixture does not care. */
+  eventType?: EventType;
+  /** The EventTemplate it was generated from; absent for a dynamic Event. */
+  sourceTemplateId?: string;
 }
 
 export async function buildEvent({
@@ -106,6 +111,7 @@ export async function buildEvent({
   end,
   status,
   eventType,
+  sourceTemplateId,
 }: BuildEventInput): Promise<SeededEvent> {
   return requireInsertedRow({
     rows: await db
@@ -119,6 +125,7 @@ export async function buildEvent({
         end: toDate({ instant: end }),
         status,
         eventType,
+        sourceTemplateId,
       })
       .returning(),
     description: `Event ${title}`,
@@ -129,10 +136,12 @@ export interface BuildTimeSlotInput {
   db: SeedWriter;
   churchId: string;
   eventId: string;
-  id: string;
+  id?: string;
   start: Instant;
   end: Instant;
   label?: string;
+  /** The TimeBlock it was generated from; absent for a dynamic Event. */
+  sourceTemplateBlockId?: string;
 }
 
 export async function buildTimeSlot({
@@ -143,6 +152,7 @@ export async function buildTimeSlot({
   start,
   end,
   label,
+  sourceTemplateBlockId,
 }: BuildTimeSlotInput): Promise<SeededTimeSlot> {
   return requireInsertedRow({
     rows: await db
@@ -154,6 +164,7 @@ export async function buildTimeSlot({
         startTime: toDate({ instant: start }),
         endTime: toDate({ instant: end }),
         label,
+        sourceTemplateBlockId,
       })
       .returning(),
     description: `Time Slot ${id}`,
@@ -165,7 +176,7 @@ export interface BuildMinistryParticipationInput {
   churchId: string;
   ministryId: string;
   eventId: string;
-  id: string;
+  id?: string;
   state: ParticipationState;
   /** The Time Slots the Ministry takes part in. */
   timeSlotIds: string[];
@@ -211,10 +222,10 @@ export interface BuildShiftInput {
   churchId: string;
   participationId: string;
   timeSlotId: string;
-  id: string;
+  id?: string;
   start: Instant;
   end: Instant;
-  label?: string;
+  label?: string | null;
 }
 
 export async function buildShift({
@@ -250,9 +261,10 @@ export interface BuildSlotRequirementInput {
   participationId: string;
   shiftId: string;
   roleId: string;
-  id: string;
+  id?: string;
   requiredCount: number;
   teamId?: string;
+  notes?: string;
 }
 
 export async function buildSlotRequirement({
@@ -264,6 +276,7 @@ export async function buildSlotRequirement({
   id,
   requiredCount,
   teamId,
+  notes,
 }: BuildSlotRequirementInput): Promise<SeededSlotRequirement> {
   return requireInsertedRow({
     rows: await db
@@ -276,6 +289,7 @@ export async function buildSlotRequirement({
         roleId,
         requiredCount,
         teamId,
+        notes,
       })
       .returning(),
     description: `Slot Requirement ${id}`,
@@ -289,8 +303,14 @@ export interface BuildAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
-  id: string;
+  id?: string;
   status: AssignmentStatus;
+  /** Why it was declined or cancelled. */
+  reason?: string;
+  /** Explicit, so a graph never depends on the wall clock at load time. */
+  assignedAt?: Instant;
+  /** The User who made the Assignment. */
+  assignedBy?: string;
 }
 
 export async function buildAssignment({
@@ -302,6 +322,9 @@ export async function buildAssignment({
   roleId,
   id,
   status,
+  reason,
+  assignedAt,
+  assignedBy,
 }: BuildAssignmentInput): Promise<SeededAssignment> {
   return requireInsertedRow({
     rows: await db
@@ -314,8 +337,112 @@ export async function buildAssignment({
         volunteerId,
         roleId,
         status,
+        reason,
+        assignedAt:
+          assignedAt === undefined
+            ? undefined
+            : toDate({ instant: assignedAt }),
+        assignedBy,
       })
       .returning(),
     description: `Assignment ${id}`,
   });
+}
+
+export type SeededAssignmentAudit = typeof assignmentAudit.$inferSelect;
+export type AssignmentAuditAction = SeededAssignmentAudit['action'];
+
+export interface BuildAssignmentAuditInput {
+  db: SeedWriter;
+  churchId: string;
+  assignmentId: string;
+  actorId: string;
+  id?: string;
+  action: AssignmentAuditAction;
+  reason?: string;
+  /** Explicit, so a graph never depends on the wall clock at load time. */
+  occurredAt: Instant;
+}
+
+/** One entry of an Assignment's audited history. */
+export async function buildAssignmentAudit({
+  db,
+  churchId,
+  assignmentId,
+  actorId,
+  id,
+  action,
+  reason,
+  occurredAt,
+}: BuildAssignmentAuditInput): Promise<SeededAssignmentAudit> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(assignmentAudit)
+      .values({
+        id,
+        churchId,
+        assignmentId,
+        actorId,
+        action,
+        reason,
+        timestamp: toDate({ instant: occurredAt }),
+      })
+      .returning(),
+    description: `Assignment Audit ${id}`,
+  });
+}
+
+export interface BuildAssignedShiftInput {
+  db: SeedWriter;
+  churchId: string;
+  eventId: string;
+  participationId: string;
+  volunteerId: string;
+  roleId: string;
+  start: Instant;
+  end: Instant;
+  status: AssignmentStatus;
+}
+
+export interface BuiltAssignedShift {
+  timeSlot: SeededTimeSlot;
+  shift: SeededShift;
+  assignment: SeededAssignment;
+}
+
+/**
+ * A Volunteer's Assignment on a Shift that covers its own Time Slot over
+ * `start`..`end`: the smallest schedule a fixture needs to hold a booking.
+ */
+export async function buildAssignedShift({
+  db,
+  churchId,
+  eventId,
+  participationId,
+  volunteerId,
+  roleId,
+  start,
+  end,
+  status,
+}: BuildAssignedShiftInput): Promise<BuiltAssignedShift> {
+  const slot = await buildTimeSlot({ db, churchId, eventId, start, end });
+  const slotShift = await buildShift({
+    db,
+    churchId,
+    participationId,
+    timeSlotId: slot.id,
+    start,
+    end,
+  });
+  const booked = await buildAssignment({
+    db,
+    churchId,
+    participationId,
+    shiftId: slotShift.id,
+    volunteerId,
+    roleId,
+    status,
+  });
+
+  return { timeSlot: slot, shift: slotShift, assignment: booked };
 }

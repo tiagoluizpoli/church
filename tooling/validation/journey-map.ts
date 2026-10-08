@@ -60,18 +60,30 @@ const NOTIFICATION_BELL_SPEC_PATHS = [
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
 ];
 
-// Specs whose starting graph comes from a journey recipe (#327) instead of
-// the shared E2E seed.
+// Specs whose starting graph comes from a server E2E recipe (#327): their
+// own journey recipe, or the shared personas global setup loads (#330).
 const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/identity/cross-tenant-invitation-isolation.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
+  // Signs in as the shared personas global setup loads from a recipe.
+  'tests/identity/route-protection.spec.ts',
   'tests/identity/volunteer-transfer-journey.spec.ts',
   'tests/scheduling/a11y-builder.spec.ts',
+  'tests/scheduling/a11y-planning-nav.spec.ts',
   'tests/scheduling/builder-slot-focus.spec.ts',
+  'tests/scheduling/capability-index.spec.ts',
+  'tests/scheduling/cross-cutting.spec.ts',
+  'tests/scheduling/overnight-time-block.spec.ts',
+  'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
+  'tests/scheduling/planning-cycles-table-view.spec.ts',
+  'tests/scheduling/planning-nav-restructure.spec.ts',
+  'tests/scheduling/planning-role-guard-matrix.spec.ts',
   'tests/scheduling/qualification.spec.ts',
+  'tests/scheduling/single-create-event-ui.spec.ts',
   'tests/scheduling/smoke.spec.ts',
+  'tests/scheduling/us1-admin-plan.spec.ts',
   'tests/scheduling/us2-leader-tailor.spec.ts',
   'tests/scheduling/us3-volunteer-availability.spec.ts',
   'tests/scheduling/us4-roster-publish.spec.ts',
@@ -616,13 +628,17 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // #327 — journey recipes build the graph a spec starts from, through the
   // shared seed builders, blueprints and the provisioning scripts they call:
   // a change to any can break the journeys that load a recipe. Add each spec
-  // that moves onto a recipe (#328, #329).
+  // that loads one.
   {
     sourcePathPrefix: 'apps/server/seeds/',
     specPaths: JOURNEY_RECIPE_SPEC_PATHS,
   },
   {
     sourcePathPrefix: 'apps/server/src/scripts/provision-church.ts',
+    specPaths: JOURNEY_RECIPE_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/server/src/scripts/init-system.ts',
     specPaths: JOURNEY_RECIPE_SPEC_PATHS,
   },
   {

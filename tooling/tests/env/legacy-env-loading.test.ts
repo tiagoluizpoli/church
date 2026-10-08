@@ -96,14 +96,10 @@ function trackedFilesContaining(input: TrackedFilesInput): string[] {
 const DEVELOPMENT_COMMANDS: ScriptInput[] = [
   { workspace: 'apps/server', script: 'dev' },
   { workspace: 'apps/server', script: 'export:openapi' },
-  { workspace: 'apps/server', script: 'seed:dev-users' },
   { workspace: 'apps/server', script: 'db:init-system' },
   { workspace: 'packages/db', script: 'db:push' },
   { workspace: 'packages/db', script: 'db:studio' },
   { workspace: 'packages/db', script: 'db:migrate' },
-  { workspace: 'packages/db', script: 'db:seed' },
-  { workspace: 'packages/db', script: 'db:seed:reset' },
-  { workspace: 'packages/db', script: 'db:seed:dashboard-demo' },
   { workspace: 'packages/db', script: 'db:clean' },
 ];
 

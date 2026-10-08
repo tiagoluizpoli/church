@@ -1,17 +1,19 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import {
-  assignment as assignmentTable,
   ministryParticipation,
-  ministryVolunteer,
-  role,
   shift as shiftTable,
-  volunteer,
   volunteerNotification,
 } from '@church/db';
-import { fromDate, parseInstant } from '@church/time';
+import { fromDate, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildMinistryParticipation,
+} from '../../seeds/builders/scheduling';
+import { buildVolunteerWithMembership } from '../../seeds/builders/volunteer';
 import { DbAuthorityManager } from '../../src/application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../src/application/db-availability-check-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
@@ -150,44 +152,6 @@ async function seedCycleWithEvent({
   return { cycle, ...graph };
 }
 
-interface SeedMembershipInput {
-  churchId: string;
-  ministryId: string;
-  userId: string;
-  volunteerId: string;
-  status?: 'active' | 'inactive';
-}
-
-async function seedMembership(input: SeedMembershipInput) {
-  const [volunteerRow] = await schedulingTestDb
-    .insert(volunteer)
-    .values({
-      id: input.volunteerId,
-      churchId: input.churchId,
-      userId: input.userId,
-      status: 'active',
-    })
-    .onConflictDoNothing()
-    .returning();
-
-  const [membership] = await schedulingTestDb
-    .insert(ministryVolunteer)
-    .values({
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      volunteerId: input.volunteerId,
-      ministryAccessLevel: 'volunteer',
-      status: input.status ?? 'active',
-    })
-    .returning();
-
-  if (!membership) {
-    throw new Error('Phase 4 membership seed failed');
-  }
-
-  return { volunteerRow, membership };
-}
-
 describe('Phase 4 participation manager (DL2-PT)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
@@ -311,15 +275,12 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     const { participationManager } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
 
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Usher',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
 
     const [shiftEntity] = await participationManager.splitShifts({
       churchId,
@@ -406,23 +367,19 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     const churchId = ChurchId.from(seed.churchAId);
 
     // second ministry in church A participating in the same event
-    const [ministryC] = await schedulingTestDb
-      .insert((await import('@church/db')).ministry)
-      .values({
-        churchId: seed.churchAId,
-        name: 'Scheduling Ministry C',
-      })
-      .returning();
-    if (!ministryC) throw new Error('ministry seed failed');
-    const [participationC] = await schedulingTestDb
-      .insert((await import('@church/db')).ministryParticipation)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: ministryC.id,
-        eventId: event.id,
-      })
-      .returning();
-    if (!participationC) throw new Error('participation seed failed');
+    const ministryC = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      name: 'Scheduling Ministry C',
+    });
+    const participationC = await buildMinistryParticipation({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: ministryC.id,
+      eventId: event.id,
+      state: 'tailoring',
+      timeSlotIds: [],
+    });
 
     await participationManager.splitShifts({
       churchId,
@@ -586,42 +543,31 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { availabilityManager, notificationSpy } = createPhase4Managers();
 
-    await schedulingTestDb.insert((await import('@church/db')).user).values([
-      {
-        id: 'vol-user-1',
-        name: 'Vol 1',
-        email: 'v1@test.com',
-        emailVerified: true,
-      },
-      {
-        id: 'vol-user-2',
-        name: 'Vol 2',
-        email: 'v2@test.com',
-        emailVerified: true,
-      },
-      {
-        id: 'vol-user-3',
-        name: 'Vol 3',
-        email: 'v3@test.com',
-        emailVerified: true,
-      },
-    ]);
-    await seedMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'vol-user-1',
+      name: 'Vol 1',
+      email: 'v1@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999991',
     });
-    await seedMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'vol-user-2',
+      name: 'Vol 2',
+      email: 'v2@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999992',
     });
-    await seedMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'vol-user-3',
+      name: 'Vol 3',
+      email: 'v3@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999993',
       status: 'inactive',
     });
@@ -766,56 +712,18 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
   });
 });
 
-async function seedRoleFor(input: { churchId: string; ministryId: string }) {
-  const [row] = await schedulingTestDb
-    .insert(role)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      name: 'Phase4 role',
-    })
-    .returning();
-  if (!row) throw new Error('Phase 4 role seed failed');
-  return row;
-}
-
-async function seedMembershipWithVolunteer(input: {
+interface SeedPhase4RoleInput {
   churchId: string;
   ministryId: string;
-}) {
-  const userId = randomUUID();
-  const volunteerId = randomUUID();
-  await schedulingTestDb.insert((await import('@church/db')).user).values({
-    id: userId,
-    name: `Phase4 volunteer ${volunteerId}`,
-    email: `${volunteerId}@test.com`,
-    emailVerified: true,
+}
+
+async function seedRoleFor(input: SeedPhase4RoleInput) {
+  return await buildRole({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    ministryId: input.ministryId,
+    name: 'Phase4 role',
   });
-  const [volunteerRow] = await schedulingTestDb
-    .insert(volunteer)
-    .values({
-      id: volunteerId,
-      churchId: input.churchId,
-      userId,
-      status: 'active',
-    })
-    .returning();
-  const [membership] = await schedulingTestDb
-    .insert(ministryVolunteer)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      volunteerId,
-      ministryAccessLevel: 'volunteer',
-      status: 'active',
-    })
-    .returning();
-  if (!volunteerRow || !membership) {
-    throw new Error('Phase 4 volunteer membership seed failed');
-  }
-  return { volunteer: volunteerRow, membership };
 }
 
 describe('Phase 4 participation manager additional surfaces (shift lifecycle, serving profile, eligible-volunteer conflicts, publish edge states)', () => {
@@ -922,8 +830,8 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
       blocks: [
         {
           label: 'Welcome',
-          startTime: '09:00:00',
-          endTime: '09:30:00',
+          startTime: parseTimeOfDay({ value: '09:00' }),
+          endTime: parseTimeOfDay({ value: '09:30' }),
           order: 0,
         },
       ],
@@ -1041,12 +949,17 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     });
     if (!targetShift || !overlapShift) throw new Error('split failed');
 
-    const member = await seedMembershipWithVolunteer({
+    const memberId = randomUUID();
+    const member = await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
+      volunteerId: memberId,
+      name: `Phase4 volunteer ${memberId}`,
+      email: `${memberId}@test.com`,
     });
-    await schedulingTestDb.insert(assignmentTable).values({
-      id: randomUUID(),
+    await buildAssignment({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: overlapGraph.participation.id,
       shiftId: overlapShift.id,
@@ -1120,16 +1033,13 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
 
     // Base seed already made the admin volunteer a leader-membership of ministryA.
     // Add one more active member who never gets fired (proves the "no check yet" branch).
-    await schedulingTestDb.insert((await import('@church/db')).user).values({
-      id: 'phase4-status-user',
-      name: 'Status User',
-      email: 'phase4-status@test.com',
-      emailVerified: true,
-    });
-    await seedMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'phase4-status-user',
+      name: 'Status User',
+      email: 'phase4-status@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999981',
     });
 

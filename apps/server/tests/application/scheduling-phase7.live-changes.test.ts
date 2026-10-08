@@ -1,21 +1,13 @@
-import { randomUUID } from 'node:crypto';
 import { NotFoundError } from '@church/core';
-import {
-  assignment as assignmentTable,
-  ministry,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  role,
-  shift as shiftTable,
-  slotRequirement,
-  user,
-  volunteer,
-} from '@church/db';
+import { ministry } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
-import { DbParticipationManager } from '../../src/application/db-participation-manager';
-import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
+import {
+  buildAvailabilityCheck,
+  buildUnavailabilityMark,
+} from '../../seeds/builders/availability';
+import { buildMinistry } from '../../seeds/builders/ministry';
+import { buildAssignment } from '../../seeds/builders/scheduling';
 import {
   AssignmentId,
   ChurchId,
@@ -28,24 +20,6 @@ import {
 } from '../../src/domain/branded-ids';
 import { AssignmentAccessDeniedError } from '../../src/domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../../src/domain/errors/cancel-window-closed';
-import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
-import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
-import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
-import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
-import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTeamRepository } from '../../src/infrastructure/repositories/drizzle-team.repository';
-import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
-import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
-import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -53,265 +27,30 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '../scheduling-reshape/setup';
+import {
+  createSchedulingManagers,
+  seedRequirement,
+  seedRole,
+  seedRoleQualification,
+  seedShift,
+  seedVolunteerMembership,
+} from './scheduling-roster.helpers';
 
-interface Phase7Managers {
-  assignmentManager: DbAssignmentManager;
-  participationManager: DbParticipationManager;
-  volunteerManager: DbVolunteerManager;
-  assignmentRepo: DrizzleAssignmentRepository;
-  participationRepo: DrizzleMinistryParticipationRepository;
-  notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
-}
-
-interface CreatePhase7ManagersInput {
-  cancelLeadTimeDays?: number;
-}
-
-interface SeedRoleQualificationInput {
-  churchId: string;
-  membershipId: string;
-  roleId: string;
-}
-
-function createPhase7Managers({
-  cancelLeadTimeDays = 3,
-}: CreatePhase7ManagersInput = {}): Phase7Managers {
-  const assignmentRepo = new DrizzleAssignmentRepository({
-    db: schedulingTestDb,
-  });
-  const participationRepo = new DrizzleMinistryParticipationRepository({
-    db: schedulingTestDb,
-  });
-  const shiftRepo = new DrizzleShiftRepository({ db: schedulingTestDb });
-  const volunteerRepo = new DrizzleVolunteerRepository({
-    db: schedulingTestDb,
-  });
-  const ministryRepo = new DrizzleMinistryRepository({ db: schedulingTestDb });
-  const availabilityRepo = new DrizzleAvailabilityRepository({
-    db: schedulingTestDb,
-  });
-  const timeSlotRepo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
-  const eventRepo = new DrizzlePlanningEventRepository({
-    db: schedulingTestDb,
-  });
-  const notificationSpy = createNotificationServiceSpy();
-  const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
-  const plainEventRepo = new DrizzleEventRepository({ db: schedulingTestDb });
-  const availabilityCheckRepo = new DrizzleAvailabilityCheckRepository({
-    db: schedulingTestDb,
-  });
-
-  return {
-    assignmentManager: new DbAssignmentManager(
-      assignmentRepo,
-      new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
-      shiftRepo,
-      participationRepo,
-      ministryRepo,
-      volunteerRepo,
-      availabilityRepo,
-      eventRepo,
-      notificationSpy,
-      unitOfWork,
-    ),
-    participationManager: new DbParticipationManager(
-      participationRepo,
-      shiftRepo,
-      eventRepo,
-      assignmentRepo,
-      availabilityRepo,
-      timeSlotRepo,
-      volunteerRepo,
-      ministryRepo,
-      new DrizzleMinistryServingProfileRepository({ db: schedulingTestDb }),
-      new DrizzleRoleRepository({ db: schedulingTestDb }),
-      notificationSpy,
-      unitOfWork,
-    ),
-    volunteerManager: new DbVolunteerManager(
-      volunteerRepo,
-      assignmentRepo,
-      availabilityRepo,
-      new DrizzleVolunteerNotificationRepository({ db: schedulingTestDb }),
-      plainEventRepo,
-      shiftRepo,
-      ministryRepo,
-      participationRepo,
-      new DrizzleRoleRepository({ db: schedulingTestDb }),
-      new DrizzleTeamRepository({ db: schedulingTestDb }),
-      availabilityCheckRepo,
-      new SchedulingFeatureFlagServiceStub({
-        participationDefaultAllIn: true,
-        volunteerDashboardAllowOverlapSave: true,
-      }),
-      notificationSpy,
-      unitOfWork,
-      cancelLeadTimeDays,
-    ),
-    assignmentRepo,
-    participationRepo,
-    notificationSpy,
-  };
-}
-
-async function seedRole(input: {
-  churchId: string;
-  ministryId: string;
-  name: string;
-}) {
-  const [row] = await schedulingTestDb
-    .insert(role)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      name: input.name,
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error('Phase 7 role seed failed');
-  }
-
-  return row;
-}
-
-async function seedVolunteerMembership(input: {
-  churchId: string;
-  ministryId: string;
-  name: string;
-  email: string;
-  ministryAccessLevel?: 'leader' | 'volunteer';
-}) {
-  const userId = randomUUID();
-  const volunteerId = randomUUID();
-
-  await schedulingTestDb.insert(user).values({
-    id: userId,
-    name: input.name,
-    email: input.email,
-    emailVerified: true,
-  });
-
-  const [volunteerRow] = await schedulingTestDb
-    .insert(volunteer)
-    .values({
-      id: volunteerId,
-      churchId: input.churchId,
-      userId,
-      status: 'active',
-    })
-    .returning();
-
-  const [membership] = await schedulingTestDb
-    .insert(ministryVolunteer)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      volunteerId,
-      ministryAccessLevel: input.ministryAccessLevel ?? 'volunteer',
-      status: 'active',
-    })
-    .returning();
-
-  if (!volunteerRow || !membership) {
-    throw new Error('Phase 7 volunteer membership seed failed');
-  }
-
-  return { volunteer: volunteerRow, membership };
-}
-
-async function seedRoleQualification(
-  input: SeedRoleQualificationInput,
-): Promise<void> {
-  await schedulingTestDb.insert(ministryVolunteerRole).values({
-    churchId: input.churchId,
-    ministryVolunteerId: input.membershipId,
-    roleId: input.roleId,
-  });
-}
-
-async function seedShift(input: {
-  churchId: string;
-  participationId: string;
-  timeSlotId: string;
-  startTime: Date;
-  endTime: Date;
-  label: string;
-}) {
-  const [row] = await schedulingTestDb
-    .insert(shiftTable)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      participationId: input.participationId,
-      timeSlotId: input.timeSlotId,
-      startTime: input.startTime,
-      endTime: input.endTime,
-      label: input.label,
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error('Phase 7 shift seed failed');
-  }
-
-  return row;
-}
-
-async function seedRequirement(input: {
-  churchId: string;
-  participationId: string;
-  shiftId: string;
-  roleId: string;
-  requiredCount: number;
-}) {
-  const [row] = await schedulingTestDb
-    .insert(slotRequirement)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      participationId: input.participationId,
-      shiftId: input.shiftId,
-      roleId: input.roleId,
-      requiredCount: input.requiredCount,
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error('Phase 7 requirement seed failed');
-  }
-
-  return row;
-}
-
-async function seedAssignment(input: {
+interface SeedAssignmentInput {
   churchId: string;
   participationId: string;
   shiftId: string;
   volunteerId: string;
   roleId: string;
   status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
-}) {
-  const [row] = await schedulingTestDb
-    .insert(assignmentTable)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      participationId: input.participationId,
-      shiftId: input.shiftId,
-      volunteerId: input.volunteerId,
-      roleId: input.roleId,
-      status: input.status ?? 'confirmed',
-    })
-    .returning();
+}
 
-  if (!row) {
-    throw new Error('Phase 7 assignment seed failed');
-  }
-
-  return row;
+async function seedAssignment(input: SeedAssignmentInput) {
+  return await buildAssignment({
+    db: schedulingTestDb,
+    ...input,
+    status: input.status ?? 'confirmed',
+  });
 }
 
 describe('Phase 7 live execution and late changes (US5)', () => {
@@ -381,7 +120,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       status: 'confirmed',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
@@ -488,7 +227,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       status: 'confirmed',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
@@ -576,7 +315,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       status: 'confirmed',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
@@ -670,7 +409,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       status: 'confirmed',
     });
 
-    const managers = createPhase7Managers({ cancelLeadTimeDays: 3 });
+    const managers = createSchedulingManagers({ cancelLeadTimeDays: 3 });
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
@@ -693,32 +432,28 @@ describe('Phase 7 live execution and late changes (US5)', () => {
   });
 });
 
-async function seedAvailabilityMark(input: {
+interface SeedAvailabilityMarkInput {
   churchId: string;
   planningCycleId: string;
   membershipId: string;
   shiftId: string;
-}) {
-  const [check] = await schedulingTestDb
-    .insert((await import('@church/db')).availabilityCheck)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      planningCycleId: input.planningCycleId,
-      ministryVolunteerId: input.membershipId,
-      state: 'pending',
-    })
-    .returning();
-  if (!check) throw new Error('Phase 7 availability check seed failed');
+}
 
-  await schedulingTestDb
-    .insert((await import('@church/db')).availability)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      availabilityCheckId: check.id,
-      shiftId: input.shiftId,
-    });
+async function seedAvailabilityMark(input: SeedAvailabilityMarkInput) {
+  const check = await buildAvailabilityCheck({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    planningCycleId: input.planningCycleId,
+    ministryVolunteerId: input.membershipId,
+    state: 'pending',
+  });
+
+  await buildUnavailabilityMark({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    availabilityCheckId: check.id,
+    shiftId: input.shiftId,
+  });
 }
 
 describe('Phase 7 assignment manager surfaces (direct create/delete/override + hard-constraint branches)', () => {
@@ -764,7 +499,7 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       email: 'direct-assign-phase7@test.com',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
     const created = await managers.assignmentManager.createAssignment({
       churchId: ChurchId.from(seed.churchAId),
       slotId: TimeSlotId.from(graph.slot.id),
@@ -831,7 +566,7 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       email: 'with-actor-delete-phase7@test.com',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
     const assignmentWithActor = await seedAssignment({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
@@ -903,7 +638,7 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       email: 'override-target-phase7@test.com',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
     const assignment = await seedAssignment({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
@@ -969,11 +704,11 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       label: 'Members-only shift',
     });
 
-    const [otherMinistry] = await schedulingTestDb
-      .insert((await import('@church/db')).ministry)
-      .values({ churchId: seed.churchAId, name: 'Outside ministry' })
-      .returning();
-    if (!otherMinistry) throw new Error('other ministry seed failed');
+    const otherMinistry = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      name: 'Outside ministry',
+    });
     const outsider = await seedVolunteerMembership({
       churchId: seed.churchAId,
       ministryId: otherMinistry.id,
@@ -981,7 +716,7 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       email: 'outsider-phase7@test.com',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
     await expect(
       managers.assignmentManager.createParticipationAssignment({
         churchId: ChurchId.from(seed.churchAId),
@@ -1050,7 +785,7 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       email: 'qualified-member-phase7@test.com',
     });
 
-    const managers = createPhase7Managers();
+    const managers = createSchedulingManagers();
 
     const softResult =
       await managers.assignmentManager.createParticipationAssignment({

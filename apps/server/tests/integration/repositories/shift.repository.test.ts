@@ -1,7 +1,7 @@
 import { NotFoundError } from '@church/core';
-import { role, team } from '@church/db';
 import { fromDate, parseInstant, toDate } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildRole, buildTeam } from '../../../seeds/builders/ministry';
 import {
   ChurchId,
   MinistryParticipationId,
@@ -339,15 +339,12 @@ describe('DrizzleShiftRepository', () => {
       ],
     });
     if (!shift) throw new Error('setup failed');
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Usher',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
     const roleId = RoleId.from(roleRow.id);
 
     const inserted = await repo.upsertRequirement({
@@ -372,15 +369,12 @@ describe('DrizzleShiftRepository', () => {
     expect(updated.requiredCount).toBe(5);
 
     // Distinct teamId creates a separate requirement row for the same shift/role.
-    const [teamRow] = await schedulingTestDb
-      .insert(team)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Team A',
-      })
-      .returning();
-    if (!teamRow) throw new Error('team seed failed');
+    const teamRow = await buildTeam({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Team A',
+    });
     const teamId = TeamId.from(teamRow.id);
     const withTeam = await repo.upsertRequirement({
       churchId,

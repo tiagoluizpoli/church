@@ -12,7 +12,6 @@ import {
   E2E_TEST_DIR,
   ISOLATED_SPECS,
   laneTestMatch,
-  SHARED_SEED_SPECS,
 } from './tests/fixtures/e2e-lanes';
 
 // One URL set for the whole run (ADR-0005): pinned into process.env before
@@ -28,7 +27,6 @@ applyE2eUrlSet({ env: process.env, urlSet });
 pinE2eTargetFingerprint({ env: process.env });
 assertEveryE2eSpecHasOneLane({
   testDir: E2E_TEST_DIR,
-  sharedSeedSpecs: SHARED_SEED_SPECS,
   isolatedSpecs: ISOLATED_SPECS,
 });
 
@@ -42,8 +40,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   // In-run workers share this run's one server, Vite and E2E database
-  // (ADR-0005); the `shared-seed` project below keeps seed-coupled specs on
-  // one of them.
+  // (ADR-0005); every spec owns the data it mutates (tests/fixtures/e2e-lanes.ts).
   workers: process.env.CI ? 2 : 3,
   // The outcome reporter lets global teardown keep a failed run's E2E
   // database state for diagnosis instead of cleaning it.
@@ -58,13 +55,6 @@ export default defineConfig({
   },
   // Lanes: tests/fixtures/e2e-lanes.ts.
   projects: [
-    {
-      name: 'shared-seed',
-      testMatch: laneTestMatch({ specs: SHARED_SEED_SPECS }),
-      workers: 1,
-      fullyParallel: false,
-      use: { ...devices['Desktop Chrome'] },
-    },
     {
       name: 'isolated',
       testMatch: laneTestMatch({ specs: ISOLATED_SPECS }),

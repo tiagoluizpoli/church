@@ -1,5 +1,4 @@
 import {
-  createChurch,
   db,
   ministry,
   ministryVolunteer,
@@ -9,6 +8,13 @@ import {
 } from '@church/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { buildChurch } from '../../seeds/builders/church';
+import { buildUser } from '../../seeds/builders/identity';
+import { buildMinistry } from '../../seeds/builders/ministry';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../seeds/builders/volunteer';
 import { DbMinistryManager } from '../../src/application/db-ministry-manager';
 import {
   ChurchId,
@@ -39,7 +45,7 @@ async function truncate() {
 beforeAll(async () => {
   await truncate();
 
-  await createChurch({
+  await buildChurch({
     db,
     id: CHURCH,
     name: 'Behavior Test Church',
@@ -47,64 +53,69 @@ beforeAll(async () => {
     timezone: 'America/New_York',
   });
 
-  await db.insert(user).values([
-    {
-      id: 'user-leader-1',
-      name: 'Leader One',
-      email: 'leader1@test.test',
-      emailVerified: false,
-    },
-    {
-      id: 'user-member-2',
-      name: 'Member Two',
-      email: 'member2@test.test',
-      emailVerified: false,
-    },
-  ]);
+  await buildUser({
+    db,
+    id: 'user-leader-1',
+    name: 'Leader One',
+    email: 'leader1@test.test',
+    emailVerified: false,
+  });
+  await buildUser({
+    db,
+    id: 'user-member-2',
+    name: 'Member Two',
+    email: 'member2@test.test',
+    emailVerified: false,
+  });
 
-  await db.insert(ministry).values([
-    {
-      id: MINISTRY_A,
-      churchId: CHURCH,
-      name: 'Worship',
-      enforcementType: 'soft',
-    },
-    { id: MINISTRY_B, churchId: CHURCH, name: 'Kids', enforcementType: 'soft' },
-  ]);
+  await buildMinistry({
+    db,
+    id: MINISTRY_A,
+    churchId: CHURCH,
+    name: 'Worship',
+    enforcementType: 'soft',
+  });
+  await buildMinistry({
+    db,
+    id: MINISTRY_B,
+    churchId: CHURCH,
+    name: 'Kids',
+    enforcementType: 'soft',
+  });
 
-  await db.insert(volunteer).values([
-    {
-      id: LEADER_VOL,
-      churchId: CHURCH,
-      userId: 'user-leader-1',
-      status: 'active',
-    },
-    {
-      id: NON_LEADER_VOL,
-      churchId: CHURCH,
-      userId: 'user-member-2',
-      status: 'active',
-    },
-  ]);
+  await buildVolunteer({
+    db,
+    id: LEADER_VOL,
+    churchId: CHURCH,
+    userId: 'user-leader-1',
+  });
+  await buildVolunteer({
+    db,
+    id: NON_LEADER_VOL,
+    churchId: CHURCH,
+    userId: 'user-member-2',
+  });
 
-  await db.insert(ministryVolunteer).values([
-    {
-      id: MV_LEADER_A,
-      churchId: CHURCH,
-      volunteerId: LEADER_VOL,
-      ministryId: MINISTRY_A,
-      ministryAccessLevel: 'leader',
-      status: 'active',
-    },
-    {
-      id: MV_MEMBER_B,
-      churchId: CHURCH,
-      volunteerId: NON_LEADER_VOL,
-      ministryId: MINISTRY_B,
-      ministryAccessLevel: 'volunteer',
-      status: 'active',
-    },
-  ]);
+  await buildMinistryMembership({
+    db,
+    id: MV_LEADER_A,
+    churchId: CHURCH,
+    volunteerId: LEADER_VOL,
+    ministryId: MINISTRY_A,
+    ministryAccessLevel: 'leader',
+    roleIds: [],
+    teams: [],
+  });
+  await buildMinistryMembership({
+    db,
+    id: MV_MEMBER_B,
+    churchId: CHURCH,
+    volunteerId: NON_LEADER_VOL,
+    ministryId: MINISTRY_B,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [],
+    teams: [],
+  });
 });
 
 afterAll(async () => {

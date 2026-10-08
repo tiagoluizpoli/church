@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchId, MinistryId, UserId } from '../../../src/domain/branded-ids';
+import { createMinistryInvitationTestHarness } from '../../../src/test-support/ministry-invitation-test-harness';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../../src/test-support/identity-fixtures';
-import { createMinistryInvitationTestHarness } from '../../../src/test-support/ministry-invitation-test-harness';
+} from '../../test-support/identity-fixtures';
 import { testDb, truncateAll } from './setup';
 
 const { ministryInvitationRepository, manager } =

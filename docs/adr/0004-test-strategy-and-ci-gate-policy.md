@@ -41,10 +41,10 @@ policy seam for test selection, both locally and in CI. It:
   missing mapping — so absent metadata degrades to "run the critical smoke
   set," never to silently running nothing.
 - Escalates to the full E2E suite only when shared E2E infrastructure itself
-  changes (`playwright.config.ts`, global setup/teardown, the E2E seed) — and
-  only outside the daily gate (see below); the daily gate never escalates to
-  the full suite, so a Playwright-infrastructure change on a task branch still
-  gets its normal mapped/critical-journey run.
+  changes (`playwright.config.ts`, global setup/teardown, the shared personas
+  and reset they load) — and only outside the daily gate (see below); the
+  daily gate never escalates to the full suite, so a Playwright-infrastructure
+  change on a task branch still gets its normal mapped/critical-journey run.
 
 ### Playwright is critical-journey-only
 

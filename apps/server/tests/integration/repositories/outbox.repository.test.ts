@@ -9,11 +9,11 @@ import {
 } from '../../../src/domain/branded-ids';
 import { DrizzleTransactionContext } from '../../../src/infrastructure/repositories';
 import { asTxContext } from '../../../src/infrastructure/repositories/drizzle-transaction-context';
+import { createMinistryInvitationTestHarness } from '../../../src/test-support/ministry-invitation-test-harness';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../../src/test-support/identity-fixtures';
-import { createMinistryInvitationTestHarness } from '../../../src/test-support/ministry-invitation-test-harness';
+} from '../../test-support/identity-fixtures';
 import { testDb, truncateAll } from './setup';
 
 const { outboxRepository, unitOfWork, manager } =

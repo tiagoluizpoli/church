@@ -13,11 +13,10 @@ and task ordering.
 | Integration tests | `bun run test:integration` |
 | Story E2E | `bun run test:e2e -- tests/[path].spec.ts` |
 | Complete test suite | `bun run test` |
+| Seed contracts (every recipe, refusals) | `bun run test:seeds` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
-| Reset development DB | `bun run db:seed:reset` |
-| Seed development users | `bun run db:seed:dev-users` |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
 | Create + migrate its dev/int/E2E databases | `bun run db:bootstrap` |
@@ -32,13 +31,33 @@ lines carry a `[stage]` prefix and a final table reports each stage's status.
 Every command that reads configuration runs through Varlock from its
 package directory, so the root and the package directory resolve the same
 targets. Development commands declare `CHURCH_EXEC_PURPOSE=development`;
-the destructive ones (`db:reset:dev`, `db:reseed:dev`, `db:seed:reset`,
-`db:clean`) print a redacted preflight and refuse any database but this
-worktree's development one. `db:generate` reads no values, so it is the
+the destructive ones (`db:reset:dev`, `db:reseed:dev`, `db:clean`) print
+a redacted preflight and refuse any database but this worktree's
+development one. `db:generate` reads no values, so it is the
 one database script outside Varlock. Nothing else loads value files: no
 `--env-file`, no `dotenv`, and each package's `bunfig.toml` turns off Bun's
 automatic `.env` loading. Unit tests read no values at all; the server's
 unit project pins placeholders (`apps/server/vitest.config.ts`).
+
+## Seed impact
+
+A change to the database schema or migrations, persistence (repositories,
+mappers, entities), authentication, tenancy, or scheduling can invalidate
+curated seed data. `validate:affected` selects the seed contracts for it
+(`bun run test:seeds` runs the same set: `tests/seeds/` plus the
+wrong-purpose and wrong-target refusal tests of `@church/db`) and refuses to
+validate until the change carries one decision:
+
+- update `apps/server/seeds` (or its `tests/seeds/` contracts) in the same
+  change; or
+- acknowledge no seed impact with a commit trailer
+  `Seed-Impact: none - <reason>` (or `--no-seed-impact "<reason>"` for
+  uncommitted work). A blank reason does not count.
+
+`--dry-run` only reports the missing decision; the validating run fails.
+The rules live in `tooling/validation/seed-impact.ts`. A deleted file keeps
+its workspace in scope but selects no test file and, when no journey maps it,
+no smoke fallback.
 
 Use root Bun scripts by default. The focused-workspace exception is
 `bunx turbo -F <workspace> <task> --only -- <test path>`. Generate the API

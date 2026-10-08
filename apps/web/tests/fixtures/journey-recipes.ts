@@ -6,13 +6,12 @@ import { resolveActiveChurch, signInPersona } from './persona-session';
 /**
  * Journey recipes (#327): a journey that mutates domain data builds its own
  * Church graph and persona through an `apps/server` recipe script, instead of
- * borrowing the shared seed.
+ * sharing another journey's data.
  *
  * Layering:
- * - `tests/global-setup.ts` owns the shared personas and their storageState.
- *   Their identities and sessions are read-only, but the domain data reachable
- *   through them is still mutated by the `shared-seed` lane (see
- *   e2e-lanes.ts); journey recipes are how a journey stops depending on it.
+ * - `tests/global-setup.ts` loads the shared personas (`shared-personas.ts`)
+ *   and saves their storageState. Their identities, sessions and the domain
+ *   data reachable through them are read-only.
  * - A journey recipe owns MUTABLE domain data plus its own persona, scoped to
  *   one test. Nothing here reads or writes another specification's data, so
  *   the spec can run in the parallel `isolated` lane.

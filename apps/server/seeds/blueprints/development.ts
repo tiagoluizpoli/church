@@ -12,6 +12,11 @@ import type {
   KeyPersona,
   MultiChurchMembershipGroup,
 } from './directory/types';
+import {
+  type GatheringsBlueprint,
+  IGREJA_SEMENTE_GATHERINGS,
+} from './gatherings';
+import { type HistoryBlueprint, IGREJA_SEMENTE_HISTORY } from './history';
 
 /**
  * The fictional Igreja Semente in full: every Ministry roster, its
@@ -40,6 +45,10 @@ export interface DevelopmentBlueprint {
   churches: readonly ChurchDirectoryBlueprint[];
   multiChurchMemberships: readonly MultiChurchMembershipGroup[];
   keyPersonas: readonly KeyPersona[];
+  /** The primary Church's gatherings; the second Church plans nothing. */
+  gatherings: GatheringsBlueprint;
+  /** The trail its locked historical PlanningCycle carries. */
+  history: HistoryBlueprint;
 }
 
 /** The scenario `db:reseed:dev` loads. */
@@ -48,6 +57,8 @@ export const DEVELOPMENT_BLUEPRINT: DevelopmentBlueprint = {
   second: IGREJA_COLHEITA,
   churches: [IGREJA_SEMENTE, IGREJA_COLHEITA],
   multiChurchMemberships: MULTI_CHURCH_MEMBERSHIPS,
+  gatherings: IGREJA_SEMENTE_GATHERINGS,
+  history: IGREJA_SEMENTE_HISTORY,
   keyPersonas: [
     { label: 'ChurchAdmin', email: 'helena.duarte@igreja-semente.test' },
     { label: 'Kids leader', email: 'natalia.viana@igreja-semente.test' },

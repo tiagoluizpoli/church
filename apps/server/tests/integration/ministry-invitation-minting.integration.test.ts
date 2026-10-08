@@ -27,7 +27,7 @@ import {
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../src/test-support/identity-fixtures';
+} from '../test-support/identity-fixtures';
 import { testDb, truncateAll } from './repositories/setup';
 
 const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({

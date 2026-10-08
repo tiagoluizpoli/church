@@ -1,19 +1,24 @@
 import { randomUUID } from 'node:crypto';
 import {
-  assignment as assignmentTable,
   availabilityCheck as availabilityCheckTable,
   availability as availabilityTable,
-  ministry,
   ministryParticipation,
-  ministryVolunteer,
-  role,
-  shift as shiftTable,
-  user,
-  volunteer,
   volunteerNotification,
 } from '@church/db';
+import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildAvailabilityCheck } from '../../seeds/builders/availability';
+import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildMinistryParticipation,
+  buildShift,
+} from '../../seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteerWithMembership,
+} from '../../seeds/builders/volunteer';
 import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
 import {
   AvailabilityCheckId,
@@ -86,56 +91,6 @@ function createPhase5Manager({
   return { volunteerManager, notificationSpy };
 }
 
-interface SeedVolunteerWithMembershipInput {
-  churchId: string;
-  ministryId: string;
-  userId: string;
-  volunteerId: string;
-  email: string;
-  ministryAccessLevel?: 'volunteer' | 'leader';
-}
-
-async function seedVolunteerWithMembership(
-  input: SeedVolunteerWithMembershipInput,
-) {
-  await schedulingTestDb
-    .insert(user)
-    .values({
-      id: input.userId,
-      name: `User ${input.userId}`,
-      email: input.email,
-      emailVerified: true,
-    })
-    .onConflictDoNothing();
-
-  await schedulingTestDb
-    .insert(volunteer)
-    .values({
-      id: input.volunteerId,
-      churchId: input.churchId,
-      userId: input.userId,
-      status: 'active',
-    })
-    .onConflictDoNothing();
-
-  const [membership] = await schedulingTestDb
-    .insert(ministryVolunteer)
-    .values({
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      volunteerId: input.volunteerId,
-      ministryAccessLevel: input.ministryAccessLevel ?? 'volunteer',
-      status: 'active',
-    })
-    .returning();
-
-  if (!membership) {
-    throw new Error('Phase 5 membership seed failed');
-  }
-
-  return membership;
-}
-
 interface SeedShiftInput {
   churchId: string;
   participationId: string;
@@ -146,23 +101,15 @@ interface SeedShiftInput {
 }
 
 async function seedShift(input: SeedShiftInput) {
-  const [row] = await schedulingTestDb
-    .insert(shiftTable)
-    .values({
-      churchId: input.churchId,
-      participationId: input.participationId,
-      timeSlotId: input.timeSlotId,
-      startTime: input.startTime,
-      endTime: input.endTime,
-      label: input.label,
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error('Phase 5 shift seed failed');
-  }
-
-  return row;
+  return await buildShift({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    participationId: input.participationId,
+    timeSlotId: input.timeSlotId,
+    start: fromDate({ date: input.startTime }),
+    end: fromDate({ date: input.endTime }),
+    label: input.label,
+  });
 }
 
 interface SeedCheckInput {
@@ -173,21 +120,13 @@ interface SeedCheckInput {
 }
 
 async function seedCheck(input: SeedCheckInput) {
-  const [row] = await schedulingTestDb
-    .insert(availabilityCheckTable)
-    .values({
-      churchId: input.churchId,
-      planningCycleId: input.planningCycleId,
-      ministryVolunteerId: input.ministryVolunteerId,
-      state: input.state ?? 'pending',
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error('Phase 5 availability check seed failed');
-  }
-
-  return row;
+  return await buildAvailabilityCheck({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    planningCycleId: input.planningCycleId,
+    ministryVolunteerId: input.ministryVolunteerId,
+    state: input.state ?? 'pending',
+  });
 }
 
 interface Phase5Fixture {
@@ -249,12 +188,14 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
     label: 'Evening',
   });
 
-  const membership = await seedVolunteerWithMembership({
+  const { membership } = await buildVolunteerWithMembership({
+    db: schedulingTestDb,
     churchId: seed.churchAId,
     ministryId: seed.ministryAId,
     userId: VOLUNTEER_USER_ID,
     volunteerId: VOLUNTEER_ID,
     email: 'phase5-volunteer@test.com',
+    name: `User ${VOLUNTEER_USER_ID}`,
   });
   const check = await seedCheck({
     churchId: seed.churchAId,
@@ -294,38 +235,32 @@ async function seedSecondMinistryBranch({
   fixture,
   overlapping,
 }: SeedSecondMinistryInput): Promise<SecondMinistryFixture> {
-  const [secondMinistry] = await schedulingTestDb
-    .insert(ministry)
-    .values({
-      churchId: fixture.seed.churchAId,
-      name: 'Scheduling Ministry A2',
-    })
-    .returning();
-  if (!secondMinistry) {
-    throw new Error('Phase 5 second ministry seed failed');
-  }
+  const secondMinistry = await buildMinistry({
+    db: schedulingTestDb,
+    churchId: fixture.seed.churchAId,
+    name: 'Scheduling Ministry A2',
+  });
 
   const leaderVolunteerId = '55555555-5555-4555-8555-555555555552';
-  await seedVolunteerWithMembership({
+  await buildVolunteerWithMembership({
+    db: schedulingTestDb,
     churchId: fixture.seed.churchAId,
     ministryId: secondMinistry.id,
     userId: 'phase5-leader-user',
     volunteerId: leaderVolunteerId,
     email: 'phase5-leader@test.com',
     ministryAccessLevel: 'leader',
+    name: 'User phase5-leader-user',
   });
 
-  const [secondParticipation] = await schedulingTestDb
-    .insert(ministryParticipation)
-    .values({
-      churchId: fixture.seed.churchAId,
-      ministryId: secondMinistry.id,
-      eventId: fixture.eventId,
-    })
-    .returning();
-  if (!secondParticipation) {
-    throw new Error('Phase 5 second participation seed failed');
-  }
+  const secondParticipation = await buildMinistryParticipation({
+    db: schedulingTestDb,
+    churchId: fixture.seed.churchAId,
+    ministryId: secondMinistry.id,
+    eventId: fixture.eventId,
+    state: 'tailoring',
+    timeSlotIds: [],
+  });
 
   // Overlapping: intersects the Morning shift (12:00-15:00). Otherwise disjoint (15:00-17:00 touches edges only).
   await seedShift({
@@ -341,12 +276,15 @@ async function seedSecondMinistryBranch({
     label: 'Second ministry shift',
   });
 
-  const membership = await seedVolunteerWithMembership({
+  // The same Volunteer joins the second Ministry: a membership, not a new profile.
+  const membership = await buildMinistryMembership({
+    db: schedulingTestDb,
     churchId: fixture.seed.churchAId,
     ministryId: secondMinistry.id,
-    userId: VOLUNTEER_USER_ID,
     volunteerId: fixture.volunteerId,
-    email: 'phase5-volunteer@test.com',
+    ministryAccessLevel: 'volunteer',
+    roleIds: [],
+    teams: [],
   });
   const check = await seedCheck({
     churchId: fixture.seed.churchAId,
@@ -445,12 +383,14 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     const { volunteerManager } = createPhase5Manager();
     const intruderId = VolunteerId.from('55555555-5555-4555-8555-555555555559');
 
-    await seedVolunteerWithMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: fixture.seed.churchAId,
       ministryId: fixture.seed.ministryAId,
       userId: 'phase5-intruder-user',
       volunteerId: intruderId,
       email: 'phase5-intruder@test.com',
+      name: 'User phase5-intruder-user',
     });
 
     await expect(
@@ -570,17 +510,12 @@ interface SeedRoleInput {
 }
 
 async function seedRoleFor(input: SeedRoleInput) {
-  const [row] = await schedulingTestDb
-    .insert(role)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      name: 'Dashboard role',
-    })
-    .returning();
-  if (!row) throw new Error('Dashboard role seed failed');
-  return row;
+  return await buildRole({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    ministryId: input.ministryId,
+    name: 'Dashboard role',
+  });
 }
 
 interface SeedPublishedAssignmentInput {
@@ -617,19 +552,15 @@ async function seedPublishedAssignment(input: SeedPublishedAssignmentInput) {
     .update(ministryParticipation)
     .set({ state: 'published' })
     .where(eq(ministryParticipation.id, graph.participation.id));
-  const [assignmentRow] = await schedulingTestDb
-    .insert(assignmentTable)
-    .values({
-      id: randomUUID(),
-      churchId: input.churchId,
-      participationId: graph.participation.id,
-      shiftId: shift.id,
-      volunteerId: input.volunteerId,
-      roleId: roleRow.id,
-      status: input.status ?? 'confirmed',
-    })
-    .returning();
-  if (!assignmentRow) throw new Error('Dashboard assignment seed failed');
+  const assignmentRow = await buildAssignment({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    participationId: graph.participation.id,
+    shiftId: shift.id,
+    volunteerId: input.volunteerId,
+    roleId: roleRow.id,
+    status: input.status ?? 'confirmed',
+  });
 
   return { graph, shift, assignment: assignmentRow, role: roleRow };
 }
@@ -771,14 +702,11 @@ describe('Phase 5 volunteer dashboard, notifications and context (DL2-VA dashboa
     const fixture = await seedPhase5Fixture();
     const { volunteerManager } = createPhase5Manager();
 
-    const [otherMinistry] = await schedulingTestDb
-      .insert(ministry)
-      .values({
-        churchId: fixture.seed.churchAId,
-        name: 'Ministry volunteer is not part of',
-      })
-      .returning();
-    if (!otherMinistry) throw new Error('other ministry seed failed');
+    const otherMinistry = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: fixture.seed.churchAId,
+      name: 'Ministry volunteer is not part of',
+    });
 
     await expect(
       volunteerManager.getMinistrySchedule({

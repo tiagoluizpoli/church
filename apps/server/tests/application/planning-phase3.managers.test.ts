@@ -1,10 +1,7 @@
-import { randomUUID } from 'node:crypto';
 import {
   event,
-  ministry,
   ministryServingProfile,
   participationSlotInclusion,
-  role,
   shift as shiftTable,
   slotRequirement,
   timeSlot,
@@ -13,12 +10,15 @@ import {
   addMilliseconds,
   calendarDayBounds,
   formatCalendarDay,
+  fromDate,
   parseCalendarDay,
   toDate,
   today,
 } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
+import { buildTimeSlot } from '../../seeds/builders/scheduling';
 import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
 import { DbPlanningCycleManager } from '../../src/application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '../../src/application/db-planning-event-manager';
@@ -118,22 +118,14 @@ interface SeedEventSlotInput {
 }
 
 async function seedEventSlot(input: SeedEventSlotInput) {
-  const [row] = await schedulingTestDb
-    .insert(timeSlot)
-    .values({
-      churchId: input.churchId,
-      eventId: input.eventId,
-      startTime: input.startTime,
-      endTime: input.endTime,
-      label: input.label,
-    })
-    .returning();
-
-  if (!row) {
-    throw new Error('Scheduling phase 3 slot seed failed');
-  }
-
-  return row;
+  return await buildTimeSlot({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    eventId: input.eventId,
+    start: fromDate({ date: input.startTime }),
+    end: fromDate({ date: input.endTime }),
+    label: input.label,
+  });
 }
 
 /**
@@ -796,33 +788,24 @@ describe('Phase 3 planning managers', () => {
     const churchAId = ChurchId.from(seed.churchAId);
 
     // ministryA (from base seed) is left at its DB default_direction, 'all_out'.
-    const [allInMinistry] = await schedulingTestDb
-      .insert(ministry)
-      .values({
-        churchId: seed.churchAId,
-        name: 'All-in ministry',
-        defaultDirection: 'all_in',
-      })
-      .returning();
-    const [profiledMinistry] = await schedulingTestDb
-      .insert(ministry)
-      .values({
-        churchId: seed.churchAId,
-        name: 'Profiled ministry',
-        defaultDirection: 'all_out',
-      })
-      .returning();
-    const [excludedByProfileMinistry] = await schedulingTestDb
-      .insert(ministry)
-      .values({
-        churchId: seed.churchAId,
-        name: 'Explicitly excluded ministry',
-        defaultDirection: 'all_in',
-      })
-      .returning();
-    if (!allInMinistry || !profiledMinistry || !excludedByProfileMinistry) {
-      throw new Error('ministry seed failed');
-    }
+    const allInMinistry = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      name: 'All-in ministry',
+      defaultDirection: 'all_in',
+    });
+    const profiledMinistry = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      name: 'Profiled ministry',
+      defaultDirection: 'all_out',
+    });
+    const excludedByProfileMinistry = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      name: 'Explicitly excluded ministry',
+      defaultDirection: 'all_in',
+    });
 
     const cycle = await cycleManager.createCycle({
       churchId: churchAId,
@@ -846,19 +829,12 @@ describe('Phase 3 planning managers', () => {
     const block = template.blocks[0];
     if (!block) throw new Error('template block seed failed');
 
-    const roleRow = await schedulingTestDb
-      .insert(role)
-      .values({
-        id: randomUUID(),
-        churchId: seed.churchAId,
-        ministryId: profiledMinistry.id,
-        name: 'Profiled role',
-      })
-      .returning()
-      .then(([row]) => {
-        if (!row) throw new Error('role seed failed');
-        return row;
-      });
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: profiledMinistry.id,
+      name: 'Profiled role',
+    });
 
     await schedulingTestDb.insert(ministryServingProfile).values([
       {

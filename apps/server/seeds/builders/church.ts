@@ -1,6 +1,8 @@
 import {
   addChurchMember,
+  type ChurchAccessLevel,
   type ChurchRecord,
+  createChurch,
   invitation,
   user,
 } from '@church/db';
@@ -121,4 +123,48 @@ export async function redeemChurchInvitation({
     accessLevel,
     id: churchMembershipId,
   });
+}
+
+export interface BuildChurchInput {
+  db: SeedWriter;
+  id: string;
+  name: string;
+  slug: string;
+  timezone: string;
+}
+
+/**
+ * Direct-state builder, exceptional-fixture purpose: both halves of a Church
+ * (organization and Church extension row) without the Platform Operator or the
+ * first Church Invitation that Church Provisioning adds. For fixtures whose
+ * behavior does not depend on how the Church came to be; use
+ * `buildProvisionedChurch` when it does.
+ */
+export async function buildChurch({
+  db,
+  id,
+  name,
+  slug,
+  timezone,
+}: BuildChurchInput): Promise<ChurchRecord> {
+  return await createChurch({ db, id, name, slug, timezone });
+}
+
+export interface BuildChurchMembershipInput {
+  db: SeedWriter;
+  churchId: string;
+  userId: string;
+  accessLevel: ChurchAccessLevel;
+  id?: string;
+}
+
+/** A Church Membership at an Access Level, recorded without an invitation. */
+export async function buildChurchMembership({
+  db,
+  churchId,
+  userId,
+  accessLevel,
+  id,
+}: BuildChurchMembershipInput): Promise<void> {
+  await addChurchMember({ db, churchId, userId, accessLevel, id });
 }

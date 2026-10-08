@@ -1,24 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import {
-  CHURCH_ADMIN_STORAGE_STATE,
-  CHURCH_B_ADMIN_STORAGE_STATE,
-} from '../global-setup';
-import {
-  allocatedYear,
-  type PlanningCycleYearCallSiteId,
-} from './planning-cycle-year.helpers';
+import { loadPlanningAdminJourney } from '../fixtures/journeys/planning-admin';
+import { loadPlanningCycleTenantsJourney } from '../fixtures/journeys/planning-cycle-tenants';
+import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
 
 // DL4-X1/X2/X3 (test-plan.md): cross-cutting checks that apply across every
 // user story rather than to one of them.
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
-
-// Fixed E2E seed identifiers (apps/server/src/test-support/e2e-seed.ts
-// E2E_IDS) — same convention as the other scheduling specs: the web package
-// stays DB-tooling-free, so specs reference these well-known values directly.
-const CHURCH_A_CYCLE_NAME = 'E2E December cycle';
-const CHURCH_A_CYCLE_ID = 'e2e21111-1111-1111-a111-111111111111';
-const CHURCH_B_CYCLE_NAME = 'E2E ChurchB Isolated Cycle';
 
 interface PlanningCycleSummaryResponse {
   id: string;
@@ -36,70 +24,39 @@ interface PlanningCycleResponse {
   endDate: string;
 }
 
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-interface FreshDraftMonth {
-  cycleName: string;
-  startDate: string;
-  endDate: string;
-}
-
-// `callSiteId` must be distinct per call site (and registered in
-// planning-cycle-year.helpers.ts) so concurrent tests (this file runs
-// fullyParallel) never land on the same date range and trip the real
-// overlap guard against each other, or against another spec file (#241).
-function createFreshDraftMonth(
-  label: string,
-  callSiteId: PlanningCycleYearCallSiteId,
-): FreshDraftMonth {
-  const now = new Date();
-  const year = allocatedYear({ callSiteId });
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1));
-  const end = new Date(Date.UTC(year, month + 1, 1));
-
-  return {
-    cycleName: `${label} ${year}-${String(month + 1).padStart(2, '0')} ${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
-    startDate: toDateString(start),
-    endDate: toDateString(end),
-  };
-}
-
 test.describe('DL4-X1 church isolation', () => {
-  test.use({
-    storageState: CHURCH_B_ADMIN_STORAGE_STATE,
-    viewport: { width: 767, height: 1200 },
-  });
+  test.use({ viewport: { width: 767, height: 1200 } });
 
   test('a churchB admin never sees churchA cycles in any view and cannot reach them by id', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const { churchA, churchB } = loadPlanningCycleTenantsJourney({ testInfo });
+    await signInPersonaPage({ page, persona: churchB.personas.admin });
+
     const listResponse = await page.request.get(
       `${SERVER_URL}/api/v1/admin/planning-cycles`,
     );
     expect(listResponse.ok()).toBeTruthy();
     const list = (await listResponse.json()) as PlanningCycleListResponse;
-    expect(
-      list.cycles.some((cycle) => cycle.name === CHURCH_B_CYCLE_NAME),
-    ).toBe(true);
-    expect(list.cycles.some((cycle) => cycle.id === CHURCH_A_CYCLE_ID)).toBe(
+    expect(list.cycles.some((cycle) => cycle.name === churchB.cycle.name)).toBe(
+      true,
+    );
+    expect(list.cycles.some((cycle) => cycle.id === churchA.cycle.id)).toBe(
       false,
     );
-    expect(
-      list.cycles.some((cycle) => cycle.name === CHURCH_A_CYCLE_NAME),
-    ).toBe(false);
+    expect(list.cycles.some((cycle) => cycle.name === churchA.cycle.name)).toBe(
+      false,
+    );
 
     // Reaching churchA's cycle by its known id — never leaks the resource,
     // it resolves as not-found for this tenant (FR isolation, SC-005).
     const detailResponse = await page.request.get(
-      `${SERVER_URL}/api/v1/admin/planning-cycles/${CHURCH_A_CYCLE_ID}`,
+      `${SERVER_URL}/api/v1/admin/planning-cycles/${churchA.cycle.id}`,
     );
     expect(detailResponse.status()).toBe(404);
 
     const lockResponse = await page.request.post(
-      `${SERVER_URL}/api/v1/admin/planning-cycles/${CHURCH_A_CYCLE_ID}/lock`,
+      `${SERVER_URL}/api/v1/admin/planning-cycles/${churchA.cycle.id}/lock`,
     );
     expect(lockResponse.status()).toBe(404);
 
@@ -108,49 +65,51 @@ test.describe('DL4-X1 church isolation', () => {
     await expect(
       page
         .getByTestId('planning-cycle-option')
-        .filter({ hasText: CHURCH_B_CYCLE_NAME }),
+        .filter({ hasText: churchB.cycle.name }),
     ).toBeVisible();
     await expect(
       page
         .getByTestId('planning-cycle-option')
-        .filter({ hasText: CHURCH_A_CYCLE_NAME }),
+        .filter({ hasText: churchA.cycle.name }),
     ).toHaveCount(0);
   });
 });
 
 test.describe('DL4-X1 church isolation (reverse)', () => {
-  test.use({
-    storageState: CHURCH_ADMIN_STORAGE_STATE,
-    viewport: { width: 767, height: 1200 },
-  });
+  test.use({ viewport: { width: 767, height: 1200 } });
 
   test('the original churchA admin never sees churchB cycles', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const { churchA, churchB } = loadPlanningCycleTenantsJourney({ testInfo });
+    await signInPersonaPage({ page, persona: churchA.personas.admin });
+
     const listResponse = await page.request.get(
       `${SERVER_URL}/api/v1/admin/planning-cycles`,
     );
     expect(listResponse.ok()).toBeTruthy();
     const list = (await listResponse.json()) as PlanningCycleListResponse;
-    expect(
-      list.cycles.some((cycle) => cycle.name === CHURCH_B_CYCLE_NAME),
-    ).toBe(false);
+    expect(list.cycles.some((cycle) => cycle.name === churchA.cycle.name)).toBe(
+      true,
+    );
+    expect(list.cycles.some((cycle) => cycle.name === churchB.cycle.name)).toBe(
+      false,
+    );
   });
 });
 
 test.describe('DL4-X2 network failure on lock', () => {
-  test.use({
-    storageState: CHURCH_ADMIN_STORAGE_STATE,
-    viewport: { width: 767, height: 1200 },
-  });
+  test.use({ viewport: { width: 767, height: 1200 } });
 
   test('a network failure on lock shows an error and leaves the cycle in draft', async ({
     page,
-  }) => {
-    const month = createFreshDraftMonth(
-      'X2 Network Failure',
-      'cross-cutting:x2-network-failure',
-    );
+  }, testInfo) => {
+    const journey = loadPlanningAdminJourney({ testInfo });
+    await signInPersonaPage({ page, persona: journey.personas.admin });
+    const month = {
+      cycleName: 'X2 Network Failure',
+      ...journey.cycleWindow,
+    };
     const cycleResponse = await page.request.post(
       `${SERVER_URL}/api/v1/admin/planning-cycles`,
       {
@@ -200,18 +159,17 @@ test.describe('DL4-X2 network failure on lock', () => {
 });
 
 test.describe('DL4-X3 double-submit has no duplicate side effect', () => {
-  test.use({
-    storageState: CHURCH_ADMIN_STORAGE_STATE,
-    viewport: { width: 767, height: 1200 },
-  });
+  test.use({ viewport: { width: 767, height: 1200 } });
 
   test('two concurrent lock requests for the same cycle produce exactly one success', async ({
     page,
-  }) => {
-    const month = createFreshDraftMonth(
-      'X3 Double Submit',
-      'cross-cutting:x3-double-submit',
-    );
+  }, testInfo) => {
+    const journey = loadPlanningAdminJourney({ testInfo });
+    await signInPersonaPage({ page, persona: journey.personas.admin });
+    const month = {
+      cycleName: 'X3 Double Submit',
+      ...journey.cycleWindow,
+    };
     const cycleResponse = await page.request.post(
       `${SERVER_URL}/api/v1/admin/planning-cycles`,
       {

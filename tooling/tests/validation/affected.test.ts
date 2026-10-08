@@ -1323,3 +1323,18 @@ describe('explainPlan seed impact', () => {
     expect(text).toContain('Seed-Impact: none');
   });
 });
+
+describe('init-system journey mapping', () => {
+  it('selects the journey recipe specs, like the other provisioning scripts', () => {
+    const initSystem = classifyChanges({
+      changedPaths: ['apps/server/src/scripts/init-system.ts'],
+    });
+    const provision = classifyChanges({
+      changedPaths: ['apps/server/src/scripts/provision-church.ts'],
+    });
+
+    expect(initSystem.missingJourneyMappings).toEqual([]);
+    expect(initSystem.e2eSpecPaths).toEqual(provision.e2eSpecPaths);
+    expect(initSystem.e2eSpecPaths.length).toBeGreaterThan(0);
+  });
+});

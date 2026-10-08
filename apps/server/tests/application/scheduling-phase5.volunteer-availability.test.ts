@@ -9,7 +9,6 @@ import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildAvailabilityCheck } from '../../seeds/builders/availability';
-import { buildUser } from '../../seeds/builders/identity';
 import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
 import {
   buildAssignment,
@@ -18,7 +17,7 @@ import {
 } from '../../seeds/builders/scheduling';
 import {
   buildMinistryMembership,
-  buildVolunteer,
+  buildVolunteerWithMembership,
 } from '../../seeds/builders/volunteer';
 import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
 import {
@@ -90,42 +89,6 @@ function createPhase5Manager({
   );
 
   return { volunteerManager, notificationSpy };
-}
-
-interface SeedVolunteerWithMembershipInput {
-  churchId: string;
-  ministryId: string;
-  userId: string;
-  volunteerId: string;
-  email: string;
-  ministryAccessLevel?: 'volunteer' | 'leader';
-}
-
-async function seedVolunteerWithMembership(
-  input: SeedVolunteerWithMembershipInput,
-) {
-  await buildUser({
-    db: schedulingTestDb,
-    id: input.userId,
-    name: `User ${input.userId}`,
-    email: input.email,
-  });
-  await buildVolunteer({
-    db: schedulingTestDb,
-    id: input.volunteerId,
-    churchId: input.churchId,
-    userId: input.userId,
-  });
-
-  return await buildMinistryMembership({
-    db: schedulingTestDb,
-    churchId: input.churchId,
-    ministryId: input.ministryId,
-    volunteerId: input.volunteerId,
-    ministryAccessLevel: input.ministryAccessLevel ?? 'volunteer',
-    roleIds: [],
-    teams: [],
-  });
 }
 
 interface SeedShiftInput {
@@ -225,12 +188,14 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
     label: 'Evening',
   });
 
-  const membership = await seedVolunteerWithMembership({
+  const { membership } = await buildVolunteerWithMembership({
+    db: schedulingTestDb,
     churchId: seed.churchAId,
     ministryId: seed.ministryAId,
     userId: VOLUNTEER_USER_ID,
     volunteerId: VOLUNTEER_ID,
     email: 'phase5-volunteer@test.com',
+    name: `User ${VOLUNTEER_USER_ID}`,
   });
   const check = await seedCheck({
     churchId: seed.churchAId,
@@ -277,13 +242,15 @@ async function seedSecondMinistryBranch({
   });
 
   const leaderVolunteerId = '55555555-5555-4555-8555-555555555552';
-  await seedVolunteerWithMembership({
+  await buildVolunteerWithMembership({
+    db: schedulingTestDb,
     churchId: fixture.seed.churchAId,
     ministryId: secondMinistry.id,
     userId: 'phase5-leader-user',
     volunteerId: leaderVolunteerId,
     email: 'phase5-leader@test.com',
     ministryAccessLevel: 'leader',
+    name: 'User phase5-leader-user',
   });
 
   const secondParticipation = await buildMinistryParticipation({
@@ -416,12 +383,14 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     const { volunteerManager } = createPhase5Manager();
     const intruderId = VolunteerId.from('55555555-5555-4555-8555-555555555559');
 
-    await seedVolunteerWithMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: fixture.seed.churchAId,
       ministryId: fixture.seed.ministryAId,
       userId: 'phase5-intruder-user',
       volunteerId: intruderId,
       email: 'phase5-intruder@test.com',
+      name: 'User phase5-intruder-user',
     });
 
     await expect(

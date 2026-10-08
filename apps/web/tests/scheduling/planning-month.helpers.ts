@@ -18,11 +18,19 @@ export interface PlanningMonthWindow {
   endDate: string;
 }
 
-function toDay({ date }: { date: Date }): string {
+export interface DayInput {
+  day: string;
+}
+
+interface DateInput {
+  date: Date;
+}
+
+function toDay({ date }: DateInput): string {
   return date.toISOString().slice(0, 10);
 }
 
-function fromDay({ day }: { day: string }): Date {
+function fromDay({ day }: DayInput): Date {
   return new Date(`${day}T00:00:00Z`);
 }
 
@@ -36,10 +44,6 @@ export function planningMonth({ anchor }: AnchorInput): PlanningMonthWindow {
     Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
   );
   return { startDate: toDay({ date: start }), endDate: toDay({ date: end }) };
-}
-
-export interface DayInput {
-  day: string;
 }
 
 /** The day itself, or the Monday after when it is a Sunday. */

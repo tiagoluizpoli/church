@@ -143,7 +143,12 @@ const FULL_E2E_PATHS = new Set([
   'apps/web/playwright.config.ts',
   'apps/web/tests/global-setup.ts',
   'apps/web/tests/global-teardown.ts',
-  'apps/server/src/test-support/e2e-seed.ts',
+  // What global setup loads before any worker starts: the suite's shared
+  // personas and the E2E database reset. A regression fails every spec.
+  'apps/server/seeds/e2e/recipes/shared-personas.ts',
+  'apps/server/seeds/e2e/reset-e2e-database.ts',
+  'apps/web/tests/fixtures/shared-personas.ts',
+  'packages/db/src/e2e-database-reset.ts',
   // The E2E database target: which database every E2E process (server,
   // seed, invitation minting and redemption) resolves and refuses. A
   // regression breaks any journey, and #203 makes the redemption journeys

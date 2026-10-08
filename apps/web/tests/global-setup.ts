@@ -1,9 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { request } from '@playwright/test';
-import { z } from 'zod';
 import { assertE2eEnvironment } from '../../../tooling/env/e2e-environment';
 import {
   clearE2eRunFailure,
@@ -17,206 +14,60 @@ import {
   resolveActiveChurch,
   signInPersona,
 } from './fixtures/persona-session';
+import {
+  CHURCH_ADMIN_STORAGE_STATE,
+  SHARED_PERSONAS_FILE,
+  SHARED_PERSONAS_KEY,
+  SHARED_PERSONAS_RECIPE,
+  SHARED_PERSONAS_SCHEMA,
+  type SharedPersonas,
+  VOLUNTEER_STORAGE_STATE,
+} from './fixtures/shared-personas';
 import { resetE2eDatabase } from './global-teardown';
 
-const dirname = path.dirname(fileURLToPath(import.meta.url));
-
 /**
- * Playwright global setup: provisions authenticated role sessions and seeded
- * domain data for scheduling E2E specs.
+ * Playwright global setup, once per run before any worker starts (#320
+ * decision 19):
  *
- *  1. Provision both Churches through the real Church Provisioning operation
- *     (`e2e-provision-church.ts`), each minting a Church Invitation to its
- *     first ChurchAdmin.
- *  2. Redeem every actor's Church Invitation for real (`e2e-redeem-church-
- *     invitation.ts`) — public sign-up is closed, so no user here is ever
- *     created any other way. The ChurchAdmin invites TeamLeader/Volunteer
- *     into Church A as ordinary Church Members before they redeem too
- *     (`e2e-mint-church-invitation.ts`).
- *  3. Shell out to the SERVER seed script for the scheduling domain fixture
- *     (frontend stays DB-free) — Ministry Membership, Roles and Teams are
- *     still written directly, which spec 024 §3.2 permits for fixture setup.
- *  4. Persist admin/leader/volunteer sessions to `tests/.auth/` so specs opt
- *     in `test.use({ storageState })` — existing unauthenticated specs
- *     untouched.
+ *  1. Empty this worktree's E2E database.
+ *  2. Load the server's `shared-personas` recipe: the suite's read-only
+ *     ChurchAdmin and Volunteer, and the local Platform Operator every
+ *     journey Church is provisioned by.
+ *  3. Sign each persona in, resolve its Active Church, and save its storage
+ *     state; save the recipe's result for the specs that sign in themselves.
  *
- * ChurchAdmin and legacy leader states share one session; the Ministry-leader
- * state stays separate so browser coverage can prove scope-specific access.
+ * Every journey that mutates domain data loads its own recipe per test
+ * (`fixtures/journey-recipes.ts`).
  */
-const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
-const SERVER_DIR = path.resolve(dirname, '../../server');
 
-export const CHURCH_ADMIN_STORAGE_STATE = path.resolve(
-  dirname,
-  '.auth/church-admin.json',
-);
-export const LEADER_STORAGE_STATE = path.resolve(dirname, '.auth/leader.json');
-export const MINISTRY_LEADER_STORAGE_STATE = path.resolve(
-  dirname,
-  '.auth/ministry-leader.json',
-);
-export const VOLUNTEER_STORAGE_STATE = path.resolve(
-  dirname,
-  '.auth/volunteer.json',
-);
-export const TEAM_LEADER_STORAGE_STATE = path.resolve(
-  dirname,
-  '.auth/team-leader.json',
-);
-export const CHURCH_B_ADMIN_STORAGE_STATE = path.resolve(
-  dirname,
-  '.auth/church-b-admin.json',
-);
-export const E2E_AUTH_META = path.resolve(dirname, '.auth/e2e-users.json');
-
-// Mirrors `apps/server/src/test-support/e2e-seed.ts`'s `E2E_IDS.church` /
-// `E2E_IDS.churchB` — pinned so the domain fixture's hardcoded ids still
-// resolve against the Church this setup provisions.
-const CHURCH_A_ID = 'e2e11111-1111-1111-a111-111111111111';
-const CHURCH_B_ID = 'e2ebbbbb-1111-1111-a111-111111111111';
-
-const LEADER_BASE = {
-  password: 'e2e-Password-123',
-  name: 'E2E Leader',
-};
-
-/**
- * The shared ChurchAdmin's password. Its identity is read-only, so a spec
- * may sign it in through the sign-in form (its email is the one of its
- * storage state's session).
- */
-export const E2E_CHURCH_ADMIN_PASSWORD = LEADER_BASE.password;
-
-const TEAM_LEADER_BASE = {
-  password: 'e2e-Password-456',
-  name: 'E2E Team Leader',
-};
-
-const MINISTRY_LEADER_BASE = {
-  password: 'e2e-Password-012',
-  name: 'E2E Ministry Leader',
-};
-
-const VOLUNTEER_BASE = {
-  password: 'e2e-Password-789',
-  name: 'E2E Volunteer',
-};
-
-// Distinct tenant's admin, used only by the cross-cutting church-isolation
-// spec (DL4-X1) — never referenced by the five per-story specs.
-const CHURCH_B_ADMIN_BASE = {
-  password: 'e2e-Password-321',
-  name: 'E2E ChurchB Admin',
-};
-
-export const E2E_AUTH_META_SCHEMA = z.object({
-  leaderUserId: z.string().min(1),
-  ministryLeaderUserId: z.string().min(1).optional(),
-  teamLeaderUserId: z.string().min(1),
-  volunteerUserId: z.string().min(1),
-  churchBAdminUserId: z.string().min(1),
-});
-
-interface AuthUserInput {
-  ctx: Awaited<ReturnType<typeof request.newContext>>;
-  creds: PersonaCredentials;
-  invitationId: string;
+interface SaveSessionInput {
+  serverUrl: string;
+  credentials: PersonaCredentials;
+  storageState: string;
 }
 
-interface MakeUniqueEmailInput {
-  label: string;
+async function saveSession({
+  serverUrl,
+  credentials,
+  storageState,
+}: SaveSessionInput): Promise<void> {
+  const context = await request.newContext({ baseURL: serverUrl });
+  try {
+    await signInPersona({ request: context, credentials });
+    await resolveActiveChurch({ request: context, name: credentials.name });
+    await context.storageState({ path: storageState });
+  } finally {
+    await context.dispose();
+  }
 }
 
-function makeUniqueEmail({ label }: MakeUniqueEmailInput): string {
-  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  return `${label}-${suffix}@test.com`;
-}
-
-interface ProvisionE2eChurchInput {
-  id: string;
-  name: string;
-  slug: string;
-  adminEmail: string;
-}
-
-const PROVISION_E2E_CHURCH_RESULT_SCHEMA = z.object({
-  churchId: z.string(),
-  invitationId: z.string(),
-});
-
-type ProvisionE2eChurchResult = z.infer<
-  typeof PROVISION_E2E_CHURCH_RESULT_SCHEMA
->;
-
-/** Real Church Provisioning (spec 024 §2) — mints a Church Invitation to the first ChurchAdmin. */
-function provisionE2eChurch(
-  input: ProvisionE2eChurchInput,
-): ProvisionE2eChurchResult {
+function loadSharedPersonas(): SharedPersonas {
   const output = runE2eServerScript({
-    scriptPath: 'src/scripts/e2e-provision-church.ts',
-    args: [input.id, input.name, input.slug, input.adminEmail],
-    step: `provision ${input.name}`,
+    scriptPath: 'seeds/e2e/load-journey-recipe.ts',
+    args: [SHARED_PERSONAS_RECIPE, `--key=${SHARED_PERSONAS_KEY}`],
+    step: `load ${SHARED_PERSONAS_RECIPE} recipe`,
   });
-  return parseLastJsonLine({
-    output,
-    schema: PROVISION_E2E_CHURCH_RESULT_SCHEMA,
-  });
-}
-
-interface MintE2eChurchInvitationInput {
-  inviterEmail: string;
-  inviterPassword: string;
-  inviteeEmail: string;
-  organizationId: string;
-  role: 'member' | 'admin';
-}
-
-const MINT_E2E_CHURCH_INVITATION_RESULT_SCHEMA = z.object({
-  invitationId: z.string(),
-});
-
-type MintE2eChurchInvitationResult = z.infer<
-  typeof MINT_E2E_CHURCH_INVITATION_RESULT_SCHEMA
->;
-
-/** A real Church Invitation from the ChurchAdmin to an ordinary Church Member. */
-function mintE2eChurchInvitation(
-  input: MintE2eChurchInvitationInput,
-): MintE2eChurchInvitationResult {
-  const output = runE2eServerScript({
-    scriptPath: 'src/scripts/e2e-mint-church-invitation.ts',
-    step: `mint Church Invitation for ${input.role}`,
-    args: [
-      input.inviterEmail,
-      input.inviterPassword,
-      input.inviteeEmail,
-      input.organizationId,
-      input.role,
-    ],
-  });
-  return parseLastJsonLine({
-    output,
-    schema: MINT_E2E_CHURCH_INVITATION_RESULT_SCHEMA,
-  });
-}
-
-/**
- * Redeems a real Church Invitation for `creds` (account creation and
- * acceptance both happen server-side, in-process — public sign-up is
- * closed), then signs in over HTTP to give the caller's Playwright `ctx` a
- * usable session for `storageState()`.
- */
-async function authUser({
-  ctx,
-  creds,
-  invitationId,
-}: AuthUserInput): Promise<string> {
-  runE2eServerScript({
-    scriptPath: 'src/scripts/e2e-redeem-church-invitation.ts',
-    args: [creds.email, creds.name, creds.password, invitationId],
-    step: `redeem Church Invitation for ${creds.name}`,
-  });
-  return signInPersona({ request: ctx, credentials: creds });
+  return parseLastJsonLine({ output, schema: SHARED_PERSONAS_SCHEMA });
 }
 
 /** Starts a run: forgets the previous run's outcome, and records a failure
@@ -244,157 +95,22 @@ async function provisionE2eRun(): Promise<void> {
   // in place for diagnosis (see global-teardown.ts).
   resetE2eDatabase();
 
-  const leaderCtx = await request.newContext({ baseURL: SERVER_URL });
-  const ministryLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
-  const teamLeaderCtx = await request.newContext({ baseURL: SERVER_URL });
-  const volunteerCtx = await request.newContext({ baseURL: SERVER_URL });
-  const churchBAdminCtx = await request.newContext({ baseURL: SERVER_URL });
-  const leaderCreds = {
-    ...LEADER_BASE,
-    email: makeUniqueEmail({ label: 'e2e-leader' }),
-  };
-  const teamLeaderCreds = {
-    ...TEAM_LEADER_BASE,
-    email: makeUniqueEmail({ label: 'e2e-teamleader' }),
-  };
-  const ministryLeaderCreds = {
-    ...MINISTRY_LEADER_BASE,
-    email: makeUniqueEmail({ label: 'e2e-ministry-leader' }),
-  };
-  const volunteerCreds = {
-    ...VOLUNTEER_BASE,
-    email: makeUniqueEmail({ label: 'e2e-volunteer' }),
-  };
-  const churchBAdminCreds = {
-    ...CHURCH_B_ADMIN_BASE,
-    email: makeUniqueEmail({ label: 'e2e-churchb-admin' }),
-  };
+  const serverUrl = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
+  const shared = loadSharedPersonas();
 
-  const [churchA, churchB] = [
-    provisionE2eChurch({
-      id: CHURCH_A_ID,
-      name: 'E2E Church',
-      slug: 'e2e-church',
-      adminEmail: leaderCreds.email,
-    }),
-    provisionE2eChurch({
-      id: CHURCH_B_ID,
-      name: 'E2E ChurchB',
-      slug: 'e2e-church-b',
-      adminEmail: churchBAdminCreds.email,
-    }),
-  ];
-
-  const [leaderId, churchBAdminId] = await Promise.all([
-    authUser({
-      ctx: leaderCtx,
-      creds: leaderCreds,
-      invitationId: churchA.invitationId,
-    }),
-    authUser({
-      ctx: churchBAdminCtx,
-      creds: churchBAdminCreds,
-      invitationId: churchB.invitationId,
-    }),
-  ]);
-
-  const teamLeaderInvitation = mintE2eChurchInvitation({
-    inviterEmail: leaderCreds.email,
-    inviterPassword: leaderCreds.password,
-    inviteeEmail: teamLeaderCreds.email,
-    organizationId: churchA.churchId,
-    role: 'member',
-  });
-  const ministryLeaderInvitation = mintE2eChurchInvitation({
-    inviterEmail: leaderCreds.email,
-    inviterPassword: leaderCreds.password,
-    inviteeEmail: ministryLeaderCreds.email,
-    organizationId: churchA.churchId,
-    role: 'member',
-  });
-  const volunteerInvitation = mintE2eChurchInvitation({
-    inviterEmail: leaderCreds.email,
-    inviterPassword: leaderCreds.password,
-    inviteeEmail: volunteerCreds.email,
-    organizationId: churchA.churchId,
-    role: 'member',
-  });
-
-  const [ministryLeaderId, teamLeaderId, volunteerId] = await Promise.all([
-    authUser({
-      ctx: ministryLeaderCtx,
-      creds: ministryLeaderCreds,
-      invitationId: ministryLeaderInvitation.invitationId,
-    }),
-    authUser({
-      ctx: teamLeaderCtx,
-      creds: teamLeaderCreds,
-      invitationId: teamLeaderInvitation.invitationId,
-    }),
-    authUser({
-      ctx: volunteerCtx,
-      creds: volunteerCreds,
-      invitationId: volunteerInvitation.invitationId,
-    }),
-  ]);
-
-  execFileSync(
-    'bun',
-    [
-      'run',
-      'seed:e2e',
-      '--',
-      `--leader-user-id=${leaderId}`,
-      `--ministry-leader-user-id=${ministryLeaderId}`,
-      `--team-leader-user-id=${teamLeaderId}`,
-      `--volunteer-user-id=${volunteerId}`,
-      `--church-b-admin-user-id=${churchBAdminId}`,
-    ],
-    { cwd: SERVER_DIR, stdio: 'inherit' },
-  );
-
-  mkdirSync(path.dirname(E2E_AUTH_META), { recursive: true });
-  writeFileSync(
-    E2E_AUTH_META,
-    JSON.stringify(
-      E2E_AUTH_META_SCHEMA.parse({
-        leaderUserId: leaderId,
-        ministryLeaderUserId: ministryLeaderId,
-        teamLeaderUserId: teamLeaderId,
-        volunteerUserId: volunteerId,
-        churchBAdminUserId: churchBAdminId,
-      }),
-    ),
-  );
+  mkdirSync(path.dirname(SHARED_PERSONAS_FILE), { recursive: true });
+  writeFileSync(SHARED_PERSONAS_FILE, JSON.stringify(shared));
 
   await Promise.all([
-    resolveActiveChurch({ request: leaderCtx, name: leaderCreds.name }),
-    resolveActiveChurch({
-      request: ministryLeaderCtx,
-      name: ministryLeaderCreds.name,
+    saveSession({
+      serverUrl,
+      credentials: shared.personas.churchAdmin,
+      storageState: CHURCH_ADMIN_STORAGE_STATE,
     }),
-    resolveActiveChurch({ request: teamLeaderCtx, name: teamLeaderCreds.name }),
-    resolveActiveChurch({ request: volunteerCtx, name: volunteerCreds.name }),
-    resolveActiveChurch({
-      request: churchBAdminCtx,
-      name: churchBAdminCreds.name,
+    saveSession({
+      serverUrl,
+      credentials: shared.personas.volunteer,
+      storageState: VOLUNTEER_STORAGE_STATE,
     }),
-  ]);
-
-  await Promise.all([
-    leaderCtx.storageState({ path: CHURCH_ADMIN_STORAGE_STATE }),
-    leaderCtx.storageState({ path: LEADER_STORAGE_STATE }),
-    ministryLeaderCtx.storageState({ path: MINISTRY_LEADER_STORAGE_STATE }),
-    teamLeaderCtx.storageState({ path: TEAM_LEADER_STORAGE_STATE }),
-    volunteerCtx.storageState({ path: VOLUNTEER_STORAGE_STATE }),
-    churchBAdminCtx.storageState({ path: CHURCH_B_ADMIN_STORAGE_STATE }),
-  ]);
-
-  await Promise.all([
-    leaderCtx.dispose(),
-    ministryLeaderCtx.dispose(),
-    teamLeaderCtx.dispose(),
-    volunteerCtx.dispose(),
-    churchBAdminCtx.dispose(),
   ]);
 }

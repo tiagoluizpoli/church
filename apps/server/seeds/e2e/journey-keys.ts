@@ -96,7 +96,8 @@ export function journeyTag({
  *
  * Not part of any graph: the local Platform Operator every Church is
  * provisioned by. It is a shared prerequisite (E2E global setup creates it
- * before any worker starts), and purging never touches it.
+ * through the `shared-personas` recipe before any worker starts), and
+ * purging never touches it.
  */
 export interface E2eJourneyRootKinds {
   churchKinds: readonly string[];

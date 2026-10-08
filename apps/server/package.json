@@ -21,7 +21,6 @@
     "seed:dev-users": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun run src/scripts/seed-dev-users.ts",
     "db:init-system": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun run src/scripts/init-system.ts",
     "start:e2e": "CHURCH_EXEC_PURPOSE=e2e varlock run --path . -- sh -c 'bun --no-env-file ../../tooling/env/e2e-process-preflight.ts server && exec node --import tsx/esm src/main/server.ts'",
-    "seed:e2e": "CHURCH_EXEC_PURPOSE=e2e varlock run --path . -- bun run src/test-support/e2e-seed.ts",
     "test:unit": "vitest run --project unit",
     "test:integration": "CHURCH_EXEC_PURPOSE=integration bun ../../tooling/diagnostics/run-managed.ts test:integration --step server -- varlock run --path . -- bun vitest run --project integration",
     "test": "bun run test:unit && bun run test:integration"

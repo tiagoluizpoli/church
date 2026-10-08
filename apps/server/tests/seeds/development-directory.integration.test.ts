@@ -45,7 +45,7 @@ const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
 /** One per (published participation, Volunteer rostered when it was published). */
 const SCHEDULE_PUBLISHED = 362;
 /** rafael.moura and joao.pereira never opened theirs. */
-const UNREAD_PUBLISHED = 6;
+const UNREAD_PUBLISHED = 5;
 
 class RollbackSentinel extends Error {}
 
@@ -194,6 +194,11 @@ type AuditRow = {
 
 interface TrailPersonInput {
   email: string;
+  ministryName: string;
+  starts: string;
+}
+
+interface MarkInput {
   ministryName: string;
   starts: string;
 }
@@ -923,13 +928,11 @@ describe('development seed recipe', () => {
     expect(
       await queryCount({
         query: sql`select count(*) as value from ${assignment} a
-          join ${shift} s on s.id = a.shift_id
           join ${ministryVolunteer} mv on mv.volunteer_id = a.volunteer_id
           join ${availabilityCheck} c on c.ministry_volunteer_id = mv.id
           join availability u on u.availability_check_id = c.id
-          join ${shift} t on t.id = u.shift_id
           where a.status in ('draft', 'pending', 'confirmed')
-            and s.start_time < t.end_time and t.start_time < s.end_time`,
+            and u.shift_id = a.shift_id`,
       }),
     ).toBe(0);
   });
@@ -954,19 +957,62 @@ describe('development seed recipe', () => {
       join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
       join ${volunteer} v on v.id = mv.volunteer_id
       join ${user} u on u.id = v.user_id
-      order by starts`);
+      where u.email in ('rafael.moura@igreja-semente.test', 'bruno.dias@igreja-semente.test')
+        and s.start_time < '2026-02-09T00:00:00Z'
+      order by starts, email, ministry`);
+    // Bruno serves Projeção and Maternal: at every gathering both serve he is
+    // unavailable on one side, the side he does not serve on, and otherwise
+    // his second Ministry on odd weeks and his first on even ones.
+    const bruno = ({ ministryName, starts }: MarkInput) => ({
+      email: 'bruno.dias@igreja-semente.test',
+      ministry: ministryName,
+      starts,
+    });
     expect(marks.rows).toEqual([
+      bruno({ ministryName: 'Kids', starts: '2026-02-01 10:30' }),
+      bruno({ ministryName: 'Projeção', starts: '2026-02-01 18:30' }),
+      bruno({ ministryName: 'Kids', starts: '2026-02-04 20:00' }),
+      bruno({ ministryName: 'Projeção', starts: '2026-02-08 10:30' }),
       {
         email: 'rafael.moura@igreja-semente.test',
         ministry: 'Kids',
         starts: '2026-02-08 10:30',
       },
+      bruno({ ministryName: 'Projeção', starts: '2026-02-08 18:30' }),
       {
         email: 'rafael.moura@igreja-semente.test',
         ministry: 'Kids',
         starts: '2026-02-08 18:30',
       },
     ]);
+
+    // Rafael's two whole-day marks plus one side of every overlapping pair of
+    // the 25 cross-Ministry Volunteers' Shifts: with Kids off Sunday 08:00
+    // and Intercessão and Estacionamento off Saturday, 12 pairs for each
+    // pairing with Kids and 16 for every other, 324 in all.
+    expect(
+      await queryCount({
+        query: sql`select count(*) as value from availability`,
+      }),
+    ).toBe(326);
+    // confirmAvailabilityCheck refuses (flag off) while two unmarked Shifts
+    // of different Ministries a Volunteer answers for intersect.
+    expect(
+      await queryCount({
+        query: sql`with unmarked as (
+            select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
+            from ${availabilityCheck} c
+            join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+            join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
+            join ${event} e on e.id = p.event_id and e.planning_cycle_id = c.planning_cycle_id
+            join ${shift} s on s.participation_id = p.id
+            where not exists (select 1 from availability u
+              where u.availability_check_id = c.id and u.shift_id = s.id))
+          select count(*) as value from unmarked a join unmarked b
+            on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id
+            and a.start_time < b.end_time and b.start_time < a.end_time`,
+      }),
+    ).toBe(0);
 
     const trail = await testDb.execute<TrailRow>(sql`
       select u.email, m.name as ministry,
@@ -1376,6 +1422,20 @@ describe('development seed recipe', () => {
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from volunteer_notification
           where id = (select id from volunteer_notification where type = 'schedule_published' limit 1)`);
+      },
+    },
+    {
+      label:
+        'a cross-Ministry Volunteer confirmed availability with an unmarked overlap',
+      problem: 'confirm',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`delete from availability
+          where id = (select u.id from availability u
+            join ${availabilityCheck} c on c.id = u.availability_check_id
+            join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+            join ${volunteer} v on v.id = mv.volunteer_id
+            join ${user} usr on usr.id = v.user_id
+            where usr.email = 'bruno.dias@igreja-semente.test' limit 1)`);
       },
     },
     {

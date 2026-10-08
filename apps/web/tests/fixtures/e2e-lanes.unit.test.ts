@@ -7,11 +7,9 @@ import {
   E2E_TEST_DIR,
   ISOLATED_SPECS,
   laneTestMatch,
-  SHARED_SEED_SPECS,
 } from './e2e-lanes';
 
-// A spec outside every lane would run nowhere (or, with a catch-all lane,
-// silently in parallel against shared seed state); the config load must fail.
+// A spec outside the lane would run nowhere; the config load must fail.
 describe('E2E lanes', () => {
   let testDir: string;
 
@@ -31,18 +29,16 @@ describe('E2E lanes', () => {
     expect(() =>
       assertEveryE2eSpecHasOneLane({
         testDir: E2E_TEST_DIR,
-        sharedSeedSpecs: SHARED_SEED_SPECS,
         isolatedSpecs: ISOLATED_SPECS,
       }),
     ).not.toThrow();
   });
 
-  it('accepts specs split across both lanes', () => {
+  it('accepts every spec listed once', () => {
     expect(() =>
       assertEveryE2eSpecHasOneLane({
         testDir,
-        sharedSeedSpecs: ['scheduling/a.spec.ts'],
-        isolatedSpecs: ['scheduling/b.spec.ts'],
+        isolatedSpecs: ['scheduling/a.spec.ts', 'scheduling/b.spec.ts'],
       }),
     ).not.toThrow();
   });
@@ -51,28 +47,33 @@ describe('E2E lanes', () => {
     expect(() =>
       assertEveryE2eSpecHasOneLane({
         testDir,
-        sharedSeedSpecs: ['scheduling/a.spec.ts'],
-        isolatedSpecs: [],
+        isolatedSpecs: ['scheduling/a.spec.ts'],
       }),
     ).toThrow('unclassified: scheduling/b.spec.ts');
   });
 
-  it('rejects a spec in both lanes', () => {
+  it('rejects a spec listed twice', () => {
     expect(() =>
       assertEveryE2eSpecHasOneLane({
         testDir,
-        sharedSeedSpecs: ['scheduling/a.spec.ts', 'scheduling/b.spec.ts'],
-        isolatedSpecs: ['scheduling/b.spec.ts'],
+        isolatedSpecs: [
+          'scheduling/a.spec.ts',
+          'scheduling/b.spec.ts',
+          'scheduling/b.spec.ts',
+        ],
       }),
-    ).toThrow('in more than one lane: scheduling/b.spec.ts');
+    ).toThrow('listed more than once: scheduling/b.spec.ts');
   });
 
   it('rejects a listed spec that no longer exists', () => {
     expect(() =>
       assertEveryE2eSpecHasOneLane({
         testDir,
-        sharedSeedSpecs: ['scheduling/a.spec.ts', 'scheduling/gone.spec.ts'],
-        isolatedSpecs: ['scheduling/b.spec.ts'],
+        isolatedSpecs: [
+          'scheduling/a.spec.ts',
+          'scheduling/b.spec.ts',
+          'scheduling/gone.spec.ts',
+        ],
       }),
     ).toThrow('listed but not found: scheduling/gone.spec.ts');
   });

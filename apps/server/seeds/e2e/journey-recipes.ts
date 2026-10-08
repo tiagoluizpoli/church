@@ -62,4 +62,6 @@ export const E2E_JOURNEY_RECIPES: Record<
   [E2E_JOURNEY_RECIPE_NAMES.ministryWorkspaceIndex]: async () =>
     (await import('./recipes/ministry-workspace-index'))
       .createMinistryWorkspaceIndexRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.sharedPersonas]: async () =>
+    (await import('./recipes/shared-personas')).createSharedPersonasRecipe,
 };

@@ -1,15 +1,5 @@
-// E2E fixtures entry point (T126). Feature specs import the auth-aware `test`
-// + `expect` and the leader storage-state path from here. Domain seeding lives
-// server-side and runs in Playwright global setup (see `auth.ts`).
-export {
-  CHURCH_ADMIN_STORAGE_STATE,
-  expect,
-  LEADER_STORAGE_STATE,
-  signUpLeader,
-  TEAM_LEADER_STORAGE_STATE,
-  test,
-  VOLUNTEER_STORAGE_STATE,
-} from './auth';
+// Volunteer dashboard response fixtures (T126). E2E specs load their domain
+// data from server recipes: `journey-recipes.ts` and `shared-personas.ts`.
 
 export const volunteerDashboardFixtureIds = {
   availabilityEventId: 'event-availability-1',

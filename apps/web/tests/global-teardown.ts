@@ -1,13 +1,8 @@
-import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { assertE2eEnvironment } from '../../../tooling/env/e2e-environment';
 import { readE2eRunFailure } from './fixtures/e2e-run-outcome';
-import { E2E_AUTH_META } from './global-setup';
-
-const dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_DIR = path.resolve(dirname, '../../server');
+import { runE2eServerScript } from './fixtures/e2e-target';
+import { SHARED_PERSONAS_FILE } from './fixtures/shared-personas';
 
 // Set by `test:e2e:ui`: UI mode does not run the configured reporters, so its
 // teardown cannot tell a failed session from a passing one.
@@ -37,11 +32,13 @@ export default function globalTeardown(): void {
 
 /** Empties the E2E database without re-running the preflight — callers must
  * already have passed `assertE2eEnvironment`. The server script refuses any
- * target but this worktree's E2E database. */
+ * target but this worktree's E2E database, and its preflight line must name
+ * the target the run pinned. */
 export function resetE2eDatabase(): void {
-  execFileSync('bun', ['--no-env-file', 'run', 'seed:e2e', 'reset'], {
-    cwd: SERVER_DIR,
-    stdio: 'inherit',
+  runE2eServerScript({
+    scriptPath: 'seeds/e2e/reset-e2e-database.ts',
+    args: [],
+    step: 'reset the E2E database',
   });
-  rmSync(E2E_AUTH_META, { force: true });
+  rmSync(SHARED_PERSONAS_FILE, { force: true });
 }

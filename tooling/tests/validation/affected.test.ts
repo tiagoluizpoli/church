@@ -703,6 +703,7 @@ describe('classifyChanges', () => {
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
+      'tests/identity/route-protection.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
       'tests/scheduling/a11y-builder.spec.ts',
       'tests/scheduling/a11y-planning-nav.spec.ts',

@@ -16,8 +16,6 @@ and task ordering.
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
-| Reset development DB | `bun run db:seed:reset` |
-| Seed development users | `bun run db:seed:dev-users` |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
 | Create + migrate its dev/int/E2E databases | `bun run db:bootstrap` |
@@ -32,9 +30,9 @@ lines carry a `[stage]` prefix and a final table reports each stage's status.
 Every command that reads configuration runs through Varlock from its
 package directory, so the root and the package directory resolve the same
 targets. Development commands declare `CHURCH_EXEC_PURPOSE=development`;
-the destructive ones (`db:reset:dev`, `db:reseed:dev`, `db:seed:reset`,
-`db:clean`) print a redacted preflight and refuse any database but this
-worktree's development one. `db:generate` reads no values, so it is the
+the destructive ones (`db:reset:dev`, `db:reseed:dev`, `db:clean`) print
+a redacted preflight and refuse any database but this worktree's
+development one. `db:generate` reads no values, so it is the
 one database script outside Varlock. Nothing else loads value files: no
 `--env-file`, no `dotenv`, and each package's `bunfig.toml` turns off Bun's
 automatic `.env` loading. Unit tests read no values at all; the server's

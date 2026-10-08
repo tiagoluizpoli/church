@@ -1,9 +1,13 @@
 import * as schema from '@church/db';
-import { addChurchMember, createChurch, user } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildChurch,
+  buildChurchMembership,
+} from '../../../seeds/builders/church';
+import { buildUser } from '../../../seeds/builders/identity';
 import { ChurchId, UserId } from '../../../src/domain/branded-ids';
 import { DrizzleChurchMembershipRepository } from '../../../src/infrastructure/auth/drizzle-church-membership-repository';
 
@@ -26,35 +30,33 @@ async function resetDb(): Promise<void> {
 }
 
 async function seed(): Promise<void> {
-  await testDb.insert(user).values([
-    {
-      id: dualMemberUserId,
-      name: 'Membership Dual',
-      email: 'membership-dual@test.com',
-      emailVerified: true,
-    },
-    {
-      id: singleMemberUserId,
-      name: 'Membership Single',
-      email: 'membership-single@test.com',
-      emailVerified: true,
-    },
-    {
-      id: strandedUserId,
-      name: 'Membership Stranded',
-      email: 'membership-stranded@test.com',
-      emailVerified: true,
-    },
-  ]);
+  await buildUser({
+    db: testDb,
+    id: dualMemberUserId,
+    name: 'Membership Dual',
+    email: 'membership-dual@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: singleMemberUserId,
+    name: 'Membership Single',
+    email: 'membership-single@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: strandedUserId,
+    name: 'Membership Stranded',
+    email: 'membership-stranded@test.com',
+  });
 
-  await createChurch({
+  await buildChurch({
     db: testDb,
     id: churchAId,
     name: 'Membership Church A',
     slug: 'membership-church-a',
     timezone: 'UTC',
   });
-  await createChurch({
+  await buildChurch({
     db: testDb,
     id: churchBId,
     name: 'Membership Church B',
@@ -62,19 +64,19 @@ async function seed(): Promise<void> {
     timezone: 'UTC',
   });
 
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
     churchId: churchAId,
     userId: dualMemberUserId,
     accessLevel: 'member',
   });
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
     churchId: churchBId,
     userId: dualMemberUserId,
     accessLevel: 'admin',
   });
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
     churchId: churchAId,
     userId: singleMemberUserId,

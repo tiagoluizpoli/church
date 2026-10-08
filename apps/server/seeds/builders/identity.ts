@@ -42,3 +42,31 @@ export async function buildAuthenticatableUser({
 
   return seededUser;
 }
+
+export interface BuildUserInput {
+  db: SeedWriter;
+  id: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+}
+
+/**
+ * A verified User with no credential account, for fixtures that act as the
+ * User but never sign in. Use `buildAuthenticatableUser` when sign-in matters.
+ */
+export async function buildUser({
+  db,
+  id,
+  name,
+  email,
+  emailVerified = true,
+}: BuildUserInput): Promise<SeededUser> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(user)
+      .values({ id, name, email: email.toLowerCase(), emailVerified })
+      .returning(),
+    description: `User ${email}`,
+  });
+}

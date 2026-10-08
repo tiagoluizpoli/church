@@ -1,10 +1,9 @@
-import {
-  availabilityCheck,
-  ministryVolunteer,
-  shift as shiftTable,
-} from '@church/db';
+import { ministryVolunteer } from '@church/db';
+import { fromDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildAvailabilityCheck } from '../../../seeds/builders/availability';
+import { buildShift } from '../../../seeds/builders/scheduling';
 import {
   AvailabilityCheckId,
   ChurchId,
@@ -42,18 +41,15 @@ async function seedCheckWithShift(
     status: 'scheduled',
   });
 
-  const [shiftRow] = await schedulingTestDb
-    .insert(shiftTable)
-    .values({
-      churchId,
-      participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
-      label: 'Whole slot',
-    })
-    .returning();
-  if (!shiftRow) throw new Error('shift seed failed');
+  const shiftRow = await buildShift({
+    db: schedulingTestDb,
+    churchId: churchId,
+    participationId: graph.participation.id,
+    timeSlotId: graph.slot.id,
+    start: fromDate({ date: graph.slot.startTime }),
+    end: fromDate({ date: graph.slot.endTime }),
+    label: 'Whole slot',
+  });
 
   const [membership] = await schedulingTestDb
     .select()
@@ -67,15 +63,12 @@ async function seedCheckWithShift(
     .limit(1);
   if (!membership) throw new Error('membership not found');
 
-  const [checkRow] = await schedulingTestDb
-    .insert(availabilityCheck)
-    .values({
-      churchId,
-      planningCycleId: cycle.id,
-      ministryVolunteerId: membership.id,
-    })
-    .returning();
-  if (!checkRow) throw new Error('availability check seed failed');
+  const checkRow = await buildAvailabilityCheck({
+    db: schedulingTestDb,
+    churchId,
+    planningCycleId: cycle.id,
+    ministryVolunteerId: membership.id,
+  });
 
   return { event: graph.event, shift: shiftRow, check: checkRow };
 }

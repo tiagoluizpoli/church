@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import * as schema from '@church/db';
-import { createChurch } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { buildChurch } from '../../../seeds/builders/church';
 import { DbActiveChurchSelectionManager } from '../../../src/application/db-active-church-selection-manager';
 import { ChurchId } from '../../../src/domain/branded-ids';
 import { DrizzleChurchRepository } from '../../../src/infrastructure/repositories/drizzle-church.repository';
@@ -36,7 +36,7 @@ function createManager(): DbActiveChurchSelectionManager {
 describe('DbActiveChurchSelectionManager.getChurchTimezone (integration)', () => {
   beforeEach(async () => {
     await resetDb();
-    await createChurch({
+    await buildChurch({
       db: testDb,
       id: churchId,
       name: 'Timezone Church',

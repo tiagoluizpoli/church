@@ -1,6 +1,12 @@
-import { assignment, role, shift as shiftTable, timeSlot } from '@church/db';
+import { timeSlot } from '@church/db';
+import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildRole } from '../../../seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildShift,
+} from '../../../seeds/builders/scheduling';
 import {
   AssignmentId,
   ChurchId,
@@ -38,41 +44,32 @@ async function seedAssignment(input: {
     status: 'scheduled',
   });
 
-  const [shiftRow] = await schedulingTestDb
-    .insert(shiftTable)
-    .values({
-      churchId: input.churchId,
-      participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
-      startTime: graph.slot.startTime,
-      endTime: graph.slot.endTime,
-      label: input.label === undefined ? 'Whole slot' : input.label,
-    })
-    .returning();
-  if (!shiftRow) throw new Error('shift seed failed');
+  const shiftRow = await buildShift({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    participationId: graph.participation.id,
+    timeSlotId: graph.slot.id,
+    start: fromDate({ date: graph.slot.startTime }),
+    end: fromDate({ date: graph.slot.endTime }),
+    label: input.label === undefined ? 'Whole slot' : input.label,
+  });
 
-  const [roleRow] = await schedulingTestDb
-    .insert(role)
-    .values({
-      churchId: input.churchId,
-      ministryId: input.ministryId,
-      name: 'Usher',
-    })
-    .returning();
-  if (!roleRow) throw new Error('role seed failed');
+  const roleRow = await buildRole({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    ministryId: input.ministryId,
+    name: 'Usher',
+  });
 
-  const [assignmentRow] = await schedulingTestDb
-    .insert(assignment)
-    .values({
-      churchId: input.churchId,
-      participationId: graph.participation.id,
-      shiftId: shiftRow.id,
-      volunteerId: input.volunteerId,
-      roleId: roleRow.id,
-      status: 'confirmed',
-    })
-    .returning();
-  if (!assignmentRow) throw new Error('assignment seed failed');
+  const assignmentRow = await buildAssignment({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    participationId: graph.participation.id,
+    shiftId: shiftRow.id,
+    volunteerId: input.volunteerId,
+    roleId: roleRow.id,
+    status: 'confirmed',
+  });
 
   return {
     event: graph.event,

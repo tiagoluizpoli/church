@@ -39,6 +39,11 @@ describe('buildSeedContractSteps', () => {
         '--filter @church/db --only -- tests/destructive-development-commands.test.ts',
       ),
     ]);
+    const databaseStep = integration
+      .map(({ args }) => args.join(' '))
+      .find((line) => line.includes('--filter @church/db'));
+    expect(databaseStep).toContain('tests/e2e-database-url.test.ts');
+    expect(databaseStep).toContain('tests/development-database-url.test.ts');
     expect(
       steps
         .filter(({ label }) => label === 'test:unit')

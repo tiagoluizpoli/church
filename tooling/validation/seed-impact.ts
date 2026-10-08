@@ -78,7 +78,13 @@ const SEED_IMPACT_RULES: SeedImpactRule[] = [
   },
   {
     area: 'schema',
-    prefixes: ['packages/db/src/schema/', 'packages/db/src/migrations/'],
+    prefixes: [
+      // `schema` also covers `schemas/`; the entry points expose the tables.
+      'packages/db/src/schema',
+      'packages/db/src/migrations/',
+      'packages/db/src/index.ts',
+      'packages/db/src/client.ts',
+    ],
   },
   {
     area: 'authentication',
@@ -100,18 +106,19 @@ const SEED_IMPACT_RULES: SeedImpactRule[] = [
   {
     area: 'scheduling',
     prefixes: [
-      'apps/server/src/application/db-assignment-manager.ts',
-      'apps/server/src/application/db-availability-check-manager.ts',
-      'apps/server/src/application/db-event-manager.ts',
-      'apps/server/src/application/db-event-template-manager.ts',
-      'apps/server/src/application/db-ministry-manager.ts',
-      'apps/server/src/application/db-participation-manager.ts',
-      'apps/server/src/application/db-planning-cycle-manager.ts',
-      'apps/server/src/application/db-planning-event-manager.ts',
-      'apps/server/src/application/db-volunteer-manager.ts',
+      // Manager families, so a new manager of a family is covered too.
+      'apps/server/src/application/db-assignment',
+      'apps/server/src/application/db-availability',
+      'apps/server/src/application/db-event',
+      'apps/server/src/application/db-ministry',
+      'apps/server/src/application/db-participation',
+      'apps/server/src/application/db-planning',
+      'apps/server/src/application/db-redemption',
+      'apps/server/src/application/db-volunteer',
       'apps/server/src/domain/assignment/',
       'apps/server/src/domain/availability/',
       'apps/server/src/domain/conflict/',
+      'apps/server/src/domain/services/',
     ],
   },
 ];
@@ -135,6 +142,8 @@ export const SEED_CONTRACT_TARGETS: SeedContractTarget[] = [
     'tests/integration-database-url.test.ts',
     'tests/purpose-database-url-guard.test.ts',
     'tests/reset-dev-command.test.ts',
+    'tests/e2e-database-url.test.ts',
+    'tests/development-database-url.test.ts',
   ].map(
     (testPath): SeedContractTarget => ({
       testLayer: 'test:integration',
@@ -144,7 +153,11 @@ export const SEED_CONTRACT_TARGETS: SeedContractTarget[] = [
   ),
 ];
 
-function isSourcePath(changedPath: string): boolean {
+interface IsSourcePathInput {
+  changedPath: string;
+}
+
+function isSourcePath({ changedPath }: IsSourcePathInput): boolean {
   return (
     !changedPath.includes('.test.') &&
     !changedPath.includes('/tests/') &&
@@ -163,7 +176,8 @@ export function assessSeedImpact({
     );
     if (!rule) continue;
     // The subsystem's own tests are part of it; any other test is not source.
-    if (rule.area !== 'seed-subsystem' && !isSourcePath(changedPath)) continue;
+    if (rule.area !== 'seed-subsystem' && !isSourcePath({ changedPath }))
+      continue;
     changes.push({ area: rule.area, changedPath });
   }
 

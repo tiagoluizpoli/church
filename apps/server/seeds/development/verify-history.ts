@@ -453,13 +453,10 @@ async function assignmentProblems({
   const unavailableServing = await countOf({
     db,
     query: sql`select count(*) as value from ${assignment} a
-      join ${shift} s on s.id = a.shift_id
       join ${ministryVolunteer} mv on mv.volunteer_id = a.volunteer_id
       join ${availabilityCheck} c on c.ministry_volunteer_id = mv.id
       join ${availability} u on u.availability_check_id = c.id
-      join ${shift} t on t.id = u.shift_id
-      where a.status in ${active}
-        and s.start_time < t.end_time and t.start_time < s.end_time`,
+      where a.status in ${active} and u.shift_id = a.shift_id`,
   });
   if (unavailableServing > 0) {
     problems.push(
@@ -490,16 +487,51 @@ async function assignmentProblems({
       }),
       expected: memberships,
     },
-    'unavailability marks': {
-      actual: await countOf({
-        db,
-        query: sql`select count(*) as value from ${availability}`,
-      }),
-      expected: history.unavailability.reduce(
-        (total, incident) => total + incident.gatherings.length,
-        0,
-      ),
-    },
+    'unavailability marks (the blueprint incidents plus one side of each cross-Ministry overlap)':
+      {
+        actual: await countOf({
+          db,
+          query: sql`select count(*) as value from ${availability}`,
+        }),
+        expected:
+          history.unavailability.reduce(
+            (total, incident) => total + incident.gatherings.length,
+            0,
+          ) +
+          (await countOf({
+            db,
+            query: sql`with answered as (
+                select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
+                from ${availabilityCheck} c
+                join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+                join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
+                join ${event} e on e.id = p.event_id and e.planning_cycle_id = c.planning_cycle_id
+                join ${shift} s on s.participation_id = p.id)
+              select count(*) as value from answered a join answered b
+                on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id
+                and a.start_time < b.end_time and b.start_time < a.end_time`,
+          })),
+      },
+    'confirmed checks confirmAvailabilityCheck would have refused (unmarked cross-Ministry overlaps)':
+      {
+        actual: await countOf({
+          db,
+          query: sql`with unmarked as (
+              select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
+              from ${availabilityCheck} c
+              join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+              join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
+              join ${event} e on e.id = p.event_id and e.planning_cycle_id = c.planning_cycle_id
+              join ${shift} s on s.participation_id = p.id
+              where c.state = 'confirmed'
+                and not exists (select 1 from ${availability} u
+                  where u.availability_check_id = c.id and u.shift_id = s.id))
+            select count(distinct a.volunteer_id) as value from unmarked a join unmarked b
+              on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id
+              and a.start_time < b.end_time and b.start_time < a.end_time`,
+        }),
+        expected: 0,
+      },
     'declined Assignments': {
       actual: await countOf({
         db,

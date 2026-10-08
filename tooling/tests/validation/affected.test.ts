@@ -4,6 +4,7 @@ import {
   explainPlan,
   formatTimingSummary,
   parseArguments,
+  readSeedImpactTrailers,
 } from '../../validation/affected';
 import { CRITICAL_SMOKE_SPEC_PATHS } from '../../validation/journey-map';
 
@@ -1081,5 +1082,244 @@ describe('formatTimingSummary', () => {
         '| typecheck | 5.0s |',
       ].join('\n'),
     );
+  });
+});
+
+describe('server test routing', () => {
+  it.each([
+    [
+      'apps/server/tests/seeds/minimal-church.integration.test.ts',
+      'test:integration',
+    ],
+    [
+      'apps/server/tests/seeds/e2e-journey-recipes.contract.integration.test.ts',
+      'test:integration',
+    ],
+    ['apps/server/tests/seeds/reseed-development.unit.test.ts', 'test:unit'],
+    ['apps/server/tests/tenancy/provision-church.test.ts', 'test:integration'],
+    [
+      'apps/server/tests/transfer/volunteer-transfer.constraints.test.ts',
+      'test:integration',
+    ],
+  ])('routes %s to %s', (changedPath, testLayer) => {
+    const plan = classifyChanges({ changedPaths: [changedPath] });
+
+    // A seed-subsystem file also brings the aggregate seed contracts along.
+    expect(plan.testTargets).toContainEqual({
+      testLayer,
+      testPath: changedPath.replace('apps/server/', ''),
+      workspaceName: 'server',
+    });
+    expect(plan.testTargets.at(0)).toEqual({
+      testLayer,
+      testPath: changedPath.replace('apps/server/', ''),
+      workspaceName: 'server',
+    });
+  });
+});
+
+describe('deleted paths', () => {
+  it('keeps the workspace in scope but runs no test file that no longer exists', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/server/tests/seeds/retired.integration.test.ts'],
+      deletedPaths: ['apps/server/tests/seeds/retired.integration.test.ts'],
+    });
+
+    expect(plan.workspaceNames).toContain('server');
+    expect(plan.testTargets).toEqual([]);
+  });
+
+  it('does not fall back to the smoke set for a deleted source file that no journey maps', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/server/src/scripts/seed-dev-users.ts'],
+      deletedPaths: ['apps/server/src/scripts/seed-dev-users.ts'],
+    });
+
+    expect(plan.workspaceNames).toContain('server');
+    expect(plan.missingJourneyMappings).toEqual([]);
+    expect(plan.e2eSpecPaths).toEqual([]);
+  });
+
+  it('still selects the mapped journeys when a deleted source file is mapped', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/server/src/scripts/provision-church.ts'],
+      deletedPaths: ['apps/server/src/scripts/provision-church.ts'],
+    });
+
+    expect(plan.e2eSpecPaths.length).toBeGreaterThan(0);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('still reports an unmapped source file that was not deleted', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/server/src/scripts/seed-dev-users.ts'],
+      deletedPaths: [],
+    });
+
+    expect(plan.missingJourneyMappings).toEqual([
+      'apps/server/src/scripts/seed-dev-users.ts',
+    ]);
+  });
+});
+
+describe('seed impact', () => {
+  it.each([
+    ['schema', 'packages/db/src/schema/volunteer.ts'],
+    ['schema', 'packages/db/src/migrations/0099_next.sql'],
+    [
+      'persistence',
+      'apps/server/src/infrastructure/repositories/assignment-repository.ts',
+    ],
+    ['persistence', 'apps/server/src/domain/entities/assignment.ts'],
+    ['authentication', 'packages/auth/src/index.ts'],
+    ['authentication', 'apps/server/src/infrastructure/auth/session.ts'],
+    ['tenancy', 'packages/db/src/tenancy.ts'],
+    ['tenancy', 'apps/server/src/scripts/provision-church.ts'],
+    ['tenancy', 'apps/server/src/application/db-authority-manager.ts'],
+    ['scheduling', 'apps/server/src/application/db-planning-cycle-manager.ts'],
+    ['scheduling', 'apps/server/src/domain/assignment/types.ts'],
+  ])('treats a %s change (%s) as seed-relevant that needs a decision', (area, changedPath) => {
+    const plan = classifyChanges({ changedPaths: [changedPath] });
+
+    expect(plan.seedImpact.changes).toEqual([{ area, changedPath }]);
+    expect(plan.seedImpact.contractsSelected).toBe(true);
+    expect(plan.seedImpact.decision).toBe('undecided');
+    expect(
+      plan.testLayerSelectionReasons.some(
+        (reason) =>
+          reason.detail === `seed-contract:${area}` &&
+          reason.changedPath === changedPath &&
+          reason.testLayer === 'test:integration',
+      ),
+    ).toBe(true);
+  });
+
+  it('ignores tests, docs and unrelated source', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'packages/db/tests/schema/some.test.ts',
+        'apps/server/src/application/db-outbox-drainer.ts',
+        'apps/web/src/routes/dashboard.tsx',
+        'docs/agents/backend.md',
+      ],
+    });
+
+    expect(plan.seedImpact).toEqual({
+      acknowledgements: [],
+      changes: [],
+      contractsSelected: false,
+      decision: 'not-applicable',
+    });
+  });
+
+  it('runs the seed contracts beside a changed test file instead of narrowing to it', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'packages/db/src/schema/volunteer.ts',
+        'apps/server/tests/application/scheduling-phase6.rostering.test.ts',
+      ],
+    });
+
+    expect(plan.testTargets).toContainEqual({
+      testLayer: 'test:integration',
+      testPath: 'tests/seeds/',
+      workspaceName: 'server',
+    });
+    expect(plan.testTargets).toContainEqual({
+      testLayer: 'test:integration',
+      testPath: 'tests/application/scheduling-phase6.rostering.test.ts',
+      workspaceName: 'server',
+    });
+  });
+
+  it('adds no target when the workspace already runs its whole layer', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/db/src/schema/volunteer.ts'],
+    });
+
+    expect(plan.testTargets).toEqual([]);
+  });
+
+  it('is decided by updating the seed subsystem in the same change', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'packages/db/src/schema/volunteer.ts',
+        'apps/server/seeds/builders/volunteer.ts',
+      ],
+    });
+
+    expect(plan.seedImpact.decision).toBe('seed-updated');
+  });
+
+  it('is decided by an explicit no-seed-impact acknowledgement', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/db/src/schema/volunteer.ts'],
+      seedImpactAcknowledgements: ['adds an index only'],
+    });
+
+    expect(plan.seedImpact.decision).toBe('acknowledged');
+    expect(plan.seedImpact.acknowledgements).toEqual(['adds an index only']);
+    expect(plan.seedImpact.contractsSelected).toBe(true);
+  });
+
+  it('never accepts a blank acknowledgement', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/db/src/schema/volunteer.ts'],
+      seedImpactAcknowledgements: ['   ', ''],
+    });
+
+    expect(plan.seedImpact.decision).toBe('undecided');
+  });
+
+  it('selects the contracts for a seed subsystem change without needing a decision', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/server/tests/seeds/minimal-church.integration.test.ts',
+      ],
+    });
+
+    expect(plan.seedImpact.contractsSelected).toBe(true);
+    expect(plan.seedImpact.decision).toBe('seed-updated');
+  });
+});
+
+describe('seed impact acknowledgement input', () => {
+  it('reads --no-seed-impact as a reason', () => {
+    expect(
+      parseArguments({ args: ['--no-seed-impact', 'index only'] })
+        .seedImpactAcknowledgements,
+    ).toEqual(['index only']);
+  });
+
+  it('requires a reason', () => {
+    expect(() => parseArguments({ args: ['--no-seed-impact'] })).toThrow(
+      '--no-seed-impact requires a reason.',
+    );
+  });
+
+  it('reads Seed-Impact: none trailers from commit messages', () => {
+    expect(
+      readSeedImpactTrailers({
+        messages: [
+          'feat(db): add column\n\nbody\n\nSeed-Impact: none - nullable audit column\n',
+          'fix: other\n',
+          'x\n\nseed-impact: none -  \n',
+        ],
+      }),
+    ).toEqual(['nullable audit column']);
+  });
+});
+
+describe('explainPlan seed impact', () => {
+  it('states the missing decision and how to make it', () => {
+    const plan = classifyChanges({
+      changedPaths: ['packages/db/src/schema/volunteer.ts'],
+    });
+
+    const text = explainPlan({ baseRef: undefined, plan });
+
+    expect(text).toContain('Seed impact: decision required');
+    expect(text).toContain('packages/db/src/schema/volunteer.ts');
+    expect(text).toContain('Seed-Impact: none');
   });
 });

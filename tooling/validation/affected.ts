@@ -12,8 +12,10 @@ import {
   runStages,
   type StepResult,
 } from './run-lanes';
+import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
 
 export { classifyChanges } from './affected-plan';
+export { readSeedImpactTrailers };
 
 interface CommandInput {
   args: string[];
@@ -27,6 +29,10 @@ interface CollectChangedPathsInput {
 interface CollectChangedPathsResult {
   baseRef: string | undefined;
   changedPaths: string[];
+  /** Changed paths with no file in the working tree. */
+  deletedPaths: string[];
+  /** Messages of the commits the branch adds over the base. */
+  commitMessages: string[];
 }
 
 interface ParseArgumentsInput {
@@ -39,6 +45,7 @@ interface ParseArgumentsResult {
   dryRun: boolean;
   e2eSpecPaths: string[];
   onlyE2e: boolean;
+  seedImpactAcknowledgements: string[];
   skipE2e: boolean;
 }
 
@@ -137,13 +144,28 @@ function collectChangedPaths({
     (path, index, paths) => path.length > 0 && paths.indexOf(path) === index,
   );
 
-  return { baseRef: resolvedBaseRef, changedPaths };
+  const commitMessages = resolvedBaseRef
+    ? runCommand({
+        args: ['log', '--format=%B%x00', `${resolvedBaseRef}..HEAD`],
+        command: 'git',
+      })
+        .join('\n')
+        .split('\0')
+    : [];
+
+  return {
+    baseRef: resolvedBaseRef,
+    changedPaths,
+    commitMessages,
+    deletedPaths: changedPaths.filter((path) => !existsSync(path)),
+  };
 }
 
 export function parseArguments({
   args,
 }: ParseArgumentsInput): ParseArgumentsResult {
   const e2eSpecPaths: string[] = [];
+  const seedImpactAcknowledgements: string[] = [];
   let dryRun = false;
   let dailyGate = false;
   let baseRef: string | undefined;
@@ -180,6 +202,14 @@ export function parseArguments({
       continue;
     }
 
+    if (arg === '--no-seed-impact') {
+      const reason = args[index + 1];
+      if (!reason) throw new Error('--no-seed-impact requires a reason.');
+      seedImpactAcknowledgements.push(reason);
+      index += 1;
+      continue;
+    }
+
     if (arg === '--e2e') {
       const e2eSpecPath = args[index + 1];
       if (!e2eSpecPath) throw new Error('--e2e requires a spec path.');
@@ -192,7 +222,15 @@ export function parseArguments({
     throw new Error('--skip-e2e and --only-e2e are mutually exclusive.');
   }
 
-  return { baseRef, dailyGate, dryRun, e2eSpecPaths, onlyE2e, skipE2e };
+  return {
+    baseRef,
+    dailyGate,
+    dryRun,
+    e2eSpecPaths,
+    onlyE2e,
+    seedImpactAcknowledgements,
+    skipE2e,
+  };
 }
 
 function runCommand({ args, command }: CommandInput): string[] {
@@ -334,7 +372,7 @@ async function runValidation({
   return { failed: hasFailure({ results }), timings };
 }
 
-function buildTestLayerSteps({
+export function buildTestLayerSteps({
   testLayer,
   testTargets,
   workspaceNames,
@@ -456,6 +494,8 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
     }
   }
 
+  lines.push('', ...explainSeedImpact({ plan }));
+
   if (plan.missingJourneyMappings.length > 0) {
     lines.push(
       '',
@@ -465,6 +505,35 @@ export function explainPlan({ baseRef, plan }: ExplainPlanInput): string {
   }
 
   return lines.join('\n');
+}
+
+interface ExplainSeedImpactInput {
+  plan: ValidationPlan;
+}
+
+function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
+  const { acknowledgements, changes, decision } = plan.seedImpact;
+  if (decision === 'not-applicable') return ['Seed impact: none selected'];
+
+  const lines = [
+    decision === 'undecided'
+      ? 'Seed impact: decision required (seed contracts selected)'
+      : `Seed impact: ${decision} (seed contracts selected)`,
+  ];
+  for (const { area, changedPath } of changes) {
+    lines.push(`  - ${area} <- ${changedPath}`);
+  }
+  for (const reason of acknowledgements) {
+    lines.push(`  acknowledged: ${reason}`);
+  }
+  if (decision === 'undecided') {
+    lines.push(
+      '  Update apps/server/seeds (and its contracts) in this change, or',
+      `  acknowledge it with a commit trailer "${SEED_IMPACT_TRAILER}"`,
+      '  (or --no-seed-impact "<reason>" for uncommitted work).',
+    );
+  }
+  return lines;
 }
 
 interface FormatTimingSummaryInput {
@@ -489,13 +558,17 @@ export function formatTimingSummary({
 
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
-  const { baseRef, changedPaths } = collectChangedPaths({
-    baseRef: argumentsResult.baseRef,
-  });
+  const { baseRef, changedPaths, commitMessages, deletedPaths } =
+    collectChangedPaths({ baseRef: argumentsResult.baseRef });
   const plan = classifyChanges({
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
+    deletedPaths,
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
+    seedImpactAcknowledgements: [
+      ...argumentsResult.seedImpactAcknowledgements,
+      ...readSeedImpactTrailers({ messages: commitMessages }),
+    ],
   });
 
   console.log(JSON.stringify(plan, null, 2));
@@ -503,6 +576,16 @@ if (import.meta.main) {
     console.warn(
       `No journey mapping for: ${plan.missingJourneyMappings.join(', ')}. Running the critical smoke set as a conservative fallback — add a tooling/validation/journey-map.ts entry to select the specific journey instead.`,
     );
+  }
+
+  // Only a run that would validate refuses: --dry-run stays a pure plan whose
+  // JSON other CI steps parse, and the gate that runs validation enforces it.
+  if (plan.seedImpact.decision === 'undecided' && !argumentsResult.dryRun) {
+    console.error(explainPlan({ baseRef, plan }));
+    console.error(
+      '\nSeed impact is undecided: this change touches schema, persistence, authentication, tenancy or scheduling. Nothing was validated.',
+    );
+    process.exit(1);
   }
 
   if (argumentsResult.dryRun) {

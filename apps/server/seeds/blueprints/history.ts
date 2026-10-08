@@ -35,7 +35,7 @@ export interface UnavailabilityIncident {
   gatherings: readonly GatheringRef[];
 }
 
-/** Assigned, then declined; a replacement serves the post instead. */
+/** Assigned, then declined by the Volunteer; the leader assigned a replacement. */
 export interface DeclineIncident {
   email: string;
   post: ServicePost;
@@ -45,9 +45,9 @@ export interface DeclineIncident {
 
 /**
  * A cross-Ministry Volunteer two Ministries rostered at the same gathering.
- * The `withdrawn` Ministry's leader cancelled its Assignment and filled the
- * post with `replacementEmail`; the person serves `kept`. Nothing overlaps
- * once resolved.
+ * The `withdrawn` Ministry's leader reassigned that post to
+ * `replacementEmail`, as the product does: the old Assignment is deleted and
+ * `reason` stays on the new one. The person serves `kept`; nothing overlaps.
  */
 export interface ResolvedOverlapIncident {
   email: string;
@@ -80,6 +80,8 @@ export interface HistoryBlueprint {
   resolvedOverlaps: readonly ResolvedOverlapIncident[];
   crossMinistryService: readonly CrossMinistryServiceIncident[];
   shortfalls: readonly Shortfall[];
+  /** People who never opened their notifications; everyone else read theirs. */
+  unreadNotificationEmails: readonly string[];
 }
 
 export const IGREJA_SEMENTE_HISTORY: HistoryBlueprint = {
@@ -149,5 +151,9 @@ export const IGREJA_SEMENTE_HISTORY: HistoryBlueprint = {
       }),
       missing: 1,
     },
+  ],
+  unreadNotificationEmails: [
+    'rafael.moura@igreja-semente.test',
+    'joao.pereira@igreja-semente.test',
   ],
 };

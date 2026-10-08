@@ -42,6 +42,10 @@ import { createFastify } from '../../src/main/fastify/setup';
 import { testDb, truncateAll } from '../integration/repositories/setup';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
+/** One per (published participation, Volunteer rostered when it was published). */
+const SCHEDULE_PUBLISHED = 362;
+/** rafael.moura and joao.pereira never opened theirs. */
+const UNREAD_PUBLISHED = 6;
 
 class RollbackSentinel extends Error {}
 
@@ -153,6 +157,31 @@ type TrailRow = {
   starts: string;
   status?: string;
   reason?: string | null;
+};
+
+type CreatedAuditRow = {
+  audits: number;
+  assignments: number;
+  matching: number;
+};
+
+type NotificationCountRow = {
+  type: string;
+  total: number;
+  unread: number;
+};
+
+type NotificationRow = {
+  email: string;
+  type: string;
+  title: string;
+  body: string;
+  shaped: boolean;
+  inCycle: boolean;
+  noAssignment?: boolean;
+  namesNewAssignment?: boolean;
+  at: string;
+  read: string | null;
 };
 
 type AuditRow = {
@@ -840,7 +869,6 @@ describe('development seed recipe', () => {
     expect(statuses).toEqual([
       { status: 'confirmed', value: 364 },
       { status: 'declined', value: 1 },
-      { status: 'cancelled', value: 1 },
     ]);
 
     // Assignments name a Role, not a Team (#319), so staffing is counted per
@@ -990,6 +1018,8 @@ describe('development seed recipe', () => {
         status: 'confirmed',
         reason: null,
       },
+      // The leader reassigned João's Projeção post to Daniel: the product
+      // deletes the old row and keeps the reason on the new one.
       {
         ...row({
           email: 'daniel.moreira',
@@ -997,15 +1027,6 @@ describe('development seed recipe', () => {
           starts: '2026-02-11 20:00',
         }),
         status: 'confirmed',
-        reason: null,
-      },
-      {
-        ...row({
-          email: 'joao.pereira',
-          ministryName: 'Projeção',
-          starts: '2026-02-11 20:00',
-        }),
-        status: 'cancelled',
         reason: 'Já escalado na Intercessão neste culto',
       },
       {
@@ -1028,6 +1049,20 @@ describe('development seed recipe', () => {
       },
     ]);
 
+    // Every Assignment carries the `created` audit createAssignment writes,
+    // by the leader who assigned it, when it was assigned.
+    const [created] = await testDb
+      .execute<CreatedAuditRow>(sql`
+      select count(*)::int as audits,
+        (select count(*)::int from ${assignment}) as assignments,
+        count(*) filter (where au.actor_id = a.assigned_by
+          and au.timestamp = a.assigned_at)::int as matching
+      from assignment_audit au
+      join ${assignment} a on a.id = au.assignment_id
+      where au.action = 'created'`)
+      .then((result) => result.rows);
+    expect(created).toEqual({ audits: 365, assignments: 365, matching: 365 });
+
     const audits = await testDb.execute<AuditRow>(sql`
       select actor.email as actor, subject.email as subject, au.action, au.reason,
         to_char(au.timestamp at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at
@@ -1036,28 +1071,22 @@ describe('development seed recipe', () => {
       join ${assignment} a on a.id = au.assignment_id
       join ${volunteer} v on v.id = a.volunteer_id
       join ${user} subject on subject.id = v.user_id
-      order by au.timestamp`);
+      where au.timestamp <> '2026-01-27T13:00:00Z'
+      order by au.timestamp, au.action`);
     expect(audits.rows).toEqual([
-      {
-        actor: 'ana.almeida@igreja-semente.test',
-        subject: 'joao.pereira@igreja-semente.test',
-        action: 'status_change',
-        reason: 'Já escalado na Intercessão neste culto',
-        at: '2026-02-08T12:00Z',
-      },
       {
         actor: 'ana.almeida@igreja-semente.test',
         subject: 'daniel.moreira@igreja-semente.test',
         action: 'created',
-        reason: null,
+        reason: 'Já escalado na Intercessão neste culto',
         at: '2026-02-09T13:00Z',
       },
       {
-        actor: 'isabela.medeiros@igreja-semente.test',
-        subject: 'isabela.medeiros@igreja-semente.test',
-        action: 'status_change',
-        reason: 'Viagem a trabalho',
-        at: '2026-02-15T12:00Z',
+        actor: 'ana.almeida@igreja-semente.test',
+        subject: 'daniel.moreira@igreja-semente.test',
+        action: 'updated',
+        reason: 'Já escalado na Intercessão neste culto',
+        at: '2026-02-09T13:00Z',
       },
       {
         actor: 'henrique.freitas@igreja-semente.test',
@@ -1077,6 +1106,105 @@ describe('development seed recipe', () => {
         ) as cross_ministry`,
     });
     expect(crossMinistryServers).toBeGreaterThanOrEqual(2);
+  });
+
+  it('leaves the notifications publishing and the reassignment wrote', async () => {
+    const byType = await testDb.execute<NotificationCountRow>(sql`
+      select type, count(*)::int as total,
+        count(*) filter (where read_at is null)::int as unread
+      from volunteer_notification group by type order by type`);
+    expect(byType.rows).toEqual([
+      {
+        type: 'schedule_published',
+        total: SCHEDULE_PUBLISHED,
+        unread: UNREAD_PUBLISHED,
+      },
+      { type: 'assignment_added', total: 1, unread: 0 },
+      { type: 'assignment_removed', total: 1, unread: 1 },
+    ]);
+
+    // One per Volunteer and published participation they were rostered on
+    // when it was published; replacements came after and got none.
+    expect(
+      await queryCount({
+        query: sql`select count(*) as value from (
+            select distinct a.participation_id, a.volunteer_id from ${assignment} a
+            where a.assigned_at = '2026-01-27T13:00:00Z'
+          ) as rostered
+          where not exists (select 1 from volunteer_notification n
+            join ${ministryParticipation} p on p.event_id = n.event_id and p.ministry_id = n.ministry_id
+            where p.id = rostered.participation_id and n.volunteer_id = rostered.volunteer_id
+              and n.type = 'schedule_published')`,
+      }),
+    ).toBe(0);
+
+    const published = await testDb.execute<NotificationRow>(sql`
+      select u.email, n.type, n.title, n.body, n.payload = jsonb_build_object(
+          'eventId', n.event_id::text, 'ministryId', n.ministry_id::text, 'section', 'assignments') as shaped,
+        n.planning_cycle_id is not null as "inCycle", n.assignment_id is null as "noAssignment",
+        to_char(n.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at,
+        to_char(n.read_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as read
+      from volunteer_notification n
+      join ${volunteer} v on v.id = n.volunteer_id
+      join ${user} u on u.id = v.user_id
+      join ${event} e on e.id = n.event_id
+      join ${ministry} m on m.id = n.ministry_id
+      where n.type = 'schedule_published' and m.name = 'Intercessão'
+        and e.start = '2026-02-18T23:00:00Z'
+        and u.email in ('isabela.medeiros@igreja-semente.test', 'vanessa.campos@igreja-semente.test')`);
+    expect(published.rows).toEqual([
+      {
+        email: 'isabela.medeiros@igreja-semente.test',
+        type: 'schedule_published',
+        title: 'Schedule published',
+        body: 'Culto de Quarta is now published for your ministry.',
+        shaped: true,
+        inCycle: true,
+        noAssignment: true,
+        at: '2026-01-28T21:00Z',
+        read: '2026-01-29T11:00Z',
+      },
+    ]);
+
+    const reassigned = await testDb.execute<NotificationRow>(sql`
+      select u.email, n.type, n.title, n.body, n.payload = jsonb_build_object(
+          'assignmentId', n.assignment_id::text, 'eventId', n.event_id::text,
+          'ministryId', n.ministry_id::text) as shaped,
+        n.planning_cycle_id is not null as "inCycle",
+        a.volunteer_id = (select id from ${volunteer} where user_id =
+          (select id from ${user} where email = 'daniel.moreira@igreja-semente.test')) as "namesNewAssignment",
+        to_char(n.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at,
+        to_char(n.read_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as read
+      from volunteer_notification n
+      join ${volunteer} v on v.id = n.volunteer_id
+      join ${user} u on u.id = v.user_id
+      join ${assignment} a on a.id = n.assignment_id
+      where n.type <> 'schedule_published'
+      order by n.type`);
+    expect(reassigned.rows).toEqual([
+      {
+        email: 'daniel.moreira@igreja-semente.test',
+        type: 'assignment_added',
+        title: 'New assignment',
+        body: 'You were assigned to Culto de Quarta.',
+        shaped: true,
+        inCycle: true,
+        namesNewAssignment: true,
+        at: '2026-02-09T13:00Z',
+        read: '2026-02-10T11:00Z',
+      },
+      {
+        email: 'joao.pereira@igreja-semente.test',
+        type: 'assignment_removed',
+        title: 'Assignment changed',
+        body: 'Culto de Quarta has been reassigned.',
+        shaped: true,
+        inCycle: true,
+        namesNewAssignment: true,
+        at: '2026-02-09T13:00Z',
+        read: null,
+      },
+    ]);
   });
 
   it('passes its own verification', async () => {
@@ -1199,7 +1327,7 @@ describe('development seed recipe', () => {
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from ${assignment}
           where id = (select a.id from ${assignment} a where a.status = 'confirmed'
-            and not exists (select 1 from assignment_audit au where au.assignment_id = a.id) limit 1)`);
+            and a.assigned_at = '2026-01-27T13:00:00Z' limit 1)`);
       },
     },
     {
@@ -1232,6 +1360,22 @@ describe('development seed recipe', () => {
             where a.status = 'confirmed'
               and a.shift_id = (select shift_id from availability limit 1)
             limit 1)`);
+      },
+    },
+    {
+      label: 'an Assignment loses its created audit',
+      problem: 'audit',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`delete from assignment_audit
+          where id = (select id from assignment_audit where action = 'created' limit 1)`);
+      },
+    },
+    {
+      label: 'a rostered Volunteer misses the publish notification',
+      problem: 'notification',
+      break: async ({ tx }: SeedTransactionInput) => {
+        await tx.execute(sql`delete from volunteer_notification
+          where id = (select id from volunteer_notification where type = 'schedule_published' limit 1)`);
       },
     },
     {

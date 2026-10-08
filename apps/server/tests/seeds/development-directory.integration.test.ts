@@ -1266,7 +1266,7 @@ describe('development seed recipe', () => {
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${ministryVolunteer} set ministry_access_level = 'volunteer'
           where id = (select mv.id from ${ministryVolunteer} mv join ${ministry} m on m.id = mv.ministry_id
-            where m.name = 'Kids' and mv.ministry_access_level = 'leader' limit 1)`);
+            where m.name = 'Kids' and mv.ministry_access_level = 'leader' order by mv.id limit 1)`);
       },
     },
     {
@@ -1274,7 +1274,7 @@ describe('development seed recipe', () => {
       problem: 'credential',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from ${account}
-          where user_id = (select user_id from ${volunteer} limit 1)`);
+          where user_id = (select user_id from ${volunteer} order by id limit 1)`);
       },
     },
     {
@@ -1283,7 +1283,7 @@ describe('development seed recipe', () => {
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from ${ministryVolunteer}
           where id = (select mv.id from ${ministryVolunteer} mv join ${ministry} m on m.id = mv.ministry_id
-            where m.name = 'Intercessão' and mv.ministry_access_level = 'volunteer' limit 1)`);
+            where m.name = 'Intercessão' and mv.ministry_access_level = 'volunteer' order by mv.id limit 1)`);
       },
     },
     {
@@ -1291,7 +1291,7 @@ describe('development seed recipe', () => {
       problem: 'Church',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${ministryVolunteer} set church_id = ${seeded.secondChurch.id}
-          where id = (select id from ${ministryVolunteer} where church_id = ${seeded.church.id} limit 1)`);
+          where id = (select id from ${ministryVolunteer} where church_id = ${seeded.church.id} order by id limit 1)`);
       },
     },
     {
@@ -1299,7 +1299,7 @@ describe('development seed recipe', () => {
       problem: 'Role qualifications',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from ${ministryVolunteerRole}
-          where id = (select id from ${ministryVolunteerRole} limit 1)`);
+          where id = (select id from ${ministryVolunteerRole} order by id limit 1)`);
       },
     },
     {
@@ -1307,7 +1307,7 @@ describe('development seed recipe', () => {
       problem: 'Church',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${ministryVolunteerTeam} set church_id = ${seeded.secondChurch.id}
-          where id = (select id from ${ministryVolunteerTeam} where church_id = ${seeded.church.id} limit 1)`);
+          where id = (select id from ${ministryVolunteerTeam} where church_id = ${seeded.church.id} order by id limit 1)`);
       },
     },
     {
@@ -1348,7 +1348,7 @@ describe('development seed recipe', () => {
       problem: 'Event',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${event} set status = 'scheduled'
-          where id = (select id from ${event} limit 1)`);
+          where id = (select id from ${event} order by id limit 1)`);
       },
     },
     {
@@ -1356,7 +1356,7 @@ describe('development seed recipe', () => {
       problem: 'MinistryParticipation',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${ministryParticipation} set state = 'rostering'
-          where id = (select id from ${ministryParticipation} limit 1)`);
+          where id = (select id from ${ministryParticipation} order by id limit 1)`);
       },
     },
     {
@@ -1364,7 +1364,7 @@ describe('development seed recipe', () => {
       problem: 'SlotRequirement',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${slotRequirement} set notes = null
-          where id = (select id from ${slotRequirement} where notes is not null limit 1)`);
+          where id = (select id from ${slotRequirement} where notes is not null order by id limit 1)`);
       },
     },
     {
@@ -1373,7 +1373,7 @@ describe('development seed recipe', () => {
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from ${assignment}
           where id = (select a.id from ${assignment} a where a.status = 'confirmed'
-            and a.assigned_at = '2026-01-27T13:00:00Z' limit 1)`);
+            and a.assigned_at = '2026-01-27T13:00:00Z' order by a.id limit 1)`);
       },
     },
     {
@@ -1398,14 +1398,14 @@ describe('development seed recipe', () => {
       label: 'a Volunteer serves a Shift they marked unavailable',
       problem: 'unavailable',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${assignment} set volunteer_id = (
-            select mv.volunteer_id from ${availabilityCheck} c
-            join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
-            where exists (select 1 from availability u where u.availability_check_id = c.id) limit 1)
-          where id = (select a.id from ${assignment} a
-            where a.status = 'confirmed'
-              and a.shift_id = (select shift_id from availability limit 1)
-            limit 1)`);
+        await tx.execute(sql`insert into availability (church_id, availability_check_id, shift_id)
+          select c.church_id, c.id, a.shift_id
+          from ${assignment} a
+          join ${ministryVolunteer} mv on mv.volunteer_id = a.volunteer_id
+          join ${availabilityCheck} c on c.ministry_volunteer_id = mv.id
+          where a.status = 'confirmed'
+          order by a.id, c.id
+          limit 1`);
       },
     },
     {
@@ -1413,7 +1413,7 @@ describe('development seed recipe', () => {
       problem: 'audit',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from assignment_audit
-          where id = (select id from assignment_audit where action = 'created' limit 1)`);
+          where id = (select id from assignment_audit where action = 'created' order by id limit 1)`);
       },
     },
     {
@@ -1421,7 +1421,7 @@ describe('development seed recipe', () => {
       problem: 'notification',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from volunteer_notification
-          where id = (select id from volunteer_notification where type = 'schedule_published' limit 1)`);
+          where id = (select id from volunteer_notification where type = 'schedule_published' order by id limit 1)`);
       },
     },
     {
@@ -1435,7 +1435,7 @@ describe('development seed recipe', () => {
             join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
             join ${volunteer} v on v.id = mv.volunteer_id
             join ${user} usr on usr.id = v.user_id
-            where usr.email = 'bruno.dias@igreja-semente.test' limit 1)`);
+            where usr.email = 'bruno.dias@igreja-semente.test' order by u.id limit 1)`);
       },
     },
     {

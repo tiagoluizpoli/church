@@ -43,6 +43,7 @@ import {
 import {
   buildMinistryMembership,
   buildVolunteer,
+  buildVolunteerWithMembership,
 } from '../../seeds/builders/volunteer';
 import { testDb, truncateAll } from '../integration/repositories/setup';
 
@@ -237,6 +238,44 @@ describe('integration composition of the shared seed builders', () => {
       .from(ministryVolunteerRole)
       .where(eq(ministryVolunteerRole.ministryVolunteerId, membership.id));
     expect(grants.map((grant) => grant.roleId)).toEqual([usher.id]);
+  });
+
+  it('builds a User, its Volunteer profile and Ministry Membership in one call', async () => {
+    await buildChurch({
+      db: testDb,
+      id: CHURCH_ID,
+      name: 'Built Church',
+      slug: 'built-church',
+      timezone: 'America/Sao_Paulo',
+    });
+    const ministry = await buildMinistry({
+      db: testDb,
+      churchId: CHURCH_ID,
+      name: 'Hospitality',
+    });
+
+    const built = await buildVolunteerWithMembership({
+      db: testDb,
+      churchId: CHURCH_ID,
+      ministryId: ministry.id,
+      name: 'Composite',
+      email: 'Composite@builders.test',
+      ministryAccessLevel: 'leader',
+    });
+
+    expect(built.user.email).toBe('composite@builders.test');
+    expect(built.volunteer).toMatchObject({
+      churchId: CHURCH_ID,
+      userId: built.user.id,
+      status: 'active',
+    });
+    expect(built.membership).toMatchObject({
+      churchId: CHURCH_ID,
+      ministryId: ministry.id,
+      volunteerId: built.volunteer.id,
+      ministryAccessLevel: 'leader',
+      status: 'active',
+    });
   });
 
   it('composes a scheduling graph from Planning Cycle to audited Assignment', async () => {

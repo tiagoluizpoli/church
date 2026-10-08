@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   ministryVolunteer,
   ministryVolunteerRole,
@@ -7,6 +8,7 @@ import {
 import { type Instant, toDate } from '@church/time';
 import type { SeedWriter } from '../recipe';
 import { deriveSeedId } from './derived-id';
+import { buildUser, type SeededUser } from './identity';
 import { requireInsertedRow } from './require-inserted-row';
 
 export type SeededVolunteer = typeof volunteer.$inferSelect;
@@ -124,6 +126,68 @@ export async function buildMinistryMembership({
   }
 
   return membership;
+}
+
+export interface BuildVolunteerWithMembershipInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryId: string;
+  name: string;
+  email: string;
+  userId?: string;
+  volunteerId?: string;
+  membershipId?: string;
+  ministryAccessLevel?: MinistryAccessLevel;
+  status?: SeededMinistryMembership['status'];
+  roleIds?: string[];
+  teams?: SeedTeamMembership[];
+}
+
+export interface SeededVolunteerWithMembership {
+  user: SeededUser;
+  volunteer: SeededVolunteer;
+  membership: SeededMinistryMembership;
+}
+
+/**
+ * A fresh User, its Volunteer profile in `churchId` and a Ministry Membership
+ * in `ministryId`: the chain every roster fixture needs. Ids default to random
+ * UUIDs, the access level to `volunteer`, qualifications and teams to none.
+ */
+export async function buildVolunteerWithMembership({
+  db,
+  churchId,
+  ministryId,
+  name,
+  email,
+  userId = randomUUID(),
+  volunteerId = randomUUID(),
+  membershipId,
+  ministryAccessLevel = 'volunteer',
+  status,
+  roleIds = [],
+  teams = [],
+}: BuildVolunteerWithMembershipInput): Promise<SeededVolunteerWithMembership> {
+  const seededUser = await buildUser({ db, id: userId, name, email });
+  const seededVolunteer = await buildVolunteer({
+    db,
+    id: volunteerId,
+    churchId,
+    userId,
+  });
+  const membership = await buildMinistryMembership({
+    db,
+    id: membershipId,
+    churchId,
+    ministryId,
+    volunteerId,
+    ministryAccessLevel,
+    status,
+    roleIds,
+    teams,
+  });
+
+  return { user: seededUser, volunteer: seededVolunteer, membership };
 }
 
 export type SeededRoleQualification = typeof ministryVolunteerRole.$inferSelect;

@@ -1,33 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { ministry } from '@church/db';
-import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   buildAvailabilityCheck,
   buildUnavailabilityMark,
 } from '../../seeds/builders/availability';
-import { buildUser } from '../../seeds/builders/identity';
-import {
-  buildMinistry,
-  buildRole,
-  buildTeam,
-} from '../../seeds/builders/ministry';
+import { buildMinistry, buildTeam } from '../../seeds/builders/ministry';
 import {
   buildAssignment,
   buildMinistryParticipation,
-  buildShift,
-  buildSlotRequirement,
 } from '../../seeds/builders/scheduling';
-import {
-  buildMinistryMembership,
-  buildRoleQualification,
-  buildTeamMembership,
-  buildVolunteer,
-} from '../../seeds/builders/volunteer';
-import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
-import { DbParticipationManager } from '../../src/application/db-participation-manager';
-import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
+import { buildTeamMembership } from '../../seeds/builders/volunteer';
 import {
   ChurchId,
   MinistryId,
@@ -38,24 +22,6 @@ import {
   VolunteerId,
 } from '../../src/domain/branded-ids';
 import { BelowFullPublishError } from '../../src/domain/errors/below-full-publish';
-import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
-import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
-import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
-import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
-import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTeamRepository } from '../../src/infrastructure/repositories/drizzle-team.repository';
-import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
-import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
-import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -63,193 +29,23 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '../scheduling-reshape/setup';
+import {
+  createSchedulingManagers,
+  seedRequirement,
+  seedRole,
+  seedRoleQualification,
+  seedShift,
+  seedVolunteerMembership,
+} from './scheduling-roster.helpers';
 
-interface Phase6Managers {
-  assignmentManager: DbAssignmentManager;
-  participationManager: DbParticipationManager;
-  volunteerManager: DbVolunteerManager;
-  assignmentRepo: DrizzleAssignmentRepository;
-  participationRepo: DrizzleMinistryParticipationRepository;
-  notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
-}
-
-interface SeedRoleQualificationInput {
-  churchId: string;
-  membershipId: string;
-  roleId: string;
-}
-
-function createPhase6Managers(): Phase6Managers {
-  const assignmentRepo = new DrizzleAssignmentRepository({
-    db: schedulingTestDb,
-  });
-  const participationRepo = new DrizzleMinistryParticipationRepository({
-    db: schedulingTestDb,
-  });
-  const shiftRepo = new DrizzleShiftRepository({ db: schedulingTestDb });
-  const volunteerRepo = new DrizzleVolunteerRepository({
-    db: schedulingTestDb,
-  });
-  const ministryRepo = new DrizzleMinistryRepository({ db: schedulingTestDb });
-  const availabilityRepo = new DrizzleAvailabilityRepository({
-    db: schedulingTestDb,
-  });
-  const timeSlotRepo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
-  const eventRepo = new DrizzlePlanningEventRepository({
-    db: schedulingTestDb,
-  });
-  const notificationSpy = createNotificationServiceSpy();
-  const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
-
-  return {
-    assignmentManager: new DbAssignmentManager(
-      assignmentRepo,
-      new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
-      shiftRepo,
-      participationRepo,
-      ministryRepo,
-      volunteerRepo,
-      availabilityRepo,
-      eventRepo,
-      notificationSpy,
-      unitOfWork,
-    ),
-    participationManager: new DbParticipationManager(
-      participationRepo,
-      shiftRepo,
-      eventRepo,
-      assignmentRepo,
-      availabilityRepo,
-      timeSlotRepo,
-      volunteerRepo,
-      ministryRepo,
-      new DrizzleMinistryServingProfileRepository({ db: schedulingTestDb }),
-      new DrizzleRoleRepository({ db: schedulingTestDb }),
-      notificationSpy,
-      unitOfWork,
-    ),
-    volunteerManager: new DbVolunteerManager(
-      volunteerRepo,
-      assignmentRepo,
-      availabilityRepo,
-      new DrizzleVolunteerNotificationRepository({ db: schedulingTestDb }),
-      new DrizzleEventRepository({ db: schedulingTestDb }),
-      shiftRepo,
-      ministryRepo,
-      participationRepo,
-      new DrizzleRoleRepository({ db: schedulingTestDb }),
-      new DrizzleTeamRepository({ db: schedulingTestDb }),
-      new DrizzleAvailabilityCheckRepository({ db: schedulingTestDb }),
-      new SchedulingFeatureFlagServiceStub({
-        participationDefaultAllIn: true,
-        volunteerDashboardAllowOverlapSave: true,
-      }),
-      notificationSpy,
-      unitOfWork,
-      3,
-    ),
-    assignmentRepo,
-    participationRepo,
-    notificationSpy,
-  };
-}
-
-interface SeedRoleInput {
+interface SeedTeamInput {
   churchId: string;
   ministryId: string;
   name: string;
 }
 
-async function seedRole(input: SeedRoleInput) {
-  return await buildRole({ db: schedulingTestDb, ...input });
-}
-
-async function seedTeam(input: SeedRoleInput) {
+async function seedTeam(input: SeedTeamInput) {
   return await buildTeam({ db: schedulingTestDb, ...input });
-}
-
-interface SeedVolunteerMembershipInput {
-  churchId: string;
-  ministryId: string;
-  name: string;
-  email: string;
-  ministryAccessLevel?: 'leader' | 'volunteer';
-  teamId?: string;
-}
-
-async function seedVolunteerMembership(input: SeedVolunteerMembershipInput) {
-  const userId = randomUUID();
-
-  await buildUser({
-    db: schedulingTestDb,
-    id: userId,
-    name: input.name,
-    email: input.email,
-  });
-  const volunteerRow = await buildVolunteer({
-    db: schedulingTestDb,
-    id: randomUUID(),
-    churchId: input.churchId,
-    userId,
-  });
-  const membership = await buildMinistryMembership({
-    db: schedulingTestDb,
-    churchId: input.churchId,
-    ministryId: input.ministryId,
-    volunteerId: volunteerRow.id,
-    ministryAccessLevel: input.ministryAccessLevel ?? 'volunteer',
-    roleIds: [],
-    teams: input.teamId
-      ? [{ teamId: input.teamId, accessLevel: 'member' }]
-      : [],
-  });
-
-  return { volunteer: volunteerRow, membership };
-}
-
-async function seedRoleQualification(
-  input: SeedRoleQualificationInput,
-): Promise<void> {
-  await buildRoleQualification({
-    db: schedulingTestDb,
-    churchId: input.churchId,
-    ministryVolunteerId: input.membershipId,
-    roleId: input.roleId,
-  });
-}
-
-interface SeedShiftInput {
-  churchId: string;
-  participationId: string;
-  timeSlotId: string;
-  startTime: Date;
-  endTime: Date;
-  label: string;
-}
-
-async function seedShift(input: SeedShiftInput) {
-  return await buildShift({
-    db: schedulingTestDb,
-    churchId: input.churchId,
-    participationId: input.participationId,
-    timeSlotId: input.timeSlotId,
-    start: fromDate({ date: input.startTime }),
-    end: fromDate({ date: input.endTime }),
-    label: input.label,
-  });
-}
-
-interface SeedRequirementInput {
-  churchId: string;
-  participationId: string;
-  shiftId: string;
-  roleId: string;
-  requiredCount: number;
-  teamId?: string;
-}
-
-async function seedRequirement(input: SeedRequirementInput) {
-  return await buildSlotRequirement({ db: schedulingTestDb, ...input });
 }
 
 interface SeedAvailabilityMarkInput {
@@ -419,7 +215,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       shiftId: targetShift.id,
     });
 
-    const { participationManager } = createPhase6Managers();
+    const { participationManager } = createSchedulingManagers();
     const eligible = await participationManager.listEligibleVolunteers({
       churchId: ChurchId.from(seed.churchAId),
       shiftId: ShiftId.from(targetShift.id),
@@ -516,7 +312,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       roleId: roleRow.id,
     });
 
-    const managers = createPhase6Managers();
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(primary.participation.id),
@@ -731,7 +527,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       email: 'floating-phase6@test.com',
     });
 
-    const managers = createPhase6Managers();
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(
@@ -913,7 +709,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       status: 'pending',
     });
 
-    const managers = createPhase6Managers();
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
@@ -1033,7 +829,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       status: 'confirmed',
     });
 
-    const managers = createPhase6Managers();
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),

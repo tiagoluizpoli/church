@@ -1178,6 +1178,20 @@ describe('seed impact', () => {
     ['tenancy', 'apps/server/src/application/db-authority-manager.ts'],
     ['scheduling', 'apps/server/src/application/db-planning-cycle-manager.ts'],
     ['scheduling', 'apps/server/src/domain/assignment/types.ts'],
+    [
+      'scheduling',
+      'apps/server/src/application/db-volunteer-transfer-manager.ts',
+    ],
+    ['scheduling', 'apps/server/src/application/db-redemption-manager.ts'],
+    [
+      'scheduling',
+      'apps/server/src/application/db-ministry-invitation-manager.ts',
+    ],
+    ['scheduling', 'apps/server/src/application/db-event-future-manager.ts'],
+    ['scheduling', 'apps/server/src/domain/services/shift-splitter.ts'],
+    ['schema', 'packages/db/src/index.ts'],
+    ['schema', 'packages/db/src/client.ts'],
+    ['schema', 'packages/db/src/schemas/system-initialization.ts'],
   ])('treats a %s change (%s) as seed-relevant that needs a decision', (area, changedPath) => {
     const plan = classifyChanges({ changedPaths: [changedPath] });
 

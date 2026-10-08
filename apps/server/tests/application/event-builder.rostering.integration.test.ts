@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   assignment as assignmentTable,
   ministryParticipation,
@@ -7,7 +6,6 @@ import {
 import { fromDate, parseInstant } from '@church/time';
 import { and, eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildUser } from '../../seeds/builders/identity';
 import { buildRole } from '../../seeds/builders/ministry';
 import {
   buildAssignment,
@@ -16,9 +14,8 @@ import {
   buildSlotRequirement,
 } from '../../seeds/builders/scheduling';
 import {
-  buildMinistryMembership,
   buildRoleQualification,
-  buildVolunteer,
+  buildVolunteerWithMembership,
 } from '../../seeds/builders/volunteer';
 import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
@@ -193,32 +190,15 @@ interface SeedUnqualifiedMemberResult {
 async function seedUnqualifiedMember(
   input: SeedUnqualifiedMemberInput,
 ): Promise<SeedUnqualifiedMemberResult> {
-  const userId = randomUUID();
-  const volunteerId = randomUUID();
-
-  await buildUser({
-    db: schedulingTestDb,
-    id: userId,
-    name: input.name,
-    email: input.email,
-  });
-  await buildVolunteer({
-    db: schedulingTestDb,
-    id: volunteerId,
-    churchId: input.churchId,
-    userId,
-  });
-  await buildMinistryMembership({
+  const { volunteer } = await buildVolunteerWithMembership({
     db: schedulingTestDb,
     churchId: input.churchId,
     ministryId: input.ministryId,
-    volunteerId,
-    ministryAccessLevel: 'volunteer',
-    roleIds: [],
-    teams: [],
+    name: input.name,
+    email: input.email,
   });
 
-  return { volunteerId };
+  return { volunteerId: volunteer.id };
 }
 
 const CYCLE_START = new Date('2026-08-01T00:00:00.000Z');

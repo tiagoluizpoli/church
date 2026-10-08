@@ -8,16 +8,12 @@ import {
 import { fromDate, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildUser } from '../../seeds/builders/identity';
 import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
 import {
   buildAssignment,
   buildMinistryParticipation,
 } from '../../seeds/builders/scheduling';
-import {
-  buildMinistryMembership,
-  buildVolunteer,
-} from '../../seeds/builders/volunteer';
+import { buildVolunteerWithMembership } from '../../seeds/builders/volunteer';
 import { DbAuthorityManager } from '../../src/application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../src/application/db-availability-check-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
@@ -154,35 +150,6 @@ async function seedCycleWithEvent({
   });
 
   return { cycle, ...graph };
-}
-
-interface SeedMembershipInput {
-  churchId: string;
-  ministryId: string;
-  userId: string;
-  volunteerId: string;
-  status?: 'active' | 'inactive';
-}
-
-async function seedMembership(input: SeedMembershipInput) {
-  const volunteerRow = await buildVolunteer({
-    db: schedulingTestDb,
-    id: input.volunteerId,
-    churchId: input.churchId,
-    userId: input.userId,
-  });
-  const membership = await buildMinistryMembership({
-    db: schedulingTestDb,
-    churchId: input.churchId,
-    ministryId: input.ministryId,
-    volunteerId: input.volunteerId,
-    ministryAccessLevel: 'volunteer',
-    status: input.status ?? 'active',
-    roleIds: [],
-    teams: [],
-  });
-
-  return { volunteerRow, membership };
 }
 
 describe('Phase 4 participation manager (DL2-PT)', () => {
@@ -576,40 +543,31 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
     const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { availabilityManager, notificationSpy } = createPhase4Managers();
 
-    await buildUser({
+    await buildVolunteerWithMembership({
       db: schedulingTestDb,
-      id: 'vol-user-1',
-      name: 'Vol 1',
-      email: 'v1@test.com',
-    });
-    await buildUser({
-      db: schedulingTestDb,
-      id: 'vol-user-2',
-      name: 'Vol 2',
-      email: 'v2@test.com',
-    });
-    await buildUser({
-      db: schedulingTestDb,
-      id: 'vol-user-3',
-      name: 'Vol 3',
-      email: 'v3@test.com',
-    });
-    await seedMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'vol-user-1',
+      name: 'Vol 1',
+      email: 'v1@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999991',
     });
-    await seedMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'vol-user-2',
+      name: 'Vol 2',
+      email: 'v2@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999992',
     });
-    await seedMembership({
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'vol-user-3',
+      name: 'Vol 3',
+      email: 'v3@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999993',
       status: 'inactive',
     });
@@ -754,45 +712,18 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
   });
 });
 
-interface SeedRoleForInput {
+interface SeedPhase4RoleInput {
   churchId: string;
   ministryId: string;
 }
 
-async function seedRoleFor(input: SeedRoleForInput) {
+async function seedRoleFor(input: SeedPhase4RoleInput) {
   return await buildRole({
     db: schedulingTestDb,
     churchId: input.churchId,
     ministryId: input.ministryId,
     name: 'Phase4 role',
   });
-}
-
-async function seedMembershipWithVolunteer(input: SeedRoleForInput) {
-  const userId = randomUUID();
-  const volunteerId = randomUUID();
-  await buildUser({
-    db: schedulingTestDb,
-    id: userId,
-    name: `Phase4 volunteer ${volunteerId}`,
-    email: `${volunteerId}@test.com`,
-  });
-  const volunteerRow = await buildVolunteer({
-    db: schedulingTestDb,
-    id: volunteerId,
-    churchId: input.churchId,
-    userId,
-  });
-  const membership = await buildMinistryMembership({
-    db: schedulingTestDb,
-    churchId: input.churchId,
-    ministryId: input.ministryId,
-    volunteerId,
-    ministryAccessLevel: 'volunteer',
-    roleIds: [],
-    teams: [],
-  });
-  return { volunteer: volunteerRow, membership };
 }
 
 describe('Phase 4 participation manager additional surfaces (shift lifecycle, serving profile, eligible-volunteer conflicts, publish edge states)', () => {
@@ -1018,9 +949,14 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     });
     if (!targetShift || !overlapShift) throw new Error('split failed');
 
-    const member = await seedMembershipWithVolunteer({
+    const memberId = randomUUID();
+    const member = await buildVolunteerWithMembership({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
+      volunteerId: memberId,
+      name: `Phase4 volunteer ${memberId}`,
+      email: `${memberId}@test.com`,
     });
     await buildAssignment({
       db: schedulingTestDb,
@@ -1097,16 +1033,13 @@ describe('Phase 4 availability check manager status listings (DL2-AF status surf
 
     // Base seed already made the admin volunteer a leader-membership of ministryA.
     // Add one more active member who never gets fired (proves the "no check yet" branch).
-    await buildUser({
+    await buildVolunteerWithMembership({
       db: schedulingTestDb,
-      id: 'phase4-status-user',
-      name: 'Status User',
-      email: 'phase4-status@test.com',
-    });
-    await seedMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       userId: 'phase4-status-user',
+      name: 'Status User',
+      email: 'phase4-status@test.com',
       volunteerId: '99999999-9999-4999-8999-999999999981',
     });
 

@@ -1,18 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import {
-  assignmentAudit as assignmentAuditTable,
   assignment as assignmentTable,
   ministryParticipation,
-  ministryVolunteerRole as ministryVolunteerRoleTable,
   ministryVolunteer as ministryVolunteerTable,
-  role as roleTable,
-  shift as shiftTable,
-  slotRequirement as slotRequirementTable,
-  user as userTable,
-  volunteer as volunteerTable,
 } from '@church/db';
+import { fromDate, parseInstant } from '@church/time';
 import { and, eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildUser } from '../../seeds/builders/identity';
+import { buildRole } from '../../seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildAssignmentAudit,
+  buildShift,
+  buildSlotRequirement,
+} from '../../seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildRoleQualification,
+  buildVolunteer,
+} from '../../seeds/builders/volunteer';
 import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
 import { DbParticipationManager } from '../../src/application/db-participation-manager';
 import {
@@ -97,16 +104,15 @@ interface SeedShiftInput {
 }
 
 async function seedShift(input: SeedShiftInput): Promise<string> {
-  const shiftId = randomUUID();
-  await schedulingTestDb.insert(shiftTable).values({
-    id: shiftId,
+  const shiftRow = await buildShift({
+    db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
     timeSlotId: input.timeSlotId,
-    startTime: input.startTime,
-    endTime: input.endTime,
+    start: fromDate({ date: input.startTime }),
+    end: fromDate({ date: input.endTime }),
   });
-  return shiftId;
+  return shiftRow.id;
 }
 
 interface SeedRequirementInput {
@@ -119,22 +125,21 @@ interface SeedRequirementInput {
 async function seedRoleRequirement(
   input: SeedRequirementInput,
 ): Promise<string> {
-  const roleId = randomUUID();
-  await schedulingTestDb.insert(roleTable).values({
-    id: roleId,
+  const greeter = await buildRole({
+    db: schedulingTestDb,
     churchId: input.churchId,
     ministryId: input.ministryId,
     name: 'Greeter',
   });
-  await schedulingTestDb.insert(slotRequirementTable).values({
-    id: randomUUID(),
+  await buildSlotRequirement({
+    db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
     shiftId: input.shiftId,
-    roleId,
+    roleId: greeter.id,
     requiredCount: 2,
   });
-  return roleId;
+  return greeter.id;
 }
 
 interface SeedQualificationInput {
@@ -162,7 +167,8 @@ async function seedRoleQualification(
   if (!membershipId) {
     throw new Error('No membership to qualify');
   }
-  await schedulingTestDb.insert(ministryVolunteerRoleTable).values({
+  await buildRoleQualification({
+    db: schedulingTestDb,
     churchId: input.churchId,
     ministryVolunteerId: membershipId,
     roleId: input.roleId,
@@ -190,27 +196,26 @@ async function seedUnqualifiedMember(
   const userId = randomUUID();
   const volunteerId = randomUUID();
 
-  await schedulingTestDb.insert(userTable).values({
+  await buildUser({
+    db: schedulingTestDb,
     id: userId,
     name: input.name,
     email: input.email,
-    emailVerified: true,
   });
-
-  await schedulingTestDb.insert(volunteerTable).values({
+  await buildVolunteer({
+    db: schedulingTestDb,
     id: volunteerId,
     churchId: input.churchId,
     userId,
-    status: 'active',
   });
-
-  await schedulingTestDb.insert(ministryVolunteerTable).values({
-    id: randomUUID(),
+  await buildMinistryMembership({
+    db: schedulingTestDb,
     churchId: input.churchId,
     ministryId: input.ministryId,
     volunteerId,
     ministryAccessLevel: 'volunteer',
-    status: 'active',
+    roleIds: [],
+    teams: [],
   });
 
   return { volunteerId };
@@ -883,32 +888,32 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       startTime: EVENT_START,
       endTime: EVENT_END,
     });
-    const roleId = randomUUID();
-    await schedulingTestDb.insert(roleTable).values({
-      id: roleId,
+    const usher = await buildRole({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       name: 'Usher',
     });
-    const assignmentId = randomUUID();
-    await schedulingTestDb.insert(assignmentTable).values({
-      id: assignmentId,
+    const createdAt = parseInstant({ value: '2026-08-01T10:00:00.000Z' });
+    const assigned = await buildAssignment({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       shiftId,
       volunteerId: seed.adminVolunteerId,
-      roleId,
+      roleId: usher.id,
       status: 'confirmed',
-      assignedAt: new Date('2026-08-01T10:00:00.000Z'),
+      assignedAt: createdAt,
       assignedBy: seed.adminUserId,
     });
-    await schedulingTestDb.insert(assignmentAuditTable).values({
-      id: randomUUID(),
+    const assignmentId = assigned.id;
+    await buildAssignmentAudit({
+      db: schedulingTestDb,
       churchId: seed.churchAId,
       assignmentId,
       actorId: seed.adminUserId,
       action: 'created',
-      timestamp: new Date('2026-08-01T10:00:00.000Z'),
+      occurredAt: createdAt,
     });
 
     const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });

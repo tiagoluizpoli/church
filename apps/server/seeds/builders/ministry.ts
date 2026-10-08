@@ -9,8 +9,11 @@ export type SeededRole = typeof role.$inferSelect;
 export interface BuildMinistryInput {
   db: SeedWriter;
   churchId: string;
-  id: string;
+  id?: string;
   name: string;
+  /** Left to the column default when a fixture does not care. */
+  enforcementType?: SeededMinistry['enforcementType'];
+  defaultDirection?: SeededMinistry['defaultDirection'];
 }
 
 export async function buildMinistry({
@@ -18,9 +21,14 @@ export async function buildMinistry({
   churchId,
   id,
   name,
+  enforcementType,
+  defaultDirection,
 }: BuildMinistryInput): Promise<SeededMinistry> {
   return requireInsertedRow({
-    rows: await db.insert(ministry).values({ id, churchId, name }).returning(),
+    rows: await db
+      .insert(ministry)
+      .values({ id, churchId, name, enforcementType, defaultDirection })
+      .returning(),
     description: `Ministry ${name}`,
   });
 }
@@ -29,7 +37,7 @@ export interface BuildMinistryChildInput {
   db: SeedWriter;
   churchId: string;
   ministryId: string;
-  id: string;
+  id?: string;
   name: string;
 }
 

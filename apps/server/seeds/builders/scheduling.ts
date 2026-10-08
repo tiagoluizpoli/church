@@ -43,7 +43,8 @@ export type AssignmentStatus = SeededAssignment['status'];
 export interface BuildPlanningCycleInput {
   db: SeedWriter;
   churchId: string;
-  id: string;
+  /** Left to the database when a test reads the identifier from the result. */
+  id?: string;
   name: string;
   /** First day of the cycle; stored as a date, so no timezone is involved. */
   startDate: CalendarDay;
@@ -89,12 +90,13 @@ export interface BuildEventInput {
   db: SeedWriter;
   churchId: string;
   planningCycleId: string;
-  id: string;
+  id?: string;
   title: string;
   start: Instant;
   end: Instant;
   status: EventStatus;
-  eventType: EventType;
+  /** Left to the column default when a fixture does not care. */
+  eventType?: EventType;
   /** The EventTemplate it was generated from; absent for a dynamic Event. */
   sourceTemplateId?: string;
 }
@@ -134,7 +136,7 @@ export interface BuildTimeSlotInput {
   db: SeedWriter;
   churchId: string;
   eventId: string;
-  id: string;
+  id?: string;
   start: Instant;
   end: Instant;
   label?: string;
@@ -174,7 +176,7 @@ export interface BuildMinistryParticipationInput {
   churchId: string;
   ministryId: string;
   eventId: string;
-  id: string;
+  id?: string;
   state: ParticipationState;
   /** The Time Slots the Ministry takes part in. */
   timeSlotIds: string[];
@@ -220,10 +222,10 @@ export interface BuildShiftInput {
   churchId: string;
   participationId: string;
   timeSlotId: string;
-  id: string;
+  id?: string;
   start: Instant;
   end: Instant;
-  label?: string;
+  label?: string | null;
 }
 
 export async function buildShift({
@@ -259,7 +261,7 @@ export interface BuildSlotRequirementInput {
   participationId: string;
   shiftId: string;
   roleId: string;
-  id: string;
+  id?: string;
   requiredCount: number;
   teamId?: string;
   notes?: string;
@@ -301,7 +303,7 @@ export interface BuildAssignmentInput {
   shiftId: string;
   volunteerId: string;
   roleId: string;
-  id: string;
+  id?: string;
   status: AssignmentStatus;
   /** Why it was declined or cancelled. */
   reason?: string;
@@ -355,7 +357,7 @@ export interface BuildAssignmentAuditInput {
   churchId: string;
   assignmentId: string;
   actorId: string;
-  id: string;
+  id?: string;
   action: AssignmentAuditAction;
   reason?: string;
   /** Explicit, so a graph never depends on the wall clock at load time. */
@@ -388,4 +390,59 @@ export async function buildAssignmentAudit({
       .returning(),
     description: `Assignment Audit ${id}`,
   });
+}
+
+export interface BuildAssignedShiftInput {
+  db: SeedWriter;
+  churchId: string;
+  eventId: string;
+  participationId: string;
+  volunteerId: string;
+  roleId: string;
+  start: Instant;
+  end: Instant;
+  status: AssignmentStatus;
+}
+
+export interface BuiltAssignedShift {
+  timeSlot: SeededTimeSlot;
+  shift: SeededShift;
+  assignment: SeededAssignment;
+}
+
+/**
+ * A Volunteer's Assignment on a Shift that covers its own Time Slot over
+ * `start`..`end`: the smallest schedule a fixture needs to hold a booking.
+ */
+export async function buildAssignedShift({
+  db,
+  churchId,
+  eventId,
+  participationId,
+  volunteerId,
+  roleId,
+  start,
+  end,
+  status,
+}: BuildAssignedShiftInput): Promise<BuiltAssignedShift> {
+  const slot = await buildTimeSlot({ db, churchId, eventId, start, end });
+  const slotShift = await buildShift({
+    db,
+    churchId,
+    participationId,
+    timeSlotId: slot.id,
+    start,
+    end,
+  });
+  const booked = await buildAssignment({
+    db,
+    churchId,
+    participationId,
+    shiftId: slotShift.id,
+    volunteerId,
+    roleId,
+    status,
+  });
+
+  return { timeSlot: slot, shift: slotShift, assignment: booked };
 }

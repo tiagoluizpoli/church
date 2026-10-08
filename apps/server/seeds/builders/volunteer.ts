@@ -4,6 +4,7 @@ import {
   ministryVolunteerTeam,
   volunteer,
 } from '@church/db';
+import { type Instant, toDate } from '@church/time';
 import type { SeedWriter } from '../recipe';
 import { deriveSeedId } from './derived-id';
 import { requireInsertedRow } from './require-inserted-row';
@@ -19,20 +20,29 @@ export interface BuildVolunteerInput {
   db: SeedWriter;
   churchId: string;
   userId: string;
-  id: string;
+  id?: string;
+  /** Set to retire the profile: it keeps its Church but stops being active. */
+  leftAt?: Instant;
 }
 
-/** The User's one active Volunteer profile, in `churchId`. */
+/** The User's Volunteer profile in `churchId`: active unless `leftAt` retires it. */
 export async function buildVolunteer({
   db,
   churchId,
   userId,
   id,
+  leftAt,
 }: BuildVolunteerInput): Promise<SeededVolunteer> {
   return requireInsertedRow({
     rows: await db
       .insert(volunteer)
-      .values({ id, churchId, userId, status: 'active' })
+      .values({
+        id,
+        churchId,
+        userId,
+        status: 'active',
+        leftAt: leftAt === undefined ? undefined : toDate({ instant: leftAt }),
+      })
       .returning(),
     description: `Volunteer for User ${userId}`,
   });
@@ -48,8 +58,10 @@ export interface BuildMinistryMembershipInput {
   churchId: string;
   volunteerId: string;
   ministryId: string;
-  id: string;
+  id?: string;
   ministryAccessLevel: MinistryAccessLevel;
+  /** Active unless a fixture needs an inactive Ministry Membership. */
+  status?: SeededMinistryMembership['status'];
   /** Role qualifications — explicit grants; membership alone qualifies for nothing. */
   roleIds: string[];
   teams: SeedTeamMembership[];
@@ -63,6 +75,7 @@ export async function buildMinistryMembership({
   ministryId,
   id,
   ministryAccessLevel,
+  status = 'active',
   roleIds,
   teams,
 }: BuildMinistryMembershipInput): Promise<SeededMinistryMembership> {
@@ -75,7 +88,7 @@ export async function buildMinistryMembership({
         volunteerId,
         ministryId,
         ministryAccessLevel,
-        status: 'active',
+        status,
       })
       .returning(),
     description: `Ministry Membership ${id}`,
@@ -111,4 +124,72 @@ export async function buildMinistryMembership({
   }
 
   return membership;
+}
+
+export type SeededRoleQualification = typeof ministryVolunteerRole.$inferSelect;
+export type SeededTeamMembership = typeof ministryVolunteerTeam.$inferSelect;
+
+export interface BuildRoleQualificationInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryVolunteerId: string;
+  roleId: string;
+}
+
+/** One explicit Role qualification added to an existing Ministry Membership. */
+export async function buildRoleQualification({
+  db,
+  churchId,
+  ministryVolunteerId,
+  roleId,
+}: BuildRoleQualificationInput): Promise<SeededRoleQualification> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(ministryVolunteerRole)
+      .values({
+        id: deriveSeedId({
+          kind: 'ministry-volunteer-role',
+          parentIds: [ministryVolunteerId, roleId],
+        }),
+        churchId,
+        ministryVolunteerId,
+        roleId,
+      })
+      .returning(),
+    description: `Role qualification ${roleId}`,
+  });
+}
+
+export interface BuildTeamMembershipInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryVolunteerId: string;
+  teamId: string;
+  accessLevel: TeamAccessLevel;
+}
+
+/** One Team Membership added to an existing Ministry Membership. */
+export async function buildTeamMembership({
+  db,
+  churchId,
+  ministryVolunteerId,
+  teamId,
+  accessLevel,
+}: BuildTeamMembershipInput): Promise<SeededTeamMembership> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(ministryVolunteerTeam)
+      .values({
+        id: deriveSeedId({
+          kind: 'ministry-volunteer-team',
+          parentIds: [ministryVolunteerId, teamId],
+        }),
+        churchId,
+        ministryVolunteerId,
+        teamId,
+        accessLevel,
+      })
+      .returning(),
+    description: `Team Membership ${teamId}`,
+  });
 }

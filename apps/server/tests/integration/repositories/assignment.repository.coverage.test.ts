@@ -1,5 +1,7 @@
-import { role, shift as shiftTable } from '@church/db';
+import { fromDate } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildRole } from '../../../seeds/builders/ministry';
+import { buildShift } from '../../../seeds/builders/scheduling';
 import {
   ChurchId,
   EventId,
@@ -44,15 +46,12 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     const seed = await seedSchedulingPhase3Base();
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Usher',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
 
     await expect(
       repo.create(churchId, {
@@ -67,15 +66,12 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Usher',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
     const roleId = RoleId.from(roleRow.id);
 
     // No shift exists for this slot yet.
@@ -87,17 +83,14 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
       }),
     ).rejects.toThrow('Shift not found for slot');
 
-    const [shiftRow] = await schedulingTestDb
-      .insert(shiftTable)
-      .values({
-        churchId: seed.churchAId,
-        participationId: graph.participation.id,
-        timeSlotId: graph.slot.id,
-        startTime: graph.slot.startTime,
-        endTime: graph.slot.endTime,
-      })
-      .returning();
-    if (!shiftRow) throw new Error('shift seed failed');
+    const shiftRow = await buildShift({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      start: fromDate({ date: graph.slot.startTime }),
+      end: fromDate({ date: graph.slot.endTime }),
+    });
 
     const createdViaShiftId = await repo.create(churchId, {
       shiftId: ShiftId.from(shiftRow.id),
@@ -137,27 +130,21 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
     const repo = new DrizzleAssignmentRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
-    const [roleRow] = await schedulingTestDb
-      .insert(role)
-      .values({
-        churchId: seed.churchAId,
-        ministryId: seed.ministryAId,
-        name: 'Usher',
-      })
-      .returning();
-    if (!roleRow) throw new Error('role seed failed');
+    const roleRow = await buildRole({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
 
-    const [shiftRow] = await schedulingTestDb
-      .insert(shiftTable)
-      .values({
-        churchId: seed.churchAId,
-        participationId: graph.participation.id,
-        timeSlotId: graph.slot.id,
-        startTime: graph.slot.startTime,
-        endTime: graph.slot.endTime,
-      })
-      .returning();
-    if (!shiftRow) throw new Error('shift seed failed');
+    const shiftRow = await buildShift({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      start: fromDate({ date: graph.slot.startTime }),
+      end: fromDate({ date: graph.slot.endTime }),
+    });
 
     const created = await repo.create(churchId, {
       shiftId: ShiftId.from(shiftRow.id),

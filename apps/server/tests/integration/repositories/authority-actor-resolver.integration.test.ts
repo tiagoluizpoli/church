@@ -1,20 +1,23 @@
 import * as schema from '@church/db';
-import {
-  addChurchMember,
-  createChurch,
-  ministry,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
-  role,
-  team,
-  user,
-  volunteer,
-} from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { parseInstant } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildChurch,
+  buildChurchMembership,
+} from '../../../seeds/builders/church';
+import { buildUser } from '../../../seeds/builders/identity';
+import {
+  buildMinistry,
+  buildRole,
+  buildTeam,
+} from '../../../seeds/builders/ministry';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '../../../seeds/builders/volunteer';
 import { AuthorityService } from '../../../src/domain/authority/authority-service';
 import type { AuthorityResource } from '../../../src/domain/authority/types';
 import {
@@ -59,40 +62,38 @@ async function resetDb(): Promise<void> {
 }
 
 async function seed(): Promise<void> {
-  await testDb.insert(user).values([
-    {
-      id: adminUserId,
-      name: 'Authority Admin',
-      email: 'authority-admin@test.com',
-      emailVerified: true,
-    },
-    {
-      id: leaderUserId,
-      name: 'Authority Leader',
-      email: 'authority-leader@test.com',
-      emailVerified: true,
-    },
-    {
-      id: volunteerUserId,
-      name: 'Authority Volunteer',
-      email: 'authority-volunteer@test.com',
-      emailVerified: true,
-    },
-    {
-      id: strandedUserId,
-      name: 'Authority Stranded',
-      email: 'authority-stranded@test.com',
-      emailVerified: true,
-    },
-    {
-      id: retiredUserId,
-      name: 'Authority Retired',
-      email: 'authority-retired@test.com',
-      emailVerified: true,
-    },
-  ]);
+  await buildUser({
+    db: testDb,
+    id: adminUserId,
+    name: 'Authority Admin',
+    email: 'authority-admin@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: leaderUserId,
+    name: 'Authority Leader',
+    email: 'authority-leader@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: volunteerUserId,
+    name: 'Authority Volunteer',
+    email: 'authority-volunteer@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: strandedUserId,
+    name: 'Authority Stranded',
+    email: 'authority-stranded@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: retiredUserId,
+    name: 'Authority Retired',
+    email: 'authority-retired@test.com',
+  });
 
-  await createChurch({
+  await buildChurch({
     db: testDb,
     id: churchId,
     name: 'Authority Church',
@@ -100,25 +101,25 @@ async function seed(): Promise<void> {
     timezone: 'UTC',
   });
 
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
     churchId,
     userId: adminUserId,
     accessLevel: 'admin',
   });
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
     churchId,
     userId: leaderUserId,
     accessLevel: 'member',
   });
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
     churchId,
     userId: volunteerUserId,
     accessLevel: 'member',
   });
-  await addChurchMember({
+  await buildChurchMembership({
     db: testDb,
     churchId,
     userId: retiredUserId,
@@ -126,83 +127,66 @@ async function seed(): Promise<void> {
   });
   // strandedUserId deliberately gets no Church Membership and no Volunteer row.
 
-  await testDb
-    .insert(ministry)
-    .values({ id: ministryId, churchId, name: 'Authority Ministry' });
-  await testDb
-    .insert(team)
-    .values({ id: teamId, churchId, ministryId, name: 'Authority Team' });
-  await testDb
-    .insert(role)
-    .values({ id: roleId, churchId, ministryId, name: 'Authority Role' });
-
-  await testDb.insert(volunteer).values([
-    {
-      id: leaderVolunteerId,
-      churchId,
-      userId: leaderUserId,
-      status: 'active',
-    },
-    {
-      id: memberVolunteerId,
-      churchId,
-      userId: volunteerUserId,
-      status: 'active',
-    },
-    // Retired profile — a departed Church Member who kept their Church
-    // Membership (its own axis) but must never resolve as a Volunteer again.
-    {
-      id: retiredVolunteerId,
-      churchId,
-      userId: retiredUserId,
-      status: 'active',
-      leftAt: new Date('2024-01-01T00:00:00Z'),
-    },
-  ]);
-
-  const [leaderMembership, memberMembership] = await testDb
-    .insert(ministryVolunteer)
-    .values([
-      {
-        churchId,
-        ministryId,
-        volunteerId: leaderVolunteerId,
-        ministryAccessLevel: 'leader',
-        status: 'active',
-      },
-      {
-        churchId,
-        ministryId,
-        volunteerId: memberVolunteerId,
-        ministryAccessLevel: 'volunteer',
-        status: 'active',
-      },
-    ])
-    .returning();
-
-  if (!leaderMembership || !memberMembership) {
-    throw new Error('Authority actor resolver seed failed');
-  }
-
-  await testDb.insert(ministryVolunteerTeam).values([
-    {
-      churchId,
-      ministryVolunteerId: leaderMembership.id,
-      teamId,
-      accessLevel: 'leader',
-    },
-    {
-      churchId,
-      ministryVolunteerId: memberMembership.id,
-      teamId,
-      accessLevel: 'member',
-    },
-  ]);
-
-  await testDb.insert(ministryVolunteerRole).values({
+  await buildMinistry({
+    db: testDb,
+    id: ministryId,
     churchId,
-    ministryVolunteerId: memberMembership.id,
-    roleId,
+    name: 'Authority Ministry',
+  });
+  await buildTeam({
+    db: testDb,
+    id: teamId,
+    churchId,
+    ministryId,
+    name: 'Authority Team',
+  });
+  await buildRole({
+    db: testDb,
+    id: roleId,
+    churchId,
+    ministryId,
+    name: 'Authority Role',
+  });
+
+  await buildVolunteer({
+    db: testDb,
+    id: leaderVolunteerId,
+    churchId,
+    userId: leaderUserId,
+  });
+  await buildVolunteer({
+    db: testDb,
+    id: memberVolunteerId,
+    churchId,
+    userId: volunteerUserId,
+  });
+  // Retired profile — a departed Church Member who kept their Church
+  // Membership (its own axis) but must never resolve as a Volunteer again.
+  await buildVolunteer({
+    db: testDb,
+    id: retiredVolunteerId,
+    churchId,
+    userId: retiredUserId,
+    leftAt: parseInstant({ value: '2024-01-01T00:00:00Z' }),
+  });
+
+  await buildMinistryMembership({
+    db: testDb,
+    churchId,
+    ministryId,
+    volunteerId: leaderVolunteerId,
+    ministryAccessLevel: 'leader',
+    roleIds: [],
+    teams: [{ teamId, accessLevel: 'leader' }],
+  });
+  await buildMinistryMembership({
+    db: testDb,
+    churchId,
+    ministryId,
+    volunteerId: memberVolunteerId,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [roleId],
+    teams: [{ teamId, accessLevel: 'member' }],
   });
 }
 

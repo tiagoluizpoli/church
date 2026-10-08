@@ -52,7 +52,7 @@ export interface BuildUnavailabilityMarkInput {
   churchId: string;
   availabilityCheckId: string;
   shiftId: string;
-  id: string;
+  id?: string;
 }
 
 /** The Volunteer cannot serve this Shift. */
@@ -69,5 +69,35 @@ export async function buildUnavailabilityMark({
       .values({ id, churchId, availabilityCheckId, shiftId })
       .returning(),
     description: `Unavailability mark ${id}`,
+  });
+}
+
+export type AvailabilityCheckState = SeededAvailabilityCheck['state'];
+
+export interface BuildAvailabilityCheckInput {
+  db: SeedWriter;
+  churchId: string;
+  planningCycleId: string;
+  ministryVolunteerId: string;
+  id?: string;
+  /** Left to the column default (pending) when a fixture does not care. */
+  state?: AvailabilityCheckState;
+}
+
+/** A Ministry Membership's Availability Check, not yet answered unless `state` says so. */
+export async function buildAvailabilityCheck({
+  db,
+  churchId,
+  planningCycleId,
+  ministryVolunteerId,
+  id,
+  state,
+}: BuildAvailabilityCheckInput): Promise<SeededAvailabilityCheck> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(availabilityCheck)
+      .values({ id, churchId, planningCycleId, ministryVolunteerId, state })
+      .returning(),
+    description: `Availability Check for ${ministryVolunteerId}`,
   });
 }

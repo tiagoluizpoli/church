@@ -21,20 +21,22 @@ export type SeededMinistryServingProfile =
   typeof ministryServingProfile.$inferSelect;
 
 export interface SeedTimeBlock {
-  id: string;
+  id?: string;
   label: string;
   startTime: TimeOfDay;
   endTime: TimeOfDay;
+  /** Position in the template; defaults to the block's index. */
+  order?: number;
 }
 
 export interface BuildEventTemplateInput {
   db: SeedWriter;
   churchId: string;
-  id: string;
+  id?: string;
   name: string;
   /** 0 (Sunday) … 6 (Saturday). */
   weekday: number;
-  /** In order; each block's position becomes its `order`. */
+  /** In order; a block without an explicit `order` takes its position. */
   blocks: readonly SeedTimeBlock[];
 }
 
@@ -65,14 +67,14 @@ export async function buildEventTemplate({
       : await db
           .insert(timeBlock)
           .values(
-            blocks.map((block, order) => ({
+            blocks.map((block, index) => ({
               id: block.id,
               churchId,
               templateId: template.id,
               label: block.label,
               startTime: block.startTime,
               endTime: block.endTime,
-              order,
+              order: block.order ?? index,
             })),
           )
           .returning();

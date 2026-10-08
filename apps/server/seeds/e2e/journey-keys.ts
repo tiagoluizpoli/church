@@ -27,6 +27,9 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   planningCycleAccess: 'planning-cycle-access',
   planningCycleTenants: 'planning-cycle-tenants',
   ministryWorkspaceIndex: 'ministry-workspace-index',
+  /** Not a journey: the suite's shared read-only personas, which global
+   * setup loads once (`recipes/shared-personas.ts`). */
+  sharedPersonas: 'shared-personas',
 } as const;
 
 export type E2eJourneyRecipeName =

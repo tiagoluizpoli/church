@@ -155,9 +155,7 @@ share this local lock.
 Playwright workers within one run share that run's single stack: one server,
 one Vite, one E2E database, one URL set and one target fingerprint. They add
 only browser contexts, so they need neither the lock nor a per-worker target;
-the `flock` still serializes separate runs. Specs coupled through shared seed
-state run in a one-worker lane (`apps/web/tests/fixtures/e2e-lanes.ts`) until
-their journeys own their data.
+the `flock` still serializes separate runs.
 
 E2E setup resets the dedicated E2E target before the next run. Failed E2E
 database state is preserved for diagnosis; successful runs may clean normally,

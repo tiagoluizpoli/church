@@ -110,34 +110,22 @@ migration — schema changes (the TimeBlock crosses-midnight constraint drop,
 the `_date` column rename) already shipped as ordinary migrations in
 `packages/db/src/migrations/`.
 
-> Rebuilding a worktree's development database now goes through
-> `bun run db:reseed:dev` (see [tooling](docs/agents/tooling.md)); the legacy
-> commands below are retired by #330.
+To cut a worktree's development database over to seam-correct data,
+rebuild it from clean:
 
-To cut an environment over to seam-correct data:
+```bash
+bun run db:reseed:dev
+```
 
-1. Apply any pending schema migrations: `bun run db:migrate`.
-2. Reset and reseed from clean:
-   ```bash
-   bun run db:seed:reset          # truncates every table, then reseeds
-   bun run db:seed:dev-users      # (optional) attaches dev login users
-   ```
-   (`bun run db:seed:reset:dev-users` runs both in sequence.)
-3. Spot-check a church-local Instant: the seed churches carry distinct real
-   IANA timezones (`America/New_York`, `America/Sao_Paulo`,
-   `America/Los_Angeles`), and each gets one day-based Event (`"<Church> Day
-   Retreat"`) spanning church-local midnight to end of day. For the
-   `America/Sao_Paulo` church, that Event's stored `start` should read as
-   `00:00` when converted to that zone, not to UTC or the machine's local
-   zone — `packages/db/tests/seed.test.ts` (`#171: Cutover spot-check`)
-   asserts this automatically on every `bun run test:integration` run.
+It resets and migrates this worktree's development database, loads the
+deterministic development scenario, and verifies it (see
+[tooling](docs/agents/tooling.md)). Its Churches use the real Church
+Timezone `America/Sao_Paulo`, so their gatherings are stored as church-local
+Instants.
 
-E2E has its own, separate seeding path (`apps/web/tests/global-setup.ts` →
-`apps/server/src/test-support/e2e-seed.ts`, invoked via
-`bun run --cwd apps/server seed:e2e`) that provisions its own Churches and
-fixtures per Playwright run; it needs no manual reset step beyond running the
-suite (`bun run test:e2e`), which calls
-`globalSetup` before every run.
+E2E needs no manual step: `bun run test:e2e` resets its own database before
+every run, and each journey loads its own data from the server's E2E recipes
+(`apps/server/seeds/e2e/`).
 
 ## Test Policy: What To Run
 
@@ -174,6 +162,7 @@ policy and its trade-offs. Day to day, pick the command by what changed:
 - `bun run db:migrate`: Run database migrations
 - `bun run db:studio`: Open database studio UI
 - `bun run db:init`: Initialize system with church, admin, and administration ministry
+- `bun run db:reseed:dev`: Rebuild this worktree's development database with the development scenario
 - `bun run db:clean`: Wipe all tables (truncate) for a fresh state
 - `cd apps/web && bun run generate-pwa-assets`: Generate PWA assets
 - `bun run dev:desktop`: Start the Electrobun desktop app with HMR

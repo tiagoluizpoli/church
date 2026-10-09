@@ -1,0 +1,27 @@
+{
+  "name": "@church/i18n",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@inlang/paraglide-js": "^2.26.0",
+    "@inlang/plugin-message-format": "^4.4.5",
+    "typescript": "^5"
+  },
+  "exports": {
+    "./messages": {
+      "types": "./src/paraglide/messages.d.ts",
+      "default": "./src/paraglide/messages.js"
+    },
+    "./runtime": {
+      "types": "./src/paraglide/runtime.d.ts",
+      "default": "./src/paraglide/runtime.js"
+    }
+  },
+  "scripts": {
+    "compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy globalVariable baseLocale --emit-ts-declarations --output-structure locale-modules --silent",
+    "typecheck": "bun run compile",
+    "test:unit": "bun run compile",
+    "build": "bun run compile"
+  }
+}

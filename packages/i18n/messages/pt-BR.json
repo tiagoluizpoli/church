@@ -1,0 +1,25 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "greeting": "Olá, {name}",
+  "people_needed": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} pessoa necessária",
+        "countPlural=*": "{count} pessoas necessárias"
+      }
+    }
+  ],
+  "shift_starts": [
+    {
+      "declarations": [
+        "input start",
+        "input tz",
+        "local time = start: datetime hour=2-digit minute=2-digit hourCycle=h23 timeZone=$tz"
+      ],
+      "selectors": [],
+      "match": { "": "O turno começa às {time}" }
+    }
+  ]
+}

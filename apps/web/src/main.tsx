@@ -1,3 +1,4 @@
+import { getLocale } from '@church/i18n/runtime';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import ReactDOM from 'react-dom/client';
@@ -26,6 +27,9 @@ declare module '@tanstack/react-router' {
     router: typeof router;
   }
 }
+
+// Spike #395: the runtime reachable from the Vite bundle.
+document.documentElement.lang = getLocale();
 
 const rootElement = document.getElementById('app');
 

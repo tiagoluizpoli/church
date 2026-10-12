@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Map Prototype</title>
+<style>
+:root{--bg:#f6f6f4;--panel:#fff;--ink:#1d1d1b;--mute:#6b6b66;--line:#e2e1dc;--accent:#2f5bd3;--accent-soft:#e8eefc;--warn:#b5560b;--warn-soft:#fdf0e4;--bad:#b42318;--bad-soft:#fdecea;--ok:#1f7a4d;--ok-soft:#e6f4ec}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#151514;--panel:#1f1f1d;--ink:#ecebe6;--mute:#9b9a94;--line:#33332f;--accent:#7f9cf0;--accent-soft:#232c45;--warn:#f0a35c;--warn-soft:#3a2a1b;--bad:#f08a80;--bad-soft:#3b201d;--ok:#6fd0a0;--ok-soft:#1a3328}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent);cursor:pointer;text-decoration:none}a:hover{text-decoration:underline}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:4px 10px}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+.wrap{max-width:1400px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:0 0 8px}h3{font-size:13px;margin:14px 0 6px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.lede{color:var(--mute);margin:0 0 14px;max-width:900px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.bar .lbl{color:var(--mute);margin-right:4px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px}
+@media (max-width:1000px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.addr{display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
+.addr input{flex:1;font:13px ui-monospace,monospace;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.app{display:flex;min-height:560px}
+.app.phone{max-width:390px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.side{width:210px;border-right:1px solid var(--line);padding:12px 10px;flex-shrink:0}
+.app.phone .side{display:none}.app.phone.menu .side{display:block;position:absolute;z-index:3;background:var(--panel);height:520px;box-shadow:4px 0 12px rgba(0,0,0,.15)}
+.church{font-weight:600;margin-bottom:2px}.switch{font-size:12px;margin-bottom:12px}
+.navg{margin:10px 0 2px;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.nav a{display:block;padding:4px 8px;border-radius:6px;color:var(--ink)}.nav a.act{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.crumbs{flex:1;min-width:0;font-size:13px}.crumbs span.sep{color:var(--mute);margin:0 6px}.crumbs b{font-weight:600}
+.menu-btn{display:none}.app.phone .menu-btn{display:inline-block}
+.body{padding:16px 18px;position:relative}
+.pt{font-size:18px;font-weight:650;margin:0 0 4px}.kind{font-size:12px;color:var(--mute);margin-bottom:12px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:4px 0 14px}.tabs a{padding:6px 10px;color:var(--mute)}.tabs a.act{color:var(--ink);border-bottom:2px solid var(--accent);font-weight:600}
+.blk{margin:0 0 12px}.row{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
+.row.strike{text-decoration:line-through;color:var(--mute)}
+.acts{display:flex;flex-wrap:wrap;gap:6px}.act-b{border-style:solid}.dlg{border-style:dashed}
+.tag{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.tag.w{background:var(--warn-soft);color:var(--warn)}.tag.b{background:var(--bad-soft);color:var(--bad)}.tag.g{background:var(--ok-soft);color:var(--ok)}
+.note{font-size:12px;color:var(--mute)}
+.state{padding:28px;text-align:center;border:1px dashed var(--line);border-radius:10px}
+.state.b{background:var(--bad-soft)}.state.w{background:var(--warn-soft)}
+.side-panel{padding:12px 14px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 8px;font-size:13px}.kv div:nth-child(odd){color:var(--mute)}
+.mono{font-family:ui-monospace,monospace;font-size:12px}
+.tabsx{display:flex;gap:4px;margin:16px 0 8px;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}th{position:sticky;top:0;background:var(--panel)}
+td.c-ok{color:var(--ok)}td.c-no{color:var(--bad)}td.c-nf{color:var(--warn)}td.c-ds{color:var(--mute)}td.c-rd{color:var(--accent)}
+.tblwrap{max-height:640px;overflow:auto}
+.steps li{margin-bottom:6px}.steps li.done{color:var(--mute)}.steps li.cur{font-weight:600}
+.q{padding:12px 14px;border-bottom:1px solid var(--line)}.q:last-child{border-bottom:0}.q p{margin:4px 0}
+.why{font-size:12px;color:var(--mute)}
+.reuse{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;margin:0 0 14px;font-size:12px}.reuse ul{margin:2px 0 4px;padding-left:18px}.reuse b{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.newtab::after{content:" ↗";font-size:11px}
+.sheet{position:absolute;right:0;top:0;bottom:0;width:260px;background:var(--panel);border-left:1px solid var(--line);padding:14px;box-shadow:-6px 0 14px rgba(0,0,0,.08)}
+.changed{outline:2px solid var(--warn);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Page map, navigation and permission matrix — prototype</h1>
+  <p class="lede"><b>Question:</b> do the Flows decided in the map's tickets fit together as one app? Pick a person below, click around the mock app (sidebar, breadcrumbs, links, bell), or type any URL. The panel on the right says why you see what you see. The tabs underneath hold the permission matrix (computed from the same rules), a walkthrough per Journey, and the open questions; toggling a question changes the app live. <span class="note">Throwaway: in-memory only, sample data.</span></p>
+
+  <div class="bar" id="personaBar"><span class="lbl">Person:</span></div>
+  <div class="bar"><span class="lbl">Churches:</span><button id="ch1">1</button><button id="ch2">2</button><span class="lbl" style="margin-left:14px">Screen:</span><button id="desk">Desktop</button><button id="phone">Phone 390 px</button></div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="addr"><button id="back" title="Back">←</button><input id="url" spellcheck="false"><button id="go">Go</button></div>
+      <div id="app"></div>
+    </div>
+    <div class="card side-panel" id="why"></div>
+  </div>
+
+  <div class="tabsx" id="lowerTabs"></div>
+  <div class="card" id="lower"></div>
+</div>
+
+<script>
+/* ===================== Pure module: data, routes, access, breadcrumbs, nav =====================
+   No DOM in this block. resolve(url, persona, opts) → everything the page shows. */
+const M = {kids:'Kids', worship:'Worship', media:'Media'};
+const CYCLES = {out26:{name:'Outubro 2026', state:'Sent'}, nov26:{name:'Novembro 2026', state:'Draft'}};
+const STAGE = {'kids/out26':'Published', 'worship/out26':'Asking', 'media/out26':'To prepare'};
+const EVENTS = {'culto-3':{name:'Culto 3 · Sun 12 Oct 18:00', cycle:'out26', cancelled:false}, 'culto-2':{name:'Culto 2 · Sun 5 Oct 10:30', cycle:'out26', cancelled:true}, 'retiro':{name:'Retiro 2026 · Fri–Sun', cycle:'nov26'}};
+const SLOTS = {'sun-1030':'Sun 12 Oct · 10:30'};
+const TEMPLATES = {sunday:'Sunday Service'};
+const BLOCKS = {'tb-1030':'Sunday · 10:30 Service'};
+const MEMBERS = {ana:{name:'Ana Souza', ms:['kids'], lvl:'volunteer'}, joao:{name:'João Lima', ms:['worship'], lvl:'volunteer'}, rita:{name:'Rita Alves', ms:[], lvl:null}, bia:{name:'Bia Costa', ms:['kids'], lvl:'leader'}};
+const ASSIGNMENTS = {a1:{m:'kids', label:'Sun 12 Oct · Kids'}, a2:{m:'worship', label:'Sun 12 Oct · Worship'}};
+const CHECKS = {'chk-kids-out26':{m:'kids', c:'out26'}, 'chk-worship-out26':{m:'worship', c:'out26'}};
+
+const PERSONAS = {
+  admin:   {label:'ChurchAdmin', admin:true, leads:[], serves:[]},
+  adminAll:{label:'Admin · leads Worship · serves Kids', admin:true, leads:['worship'], serves:['kids']},
+  leader1: {label:'Leader of Kids', admin:false, leads:['kids'], serves:[]},
+  leader2: {label:'Leader of Kids + Worship', admin:false, leads:['kids','worship'], serves:[]},
+  vol:     {label:'Volunteer in Kids', admin:false, leads:[], serves:['kids']},
+  member:  {label:'Plain Church Member', admin:false, leads:[], serves:[]},
+  out:     {label:'Signed out', signedOut:true, admin:false, leads:[], serves:[]},
+};
+
+const DEFAULT_OPTS = {singleRedirect:false, outOfScope:'not-found', cycleNewRoute:false, sheetParams:true};
+
+const cap = p => ({admin:p.admin, sched:p.admin || p.leads.length>0, serves:p.serves.length>0});
+const leadsM = (p,m) => p.admin || p.leads.includes(m);
+const OK = {ok:true};
+const NOACCESS = why => ({deny:'no-access', why});
+const NOTFOUND = why => ({deny:'not-found', why});
+const scopeMiss = (o, why) => o.outOfScope==='not-found' ? NOTFOUND(why) : NOACCESS(why);
+const DONTSERVE = {deny:'dont-serve', why:'No Volunteer membership: the page shows "You don\'t serve in a Ministry yet." inside the shell.'};
+const needAdmin = c => c.cap.admin ? OK : NOACCESS('Capability gate: ChurchAdmin only (API 403).');
+const needSched = c => c.cap.sched ? OK : NOACCESS('Capability gate: ChurchAdmin or Ministry leader (API 403).');
+const needServe = c => c.cap.serves ? OK : DONTSERVE;
+const all = (...gs) => c => { for (const g of gs){ const r=g(c); if(!r.ok) return r; } return OK; };
+const exists = (tbl, key, what) => c => tbl[c.params[key]] ? OK : NOTFOUND(`No ${what} with that id.`);
+const ministryScope = c => !M[c.params.m] ? NOTFOUND('No such Ministry.') : leadsM(c.p,c.params.m) ? OK : scopeMiss(c.o, `Object scope: you don't lead ${M[c.params.m]}.`);
+const sentCycle = c => CYCLES[c.params.c]?.state==='Sent' ? OK : NOTFOUND('Only Sent cycles have Ministry-cycle pages.');
+
+// Ministry-cycle stage actions
+function mcActions(m,c){
+  const st = STAGE[`${m}/${c}`]||'To prepare';
+  const a = [];
+  if (st==='To prepare') a.push(['dialog','Ask for availability','disabled while a Shift is flagged']);
+  if (st==='Asking') a.push(['dialog','Remind those who haven\'t confirmed (8)','24 h cooldown'], ['link','Assign',`/schedules/${m}/${c}/assign`]);
+  if (st==='Published') a.push(['link','Assign',`/schedules/${m}/${c}/assign`], ['dialog','Send updates (3 people)','only with unsent changes']);
+  if (st==='Asking') a.push(['dialog','Publish','after the first Assignment']);
+  return {st, a};
+}
+
+/* Route table. parent → breadcrumb chain. kind: page | nested | tab | dialog-route | public | bare | redirect */
+const R = [
+  // public, outside the shell
+  {path:'/login', kind:'public', title:'Log in', src:371, guard:c=>OK, view:c=>({blocks:[{acts:[['action','Log in','→ redirect target or /'],['link','Forgot password?','/forgot-password']]}]})},
+  {path:'/forgot-password', kind:'public', title:'Forgot password', src:371, guard:c=>OK, view:c=>({blocks:[{text:'Email field. Always answers "If an account exists for this email, we sent a link."'},{acts:[['link','Open the emailed link','/reset-password?token=t1']]}]})},
+  {path:'/reset-password', kind:'public', title:'Reset password', src:371, guard:c=>OK, view:c=>({blocks:[{text:'New password → /login with "Password changed."'},{acts:[['link','Save','/login']]}]})},
+  {path:'/invitations/church/:id', kind:'public', title:'Join Igreja Central', src:371, guard:c=>OK, view:c=>({blocks:[{text:'One route, two steps. Step 1: the invitation (+ Ministry, level, Roles when paired). Step 2: code, name, password.'},{acts:[['action','Send code','→ step 2'],['dialog','Decline','confirm; paired declines both'],['link','Join (step 2)','/']]}]})},
+  // outside the active-church shell
+  {path:'/select-church', kind:'bare', title:'Choose a church', src:384, guard:c=>OK, view:c=>({blocks:[{text:'Unchanged. Shown after login only with ≥ 2 churches.'},{acts:[['link','Igreja Central','/']]}]})},
+  {path:'/switch-church-confirm', kind:'bare', title:'Switch church?', src:384, guard:c=>OK, view:c=>({blocks:[{text:'Unchanged cross-church confirm.'},{acts:[['link','Switch','/']]}]})},
+  {path:'/no-access', kind:'bare', title:'No access', src:384, guard:c=>OK, view:c=>({blocks:[{text:'Existing copy + Sign out (new).'},{acts:[['link','Go home','/'],['link','Sign out','/login']]}]})},
+  {path:'/dashboard', kind:'redirect', title:'(old) Dashboard', src:384, guard:c=>({redirect:'/', why:'Every /dashboard target becomes / (#384 F11).'})},
+
+  // app shell
+  {path:'/', kind:'page', title:'Home', src:384, guard:c=>OK, view:homeView},
+  {path:'/notifications', kind:'page', title:'Notifications', parent:'/', src:380, guard:c=>OK, view:notifView},
+  {path:'/invitations/ministry/:id', kind:'page', title:'Ministry invitation', parent:'/', src:371, guard:c=>OK, view:c=>({blocks:[{text:'Media · Volunteer · Roles: Camera. Wrong account → masked email + Log out. Expired/used → "no longer available".'},{acts:[['link','Accept','/'],['dialog','Decline','confirm → home']]}]})},
+
+  // Serving
+  {path:'/my-schedule', kind:'page', title:'My schedule', parent:'/', nav:'My schedule', src:380, guard:needServe, view:myScheduleView},
+  {path:'/my-schedule/:assignmentId', kind:'nested', title:c=>ASSIGNMENTS[c.params.assignmentId].label, parent:'/my-schedule', src:'380, 381',
+    guard:all(needServe, exists(ASSIGNMENTS,'assignmentId','Assignment'), c=>c.p.serves.includes(ASSIGNMENTS[c.params.assignmentId].m)?OK:NOTFOUND('Someone else\'s Assignment (or removed): "This assignment is no longer on your schedule."')),
+    view:c=>{const a=ASSIGNMENTS[c.params.assignmentId]; return {blocks:[{text:`Event, time (Church Timezone), ${M[a.m]}, Sector, Role, leader's name. Who serves in this Shift (names only, "Open" places).`},{acts:[['link','Full schedule',`/my-schedule/${a.m}/out26`],['sheet','Ask to swap','sheet; note ≤ 500 chars; "Your Assignment stays until your leader changes it."']]}]};}},
+  {path:'/my-schedule/:m/:c', kind:'nested', title:c=>`${M[c.params.m]} · ${CYCLES[c.params.c]?.name}`, parent:'/my-schedule', src:380,
+    guard:all(needServe, c=>!M[c.params.m]?NOTFOUND('No such Ministry.'):c.p.serves.includes(c.params.m)?OK:scopeMiss(c.o,'Not a Volunteer in this Ministry.'), c=>!CYCLES[c.params.c]?NOTFOUND('No such cycle.'):STAGE[`${c.params.m}/${c.params.c}`]==='Published'?OK:{deny:'state', why:'"This schedule hasn\'t been published yet."'}),
+    view:c=>({blocks:[{text:'Published cycle per Event and Shift, rows per Sector × Role with names; unfilled = "Open". Read-only.'}]})},
+  {path:'/availability', kind:'page', title:'Availability', parent:'/', nav:'Availability', src:378, guard:needServe, view:availView},
+  {path:'/availability/:checkId', kind:'nested', title:c=>{const k=CHECKS[c.params.checkId];return `${M[k.m]} · ${CYCLES[k.c].name}`;}, parent:'/availability', src:378,
+    guard:all(needServe, exists(CHECKS,'checkId','check'), c=>c.p.serves.includes(CHECKS[c.params.checkId].m)?OK:NOTFOUND('Someone else\'s check.')),
+    view:c=>({blocks:[{text:'Shifts grouped by day, "Unavailable all day" per day, a switch per Shift. Local draft survives reboot. Mobile-first.'},{acts:[['action','Confirm: available for everything','sticky; saves marks + confirms']]}]})},
+
+  // Scheduling
+  {path:'/schedules', kind:'page', title:'Schedules', parent:'/', nav:'Schedules', src:377, guard:needSched, view:schedulesView},
+  {path:'/schedules/:m/:c', kind:'page', title:c=>`${M[c.params.m]} · ${CYCLES[c.params.c]?.name}`, parent:'/schedules', src:'377, 379, 381, 382',
+    guard:all(needSched, ministryScope, sentCycle), view:mcView},
+  {path:'/schedules/:m/:c/slots/:ts', kind:'nested', title:c=>SLOTS[c.params.ts], parent:'/schedules/:m/:c', src:377,
+    guard:all(needSched, ministryScope, sentCycle, exists(SLOTS,'ts','TimeSlot')),
+    view:c=>({blocks:[{text:'Serves toggle → Shift split (equal N or manual) → Sector × Role grid (shared with Usual setup). Save per slot → back, scrolled to the row.'},{acts:[['link','Save',`/schedules/${c.params.m}/${c.params.c}`],['link','Add a Sector first','/ministries/'+c.params.m+'/sectors','newtab']]}]})},
+  {path:'/schedules/:m/:c/assign', kind:'nested', title:'Assign', parent:'/schedules/:m/:c', src:'379, 381, 383',
+    guard:all(needSched, ministryScope, sentCycle), view:boardView},
+  {path:'/cycles', kind:'page', title:'Cycles', parent:'/', nav:'Cycles', src:376, guard:needAdmin, view:cyclesView},
+  {path:'/cycles/new', kind:'dialog-route', title:'New cycle', parent:'/cycles', src:376, when:o=>o.cycleNewRoute, guard:needAdmin, view:c=>({blocks:[{text:'Dialog over the Cycles list: name (prefilled), start, end (inclusive).'},{acts:[['link','Create','/cycles/nov26']]}]})},
+  {path:'/cycles/:id', kind:'page', title:c=>CYCLES[c.params.id].name, parent:'/cycles', src:'376, 382', guard:all(needAdmin, exists(CYCLES,'id','cycle')), view:cycleView},
+  {path:'/cycles/:id/events/new', kind:'nested', title:'New Event', parent:'/cycles/:id', src:376, guard:all(needAdmin, exists(CYCLES,'id','cycle')),
+    view:c=>({blocks:[{text:'Title, location, start (day + time), end (day + time); TimeSlots prefilled with one covering the whole Event.'},{acts:[['link','Save',`/cycles/${c.params.id}`]]}]})},
+  {path:'/cycles/:id/events/:eventId', kind:'nested', title:c=>EVENTS[c.params.eventId].name.split(' · ')[0], parent:'/cycles/:id', src:'376, 382',
+    guard:all(needAdmin, exists(CYCLES,'id','cycle'), exists(EVENTS,'eventId','Event'), c=>EVENTS[c.params.eventId].cycle===c.params.id?OK:NOTFOUND('Event belongs to another cycle.')), view:eventView},
+  {path:'/event-templates', kind:'page', title:'Event templates', parent:'/', nav:'Event templates', src:375, guard:needAdmin,
+    view:c=>({blocks:[{rows:[[TEMPLATES.sunday+' · Sunday · 3 blocks','/event-templates/sunday']]},{acts:[['link','New template','/event-templates/new'],['dialog','Delete (row)','confirm + Usual-setup count']]}]})},
+  {path:'/event-templates/new', kind:'nested', title:'New template', parent:'/event-templates', src:375, guard:needAdmin, view:c=>({blocks:[{text:'Name, weekday, ≥ 1 TimeBlock.'},{acts:[['link','Save','/event-templates']]}]})},
+  {path:'/event-templates/:id', kind:'nested', title:c=>TEMPLATES[c.params.id], parent:'/event-templates', src:375, guard:all(needAdmin, exists(TEMPLATES,'id','template')),
+    view:c=>({blocks:[{text:'Same form, prefilled. Blocks upsert by id.'},{acts:[['link','Save','/event-templates'],['dialog','Delete','confirm + count line']]}]})},
+
+  // Church
+  {path:'/ministries', kind:'page', title:'Ministries', parent:'/', nav:'Ministries', src:372, guard:c=>{const g=needSched(c); if(!g.ok) return g; if(c.o.singleRedirect && !c.p.admin && c.p.leads.length===1) return {redirect:`/ministries/${c.p.leads[0]}/sectors`, why:'Leader of exactly one Ministry → redirect (#372). Note the "Ministries" breadcrumb now loops back here.'}; return OK;}, view:ministriesView},
+  {path:'/ministries/:m', kind:'redirect', title:c=>M[c.params.m], parent:'/ministries', src:372, guard:c=>{const g=all(needSched, ministryScope)(c); return g.ok?{redirect:`/ministries/${c.params.m}/sectors`, why:'A Ministry opens on its first tab.'}:g;}},
+  ...['sectors','roles','usual-setup','settings'].map(t=>({path:`/ministries/:m/${t}`, kind:'tab', title:{sectors:'Sectors',roles:'Roles','usual-setup':'Usual setup',settings:'Settings'}[t], parent:'/ministries/:m', src:372,
+    guard:all(needSched, ministryScope, t==='settings'?needAdmin:()=>OK), view:c=>ministryTab(c,t)})),
+  {path:'/ministries/:m/usual-setup/:tb', kind:'nested', title:c=>BLOCKS[c.params.tb], parent:'/ministries/:m/usual-setup', src:372, guard:all(needSched, ministryScope, exists(BLOCKS,'tb','TimeBlock')),
+    view:c=>({blocks:[{text:'Serves toggle → Shift split → Sector × Role grid (same component as Prepare). Applies to cycles sent from now on.'},{acts:[['link','Save',`/ministries/${c.params.m}/usual-setup`]]}]})},
+  {path:'/people', kind:'page', title:'People', parent:'/', nav:'People', src:374, guard:needSched, view:peopleView},
+  {path:'/people/:memberId', kind:'nested', title:c=>MEMBERS[c.params.memberId].name, parent:'/people', src:374,
+    guard:all(needSched, exists(MEMBERS,'memberId','member'), c=>c.p.admin||MEMBERS[c.params.memberId].ms.some(m=>c.p.leads.includes(m))?OK:NOTFOUND('Member outside the Ministries you lead (#374: not-found, no probing).')), view:memberView},
+  {path:'/invitations', kind:'page', title:'Invitations', parent:'/', nav:'Invitations', src:373, guard:needSched, view:invitationsView},
+];
+
+function compile(path){ const segs=path.split('/').filter(Boolean); return {segs, score:segs.map(s=>s[0]===':'?1:2).join('')}; }
+R.forEach(r=>Object.assign(r, compile(r.path)));
+
+function match(pathname, o){
+  const parts = pathname.split('/').filter(Boolean);
+  const cands = R.filter(r=>(!r.when||r.when(o)) && r.segs.length===parts.length).map(r=>{
+    const params={}; for(let i=0;i<parts.length;i++){ const s=r.segs[i]; if(s[0]===':') params[s.slice(1)]=decodeURIComponent(parts[i]); else if(s!==parts[i]) return null; }
+    return {r, params};
+  }).filter(Boolean).sort((a,b)=>b.r.score.localeCompare(a.r.score));
+  return cands[0]||null;
+}
+const fill = (path, params) => path.replace(/:(\w+)/g, (_,k)=>params[k]);
+const titleOf = (r, c) => typeof r.title==='function' ? r.title(c) : r.title;
+
+function crumbs(r, c){
+  const trail=[]; let cur=r;
+  while(cur){ trail.unshift({label:titleOf(cur,c), url:fill(cur.path,c.params)}); cur = cur.parent ? R.find(x=>x.path===cur.parent) : null; }
+  return trail; // Home is the root (#384 F7)
+}
+
+function nav(p){
+  const c=cap(p), g=[{h:null, items:[['Home','/']]}];
+  if(c.serves) g.push({h:'Serving', items:[['My schedule','/my-schedule'],['Availability','/availability']]});
+  if(c.sched) g.push({h:'Scheduling', items:[['Schedules','/schedules'], ...(c.admin?[['Cycles','/cycles'],['Event templates','/event-templates']]:[])]});
+  if(c.sched) g.push({h:'Church', items:[['Ministries','/ministries'],['People','/people'],['Invitations','/invitations']]});
+  return g;
+}
+
+function resolve(url, p, o){
+  const [pathname, qs=''] = url.split('?');
+  const q = Object.fromEntries(new URLSearchParams(qs));
+  if (p.signedOut) {
+    const m0 = match(pathname, o);
+    if (!m0 || m0.r.kind!=='public') return {redirect:`/login?redirect=${encodeURIComponent(url)}`, why:'Signed out: every non-public page goes to Log in, then back.'};
+  }
+  const m = match(pathname, o);
+  if (!m) return {deny:'not-found', why:'No route: the app\'s not-found page.' , shell:true};
+  const c = {p, o, params:m.params, q, cap:cap(p)};
+  const g = m.r.guard(c);
+  if (g.redirect) return {redirect:g.redirect, why:g.why, route:m.r};
+  const out = {route:m.r, ctx:c, shell:!['public','bare'].includes(m.r.kind), crumbs:null, guard:g};
+  try { out.crumbs = crumbs(m.r, c); } catch { out.crumbs = [{label:'?', url:pathname}]; }
+  if (g.ok) out.view = m.r.view(c);
+  return out;
+}
+
+/* ---------- views (pure: return data) ---------- */
+function homeView(c){
+  const b=[]; const p=c.p;
+  if(p.admin) b.push({h:'Church', text:'First-run checklist until the first cycle is sent, then the next-cycle card.', rows:[
+    ['1 Create a Ministry ✓','/ministries','newtab'],['2 Add Sectors and Roles ✓','/ministries/kids/sectors','newtab'],['3 Invite a leader ✓','/invitations','newtab'],['4 Create an event template ✓','/event-templates','newtab'],['5 Plan and send your first cycle','/cycles','newtab']]});
+  const led = p.admin ? Object.keys(M) : p.leads;
+  if(led.length) b.push({h:'Ministries I lead', rows: led.filter(m=>STAGE[`${m}/out26`]!=='Published' || m==='kids').map(m=>[`${M[m]} · Outubro 2026`, `/schedules/${m}/out26`, null, m==='kids'?'Published · 1 swap request':STAGE[`${m}/out26`]])});
+  if(p.serves.length) b.push({h:'My serving', rows:[...p.serves.map(m=>[`Availability · ${M[m]} · Outubro 2026 · Answer by Fri 10 Oct`,`/availability/chk-${m}-out26`,null,'Not confirmed']), ...p.serves.flatMap(m=>Object.entries(ASSIGNMENTS).filter(([,a])=>a.m===m).map(([id,a])=>[a.label+' · 10:30–12:00', `/my-schedule/${id}`]))], acts:[['link','See all','/my-schedule']]});
+  if(!b.length) b.push({text:'Welcome to Igreja Central. Nothing needs you right now. (Nav shows only Home.)'});
+  return {blocks:b};
+}
+function notifView(c){
+  const p=c.p, r=[];
+  if(p.serves.includes('kids')) r.push(['Availability opened · Kids · Outubro 2026','/availability/chk-kids-out26'],['Schedule published · Kids','/my-schedule'],['Swap request answered · Sun 12 Oct','/my-schedule/a1']);
+  if(p.leads.includes('kids')||p.admin&&!p.leads.length) r.push(['Swap request · Ana · Sun 12 Oct 10:30 · Usher · Main Door', c.o.sheetParams?'/schedules/kids/out26/assign?swap=sr1':'/schedules/kids/out26/assign']);
+  if(p.leads.length) r.push(['Cycle ready to prepare · Outubro 2026', p.leads.length===1?`/schedules/${p.leads[0]}/out26`:'/schedules'],['Event changed · Culto 3 moved · 6 of your Volunteers affected', `/schedules/${p.leads[0]}/out26`]);
+  r.push(['Ministry invitation · Media','/invitations/ministry/inv-min-1']);
+  return {blocks:[{text:'Inbox + detail sheet; opening marks read; one Open button follows the deep link. Every Church Member.', rows:r}]};
+}
+function myScheduleView(c){
+  const mine = Object.entries(ASSIGNMENTS).filter(([,a])=>c.p.serves.includes(a.m));
+  return {blocks:[{h:'My Assignments', rows: mine.map(([id,a])=>[a.label+' · Teacher · Babies Room', `/my-schedule/${id}`, null, id==='a1'?'Swap requested':null])},
+    {h:'Ministry schedules', rows:c.p.serves.map(m=>[`${M[m]} · Outubro 2026`, `/my-schedule/${m}/out26`])}]};
+}
+function availView(c){ return {blocks:[{rows:c.p.serves.map(m=>[`${M[m]} · Outubro 2026 · Answer by Fri 10 Oct`, `/availability/chk-${m}-out26`, null, 'Not confirmed yet'])}]}; }
+function schedulesView(c){
+  const ms = c.p.admin ? Object.keys(M) : c.p.leads;
+  const filter = c.p.admin || ms.length>1;
+  return {blocks:[{text: filter ? 'Ministry filter shown.' : 'Leads one Ministry: no filter.', rows: ms.map(m=>[`${M[m]} · Outubro 2026`, `/schedules/${m}/out26`, null, m==='kids'?'Published · 1 swap request':STAGE[`${m}/out26`]])},{text:'Novembro 2026 is Draft: not here until sent.'}]};
+}
+function mcView(c){
+  const {m,c:cy}=c.params, {st,a}=mcActions(m,cy);
+  const b=[{text:`Stage: ${st}${m==='kids'?' · 1 swap request':''}`, acts:a}];
+  if(m==='kids') b.push({acts:[['link','Swap requests (1)', c.o.sheetParams?`/schedules/${m}/${cy}/assign?swap=sr1`:`/schedules/${m}/${cy}/assign`]]});
+  b.push({h:'Events by week', rows:[[`Culto 3 · ${SLOTS['sun-1030']} · 2 Shifts · 9 people`, `/schedules/${m}/${cy}/slots/sun-1030`]], strike:[['Culto 2 · Sun 5 Oct · Cancelled by admin']]});
+  if(st!=='To prepare') b.push({h:'Answers', text:'32 of 40 confirmed · Not confirmed yet / Confirmed · available / Confirmed · unavailable for N'});
+  return {blocks:b};
+}
+function boardView(c){
+  const sheet = c.q.swap ? {title:'Swap request · Ana', text:'Sun 12 Oct 10:30 · Usher · Main Door · note "Rita can take it".', acts:[['action','Cover (move/remove on the board)',''],['dialog','Keep them on','optional reply']]} : null;
+  return {blocks:[{text:'Existing board on its own page. Rows per Sector × Role. "38 of 45 places filled". Started Shifts read-only (409). Desktop-first.'},
+    {rows:[['Babies Room → Teacher 1/1 · Helper 2/3', null, null, null],['Main Door → Usher 2/2 ⚠ swap', null, null, 'Swap requested']]},
+    {acts:[['dialog','Publish','gaps confirmed; blocked at zero'],['dialog','Send updates (3 people)','net changes only']]}], sheet};
+}
+function cyclesView(c){
+  return {blocks:[{rows:[['Novembro 2026','/cycles/nov26',null,'Draft'],['Outubro 2026','/cycles/out26',null,'Sent']]},
+    {acts:[ c.o.cycleNewRoute ? ['link','New cycle','/cycles/new'] : ['dialog','New cycle','dialog on this page, no route'] ]}]};
+}
+function cycleView(c){
+  const id=c.params.id, draft=CYCLES[id].state==='Draft';
+  const evs=Object.entries(EVENTS).filter(([,e])=>e.cycle===id);
+  return {blocks:[{text:`State: ${CYCLES[id].state}`, acts: draft
+      ? [['dialog','Edit',''],['dialog','Delete','"Deletes 14 Events"'],['dialog','Apply templates','link to Event templates if none'],['link','Add Event',`/cycles/${id}/events/new`],['dialog','Send to Ministries','= lock; can\'t be undone']]
+      : [['link','Add Event',`/cycles/${id}/events/new`]]},
+    {h:'Events', rows:evs.filter(([,e])=>!e.cancelled).map(([eid,e])=>[e.name + (draft?'':'  ⋯ Move · Cancel'), `/cycles/${id}/events/${eid}`]), strike:evs.filter(([,e])=>e.cancelled).map(([,e])=>[e.name+' · Cancelled'])}]};
+}
+function eventView(c){
+  const sent = CYCLES[c.params.id].state==='Sent';
+  return {blocks:[sent
+    ? {text:'Sent: title and location editable (silent). Slots can\'t be added/removed/resized.', acts:[['dialog','Move Event','same duration; clash list'],['dialog','Cancel Event','typed gate: cancel / cancelar'],['dialog','Move (slot row)',''],['dialog','Cancel (slot row)','']]}
+    : {text:'Draft: same form as New Event, prefilled; slots upsert by id.', acts:[['link','Save',`/cycles/${c.params.id}`],['dialog','Delete','hard delete']]}]};
+}
+function ministriesView(c){
+  const ms = c.p.admin ? Object.keys(M) : c.p.leads;
+  return {blocks:[{rows:ms.map(m=>[M[m], `/ministries/${m}/sectors`])}, ...(c.p.admin?[{acts:[['dialog','New Ministry','name only → its Sectors tab']]}]:[])]};
+}
+function ministryTab(c,t){
+  const m=c.params.m;
+  const tabs=[['Sectors',`/ministries/${m}/sectors`],['Roles',`/ministries/${m}/roles`],['Usual setup',`/ministries/${m}/usual-setup`], ...(c.p.admin?[['Settings',`/ministries/${m}/settings`]]:[])];
+  const body = {
+    sectors:{rows:[['Babies Room',null],['Main Door',null]], acts:[['dialog','Add',''],['dialog','Rename','history warning + "Archive and create new"'],['dialog','Archive','blocked while in use']]},
+    roles:{rows:[['Teacher',null],['Helper',null]], acts:[['dialog','Add',''],['dialog','Rename',''],['dialog','Archive','blocked while in use']]},
+    'usual-setup':{rows:[[BLOCKS['tb-1030']+' · 2 Shifts · 9 people', `/ministries/${m}/usual-setup/tb-1030`],['Sunday · 18:00 Service · Not served', null]], text:'No event templates → "No event templates yet" (admin: link ↗; leader: text only).'},
+    settings:{acts:[['action','Rename',''],['dialog','Archive','blocked while upcoming participation']]},
+  }[t];
+  return {tabs, blocks:[body]};
+}
+function peopleView(c){
+  const rows = Object.entries(MEMBERS).filter(([,x])=>c.p.admin||x.ms.some(m=>c.p.leads.includes(m))).map(([id,x])=>[x.name+' · '+(x.ms.map(m=>M[m]).join(', ')||'no Ministry'), `/people/${id}`, null, x.lvl==='leader'?'Leader':null]);
+  return {blocks:[{text:c.p.admin?'Every Church Member, incl. no-Ministry ones.':'Only members of the Ministries you lead.', rows}]};
+}
+function memberView(c){
+  const x=MEMBERS[c.params.memberId], p=c.p, b=[];
+  if(p.admin) b.push({h:'Church access', acts:[['dialog','Make admin','last admin can\'t be demoted']]});
+  x.ms.filter(m=>p.admin||p.leads.includes(m)).forEach(m=>{
+    const leaderRow = x.lvl==='leader';
+    const acts=[]; if(p.admin) acts.push(['dialog', leaderRow?'Make volunteer':'Make leader','']);
+    if(p.admin || !leaderRow) acts.push(['dialog','Edit Roles','blocked by upcoming Assignments'],['dialog',`Remove from ${M[m]}`,'blocked by upcoming Assignments']);
+    else acts.push(['note','Another leader: read-only','']);
+    b.push({h:`${M[m]} · ${x.lvl}`, acts});
+  });
+  b.push({acts:[['dialog','Invite to a Ministry','shared Invite dialog, email prefilled']]});
+  return {blocks:b};
+}
+function invitationsView(c){
+  const p=c.p;
+  return {blocks:[{text:(p.admin?'Every invitation (admin + every Ministry).':'Only your Ministries; leader-level rows read-only.')+' Filters: Status · '+(p.admin||p.leads.length>1?'Ministry · ':'')+'Invited as · email.'},
+    {rows:[['ana@… · Kids · Volunteer · Pending',null,null,'Resend · Revoke'],['bia@… · Kids · Leader · Pending',null,null,p.admin?'Resend · Revoke':'read-only'], ...(p.admin?[['rita@… · Admin · Pending',null,null,'Resend · Revoke']]:[])]},
+    {acts:[['dialog','Invite', 'Invite as: '+(p.admin?'Admin · Leader · Volunteer':'Volunteer only')]]}]};
+}
+
+/* What each page is built from in today's app (apps/web/src/features/...). keep = carried over as is;
+   change = carried over with the adjustments the Flow tickets decided; gone = removed by a decision; new = nothing exists today. */
+const REUSE = {
+  '/schedules/:m/:c/assign':{from:'/scheduling/rostering/$ministryId/$cycleId', keep:['CycleBuilder: header, date strip, date filters, board grid / matrix and cells','Volunteer rail with drag-and-drop (pool sidebar, volunteer cards)','Assignment picker and ranked suggestion list','Completion counts, "synced ago" label','Substitution picker (swap someone in)'], change:['Rows grouped by Sector, one row per Role (Team chips go) — #368/#379','Works for leaders and admins without a Volunteer profile (B2/B3)','Override dialog loses its reason field — #383','Started Shifts read-only; ⚠ + side sheet for Swap requests — #381/#383','Publish once per Ministry-cycle + Send updates — #379'], gone:['Audit panel: parked behind a flag (recording kept) — #379','Dead "Rostering" breadcrumb']},
+  '/schedules':{from:'/scheduling/tailoring and /scheduling/rostering lists', keep:['Ministry-cycle list, filters bar, stat pills'], change:['One list for both stages, stage badges To prepare → Asking → Assigning → Published — #377/#379']},
+  '/schedules/:m/:c':{from:'/scheduling/tailoring/$ministryId/$cycleId', keep:['Calendar workspace (tailoring calendar, filters, slot list) — kept by #385, amending #377','Availability status section (exists, never mounted) → becomes Answers — #377'], change:['A slot click opens the nested slot page; Save per slot — #377','Ask once per Ministry-cycle, Remind with cooldown — #377'], gone:['Batched save and per-Event ask/resend — #377']},
+  '/schedules/:m/:c/slots/:ts':{from:'tailoring slot editing', keep:['Manual split editor'], change:['Headcount grid per Sector × Role, shared with Usual setup; 0 = no requirement — #370/#372']},
+  '/cycles':{from:'/scheduling/planning-cycles', keep:['Cycle list card','Create cycle form (as a dialog)'], change:['End date inclusive — #376']},
+  '/cycles/:id':{from:'/scheduling/planning-cycles/$cycleId', keep:['Cycle header, review card, Event cards, calendar rows','Apply templates dialog'], change:['Send to Ministries = lock; Move / Cancel menu after send — #376/#382'], gone:['Template library link (templates get their own area) — #375']},
+  '/cycles/:id/events/new':{from:'Quick-create Event modal + create-slot dialog', keep:['Slot form fields'], change:['Becomes a nested page; Event first, one whole-Event TimeSlot by default — #376']},
+  '/cycles/:id/events/:eventId':{from:'Edit-Event and edit-slot dialogs', keep:['Slot form fields'], change:['Becomes a nested page; slots upsert by id; Move/Cancel after send — #376/#382']},
+  '/event-templates':{from:'/scheduling/planning-cycles/templates', keep:['Template manager card'], change:['Own nav item; Delete gets a confirm — #375']},
+  '/event-templates/new':{from:'Template editor dialog', keep:['TemplateEditorForm, template block rows'], change:['Dialog → nested page; ≥ 1 block — #375']},
+  '/event-templates/:id':{from:'Template editor dialog', keep:['TemplateEditorForm, template block rows'], change:['Dialog → nested page; blocks upsert by id — #375']},
+  '/availability':{from:'/volunteer/availability', keep:['Availability check list'], gone:['Dead per-Event availability tab and its nav entry — #378']},
+  '/availability/:checkId':{from:'/volunteer/availability', keep:['Availability check detail + form: per-Shift marks, whole day, confirm with zero marks'], change:['Grouped by day, local draft, one sticky "Confirm: …" button, only Shifts needing a held Role — #378']},
+  '/my-schedule':{from:'/dashboard tabs', keep:['Upcoming assignments section','Ministry schedule section'], gone:['Confirm / Can\'t serve / Cancel on Assignments: parked behind a flag — #380/#381']},
+  '/my-schedule/:assignmentId':{new:true, change:['New page: who serves in the Shift, Ask to swap sheet — #380/#381']},
+  '/my-schedule/:m/:c':{from:'/dashboard Ministry schedule tab', keep:['Ministry schedule section'], change:['Ministry select, Team line and confirmation badges go — #380']},
+  '/notifications':{from:'/notifications', keep:['Inbox, detail sheet, Mark all read, bell with unread count'], change:['Every Church Member (no 401s); MVP kinds only — #380/#399']},
+  '/':{from:'/ (Volunteer dashboard)', change:['Home sections per capacity; My serving reuses the upcoming-assignments and availability-needed sections — #384'], gone:['"Volunteer dashboard" as everyone\'s home; command palette (parked behind a flag)']},
+  '/login':{from:'/login', keep:['Login page as is']},
+  '/invitations/church/:id':{from:'/invitations/church/$id', keep:['Join page'], change:['Decline, existing-account message, no half-made User — #371']},
+  '/invitations/ministry/:id':{from:'/invitations/ministry/$id', keep:['Accept page, wrong-account notice'], change:['Decline with confirm — #371']},
+  '/select-church':{from:'/select-church', keep:['As is']},
+  '/switch-church-confirm':{from:'/switch-church-confirm', keep:['As is']},
+  '/no-access':{from:'/no-access', keep:['Copy'], change:['Adds Sign out — #384']},
+  '/forgot-password':{new:true}, '/reset-password':{new:true},
+  '/ministries':{new:true}, '/ministries/:m/sectors':{new:true}, '/ministries/:m/roles':{new:true}, '/ministries/:m/settings':{new:true},
+  '/ministries/:m/usual-setup':{new:true, change:['Serving profile has endpoints but no UI today — #372']},
+  '/ministries/:m/usual-setup/:tb':{new:true, keep:['Manual split editor + the headcount grid shared with Prepare']},
+  '/people':{new:true}, '/people/:memberId':{new:true}, '/invitations':{new:true, change:['Mint and resend endpoints exist; no UI calls them — #373']},
+};
+const OUTSIDE_MAP = ['Volunteer Transfer: kept as it is (no Journey) — map Out of scope','Background-refresh indicator, offline banner, TeamLeader read-only roster, per-participation publish: disposition owned by "Dispositions for existing features" (#386)'];
+
+/* Walkthroughs: [persona, url, what to watch] */
+const WALKS = {
+  'J1 Onboarding':[['out','/invitations/church/inv-church-1','Public page, no shell, no breadcrumbs. Step 1 → Send code → step 2.'],['admin','/','Joined → / → Home with the first-run checklist (admin).']],
+  'J2 Church setup':[['admin','/ministries','Ministries list; New Ministry is a dialog (no route).'],['admin','/ministries/kids/sectors','A new Ministry opens on Sectors. Tabs in setup order.'],['admin','/ministries/kids/roles','Roles tab.'],['admin','/invitations','Invitations: Invite as Admin · Leader · Volunteer.'],['admin','/people','People: every member.'],['admin','/people/ana','Detail: Church access + Ministry cards.']],
+  'J3 Event templates':[['admin','/event-templates','Own area under Scheduling.'],['admin','/event-templates/new','Nested page.'],['admin','/event-templates/sunday','Edit page; Delete with count.']],
+  'J4 Ministry setup (leader)':[['leader1','/ministries','Leader of one Ministry: see the "single-Ministry redirect" question.'],['leader1','/ministries/kids/usual-setup','No Settings tab for a leader.'],['leader1','/ministries/kids/usual-setup/tb-1030','Nested page; breadcrumb jumps back to any level.'],['leader1','/invitations','Invite as Volunteer only.']],
+  'J5 Plan a cycle':[['admin','/cycles','Cycles list; New cycle.'],['admin','/cycles/nov26','Draft: Apply templates · Add Event · Send to Ministries.'],['admin','/cycles/nov26/events/new','Nested New Event.'],['admin','/cycles/nov26/events/retiro','Draft Event page.']],
+  'J6 Prepare (leader)':[['leader1','/notifications','"Cycle ready to prepare" deep-links to the Ministry-cycle page.'],['leader1','/schedules','Leads one: no filter.'],['leader1','/schedules/media/out26','Not their Ministry: see the out-of-scope question.'],['leader2','/schedules/worship/out26','Leader of two: Worship is Asking.'],['leader2','/schedules/worship/out26/slots/sun-1030','Per-slot nested page.']],
+  'J7 Answer availability':[['vol','/','Home → My serving.'],['vol','/availability','My checks.'],['vol','/availability/chk-kids-out26','Check page. Try Phone 390 px.']],
+  'J8 Assign & publish':[['leader1','/schedules/kids/out26','Ministry-cycle page.'],['leader1','/schedules/kids/out26/assign','Board on its own nested page.']],
+  'J9 Schedule + Swap request':[['vol','/my-schedule','My Assignments + Ministry schedules.'],['vol','/my-schedule/a1','Assignment page: Ask to swap sheet.'],['vol','/my-schedule/kids/out26','Full schedule: breadcrumb follows the URL, not the click path.'],['leader1','/notifications','Swap request alert.'],['leader1','/schedules/kids/out26/assign?swap=sr1','Board opens with the request sheet (search param).']],
+  'J10 Changes after send':[['admin','/cycles/out26','Sent: Add Event stays; ⋯ Move · Cancel per card; cancelled greyed.'],['admin','/cycles/out26/events/culto-3','Sent Event page: Move / Cancel with typed gate.'],['leader1','/schedules/kids/out26','Leader sees the cancel struck through.'],['leader1','/schedules/kids/out26/assign','Send updates after changes.']],
+  'Permission probes':[['vol','/cycles','Capability gate → no-access.'],['admin','/my-schedule','Admin who doesn\'t serve → "You don\'t serve…".'],['leader1','/people/joao','Member outside scope → not-found.'],['leader1','/ministries/kids/settings','Settings tab is admin-only → no-access.'],['leader1','/ministries/worship/roles','Another Ministry → see out-of-scope question.'],['member','/','Plain member: Home only.'],['out','/schedules','Signed out → Log in.'],['vol','/dashboard','Old route → /.']],
+};
+
+/* Open questions; ids that have a toggle map to opts keys */
+const QUESTIONS = [
+  {id:'outOfScope', title:'A leader opens another Ministry\'s page (Schedules, Ministry tabs): no-access or not-found?',
+   opts:[['not-found','not-found (recommended)'],['no-access','no-access']],
+   rec:'Not-found for objects outside your scope, no-access only for capability gates (Volunteer on /cycles, leader on Settings). Same rule People and Invitations already use, and the #400 proposal. It overrides the "another Ministry → no-access" wording in the Ministries, Preparing and Assigning tickets; #400 still owns the API codes.'},
+  {id:'singleRedirect', title:'Leader of exactly one Ministry: does /ministries redirect into it?',
+   opts:[[false,'No redirect: one-row list (recommended)'],[true,'Redirect (as #372 wrote)']],
+   rec:'With the redirect, the "Ministries" breadcrumb jumps back to the page you\'re on, breaking the breadcrumb rule. Schedules already shows a one-row list for a one-Ministry leader; keep both alike. Try J4 with each answer.'},
+  {id:'cycleNewRoute', title:'New cycle: a routed dialog (/cycles/new) or a plain dialog?',
+   opts:[[false,'Plain dialog, no route (recommended)'],[true,'Routed dialog (as #376 listed)']],
+   rec:'New Ministry, Invite and Apply templates are plain dialogs; a 3-field dialog needs no shareable URL. Nested pages stay for real forms (New Event, New template).'},
+  {id:'sheetParams', title:'Sheets a notice deep-links to carry a search param (?swap=$id on the board); other sheets and all dialogs don\'t.',
+   opts:[[true,'Yes (recommended)'],[false,'No: the alert lands on the board, sheet closed']],
+   rec:'The swap alert must open on that request. Ask to swap is opened by the Volunteer on the page, so it needs none.'},
+  {id:null, title:'Breadcrumbs follow the URL hierarchy, never the click path; Home is the root everywhere.',
+   rec:'"Full schedule" from an Assignment shows Home › My schedule › Kids · Outubro 2026, not via the Assignment. Home root was set by #384; the Flow tickets\' trails just omitted it.'},
+  {id:null, title:'Retired routes are removed with no redirect except /dashboard → /.',
+   rec:'/scheduling/*, /volunteer/availability, the old /availability redirect and /prototype/active-church go. The server links only /invitations/church|ministry/$id (kept) and /dashboard (redirected), so no stored link breaks.'},
+  {id:null, title:'The Ministry-invitation accept page stays at /invitations/ministry/$id beside the /invitations list.',
+   rec:'Emails already carry that link. Its breadcrumb is Home › Ministry invitation, not under Invitations, and it opens for any signed-in member, while /invitations is leaders and admins only.'},
+  {id:null, title:'URLs carry ids, never slugs; breadcrumbs show names.',
+   rec:'Renames (Ministries, cycles, templates) never break a link.'},
+];
+
+/* ===================== Page shell (DOM) ===================== */
+const S = {persona:'admin', churches:1, phone:false, menu:false, url:'/', hist:[], opts:{...DEFAULT_OPTS}, lower:'matrix', walk:null, step:0, prev:null};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+function go(url, push=true){ if(push && S.url!==url) S.hist.push(S.url); S.url=url; S.menu=false; render(); }
+function setPersona(k){ S.persona=k; render(); }
+
+function linkHTML(label, url, mode){ return url ? `<a data-go="${esc(url)}" class="${mode==='newtab'?'newtab':''}" title="${mode==='newtab'?'Opens in a new tab (setup shortcut); origin refetches on focus':esc(url)}">${esc(label)}</a>` : esc(label); }
+function actHTML([k,label,arg,mode]){
+  if(k==='link') return `<button class="act-b" data-go="${esc(arg)}" title="${esc(arg)}">${esc(label)}${mode==='newtab'?' ↗':''}</button>`;
+  if(k==='note') return `<span class="note">${esc(label)}</span>`;
+  const icon = {dialog:'◻ ', sheet:'▤ ', action:''}[k]||'';
+  return `<button class="${k==='action'?'act-b':'dlg'}" title="${esc(k)}${arg?': '+esc(arg):''}" data-toast="${esc(k+' · '+label+(arg?' — '+arg:''))}">${icon}${esc(label)}</button>`;
+}
+function blocksHTML(v){
+  let h='';
+  if(v.tabs) h+=`<div class="tabs">${v.tabs.map(([l,u])=>`<a data-go="${u}" class="${u===S.url.split('?')[0]?'act':''}">${l}</a>`).join('')}</div>`;
+  for(const b of v.blocks){
+    h+='<div class="blk">';
+    if(b.h) h+=`<h3>${esc(b.h)}</h3>`;
+    if(b.text) h+=`<p class="note">${esc(b.text)}</p>`;
+    (b.rows||[]).forEach(([l,u,mode,tag])=>{ h+=`<div class="row"><span>${linkHTML(l,u,mode)}</span>${tag?`<span class="tag ${/swap|Not conf|Asking/i.test(tag)?'w':/Published|✓/.test(tag)?'g':''}">${esc(tag)}</span>`:''}</div>`; });
+    (b.strike||[]).forEach(([l])=>{ h+=`<div class="row strike"><span>${esc(l)}</span><span class="tag b">Cancelled</span></div>`; });
+    if(b.acts) h+=`<div class="acts">${b.acts.map(actHTML).join('')}</div>`;
+    h+='</div>';
+  }
+  return h;
+}
+
+function render(){
+  const p = {...PERSONAS[S.persona]};
+  let res = resolve(S.url, p, S.opts), hops=[];
+  while(res.redirect && hops.length<4){ hops.push({from:S.url, to:res.redirect, why:res.why}); S.url=res.redirect; res=resolve(S.url, p, S.opts); }
+  $('url').value=S.url;
+
+  // persona bar
+  $('personaBar').innerHTML = '<span class="lbl">Person:</span>' + Object.entries(PERSONAS).map(([k,v])=>`<button data-persona="${k}" class="${k===S.persona?'on':''}">${v.label}</button>`).join('');
+  $('ch1').className=S.churches===1?'on':''; $('ch2').className=S.churches===2?'on':'';
+  $('desk').className=S.phone?'':'on'; $('phone').className=S.phone?'on':'';
+
+  // app
+  const r=res.route, shell = res.shell!==false && !p.signedOut;
+  let app='';
+  if(shell){
+    const navHTML = nav(p).map(g=>(g.h?`<div class="navg">${g.h}</div>`:'')+g.items.map(([l,u])=>{const cur=S.url.split('?')[0]; const act = u==='/'?cur==='/':cur===u||cur.startsWith(u+'/'); return `<a data-go="${u}" class="${act?'act':''}">${l}</a>`;}).join('')).join('');
+    const crumbsHTML = (res.crumbs||[{label:'Home',url:'/'}]).map((c,i,a)=> i===a.length-1?`<b>${esc(c.label)}</b>`:`<a data-go="${esc(c.url)}">${esc(c.label)}</a>`).join('<span class="sep">›</span>');
+    app += `<div class="app ${S.phone?'phone':''} ${S.menu?'menu':''}"><div class="side"><div class="church">Igreja Central</div>${S.churches>1?'<div class="switch"><a data-go="/switch-church-confirm">Switch church</a></div>':'<div class="switch note">&nbsp;</div>'}<div class="nav">${navHTML}</div></div>
+      <div class="main"><div class="head"><button class="menu-btn" id="menuBtn">☰</button><div class="crumbs">${crumbsHTML}</div><a data-go="/notifications" title="Bell">🔔<sup>3</sup></a><span class="note" title="User menu: name, email, Sign out">${esc(p.label.split(' ·')[0])} ▾</span></div><div class="body">${bodyHTML(res)}</div></div></div>`;
+  } else {
+    app += `<div class="app ${S.phone?'phone':''}"><div class="main"><div class="body"><div class="kind">Outside the app shell · no nav, no breadcrumbs</div>${bodyHTML(res)}</div></div></div>`;
+  }
+  $('app').innerHTML = app;
+
+  // why panel
+  const g = res.guard||{}, verdict = g.ok?'Shown':({'no-access':'No access page','not-found':'Not found','dont-serve':'"You don\'t serve" state','state':'State message'}[g.deny||res.deny]||'—');
+  $('why').innerHTML = `<h2>Why you see this</h2><div class="kv">
+    <div>URL</div><div class="mono">${esc(S.url)}</div>
+    <div>Route</div><div class="mono">${r?esc(r.path):'—'}</div>
+    <div>Kind</div><div>${r?({page:'Page',nested:'Nested page',tab:'Tab (own route)',public:'Public page','bare':'Outside the shell','dialog-route':'Dialog with a route',redirect:'Redirect'}[r.kind]):'—'}</div>
+    <div>Verdict</div><div><span class="tag ${g.ok?'g':g.deny==='not-found'||res.deny?'w':'b'}">${verdict}</span></div>
+    <div>Because</div><div>${esc(g.why||res.why||(g.ok?'Allowed for this person.':''))}</div>
+    <div>Decided in</div><div>${r?String(r.src).split(', ').map(n=>`<a href="https://github.com/tiagoluizpoli/church/issues/${n}" target="_blank">#${n}</a>`).join(' '):'—'}</div>
+    ${hops.length?`<div>Redirects</div><div>${hops.map(h=>`<div><span class="mono">${esc(h.from)}</span> → <span class="mono">${esc(h.to)}</span><div class="why">${esc(h.why)}</div></div>`).join('')}</div>`:''}
+    <div>Capacities</div><div>${[p.admin&&'ChurchAdmin', p.leads.length&&('leads '+p.leads.map(m=>M[m]).join(', ')), p.serves.length&&('serves '+p.serves.map(m=>M[m]).join(', '))].filter(Boolean).join(' · ')||(p.signedOut?'signed out':'plain Church Member')}</div>
+  </div><p class="note" style="margin-top:12px">Legend: <b>◻</b> dialog · <b>▤</b> sheet · ↗ opens in a new tab · solid button = navigation or action.</p>`;
+
+  renderLower();
+}
+
+function reuseHTML(path){
+  const x=REUSE[path]; if(!x) return '';
+  const li=(a)=>`<ul>${a.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`;
+  return `<div class="reuse">${x.new?'<b style="color:var(--warn)">New page</b> — nothing exists today.':`<b style="color:var(--ok)">Built from today's app</b> · <span class="mono">${esc(x.from)}</span>`}
+    ${x.keep?'<div><b>Keeps</b>'+li(x.keep)+'</div>':''}${x.change?'<div><b>Adjusts</b>'+li(x.change)+'</div>':''}${x.gone?'<div><b>Drops (decided)</b>'+li(x.gone)+'</div>':''}</div>`;
+}
+function bodyHTML(res){
+  const r=res.route, g=res.guard||{};
+  if(!r) return `<div class="state w"><b>Page not found</b><p class="note">${esc(res.why)}</p></div>`;
+  let title=''; try { title = res.ctx ? titleOf(r,res.ctx) : ''; } catch {}
+  if(!g.ok){
+    if(g.deny==='no-access') return `<div class="state b"><b>No access</b><p class="note">"You don't have access to this page." · Go home · Sign out</p></div>`;
+    if(g.deny==='not-found') return `<div class="state w"><b>Not found</b><p class="note">Same page as an id that doesn't exist (no probing).</p></div>`;
+    if(g.deny==='dont-serve') return `<div class="pt">${esc(title)}</div><div class="state"><b>You don't serve in a Ministry yet.</b></div>`;
+    return `<div class="pt">${esc(title)}</div><div class="state"><b>${esc(g.why)}</b></div>`;
+  }
+  const v=res.view;
+  return `<div class="pt">${esc(title)}</div><div class="kind">${({page:'Page',nested:'Nested page',tab:'Tab',public:'Public page',bare:'Page','dialog-route':'Dialog over the list (has its own URL)'}[r.kind])}</div>${reuseHTML(r.path)}<p class="note"><i>Below: placeholder contents (actions and links only), not the page design.</i></p>${blocksHTML(v)}${v.sheet?`<div class="sheet"><b>▤ ${esc(v.sheet.title)}</b><p class="note">${esc(v.sheet.text)}</p><div class="acts">${v.sheet.acts.map(actHTML).join('')}</div><p class="note">Opened by <span class="mono">?swap=sr1</span>. <a data-go="${esc(S.url.split('?')[0])}">Close</a></p></div>`:''}`;
+}
+
+/* ---------- lower tabs: matrix, walkthroughs, questions ---------- */
+const MATRIX_COLS = ['admin','leader1','leader2','vol','member','adminAll'];
+function sampleUrl(r){
+  const pm={m:'kids',c:'out26',ts:'sun-1030',tb:'tb-1030',assignmentId:'a1',checkId:'chk-kids-out26',memberId:'ana',eventId:'culto-3'};
+  let id = r.path.startsWith('/cycles/')?'out26':r.path.startsWith('/event-templates')?'sunday':r.path.includes('church')?'inv-church-1':'inv-min-1';
+  return fill(r.path, {...pm, id});
+}
+function cell(res){
+  if(res.redirect) return ['→ '+res.redirect.split('?')[0],'c-rd'];
+  const g=res.guard||{};
+  if(g.ok){ return ['✓','c-ok']; }
+  return [{'no-access':'no-access','not-found':'not-found','dont-serve':'"don\'t serve"','state':'state msg'}[g.deny]||'?', g.deny==='no-access'?'c-no':g.deny==='not-found'?'c-nf':'c-ds'];
+}
+function renderLower(){
+  $('lowerTabs').innerHTML = [['matrix','Permission matrix'],['reuse',"From today's app"],['walks','Walkthroughs per Journey'],['qs','Open questions'],['tree','Page tree']].map(([k,l])=>`<button data-lower="${k}" class="${S.lower===k?'on':''}">${l}</button>`).join('');
+  let h='';
+  if(S.lower==='matrix'){
+    const rows = R.filter(r=>!r.when||r.when(S.opts));
+    const navOf = (k,u)=>nav(PERSONAS[k]).some(g=>g.items.some(([,x])=>x===u));
+    h = `<div class="tblwrap"><table><thead><tr><th>Route</th><th>Kind</th>${MATRIX_COLS.map(k=>`<th>${PERSONAS[k].label}</th>`).join('')}<th>Decided in</th></tr></thead><tbody>` +
+      rows.flatMap(r=>{ const u=sampleUrl(r); return r.path.includes(':m')||r.path.includes(':memberId') ? [[r,u,''],[r,u.replace('/kids','/worship').replace('/ana','/joao'),' (other Ministry)']] : [[r,u,'']]; }).map(([r,u,suffix])=>{ return `<tr><td><a data-go="${esc(u)}" class="mono">${esc(r.path)}</a>${suffix?`<span class="note">${suffix}</span>`:''}${r.nav&&!suffix?' <span class="tag">nav</span>':''}</td><td>${r.kind}</td>${MATRIX_COLS.map(k=>{const [t,cl]=cell(resolve(u,{...PERSONAS[k]},S.opts)); return `<td class="${cl}">${esc(t)}${r.nav&&navOf(k,r.path)?' · nav':''}</td>`;}).join('')}<td>${String(r.src).split(', ').map(n=>'#'+n).join(' ')}</td></tr>`;}).join('') +
+      `</tbody></table></div><p class="note" style="padding:8px">Sample ids: Kids (or Worship / João on the "other Ministry" rows), Outubro 2026 (Sent). Columns computed by the same rules the app uses; the cell is what that person gets at the sample URL. Leader1 leads only Kids. Click a route to open it as the current person.</p>`;
+  } else if(S.lower==='reuse'){
+    h = `<div style="padding:12px 14px"><p class="note">Every new page and what it carries over from today's app. Bodies in the mock are placeholders; these lists are what the specs build from.</p>` + R.filter(r=>REUSE[r.path]).map(r=>`<div style="margin-bottom:10px"><a data-go="${esc(sampleUrl(r))}" class="mono">${esc(r.path)}</a>${reuseHTML(r.path)}</div>`).join('') + `<h3>Outside this map</h3><ul>${OUTSIDE_MAP.map(t=>`<li class="note">${esc(t)}</li>`).join('')}</ul></div>`;
+  } else if(S.lower==='walks'){
+    h = `<div style="padding:12px 14px"><div class="bar">${Object.keys(WALKS).map(k=>`<button data-walk="${esc(k)}" class="${S.walk===k?'on':''}">${esc(k)}</button>`).join('')}</div>`;
+    if(S.walk){ const steps=WALKS[S.walk]; h+=`<ol class="steps">${steps.map(([pk,u,w],i)=>`<li class="${i<S.step?'done':i===S.step?'cur':''}"><button data-step="${i}">${i===S.step?'▶ ':''}${esc(PERSONAS[pk].label)} opens <span class="mono">${esc(u)}</span></button> <span class="note">${esc(w)}</span></li>`).join('')}</ol>`; }
+    else h+='<p class="note">Pick a Journey. Each step switches the person and opens the URL.</p>';
+    h+='</div>';
+  } else if(S.lower==='qs'){
+    h = QUESTIONS.map((q,i)=>`<div class="q"><b>Q${i+1}. ${esc(q.title)}</b>${q.id?`<div class="bar" style="margin-top:6px">${q.opts.map(([v,l])=>`<button data-opt="${q.id}" data-val="${esc(JSON.stringify(v))}" class="${S.opts[q.id]===v?'on':''}">${esc(l)}</button>`).join('')}</div>`:''}<p class="why">${esc(q.rec)}</p></div>`).join('');
+  } else {
+    const kids = par => R.filter(r=>r.parent===par && (!r.when||r.when(S.opts)));
+    const tree = (r, d) => `<div style="padding-left:${d*18}px" class="mono">${d?'└ ':''}<a data-go="${esc(sampleUrl(r))}">${esc(r.path)}</a> <span class="note">${esc(typeof r.title==='function'?titleOf(r,{params:{m:'kids',c:'out26',ts:'sun-1030',tb:'tb-1030',assignmentId:'a1',checkId:'chk-kids-out26',memberId:'ana',eventId:'culto-3',id:r.path.startsWith('/cycles')?'out26':'sunday'}}):r.title)} · ${r.kind}</span></div>` + kids(r.path).map(k=>tree(k,d+1)).join('');
+    h = `<div style="padding:12px 14px"><h3>App shell</h3>${tree(R.find(r=>r.path==='/'),0)}<h3>Outside the shell</h3>${R.filter(r=>['public','bare','redirect'].includes(r.kind)&&!r.parent).map(r=>tree(r,0)).join('')}</div>`;
+  }
+  $('lower').innerHTML=h;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', e=>{
+  const t=e.target.closest('[data-go],[data-persona],[data-lower],[data-walk],[data-step],[data-opt],[data-toast],#ch1,#ch2,#desk,#phone,#back,#go,#menuBtn');
+  if(!t) return;
+  if(t.dataset.go!==undefined){ e.preventDefault(); go(t.dataset.go); }
+  else if(t.dataset.persona) setPersona(t.dataset.persona);
+  else if(t.dataset.lower){ S.lower=t.dataset.lower; renderLower(); }
+  else if(t.dataset.walk){ S.walk=t.dataset.walk; S.step=0; const [pk,u]=WALKS[S.walk][0]; S.persona=pk; go(u); }
+  else if(t.dataset.step){ S.step=+t.dataset.step; const [pk,u]=WALKS[S.walk][S.step]; S.persona=pk; go(u); S.step=Math.min(S.step+1, WALKS[S.walk].length-1); renderLower(); }
+  else if(t.dataset.opt){ S.opts[t.dataset.opt]=JSON.parse(t.dataset.val); render(); }
+  else if(t.dataset.toast){ alert(t.dataset.toast+'\n\n(Opens in place; not a route.)'); }
+  else if(t.id==='ch1'){S.churches=1;render();} else if(t.id==='ch2'){S.churches=2;render();}
+  else if(t.id==='desk'){S.phone=false;render();} else if(t.id==='phone'){S.phone=true;render();}
+  else if(t.id==='back'){ if(S.hist.length){ S.url=S.hist.pop(); render(); } }
+  else if(t.id==='go'){ go($('url').value.trim()||'/'); }
+  else if(t.id==='menuBtn'){ S.menu=!S.menu; render(); }
+});
+$('url').addEventListener('keydown', e=>{ if(e.key==='Enter') go(e.target.value.trim()||'/'); });
+render();
+</script>
+</body>
+</html>

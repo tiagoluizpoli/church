@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { type Instant, parseInstant } from '@church/time';
 import {
   afterAll,
@@ -95,6 +96,7 @@ beforeAll(async () => {
   const controller = new VolunteerController(
     volunteerManager as never,
     activeChurchResolver as never,
+    appConfig,
   );
   await app.register(
     async (instance) => {

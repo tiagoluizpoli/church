@@ -22,6 +22,7 @@
     "test": "bun run test:unit && bun run test:integration"
   },
   "dependencies": {
+    "@church/app-config": "workspace:*",
     "@church/auth": "workspace:*",
     "@church/core": "workspace:*",
     "@church/db": "workspace:*",

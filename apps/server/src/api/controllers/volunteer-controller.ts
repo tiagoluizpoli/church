@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import type { AppConfig } from '@church/app-config';
 import { instantSchema, toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
@@ -66,6 +67,8 @@ export class VolunteerController implements FastifyController {
     private readonly volunteerManager: IVolunteerManager,
     @inject('IActiveChurchResolver')
     private readonly activeChurchResolver: IActiveChurchResolver,
+    @inject('AppConfig')
+    readonly config: AppConfig,
   ) {}
 
   registerRoutes(

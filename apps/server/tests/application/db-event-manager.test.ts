@@ -1,4 +1,4 @@
-import { parseInstant, toDate } from '@church/time';
+import { parseInstant } from '@church/time';
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { DbEventManager } from '../../src/application/db-event-manager';
@@ -7,7 +7,6 @@ import type {
   EventId,
   MinistryId,
   RoleId,
-  TeamId,
   TimeSlotId,
   VolunteerId,
 } from '../../src/domain/branded-ids';
@@ -39,7 +38,6 @@ const leaderId = 'leader-1' as VolunteerId;
 const teamLeaderId = 'team-leader-1' as VolunteerId;
 const teamAVolunteerId = 'volunteer-team-a' as VolunteerId;
 const teamBVolunteerId = 'volunteer-team-b' as VolunteerId;
-const teamA = 'team-a' as TeamId;
 
 interface BuildTeamMembershipInput {
   teamId: string;
@@ -102,7 +100,6 @@ function createRepos(): Repos {
   const slotRepo: TimeSlotRepository = {
     getById: vi.fn(),
     listByEvent: vi.fn(async () => []),
-    bulkCreate: vi.fn(async () => []),
     create: vi.fn(
       async (_churchId, input) => new TimeSlot({ ...input, churchId }),
     ),
@@ -126,7 +123,6 @@ function createRepos(): Repos {
     deleteById: vi.fn(async () => undefined),
     findOverlapping: vi.fn(),
     deleteByEvent: vi.fn(),
-    upsertRequirement: vi.fn(),
     countActiveAssignments: vi.fn(),
   };
 
@@ -616,190 +612,6 @@ describe('DbEventManager', () => {
         churchId,
         eventId,
         { status: 'cancelled' },
-      );
-    });
-  });
-
-  describe('createSlot', () => {
-    it('creates a slot with the given time range and label', async () => {
-      const repos = createRepos();
-      const manager = createManager(repos);
-      const startTime = new Date('2026-08-02T09:00:00.000Z');
-      const endTime = new Date('2026-08-02T10:00:00.000Z');
-
-      await manager.createSlot({
-        churchId,
-        eventId,
-        startTime,
-        endTime,
-        label: 'Morning',
-      });
-
-      expect(repos.slotRepo.create).toHaveBeenCalledWith(churchId, {
-        eventId,
-        startTime,
-        endTime,
-        label: 'Morning',
-      });
-    });
-  });
-
-  describe('updateSlot', () => {
-    it('updates a slot with the provided fields', async () => {
-      const repos = createRepos();
-      const manager = createManager(repos);
-      const startTime = new Date('2026-08-02T09:00:00.000Z');
-      const endTime = new Date('2026-08-02T10:00:00.000Z');
-
-      await manager.updateSlot({
-        churchId,
-        slotId,
-        startTime,
-        endTime,
-        label: 'Renamed',
-      });
-
-      expect(repos.slotRepo.update).toHaveBeenCalledWith(churchId, slotId, {
-        startTime,
-        endTime,
-        label: 'Renamed',
-      });
-    });
-  });
-
-  describe('deleteSlot', () => {
-    it('deletes the slot by id', async () => {
-      const repos = createRepos();
-      const manager = createManager(repos);
-
-      await manager.deleteSlot({ churchId, slotId });
-
-      expect(repos.slotRepo.deleteById).toHaveBeenCalledWith(churchId, slotId);
-    });
-  });
-
-  describe('generateSlots', () => {
-    it('generates slots via the domain service and bulk-persists them', async () => {
-      const repos = createRepos();
-      const event = buildEvent();
-      vi.mocked(repos.eventRepo.getById).mockResolvedValue(event);
-      vi.mocked(repos.slotRepo.listByEvent).mockResolvedValue([]);
-      const createdSlots = [
-        new TimeSlot(
-          {
-            churchId,
-            eventId,
-            startTime: event.start,
-            endTime: event.end,
-          },
-          slotId,
-        ),
-      ];
-      vi.mocked(repos.slotRepo.bulkCreate).mockResolvedValue(createdSlots);
-
-      const manager = createManager(repos);
-      const result = await manager.generateSlots({
-        churchId,
-        eventId,
-        strategy: { kind: 'equal-split', slotDurationMinutes: 180 },
-      });
-
-      expect(result).toBe(createdSlots);
-      expect(repos.eventRepo.getById).toHaveBeenCalledWith(churchId, eventId);
-      expect(repos.slotRepo.listByEvent).toHaveBeenCalledWith(
-        churchId,
-        eventId,
-      );
-      expect(repos.slotRepo.bulkCreate).toHaveBeenCalledTimes(1);
-      expect(repos.slotRepo.bulkCreate).toHaveBeenCalledWith(
-        churchId,
-        expect.objectContaining({
-          eventId,
-          slots: [
-            expect.objectContaining({
-              startTime: toDate({ instant: event.start }),
-              endTime: toDate({ instant: event.end }),
-              requirements: [],
-            }),
-          ],
-        }),
-      );
-    });
-
-    it('generates template-based slots with mapped requirements', async () => {
-      const repos = createRepos();
-      const event = buildEvent();
-      vi.mocked(repos.eventRepo.getById).mockResolvedValue(event);
-      vi.mocked(repos.slotRepo.listByEvent).mockResolvedValue([]);
-      vi.mocked(repos.slotRepo.bulkCreate).mockResolvedValue([]);
-
-      const manager = createManager(repos);
-      await manager.generateSlots({
-        churchId,
-        eventId,
-        strategy: {
-          kind: 'template-based',
-          periods: [
-            {
-              label: 'Setup',
-              startTime: new Date('2026-08-02T09:00:00.000Z'),
-              endTime: new Date('2026-08-02T10:00:00.000Z'),
-              requirements: [
-                {
-                  roleId,
-                  requiredCount: 2,
-                  notes: 'need helpers',
-                },
-              ],
-            },
-          ],
-        },
-      });
-
-      expect(repos.slotRepo.bulkCreate).toHaveBeenCalledWith(
-        churchId,
-        expect.objectContaining({
-          slots: [
-            expect.objectContaining({
-              label: 'Setup',
-              requirements: [
-                {
-                  roleId,
-                  teamId: undefined,
-                  requiredCount: 2,
-                  notes: 'need helpers',
-                },
-              ],
-            }),
-          ],
-        }),
-      );
-    });
-  });
-
-  describe('upsertSlotRequirement', () => {
-    it('upserts a slot requirement with the given fields', async () => {
-      const repos = createRepos();
-      const manager = createManager(repos);
-
-      await manager.upsertSlotRequirement({
-        churchId,
-        slotId,
-        roleId,
-        teamId: teamA,
-        requiredCount: 3,
-        notes: 'notes',
-      });
-
-      expect(repos.slotRepo.upsertRequirement).toHaveBeenCalledWith(
-        churchId,
-        slotId,
-        {
-          roleId,
-          teamId: teamA,
-          requiredCount: 3,
-          notes: 'notes',
-        },
       );
     });
   });

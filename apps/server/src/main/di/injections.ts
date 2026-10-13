@@ -13,7 +13,6 @@ import { RedemptionController } from '../../api/controllers/redemption-controlle
 import { RosteringController } from '../../api/controllers/rostering-controller';
 import { SchedulingCapabilityController } from '../../api/controllers/scheduling-capability-controller';
 import { TailoringController } from '../../api/controllers/tailoring-controller';
-import { TimeSlotController } from '../../api/controllers/time-slot-controller';
 import { VolunteerController } from '../../api/controllers/volunteer-controller';
 import { VolunteerScheduleController } from '../../api/controllers/volunteer-schedule-controller';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
@@ -332,10 +331,6 @@ export function registerInjections(): void {
     ChurchAdminController,
   );
   container.registerSingleton(injection.controllers.fastify, EventController);
-  container.registerSingleton(
-    injection.controllers.fastify,
-    TimeSlotController,
-  );
   container.registerSingleton(
     injection.controllers.fastify,
     AssignmentController,

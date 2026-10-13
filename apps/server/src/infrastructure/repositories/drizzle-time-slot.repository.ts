@@ -14,14 +14,11 @@ import type {
   TimeSlotId,
 } from '../../domain/branded-ids';
 import type {
-  BulkCreateTimeSlotsInput,
   CreateTimeSlotInput,
   TimeSlotRepository,
   UpdateTimeSlotInput,
-  UpsertSlotRequirementInput,
 } from '../../domain/contracts/infrastructure/time-slot.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type { SlotRequirement } from '../../domain/entities/slot-requirement';
 import type { TimeSlot } from '../../domain/entities/time-slot';
 import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
@@ -88,75 +85,6 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
         ),
       );
     return Promise.all(rows.map((r) => this.fetchWithRequirements(db, r)));
-  }
-
-  async bulkCreate(
-    churchId: ChurchId,
-    input: BulkCreateTimeSlotsInput,
-    tx?: TransactionContext,
-  ): Promise<TimeSlot[]> {
-    const db = getClient(this.db, tx);
-    const [participation] = await db
-      .select()
-      .from(ministryParticipation)
-      .where(
-        and(
-          eq(ministryParticipation.eventId, input.eventId),
-          withChurchIsolation(ministryParticipation, churchId),
-        ),
-      )
-      .limit(1);
-    if (!participation) throw new NotFoundError('Participation not found');
-    const result: TimeSlot[] = [];
-    for (const slotInput of input.slots) {
-      const [slotRow] = await db
-        .insert(timeSlot)
-        .values({
-          churchId,
-          eventId: input.eventId,
-          startTime: slotInput.startTime,
-          endTime: slotInput.endTime,
-          label: slotInput.label ?? null,
-        })
-        .returning();
-      if (!slotRow) throw new Error('TimeSlot insert failed');
-      const [shiftRow] = await db
-        .insert(shift)
-        .values({
-          churchId,
-          participationId: participation.id,
-          timeSlotId: slotRow.id,
-          startTime: slotRow.startTime,
-          endTime: slotRow.endTime,
-          label: slotRow.label,
-        })
-        .returning();
-      if (!shiftRow) throw new Error('Shift insert failed');
-
-      const requirements = [];
-      if (slotInput.requirements?.length) {
-        const reqRows = await db
-          .insert(slotRequirement)
-          .values(
-            slotInput.requirements.map((r) => ({
-              churchId,
-              participationId: participation.id,
-              shiftId: shiftRow.id,
-              roleId: r.roleId,
-              teamId: r.teamId ?? null,
-              requiredCount: r.requiredCount,
-              notes: r.notes ?? null,
-            })),
-          )
-          .returning();
-        requirements.push(
-          ...reqRows.map((row) => mapSlotRequirement(row, slotRow.id)),
-        );
-      }
-
-      result.push(mapTimeSlot(slotRow, requirements));
-    }
-    return result;
   }
 
   async create(
@@ -269,58 +197,6 @@ export class DrizzleTimeSlotRepository implements TimeSlotRepository {
           withChurchIsolation(timeSlot, churchId),
         ),
       );
-  }
-
-  async upsertRequirement(
-    churchId: ChurchId,
-    slotId: TimeSlotId,
-    input: UpsertSlotRequirementInput,
-    tx?: TransactionContext,
-  ): Promise<SlotRequirement> {
-    const db = getClient(this.db, tx);
-    const [targetShift] = await db
-      .select()
-      .from(shift)
-      .where(
-        and(eq(shift.timeSlotId, slotId), withChurchIsolation(shift, churchId)),
-      )
-      .limit(1);
-    if (!targetShift) throw new NotFoundError('Shift not found for slot');
-    const [existing] = await db
-      .select()
-      .from(slotRequirement)
-      .where(
-        and(
-          eq(slotRequirement.shiftId, targetShift.id),
-          eq(slotRequirement.roleId, input.roleId),
-        ),
-      )
-      .limit(1);
-
-    if (existing) {
-      const [updated] = await db
-        .update(slotRequirement)
-        .set({ requiredCount: input.requiredCount })
-        .where(eq(slotRequirement.id, existing.id))
-        .returning();
-      if (!updated) throw new Error('SlotRequirement update failed');
-      return mapSlotRequirement(updated, slotId);
-    }
-
-    const [inserted] = await db
-      .insert(slotRequirement)
-      .values({
-        churchId,
-        participationId: targetShift.participationId,
-        shiftId: targetShift.id,
-        roleId: input.roleId,
-        teamId: input.teamId ?? null,
-        requiredCount: input.requiredCount,
-        notes: input.notes ?? null,
-      })
-      .returning();
-    if (!inserted) throw new Error('SlotRequirement insert failed');
-    return mapSlotRequirement(inserted, slotId);
   }
 
   async countActiveAssignments(

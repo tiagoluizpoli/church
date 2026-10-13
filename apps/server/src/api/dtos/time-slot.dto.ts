@@ -15,42 +15,6 @@ export const updateSlotBodySchema = z.object({
   label: z.string().optional(),
 });
 
-export const generateSlotsBodySchema = z.object({
-  strategy: z.discriminatedUnion('kind', [
-    z.object({
-      kind: z.literal('equal-split'),
-      slotDurationMinutes: z.number().int().positive(),
-    }),
-    z.object({
-      kind: z.literal('template-based'),
-      periods: z.array(
-        z.object({
-          label: z.string(),
-          startTime: z.string().datetime(),
-          endTime: z.string().datetime(),
-          requirements: z
-            .array(
-              z.object({
-                roleId: z.string(),
-                teamId: z.string().optional(),
-                requiredCount: z.number().int().positive(),
-                notes: z.string().optional(),
-              }),
-            )
-            .optional(),
-        }),
-      ),
-    }),
-  ]),
-});
-
-export const slotRequirementBodySchema = z.object({
-  roleId: z.string(),
-  teamId: z.string().optional(),
-  requiredCount: z.number().int().min(1),
-  notes: z.string().optional(),
-});
-
 export const slotRequirementResponseSchema = z.object({
   id: z.string(),
   slotId: z.string(),
@@ -74,10 +38,6 @@ export const timeSlotResponseSchema = z.object({
   requirements: z.array(slotRequirementResponseSchema),
 });
 export type TimeSlotResponse = z.infer<typeof timeSlotResponseSchema>;
-
-export const timeSlotListResponseSchema = z.object({
-  slots: z.array(timeSlotResponseSchema),
-});
 
 function requirementToResponse(r: SlotRequirement): SlotRequirementResponse {
   return {

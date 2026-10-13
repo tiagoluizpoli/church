@@ -132,6 +132,9 @@
     "packages/app-config": {
       "name": "@church/app-config",
       "version": "1.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
       "devDependencies": {
         "@church/config": "workspace:*",
         "typescript": "^5",

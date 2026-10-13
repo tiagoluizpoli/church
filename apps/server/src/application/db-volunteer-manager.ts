@@ -48,7 +48,6 @@ import type {
   CheckShiftRow,
 } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
-import type { IFeatureFlagService } from '../domain/contracts/infrastructure/feature-flag-service';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
@@ -263,8 +262,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     private readonly teamRepo: TeamRepository,
     @inject('IAvailabilityCheckRepository')
     private readonly availabilityCheckRepo: AvailabilityCheckRepository,
-    @inject('IFeatureFlagService')
-    private readonly featureFlagService: IFeatureFlagService,
     @inject('INotificationService')
     private readonly notificationService: NotificationService,
     @inject('IUnitOfWork')
@@ -885,12 +882,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     });
 
     if (overlapPairs.length > 0) {
-      const allowOverlapSave = await this.featureFlagService.isEnabled(
-        'VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE',
-      );
-      if (!allowOverlapSave) {
-        throw new AvailabilityOverlapError();
-      }
+      throw new AvailabilityOverlapError();
     }
 
     const confirmedAt = context.check.confirmedAt ?? nowInstant();

@@ -44,7 +44,6 @@ import { DrizzleTeamRepository } from '../../src/infrastructure/repositories/dri
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
 import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
 import {
   createSchedulingPhase3Cycle,
@@ -60,13 +59,7 @@ interface Phase5Manager {
   notificationSpy: ReturnType<typeof createNotificationServiceSpy>;
 }
 
-interface CreatePhase5ManagerInput {
-  allowOverlapSave?: boolean;
-}
-
-function createPhase5Manager({
-  allowOverlapSave,
-}: CreatePhase5ManagerInput = {}): Phase5Manager {
+function createPhase5Manager(): Phase5Manager {
   const notificationSpy = createNotificationServiceSpy();
   const volunteerManager = new DbVolunteerManager(
     new DrizzleVolunteerRepository({ db: schedulingTestDb }),
@@ -80,10 +73,6 @@ function createPhase5Manager({
     new DrizzleRoleRepository({ db: schedulingTestDb }),
     new DrizzleTeamRepository({ db: schedulingTestDb }),
     new DrizzleAvailabilityCheckRepository({ db: schedulingTestDb }),
-    new SchedulingFeatureFlagServiceStub({
-      participationDefaultAllIn: true,
-      volunteerDashboardAllowOverlapSave: allowOverlapSave ?? false,
-    }),
     notificationSpy,
     new DrizzleUnitOfWork({ db: schedulingTestDb }),
     appConfig,
@@ -412,12 +401,10 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     ).rejects.toThrow(CheckAccessDeniedError);
   });
 
-  it('DL2-VA-05 cross-ministry overlap with ALLOW_OVERLAP_SAVE=false blocks the confirm', async () => {
+  it('DL2-VA-05 cross-ministry overlap blocks the confirm', async () => {
     const fixture = await seedPhase5Fixture();
     await seedSecondMinistryBranch({ fixture, overlapping: true });
-    const { volunteerManager } = createPhase5Manager({
-      allowOverlapSave: false,
-    });
+    const { volunteerManager } = createPhase5Manager();
 
     await expect(
       volunteerManager.confirmAvailabilityCheck({
@@ -434,41 +421,10 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     expect(row?.state).toBe('pending');
   });
 
-  it('DL2-VA-06 same overlap with flag ON confirms and flags the conflict to affected leaders', async () => {
-    const fixture = await seedPhase5Fixture();
-    const branch = await seedSecondMinistryBranch({
-      fixture,
-      overlapping: true,
-    });
-    const { volunteerManager, notificationSpy } = createPhase5Manager({
-      allowOverlapSave: true,
-    });
-
-    const result = await volunteerManager.confirmAvailabilityCheck({
-      checkId: AvailabilityCheckId.from(fixture.checkId),
-      volunteerId: VolunteerId.from(fixture.volunteerId),
-      churchId: ChurchId.from(fixture.seed.churchAId),
-    });
-
-    expect(result.state).toBe('confirmed');
-    expect(result.overlaps.length).toBeGreaterThan(0);
-
-    const conflictCalls = notificationSpy.notifyVolunteer.mock.calls.filter(
-      ([input]) => input.type === 'availability_conflict',
-    );
-    expect(conflictCalls.length).toBeGreaterThan(0);
-    const notifiedVolunteerIds = conflictCalls.map(
-      ([input]) => input.volunteerId,
-    );
-    expect(notifiedVolunteerIds).toContain(branch.leaderVolunteerId);
-  });
-
   it('DL2-VA-07 non-overlapping availability across ministries confirms cleanly', async () => {
     const fixture = await seedPhase5Fixture();
     await seedSecondMinistryBranch({ fixture, overlapping: false });
-    const { volunteerManager, notificationSpy } = createPhase5Manager({
-      allowOverlapSave: false,
-    });
+    const { volunteerManager, notificationSpy } = createPhase5Manager();
 
     const result = await volunteerManager.confirmAvailabilityCheck({
       checkId: AvailabilityCheckId.from(fixture.checkId),

@@ -28,7 +28,6 @@ import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
 import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
 import { schedulingTestDb } from '../scheduling-reshape/setup';
 
@@ -123,10 +122,6 @@ export function createSchedulingManagers({
       new DrizzleRoleRepository({ db: schedulingTestDb }),
       new DrizzleTeamRepository({ db: schedulingTestDb }),
       availabilityCheckRepo,
-      new SchedulingFeatureFlagServiceStub({
-        participationDefaultAllIn: true,
-        volunteerDashboardAllowOverlapSave: true,
-      }),
       notificationSpy,
       unitOfWork,
       { ...appConfig, assignment: { cancelLeadTimeDays } },

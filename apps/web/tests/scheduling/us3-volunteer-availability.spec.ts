@@ -12,8 +12,8 @@ import {
 // DL4-US3 (P2, test-plan.md): a volunteer who belongs to two ministries opens
 // their availability checks (one per ministry for the locked cycle), marks a
 // shift unavailable on one check, then confirms a check that has a
-// cross-ministry, same-date shift overlap. The confirm outcome depends on the
-// VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE flag (FR-020, SC-007). This used to
+// cross-ministry, same-date shift overlap, which always blocks the confirm
+// (FR-020, SC-007). This used to
 // also cover the leader seeing per-volunteer acknowledgement state on the
 // tailoring page — see the KNOWN GAP note in the first test below.
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
@@ -273,10 +273,7 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap', async
   await page.getByTestId('confirm-availability-button').click();
   const confirmResponse = await confirmResponsePromise;
 
-  // VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE is OFF in this environment —
-  // Unleash is unreachable from the local E2E stack, so
-  // UnleashFeatureFlagService.isEnabled resolves every flag to false. The
-  // overlap must therefore block the confirm (DL2-VA-05, FR-020).
+  // An overlap always blocks the confirm (DL2-VA-05, FR-020).
   expect(confirmResponse.status()).toBe(409);
   const confirmError =
     (await confirmResponse.json()) as ConfirmOverlapErrorResponse;
@@ -329,33 +326,4 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap', async
   // into the new UI — `availability-status-section.tsx` still exists but
   // is unused by any route. Restore this assertion once that leader-facing
   // view exists again.
-});
-
-test('volunteer in two ministries confirms an overlapping check when overlap-save is allowed', async ({
-  page,
-}, testInfo) => {
-  test.fixme(
-    true,
-    'VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE cannot be toggled from this Playwright suite yet: Unleash is unreachable from the local E2E stack, so apps/server/src/infrastructure/services/unleash-feature-flag-service.ts silently resolves every flag to false and there is no per-test override for the real server process (the deterministic stub in apps/server/src/test-support/feature-flag-service-stub.ts only backs L1/L2 tests). Flip this to a real assertion once E2E gains a way to force the flag on for the server under test.',
-  );
-
-  const journey = loadVolunteerAvailabilityJourney({ testInfo });
-  await signInPersonaPage({ page, persona: journey.personas.leader });
-  await setUpTwoMinistryOverlapCycle({ page, journey });
-  await openWorshipCheckAndMarkOneShiftUnavailable({ page, journey });
-
-  const confirmResponsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/availability-checks/') &&
-      response.url().endsWith('/confirm') &&
-      response.request().method() === 'POST',
-  );
-  await page.getByTestId('confirm-availability-button').click();
-  const confirmResponse = await confirmResponsePromise;
-
-  // With the flag on, confirm succeeds and the cross-ministry conflict is
-  // flagged to affected leaders instead of blocking the volunteer
-  // (DL2-VA-06, FR-020, SC-007).
-  expect(confirmResponse.status()).toBe(204);
-  await expect(page.getByTestId('overlap-warning')).toHaveCount(0);
 });

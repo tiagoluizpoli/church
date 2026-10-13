@@ -7,18 +7,15 @@ import {
   type ChurchId,
   type RoleId,
   TeamId,
-  type UserId,
   type VolunteerId,
 } from '../domain/branded-ids';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
-  CreateAssignmentInput,
   CreateParticipationAssignmentInput,
   CreateParticipationAssignmentResult,
   DeleteAssignmentInput,
   GetAssignmentInput,
   IAssignmentManager,
-  ListAssignmentAuditLogInput,
   ListCycleAuditLogInput,
   ReassignParticipationAssignmentInput,
 } from '../domain/contracts/application/assignment-manager';
@@ -83,25 +80,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
   ) {}
-
-  async createAssignment(input: CreateAssignmentInput): Promise<Assignment> {
-    const { churchId, slotId, volunteerId, roleId, actorId, reason } = input;
-    const assignment = await this.assignmentRepo.create(churchId, {
-      slotId,
-      volunteerId,
-      roleId,
-      status: 'pending',
-      reason,
-      assignedBy: actorId,
-    });
-    await this.auditRepo.create(churchId, {
-      assignmentId: assignment.id,
-      actorId: actorId as UserId,
-      action: 'created',
-      reason,
-    });
-    return assignment;
-  }
 
   async getAssignment(input: GetAssignmentInput): Promise<Assignment> {
     return this.assignmentRepo.getById(input.churchId, input.assignmentId);
@@ -226,12 +204,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     });
 
     return nextAssignment;
-  }
-
-  async listAuditLog(
-    input: ListAssignmentAuditLogInput,
-  ): Promise<AssignmentAudit[]> {
-    return this.auditRepo.listByAssignment(input.churchId, input.assignmentId);
   }
 
   async listAuditLogForCycle(

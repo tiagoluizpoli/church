@@ -1095,7 +1095,7 @@ describe('development seed recipe', () => {
       },
     ]);
 
-    // Every Assignment carries the `created` audit createAssignment writes,
+    // Every Assignment carries the `created` audit the rostering flow writes,
     // by the leader who assigned it, when it was assigned.
     const [created] = await testDb
       .execute<CreatedAuditRow>(sql`

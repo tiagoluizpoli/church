@@ -496,7 +496,7 @@ interface AssignmentWrite {
   assignedByEmail: string;
   /** The row's reason: a decline's, or the override a reassignment carried. */
   reason?: string;
-  /** The override reason createAssignment also writes on its `created` audit. */
+  /** The override reason, also written on its `created` audit. */
   createdReason?: string;
 }
 
@@ -1277,7 +1277,7 @@ export async function loadDevelopmentHistory({
   const userIdOf = ({ email }: EmailInput): string =>
     requireKnown({ ids: userIdByEmail, key: email });
 
-  // createAssignment: every Assignment with its `created` audit by the
+  // Every Assignment with its `created` audit by the
   // leader who made it. A reassigned-away row was deleted, audit and all.
   for (const write of ledger.writes) {
     if (write.outcome === 'reassigned') continue;

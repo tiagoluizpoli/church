@@ -241,6 +241,8 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
     },
   );
   expect(publishResponse.ok()).toBeTruthy();
+  // Cycle publish answers 200 even when it refuses below-full, so check it published.
+  expect(await publishResponse.json()).toMatchObject({ published: true });
 
   // The leader reassigns the still-open second Usher assignment mid-cycle
   // (DL2-RS-08, FR-029).

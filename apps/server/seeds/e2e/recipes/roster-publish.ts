@@ -172,7 +172,6 @@ export function createRosterPublishRecipe({
       start: startsAt,
       end: endsAt,
       status: 'draft',
-      eventType: 'hourly',
     });
     const timeSlot = await buildTimeSlot({
       db,

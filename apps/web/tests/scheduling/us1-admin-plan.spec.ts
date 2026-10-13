@@ -352,7 +352,6 @@ test('church admin can plan, review, and lock a cycle while volunteers stay hidd
   await page.getByRole('button', { name: 'Add event' }).click();
   const createEventDialog = page.getByRole('dialog');
   await createEventDialog.getByLabel('Title').fill('Three-day retreat');
-  await createEventDialog.getByRole('radio', { name: 'Day-based' }).click();
   await fillDatePickerField({
     page,
     trigger: createEventDialog.getByLabel('Start date'),

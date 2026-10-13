@@ -27,7 +27,6 @@ export interface CreatePlanningEventManagerInput {
   location?: string;
   start: Date;
   end: Date;
-  eventType?: 'hourly' | 'day_based';
 }
 
 export interface UpdatePlanningEventManagerInput {

@@ -384,14 +384,6 @@ export type ApplyPlanningTemplates201 = {
   generatedSlotCount: number;
 };
 
-export type CreatePlanningEventBodyEventType = typeof CreatePlanningEventBodyEventType[keyof typeof CreatePlanningEventBodyEventType];
-
-
-export const CreatePlanningEventBodyEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type CreatePlanningEventBody = {
   /** @minLength 1 */
   title: string;
@@ -401,7 +393,6 @@ export type CreatePlanningEventBody = {
   start: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
-  eventType?: CreatePlanningEventBodyEventType;
 };
 
 export type CreatePlanningEvent201Status = typeof CreatePlanningEvent201Status[keyof typeof CreatePlanningEvent201Status];
@@ -433,14 +424,6 @@ export type CreatePlanningEvent201 = {
   updatedAt: string;
 };
 
-export type UpdatePlanningEventBodyEventType = typeof UpdatePlanningEventBodyEventType[keyof typeof UpdatePlanningEventBodyEventType];
-
-
-export const UpdatePlanningEventBodyEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type UpdatePlanningEventBody = {
   /** @minLength 1 */
   title?: string;
@@ -450,7 +433,6 @@ export type UpdatePlanningEventBody = {
   start?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end?: string;
-  eventType?: UpdatePlanningEventBodyEventType;
 };
 
 export type UpdatePlanningEvent200Status = typeof UpdatePlanningEvent200Status[keyof typeof UpdatePlanningEvent200Status];

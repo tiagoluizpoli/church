@@ -23,18 +23,11 @@ async function assertCanonicalCreateEventForm(dialog: Locator): Promise<void> {
     dialog.getByRole('heading', { name: 'New Event' }),
   ).toBeVisible();
   await expect(dialog.getByLabel('Title')).toBeVisible();
-  await expect(dialog.getByRole('radio', { name: /hourly/i })).toBeVisible();
-  await expect(dialog.getByRole('radio', { name: /day-based/i })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
 
-  // Hourly (default): a single date, no time fields — slots own the time.
-  await expect(dialog.getByLabel('Date')).toBeVisible();
-
-  // Day-based: a start/end date range instead.
-  await dialog.getByRole('radio', { name: /day-based/i }).click();
+  // A start date and an optional end date; no time fields — slots own the time.
   await expect(dialog.getByLabel('Start date')).toBeVisible();
   await expect(dialog.getByLabel('End date')).toBeVisible();
-  await dialog.getByRole('radio', { name: /hourly/i }).click();
 }
 
 interface CreateOpenCycleParams {
@@ -123,7 +116,7 @@ test.describe('quick-create stores church-local Instants (#149)', () => {
     await dialog.getByLabel('Title').fill(title);
     await fillDatePickerField({
       page,
-      trigger: dialog.getByLabel('Date'),
+      trigger: dialog.getByLabel('Start date'),
       date: pickedDate,
     });
     await dialog.getByRole('button', { name: 'Create' }).click();

@@ -147,7 +147,6 @@ export class DrizzleEventRepository implements EventRepository {
         start: input.start,
         end: input.end,
         status: input.status ?? 'draft',
-        eventType: (input.eventType ?? 'hourly') as 'hourly' | 'day_based',
       })
       .returning();
     if (!row) throw new Error('Event insert failed');

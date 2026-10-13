@@ -36,7 +36,6 @@ export type SeededSlotRequirement = typeof slotRequirement.$inferSelect;
 export type SeededAssignment = typeof assignment.$inferSelect;
 export type PlanningCycleState = SeededPlanningCycle['state'];
 export type EventStatus = SeededEvent['status'];
-export type EventType = SeededEvent['eventType'];
 export type ParticipationState = SeededMinistryParticipation['state'];
 export type AssignmentStatus = SeededAssignment['status'];
 
@@ -95,8 +94,6 @@ export interface BuildEventInput {
   start: Instant;
   end: Instant;
   status: EventStatus;
-  /** Left to the column default when a fixture does not care. */
-  eventType?: EventType;
   /** The EventTemplate it was generated from; absent for a dynamic Event. */
   sourceTemplateId?: string;
 }
@@ -110,7 +107,6 @@ export async function buildEvent({
   start,
   end,
   status,
-  eventType,
   sourceTemplateId,
 }: BuildEventInput): Promise<SeededEvent> {
   return requireInsertedRow({
@@ -124,7 +120,6 @@ export async function buildEvent({
         start: toDate({ instant: start }),
         end: toDate({ instant: end }),
         status,
-        eventType,
         sourceTemplateId,
       })
       .returning(),

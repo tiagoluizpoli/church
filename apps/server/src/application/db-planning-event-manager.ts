@@ -221,7 +221,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
                   start: toDate({ instant: plan.start }),
                   end: toDate({ instant: plan.end }),
                   status: cycle.state === 'locked' ? 'scheduled' : 'draft',
-                  eventType: 'hourly',
                   tx,
                 })
               ).id
@@ -431,7 +430,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         start: input.start,
         end: input.end,
         status: cycle.state === 'locked' ? 'scheduled' : 'draft',
-        eventType: input.eventType ?? 'hourly',
         tx,
       });
 

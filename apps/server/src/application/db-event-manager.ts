@@ -4,7 +4,6 @@ import { inject, injectable } from 'tsyringe';
 import { AssignmentManagerService } from '../domain/assignment/assignment-manager-service';
 import type { SlotGenerationStrategy } from '../domain/assignment/types';
 import type {
-  CancelEventInput,
   CreateSlotInput,
   DeleteSlotInput,
   GenerateSlotsInput,
@@ -12,14 +11,12 @@ import type {
   IEventManager,
   ListEventsInput,
   ScheduleBuilderData,
-  SendReminderInput,
   UpdateSlotInput,
   UpsertSlotRequirementInput,
 } from '../domain/contracts/application/event-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
-import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
@@ -43,8 +40,6 @@ export class DbEventManager implements IEventManager {
     private readonly volunteerRepo: VolunteerRepository,
     @inject('IRoleRepository')
     private readonly roleRepo: RoleRepository,
-    @inject('INotificationService')
-    private readonly notificationService: NotificationService,
   ) {}
 
   async getScheduleBuilderData(
@@ -165,13 +160,6 @@ export class DbEventManager implements IEventManager {
     );
   }
 
-  async cancelEvent(input: CancelEventInput): Promise<void> {
-    const { eventId, churchId } = input;
-    await this.eventRepo.updateStatus(churchId, eventId, {
-      status: 'cancelled',
-    });
-  }
-
   async createSlot(input: CreateSlotInput): Promise<TimeSlot> {
     const { churchId, eventId, startTime, endTime, label } = input;
     return this.slotRepo.create(churchId, {
@@ -246,24 +234,5 @@ export class DbEventManager implements IEventManager {
       requiredCount,
       notes,
     });
-  }
-
-  async sendReminder(input: SendReminderInput): Promise<void> {
-    const { eventId, churchId } = input;
-    await this.eventRepo.getById(churchId, eventId);
-    const ministryId = await this.eventRepo.getMinistryId(churchId, eventId);
-    const volunteers = await this.volunteerRepo.listByMinistry(
-      churchId,
-      ministryId,
-    );
-    await Promise.all(
-      volunteers.map((vol) =>
-        this.notificationService.notifyReminder({
-          churchId: churchId as string,
-          eventId: eventId as string,
-          volunteerId: vol.id as string,
-        }),
-      ),
-    );
   }
 }

@@ -2185,38 +2185,6 @@ paths:
                 required:
                   - events
                 additionalProperties: false
-  /api/v1/events/{eventId}/cancel:
-    post:
-      operationId: cancelEvent
-      summary: Cancel an Event
-      tags:
-        - events
-      description: Cancel an Event.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/events/{eventId}/reminders:
-    post:
-      operationId: sendReminders
-      summary: Send Event reminders
-      tags:
-        - events
-      description: Send an availability reminder VolunteerNotification for an Event.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
   /api/v1/events/{eventId}/slots:
     post:
       operationId: createSlot

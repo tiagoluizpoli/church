@@ -26,8 +26,6 @@ const mockGetSession = vi.mocked(
 const eventManager = {
   getScheduleBuilderData: vi.fn(),
   listEvents: vi.fn(),
-  cancelEvent: vi.fn(),
-  sendReminder: vi.fn(),
 };
 
 const activeChurchResolver = {
@@ -173,33 +171,5 @@ describe('Event controller authorization wiring', () => {
       url: '/api/v1/events?ministryId=22222222-2222-2222-8222-222222222222',
     });
     expect(response.statusCode).toBe(200);
-  });
-
-  it('POST /api/v1/events/:eventId/cancel authorizes via AuthorityGuard.canManageEvent', async () => {
-    const eventId = '66666666-6666-6666-6666-666666666666';
-
-    const allowed = await app.inject({
-      method: 'POST',
-      url: `/api/v1/events/${eventId}/cancel`,
-    });
-    expect(allowed.statusCode).toBe(201);
-    expect(eventManager.cancelEvent).toHaveBeenCalledTimes(1);
-    expect(authorityGuard.canManageEvent).toHaveBeenCalledWith({
-      churchId: '11111111-1111-1111-1111-111111111111',
-      eventId,
-      userId: 'admin-leader-user',
-    });
-
-    authorityGuard.canManageEvent.mockResolvedValueOnce(false);
-    const denied = await app.inject({
-      method: 'POST',
-      url: `/api/v1/events/${eventId}/cancel`,
-    });
-    expect(denied.statusCode).toBe(403);
-    expect(denied.json()).toEqual({
-      error: 'FORBIDDEN',
-      message: 'Not a leader of this event',
-    });
-    expect(eventManager.cancelEvent).toHaveBeenCalledTimes(1);
   });
 });

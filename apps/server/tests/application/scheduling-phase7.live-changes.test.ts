@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
-import { ministry } from '@church/db';
+import { assignmentAudit, ministry } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -12,10 +12,11 @@ import { buildAssignment } from '../../seeds/builders/scheduling';
 import {
   AssignmentId,
   ChurchId,
+  MinistryId,
   MinistryParticipationId,
+  PlanningCycleId,
   RoleId,
   ShiftId,
-  TimeSlotId,
   UserId,
   VolunteerId,
 } from '../../src/domain/branded-ids';
@@ -30,6 +31,7 @@ import {
 } from '../scheduling-reshape/setup';
 import {
   createSchedulingManagers,
+  type SchedulingManagers,
   seedRequirement,
   seedRole,
   seedRoleQualification,
@@ -457,12 +459,32 @@ async function seedAvailabilityMark(input: SeedAvailabilityMarkInput) {
   });
 }
 
-describe('Phase 7 assignment manager surfaces (direct create/delete/override + hard-constraint branches)', () => {
+interface ListAssignmentAuditInput {
+  managers: SchedulingManagers;
+  churchId: string;
+  cycleId: string;
+  ministryId: string;
+  assignmentId: string;
+}
+
+async function listAssignmentAudit(input: ListAssignmentAuditInput) {
+  const cycleAudit =
+    await input.managers.assignmentManager.listAuditLogForCycle({
+      churchId: ChurchId.from(input.churchId),
+      cycleId: PlanningCycleId.from(input.cycleId),
+      ministryId: MinistryId.from(input.ministryId),
+    });
+  return cycleAudit.filter(
+    (entry) => (entry.assignmentId as string) === input.assignmentId,
+  );
+}
+
+describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-constraint branches)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('createAssignment resolves the whole-slot shift by slotId, and getAssignment/listAuditLog reflect the created row', async () => {
+  it('createParticipationAssignment stores the whole-slot shift with its slot and participation, and getAssignment/the cycle audit log reflect the created row', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -501,16 +523,18 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
     });
 
     const managers = createSchedulingManagers();
-    const created = await managers.assignmentManager.createAssignment({
-      churchId: ChurchId.from(seed.churchAId),
-      slotId: TimeSlotId.from(graph.slot.id),
-      volunteerId: VolunteerId.from(target.volunteer.id),
-      roleId: RoleId.from(roleRow.id),
-      actorId: UserId.from(seed.adminUserId),
-      reason: 'Direct staffing',
-    });
+    const { assignment: created } =
+      await managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(wholeSlotShift.id),
+        volunteerId: VolunteerId.from(target.volunteer.id),
+        roleId: RoleId.from(roleRow.id),
+        actorId: UserId.from(seed.adminUserId),
+        override: { reason: 'Direct staffing' },
+      });
 
     expect(created.shiftId).toBe(wholeSlotShift.id);
+    expect(created.slotId).toBe(graph.slot.id);
     expect(created.participationId).toBe(graph.participation.id);
     expect(created.status).toBe('pending');
 
@@ -520,8 +544,11 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
     });
     expect(fetched.id).toBe(created.id);
 
-    const audit = await managers.assignmentManager.listAuditLog({
-      churchId: ChurchId.from(seed.churchAId),
+    const audit = await listAssignmentAudit({
+      managers,
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
       assignmentId: created.id,
     });
     expect(audit).toEqual([
@@ -553,7 +580,7 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       ministryId: seed.ministryAId,
       name: 'Parked audit role',
     });
-    await seedShift({
+    const wholeSlotShift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
       timeSlotId: graph.slot.id,
@@ -569,17 +596,21 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
     });
 
     const managers = createSchedulingManagers();
-    const created = await managers.assignmentManager.createAssignment({
-      churchId: ChurchId.from(seed.churchAId),
-      slotId: TimeSlotId.from(graph.slot.id),
-      volunteerId: VolunteerId.from(target.volunteer.id),
-      roleId: RoleId.from(roleRow.id),
-      actorId: UserId.from(seed.adminUserId),
-      reason: 'Audit while parked',
-    });
+    const { assignment: created } =
+      await managers.assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(wholeSlotShift.id),
+        volunteerId: VolunteerId.from(target.volunteer.id),
+        roleId: RoleId.from(roleRow.id),
+        actorId: UserId.from(seed.adminUserId),
+        override: { reason: 'Audit while parked' },
+      });
 
-    const audit = await managers.assignmentManager.listAuditLog({
-      churchId: ChurchId.from(seed.churchAId),
+    const audit = await listAssignmentAudit({
+      managers,
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
       assignmentId: created.id,
     });
     expect(audit).toEqual([
@@ -655,14 +686,14 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
     // parent assignment is gone — this is a separate, pre-existing schema
     // property (audit history does not outlive its assignment), not
     // something this fix changes.
-    const audit = await managers.assignmentManager.listAuditLog({
-      churchId: ChurchId.from(seed.churchAId),
-      assignmentId: AssignmentId.from(assignmentWithActor.id),
-    });
+    const audit = await schedulingTestDb
+      .select()
+      .from(assignmentAudit)
+      .where(eq(assignmentAudit.assignmentId, assignmentWithActor.id));
     expect(audit).toEqual([]);
   });
 
-  it('overrideAssignment writes an audit entry without deleting or mutating the assignment', async () => {
+  it('reassignParticipationAssignment keeps the shift and role and records the change as an updated audit entry with its reason', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -699,6 +730,12 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       name: 'Override Target',
       email: 'override-target-phase7@test.com',
     });
+    const replacement = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Override Replacement',
+      email: 'override-replacement-phase7@test.com',
+    });
 
     const managers = createSchedulingManagers();
     const assignment = await seedAssignment({
@@ -709,29 +746,45 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
       roleId: roleRow.id,
     });
 
-    await managers.assignmentManager.overrideAssignment({
-      churchId: ChurchId.from(seed.churchAId),
-      assignmentId: AssignmentId.from(assignment.id),
-      actorId: UserId.from(seed.adminUserId),
-      reason: 'Leader approved change',
-    });
-
-    const stillThere = await managers.assignmentRepo.getById(
-      ChurchId.from(seed.churchAId),
-      AssignmentId.from(assignment.id),
-    );
-    expect(stillThere.id).toBe(assignment.id);
-
-    const audit = await managers.assignmentManager.listAuditLog({
-      churchId: ChurchId.from(seed.churchAId),
-      assignmentId: AssignmentId.from(assignment.id),
-    });
-    expect(audit).toEqual([
-      expect.objectContaining({
-        action: 'updated',
+    const reassigned =
+      await managers.assignmentManager.reassignParticipationAssignment({
+        churchId: ChurchId.from(seed.churchAId),
+        assignmentId: AssignmentId.from(assignment.id),
+        volunteerId: VolunteerId.from(replacement.volunteer.id),
+        actorId: UserId.from(seed.adminUserId),
         reason: 'Leader approved change',
-      }),
-    ]);
+      });
+
+    const stored = await managers.assignmentRepo.getById(
+      ChurchId.from(seed.churchAId),
+      reassigned.id,
+    );
+    expect(stored).toMatchObject({
+      shiftId: shift.id,
+      roleId: roleRow.id,
+      volunteerId: replacement.volunteer.id,
+    });
+
+    const audit = await listAssignmentAudit({
+      managers,
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      assignmentId: reassigned.id,
+    });
+    expect(audit).toHaveLength(2);
+    expect(audit).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'created',
+          reason: 'Leader approved change',
+        }),
+        expect.objectContaining({
+          action: 'updated',
+          reason: 'Leader approved change',
+        }),
+      ]),
+    );
   });
 
   it('createParticipationAssignment rejects a volunteer who is not a member of the requested ministry (NOT_IN_MINISTRY)', async () => {
@@ -889,8 +942,11 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
     expect(overridden.warnings).toEqual([
       expect.objectContaining({ type: 'NOT_QUALIFIED' }),
     ]);
-    const overrideAudit = await managers.assignmentManager.listAuditLog({
-      churchId: ChurchId.from(seed.churchAId),
+    const overrideAudit = await listAssignmentAudit({
+      managers,
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
       assignmentId: overridden.assignment.id,
     });
     expect(overrideAudit).toEqual([

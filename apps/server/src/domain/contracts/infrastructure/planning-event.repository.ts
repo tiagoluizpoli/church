@@ -6,12 +6,7 @@ import type {
   TimeBlockId,
   TimeSlotId,
 } from '../../branded-ids';
-import type {
-  Event,
-  EventStatus,
-  EventType,
-  EventWithSlots,
-} from '../../entities/event';
+import type { Event, EventStatus, EventWithSlots } from '../../entities/event';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreatePlanningEventInput {
@@ -24,7 +19,6 @@ export interface CreatePlanningEventInput {
   start: Date;
   end: Date;
   status: EventStatus;
-  eventType: EventType;
   tx?: TransactionContext;
 }
 

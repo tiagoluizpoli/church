@@ -18,9 +18,6 @@ export const EVENT_STATUS_OPTIONS = [
 ] as const;
 export type EventStatus = (typeof EVENT_STATUS_OPTIONS)[number];
 
-export const EVENT_TYPE_OPTIONS = ['hourly', 'day_based'] as const;
-export type EventType = (typeof EVENT_TYPE_OPTIONS)[number];
-
 export interface EventProps {
   churchId: ChurchId;
   planningCycleId: PlanningCycleId;

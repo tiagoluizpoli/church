@@ -412,7 +412,6 @@ describe('integration composition of the shared seed builders', () => {
       .where(eq(availability.availabilityCheckId, check.id));
     expect(marks.map((mark) => mark.shiftId)).toEqual([shiftRow.id]);
     expect(cycle.startDate).toEqual(new Date('2024-06-01T00:00:00Z'));
-    expect(planned.eventType).toBe('hourly');
     const [storedAssignment] = await testDb
       .select()
       .from(assignment)

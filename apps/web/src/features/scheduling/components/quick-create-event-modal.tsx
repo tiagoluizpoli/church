@@ -11,7 +11,6 @@ import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { adminApi } from '@/utils/api-instances';
 
@@ -27,13 +26,10 @@ interface QuickCreateEventModalProps {
   onCreated: () => void;
 }
 
-type EventType = 'hourly' | 'day_based';
-
 interface CreateEventFormValues {
   title: string;
   start: string;
   end: string;
-  eventType: EventType;
 }
 
 interface ToDayRangeBoundsInput {
@@ -83,14 +79,14 @@ export function QuickCreateEventModal({
   const [title, setTitle] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [eventType, setEventType] = useState<EventType>('hourly');
 
   const create = useMutation({
     mutationFn: (body: CreateEventFormValues) =>
       adminApi.createPlanningEvent(target.cycleId, body),
   });
 
-  const effectiveEnd = eventType === 'hourly' ? start : end;
+  // An empty end date means a single-day Event.
+  const effectiveEnd = end || start;
   const canSubmit = Boolean(
     title.trim() && start && effectiveEnd && start <= effectiveEnd,
   );
@@ -99,7 +95,6 @@ export function QuickCreateEventModal({
     setTitle('');
     setStart('');
     setEnd('');
-    setEventType('hourly');
   };
 
   const handleSubmit = async () => {
@@ -114,7 +109,6 @@ export function QuickCreateEventModal({
         title,
         start: bounds.start,
         end: bounds.end,
-        eventType,
       });
       onCreated();
       onOpenChange(false);
@@ -162,49 +156,24 @@ export function QuickCreateEventModal({
             placeholder="e.g. Sunday Morning Service"
           />
         </div>
-        <div className="space-y-1">
-          <Label>Event type</Label>
-          <RadioGroup
-            value={eventType}
-            onValueChange={(v) => setEventType(v as EventType)}
-          >
-            <Label className="flex items-center gap-2">
-              <RadioGroupItem value="hourly" /> Hourly (time slots)
-            </Label>
-            <Label className="flex items-center gap-2">
-              <RadioGroupItem value="day_based" /> Day-based
-            </Label>
-          </RadioGroup>
-        </div>
-        {eventType === 'hourly' ? (
+        <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <Label htmlFor="event-date">Date</Label>
+            <Label htmlFor="event-start-date">Start date</Label>
             <DatePickerField
-              id="event-date"
+              id="event-start-date"
               value={start}
               onChange={setStart}
             />
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label htmlFor="event-start-date">Start date</Label>
-              <DatePickerField
-                id="event-start-date"
-                value={start}
-                onChange={setStart}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="event-end-date">End date</Label>
-              <DatePickerField
-                id="event-end-date"
-                value={end}
-                onChange={setEnd}
-              />
-            </div>
+          <div className="space-y-1">
+            <Label htmlFor="event-end-date">End date (optional)</Label>
+            <DatePickerField
+              id="event-end-date"
+              value={end}
+              onChange={setEnd}
+            />
           </div>
-        )}
+        </div>
       </div>
     </ResponsiveFormSurface>
   );

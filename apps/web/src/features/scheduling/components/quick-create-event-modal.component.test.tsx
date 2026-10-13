@@ -38,7 +38,7 @@ describe('QuickCreateEventModal', () => {
     mutateAsyncMock.mockReset();
   });
 
-  it('enables create for an hourly event after title and a single date are entered', async () => {
+  it('enables create after title and only a start date are entered (single-day Event)', async () => {
     const user = userEvent.setup();
 
     render(
@@ -55,20 +55,17 @@ describe('QuickCreateEventModal', () => {
     const createButton = screen.getByRole('button', { name: 'Create' });
     expect(createButton).toBeDisabled();
 
-    expect(screen.getByLabelText('Date')).toBeVisible();
-    expect(screen.queryByLabelText('Start date')).not.toBeInTheDocument();
-
     await user.type(screen.getByLabelText('Title'), 'Domingo');
     await pickCalendarDate({
       user,
-      trigger: screen.getByLabelText('Date'),
+      trigger: screen.getByLabelText('Start date'),
       date: '2026-06-28',
     });
 
     expect(createButton).toBeEnabled();
   }, 30000);
 
-  it('switches to a start/end date range for a day-based event (FR-012)', async () => {
+  it('enables create for a start/end date range (FR-012)', async () => {
     const user = userEvent.setup();
 
     render(
@@ -86,11 +83,8 @@ describe('QuickCreateEventModal', () => {
     const createButton = screen.getByRole('button', { name: 'Create' });
     expect(createButton).toBeDisabled();
 
-    await user.click(screen.getByRole('radio', { name: 'Day-based' }));
-
     expect(screen.getByLabelText('Start date')).toBeVisible();
-    expect(screen.getByLabelText('End date')).toBeVisible();
-    expect(screen.queryByLabelText('Date')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('End date (optional)')).toBeVisible();
 
     await user.type(screen.getByLabelText('Title'), 'Retreat');
     await pickCalendarDate({
@@ -100,7 +94,7 @@ describe('QuickCreateEventModal', () => {
     });
     await pickCalendarDate({
       user,
-      trigger: screen.getByLabelText('End date'),
+      trigger: screen.getByLabelText('End date (optional)'),
       date: '2026-06-29',
     });
 
@@ -125,7 +119,7 @@ describe('QuickCreateEventModal', () => {
     await user.type(screen.getByLabelText('Title'), 'Domingo');
     await pickCalendarDate({
       user,
-      trigger: screen.getByLabelText('Date'),
+      trigger: screen.getByLabelText('Start date'),
       date: '2026-06-28',
     });
     await user.click(screen.getByRole('button', { name: 'Create' }));
@@ -134,7 +128,6 @@ describe('QuickCreateEventModal', () => {
       title: 'Domingo',
       start: '2026-06-28T03:00:00.000Z',
       end: '2026-06-29T02:59:59.999Z',
-      eventType: 'hourly',
     });
   }, 30000);
 });

@@ -10,7 +10,6 @@ export const createEventBodySchema = z.object({
   location: z.string().optional(),
   start: z.string().datetime(),
   end: z.string().datetime(),
-  eventType: z.enum(['hourly', 'day_based']).optional(),
 });
 
 export const listEventsQuerySchema = z.object({

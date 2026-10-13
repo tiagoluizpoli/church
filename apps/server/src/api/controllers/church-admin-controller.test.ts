@@ -296,7 +296,6 @@ describe('Church admin planning routes', () => {
         title: 'Domingo',
         start: '2026-06-28T03:00:00.000Z',
         end: '2026-06-29T02:59:59.999Z',
-        eventType: 'hourly',
       },
     });
 

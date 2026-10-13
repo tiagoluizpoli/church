@@ -34,8 +34,6 @@ const CI_ENVIRONMENT = {
   BETTER_AUTH_SECRET: '0123456789abcdef0123456789abcdef',
   BETTER_AUTH_URL: 'http://localhost:4100',
   CORS_ORIGIN: 'http://localhost:4101',
-  UNLEASH_API_URL: 'http://localhost:4242/api',
-  UNLEASH_API_TOKEN: 'ci-placeholder-unleash-token',
   VITE_SERVER_URL: 'http://localhost:4100',
   PORT: '4101',
 };

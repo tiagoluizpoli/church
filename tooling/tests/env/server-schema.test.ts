@@ -24,8 +24,6 @@ const REQUIRED_SERVER_VALUES = [
   'BETTER_AUTH_SECRET=0123456789abcdef0123456789abcdef',
   'BETTER_AUTH_URL=http://localhost:3000',
   'CORS_ORIGIN=http://localhost:3001',
-  'UNLEASH_API_URL=http://localhost:4242/api',
-  'UNLEASH_API_TOKEN=token',
 ];
 
 let rootDir: string;

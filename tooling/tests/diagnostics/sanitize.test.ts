@@ -39,19 +39,19 @@ describe('sanitize', () => {
     const text = sanitizeWith({
       text: [
         'auth secret ci-test-secret-key-minimum-32-characters-long in use',
-        'unleash token ci-unleash-token-77 rejected',
+        'resend key ci-resend-key-77 rejected',
         'connecting to church_unspecified_e2e on port 543210',
       ].join('\n'),
       env: {
         BETTER_AUTH_SECRET: 'ci-test-secret-key-minimum-32-characters-long',
-        UNLEASH_API_TOKEN: 'ci-unleash-token-77',
+        RESEND_API_KEY: 'ci-resend-key-77',
         PGPORT: '543210',
         PGDATABASE: 'church_unspecified_e2e',
       },
     });
 
     expect(text).not.toContain('ci-test-secret-key');
-    expect(text).not.toContain('ci-unleash-token-77');
+    expect(text).not.toContain('ci-resend-key-77');
     expect(text).toContain('church_unspecified_e2e on port 543210');
   });
 

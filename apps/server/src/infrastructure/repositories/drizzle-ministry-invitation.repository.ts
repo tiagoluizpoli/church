@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   church,
   invitation as churchInvitation,
@@ -44,14 +45,6 @@ import { resolveInvitationEmail } from '../../domain/services/resolve-invitation
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
-
-/**
- * Better Auth's own default for its `invitation` table (mirrors
- * `provision-church.ts`'s `CHURCH_INVITATION_TTL_MS`) — the pair's expiry is
- * governed by whichever half's clock is shorter, and in practice that is
- * always this one.
- */
-const CHURCH_INVITATION_TTL_MS = 48 * 60 * 60 * 1000;
 
 interface DrizzleMinistryInvitationRepositoryInput {
   db: AnyDrizzleDb;
@@ -386,7 +379,7 @@ export class DrizzleMinistryInvitationRepository
     const expiresAt = toDate({
       instant: addMilliseconds({
         instant: now(),
-        milliseconds: CHURCH_INVITATION_TTL_MS,
+        milliseconds: appConfig.churchInvitation.ttlMs,
       }),
     });
     await getClient(this.db, tx).insert(churchInvitation).values({

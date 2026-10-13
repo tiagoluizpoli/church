@@ -1,7 +1,6 @@
 import { getActiveChurch } from '@/infrastructure/api/active-church';
 import { getAssignments } from '@/infrastructure/api/assignments';
 import { getEvents } from '@/infrastructure/api/events';
-import { getFeatureFlags as createFeatureFlagsApi } from '@/infrastructure/api/feature-flags';
 import { getMinistries } from '@/infrastructure/api/ministries';
 import { getPlanning } from '@/infrastructure/api/planning';
 import { getRedemption } from '@/infrastructure/api/redemption';
@@ -57,7 +56,6 @@ export const adminApi = {
 export const volunteerApi = {
   ...generatedVolunteerApi,
 };
-export const featureFlagsApi = createFeatureFlagsApi();
 export const activeChurchApi = getActiveChurch();
 export const redemptionApi = getRedemption();
 export const schedulingCapabilitiesApi = getSchedulingCapability();

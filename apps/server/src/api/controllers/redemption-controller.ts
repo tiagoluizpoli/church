@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { appConfig } from '@church/app-config';
 import { auth } from '@church/auth';
 import { fromDate, nowAsDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -69,8 +70,6 @@ interface RateLimitInput {
 }
 
 const publicRateLimit = new Map<string, number[]>();
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX_REQUESTS = 30;
 
 @injectable()
 export class RedemptionController implements FastifyController {
@@ -465,11 +464,11 @@ function isRateLimited({
   now = nowAsDate().getTime(),
 }: RateLimitInput): boolean {
   const attempts = (publicRateLimit.get(key) ?? []).filter(
-    (attempt) => attempt > now - RATE_WINDOW_MS,
+    (attempt) => attempt > now - appConfig.redemptionRateLimit.windowMs,
   );
   attempts.push(now);
   publicRateLimit.set(key, attempts);
-  return attempts.length > RATE_MAX_REQUESTS;
+  return attempts.length > appConfig.redemptionRateLimit.maxRequests;
 }
 
 /** Shared by the chained and existing-member previews — both expose the same restricted field set (spec §7.1). */

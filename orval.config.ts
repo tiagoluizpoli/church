@@ -16,7 +16,6 @@ export default defineConfig({
           'rostering',
           'scheduling-capability',
           'volunteer',
-          'feature-flags',
           'active-church',
           'redemption',
         ],

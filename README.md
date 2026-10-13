@@ -42,7 +42,7 @@ the primary checkout, run once:
 bun run worktree:bootstrap
 ```
 
-Machine-shared values (Unleash, optional Resend) live in `church-shared.env`
+Machine-shared values (optional Resend, dev domain) live in `church-shared.env`
 in the shared Git directory. The committed `.env.schema` files declare every
 variable; there are no per-package value files. See
 [docs/agents/tooling.md](docs/agents/tooling.md), "Worktree bootstrap".

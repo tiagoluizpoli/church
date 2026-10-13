@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
@@ -40,8 +41,6 @@ import {
   nextResendThrottleState,
   type ResendThrottleState,
 } from '../domain/services/resend-throttle';
-
-const MINISTRY_ONLY_INVITATION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 interface EnsureMintableScopeInput {
   churchId: ChurchId;
@@ -163,7 +162,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
       const expiresAt = addMilliseconds({
         instant: now,
-        milliseconds: MINISTRY_ONLY_INVITATION_TTL_MS,
+        milliseconds: appConfig.ministryInvitation.ttlMs,
       });
       const nextThrottle = nextResendThrottleState({
         state: throttleState,
@@ -252,7 +251,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     const expiresAt = toDate({
       instant: addMilliseconds({
         instant: nowInstant(),
-        milliseconds: MINISTRY_ONLY_INVITATION_TTL_MS,
+        milliseconds: appConfig.ministryInvitation.ttlMs,
       }),
     });
     const invitation = existing

@@ -28,7 +28,7 @@ import { testArtifacts } from '../../diagnostics/test-artifacts';
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
 const LOCAL_ENV_SCRIPT = resolve(REPO_ROOT, 'tooling/worktree/local-env.ts');
-const SHARED_TOKEN = 'shared-unleash-token-4f1c9e';
+const SHARED_TOKEN = 'shared-resend-key-4f1c9e';
 
 let sandbox: string;
 let primary: string;
@@ -111,7 +111,7 @@ beforeEach(() => {
   git(['worktree', 'add', '-q', '-b', 'feature-a', feature]);
   writeFileSync(
     join(primary, '.git', 'church-shared.env'),
-    `UNLEASH_API_TOKEN=${SHARED_TOKEN}\n`,
+    `RESEND_API_KEY=${SHARED_TOKEN}\n`,
   );
   execFileSync('bun', [LOCAL_ENV_SCRIPT], { cwd: feature, stdio: 'ignore' });
 });

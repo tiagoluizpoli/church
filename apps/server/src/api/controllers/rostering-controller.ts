@@ -41,7 +41,6 @@ import {
   createParticipationAssignmentResponseSchema,
   eligibleVolunteerListResponseSchema,
   participationCompletionResponseSchema,
-  publishParticipationBodySchema,
   reassignAssignmentBodySchema,
   rosteringMapper,
 } from '../dtos/rostering.dto';
@@ -101,7 +100,6 @@ const teamRosterCycleListResponseSchema = z.object({
 type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
-type PublishParticipationBody = z.infer<typeof publishParticipationBodySchema>;
 type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
 type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
 
@@ -542,38 +540,6 @@ export class RosteringController implements FastifyController {
           participationId: MinistryParticipationId.from(participationId),
         });
         return reply.send(rosteringMapper.completionToResponse(completion));
-      },
-    );
-
-    app.post(
-      '/participations/:participationId/publish',
-      {
-        schema: {
-          tags: ['rostering'],
-          operationId: 'publishParticipation',
-          summary: 'Publish a single MinistryParticipation',
-          description:
-            "Publish one Ministry's roster for an Event, making its slice of the schedule visible to its Volunteers.",
-          body: publishParticipationBodySchema,
-          response: { 204: z.null(), 403: errorResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const body = request.body as PublishParticipationBody;
-        await this.participationManager.publish({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-          confirmBelowFull: body.confirmBelowFull,
-        });
-        return reply.status(204).send(null);
       },
     );
   }

@@ -31,7 +31,6 @@ const participationManager = {
   listMinistryCycleSummaries: vi.fn(),
   listEligibleVolunteers: vi.fn(),
   getCompletion: vi.fn(),
-  publish: vi.fn(),
   getCycleBuilderData: vi.fn(),
   publishCycle: vi.fn(),
 };
@@ -594,5 +593,15 @@ describe('Rostering routes', () => {
       message: 'Not a leader of this ministry',
     });
     expect(participationManager.publishCycle).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/v1/rostering/participations/:id/publish is gone (404)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rostering/participations/11111111-1111-1111-8111-111111111111/publish',
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });

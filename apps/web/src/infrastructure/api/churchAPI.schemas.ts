@@ -2072,24 +2072,6 @@ export type GetParticipationCompletion403 = {
   message: string;
 };
 
-export type PublishParticipationBody = {
-  confirmBelowFull?: boolean;
-};
-
-/**
- * @nullable
- */
-export type PublishParticipation204 = typeof PublishParticipation204[keyof typeof PublishParticipation204] | null;
-
-
-export const PublishParticipation204 = {
-} as const;
-
-export type PublishParticipation403 = {
-  error: string;
-  message: string;
-};
-
 export type GetSchedulingCapability200EntriesItem = {
   kind: 'church';
 } | {

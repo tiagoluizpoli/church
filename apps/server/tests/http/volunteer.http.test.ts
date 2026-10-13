@@ -1,4 +1,8 @@
+import 'reflect-metadata';
+import { appConfig, withAllParkedOn } from '@church/app-config';
+import { container } from 'tsyringe';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { injection } from '../../src/main/di/injection-tokens';
 import { registerInjections } from '../../src/main/di/injections';
 import { registerControllers } from '../../src/main/fastify/register-controllers';
 import { createFastify } from '../../src/main/fastify/setup';
@@ -8,6 +12,10 @@ let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   registerInjections();
+  // Parked routes (respond, cancel) are only registered with every switch on.
+  container.register(injection.config.appConfig, {
+    useValue: withAllParkedOn(appConfig),
+  });
   app = await createFastify();
   await app.register(
     async (instance) => {

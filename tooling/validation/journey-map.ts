@@ -48,7 +48,6 @@ const VOLUNTEER_TRANSFER_SPEC_PATHS = [
 // experience proven by us5-offline, so it joins this shared group.
 const VOLUNTEER_DASHBOARD_SPEC_PATHS = [
   'tests/volunteer-dashboard/us1-availability.spec.ts',
-  'tests/volunteer-dashboard/us2-assignments.spec.ts',
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
@@ -87,10 +86,9 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/us2-leader-tailor.spec.ts',
   'tests/scheduling/us3-volunteer-availability.spec.ts',
   'tests/scheduling/us4-roster-publish.spec.ts',
-  'tests/scheduling/us5-live-changes.spec.ts',
+  'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
   'tests/volunteer-dashboard/us1-availability.spec.ts',
-  'tests/volunteer-dashboard/us2-assignments.spec.ts',
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
@@ -488,21 +486,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ],
   },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx',
-    specPaths: [
-      'tests/volunteer-dashboard/us2-assignments.spec.ts',
-      // #217 — the volunteer-side confirm/cancel affordance us5-live-changes
-      // drives to prove the leader-notify and cross-volunteer-denial edges.
-      'tests/scheduling/us5-live-changes.spec.ts',
-    ],
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/lib/assignment-grouping.ts',
-    specPaths: ['tests/volunteer-dashboard/us2-assignments.spec.ts'],
-  },
   // #216 — published-schedule visibility: the ministry-schedule dashboard
   // section is exercised directly by us4-ministry-schedule, and reused by
   // us4-roster-publish to assert a volunteer sees a just-published shift.
@@ -568,11 +551,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/us4-roster-publish.spec.ts',
       // #217 — team-scoped assignment/removal (qualification), the focused
       // pick-me commit (builder-slot-focus), and the volunteer-notify/leader-
-      // reassign flow (us5-live-changes) all call this client's assignment
+      // reassign flow (us5-leader-reassign) all call this client's assignment
       // endpoints.
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/builder-slot-focus.spec.ts',
-      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/scheduling/us5-leader-reassign.spec.ts',
     ],
   },
   // #219 — the schedule builder route and its feature components are what
@@ -605,13 +588,13 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   // #217 — the rostering controller owns shift assignment, unassignment, and
   // reassignment: qualification's team-boundary 403, builder-slot-focus's
-  // focused commit, and us5-live-changes's mid-cycle reassign.
+  // focused commit, and us5-leader-reassign's mid-cycle reassign.
   {
     sourcePathPrefix: 'apps/server/src/api/controllers/rostering-controller.ts',
     specPaths: [
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/builder-slot-focus.spec.ts',
-      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/scheduling/us5-leader-reassign.spec.ts',
     ],
   },
   // #217 — the volunteer controller's own-assignment cancel endpoint is what
@@ -621,7 +604,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix: 'apps/server/src/api/controllers/volunteer-controller.ts',
     specPaths: [
-      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/scheduling/us5-leader-reassign.spec.ts',
       ...NOTIFICATION_BELL_SPEC_PATHS,
     ],
   },

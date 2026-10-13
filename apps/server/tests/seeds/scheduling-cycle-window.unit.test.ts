@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   addCalendarDays,
   type CalendarDay,
@@ -5,10 +6,7 @@ import {
   weekdayIndex,
 } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import {
-  DEFAULT_CANCEL_LEAD_TIME_DAYS,
-  planningCycleWindow,
-} from '../../seeds/e2e/recipes/scheduling-cycle-window';
+import { planningCycleWindow } from '../../seeds/e2e/recipes/scheduling-cycle-window';
 
 const SUNDAY = 0;
 const WINDOW_SPAN_DAYS = 29;
@@ -52,9 +50,9 @@ describe('planningCycleWindow', () => {
     const sundays = sundaysIn({ day });
     const first = sundays[0];
     if (first === undefined) throw new Error('window holds no Sunday');
-    expect(daysBetween({ from: day, to: first })).toBeGreaterThan(
-      DEFAULT_CANCEL_LEAD_TIME_DAYS,
-    );
+    const { cancelLeadTimeDays } = appConfig.assignment;
+    const daysToFirstSunday = daysBetween({ from: day, to: first });
+    expect(daysToFirstSunday).toBeGreaterThan(cancelLeadTimeDays);
     expect(sundays.length).toBeGreaterThanOrEqual(MIN_SUNDAYS);
   });
 

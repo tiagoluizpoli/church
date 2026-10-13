@@ -97,15 +97,13 @@ change takes effect once it is in the primary checkout.
   idempotent; completed databases are kept.
 - **Non-generated values**: `env:local` also writes the local default
   `ENABLE_DEBUG_ENDPOINTS=true`. Machine-shared values, such as
-  `UNLEASH_API_URL` and `UNLEASH_API_TOKEN` (whichever Unleash this machine
-  uses, local Compose or elsewhere), optional `RESEND_*`, and optional
+  optional `RESEND_*` and optional
   `CHURCH_DEV_DOMAIN`/`CHURCH_DEV_ADDRESS` (see "Private worktree URLs"), live
   once in the ignored `church-shared.env` in the shared Git directory, which
   every worktree's `.env.local` copies; rerun `env:local` after editing it. It
-  may override a default, never a generated key. Unleash itself runs outside
-  local Compose; it needs the toggle `volunteer-dashboard-allow-overlap-save`
-  (default disabled). Seed the file from the primary:
-  `grep -E '^(UNLEASH_API_(URL|TOKEN)|RESEND_[A-Z_]+)=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
+  may override a default, never a generated key. The file is optional: a
+  worktree without it still boots. Seed it from the primary if you use Resend:
+  `grep -E '^RESEND_[A-Z_]+=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
 - **Primary checkout**: run `bun run worktree:bootstrap` once, explicitly.
   `env:local` refuses to run while a package value file exists
   (`apps/{server,web}/.env[.local]`, `packages/{db,auth}/.env[.local]`):

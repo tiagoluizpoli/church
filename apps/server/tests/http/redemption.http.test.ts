@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import 'reflect-metadata';
 import {
   invitation as churchInvitation,
@@ -236,6 +237,7 @@ interface RedemptionUrlInput {
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({
     db: testDb,
+    config: appConfig,
   });
 const volunteerRepository = new DrizzleVolunteerRepository({ db: testDb });
 const drizzleRedemptionRepository = new DrizzleRedemptionRepository({
@@ -277,6 +279,7 @@ async function createHarness({
     emailSender: new CaptureEmailSender(),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
+    config: appConfig,
   });
   const redemptionManager = new DbRedemptionManager({
     churchRepository,
@@ -300,6 +303,7 @@ async function createHarness({
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,
+    config: appConfig,
   });
   await app.register(
     async (instance) => {

@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,8 +25,6 @@ export const Route = createFileRoute('/invitations/church/$invitationId')({
   component: ChurchInvitationRedemptionRoute,
 });
 
-const CODE_RESEND_COOLDOWN_MS = 60_000;
-
 const redeemFormSchema = z.object({
   name: z.string().trim().min(1, 'Enter your name'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -42,6 +41,8 @@ const ACCESS_LEVEL_LABELS: Record<
   leader: 'Leader',
 };
 
+const MS_PER_SECOND = 1000;
+
 interface RemainingCooldownSecondsInput {
   codeSentAt: number | null;
   now: number;
@@ -52,8 +53,9 @@ function remainingCooldownSeconds({
   now,
 }: RemainingCooldownSecondsInput): number {
   if (!codeSentAt) return 0;
-  const remainingMs = CODE_RESEND_COOLDOWN_MS - (now - codeSentAt);
-  return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+  const { resendCooldownMs } = appConfig.verificationCode;
+  const remainingMs = resendCooldownMs - (now - codeSentAt);
+  return remainingMs > 0 ? Math.ceil(remainingMs / MS_PER_SECOND) : 0;
 }
 
 interface RedemptionFailureDescription {
@@ -118,7 +120,10 @@ function ChurchInvitationRedemptionRoute() {
 
   useEffect(() => {
     if (!codeSentAt) return;
-    const interval = setInterval(() => setNow(nowAsDate().getTime()), 1000);
+    const interval = setInterval(
+      () => setNow(nowAsDate().getTime()),
+      MS_PER_SECOND,
+    );
     return () => clearInterval(interval);
   }, [codeSentAt]);
 

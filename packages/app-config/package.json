@@ -1,0 +1,24 @@
+{
+  "name": "@church/app-config",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test": "bun run test:unit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@church/config": "workspace:*",
+    "typescript": "^5",
+    "vitest": "catalog:"
+  }
+}

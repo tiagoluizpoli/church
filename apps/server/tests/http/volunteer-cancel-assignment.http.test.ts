@@ -1,3 +1,4 @@
+import { appConfig, withAllParkedOn } from '@church/app-config';
 import {
   afterAll,
   beforeAll,
@@ -9,6 +10,7 @@ import {
 } from 'vitest';
 import { VolunteerController } from '../../src/api/controllers/volunteer-controller';
 import { AssignmentAccessDeniedError } from '../../src/domain/errors/assignment-access-denied';
+import { CancelWindowClosedError } from '../../src/domain/errors/cancel-window-closed';
 import { createFastify } from '../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../src/main/fastify/types';
 
@@ -39,6 +41,7 @@ beforeAll(async () => {
   const controller = new VolunteerController(
     volunteerManager as never,
     activeChurchResolver as never,
+    withAllParkedOn(appConfig) as never,
   );
   await app.register(
     async (instance) => {
@@ -101,5 +104,19 @@ describe('DL3-HT-10 volunteer cancels own assignment', () => {
       error: 'ASSIGNMENT_ACCESS_DENIED',
       message: 'This assignment belongs to another volunteer',
     });
+  });
+
+  it('POST /api/v1/volunteer/assignments/:id/cancel returns 409 CANCEL_WINDOW_CLOSED inside the lead time', async () => {
+    volunteerManager.cancelOwnAssignment.mockRejectedValue(
+      new CancelWindowClosedError(),
+    );
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/volunteer/assignments/66666666-6666-6666-8666-666666666666/cancel',
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'CANCEL_WINDOW_CLOSED' });
   });
 });

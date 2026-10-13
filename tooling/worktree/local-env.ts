@@ -39,8 +39,8 @@ import {
  * port set and rewrites every dependent URL in one atomic replace.
  *
  * Below the generated values it writes the local-only defaults a fresh
- * worktree needs to serve and test, then the machine-shared values (where
- * Unleash runs and its token, this machine's development domain) from one
+ * worktree needs to serve and test, then the machine-shared values (this
+ * machine's development domain, optional Resend values) from one
  * ignored `church-shared.env` in the shared Git directory. A shared value
  * may replace a default, never a generated value.
  *
@@ -588,12 +588,6 @@ function generateLocalEnv(input: GenerateInput): void {
   if (existsSync(join(context.root, LEGACY_ENV_FILE))) {
     console.warn(
       `⚠ The legacy ${LEGACY_ENV_FILE} still exists: Varlock loads it beneath ${LOCAL_ENV_FILE}, so any key only it sets reaches every command. Move its machine-shared values into ${SHARED_VALUES_FILE} (docs/agents/tooling.md, "Worktree bootstrap"), then delete it.`,
-    );
-  }
-
-  if (!existsSync(shared.path)) {
-    console.warn(
-      `⚠ ${shared.path} does not exist, so machine-shared values such as UNLEASH_API_URL and UNLEASH_API_TOKEN are missing and server commands will fail validation. Create it (docs/agents/tooling.md, "Worktree bootstrap"), then rerun.`,
     );
   }
 }

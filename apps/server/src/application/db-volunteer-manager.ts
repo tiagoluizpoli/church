@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import type { AppConfig } from '@church/app-config';
 import {
   addMilliseconds,
   compareInstants,
@@ -47,7 +48,6 @@ import type {
   CheckShiftRow,
 } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
-import type { IFeatureFlagService } from '../domain/contracts/infrastructure/feature-flag-service';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
@@ -262,15 +262,16 @@ export class DbVolunteerManager implements IVolunteerManager {
     private readonly teamRepo: TeamRepository,
     @inject('IAvailabilityCheckRepository')
     private readonly availabilityCheckRepo: AvailabilityCheckRepository,
-    @inject('IFeatureFlagService')
-    private readonly featureFlagService: IFeatureFlagService,
     @inject('INotificationService')
     private readonly notificationService: NotificationService,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
-    @inject('AssignmentCancelLeadTimeDays')
-    private readonly cancelLeadTimeDays: number,
-  ) {}
+    @inject('AppConfig') config: AppConfig,
+  ) {
+    this.cancelLeadTimeDays = config.assignment.cancelLeadTimeDays;
+  }
+
+  private readonly cancelLeadTimeDays: number;
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
     const { volunteerId, churchId } = input;
@@ -884,12 +885,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     });
 
     if (overlapPairs.length > 0) {
-      const allowOverlapSave = await this.featureFlagService.isEnabled(
-        'VOLUNTEER_DASHBOARD_ALLOW_OVERLAP_SAVE',
-      );
-      if (!allowOverlapSave) {
-        throw new AvailabilityOverlapError();
-      }
+      throw new AvailabilityOverlapError();
     }
 
     const confirmedAt = context.check.confirmedAt ?? nowInstant();
@@ -983,9 +979,10 @@ export class DbVolunteerManager implements IVolunteerManager {
         churchId,
         shiftId: assignment.shiftId,
       });
+      const cancelLeadTimeMs = this.cancelLeadTimeDays * MILLISECONDS_PER_DAY;
       const cutoff = addMilliseconds({
         instant: shift.startTime,
-        milliseconds: -this.cancelLeadTimeDays * MILLISECONDS_PER_DAY,
+        milliseconds: -cancelLeadTimeMs,
       });
       if (compareInstants({ left: nowInstant(), right: cutoff }) >= 0) {
         throw new CancelWindowClosedError();

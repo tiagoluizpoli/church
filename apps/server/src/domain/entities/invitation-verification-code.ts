@@ -4,10 +4,6 @@ import {
   millisecondsBetween,
 } from '@church/time';
 
-export const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
-export const VERIFICATION_CODE_MAX_ATTEMPTS = 5;
-export const VERIFICATION_CODE_RESEND_COOLDOWN_MS = 60 * 1000;
-
 export interface VerificationCodeState {
   codeHash: string;
   expiresAt: Instant;
@@ -44,19 +40,27 @@ export type VerificationCodeValidation =
   | AttemptLimitReachedVerificationCodeValidation
   | InvalidVerificationCodeValidation;
 
+export interface VerificationCodePolicy {
+  maxAttempts: number;
+  resendCooldownMs: number;
+}
+
 export interface ValidateVerificationCodeInput {
   state: VerificationCodeState;
+  policy: VerificationCodePolicy;
   candidateMatches: boolean;
   now: Instant;
 }
 
 export interface CanResendVerificationCodeInput {
   state: VerificationCodeState;
+  policy: VerificationCodePolicy;
   now: Instant;
 }
 
 export function validateVerificationCode({
   state,
+  policy,
   candidateMatches,
   now,
 }: ValidateVerificationCodeInput): VerificationCodeValidation {
@@ -64,7 +68,8 @@ export function validateVerificationCode({
   if (compareInstants({ left: state.expiresAt, right: now }) <= 0) {
     return { status: 'expired' };
   }
-  if (state.failedAttempts >= VERIFICATION_CODE_MAX_ATTEMPTS) {
+  const { maxAttempts } = policy;
+  if (state.failedAttempts >= maxAttempts) {
     return { status: 'attempt-limit-reached' };
   }
   return candidateMatches ? { status: 'valid' } : { status: 'invalid' };
@@ -72,10 +77,13 @@ export function validateVerificationCode({
 
 export function canResendVerificationCode({
   state,
+  policy,
   now,
 }: CanResendVerificationCodeInput): boolean {
-  return (
-    millisecondsBetween({ start: state.lastSentAt, end: now }) >=
-    VERIFICATION_CODE_RESEND_COOLDOWN_MS
-  );
+  const { resendCooldownMs } = policy;
+  const sinceLastSentMs = millisecondsBetween({
+    start: state.lastSentAt,
+    end: now,
+  });
+  return sinceLastSentMs >= resendCooldownMs;
 }

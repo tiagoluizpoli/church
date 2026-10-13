@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import 'reflect-metadata';
 import {
   identityAudit,
@@ -42,7 +43,10 @@ import {
 import { testDb, truncateAll } from './repositories/setup';
 
 const verificationCodeRepository =
-  new DrizzleInvitationVerificationCodeRepository({ db: testDb });
+  new DrizzleInvitationVerificationCodeRepository({
+    db: testDb,
+    config: appConfig,
+  });
 const redemptionRepository = new DrizzleRedemptionRepository({
   db: testDb,
   volunteerRepository: new DrizzleVolunteerRepository({ db: testDb }),
@@ -91,6 +95,7 @@ function createHarness(): RedemptionHarness {
     emailSender: new CaptureEmailSender(),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
+    config: appConfig,
   });
   return {
     verificationCodeManager,
@@ -123,6 +128,7 @@ function createOutboxDrainer({
     volunteerTransferRepository,
     emailSender,
     unitOfWork,
+    config: appConfig,
   });
 }
 
@@ -276,12 +282,14 @@ describe('verification code persistence', () => {
       emailSender: emailSenderA,
       generateCode: () => '123456',
       verificationCodeSecret: 'test-secret',
+      config: appConfig,
     });
     const managerB = new InvitationVerificationCodeManager({
       repository: verificationCodeRepository,
       emailSender: emailSenderB,
       generateCode: () => '123456',
       verificationCodeSecret: 'test-secret',
+      config: appConfig,
     });
 
     const outcomes = await Promise.allSettled([

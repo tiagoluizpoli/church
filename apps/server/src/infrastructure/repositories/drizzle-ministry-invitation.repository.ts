@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import {
   church,
   invitation as churchInvitation,
@@ -45,26 +46,21 @@ import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
-/**
- * Better Auth's own default for its `invitation` table (mirrors
- * `provision-church.ts`'s `CHURCH_INVITATION_TTL_MS`) — the pair's expiry is
- * governed by whichever half's clock is shorter, and in practice that is
- * always this one.
- */
-const CHURCH_INVITATION_TTL_MS = 48 * 60 * 60 * 1000;
-
 interface DrizzleMinistryInvitationRepositoryInput {
   db: AnyDrizzleDb;
+  config: AppConfig;
 }
 
 export class DrizzleMinistryInvitationRepository
   implements MinistryInvitationRepository
 {
-  constructor({ db }: DrizzleMinistryInvitationRepositoryInput) {
+  constructor({ db, config }: DrizzleMinistryInvitationRepositoryInput) {
     this.db = db;
+    this.churchInvitationTtlMs = config.churchInvitation.ttlMs;
   }
 
   private readonly db: AnyDrizzleDb;
+  private readonly churchInvitationTtlMs: number;
 
   async acquireMintLock(input: AcquireMintLockInput): Promise<void> {
     const { ministryId, email, tx } = input;
@@ -383,12 +379,11 @@ export class DrizzleMinistryInvitationRepository
   ): Promise<ChurchInvitationSummary> {
     const { churchId, email, inviterId, tx } = input;
     const id = crypto.randomUUID();
-    const expiresAt = toDate({
-      instant: addMilliseconds({
-        instant: now(),
-        milliseconds: CHURCH_INVITATION_TTL_MS,
-      }),
+    const expiresAtInstant = addMilliseconds({
+      instant: now(),
+      milliseconds: this.churchInvitationTtlMs,
     });
+    const expiresAt = toDate({ instant: expiresAtInstant });
     await getClient(this.db, tx).insert(churchInvitation).values({
       id,
       organizationId: churchId,

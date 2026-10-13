@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +16,13 @@ import {
 
 // Scoped to this worktree so concurrent integration runs in other worktrees
 // never create or drop the same scratch databases.
-const SCRATCH_WORKTREE = `${process.env.CHURCH_WORKTREE ?? 'unspecified'}_provision_test`;
+// The worktree name is hashed because Postgres truncates identifiers over 63
+// characters, which would make long worktree names collide.
+const WORKTREE_HASH_LENGTH = 12;
+const SCRATCH_WORKTREE = `provision_${createHash('sha256')
+  .update(process.env.CHURCH_WORKTREE ?? 'unspecified')
+  .digest('hex')
+  .slice(0, WORKTREE_HASH_LENGTH)}`;
 const PURPOSES: DatabasePurpose[] = ['development', 'integration', 'e2e'];
 const SCRATCH_DATABASES = PURPOSES.map((purpose) =>
   expectedDatabaseName({ purpose, worktree: SCRATCH_WORKTREE }),

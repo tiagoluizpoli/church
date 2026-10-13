@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { ministry } from '@church/db';
 import { eq } from 'drizzle-orm';
@@ -409,7 +410,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       status: 'confirmed',
     });
 
-    const managers = createSchedulingManagers({ cancelLeadTimeDays: 3 });
+    const managers = createSchedulingManagers();
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
@@ -525,6 +526,67 @@ describe('Phase 7 assignment manager surfaces (direct create/delete/override + h
     });
     expect(audit).toEqual([
       expect.objectContaining({ action: 'created', reason: 'Direct staffing' }),
+    ]);
+  });
+
+  it('records Assignment audit entries while parked.auditPanel is off', async () => {
+    expect(appConfig.parked.auditPanel).toBe(false);
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'April 2027',
+      startDate: new Date('2027-04-01T00:00:00.000Z'),
+      endDate: new Date('2027-05-01T00:00:00.000Z'),
+      state: 'locked',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Parked audit service',
+      start: new Date('2027-04-04T09:00:00.000Z'),
+      end: new Date('2027-04-04T10:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const roleRow = await seedRole({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Parked audit role',
+    });
+    await seedShift({
+      churchId: seed.churchAId,
+      participationId: graph.participation.id,
+      timeSlotId: graph.slot.id,
+      startTime: graph.slot.startTime,
+      endTime: graph.slot.endTime,
+      label: 'Whole slot',
+    });
+    const target = await seedVolunteerMembership({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Parked Audit Target',
+      email: 'parked-audit@test.com',
+    });
+
+    const managers = createSchedulingManagers();
+    const created = await managers.assignmentManager.createAssignment({
+      churchId: ChurchId.from(seed.churchAId),
+      slotId: TimeSlotId.from(graph.slot.id),
+      volunteerId: VolunteerId.from(target.volunteer.id),
+      roleId: RoleId.from(roleRow.id),
+      actorId: UserId.from(seed.adminUserId),
+      reason: 'Audit while parked',
+    });
+
+    const audit = await managers.assignmentManager.listAuditLog({
+      churchId: ChurchId.from(seed.churchAId),
+      assignmentId: created.id,
+    });
+    expect(audit).toEqual([
+      expect.objectContaining({
+        action: 'created',
+        reason: 'Audit while parked',
+      }),
     ]);
   });
 

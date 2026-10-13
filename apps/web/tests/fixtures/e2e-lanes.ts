@@ -38,10 +38,9 @@ export const ISOLATED_SPECS = [
   'scheduling/us2-leader-tailor.spec.ts',
   'scheduling/us3-volunteer-availability.spec.ts',
   'scheduling/us4-roster-publish.spec.ts',
-  'scheduling/us5-live-changes.spec.ts',
+  'scheduling/us5-leader-reassign.spec.ts',
   'volunteer-dashboard/us-notification-bell.spec.ts',
   'volunteer-dashboard/us1-availability.spec.ts',
-  'volunteer-dashboard/us2-assignments.spec.ts',
   'volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'volunteer-dashboard/us5-offline.spec.ts',
 ] as const;

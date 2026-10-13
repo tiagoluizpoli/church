@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { WifiOff } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -81,6 +82,7 @@ export function UpcomingAssignmentsSection({
   onRespond,
   onCancel,
 }: UpcomingAssignmentsSectionProps) {
+  const { assignmentResponse, volunteerCancel } = appConfig.parked;
   const { churchTimezone } = useTimezone();
   const isSaving = responseState === 'saving';
   const isCancelling = cancelState === 'saving';
@@ -111,7 +113,7 @@ export function UpcomingAssignmentsSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!isOnline ? (
+          {!isOnline && assignmentResponse ? (
             <Alert variant="destructive">
               <WifiOff className="size-4" />
               <AlertTitle>Offline</AlertTitle>
@@ -150,11 +152,15 @@ export function UpcomingAssignmentsSection({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">
-                      {getAggregateResponseLabel(group)}
-                    </Badge>
-                    {group.hasPendingResponse ? (
-                      <Badge variant="secondary">Needs response</Badge>
+                    {assignmentResponse ? (
+                      <>
+                        <Badge variant="outline">
+                          {getAggregateResponseLabel(group)}
+                        </Badge>
+                        {group.hasPendingResponse ? (
+                          <Badge variant="secondary">Needs response</Badge>
+                        ) : null}
+                      </>
                     ) : null}
                     <Button
                       type="button"
@@ -190,7 +196,8 @@ export function UpcomingAssignmentsSection({
                                   timeZone: churchTimezone,
                                 })}
                               </div>
-                              {assignment.timingState === 'in_progress' ? (
+                              {assignmentResponse &&
+                              assignment.timingState === 'in_progress' ? (
                                 <div className="text-muted-foreground">
                                   This assignment is already in progress, so
                                   responses are locked.
@@ -198,9 +205,11 @@ export function UpcomingAssignmentsSection({
                               ) : null}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="outline">
-                                {getAssignmentStatusLabel(assignment)}
-                              </Badge>
+                              {assignmentResponse ? (
+                                <Badge variant="outline">
+                                  {getAssignmentStatusLabel(assignment)}
+                                </Badge>
+                              ) : null}
                               <Badge variant="outline">
                                 {getTimingLabel(assignment)}
                               </Badge>
@@ -208,7 +217,8 @@ export function UpcomingAssignmentsSection({
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            {shouldShowConfirmAction(assignment) ? (
+                            {assignmentResponse &&
+                            shouldShowConfirmAction(assignment) ? (
                               <Button
                                 type="button"
                                 variant="outline"
@@ -223,7 +233,8 @@ export function UpcomingAssignmentsSection({
                                 Confirm
                               </Button>
                             ) : null}
-                            {shouldShowDeclineAction(assignment) ? (
+                            {assignmentResponse &&
+                            shouldShowDeclineAction(assignment) ? (
                               <Button
                                 type="button"
                                 variant="destructive"
@@ -235,7 +246,8 @@ export function UpcomingAssignmentsSection({
                                 I cannot serve
                               </Button>
                             ) : null}
-                            {shouldShowCancelAction(assignment) ? (
+                            {volunteerCancel &&
+                            shouldShowCancelAction(assignment) ? (
                               <Button
                                 type="button"
                                 variant="destructive"
@@ -260,79 +272,85 @@ export function UpcomingAssignmentsSection({
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={pendingDeclineAssignment != null}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeDeclineDialog();
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm unable-to-serve notice</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will immediately notify your leader that you can no longer
-              serve this assignment. To continue, type{' '}
-              <span className="font-mono text-foreground">
-                {DECLINE_CONFIRMATION_PHRASE}
-              </span>{' '}
-              exactly.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+      {assignmentResponse ? (
+        <AlertDialog
+          open={pendingDeclineAssignment != null}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeDeclineDialog();
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Confirm unable-to-serve notice
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This will immediately notify your leader that you can no longer
+                serve this assignment. To continue, type{' '}
+                <span className="font-mono text-foreground">
+                  {DECLINE_CONFIRMATION_PHRASE}
+                </span>{' '}
+                exactly.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-          {pendingDeclineAssignment ? (
-            <div className="space-y-3">
-              <div className="rounded border p-3 text-sm">
-                <div className="font-medium">
-                  {pendingDeclineAssignment.roleName}
+            {pendingDeclineAssignment ? (
+              <div className="space-y-3">
+                <div className="rounded border p-3 text-sm">
+                  <div className="font-medium">
+                    {pendingDeclineAssignment.roleName}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {formatAssignmentWindow({
+                      assignment: pendingDeclineAssignment,
+                      timeZone: churchTimezone,
+                    })}
+                  </div>
                 </div>
-                <div className="text-muted-foreground">
-                  {formatAssignmentWindow({
-                    assignment: pendingDeclineAssignment,
-                    timeZone: churchTimezone,
-                  })}
+
+                <div className="space-y-2">
+                  <Label htmlFor="decline-confirmation-input">
+                    Type the confirmation phrase
+                  </Label>
+                  <Input
+                    id="decline-confirmation-input"
+                    value={confirmationValue}
+                    onChange={(event) =>
+                      setConfirmationValue(event.target.value)
+                    }
+                    placeholder={DECLINE_CONFIRMATION_PHRASE}
+                  />
                 </div>
               </div>
+            ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="decline-confirmation-input">
-                  Type the confirmation phrase
-                </Label>
-                <Input
-                  id="decline-confirmation-input"
-                  value={confirmationValue}
-                  onChange={(event) => setConfirmationValue(event.target.value)}
-                  placeholder={DECLINE_CONFIRMATION_PHRASE}
-                />
-              </div>
-            </div>
-          ) : null}
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={closeDeclineDialog}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={!canConfirmDecline}
+                onClick={() => {
+                  if (!pendingDeclineAssignment || !canConfirmDecline) {
+                    return;
+                  }
 
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDeclineDialog}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={!canConfirmDecline}
-              onClick={() => {
-                if (!pendingDeclineAssignment || !canConfirmDecline) {
-                  return;
-                }
-
-                onRespond({
-                  assignmentId: pendingDeclineAssignment.assignmentId,
-                  response: 'declined',
-                });
-                closeDeclineDialog();
-              }}
-            >
-              Confirm I cannot serve
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                  onRespond({
+                    assignmentId: pendingDeclineAssignment.assignmentId,
+                    response: 'declined',
+                  });
+                  closeDeclineDialog();
+                }}
+              >
+                Confirm I cannot serve
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
     </>
   );
 }

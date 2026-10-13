@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   millisecondsBetween,
   parseInstant,
@@ -5,13 +6,20 @@ import {
   setTestClock,
 } from '@church/time';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  hasExhaustedRetries,
-  nextRetryAt,
-  OUTBOX_MAX_ATTEMPTS,
-} from './outbox-retry-policy';
+import { hasExhaustedRetries, nextRetryAt } from './outbox-retry-policy';
 
 const FIXED_NOW = parseInstant({ value: '2027-01-04T12:00:00Z' });
+const MINUTE_MS = 60_000;
+const FIRST_RETRY_BACKOFF_MINUTES = 2;
+const SECOND_RETRY_BACKOFF_MINUTES = 4;
+const THIRD_RETRY_BACKOFF_MINUTES = 8;
+const ATTEMPTS_PAST_THE_BACKOFF_CAP = 10;
+const { outbox: policy } = appConfig;
+
+function backoffMsAfter({ attempts }: { attempts: number }): number {
+  const end = nextRetryAt({ attempts, policy });
+  return millisecondsBetween({ start: FIXED_NOW, end });
+}
 
 describe('outbox retry policy', () => {
   beforeEach(() => {
@@ -23,42 +31,37 @@ describe('outbox retry policy', () => {
   });
 
   it('has not exhausted retries below the attempt cap', () => {
-    expect(hasExhaustedRetries(0)).toBe(false);
-    expect(hasExhaustedRetries(OUTBOX_MAX_ATTEMPTS - 1)).toBe(false);
+    const { maxAttempts } = appConfig.outbox;
+    expect(hasExhaustedRetries({ attempts: 0, policy })).toBe(false);
+    expect(hasExhaustedRetries({ attempts: maxAttempts - 1, policy })).toBe(
+      false,
+    );
   });
 
   it('has exhausted retries at or above the attempt cap', () => {
-    expect(hasExhaustedRetries(OUTBOX_MAX_ATTEMPTS)).toBe(true);
-    expect(hasExhaustedRetries(OUTBOX_MAX_ATTEMPTS + 1)).toBe(true);
+    const { maxAttempts } = appConfig.outbox;
+    expect(hasExhaustedRetries({ attempts: maxAttempts, policy })).toBe(true);
+    expect(hasExhaustedRetries({ attempts: maxAttempts + 1, policy })).toBe(
+      true,
+    );
   });
 
   it('backs off exponentially in minutes', () => {
-    expect(
-      millisecondsBetween({
-        start: FIXED_NOW,
-        end: nextRetryAt({ attempts: 1 }),
-      }),
-    ).toBe(2 * 60_000);
-    expect(
-      millisecondsBetween({
-        start: FIXED_NOW,
-        end: nextRetryAt({ attempts: 2 }),
-      }),
-    ).toBe(4 * 60_000);
-    expect(
-      millisecondsBetween({
-        start: FIXED_NOW,
-        end: nextRetryAt({ attempts: 3 }),
-      }),
-    ).toBe(8 * 60_000);
+    expect(backoffMsAfter({ attempts: 1 })).toBe(
+      FIRST_RETRY_BACKOFF_MINUTES * MINUTE_MS,
+    );
+    expect(backoffMsAfter({ attempts: 2 })).toBe(
+      SECOND_RETRY_BACKOFF_MINUTES * MINUTE_MS,
+    );
+    expect(backoffMsAfter({ attempts: 3 })).toBe(
+      THIRD_RETRY_BACKOFF_MINUTES * MINUTE_MS,
+    );
   });
 
-  it('caps backoff at one hour', () => {
-    expect(
-      millisecondsBetween({
-        start: FIXED_NOW,
-        end: nextRetryAt({ attempts: 10 }),
-      }),
-    ).toBe(60 * 60_000);
+  it('caps backoff at the configured number of minutes', () => {
+    const { backoffCapMinutes } = appConfig.outbox;
+    expect(backoffMsAfter({ attempts: ATTEMPTS_PAST_THE_BACKOFF_CAP })).toBe(
+      backoffCapMinutes * MINUTE_MS,
+    );
   });
 });

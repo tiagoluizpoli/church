@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
@@ -91,6 +92,7 @@ export function CycleBuilder({
   isRefreshing,
   teamId,
 }: CycleBuilderProps) {
+  const { auditPanel } = appConfig.parked;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<
@@ -121,14 +123,16 @@ export function CycleBuilder({
   // instead of stretching a panel that otherwise only carries title + stats.
   const toolbarActions = teamId ? null : (
     <>
-      <Button
-        type="button"
-        size={isMobile ? 'touch' : 'sm'}
-        variant="outline"
-        onClick={() => setAuditOpen(true)}
-      >
-        Audit log
-      </Button>
+      {auditPanel ? (
+        <Button
+          type="button"
+          size={isMobile ? 'touch' : 'sm'}
+          variant="outline"
+          onClick={() => setAuditOpen(true)}
+        >
+          Audit log
+        </Button>
+      ) : null}
       <Button
         type="button"
         size={isMobile ? 'touch' : 'sm'}
@@ -180,7 +184,7 @@ export function CycleBuilder({
         teamId={teamId}
       />
 
-      {!teamId ? (
+      {!teamId && auditPanel ? (
         <AuditLogPanel
           open={auditOpen}
           onOpenChange={setAuditOpen}

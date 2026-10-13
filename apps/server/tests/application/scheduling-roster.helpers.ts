@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { fromDate } from '@church/time';
 import { buildRole } from '../../seeds/builders/ministry';
 import {
@@ -27,7 +28,6 @@ import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
 import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
 import { schedulingTestDb } from '../scheduling-reshape/setup';
 
@@ -56,7 +56,7 @@ export interface SeedRoleQualificationInput {
 }
 
 export function createSchedulingManagers({
-  cancelLeadTimeDays = 3,
+  cancelLeadTimeDays = appConfig.assignment.cancelLeadTimeDays,
 }: CreateSchedulingManagersInput = {}): SchedulingManagers {
   const assignmentRepo = new DrizzleAssignmentRepository({
     db: schedulingTestDb,
@@ -122,13 +122,9 @@ export function createSchedulingManagers({
       new DrizzleRoleRepository({ db: schedulingTestDb }),
       new DrizzleTeamRepository({ db: schedulingTestDb }),
       availabilityCheckRepo,
-      new SchedulingFeatureFlagServiceStub({
-        participationDefaultAllIn: true,
-        volunteerDashboardAllowOverlapSave: true,
-      }),
       notificationSpy,
       unitOfWork,
-      cancelLeadTimeDays,
+      { ...appConfig, assignment: { cancelLeadTimeDays } },
     ),
     assignmentRepo,
     participationRepo,

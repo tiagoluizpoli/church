@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import { invitationVerificationCode } from '@church/db';
 import { addMilliseconds, fromDate, toDate } from '@church/time';
 import { and, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
@@ -9,25 +10,30 @@ import type {
   RecordFailedVerificationAttemptIfAllowedInput,
   ReleaseVerificationCodeDeliveryClaimInput,
 } from '../../domain/contracts/infrastructure/invitation-verification-code.repository';
-import {
-  VERIFICATION_CODE_MAX_ATTEMPTS,
-  VERIFICATION_CODE_RESEND_COOLDOWN_MS,
-  type VerificationCodeState,
-} from '../../domain/entities/invitation-verification-code';
+import type { VerificationCodeState } from '../../domain/entities/invitation-verification-code';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleInvitationVerificationCodeRepositoryInput {
   db: AnyDrizzleDb;
+  config: AppConfig;
 }
 
 export class DrizzleInvitationVerificationCodeRepository
   implements InvitationVerificationCodeRepository
 {
-  constructor({ db }: DrizzleInvitationVerificationCodeRepositoryInput) {
+  constructor({
+    db,
+    config,
+  }: DrizzleInvitationVerificationCodeRepositoryInput) {
     this.db = db;
+    const { verificationCode } = config;
+    this.resendCooldownMs = verificationCode.resendCooldownMs;
+    this.maxAttempts = verificationCode.maxAttempts;
   }
 
   private readonly db: AnyDrizzleDb;
+  private readonly resendCooldownMs: number;
+  private readonly maxAttempts: number;
 
   async find({
     ministryInvitationId,
@@ -51,12 +57,11 @@ export class DrizzleInvitationVerificationCodeRepository
     expiresAt,
     sentAt,
   }: ClaimVerificationCodeDeliveryInput): Promise<boolean> {
-    const resendEligibleAt = toDate({
-      instant: addMilliseconds({
-        instant: fromDate({ date: sentAt }),
-        milliseconds: -VERIFICATION_CODE_RESEND_COOLDOWN_MS,
-      }),
+    const resendEligibleAtInstant = addMilliseconds({
+      instant: fromDate({ date: sentAt }),
+      milliseconds: -this.resendCooldownMs,
     });
+    const resendEligibleAt = toDate({ instant: resendEligibleAtInstant });
     const [row] = await this.db
       .insert(invitationVerificationCode)
       .values({
@@ -126,10 +131,7 @@ export class DrizzleInvitationVerificationCodeRepository
           eq(invitationVerificationCode.codeHash, candidateHash),
           isNull(invitationVerificationCode.consumedAt),
           gt(invitationVerificationCode.expiresAt, now),
-          lt(
-            invitationVerificationCode.failedAttempts,
-            VERIFICATION_CODE_MAX_ATTEMPTS,
-          ),
+          lt(invitationVerificationCode.failedAttempts, this.maxAttempts),
         ),
       )
       .returning({ id: invitationVerificationCode.id });
@@ -155,10 +157,7 @@ export class DrizzleInvitationVerificationCodeRepository
           ne(invitationVerificationCode.codeHash, candidateHash),
           isNull(invitationVerificationCode.consumedAt),
           gt(invitationVerificationCode.expiresAt, now),
-          lt(
-            invitationVerificationCode.failedAttempts,
-            VERIFICATION_CODE_MAX_ATTEMPTS,
-          ),
+          lt(invitationVerificationCode.failedAttempts, this.maxAttempts),
         ),
       )
       .returning({ id: invitationVerificationCode.id });

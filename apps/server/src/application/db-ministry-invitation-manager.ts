@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
@@ -40,8 +41,6 @@ import {
   nextResendThrottleState,
   type ResendThrottleState,
 } from '../domain/services/resend-throttle';
-
-const MINISTRY_ONLY_INVITATION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 interface EnsureMintableScopeInput {
   churchId: ChurchId;
@@ -89,7 +88,15 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     private readonly unitOfWork: UnitOfWork,
     @inject('IOutboxRepository')
     private readonly outboxRepository: OutboxRepository,
-  ) {}
+    @inject('AppConfig') config: AppConfig,
+  ) {
+    const { ministryInvitation, invitationResend } = config;
+    this.invitationTtlMs = ministryInvitation.ttlMs;
+    this.resendPolicy = invitationResend;
+  }
+
+  private readonly invitationTtlMs: number;
+  private readonly resendPolicy: AppConfig['invitationResend'];
 
   async mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation> {
     const { churchId, ministryId, inviterId, ministryAccessLevel, roleIds } =
@@ -163,10 +170,11 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
       const expiresAt = addMilliseconds({
         instant: now,
-        milliseconds: MINISTRY_ONLY_INVITATION_TTL_MS,
+        milliseconds: this.invitationTtlMs,
       });
       const nextThrottle = nextResendThrottleState({
         state: throttleState,
+        policy: this.resendPolicy,
         now,
       });
       const invitation = await this.repo.applyResend({
@@ -249,12 +257,11 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       tx,
     });
 
-    const expiresAt = toDate({
-      instant: addMilliseconds({
-        instant: nowInstant(),
-        milliseconds: MINISTRY_ONLY_INVITATION_TTL_MS,
-      }),
+    const expiresAtInstant = addMilliseconds({
+      instant: nowInstant(),
+      milliseconds: this.invitationTtlMs,
     });
+    const expiresAt = toDate({ instant: expiresAtInstant });
     const invitation = existing
       ? await this.repo.refreshExpiry({
           churchId,
@@ -400,10 +407,22 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
   private ensureResendAllowed(input: EnsureResendAllowedInput): void {
     const { throttleState, now } = input;
-    if (isResendCooldownActive({ state: throttleState, now })) {
+    if (
+      isResendCooldownActive({
+        state: throttleState,
+        policy: this.resendPolicy,
+        now,
+      })
+    ) {
       throw new ResendCooldownActiveError();
     }
-    if (hasResendDailyCapExceeded({ state: throttleState, now })) {
+    if (
+      hasResendDailyCapExceeded({
+        state: throttleState,
+        policy: this.resendPolicy,
+        now,
+      })
+    ) {
       throw new ResendDailyCapExceededError();
     }
   }

@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import { env } from '@church/env/server';
 import { nowAsDate, toDate } from '@church/time';
 import 'reflect-metadata';
@@ -51,6 +52,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     volunteerTransferRepository,
     emailSender,
     unitOfWork,
+    config,
   }: DbOutboxDrainerDependencies) {
     this.outboxRepository = outboxRepository;
     this.invitationRepository = invitationRepository;
@@ -61,6 +63,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.volunteerTransferRepository = volunteerTransferRepository;
     this.emailSender = emailSender;
     this.unitOfWork = unitOfWork;
+    this.outboxPolicy = config.outbox;
   }
 
   private readonly outboxRepository: OutboxRepository;
@@ -72,6 +75,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly volunteerTransferRepository: VolunteerTransferRepository;
   private readonly emailSender: EmailSender;
   private readonly unitOfWork: UnitOfWork;
+  private readonly outboxPolicy: AppConfig['outbox'];
 
   async drainOnce(input: DrainOnceInput): Promise<DrainOnceResult> {
     const { limit } = input;
@@ -283,14 +287,18 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     error,
   }: HandleSendFailureInput): Promise<void> {
     const attempts = message.attempts + 1;
-    if (error.retryable && !hasExhaustedRetries(attempts)) {
+    if (
+      error.retryable &&
+      !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
+    ) {
+      const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.markFailed({
           id: message.id,
           lastError: error.message,
           attempts,
           status: 'pending',
-          scheduledFor: toDate({ instant: nextRetryAt({ attempts }) }),
+          scheduledFor: toDate({ instant: retryAt }),
           tx,
         }),
       );
@@ -321,6 +329,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
 }
 
 export interface DbOutboxDrainerDependencies {
+  config: AppConfig;
   outboxRepository: OutboxRepository;
   invitationRepository: MinistryInvitationRepository;
   churchRepository: ChurchRepository;

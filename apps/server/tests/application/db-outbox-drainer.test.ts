@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { appConfig } from '@church/app-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';
 import type {
@@ -9,7 +10,6 @@ import type {
   VolunteerId,
 } from '../../src/domain/branded-ids';
 import { EmailSendError } from '../../src/domain/errors/email-send-error';
-import { OUTBOX_MAX_ATTEMPTS } from '../../src/domain/services/outbox-retry-policy';
 
 const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;
@@ -46,6 +46,7 @@ function createDrainer(): DbOutboxDrainer {
     volunteerTransferRepository: volunteerTransferRepository as never,
     emailSender: emailSender as never,
     unitOfWork: unitOfWork as never,
+    config: appConfig,
   });
 }
 
@@ -168,7 +169,8 @@ describe('DbOutboxDrainer.drainOnce', () => {
   });
 
   it('fails terminally once a retryable failure exhausts the attempt cap', async () => {
-    const message = buildMessage({ attempts: OUTBOX_MAX_ATTEMPTS - 1 });
+    const { maxAttempts } = appConfig.outbox;
+    const message = buildMessage({ attempts: maxAttempts - 1 });
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
     emailSender.send.mockRejectedValue(
@@ -179,7 +181,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
 
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({
-        attempts: OUTBOX_MAX_ATTEMPTS,
+        attempts: maxAttempts,
         status: 'failed',
       }),
     );

@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { Check, Clock, X } from 'lucide-react';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,7 @@ export function AssignmentChip({
   onClick,
   contextTeamId,
 }: AssignmentChipProps) {
+  const { assignmentResponse } = appConfig.parked;
   const isTouch = useFormControlSize() === 'touch';
   return (
     <button
@@ -97,7 +99,7 @@ export function AssignmentChip({
           </Badge>
         )}
 
-        {isPublished && confirmationStatus && (
+        {assignmentResponse && isPublished && confirmationStatus && (
           <span data-testid="confirmation-badge">
             {confirmationStatus === 'confirmed' && (
               <Check className="size-3 text-green-600" aria-label="confirmed" />

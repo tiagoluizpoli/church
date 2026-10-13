@@ -7,6 +7,14 @@ import { BackgroundRefreshIndicator } from '@/features/volunteers/components/bac
 import { DashboardOfflineBanner } from '@/features/volunteers/components/dashboard-offline-banner';
 import { UpcomingAssignmentsSection } from '@/features/volunteers/components/upcoming-assignments-section';
 
+vi.mock('@church/app-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@church/app-config')>();
+  return {
+    ...actual,
+    appConfig: actual.withAllParkedOn(actual.appConfig),
+  };
+});
+
 describe('Volunteer dashboard offline + refresh UI', () => {
   it('shows dashboard offline banner with manual refresh affordance', () => {
     renderWithProviders(

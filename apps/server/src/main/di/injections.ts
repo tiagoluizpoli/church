@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { type AppConfig, appConfig } from '@church/app-config';
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { container } from 'tsyringe';
@@ -7,7 +8,6 @@ import { ActiveChurchController } from '../../api/controllers/active-church-cont
 import { AssignmentController } from '../../api/controllers/assignment-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { EventController } from '../../api/controllers/event-controller';
-import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
 import { MinistryController } from '../../api/controllers/ministry-controller';
 import { RedemptionController } from '../../api/controllers/redemption-controller';
 import { RosteringController } from '../../api/controllers/rostering-controller';
@@ -24,7 +24,6 @@ import { DbAuthorityManager } from '../../application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../application/db-availability-check-manager';
 import { DbEventManager } from '../../application/db-event-manager';
 import { DbEventTemplateManager } from '../../application/db-event-template-manager';
-import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
 import { DbMinistryInvitationManager } from '../../application/db-ministry-invitation-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
 import { DbOutboxDrainer } from '../../application/db-outbox-drainer';
@@ -69,7 +68,6 @@ import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/servic
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { LocalNotificationService } from '../../infrastructure/services/local-notification-service';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
-import { UnleashFeatureFlagService } from '../../infrastructure/services/unleash-feature-flag-service';
 import { injection } from './injection-tokens';
 
 export function registerInjections(): void {
@@ -137,7 +135,11 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleMinistryRepository({ db }),
   });
   container.register(injection.infra.invitationVerificationCodeRepository, {
-    useFactory: () => new DrizzleInvitationVerificationCodeRepository({ db }),
+    useFactory: () =>
+      new DrizzleInvitationVerificationCodeRepository({
+        db,
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
   });
   container.register(injection.infra.redemptionRepository, {
     useFactory: () =>
@@ -155,7 +157,11 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleSecurityLogRepository({ db }),
   });
   container.register(injection.infra.ministryInvitationRepository, {
-    useFactory: () => new DrizzleMinistryInvitationRepository({ db }),
+    useFactory: () =>
+      new DrizzleMinistryInvitationRepository({
+        db,
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
   });
   container.register(injection.infra.outboxRepository, {
     useFactory: () => new DrizzleOutboxRepository({ db }),
@@ -178,10 +184,6 @@ export function registerInjections(): void {
   container.register(injection.infra.notificationService, {
     useClass: LocalNotificationService,
   });
-  container.registerSingleton(
-    injection.infra.featureFlagService,
-    UnleashFeatureFlagService,
-  );
   if (env.NODE_ENV === 'production') {
     container.register(injection.infra.emailSender, {
       useFactory: () =>
@@ -225,6 +227,7 @@ export function registerInjections(): void {
         ),
         emailSender: container.resolve(injection.infra.emailSender),
         verificationCodeSecret: env.BETTER_AUTH_SECRET,
+        config: container.resolve<AppConfig>(injection.config.appConfig),
       }),
   });
   container.register(injection.managers.redemptionManager, {
@@ -294,6 +297,7 @@ export function registerInjections(): void {
         ),
         emailSender: container.resolve(injection.infra.emailSender),
         unitOfWork: container.resolve(injection.infra.unitOfWork),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
       }),
   });
   container.register(injection.managers.planningCycleManager, {
@@ -302,8 +306,8 @@ export function registerInjections(): void {
   container.register(injection.managers.planningEventManager, {
     useClass: DbPlanningEventManager,
   });
-  container.register(injection.config.assignmentCancelLeadTimeDays, {
-    useValue: env.ASSIGNMENT_CANCEL_LEAD_TIME_DAYS,
+  container.register(injection.config.appConfig, {
+    useValue: appConfig,
   });
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,
@@ -313,9 +317,6 @@ export function registerInjections(): void {
   });
   container.register(injection.managers.availabilityCheckManager, {
     useClass: DbAvailabilityCheckManager,
-  });
-  container.register(injection.managers.featureFlagManager, {
-    useClass: DbFeatureFlagManager,
   });
   container.register(injection.managers.activeChurchSelectionManager, {
     useClass: DbActiveChurchSelectionManager,
@@ -345,10 +346,6 @@ export function registerInjections(): void {
   );
   container.registerSingleton(
     injection.controllers.fastify,
-    FeatureFlagController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
     TailoringController,
   );
   container.registerSingleton(
@@ -368,6 +365,7 @@ export function registerInjections(): void {
         volunteerTransferManager: container.resolve(
           injection.managers.volunteerTransferManager,
         ),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
       }),
   });
   container.registerSingleton(

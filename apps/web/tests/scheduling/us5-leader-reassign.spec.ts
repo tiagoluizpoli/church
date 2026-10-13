@@ -4,16 +4,10 @@ import {
   type LiveChangesJourney,
   loadLiveChangesJourney,
 } from '../fixtures/journeys/live-changes';
-import {
-  newPersonaContext,
-  signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
+import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
 
-// DL4-US5 (P4, test-plan.md): a volunteer cancels their own published
-// assignment — the leader is notified and the slot reopens (FR-028, SC-004,
-// SC-008). A volunteer may not cancel someone else's assignment. A leader can
-// then reassign a still-open assignment to a different volunteer mid-cycle
-// (FR-029).
+// DL4-US5 (P4, test-plan.md): a leader reassigns a still-open assignment to a
+// different volunteer mid-cycle (FR-029).
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 const CYCLE_NAME = 'US5 Live Changes';
@@ -75,19 +69,6 @@ interface EligibleVolunteerListResponse {
   volunteers: EligibleVolunteerResponse[];
 }
 
-interface CompletionResponse {
-  assignedCount: number;
-  requiredCount: number;
-}
-
-interface NotificationSummaryResponse {
-  type: string;
-}
-
-interface NotificationListResponse {
-  items: NotificationSummaryResponse[];
-}
-
 interface ReassignedAssignmentResponse {
   volunteerId: string;
 }
@@ -96,7 +77,6 @@ interface LiveChangesFixture {
   participationId: string;
   firstShiftId: string;
   secondShiftId: string;
-  eventTitle: string;
 }
 
 interface SetUpLiveChangesParams {
@@ -105,9 +85,7 @@ interface SetUpLiveChangesParams {
 }
 
 // Builds one locked Worship participation split into two shifts, each
-// requiring one Usher — so the same volunteer can hold two distinct
-// assignments (one to cancel, one to reassign) without tripping the
-// same-shift duplicate-assignment guard.
+// requiring one Usher.
 async function setUpLiveChanges({
   page,
   journey,
@@ -215,12 +193,10 @@ async function setUpLiveChanges({
     participationId: eventView.participation.id,
     firstShiftId: firstShift.id,
     secondShiftId: secondShift.id,
-    eventTitle: eventView.event.title,
   };
 }
 
-test('volunteer cancels their own published assignment, the leader is notified and the slot reopens, another volunteer cannot cancel it, and the leader reassigns mid-cycle', async ({
-  browser,
+test('the leader reassigns a still-open assignment mid-cycle', async ({
   page,
 }, testInfo) => {
   const journey = loadLiveChangesJourney({ testInfo });
@@ -242,13 +218,12 @@ test('volunteer cancels their own published assignment, the leader is notified a
     throw new Error('Expected the owner persona to be eligible.');
   }
 
-  const usherResponse = await page.request.post(
+  // Both shifts are staffed so the publish is a full one.
+  const firstResponse = await page.request.post(
     `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/assignments`,
     { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
   );
-  expect(usherResponse.ok()).toBeTruthy();
-  const usherAssignment = ((await usherResponse.json()) as AssignmentResponse)
-    .assignment;
+  expect(firstResponse.ok()).toBeTruthy();
 
   const secondResponse = await page.request.post(
     `${SERVER_URL}/api/v1/rostering/shifts/${fixture.secondShiftId}/assignments`,
@@ -263,88 +238,6 @@ test('volunteer cancels their own published assignment, the leader is notified a
     { data: {} },
   );
   expect(publishResponse.ok()).toBeTruthy();
-
-  // Volunteer confirms the Usher assignment, then cancels it — the leader is
-  // notified and the slot reopens (DL2-LC-01/03, FR-028, SC-008).
-  const volunteerContext = await newPersonaContext({
-    browser,
-    persona: ownerPersona,
-  });
-  const volunteerPage = await volunteerContext.newPage();
-  await volunteerPage.goto('/dashboard');
-
-  // Find the group by its event title and toggle it open if collapsed.
-  const groupToggle = volunteerPage.getByRole('button', {
-    name: new RegExp(
-      `^(?:Show|Hide) assignments for ${fixture.eventTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-    ),
-  });
-  await expect(groupToggle).toBeVisible();
-  if (/^Show/.test((await groupToggle.textContent()) ?? '')) {
-    await groupToggle.click();
-  }
-  await expect(
-    volunteerPage.getByRole('button', {
-      name: `Hide assignments for ${fixture.eventTitle}`,
-    }),
-  ).toBeVisible();
-
-  const groupContainer = volunteerPage
-    .locator('div.border.p-3')
-    .filter({ has: groupToggle });
-  const usherRow = groupContainer
-    .locator('div.space-y-3.border.px-3.py-2')
-    .first();
-  const confirmResponsePromise = volunteerPage.waitForResponse(
-    (response) =>
-      response.url().includes(`/assignments/${usherAssignment.id}`) &&
-      response.request().method() === 'PATCH',
-  );
-  await usherRow.getByRole('button', { name: 'Confirm' }).click();
-  const confirmResponse = await confirmResponsePromise;
-  expect(confirmResponse.ok()).toBeTruthy();
-
-  const cancelResponsePromise = volunteerPage.waitForResponse(
-    (response) =>
-      response.url().includes(`/assignments/${usherAssignment.id}/cancel`) &&
-      response.request().method() === 'POST',
-  );
-  await groupContainer.getByTestId('cancel-assignment-button').click();
-  const cancelResponse = await cancelResponsePromise;
-  expect(cancelResponse.status()).toBe(204);
-  await volunteerContext.close();
-
-  // The Usher slot reopens — completion drops from 2/2 to 1/2 (DL2-LC-01/03).
-  const completionResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/rostering/participations/${fixture.participationId}/completion`,
-  );
-  expect(completionResponse.ok()).toBeTruthy();
-  const completion = (await completionResponse.json()) as CompletionResponse;
-  expect(completion.requiredCount).toBe(2);
-  expect(completion.assignedCount).toBe(1);
-
-  // The leader (also a volunteer profile) was notified of the cancellation.
-  const notificationsResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/volunteer/notifications`,
-  );
-  expect(notificationsResponse.ok()).toBeTruthy();
-  const notifications =
-    (await notificationsResponse.json()) as NotificationListResponse;
-  expect(
-    notifications.items.some((item) => item.type === 'assignment_removed'),
-  ).toBe(true);
-
-  // A different volunteer cannot cancel the still-open second Usher assignment
-  // (DL2-LC-02, SC-004).
-  const teamLeaderContext = await newPersonaContext({
-    browser,
-    persona: teamLeader,
-  });
-  const deniedCancelResponse = await teamLeaderContext.request.post(
-    `${SERVER_URL}/api/v1/volunteer/assignments/${secondAssignment.id}/cancel`,
-  );
-  expect(deniedCancelResponse.status()).toBe(403);
-  await teamLeaderContext.close();
 
   // The leader reassigns the still-open second Usher assignment mid-cycle
   // (DL2-RS-08, FR-029).

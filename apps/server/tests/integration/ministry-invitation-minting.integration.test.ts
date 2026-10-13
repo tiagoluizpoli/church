@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import 'reflect-metadata';
 import { compareInstants } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -32,6 +33,7 @@ import { testDb, truncateAll } from './repositories/setup';
 
 const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({
   db: testDb,
+  config: appConfig,
 });
 const roleRepository = new DrizzleRoleRepository({ db: testDb });
 const ministryRepository = new DrizzleMinistryRepository({ db: testDb });
@@ -52,6 +54,7 @@ const manager = new DbMinistryInvitationManager(
   authorityManager,
   unitOfWork,
   outboxRepository,
+  appConfig,
 );
 
 let fixture: TwoChurchIdentityFixture;

@@ -244,7 +244,8 @@ export function UpcomingAssignmentsSection({
                                 I cannot serve
                               </Button>
                             ) : null}
-                            {shouldShowCancelAction(assignment) ? (
+                            {appConfig.parked.volunteerCancel &&
+                            shouldShowCancelAction(assignment) ? (
                               <Button
                                 type="button"
                                 variant="destructive"

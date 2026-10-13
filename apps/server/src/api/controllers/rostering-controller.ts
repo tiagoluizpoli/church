@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { inject, injectable } from 'tsyringe';
@@ -171,6 +172,8 @@ export class RosteringController implements FastifyController {
     private readonly activeChurchResolver: IActiveChurchResolver,
     @inject('AuthorityGuard')
     private readonly authorityGuard: AuthorityGuard,
+    @inject('AppConfig')
+    private readonly config: AppConfig,
   ) {}
 
   registerRoutes(

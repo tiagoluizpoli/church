@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { parseInstant } from '@church/time';
 import {
@@ -65,6 +66,7 @@ beforeAll(async () => {
     assignmentManager as never,
     activeChurchResolver as never,
     authorityGuard as never,
+    appConfig,
   );
   await app.register(
     async (instance) => {

@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { appConfig } from '@church/app-config';
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { container } from 'tsyringe';
@@ -302,8 +303,8 @@ export function registerInjections(): void {
   container.register(injection.managers.planningEventManager, {
     useClass: DbPlanningEventManager,
   });
-  container.register(injection.config.assignmentCancelLeadTimeDays, {
-    useValue: env.ASSIGNMENT_CANCEL_LEAD_TIME_DAYS,
+  container.register(injection.config.appConfig, {
+    useValue: appConfig,
   });
   container.register(injection.managers.volunteerManager, {
     useClass: DbVolunteerManager,

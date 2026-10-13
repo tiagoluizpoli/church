@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   availabilityCheck as availabilityCheckTable,
   availability as availabilityTable,
@@ -85,7 +86,7 @@ function createPhase5Manager({
     }),
     notificationSpy,
     new DrizzleUnitOfWork({ db: schedulingTestDb }),
-    3,
+    appConfig,
   );
 
   return { volunteerManager, notificationSpy };

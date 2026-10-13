@@ -29,6 +29,7 @@
     "apps/server": {
       "name": "server",
       "dependencies": {
+        "@church/app-config": "workspace:*",
         "@church/auth": "workspace:*",
         "@church/core": "workspace:*",
         "@church/db": "workspace:*",
@@ -69,6 +70,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "^1.0.0",
+        "@church/app-config": "workspace:*",
         "@church/env": "workspace:*",
         "@church/time": "workspace:*",
         "@dnd-kit/core": "^6.3.1",
@@ -126,6 +128,15 @@
         "typescript": "^5",
         "vite": "^6.2.2",
         "vitest": "^4.1.9",
+      },
+    },
+    "packages/app-config": {
+      "name": "@church/app-config",
+      "version": "1.0.0",
+      "devDependencies": {
+        "@church/config": "workspace:*",
+        "typescript": "^5",
+        "vitest": "catalog:",
       },
     },
     "packages/auth": {
@@ -478,6 +489,8 @@
     "@bramus/specificity": ["@bramus/specificity@2.4.2", "", { "dependencies": { "css-tree": "^3.0.0" }, "bin": { "specificity": "bin/cli.js" } }, "sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw=="],
 
     "@canvas/image-data": ["@canvas/image-data@1.1.0", "", {}, "sha512-QdObRRjRbcXGmM1tmJ+MrHcaz1MftF2+W7YI+MsphnsCrmtyfS0d5qJbk0MeSbUeyM/jCb0hmnkXPsy026L7dA=="],
+
+    "@church/app-config": ["@church/app-config@workspace:packages/app-config"],
 
     "@church/auth": ["@church/auth@workspace:packages/auth"],
 

@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { fromDate } from '@church/time';
 import { buildRole } from '../../seeds/builders/ministry';
 import {
@@ -128,7 +129,7 @@ export function createSchedulingManagers({
       }),
       notificationSpy,
       unitOfWork,
-      cancelLeadTimeDays,
+      { ...appConfig, assignment: { cancelLeadTimeDays } },
     ),
     assignmentRepo,
     participationRepo,

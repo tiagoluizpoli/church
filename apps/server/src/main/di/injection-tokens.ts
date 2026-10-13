@@ -60,7 +60,7 @@ export const injection = {
     activeChurchResolver: 'IActiveChurchResolver',
   },
   config: {
-    assignmentCancelLeadTimeDays: 'AssignmentCancelLeadTimeDays',
+    appConfig: 'AppConfig',
   },
   controllers: {
     fastify: 'FastifyController',

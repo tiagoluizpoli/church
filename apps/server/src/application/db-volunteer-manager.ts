@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import type { AppConfig } from '@church/app-config';
 import {
   addMilliseconds,
   compareInstants,
@@ -268,8 +269,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     private readonly notificationService: NotificationService,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
-    @inject('AssignmentCancelLeadTimeDays')
-    private readonly cancelLeadTimeDays: number,
+    @inject('AppConfig')
+    private readonly config: AppConfig,
   ) {}
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
@@ -985,7 +986,8 @@ export class DbVolunteerManager implements IVolunteerManager {
       });
       const cutoff = addMilliseconds({
         instant: shift.startTime,
-        milliseconds: -this.cancelLeadTimeDays * MILLISECONDS_PER_DAY,
+        milliseconds:
+          -this.config.assignment.cancelLeadTimeDays * MILLISECONDS_PER_DAY,
       });
       if (compareInstants({ left: nowInstant(), right: cutoff }) >= 0) {
         throw new CancelWindowClosedError();

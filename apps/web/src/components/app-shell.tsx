@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
@@ -188,6 +189,8 @@ function getSelectChurchDestination({
 export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
+  // Typed wide: the shipped value is a literal `false`.
+  const paletteEnabled: boolean = appConfig.parked.commandPalette;
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -212,6 +215,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
 
   // Listen for CTRL+K / CMD+K globally
   React.useEffect(() => {
+    if (!paletteEnabled) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -220,7 +224,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [paletteEnabled]);
 
   // Compute breadcrumbs dynamically based on path. `isLast` is tracked
   // against the *raw* path segments, not the filtered array — an opaque
@@ -298,14 +302,16 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsPaletteOpen(true)}
-            className="radius-icon flex h-11 w-11 items-center justify-center border border-sidebar-border bg-background/80 p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            aria-label="Search"
-          >
-            <Search className="h-5 w-5" />
-          </button>
+          {paletteEnabled && (
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              className="radius-icon flex h-11 w-11 items-center justify-center border border-sidebar-border bg-background/80 p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              aria-label="Search"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+          )}
 
           <NotificationBell />
 
@@ -604,18 +610,20 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
 
           {/* Right side controls */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsPaletteOpen(true)}
-              className="radius-surface inline-flex h-8 items-center gap-2 border border-border bg-card/88 px-3 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-              aria-label="Search"
-            >
-              <Search className="h-4 w-4" />
-              <span className="text-sm">Search</span>
-              <span className="hidden rounded-sm border border-border/70 bg-background/90 px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground lg:inline">
-                Ctrl K
-              </span>
-            </button>
+            {paletteEnabled && (
+              <button
+                type="button"
+                onClick={() => setIsPaletteOpen(true)}
+                className="radius-surface inline-flex h-8 items-center gap-2 border border-border bg-card/88 px-3 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                aria-label="Search"
+              >
+                <Search className="h-4 w-4" />
+                <span className="text-sm">Search</span>
+                <span className="hidden rounded-sm border border-border/70 bg-background/90 px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground lg:inline">
+                  Ctrl K
+                </span>
+              </button>
+            )}
             <ModeToggle />
             <NotificationBell />
             <UserMenu />
@@ -770,7 +778,9 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
       </MobileDrawer>
 
       {/* 6. Command Palette */}
-      <CommandPalette open={isPaletteOpen} onOpenChange={setIsPaletteOpen} />
+      {paletteEnabled && (
+        <CommandPalette open={isPaletteOpen} onOpenChange={setIsPaletteOpen} />
+      )}
 
       {/* 7. Cross-tab Active Church sync guard */}
       <ActiveChurchTabSyncGuard />

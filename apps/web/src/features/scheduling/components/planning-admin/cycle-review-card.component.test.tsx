@@ -1017,7 +1017,7 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
     await user.type(within(dialog).getByLabelText('Title'), 'Youth Night');
     await pickCalendarDate({
       user,
-      trigger: within(dialog).getByLabelText('Date'),
+      trigger: within(dialog).getByLabelText('Start date'),
       date: '2026-08-09',
     });
     await user.click(within(dialog).getByRole('button', { name: 'Create' }));

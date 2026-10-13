@@ -21,7 +21,10 @@ interface CreateHarnessInput {
   send?: () => Promise<void>;
 }
 
+const ONE_SECOND_MS = 1_000;
+
 function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
+  const { resendCooldownMs, maxAttempts } = appConfig.verificationCode;
   let state: VerificationCodeState | null = null;
   const sent: unknown[] = [];
   const repository: InvitationVerificationCodeRepository = {
@@ -29,19 +32,18 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
       return state;
     },
     async claimDelivery({ codeHash, expiresAt, sentAt }) {
-      if (
-        state &&
-        millisecondsBetween({
+      const sentAtInstant = fromDate({ date: sentAt });
+      if (state) {
+        const sinceLastSentMs = millisecondsBetween({
           start: state.lastSentAt,
-          end: fromDate({ date: sentAt }),
-        }) < appConfig.verificationCode.resendCooldownMs
-      ) {
-        return false;
+          end: sentAtInstant,
+        });
+        if (sinceLastSentMs < resendCooldownMs) return false;
       }
       state = {
         codeHash,
         expiresAt: fromDate({ date: expiresAt }),
-        lastSentAt: fromDate({ date: sentAt }),
+        lastSentAt: sentAtInstant,
         failedAttempts: 0,
         consumedAt: null,
         redemptionIdempotencyKey: null,
@@ -67,7 +69,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
         state?.codeHash === candidateHash &&
         !state.consumedAt &&
         compareInstants({ left: state.expiresAt, right: nowInstant }) > 0 &&
-        state.failedAttempts < 5
+        state.failedAttempts < maxAttempts
       ) {
         state.consumedAt = fromDate({ date: consumedAt });
         state.redemptionIdempotencyKey = redemptionIdempotencyKey ?? null;
@@ -84,7 +86,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
         !currentState.consumedAt &&
         compareInstants({ left: currentState.expiresAt, right: nowInstant }) >
           0 &&
-        currentState.failedAttempts < 5
+        currentState.failedAttempts < maxAttempts
       ) {
         currentState.failedAttempts += 1;
         return true;
@@ -105,6 +107,7 @@ function createHarness({ send }: CreateHarnessInput = {}): TestHarness {
       emailSender,
       generateCode: () => '123456',
       verificationCodeSecret: 'test-secret',
+      config: appConfig,
     }),
     sent,
     get state() {
@@ -162,11 +165,8 @@ describe('InvitationVerificationCodeManager', () => {
       churchName: 'Church',
       now,
     });
-    for (
-      let attempt = 0;
-      attempt < appConfig.verificationCode.maxAttempts;
-      attempt += 1
-    ) {
+    const { maxAttempts } = appConfig.verificationCode;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       await expect(
         harness.manager.verify({
           ministryInvitationId: invitationId,
@@ -229,6 +229,11 @@ describe('InvitationVerificationCodeManager', () => {
       '00000000-0000-4000-8000-000000000003',
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
+    const { resendCooldownMs } = appConfig.verificationCode;
+    const justBeforeCooldownEnds = new Date(
+      now.getTime() + resendCooldownMs - ONE_SECOND_MS,
+    );
+    const whenCooldownEnds = new Date(now.getTime() + resendCooldownMs);
     await harness.manager.issue({
       ministryInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
@@ -240,9 +245,7 @@ describe('InvitationVerificationCodeManager', () => {
         ministryInvitationId: invitationId,
         recipientEmail: 'invitee@example.test',
         churchName: 'Church',
-        now: new Date(
-          now.getTime() + appConfig.verificationCode.resendCooldownMs - 1_000,
-        ),
+        now: justBeforeCooldownEnds,
       }),
     ).rejects.toMatchObject({
       code: 'VERIFICATION_CODE_RESEND_COOLDOWN_ACTIVE',
@@ -251,9 +254,7 @@ describe('InvitationVerificationCodeManager', () => {
       ministryInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
-      now: new Date(
-        now.getTime() + appConfig.verificationCode.resendCooldownMs,
-      ),
+      now: whenCooldownEnds,
     });
     expect(harness.state?.failedAttempts).toBe(0);
     expect(harness.sent).toHaveLength(2);

@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { appConfig } from '@church/app-config';
+import { type AppConfig, appConfig } from '@church/app-config';
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { container } from 'tsyringe';
@@ -135,7 +135,11 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleMinistryRepository({ db }),
   });
   container.register(injection.infra.invitationVerificationCodeRepository, {
-    useFactory: () => new DrizzleInvitationVerificationCodeRepository({ db }),
+    useFactory: () =>
+      new DrizzleInvitationVerificationCodeRepository({
+        db,
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
   });
   container.register(injection.infra.redemptionRepository, {
     useFactory: () =>
@@ -153,7 +157,11 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleSecurityLogRepository({ db }),
   });
   container.register(injection.infra.ministryInvitationRepository, {
-    useFactory: () => new DrizzleMinistryInvitationRepository({ db }),
+    useFactory: () =>
+      new DrizzleMinistryInvitationRepository({
+        db,
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
   });
   container.register(injection.infra.outboxRepository, {
     useFactory: () => new DrizzleOutboxRepository({ db }),
@@ -219,6 +227,7 @@ export function registerInjections(): void {
         ),
         emailSender: container.resolve(injection.infra.emailSender),
         verificationCodeSecret: env.BETTER_AUTH_SECRET,
+        config: container.resolve<AppConfig>(injection.config.appConfig),
       }),
   });
   container.register(injection.managers.redemptionManager, {
@@ -288,6 +297,7 @@ export function registerInjections(): void {
         ),
         emailSender: container.resolve(injection.infra.emailSender),
         unitOfWork: container.resolve(injection.infra.unitOfWork),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
       }),
   });
   container.register(injection.managers.planningCycleManager, {
@@ -355,6 +365,7 @@ export function registerInjections(): void {
         volunteerTransferManager: container.resolve(
           injection.managers.volunteerTransferManager,
         ),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
       }),
   });
   container.registerSingleton(

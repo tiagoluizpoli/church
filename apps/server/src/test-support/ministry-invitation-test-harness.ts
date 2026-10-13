@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { DbAuthorityManager } from '../application/db-authority-manager';
 import { DbMinistryInvitationManager } from '../application/db-ministry-invitation-manager';
 import { DrizzleAuthorityActorResolver } from '../infrastructure/auth/drizzle-authority-actor-resolver';
@@ -30,6 +31,7 @@ export function createMinistryInvitationTestHarness({
 }: MinistryInvitationTestHarnessOptions) {
   const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({
     db,
+    config: appConfig,
   });
   const roleRepository = new DrizzleRoleRepository({ db });
   const ministryRepository = new DrizzleMinistryRepository({ db });
@@ -54,6 +56,7 @@ export function createMinistryInvitationTestHarness({
     authorityManager,
     unitOfWork,
     outboxRepository,
+    appConfig,
   );
 
   return {

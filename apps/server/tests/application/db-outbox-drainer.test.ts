@@ -46,6 +46,7 @@ function createDrainer(): DbOutboxDrainer {
     volunteerTransferRepository: volunteerTransferRepository as never,
     emailSender: emailSender as never,
     unitOfWork: unitOfWork as never,
+    config: appConfig,
   });
 }
 
@@ -168,9 +169,8 @@ describe('DbOutboxDrainer.drainOnce', () => {
   });
 
   it('fails terminally once a retryable failure exhausts the attempt cap', async () => {
-    const message = buildMessage({
-      attempts: appConfig.outbox.maxAttempts - 1,
-    });
+    const { maxAttempts } = appConfig.outbox;
+    const message = buildMessage({ attempts: maxAttempts - 1 });
     outboxRepository.claimPending.mockResolvedValue([message]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
     emailSender.send.mockRejectedValue(
@@ -181,7 +181,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
 
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({
-        attempts: appConfig.outbox.maxAttempts,
+        attempts: maxAttempts,
         status: 'failed',
       }),
     );

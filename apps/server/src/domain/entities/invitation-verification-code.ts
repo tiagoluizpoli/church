@@ -1,4 +1,3 @@
-import { appConfig } from '@church/app-config';
 import {
   compareInstants,
   type Instant,
@@ -41,19 +40,27 @@ export type VerificationCodeValidation =
   | AttemptLimitReachedVerificationCodeValidation
   | InvalidVerificationCodeValidation;
 
+export interface VerificationCodePolicy {
+  maxAttempts: number;
+  resendCooldownMs: number;
+}
+
 export interface ValidateVerificationCodeInput {
   state: VerificationCodeState;
+  policy: VerificationCodePolicy;
   candidateMatches: boolean;
   now: Instant;
 }
 
 export interface CanResendVerificationCodeInput {
   state: VerificationCodeState;
+  policy: VerificationCodePolicy;
   now: Instant;
 }
 
 export function validateVerificationCode({
   state,
+  policy,
   candidateMatches,
   now,
 }: ValidateVerificationCodeInput): VerificationCodeValidation {
@@ -61,7 +68,8 @@ export function validateVerificationCode({
   if (compareInstants({ left: state.expiresAt, right: now }) <= 0) {
     return { status: 'expired' };
   }
-  if (state.failedAttempts >= appConfig.verificationCode.maxAttempts) {
+  const { maxAttempts } = policy;
+  if (state.failedAttempts >= maxAttempts) {
     return { status: 'attempt-limit-reached' };
   }
   return candidateMatches ? { status: 'valid' } : { status: 'invalid' };
@@ -69,10 +77,13 @@ export function validateVerificationCode({
 
 export function canResendVerificationCode({
   state,
+  policy,
   now,
 }: CanResendVerificationCodeInput): boolean {
-  return (
-    millisecondsBetween({ start: state.lastSentAt, end: now }) >=
-    appConfig.verificationCode.resendCooldownMs
-  );
+  const { resendCooldownMs } = policy;
+  const sinceLastSentMs = millisecondsBetween({
+    start: state.lastSentAt,
+    end: now,
+  });
+  return sinceLastSentMs >= resendCooldownMs;
 }

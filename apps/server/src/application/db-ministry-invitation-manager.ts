@@ -1,4 +1,4 @@
-import { appConfig } from '@church/app-config';
+import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
@@ -88,6 +88,8 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     private readonly unitOfWork: UnitOfWork,
     @inject('IOutboxRepository')
     private readonly outboxRepository: OutboxRepository,
+    @inject('AppConfig')
+    private readonly config: AppConfig,
   ) {}
 
   async mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation> {
@@ -160,12 +162,15 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       };
       this.ensureResendAllowed({ throttleState, now });
 
+      const { ttlMs } = this.config.ministryInvitation;
+      const policy = this.config.invitationResend;
       const expiresAt = addMilliseconds({
         instant: now,
-        milliseconds: appConfig.ministryInvitation.ttlMs,
+        milliseconds: ttlMs,
       });
       const nextThrottle = nextResendThrottleState({
         state: throttleState,
+        policy,
         now,
       });
       const invitation = await this.repo.applyResend({
@@ -248,12 +253,12 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       tx,
     });
 
-    const expiresAt = toDate({
-      instant: addMilliseconds({
-        instant: nowInstant(),
-        milliseconds: appConfig.ministryInvitation.ttlMs,
-      }),
+    const { ttlMs } = this.config.ministryInvitation;
+    const expiresAtInstant = addMilliseconds({
+      instant: nowInstant(),
+      milliseconds: ttlMs,
     });
+    const expiresAt = toDate({ instant: expiresAtInstant });
     const invitation = existing
       ? await this.repo.refreshExpiry({
           churchId,
@@ -399,10 +404,11 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
   private ensureResendAllowed(input: EnsureResendAllowedInput): void {
     const { throttleState, now } = input;
-    if (isResendCooldownActive({ state: throttleState, now })) {
+    const policy = this.config.invitationResend;
+    if (isResendCooldownActive({ state: throttleState, policy, now })) {
       throw new ResendCooldownActiveError();
     }
-    if (hasResendDailyCapExceeded({ state: throttleState, now })) {
+    if (hasResendDailyCapExceeded({ state: throttleState, policy, now })) {
       throw new ResendDailyCapExceededError();
     }
   }

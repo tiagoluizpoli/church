@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import 'reflect-metadata';
 import {
   account,
@@ -45,7 +46,10 @@ import {
 } from '../test-support/identity-fixtures';
 
 const verificationCodeRepository =
-  new DrizzleInvitationVerificationCodeRepository({ db: testDb });
+  new DrizzleInvitationVerificationCodeRepository({
+    db: testDb,
+    config: appConfig,
+  });
 const volunteerRepository = new DrizzleVolunteerRepository({ db: testDb });
 const redemptionRepository = new DrizzleRedemptionRepository({
   db: testDb,
@@ -75,6 +79,7 @@ beforeEach(async () => {
     emailSender: new CaptureEmailSender(),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
+    config: appConfig,
   });
   const identityGateway = new BetterAuthRedemptionIdentityGateway();
   const redemptionManager = new DbRedemptionManager({
@@ -99,6 +104,7 @@ beforeEach(async () => {
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,
+    config: appConfig,
   });
   await app.register(
     async (instance) => {

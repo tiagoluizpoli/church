@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import 'reflect-metadata';
 import {
   ministryInvitation,
@@ -68,6 +69,7 @@ function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
     volunteerTransferRepository,
     emailSender,
     unitOfWork,
+    config: appConfig,
   });
 }
 

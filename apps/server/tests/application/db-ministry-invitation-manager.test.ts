@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -58,6 +59,7 @@ function createManager(): DbMinistryInvitationManager {
     authorityManager as never,
     unitOfWork as never,
     outboxRepository as never,
+    appConfig,
   );
 }
 

@@ -1,4 +1,4 @@
-import { appConfig } from '@church/app-config';
+import type { AppConfig } from '@church/app-config';
 import {
   church,
   invitation as churchInvitation,
@@ -48,16 +48,19 @@ import type { AnyDrizzleDb } from './types';
 
 interface DrizzleMinistryInvitationRepositoryInput {
   db: AnyDrizzleDb;
+  config: AppConfig;
 }
 
 export class DrizzleMinistryInvitationRepository
   implements MinistryInvitationRepository
 {
-  constructor({ db }: DrizzleMinistryInvitationRepositoryInput) {
+  constructor({ db, config }: DrizzleMinistryInvitationRepositoryInput) {
     this.db = db;
+    this.config = config;
   }
 
   private readonly db: AnyDrizzleDb;
+  private readonly config: AppConfig;
 
   async acquireMintLock(input: AcquireMintLockInput): Promise<void> {
     const { ministryId, email, tx } = input;
@@ -376,12 +379,12 @@ export class DrizzleMinistryInvitationRepository
   ): Promise<ChurchInvitationSummary> {
     const { churchId, email, inviterId, tx } = input;
     const id = crypto.randomUUID();
-    const expiresAt = toDate({
-      instant: addMilliseconds({
-        instant: now(),
-        milliseconds: appConfig.churchInvitation.ttlMs,
-      }),
+    const { ttlMs } = this.config.churchInvitation;
+    const expiresAtInstant = addMilliseconds({
+      instant: now(),
+      milliseconds: ttlMs,
     });
+    const expiresAt = toDate({ instant: expiresAtInstant });
     await getClient(this.db, tx).insert(churchInvitation).values({
       id,
       organizationId: churchId,

@@ -1,5 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
-import { appConfig } from '@church/app-config';
+import type { AppConfig } from '@church/app-config';
 import {
   addMilliseconds,
   compareInstants,
@@ -33,6 +33,7 @@ export interface VerificationCodeManagerDependencies {
   emailSender: EmailSender;
   generateCode?: () => string;
   verificationCodeSecret: string;
+  config: AppConfig;
 }
 
 export interface HashVerificationCodeInput {
@@ -57,17 +58,20 @@ export class InvitationVerificationCodeManager
     emailSender,
     generateCode,
     verificationCodeSecret,
+    config,
   }: VerificationCodeManagerDependencies) {
     this.repository = repository;
     this.emailSender = emailSender;
     this.generateCode = generateCode ?? generateVerificationCode;
     this.verificationCodeSecret = verificationCodeSecret;
+    this.config = config;
   }
 
   private readonly repository: InvitationVerificationCodeRepository;
   private readonly emailSender: EmailSender;
   private readonly generateCode: () => string;
   private readonly verificationCodeSecret: string;
+  private readonly config: AppConfig;
 
   async issue({
     ministryInvitationId,
@@ -75,6 +79,7 @@ export class InvitationVerificationCodeManager
     churchName,
     now = nowAsDate(),
   }: IssueVerificationCodeInput): Promise<void> {
+    const { ttlMs } = this.config.verificationCode;
     const code = this.generateCode();
     const codeHash = hashVerificationCode({
       code,
@@ -82,7 +87,7 @@ export class InvitationVerificationCodeManager
     });
     const expiresAt = addMilliseconds({
       instant: fromDate({ date: now }),
-      milliseconds: appConfig.verificationCode.ttlMs,
+      milliseconds: ttlMs,
     });
     const claimed = await this.repository.claimDelivery({
       ministryInvitationId,
@@ -140,12 +145,15 @@ export class InvitationVerificationCodeManager
     ) {
       return;
     }
+    const { verificationCode: policy } = this.config;
+    const candidateMatches = verifyVerificationCodeHash({
+      codeHash: state.codeHash,
+      candidateHash,
+    });
     const outcome = validateVerificationCode({
       state,
-      candidateMatches: verifyVerificationCodeHash({
-        codeHash: state.codeHash,
-        candidateHash,
-      }),
+      policy,
+      candidateMatches,
       now: nowInstant,
     });
     if (outcome.status === 'valid') {
@@ -172,12 +180,14 @@ export class InvitationVerificationCodeManager
     if (!current) {
       throw new VerificationCodeError({ code: 'VERIFICATION_CODE_NOT_FOUND' });
     }
+    const currentCandidateMatches = verifyVerificationCodeHash({
+      codeHash: current.codeHash,
+      candidateHash,
+    });
     const currentOutcome = validateVerificationCode({
       state: current,
-      candidateMatches: verifyVerificationCodeHash({
-        codeHash: current.codeHash,
-        candidateHash,
-      }),
+      policy,
+      candidateMatches: currentCandidateMatches,
       now: nowInstant,
     });
     throw new VerificationCodeError({

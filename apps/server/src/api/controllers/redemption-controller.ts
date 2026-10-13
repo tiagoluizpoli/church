@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { appConfig } from '@church/app-config';
+import type { AppConfig } from '@church/app-config';
 import { auth } from '@church/auth';
 import { fromDate, nowAsDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -60,13 +60,20 @@ interface InvitationPreviewFields {
 export interface RedemptionControllerDependencies {
   redemptionManager: RedemptionManager;
   volunteerTransferManager: VolunteerTransferManager;
+  config: AppConfig;
 }
 
 type ConfirmTransferBody = z.infer<typeof confirmTransferBodySchema>;
 
 interface RateLimitInput {
   key: string;
+  windowMs: number;
+  maxRequests: number;
   now?: number;
+}
+
+interface ControllerRateLimitInput {
+  key: string;
 }
 
 const publicRateLimit = new Map<string, number[]>();
@@ -78,13 +85,21 @@ export class RedemptionController implements FastifyController {
   constructor({
     redemptionManager,
     volunteerTransferManager,
+    config,
   }: RedemptionControllerDependencies) {
     this.redemptionManager = redemptionManager;
     this.volunteerTransferManager = volunteerTransferManager;
+    this.config = config;
   }
 
   private readonly redemptionManager: RedemptionManager;
   private readonly volunteerTransferManager: VolunteerTransferManager;
+  private readonly config: AppConfig;
+
+  private isRateLimitedRequest({ key }: ControllerRateLimitInput): boolean {
+    const { windowMs, maxRequests } = this.config.redemptionRateLimit;
+    return isRateLimited({ key, windowMs, maxRequests });
+  }
 
   registerRoutes(
     app: FastifyTypedInstance,
@@ -108,7 +123,7 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (isRateLimited({ key: request.ip }))
+        if (this.isRateLimitedRequest({ key: request.ip }))
           return reply.status(429).send({ error: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         const preview = await this.redemptionManager.getPublicPreview({
@@ -138,7 +153,7 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (isRateLimited({ key: request.ip }))
+        if (this.isRateLimitedRequest({ key: request.ip }))
           return reply.status(429).send({ error: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         let sent: boolean;
@@ -461,14 +476,16 @@ export class RedemptionController implements FastifyController {
 
 function isRateLimited({
   key,
+  windowMs,
+  maxRequests,
   now = nowAsDate().getTime(),
 }: RateLimitInput): boolean {
   const attempts = (publicRateLimit.get(key) ?? []).filter(
-    (attempt) => attempt > now - appConfig.redemptionRateLimit.windowMs,
+    (attempt) => attempt > now - windowMs,
   );
   attempts.push(now);
   publicRateLimit.set(key, attempts);
-  return attempts.length > appConfig.redemptionRateLimit.maxRequests;
+  return attempts.length > maxRequests;
 }
 
 /** Shared by the chained and existing-member previews — both expose the same restricted field set (spec §7.1). */

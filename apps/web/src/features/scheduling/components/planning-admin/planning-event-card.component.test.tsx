@@ -24,7 +24,7 @@ function twoSlotRow(): CycleCalendarTableRow {
     eventId: 'event-1',
     title: 'Sunday Service',
     start: '2026-08-02T09:00:00Z',
-    eventType: 'service',
+    spanLabel: 'hourly',
     status: 'scheduled',
     slots: [
       {
@@ -50,7 +50,7 @@ function oneSlotRow(): CycleCalendarTableRow {
     eventId: 'event-2',
     title: 'Wednesday Service',
     start: '2026-08-05T19:00:00Z',
-    eventType: 'service',
+    spanLabel: 'hourly',
     status: 'scheduled',
     slots: [
       {

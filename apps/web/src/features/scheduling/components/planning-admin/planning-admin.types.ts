@@ -57,7 +57,7 @@ export interface CycleCalendarTableRow {
   eventId: string;
   title: string;
   start: string;
-  eventType: string;
+  spanLabel: string;
   status: PlanningCycleEventGroup['event']['status'];
   slots: CycleCalendarSlotRow[];
 }

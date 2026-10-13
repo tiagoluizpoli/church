@@ -98,7 +98,7 @@ export function PlanningEventCard({
             {formatDayOf({ value: row.start, timeZone: churchTimezone })}
           </div>
           <div className="text-muted-foreground text-xs">
-            {row.eventType} · {row.slots.length} slot
+            {row.spanLabel} · {row.slots.length} slot
             {row.slots.length === 1 ? '' : 's'}
           </div>
         </div>

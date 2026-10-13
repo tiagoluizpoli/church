@@ -7,7 +7,6 @@ import { getRedemption } from '@/infrastructure/api/redemption';
 import { getRostering } from '@/infrastructure/api/rostering';
 import { getSchedulingCapability } from '@/infrastructure/api/scheduling-capability';
 import { getTailoring } from '@/infrastructure/api/tailoring';
-import { getTimeSlots } from '@/infrastructure/api/time-slots';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
 
 interface LegacyCreateEventBody {
@@ -37,7 +36,6 @@ const generatedVolunteerApi = getVolunteer();
 
 export const adminApi = {
   ...getEvents(),
-  ...getTimeSlots(),
   ...getAssignments(),
   ...getMinistries(),
   ...getPlanning(),

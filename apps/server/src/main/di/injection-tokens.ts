@@ -27,7 +27,6 @@ export const injection = {
     volunteerNotificationRepository: 'IVolunteerNotificationRepository',
     unitOfWork: 'IUnitOfWork',
     notificationService: 'INotificationService',
-    featureFlagService: 'IFeatureFlagService',
     emailSender: 'IEmailSender',
     redemptionIdentityGateway: 'IRedemptionIdentityGateway',
     /** Non-production only — see `VerificationCodeInspector`. */
@@ -48,7 +47,6 @@ export const injection = {
     volunteerTransferManager: 'IVolunteerTransferManager',
     outboxDrainer: 'IOutboxDrainer',
     participationManager: 'IParticipationManager',
-    featureFlagManager: 'IFeatureFlagManager',
     activeChurchSelectionManager: 'IActiveChurchSelectionManager',
   },
   auth: {

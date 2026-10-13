@@ -1325,12 +1325,6 @@ export type ResendMinistryInvitation404 = {
   message: string;
 };
 
-export type ListFeatureFlags200Flags = {[key: string]: boolean};
-
-export type ListFeatureFlags200 = {
-  flags: ListFeatureFlags200Flags;
-};
-
 export type GetCycleParticipationParams = {
 ministryId: string;
 };

@@ -3076,29 +3076,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/feature-flags/:
-    get:
-      operationId: listFeatureFlags
-      summary: List feature flags
-      tags:
-        - feature-flags
-      description: Get the resolved feature flag values for the current session,
-        evaluated against the caller's User and Church context where available.
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  flags:
-                    type: object
-                    additionalProperties:
-                      type: boolean
-                required:
-                  - flags
-                additionalProperties: false
   /api/v1/tailoring/cycles/{cycleId}/participation:
     get:
       operationId: getCycleParticipation
@@ -6860,8 +6837,6 @@ tags:
     description: Active Church Scheduling navigation capability
   - name: volunteer
     description: Volunteer-facing endpoints
-  - name: feature-flags
-    description: Feature flag endpoints
   - name: active-church
     description: Active Church selection endpoints
   - name: redemption

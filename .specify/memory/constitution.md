@@ -21,9 +21,8 @@ validation, and Drizzle for database interactions. Avoid `any` at all costs.
 
 ### III. Container-Ready Infrastructure
 All infrastructure must be reproducible via Docker Compose. The root `docker-compose.yml` is the
-single source of truth for local development dependencies, shared by every worktree. A shared
-development service hosted outside it (Unleash) is configured through machine-shared values;
-production has its own Compose definition.
+single source of truth for local development dependencies, shared by every worktree.
+Production has its own Compose definition.
 
 ### IV. Environment Discipline
 Environment variables are declared in committed Varlock `.env.schema` files, which serve as

@@ -45,8 +45,6 @@ function runCommand(input: RunCommandInput): RunCommandResult {
       BETTER_AUTH_SECRET: 'destructive-command-test-secret-0123456789',
       BETTER_AUTH_URL: 'http://127.0.0.1:9',
       CORS_ORIGIN: 'http://127.0.0.1:9',
-      UNLEASH_API_URL: 'http://127.0.0.1:9/api',
-      UNLEASH_API_TOKEN: 'token',
     },
   });
 

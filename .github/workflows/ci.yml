@@ -50,8 +50,6 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
-      UNLEASH_API_URL: http://localhost:4242/api
-      UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
       ENABLE_DEBUG_ENDPOINTS: "true"
       TZ: Asia/Kolkata
@@ -125,8 +123,6 @@ jobs:
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       VITE_SERVER_URL: http://localhost:4100
-      UNLEASH_API_URL: http://localhost:4242/api
-      UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
       ENABLE_DEBUG_ENDPOINTS: "true"
       TZ: Asia/Kolkata
@@ -296,8 +292,6 @@ jobs:
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       VITE_SERVER_URL: http://localhost:4100
-      UNLEASH_API_URL: http://localhost:4242/api
-      UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
       ENABLE_DEBUG_ENDPOINTS: "true"
       TZ: Asia/Kolkata
@@ -387,8 +381,6 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
-      UNLEASH_API_URL: http://localhost:4242/api
-      UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
       ENABLE_DEBUG_ENDPOINTS: "true"
       TZ: Asia/Kolkata
@@ -463,8 +455,6 @@ jobs:
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       VITE_SERVER_URL: http://localhost:4100
-      UNLEASH_API_URL: http://localhost:4242/api
-      UNLEASH_API_TOKEN: ci-test-token
       NODE_ENV: test
       ENABLE_DEBUG_ENDPOINTS: "true"
       TZ: Asia/Kolkata

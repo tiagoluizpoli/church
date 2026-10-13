@@ -29,7 +29,6 @@ export const eventResponseSchema = z.object({
   start: instantSchema,
   end: instantSchema,
   status: z.enum(['draft', 'scheduled', 'cancelled', 'past']),
-  eventType: z.enum(['hourly', 'day_based']),
   createdAt: instantSchema,
   updatedAt: instantSchema,
 });
@@ -123,7 +122,6 @@ function eventToResponse(ev: Event): EventResponse {
     start: ev.start,
     end: ev.end,
     status: ev.status,
-    eventType: ev.eventType,
     createdAt: fromDate({ date: ev.createdAt }),
     updatedAt: fromDate({ date: ev.updatedAt }),
   };

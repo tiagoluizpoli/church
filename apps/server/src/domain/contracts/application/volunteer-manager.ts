@@ -17,7 +17,6 @@ export interface DashboardAvailabilityTask {
   eventTitle: string;
   ministryId: string;
   ministryName: string;
-  eventType: 'hourly' | 'day_based';
   eventStart: string;
   eventEnd: string;
   completionState: 'missing' | 'partial' | 'complete';

@@ -321,7 +321,6 @@ export class DbVolunteerManager implements IVolunteerManager {
                 eventTitle: event.title,
                 ministryId: ministry.id,
                 ministryName: ministry.name,
-                eventType: event.eventType,
                 eventStart: event.start,
                 eventEnd: event.end,
                 completionState,

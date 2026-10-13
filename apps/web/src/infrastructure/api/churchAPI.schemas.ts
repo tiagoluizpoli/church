@@ -189,14 +189,6 @@ export const GetPlanningCycle200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetPlanningCycle200EventsItemEventEventType = typeof GetPlanningCycle200EventsItemEventEventType[keyof typeof GetPlanningCycle200EventsItemEventEventType];
-
-
-export const GetPlanningCycle200EventsItemEventEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetPlanningCycle200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -210,7 +202,6 @@ export type GetPlanningCycle200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetPlanningCycle200EventsItemEventStatus;
-  eventType: GetPlanningCycle200EventsItemEventEventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -423,14 +414,6 @@ export const CreatePlanningEvent201Status = {
   past: 'past',
 } as const;
 
-export type CreatePlanningEvent201EventType = typeof CreatePlanningEvent201EventType[keyof typeof CreatePlanningEvent201EventType];
-
-
-export const CreatePlanningEvent201EventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type CreatePlanningEvent201 = {
   id: string;
   churchId: string;
@@ -444,7 +427,6 @@ export type CreatePlanningEvent201 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: CreatePlanningEvent201Status;
-  eventType: CreatePlanningEvent201EventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -481,14 +463,6 @@ export const UpdatePlanningEvent200Status = {
   past: 'past',
 } as const;
 
-export type UpdatePlanningEvent200EventType = typeof UpdatePlanningEvent200EventType[keyof typeof UpdatePlanningEvent200EventType];
-
-
-export const UpdatePlanningEvent200EventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type UpdatePlanningEvent200 = {
   id: string;
   churchId: string;
@@ -502,7 +476,6 @@ export type UpdatePlanningEvent200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: UpdatePlanningEvent200Status;
-  eventType: UpdatePlanningEvent200EventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -762,14 +735,6 @@ export const GetScheduleBuilderData200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetScheduleBuilderData200EventsItemEventEventType = typeof GetScheduleBuilderData200EventsItemEventEventType[keyof typeof GetScheduleBuilderData200EventsItemEventEventType];
-
-
-export const GetScheduleBuilderData200EventsItemEventEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetScheduleBuilderData200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -783,7 +748,6 @@ export type GetScheduleBuilderData200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetScheduleBuilderData200EventsItemEventStatus;
-  eventType: GetScheduleBuilderData200EventsItemEventEventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -932,14 +896,6 @@ export const ListEvents200EventsItemStatus = {
   past: 'past',
 } as const;
 
-export type ListEvents200EventsItemEventType = typeof ListEvents200EventsItemEventType[keyof typeof ListEvents200EventsItemEventType];
-
-
-export const ListEvents200EventsItemEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type ListEvents200EventsItem = {
   id: string;
   churchId: string;
@@ -953,7 +909,6 @@ export type ListEvents200EventsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: ListEvents200EventsItemStatus;
-  eventType: ListEvents200EventsItemEventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -1201,14 +1156,6 @@ export const GetCycleParticipation200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetCycleParticipation200EventsItemEventEventType = typeof GetCycleParticipation200EventsItemEventEventType[keyof typeof GetCycleParticipation200EventsItemEventEventType];
-
-
-export const GetCycleParticipation200EventsItemEventEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetCycleParticipation200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -1222,7 +1169,6 @@ export type GetCycleParticipation200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetCycleParticipation200EventsItemEventStatus;
-  eventType: GetCycleParticipation200EventsItemEventEventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -1523,14 +1469,6 @@ export const GetCycleBuilderData200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetCycleBuilderData200EventsItemEventEventType = typeof GetCycleBuilderData200EventsItemEventEventType[keyof typeof GetCycleBuilderData200EventsItemEventEventType];
-
-
-export const GetCycleBuilderData200EventsItemEventEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetCycleBuilderData200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -1544,7 +1482,6 @@ export type GetCycleBuilderData200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetCycleBuilderData200EventsItemEventStatus;
-  eventType: GetCycleBuilderData200EventsItemEventEventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -2232,14 +2169,6 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
-export type GetVolunteerDashboard200AvailabilityTasksItemEventType = typeof GetVolunteerDashboard200AvailabilityTasksItemEventType[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemEventType];
-
-
-export const GetVolunteerDashboard200AvailabilityTasksItemEventType = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetVolunteerDashboard200AvailabilityTasksItemCompletionState = typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState];
 
 
@@ -2254,7 +2183,6 @@ export type GetVolunteerDashboard200AvailabilityTasksItem = {
   eventTitle: string;
   ministryId: string;
   ministryName: string;
-  eventType: GetVolunteerDashboard200AvailabilityTasksItemEventType;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   eventStart: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */

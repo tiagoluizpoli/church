@@ -31,7 +31,6 @@ export interface EventProps {
   start: Instant;
   end: Instant;
   status: EventStatus;
-  eventType: EventType;
 }
 
 export interface EventWithSlots {
@@ -42,14 +41,14 @@ export interface EventWithSlots {
 export class Event extends Entity<EventProps, EventId> {
   constructor(
     props:
-      | (Omit<LooseProps<EventProps>, 'status' | 'eventType'> &
-          Partial<Pick<LooseProps<EventProps>, 'status' | 'eventType'>>)
+      | (Omit<LooseProps<EventProps>, 'status'> &
+          Partial<Pick<LooseProps<EventProps>, 'status'>>)
       | (Omit<
           LooseProps<EventProps>,
-          'planningCycleId' | 'sourceTemplateId' | 'status' | 'eventType'
+          'planningCycleId' | 'sourceTemplateId' | 'status'
         > & {
           ministryId: MinistryId | string;
-        } & Partial<Pick<LooseProps<EventProps>, 'status' | 'eventType'>>),
+        } & Partial<Pick<LooseProps<EventProps>, 'status'>>),
     id?: string,
     createdAt?: Date,
     updatedAt?: Date,
@@ -74,7 +73,6 @@ export class Event extends Entity<EventProps, EventId> {
       {
         ...normalizedProps,
         status: props.status ?? 'draft',
-        eventType: props.eventType ?? 'hourly',
       } as EventProps,
       id as EventId,
       createdAt,
@@ -116,10 +114,6 @@ export class Event extends Entity<EventProps, EventId> {
 
   get status(): EventStatus {
     return this._props.status;
-  }
-
-  get eventType(): EventType {
-    return this._props.eventType;
   }
 
   public markScheduled(): void {

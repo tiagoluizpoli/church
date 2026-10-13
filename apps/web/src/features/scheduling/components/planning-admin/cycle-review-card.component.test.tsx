@@ -91,7 +91,6 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
           title: 'Sunday Service',
           start: '2026-08-02T09:00:00Z',
           end: '2026-08-02T11:00:00Z',
-          eventType: 'service',
           status: 'scheduled',
         },
         slots: [
@@ -115,7 +114,6 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
           title: 'Wednesday Service',
           start: '2026-08-05T19:00:00Z',
           end: '2026-08-05T20:00:00Z',
-          eventType: 'service',
           status: 'scheduled',
         },
         slots: [
@@ -829,7 +827,6 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
             title: 'Sunday Service',
             start: '2026-08-02T09:00:00Z',
             end: '2026-08-02T11:00:00Z',
-            eventType: 'service',
             status: 'scheduled',
           },
           slots: [
@@ -847,7 +844,6 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
             title: 'Retreat Weekend',
             start: '2026-08-08T00:00:00Z',
             end: '2026-08-09T23:59:59Z',
-            eventType: 'retreat',
             status: 'scheduled',
           },
           slots: [

@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
-import { Route as PrototypeActiveChurchRouteImport } from './routes/prototype/active-church'
 import { Route as AuthenticatedSwitchChurchConfirmRouteImport } from './routes/_authenticated/switch-church-confirm'
 import { Route as AuthenticatedSelectChurchRouteImport } from './routes/_authenticated/select-church'
 import { Route as AuthenticatedNoAccessRouteImport } from './routes/_authenticated/no-access'
@@ -45,11 +44,6 @@ const LoginRoute = LoginRouteImport.update({
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrototypeActiveChurchRoute = PrototypeActiveChurchRouteImport.update({
-  id: '/prototype/active-church',
-  path: '/prototype/active-church',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSwitchChurchConfirmRoute =
@@ -221,7 +215,6 @@ export interface FileRoutesByFullPath {
   '/no-access': typeof AuthenticatedNoAccessRoute
   '/select-church': typeof AuthenticatedSelectChurchRoute
   '/switch-church-confirm': typeof AuthenticatedSwitchChurchConfirmRoute
-  '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
@@ -249,7 +242,6 @@ export interface FileRoutesByTo {
   '/no-access': typeof AuthenticatedNoAccessRoute
   '/select-church': typeof AuthenticatedSelectChurchRoute
   '/switch-church-confirm': typeof AuthenticatedSwitchChurchConfirmRoute
-  '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
@@ -275,7 +267,6 @@ export interface FileRoutesById {
   '/_authenticated/no-access': typeof AuthenticatedNoAccessRoute
   '/_authenticated/select-church': typeof AuthenticatedSelectChurchRoute
   '/_authenticated/switch-church-confirm': typeof AuthenticatedSwitchChurchConfirmRoute
-  '/prototype/active-church': typeof PrototypeActiveChurchRoute
   '/_authenticated/_active-church/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/_authenticated/_active-church/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/_authenticated/_active-church/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
@@ -306,7 +297,6 @@ export interface FileRouteTypes {
     | '/no-access'
     | '/select-church'
     | '/switch-church-confirm'
-    | '/prototype/active-church'
     | '/availability'
     | '/dashboard'
     | '/notifications'
@@ -334,7 +324,6 @@ export interface FileRouteTypes {
     | '/no-access'
     | '/select-church'
     | '/switch-church-confirm'
-    | '/prototype/active-church'
     | '/availability'
     | '/dashboard'
     | '/notifications'
@@ -359,7 +348,6 @@ export interface FileRouteTypes {
     | '/_authenticated/no-access'
     | '/_authenticated/select-church'
     | '/_authenticated/switch-church-confirm'
-    | '/prototype/active-church'
     | '/_authenticated/_active-church/availability'
     | '/_authenticated/_active-church/dashboard'
     | '/_authenticated/_active-church/notifications'
@@ -386,7 +374,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
-  PrototypeActiveChurchRoute: typeof PrototypeActiveChurchRoute
   InvitationsChurchInvitationIdRoute: typeof InvitationsChurchInvitationIdRoute
 }
 
@@ -404,13 +391,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prototype/active-church': {
-      id: '/prototype/active-church'
-      path: '/prototype/active-church'
-      fullPath: '/prototype/active-church'
-      preLoaderRoute: typeof PrototypeActiveChurchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/switch-church-confirm': {
@@ -731,7 +711,6 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
-  PrototypeActiveChurchRoute: PrototypeActiveChurchRoute,
   InvitationsChurchInvitationIdRoute: InvitationsChurchInvitationIdRoute,
 }
 export const routeTree = rootRouteImport

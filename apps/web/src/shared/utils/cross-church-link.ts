@@ -22,10 +22,10 @@ export interface ResolveCrossChurchDeepLinkInput {
 }
 
 /**
- * A link may name the Church it targets (`spec.md` §1.5, `active-church.NOTES.md`
- * lines 77-88). This is the seam every protected route funnels through to
- * decide what that target means relative to the caller's actual Church
- * Memberships and current Active Church — never trusting the link alone.
+ * A link may name the Church it targets (`spec.md` §1.5). This is the seam
+ * every protected route funnels through to decide what that target means
+ * relative to the caller's actual Church Memberships and current Active
+ * Church — never trusting the link alone.
  */
 export function resolveCrossChurchDeepLink({
   requestedChurchId,

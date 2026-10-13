@@ -59,6 +59,7 @@ export function MinistryScheduleSection({
   isLoading,
   onSelectMinistry,
 }: MinistryScheduleSectionProps) {
+  const { assignmentResponse } = appConfig.parked;
   const { churchTimezone } = useTimezone();
   const [expandedEventId, setExpandedEventId] = useState<string | undefined>();
 
@@ -192,7 +193,7 @@ export function MinistryScheduleSection({
                               </div>
                             </div>
 
-                            {appConfig.parked.assignmentResponse ? (
+                            {assignmentResponse ? (
                               <Badge variant="outline">
                                 {getConfirmationStateLabel(
                                   row.confirmationState,

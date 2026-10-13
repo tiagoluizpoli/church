@@ -49,6 +49,7 @@ export function AssignmentChip({
   onClick,
   contextTeamId,
 }: AssignmentChipProps) {
+  const { assignmentResponse } = appConfig.parked;
   const isTouch = useFormControlSize() === 'touch';
   return (
     <button
@@ -98,27 +99,22 @@ export function AssignmentChip({
           </Badge>
         )}
 
-        {appConfig.parked.assignmentResponse &&
-          isPublished &&
-          confirmationStatus && (
-            <span data-testid="confirmation-badge">
-              {confirmationStatus === 'confirmed' && (
-                <Check
-                  className="size-3 text-green-600"
-                  aria-label="confirmed"
-                />
-              )}
-              {confirmationStatus === 'declined' && (
-                <X className="size-3 text-destructive" aria-label="declined" />
-              )}
-              {confirmationStatus === 'pending' && (
-                <Clock
-                  className="size-3 text-muted-foreground"
-                  aria-label="pending"
-                />
-              )}
-            </span>
-          )}
+        {assignmentResponse && isPublished && confirmationStatus && (
+          <span data-testid="confirmation-badge">
+            {confirmationStatus === 'confirmed' && (
+              <Check className="size-3 text-green-600" aria-label="confirmed" />
+            )}
+            {confirmationStatus === 'declined' && (
+              <X className="size-3 text-destructive" aria-label="declined" />
+            )}
+            {confirmationStatus === 'pending' && (
+              <Clock
+                className="size-3 text-muted-foreground"
+                aria-label="pending"
+              />
+            )}
+          </span>
+        )}
       </span>
     </button>
   );

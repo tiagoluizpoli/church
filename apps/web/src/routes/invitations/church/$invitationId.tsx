@@ -41,6 +41,8 @@ const ACCESS_LEVEL_LABELS: Record<
   leader: 'Leader',
 };
 
+const MS_PER_SECOND = 1000;
+
 interface RemainingCooldownSecondsInput {
   codeSentAt: number | null;
   now: number;
@@ -51,9 +53,9 @@ function remainingCooldownSeconds({
   now,
 }: RemainingCooldownSecondsInput): number {
   if (!codeSentAt) return 0;
-  const remainingMs =
-    appConfig.verificationCode.resendCooldownMs - (now - codeSentAt);
-  return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+  const { resendCooldownMs } = appConfig.verificationCode;
+  const remainingMs = resendCooldownMs - (now - codeSentAt);
+  return remainingMs > 0 ? Math.ceil(remainingMs / MS_PER_SECOND) : 0;
 }
 
 interface RedemptionFailureDescription {
@@ -118,7 +120,10 @@ function ChurchInvitationRedemptionRoute() {
 
   useEffect(() => {
     if (!codeSentAt) return;
-    const interval = setInterval(() => setNow(nowAsDate().getTime()), 1000);
+    const interval = setInterval(
+      () => setNow(nowAsDate().getTime()),
+      MS_PER_SECOND,
+    );
     return () => clearInterval(interval);
   }, [codeSentAt]);
 

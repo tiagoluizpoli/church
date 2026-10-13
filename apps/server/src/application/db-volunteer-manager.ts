@@ -976,10 +976,11 @@ export class DbVolunteerManager implements IVolunteerManager {
         churchId,
         shiftId: assignment.shiftId,
       });
+      const { cancelLeadTimeDays } = this.config.assignment;
+      const cancelLeadTimeMs = cancelLeadTimeDays * MILLISECONDS_PER_DAY;
       const cutoff = addMilliseconds({
         instant: shift.startTime,
-        milliseconds:
-          -this.config.assignment.cancelLeadTimeDays * MILLISECONDS_PER_DAY,
+        milliseconds: -cancelLeadTimeMs,
       });
       if (compareInstants({ left: nowInstant(), right: cutoff }) >= 0) {
         throw new CancelWindowClosedError();

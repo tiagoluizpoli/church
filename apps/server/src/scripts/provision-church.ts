@@ -18,10 +18,8 @@ const ORGANIZATION_SLUG_UNIQUE_CONSTRAINT = 'organization_slug_unique';
 
 /** The invitation table's `expiresAt`, `churchInvitation.ttlMs` from now. */
 function churchInvitationExpiresAt(): Date {
-  return expiresAtAfter({
-    from: now(),
-    milliseconds: appConfig.churchInvitation.ttlMs,
-  });
+  const { ttlMs } = appConfig.churchInvitation;
+  return expiresAtAfter({ from: now(), milliseconds: ttlMs });
 }
 
 const AdminEmailSchema = z.email();

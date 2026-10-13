@@ -50,9 +50,9 @@ describe('planningCycleWindow', () => {
     const sundays = sundaysIn({ day });
     const first = sundays[0];
     if (first === undefined) throw new Error('window holds no Sunday');
-    expect(daysBetween({ from: day, to: first })).toBeGreaterThan(
-      appConfig.assignment.cancelLeadTimeDays,
-    );
+    const { cancelLeadTimeDays } = appConfig.assignment;
+    const daysToFirstSunday = daysBetween({ from: day, to: first });
+    expect(daysToFirstSunday).toBeGreaterThan(cancelLeadTimeDays);
     expect(sundays.length).toBeGreaterThanOrEqual(MIN_SUNDAYS);
   });
 

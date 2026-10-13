@@ -92,6 +92,7 @@ export function CycleBuilder({
   isRefreshing,
   teamId,
 }: CycleBuilderProps) {
+  const { auditPanel } = appConfig.parked;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<
@@ -122,7 +123,7 @@ export function CycleBuilder({
   // instead of stretching a panel that otherwise only carries title + stats.
   const toolbarActions = teamId ? null : (
     <>
-      {appConfig.parked.auditPanel ? (
+      {auditPanel ? (
         <Button
           type="button"
           size={isMobile ? 'touch' : 'sm'}
@@ -183,7 +184,7 @@ export function CycleBuilder({
         teamId={teamId}
       />
 
-      {!teamId && appConfig.parked.auditPanel ? (
+      {!teamId && auditPanel ? (
         <AuditLogPanel
           open={auditOpen}
           onOpenChange={setAuditOpen}

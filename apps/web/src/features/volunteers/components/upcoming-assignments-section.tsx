@@ -82,6 +82,7 @@ export function UpcomingAssignmentsSection({
   onRespond,
   onCancel,
 }: UpcomingAssignmentsSectionProps) {
+  const { assignmentResponse, volunteerCancel } = appConfig.parked;
   const { churchTimezone } = useTimezone();
   const isSaving = responseState === 'saving';
   const isCancelling = cancelState === 'saving';
@@ -112,7 +113,7 @@ export function UpcomingAssignmentsSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!isOnline && appConfig.parked.assignmentResponse ? (
+          {!isOnline && assignmentResponse ? (
             <Alert variant="destructive">
               <WifiOff className="size-4" />
               <AlertTitle>Offline</AlertTitle>
@@ -151,7 +152,7 @@ export function UpcomingAssignmentsSection({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {appConfig.parked.assignmentResponse ? (
+                    {assignmentResponse ? (
                       <>
                         <Badge variant="outline">
                           {getAggregateResponseLabel(group)}
@@ -195,7 +196,7 @@ export function UpcomingAssignmentsSection({
                                   timeZone: churchTimezone,
                                 })}
                               </div>
-                              {appConfig.parked.assignmentResponse &&
+                              {assignmentResponse &&
                               assignment.timingState === 'in_progress' ? (
                                 <div className="text-muted-foreground">
                                   This assignment is already in progress, so
@@ -204,7 +205,7 @@ export function UpcomingAssignmentsSection({
                               ) : null}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                              {appConfig.parked.assignmentResponse ? (
+                              {assignmentResponse ? (
                                 <Badge variant="outline">
                                   {getAssignmentStatusLabel(assignment)}
                                 </Badge>
@@ -216,7 +217,7 @@ export function UpcomingAssignmentsSection({
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            {appConfig.parked.assignmentResponse &&
+                            {assignmentResponse &&
                             shouldShowConfirmAction(assignment) ? (
                               <Button
                                 type="button"
@@ -232,7 +233,7 @@ export function UpcomingAssignmentsSection({
                                 Confirm
                               </Button>
                             ) : null}
-                            {appConfig.parked.assignmentResponse &&
+                            {assignmentResponse &&
                             shouldShowDeclineAction(assignment) ? (
                               <Button
                                 type="button"
@@ -245,7 +246,7 @@ export function UpcomingAssignmentsSection({
                                 I cannot serve
                               </Button>
                             ) : null}
-                            {appConfig.parked.volunteerCancel &&
+                            {volunteerCancel &&
                             shouldShowCancelAction(assignment) ? (
                               <Button
                                 type="button"
@@ -271,7 +272,7 @@ export function UpcomingAssignmentsSection({
         </CardContent>
       </Card>
 
-      {appConfig.parked.assignmentResponse ? (
+      {assignmentResponse ? (
         <AlertDialog
           open={pendingDeclineAssignment != null}
           onOpenChange={(open) => {

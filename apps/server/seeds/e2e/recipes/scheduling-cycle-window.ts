@@ -12,8 +12,10 @@ export interface PlanningCycleWindow {
   endDate: CalendarDay;
 }
 
-/** Lead time plus a margin, so the first Sunday is never a borderline cancel. */
-const CYCLE_START_OFFSET_DAYS = appConfig.assignment.cancelLeadTimeDays + 2;
+const { cancelLeadTimeDays } = appConfig.assignment;
+/** Keeps the first Sunday off the exact cancel-lead-time border. */
+const CANCEL_BORDER_MARGIN_DAYS = 2;
+const CYCLE_START_OFFSET_DAYS = cancelLeadTimeDays + CANCEL_BORDER_MARGIN_DAYS;
 const CYCLE_LENGTH_DAYS = 28;
 
 export interface PlanningCycleWindowInput {

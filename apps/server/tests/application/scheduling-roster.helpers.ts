@@ -56,7 +56,7 @@ export interface SeedRoleQualificationInput {
 }
 
 export function createSchedulingManagers({
-  cancelLeadTimeDays = 3,
+  cancelLeadTimeDays = appConfig.assignment.cancelLeadTimeDays,
 }: CreateSchedulingManagersInput = {}): SchedulingManagers {
   const assignmentRepo = new DrizzleAssignmentRepository({
     db: schedulingTestDb,

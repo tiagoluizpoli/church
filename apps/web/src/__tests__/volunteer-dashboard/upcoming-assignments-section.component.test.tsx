@@ -237,6 +237,11 @@ describe('UpcomingAssignmentsSection', () => {
     );
 
     expect(screen.getByText('Usher')).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'This assignment is already in progress, so responses are locked.',
+      ),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('Needs response')).not.toBeInTheDocument();
     expect(screen.queryByText('Confirmed')).not.toBeInTheDocument();
     expect(screen.queryByText('Pending')).not.toBeInTheDocument();
@@ -248,6 +253,28 @@ describe('UpcomingAssignmentsSection', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('cancel-assignment-button'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the offline response alert while responses are parked', () => {
+    parked.on = false;
+
+    renderWithProviders(
+      <UpcomingAssignmentsSection
+        groups={assignmentGroupsFixture}
+        expandedEventId="event-1"
+        isOnline={false}
+        responseState="idle"
+        cancelState="idle"
+        onToggleEvent={vi.fn()}
+        onRespond={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('Offline')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Assignment responses stay blocked/),
     ).not.toBeInTheDocument();
   });
 });

@@ -112,7 +112,7 @@ export function UpcomingAssignmentsSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!isOnline ? (
+          {!isOnline && appConfig.parked.assignmentResponse ? (
             <Alert variant="destructive">
               <WifiOff className="size-4" />
               <AlertTitle>Offline</AlertTitle>
@@ -195,7 +195,8 @@ export function UpcomingAssignmentsSection({
                                   timeZone: churchTimezone,
                                 })}
                               </div>
-                              {assignment.timingState === 'in_progress' ? (
+                              {appConfig.parked.assignmentResponse &&
+                              assignment.timingState === 'in_progress' ? (
                                 <div className="text-muted-foreground">
                                   This assignment is already in progress, so
                                   responses are locked.

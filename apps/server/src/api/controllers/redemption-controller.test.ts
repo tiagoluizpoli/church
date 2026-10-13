@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   afterAll,
   beforeAll,
@@ -129,7 +130,11 @@ describe('RedemptionController', () => {
   it('rate-limits the public preview and verification-code endpoints', async () => {
     vi.mocked(redemptionManager.getPublicPreview).mockResolvedValue(null);
 
-    for (let requestCount = 0; requestCount < 30; requestCount += 1) {
+    for (
+      let requestCount = 0;
+      requestCount < appConfig.redemptionRateLimit.maxRequests;
+      requestCount += 1
+    ) {
       await app.inject({
         method: 'GET',
         url: `/api/v1/redemption/church/${INVITATION_ID}`,

@@ -1,8 +1,8 @@
 <!--
 ## Sync Impact Report
-- Version change: 1.5.0 → 1.6.0
-- Modified principle: IV. Environment Discipline
-- Updated: committed Varlock `.env.schema` files replace `.env.example` templates; values live only in the generated root `.env.local` and the machine-shared `church-shared.env`, loaded through Varlock (ADR-0005, #263)
+- Version change: 1.6.0 → 1.7.0
+- Modified principle: Core Rules — Monorepo Boundaries
+- Updated: `@church/app-config` is the one allowed application-specific package (plain shared config data, #434)
 - Templates requiring updates: None; existing Constitution Check is generic
 - Follow-up TODOs: None
 -->
@@ -65,6 +65,7 @@ type. Existing violations encountered in modified code MUST be corrected as part
 
 - **Domain Driven**: Business logic must be separated from framework-specific code.
 - **Monorepo Boundaries**: Shared packages (`packages/*`) must only contain generic, non-application-specific code (e.g., `@church/db` for database connection and schema, `@church/env` for env schemas and parsing, `@church/ui` for generic UI primitives). All application-specific server implementation, domain logic, and routes must live inside the server application (`apps/server`, named `@church/server`). Client applications must import server API definitions via orval-generated typed functions from `apps/web/src/infrastructure/api/`.
+- **Shared config package**: `@church/app-config` is the one allowed application-specific package — plain shared config data (policy values and parked switches) read by server and web, no logic beyond `withAllParkedOn`.
 - **Workspace Scope**: All package and application names are scoped under the `@church` namespace.
 - **Atomic Commits**: Use conventional commits and keep changes small and focused.
 - **Strict Linting**: Biome must pass before any commit.
@@ -78,4 +79,4 @@ type. Existing violations encountered in modified code MUST be corrected as part
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.6.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-09-30
+**Version**: 1.7.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-10-13

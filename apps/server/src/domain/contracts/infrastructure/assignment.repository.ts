@@ -84,6 +84,7 @@ export interface AssignmentRepository {
     tx?: TransactionContext,
   ): Promise<Assignment[]>;
 
+  /** A Volunteer's Assignments whose Shift overlaps `[startTime, endTime)`; touching ends don't overlap. */
   listByVolunteerInRange(
     churchId: ChurchId,
     volunteerId: VolunteerId,

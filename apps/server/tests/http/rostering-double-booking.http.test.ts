@@ -87,11 +87,20 @@ beforeEach(async () => {
   await resetSchedulingPhase3Db();
 });
 
+interface SeedCrossMinistryOverlapInput {
+  /** The Ministry B Shift; defaults to 09:30–10:30 against the 09:00–10:00 target. */
+  otherShiftStart?: string;
+  otherShiftEnd?: string;
+}
+
 /**
  * A Volunteer serving in Ministry A and Ministry B, already assigned in
  * Ministry B to a Shift that overlaps the Ministry A target Shift.
  */
-async function seedCrossMinistryOverlap() {
+async function seedCrossMinistryOverlap({
+  otherShiftStart = '2026-09-07T09:30:00.000Z',
+  otherShiftEnd = '2026-09-07T10:30:00.000Z',
+}: SeedCrossMinistryOverlapInput = {}) {
   const seed = await seedSchedulingPhase3Base();
   mockGetSession.mockResolvedValue({
     user: { id: seed.adminUserId },
@@ -133,8 +142,8 @@ async function seedCrossMinistryOverlap() {
     cycleId: cycle.id,
     ministryId: otherMinistry.id,
     title: 'Other ministry service',
-    start: new Date('2026-09-07T09:30:00.000Z'),
-    end: new Date('2026-09-07T11:30:00.000Z'),
+    start: new Date('2026-09-07T08:00:00.000Z'),
+    end: new Date('2026-09-07T12:00:00.000Z'),
     status: 'scheduled',
   });
   const targetRole = await seedRole({
@@ -159,8 +168,8 @@ async function seedCrossMinistryOverlap() {
     churchId: seed.churchAId,
     participationId: other.participation.id,
     timeSlotId: other.slot.id,
-    startTime: new Date('2026-09-07T09:30:00.000Z'),
-    endTime: new Date('2026-09-07T10:30:00.000Z'),
+    startTime: new Date(otherShiftStart),
+    endTime: new Date(otherShiftEnd),
     label: 'Other',
   });
   await seedRequirement({
@@ -255,6 +264,43 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
 
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual(DOUBLE_BOOKED_REFUSAL);
+  });
+
+  it('POST /rostering/shifts/:id/assignments refuses an overlapping Assignment that started earlier', async () => {
+    const seed = await seedCrossMinistryOverlap({
+      otherShiftStart: '2026-09-07T08:30:00.000Z',
+      otherShiftEnd: '2026-09-07T09:30:00.000Z',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/rostering/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: seed.doubleBookedVolunteerId,
+        roleId: seed.targetRoleId,
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual(DOUBLE_BOOKED_REFUSAL);
+  });
+
+  it('POST /rostering/shifts/:id/assignments accepts a back-to-back Shift in another Ministry', async () => {
+    const seed = await seedCrossMinistryOverlap({
+      otherShiftStart: '2026-09-07T10:00:00.000Z',
+      otherShiftEnd: '2026-09-07T11:00:00.000Z',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/rostering/shifts/${seed.targetShiftId}/assignments`,
+      payload: {
+        volunteerId: seed.doubleBookedVolunteerId,
+        roleId: seed.targetRoleId,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
   });
 
   it('POST /rostering/shifts/:id/assignments still refuses when the old override reason is sent', async () => {

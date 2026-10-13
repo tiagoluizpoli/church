@@ -56,6 +56,6 @@ describe('outbox retry policy', () => {
         start: FIXED_NOW,
         end: nextRetryAt({ attempts: 10 }),
       }),
-    ).toBe(60 * 60_000);
+    ).toBe(appConfig.outbox.backoffCapMinutes * 60_000);
   });
 });

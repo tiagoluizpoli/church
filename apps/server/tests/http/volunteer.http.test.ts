@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { container } from 'tsyringe';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

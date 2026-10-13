@@ -48,7 +48,6 @@ const VOLUNTEER_TRANSFER_SPEC_PATHS = [
 // experience proven by us5-offline, so it joins this shared group.
 const VOLUNTEER_DASHBOARD_SPEC_PATHS = [
   'tests/volunteer-dashboard/us1-availability.spec.ts',
-  'tests/volunteer-dashboard/us2-assignments.spec.ts',
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
@@ -90,7 +89,6 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/us5-live-changes.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
   'tests/volunteer-dashboard/us1-availability.spec.ts',
-  'tests/volunteer-dashboard/us2-assignments.spec.ts',
   'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
@@ -492,16 +490,10 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix:
       'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx',
     specPaths: [
-      'tests/volunteer-dashboard/us2-assignments.spec.ts',
-      // #217 — the volunteer-side confirm/cancel affordance us5-live-changes
-      // drives to prove the leader-notify and cross-volunteer-denial edges.
+      // #217 — the volunteer-side cancel affordance us5-live-changes drives
+      // to prove the leader-notify edge.
       'tests/scheduling/us5-live-changes.spec.ts',
     ],
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/lib/assignment-grouping.ts',
-    specPaths: ['tests/volunteer-dashboard/us2-assignments.spec.ts'],
   },
   // #216 — published-schedule visibility: the ministry-schedule dashboard
   // section is exercised directly by us4-ministry-schedule, and reused by

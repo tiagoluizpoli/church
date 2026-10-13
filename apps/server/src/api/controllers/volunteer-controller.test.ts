@@ -1,4 +1,4 @@
-import { appConfig } from '@church/app-config';
+import { appConfig, withAllParkedOn } from '@church/app-config';
 import {
   afterAll,
   beforeAll,
@@ -143,5 +143,52 @@ describe('GET /api/v1/volunteer/notifications (C1 pagination)', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().nextCursor).toBe('2026-07-02T00:00:00.000Z');
+  });
+});
+
+describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
+  const url =
+    '/api/v1/volunteer/assignments/66666666-6666-4666-8666-666666666666';
+  const body = { response: 'accepted' };
+
+  async function buildApp(config: typeof appConfig) {
+    const instance = await createFastify();
+    const controller = new VolunteerController(
+      volunteerManager as never,
+      activeChurchResolver as never,
+      config,
+    );
+    await instance.register(
+      async (scope) => {
+        scope.register(controller.registerRoutes.bind(controller), {
+          prefix: controller.prefix,
+        });
+      },
+      { prefix: '/api/v1' },
+    );
+    await instance.ready();
+    return instance;
+  }
+
+  it('gets 404 with the real config', async () => {
+    const response = await app.inject({ method: 'PATCH', url, payload: body });
+
+    expect(response.statusCode).toBe(404);
+    expect(volunteerManager.respondToAssignment).not.toHaveBeenCalled();
+  });
+
+  it('reaches the manager with the switch on', async () => {
+    const parkedOn = await buildApp(withAllParkedOn(appConfig) as never);
+    volunteerManager.respondToAssignment.mockRejectedValue(new Error('stop'));
+
+    await parkedOn.inject({ method: 'PATCH', url, payload: body });
+
+    expect(volunteerManager.respondToAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        response: 'accepted',
+        volunteerId: VOLUNTEER_ID,
+      }),
+    );
+    await parkedOn.close();
   });
 });

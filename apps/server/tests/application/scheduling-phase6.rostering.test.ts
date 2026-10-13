@@ -420,10 +420,14 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
         actorId: UserId.from(seed.adminUserId),
         override: { reason: 'Leader approved staffing override' },
       });
-    const audit = await managers.assignmentManager.listAuditLog({
+    const cycleAudit = await managers.assignmentManager.listAuditLogForCycle({
       churchId: ChurchId.from(seed.churchAId),
-      assignmentId: overridden.assignment.id,
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
     });
+    const audit = cycleAudit.filter(
+      (entry) => entry.assignmentId === overridden.assignment.id,
+    );
 
     expect(audit).toEqual([
       expect.objectContaining({

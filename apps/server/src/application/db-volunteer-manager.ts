@@ -14,7 +14,6 @@ import {
 import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, ShiftId } from '../domain/branded-ids';
 import type {
-  AvailabilityOverlapItem,
   CancelOwnAssignmentInput,
   ConfirmAvailabilityCheckInput,
   ConfirmAvailabilityCheckResult,
@@ -65,7 +64,6 @@ import type { Availability } from '../domain/entities/availability';
 import type { SlotRequirement } from '../domain/entities/slot-requirement';
 import type { TimeSlot } from '../domain/entities/time-slot';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
-import { AvailabilityOverlapError } from '../domain/errors/availability-overlap';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
@@ -74,8 +72,6 @@ import {
   expandWholeDayShiftIds,
   resolveShiftAvailability,
 } from '../domain/services/availability-marks';
-import type { ShiftOverlapPair } from '../domain/services/availability-overlap';
-import { detectCrossMinistryOverlaps } from '../domain/services/availability-overlap';
 
 const UPCOMING_DAYS = 30;
 const DEFAULT_NOTIFICATION_LIMIT = 20;
@@ -85,12 +81,6 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 interface NotifyLeadersOfCancellationInput {
   churchId: ChurchId;
   assignment: Assignment;
-}
-
-interface NotifyLeadersOfOverlapInput {
-  churchId: ChurchId;
-  planningCycleId: string;
-  overlapPairs: ShiftOverlapPair[];
 }
 
 interface DashboardAssignmentGroupDraft {
@@ -873,20 +863,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     // Entity transition guards the confirm gate (pending → confirmed, FR-019).
     context.check.confirm();
 
-    const unmarkedShifts =
-      await this.availabilityCheckRepo.listUnmarkedVolunteerShifts({
-        churchId: input.churchId,
-        volunteerId: input.volunteerId,
-        planningCycleId: context.check.planningCycleId,
-      });
-    const overlapPairs = detectCrossMinistryOverlaps({
-      shifts: unmarkedShifts,
-    });
-
-    if (overlapPairs.length > 0) {
-      throw new AvailabilityOverlapError();
-    }
-
     const confirmedAt = context.check.confirmedAt ?? nowInstant();
     await this.availabilityCheckRepo.confirm({
       churchId: input.churchId,
@@ -894,61 +870,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       confirmedAt: toDate({ instant: confirmedAt }),
     });
 
-    const overlaps: AvailabilityOverlapItem[] = overlapPairs.map((pair) => ({
-      shiftId: pair.first.shiftId as string,
-      otherShiftId: pair.second.shiftId as string,
-      ministryId: pair.first.ministryId as string,
-      otherMinistryId: pair.second.ministryId as string,
-    }));
-
-    if (overlaps.length > 0) {
-      await this.notifyLeadersOfOverlap({
-        churchId: input.churchId,
-        planningCycleId: context.check.planningCycleId as string,
-        overlapPairs,
-      });
-    }
-
-    return {
-      state: 'confirmed',
-      confirmedAt,
-      overlaps,
-    };
-  }
-
-  private async notifyLeadersOfOverlap({
-    churchId,
-    planningCycleId,
-    overlapPairs,
-  }: NotifyLeadersOfOverlapInput): Promise<void> {
-    const ministryIds = [
-      ...new Set(
-        overlapPairs.flatMap((pair) => [
-          pair.first.ministryId,
-          pair.second.ministryId,
-        ]),
-      ),
-    ];
-    const leaders =
-      await this.availabilityCheckRepo.listMinistryLeaderVolunteerIds({
-        churchId,
-        ministryIds,
-      });
-
-    for (const leader of leaders) {
-      await this.notificationService.notifyVolunteer({
-        churchId: churchId as string,
-        volunteerId: leader.volunteerId as string,
-        ministryId: leader.ministryId,
-        type: 'availability_conflict',
-        title: 'Availability conflict',
-        body: 'A volunteer confirmed availability that overlaps another ministry in the same planning period.',
-        payload: {
-          planningCycleId,
-          ministryId: leader.ministryId as string,
-        },
-      });
-    }
+    return { state: 'confirmed', confirmedAt };
   }
 
   async respondToAssignment(

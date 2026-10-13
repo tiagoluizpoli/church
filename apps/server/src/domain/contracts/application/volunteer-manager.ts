@@ -155,17 +155,9 @@ export interface ConfirmAvailabilityCheckInput {
   churchId: ChurchId;
 }
 
-export interface AvailabilityOverlapItem {
-  shiftId: string;
-  otherShiftId: string;
-  ministryId: string;
-  otherMinistryId: string;
-}
-
 export interface ConfirmAvailabilityCheckResult {
   state: AvailabilityCheckState;
   confirmedAt: Instant;
-  overlaps: AvailabilityOverlapItem[];
 }
 
 export interface RespondToAssignmentInput {

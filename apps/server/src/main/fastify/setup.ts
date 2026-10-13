@@ -41,7 +41,6 @@ const ERROR_MAP: Record<string, ErrorMapEntry> = {
   ROSTER_ACTION_NOT_AVAILABLE: { status: 403 },
   INSUFFICIENT_INVITATION_AUTHORITY: { status: 403 },
   CANCEL_WINDOW_CLOSED: { status: 409 },
-  AVAILABILITY_OVERLAP: { status: 409 },
   ISOLATION_BREACH: { status: 409 },
   CROSS_MINISTRY_SCOPE: { status: 409 },
   OVERLAPPING_CYCLE: { status: 409 },

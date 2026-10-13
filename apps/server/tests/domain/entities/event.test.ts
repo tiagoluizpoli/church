@@ -29,13 +29,6 @@ describe('Event Entity', () => {
     expect(event.location).toBe('Main Hall');
     expect('ministryId' in event).toBe(false);
     expect(event.status).toBe('draft');
-    expect(event.eventType).toBe('hourly');
-  });
-
-  it('accepts an explicit eventType', () => {
-    const event = new Event({ ...props, eventType: 'day_based' });
-
-    expect(event.eventType).toBe('day_based');
   });
 
   it('supports only cycle event statuses', () => {

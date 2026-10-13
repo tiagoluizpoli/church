@@ -17,7 +17,7 @@ export interface AvailabilityTaskViewModel {
   eventId: string;
   eventTitle: string;
   ministryName: string;
-  eventType: 'hourly' | 'day_based';
+  spanLabel: 'hourly' | 'day_based';
   eventStartLabel: string;
   eventEndLabel: string;
   completionState: 'missing' | 'partial' | 'complete';

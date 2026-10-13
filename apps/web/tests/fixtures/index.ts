@@ -24,7 +24,7 @@ export interface VolunteerDashboardAvailabilityTaskFixture {
   eventTitle: string;
   ministryId: string;
   ministryName: string;
-  eventType: 'hourly' | 'day_based';
+  spanLabel: 'hourly' | 'day_based';
   eventStart: string;
   eventEnd: string;
   completionState: 'missing' | 'partial' | 'complete';
@@ -82,7 +82,7 @@ export function createVolunteerDashboardSnapshotFixture(): VolunteerDashboardSna
         eventTitle: 'Youth Gathering',
         ministryId: volunteerDashboardFixtureIds.ministryId,
         ministryName: 'Adult Ministry',
-        eventType: 'hourly',
+        spanLabel: 'hourly',
         eventStart: '2026-07-05T09:00:00.000Z',
         eventEnd: '2026-07-05T11:00:00.000Z',
         completionState: 'missing',

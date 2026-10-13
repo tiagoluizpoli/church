@@ -106,7 +106,7 @@ function makeEvent(
     start: '2027-01-04T03:00:00.000Z',
     end: '2027-01-05T02:59:59.999Z',
     status: 'draft',
-    eventType: 'hourly',
+    spanLabel: 'hourly',
     fillRatio: 0,
     requiredCount: 1,
     assignedCount: 0,

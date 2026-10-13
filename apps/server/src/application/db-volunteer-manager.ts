@@ -76,6 +76,7 @@ import {
 } from '../domain/services/availability-marks';
 import type { ShiftOverlapPair } from '../domain/services/availability-overlap';
 import { detectCrossMinistryOverlaps } from '../domain/services/availability-overlap';
+import { eventSpanLabel } from '../domain/services/event-span-label';
 
 const UPCOMING_DAYS = 30;
 const DEFAULT_NOTIFICATION_LIMIT = 20;
@@ -321,7 +322,10 @@ export class DbVolunteerManager implements IVolunteerManager {
                 eventTitle: event.title,
                 ministryId: ministry.id,
                 ministryName: ministry.name,
-                eventType: event.eventType,
+                spanLabel: eventSpanLabel({
+                  start: event.start,
+                  end: event.end,
+                }),
                 eventStart: event.start,
                 eventEnd: event.end,
                 completionState,

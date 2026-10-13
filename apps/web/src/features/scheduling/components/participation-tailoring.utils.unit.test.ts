@@ -60,7 +60,7 @@ function makeEventView(
       start: '2026-07-12T09:00:00Z',
       end: '2026-07-12T11:00:00Z',
       status: 'scheduled',
-      eventType: 'hourly',
+      spanLabel: 'hourly',
       createdAt: '2026-07-01T00:00:00Z',
       updatedAt: '2026-07-01T00:00:00Z',
     },

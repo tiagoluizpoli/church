@@ -13,7 +13,6 @@ import {
   canCreateTemplate,
   cycleIsLocked,
   describeTimeBlockSpan,
-  eventSpanLabel,
   eventStatusBadgeVariant,
   isMultiDayEvent,
   shiftedEnd,
@@ -46,7 +45,7 @@ function makeEventGroup(slotCount: number): PlanningCycleEventGroup {
       start: '2027-01-03T09:00:00.000Z',
       end: '2027-01-03T11:00:00.000Z',
       status: 'scheduled',
-      eventType: 'hourly',
+      spanLabel: 'hourly',
       createdAt: '2027-01-01T00:00:00.000Z',
       updatedAt: '2027-01-01T00:00:00.000Z',
     },
@@ -223,44 +222,6 @@ describe('isMultiDayEvent', () => {
         eventEnd: '2027-01-02T06:00:00.000Z',
       }),
     ).toBe(true);
-  });
-});
-
-describe('eventSpanLabel', () => {
-  it('labels a one-day event hourly', () => {
-    expect(
-      eventSpanLabel({
-        eventStart: '2027-01-01T09:00:00.000Z',
-        eventEnd: '2027-01-01T17:00:00.000Z',
-      }),
-    ).toBe('hourly');
-  });
-
-  it('labels a multi-day event day_based', () => {
-    expect(
-      eventSpanLabel({
-        eventStart: '2027-01-01T09:00:00.000Z',
-        eventEnd: '2027-01-03T17:00:00.000Z',
-      }),
-    ).toBe('day_based');
-  });
-
-  it('labels an event spanning midnight day_based', () => {
-    expect(
-      eventSpanLabel({
-        eventStart: '2027-01-01T22:00:00.000Z',
-        eventEnd: '2027-01-02T06:00:00.000Z',
-      }),
-    ).toBe('day_based');
-  });
-
-  it('labels the event of a single TimeSlot by its own span', () => {
-    const { event, slots } = makeEventGroup(1);
-
-    expect(slots).toHaveLength(1);
-    expect(
-      eventSpanLabel({ eventStart: event.start, eventEnd: event.end }),
-    ).toBe('hourly');
   });
 });
 

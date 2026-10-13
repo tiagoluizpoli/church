@@ -7,7 +7,7 @@ import { AvailabilityForm } from '@/features/volunteers/components/availability-
 const eventFixture = {
   id: 'event-1',
   title: 'Youth Gathering',
-  eventType: 'hourly' as const,
+  spanLabel: 'hourly' as const,
   start: '2099-01-05T09:00:00.000Z',
   end: '2099-01-05T11:00:00.000Z',
 };

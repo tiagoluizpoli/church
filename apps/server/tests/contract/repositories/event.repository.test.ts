@@ -186,7 +186,6 @@ class MockEventRepository implements EventRepository {
         start: input.start ? fromDate({ date: input.start }) : e.start,
         end: input.end ? fromDate({ date: input.end }) : e.end,
         status: e.status,
-        eventType: e.eventType,
       },
       e.id,
     );

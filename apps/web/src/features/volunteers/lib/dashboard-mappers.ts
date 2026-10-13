@@ -10,7 +10,7 @@ export interface DashboardAvailabilityTask {
   eventTitle: string;
   ministryId: string;
   ministryName: string;
-  eventType: 'hourly' | 'day_based';
+  spanLabel: 'hourly' | 'day_based';
   eventStart: string;
   eventEnd: string;
   completionState: 'missing' | 'partial' | 'complete';
@@ -104,7 +104,7 @@ export function mapAvailabilityTask({
     eventId: task.eventId,
     eventTitle: task.eventTitle,
     ministryName: task.ministryName,
-    eventType: task.eventType,
+    spanLabel: task.spanLabel,
     eventStartLabel: formatInstantOf({ value: task.eventStart, timeZone }),
     eventEndLabel: formatInstantOf({ value: task.eventEnd, timeZone }),
     completionState: task.completionState,
@@ -117,7 +117,7 @@ export function mapAvailabilityEvent(
   return {
     id: task.eventId,
     title: task.eventTitle,
-    eventType: task.eventType,
+    spanLabel: task.spanLabel,
     start: task.eventStart,
     end: task.eventEnd,
   };

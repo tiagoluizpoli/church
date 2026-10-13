@@ -156,7 +156,7 @@ export interface CycleBuilderEventSummary {
   start: string;
   end: string;
   status: string;
-  eventType: string;
+  spanLabel: string;
   fillRatio: number;
   requiredCount: number;
   assignedCount: number;
@@ -309,7 +309,7 @@ function mapCycleBuilderData(
       start: item.event.start,
       end: item.event.end,
       status: item.event.status,
-      eventType: item.event.eventType,
+      spanLabel: item.event.spanLabel,
       fillRatio: requiredCount === 0 ? 0 : assignedCount / requiredCount,
       requiredCount,
       assignedCount,

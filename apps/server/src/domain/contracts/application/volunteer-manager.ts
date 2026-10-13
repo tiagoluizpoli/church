@@ -11,13 +11,14 @@ import type {
 import type { Assignment } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { VolunteerNotification } from '../../entities/volunteer-notification';
+import type { EventSpanLabel } from '../../services/event-span-label';
 
 export interface DashboardAvailabilityTask {
   eventId: string;
   eventTitle: string;
   ministryId: string;
   ministryName: string;
-  eventType: 'hourly' | 'day_based';
+  spanLabel: EventSpanLabel;
   eventStart: string;
   eventEnd: string;
   completionState: 'missing' | 'partial' | 'complete';

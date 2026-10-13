@@ -475,7 +475,7 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
+                            spanLabel:
                               type: string
                               enum:
                                 - hourly
@@ -496,7 +496,7 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
+                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -1051,7 +1051,7 @@ paths:
                       - scheduled
                       - cancelled
                       - past
-                  eventType:
+                  spanLabel:
                     type: string
                     enum:
                       - hourly
@@ -1072,7 +1072,7 @@ paths:
                   - start
                   - end
                   - status
-                  - eventType
+                  - spanLabel
                   - createdAt
                   - updatedAt
                 additionalProperties: false
@@ -1158,7 +1158,7 @@ paths:
                       - scheduled
                       - cancelled
                       - past
-                  eventType:
+                  spanLabel:
                     type: string
                     enum:
                       - hourly
@@ -1179,7 +1179,7 @@ paths:
                   - start
                   - end
                   - status
-                  - eventType
+                  - spanLabel
                   - createdAt
                   - updatedAt
                 additionalProperties: false
@@ -1854,7 +1854,7 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
+                            spanLabel:
                               type: string
                               enum:
                                 - hourly
@@ -1875,7 +1875,7 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
+                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -2157,7 +2157,7 @@ paths:
                             - scheduled
                             - cancelled
                             - past
-                        eventType:
+                        spanLabel:
                           type: string
                           enum:
                             - hourly
@@ -2178,7 +2178,7 @@ paths:
                         - start
                         - end
                         - status
-                        - eventType
+                        - spanLabel
                         - createdAt
                         - updatedAt
                       additionalProperties: false
@@ -3165,7 +3165,7 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
+                            spanLabel:
                               type: string
                               enum:
                                 - hourly
@@ -3186,7 +3186,7 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
+                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -4018,7 +4018,7 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
+                            spanLabel:
                               type: string
                               enum:
                                 - hourly
@@ -4039,7 +4039,7 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
+                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -5960,7 +5960,7 @@ paths:
                           type: string
                         ministryName:
                           type: string
-                        eventType:
+                        spanLabel:
                           type: string
                           enum:
                             - hourly
@@ -5984,7 +5984,7 @@ paths:
                         - eventTitle
                         - ministryId
                         - ministryName
-                        - eventType
+                        - spanLabel
                         - eventStart
                         - eventEnd
                         - completionState

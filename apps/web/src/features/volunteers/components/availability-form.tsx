@@ -27,7 +27,7 @@ export interface AvailabilityFormProps {
 export interface AvailabilityEventViewModel {
   id: string;
   title: string;
-  eventType: 'hourly' | 'day_based';
+  spanLabel: 'hourly' | 'day_based';
   start: string;
   end: string;
 }

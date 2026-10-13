@@ -345,14 +345,6 @@ export function isMultiDayEvent({
   );
 }
 
-/** Label key for an Event derived from its span (translation comes later). */
-export function eventSpanLabel({
-  eventStart,
-  eventEnd,
-}: IsMultiDayEventInput): 'hourly' | 'day_based' {
-  return isMultiDayEvent({ eventStart, eventEnd }) ? 'day_based' : 'hourly';
-}
-
 export function toPlanningCyclesTableRow({
   cycle,
 }: PlanningCyclesTableRowInput): PlanningCyclesTableRow {
@@ -385,10 +377,7 @@ export function toCycleCalendarTableRow({
     eventId: eventGroup.event.id,
     title: eventGroup.event.title,
     start: eventGroup.event.start,
-    spanLabel: eventSpanLabel({
-      eventStart: eventGroup.event.start,
-      eventEnd: eventGroup.event.end,
-    }),
+    spanLabel: eventGroup.event.spanLabel,
     status: eventGroup.event.status,
     slots: eventGroup.slots.map(
       (slot): CycleCalendarSlotRow => ({

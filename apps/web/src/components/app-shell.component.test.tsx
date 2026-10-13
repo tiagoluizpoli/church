@@ -6,6 +6,22 @@ import { renderWithProviders } from '../__tests__/setup/render';
 import { AppShell } from './app-shell';
 import { useCallerRoles } from '@/shared/hooks/use-caller-roles';
 
+const parked = vi.hoisted(() => ({ on: true }));
+
+vi.mock('@church/app-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@church/app-config')>();
+  const allOn = actual.withAllParkedOn(actual.appConfig);
+  return {
+    ...actual,
+    appConfig: {
+      ...actual.appConfig,
+      get parked() {
+        return parked.on ? allOn.parked : actual.appConfig.parked;
+      },
+    },
+  };
+});
+
 let mockPathname = '/dashboard';
 let mockHref = '/dashboard';
 const mockNavigate = vi.fn();
@@ -369,6 +385,7 @@ describe('AppShell responsive visibility contract (#219, right-sized from mobile
 
 describe('AppShell command palette shortcut (#219, right-sized from search.spec.ts)', () => {
   afterEach(() => {
+    parked.on = true;
     vi.clearAllMocks();
     mockPathname = '/dashboard';
     mockHref = '/dashboard';
@@ -388,6 +405,26 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
     expect(await screen.findByTestId('command-palette')).toBeVisible();
 
     await userEvent.keyboard('{Control>}k{/Control}');
+    expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+  });
+
+  it('shows no Search button and ignores Ctrl+K while the palette is parked', async () => {
+    parked.on = false;
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: false,
+      isResolving: false,
+    });
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
     expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
   });
 });

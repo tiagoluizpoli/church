@@ -173,7 +173,7 @@ export class RosteringController implements FastifyController {
     @inject('AuthorityGuard')
     private readonly authorityGuard: AuthorityGuard,
     @inject('AppConfig')
-    readonly config: AppConfig,
+    private readonly config: AppConfig,
   ) {}
 
   registerRoutes(
@@ -275,46 +275,48 @@ export class RosteringController implements FastifyController {
       },
     );
 
-    app.get(
-      '/cycles/:cycleId/audit',
-      {
-        schema: {
-          tags: ['rostering'],
-          operationId: 'getCycleAuditLog',
-          summary: "Get a Ministry's Assignment audit log for a cycle",
-          description:
-            "List a Ministry's Assignment audit entries across an entire PlanningCycle.",
-          querystring: cycleMinistryQuerySchema,
-          response: {
-            200: auditListResponseSchema,
-            403: errorResponseSchema,
+    if (this.config.parked.auditPanel) {
+      app.get(
+        '/cycles/:cycleId/audit',
+        {
+          schema: {
+            tags: ['rostering'],
+            operationId: 'getCycleAuditLog',
+            summary: "Get a Ministry's Assignment audit log for a cycle",
+            description:
+              "List a Ministry's Assignment audit entries across an entire PlanningCycle.",
+            querystring: cycleMinistryQuerySchema,
+            response: {
+              200: auditListResponseSchema,
+              403: errorResponseSchema,
+            },
           },
         },
-      },
-      async (request, reply) => {
-        const { cycleId } = request.params as CycleRouteParams;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        async (request, reply) => {
+          const { cycleId } = request.params as CycleRouteParams;
+          const { ministryId } = request.query as CycleMinistryQuery;
 
-        const allowed = await this.authorityGuard.canManageMinistry({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
-        });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this ministry',
+          const allowed = await this.authorityGuard.canManageMinistry({
+            churchId: ChurchId.from(request.churchId),
+            ministryId: MinistryId.from(ministryId),
+            userId: UserId.from(request.userId),
           });
-        }
+          if (!allowed) {
+            return reply.status(403).send({
+              error: 'FORBIDDEN',
+              message: 'Not a leader of this ministry',
+            });
+          }
 
-        const items = await this.assignmentManager.listAuditLogForCycle({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
-          ministryId: MinistryId.from(ministryId),
-        });
-        return reply.send(assignmentMapper.auditListToResponse(items));
-      },
-    );
+          const items = await this.assignmentManager.listAuditLogForCycle({
+            churchId: ChurchId.from(request.churchId),
+            cycleId: PlanningCycleId.from(cycleId),
+            ministryId: MinistryId.from(ministryId),
+          });
+          return reply.send(assignmentMapper.auditListToResponse(items));
+        },
+      );
+    }
 
     app.post(
       '/cycles/:cycleId/publish',

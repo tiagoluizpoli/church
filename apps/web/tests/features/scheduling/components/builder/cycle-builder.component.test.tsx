@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -5,6 +6,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '@/__tests__/setup/render';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
+
+const parked = vi.hoisted(() => ({ auditPanel: true }));
+
+vi.mock('@church/app-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@church/app-config')>();
+  return {
+    ...actual,
+    appConfig: {
+      ...actual.appConfig,
+      get parked() {
+        return {
+          ...actual.withAllParkedOn(actual.appConfig).parked,
+          ...parked,
+        };
+      },
+    } as AppConfig,
+  };
+});
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -432,6 +451,30 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
       screen.getByRole('button', { name: 'Show volunteers for Host first' }),
     );
     expect(screen.getByTestId('volunteer-pick-me')).toBeVisible();
+  });
+
+  it('opens the Audit log panel when the switch is on', async () => {
+    renderBuilder();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Audit log' }));
+
+    expect(await screen.findByText('Audit Log')).toBeVisible();
+  });
+
+  it('hides the Audit log button when the switch is off', () => {
+    parked.auditPanel = false;
+    try {
+      renderBuilder();
+
+      expect(
+        screen.getByRole('button', { name: 'Publish cycle' }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: 'Audit log' }),
+      ).not.toBeInTheDocument();
+    } finally {
+      parked.auditPanel = true;
+    }
   });
 
   it('preserves the admin board affordances across Team, time, and participation state', () => {

@@ -1,7 +1,5 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
-export const enforcementTypeEnum = pgEnum('enforcement_type', ['soft', 'hard']);
-
 export const volunteerStatusEnum = pgEnum('volunteer_status', [
   'active',
   'inactive',

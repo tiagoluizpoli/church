@@ -1735,11 +1735,6 @@ paths:
                     type: string
                   description:
                     type: string
-                  enforcementType:
-                    type: string
-                    enum:
-                      - soft
-                      - hard
                   defaultDirection:
                     type: string
                     enum:
@@ -1757,7 +1752,6 @@ paths:
                   - id
                   - churchId
                   - name
-                  - enforcementType
                   - defaultDirection
                   - createdAt
                   - updatedAt
@@ -2173,11 +2167,6 @@ paths:
                           type: string
                         description:
                           type: string
-                        enforcementType:
-                          type: string
-                          enum:
-                            - soft
-                            - hard
                         defaultDirection:
                           type: string
                           enum:
@@ -2195,7 +2184,6 @@ paths:
                         - id
                         - churchId
                         - name
-                        - enforcementType
                         - defaultDirection
                         - createdAt
                         - updatedAt

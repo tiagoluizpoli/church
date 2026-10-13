@@ -12,7 +12,6 @@ export function mapMinistry(row: MinistryRow): Ministry {
     churchId: row.churchId as ChurchId,
     name: row.name,
     description: row.description ?? undefined,
-    enforcementType: row.enforcementType as MinistryProps['enforcementType'],
     defaultDirection: row.defaultDirection,
     deletedAt: row.deletedAt ? fromDate({ date: row.deletedAt }) : undefined,
   };

@@ -73,14 +73,12 @@ beforeAll(async () => {
     id: MINISTRY_A,
     churchId: CHURCH,
     name: 'Worship',
-    enforcementType: 'soft',
   });
   await buildMinistry({
     db,
     id: MINISTRY_B,
     churchId: CHURCH,
     name: 'Kids',
-    enforcementType: 'soft',
   });
 
   await buildVolunteer({

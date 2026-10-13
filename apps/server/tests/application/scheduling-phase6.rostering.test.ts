@@ -397,7 +397,6 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       id: randomUUID(),
       churchId: seed.churchAId,
       name: 'Second ministry',
-      enforcementType: 'soft',
     });
     const secondParticipation = await buildMinistryParticipation({
       db: schedulingTestDb,

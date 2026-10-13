@@ -172,9 +172,13 @@ export class RosteringController implements FastifyController {
     private readonly activeChurchResolver: IActiveChurchResolver,
     @inject('AuthorityGuard')
     private readonly authorityGuard: AuthorityGuard,
-    @inject('AppConfig')
-    private readonly config: AppConfig,
-  ) {}
+    @inject('AppConfig') config: AppConfig,
+  ) {
+    const { parked } = config;
+    this.parked = parked;
+  }
+
+  private readonly parked: AppConfig['parked'];
 
   registerRoutes(
     app: FastifyTypedInstance,
@@ -275,7 +279,7 @@ export class RosteringController implements FastifyController {
       },
     );
 
-    if (this.config.parked.auditPanel) {
+    if (this.parked.auditPanel) {
       app.get(
         '/cycles/:cycleId/audit',
         {

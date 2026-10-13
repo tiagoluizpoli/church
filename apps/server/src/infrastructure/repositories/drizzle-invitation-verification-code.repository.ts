@@ -26,11 +26,14 @@ export class DrizzleInvitationVerificationCodeRepository
     config,
   }: DrizzleInvitationVerificationCodeRepositoryInput) {
     this.db = db;
-    this.config = config;
+    const { verificationCode } = config;
+    this.resendCooldownMs = verificationCode.resendCooldownMs;
+    this.maxAttempts = verificationCode.maxAttempts;
   }
 
   private readonly db: AnyDrizzleDb;
-  private readonly config: AppConfig;
+  private readonly resendCooldownMs: number;
+  private readonly maxAttempts: number;
 
   async find({
     ministryInvitationId,
@@ -54,10 +57,9 @@ export class DrizzleInvitationVerificationCodeRepository
     expiresAt,
     sentAt,
   }: ClaimVerificationCodeDeliveryInput): Promise<boolean> {
-    const { resendCooldownMs } = this.config.verificationCode;
     const resendEligibleAtInstant = addMilliseconds({
       instant: fromDate({ date: sentAt }),
-      milliseconds: -resendCooldownMs,
+      milliseconds: -this.resendCooldownMs,
     });
     const resendEligibleAt = toDate({ instant: resendEligibleAtInstant });
     const [row] = await this.db
@@ -117,7 +119,6 @@ export class DrizzleInvitationVerificationCodeRepository
     now,
     redemptionIdempotencyKey,
   }: ConsumeVerificationCodeIfValidInput): Promise<boolean> {
-    const { maxAttempts } = this.config.verificationCode;
     const [row] = await this.db
       .update(invitationVerificationCode)
       .set({ consumedAt, redemptionIdempotencyKey })
@@ -130,7 +131,7 @@ export class DrizzleInvitationVerificationCodeRepository
           eq(invitationVerificationCode.codeHash, candidateHash),
           isNull(invitationVerificationCode.consumedAt),
           gt(invitationVerificationCode.expiresAt, now),
-          lt(invitationVerificationCode.failedAttempts, maxAttempts),
+          lt(invitationVerificationCode.failedAttempts, this.maxAttempts),
         ),
       )
       .returning({ id: invitationVerificationCode.id });
@@ -142,7 +143,6 @@ export class DrizzleInvitationVerificationCodeRepository
     candidateHash,
     now,
   }: RecordFailedVerificationAttemptIfAllowedInput): Promise<boolean> {
-    const { maxAttempts } = this.config.verificationCode;
     const [row] = await this.db
       .update(invitationVerificationCode)
       .set({
@@ -157,7 +157,7 @@ export class DrizzleInvitationVerificationCodeRepository
           ne(invitationVerificationCode.codeHash, candidateHash),
           isNull(invitationVerificationCode.consumedAt),
           gt(invitationVerificationCode.expiresAt, now),
-          lt(invitationVerificationCode.failedAttempts, maxAttempts),
+          lt(invitationVerificationCode.failedAttempts, this.maxAttempts),
         ),
       )
       .returning({ id: invitationVerificationCode.id });

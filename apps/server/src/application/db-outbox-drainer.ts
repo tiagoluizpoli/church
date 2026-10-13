@@ -63,7 +63,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     this.volunteerTransferRepository = volunteerTransferRepository;
     this.emailSender = emailSender;
     this.unitOfWork = unitOfWork;
-    this.config = config;
+    this.outboxPolicy = config.outbox;
   }
 
   private readonly outboxRepository: OutboxRepository;
@@ -75,7 +75,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly volunteerTransferRepository: VolunteerTransferRepository;
   private readonly emailSender: EmailSender;
   private readonly unitOfWork: UnitOfWork;
-  private readonly config: AppConfig;
+  private readonly outboxPolicy: AppConfig['outbox'];
 
   async drainOnce(input: DrainOnceInput): Promise<DrainOnceResult> {
     const { limit } = input;
@@ -287,9 +287,11 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     error,
   }: HandleSendFailureInput): Promise<void> {
     const attempts = message.attempts + 1;
-    const { outbox: policy } = this.config;
-    if (error.retryable && !hasExhaustedRetries({ attempts, policy })) {
-      const retryAt = nextRetryAt({ attempts, policy });
+    if (
+      error.retryable &&
+      !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
+    ) {
+      const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.markFailed({
           id: message.id,

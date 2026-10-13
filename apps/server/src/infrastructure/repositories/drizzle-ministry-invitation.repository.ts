@@ -56,11 +56,11 @@ export class DrizzleMinistryInvitationRepository
 {
   constructor({ db, config }: DrizzleMinistryInvitationRepositoryInput) {
     this.db = db;
-    this.config = config;
+    this.churchInvitationTtlMs = config.churchInvitation.ttlMs;
   }
 
   private readonly db: AnyDrizzleDb;
-  private readonly config: AppConfig;
+  private readonly churchInvitationTtlMs: number;
 
   async acquireMintLock(input: AcquireMintLockInput): Promise<void> {
     const { ministryId, email, tx } = input;
@@ -379,10 +379,9 @@ export class DrizzleMinistryInvitationRepository
   ): Promise<ChurchInvitationSummary> {
     const { churchId, email, inviterId, tx } = input;
     const id = crypto.randomUUID();
-    const { ttlMs } = this.config.churchInvitation;
     const expiresAtInstant = addMilliseconds({
       instant: now(),
-      milliseconds: ttlMs,
+      milliseconds: this.churchInvitationTtlMs,
     });
     const expiresAt = toDate({ instant: expiresAtInstant });
     await getClient(this.db, tx).insert(churchInvitation).values({

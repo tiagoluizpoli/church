@@ -64,14 +64,17 @@ export class InvitationVerificationCodeManager
     this.emailSender = emailSender;
     this.generateCode = generateCode ?? generateVerificationCode;
     this.verificationCodeSecret = verificationCodeSecret;
-    this.config = config;
+    const { verificationCode } = config;
+    this.codeTtlMs = verificationCode.ttlMs;
+    this.verificationPolicy = verificationCode;
   }
 
   private readonly repository: InvitationVerificationCodeRepository;
   private readonly emailSender: EmailSender;
   private readonly generateCode: () => string;
   private readonly verificationCodeSecret: string;
-  private readonly config: AppConfig;
+  private readonly codeTtlMs: number;
+  private readonly verificationPolicy: AppConfig['verificationCode'];
 
   async issue({
     ministryInvitationId,
@@ -79,7 +82,6 @@ export class InvitationVerificationCodeManager
     churchName,
     now = nowAsDate(),
   }: IssueVerificationCodeInput): Promise<void> {
-    const { ttlMs } = this.config.verificationCode;
     const code = this.generateCode();
     const codeHash = hashVerificationCode({
       code,
@@ -87,7 +89,7 @@ export class InvitationVerificationCodeManager
     });
     const expiresAt = addMilliseconds({
       instant: fromDate({ date: now }),
-      milliseconds: ttlMs,
+      milliseconds: this.codeTtlMs,
     });
     const claimed = await this.repository.claimDelivery({
       ministryInvitationId,
@@ -145,14 +147,13 @@ export class InvitationVerificationCodeManager
     ) {
       return;
     }
-    const { verificationCode: policy } = this.config;
     const candidateMatches = verifyVerificationCodeHash({
       codeHash: state.codeHash,
       candidateHash,
     });
     const outcome = validateVerificationCode({
       state,
-      policy,
+      policy: this.verificationPolicy,
       candidateMatches,
       now: nowInstant,
     });
@@ -186,7 +187,7 @@ export class InvitationVerificationCodeManager
     });
     const currentOutcome = validateVerificationCode({
       state: current,
-      policy,
+      policy: this.verificationPolicy,
       candidateMatches: currentCandidateMatches,
       now: nowInstant,
     });

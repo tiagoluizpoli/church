@@ -266,9 +266,12 @@ export class DbVolunteerManager implements IVolunteerManager {
     private readonly notificationService: NotificationService,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
-    @inject('AppConfig')
-    private readonly config: AppConfig,
-  ) {}
+    @inject('AppConfig') config: AppConfig,
+  ) {
+    this.cancelLeadTimeDays = config.assignment.cancelLeadTimeDays;
+  }
+
+  private readonly cancelLeadTimeDays: number;
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
     const { volunteerId, churchId } = input;
@@ -976,8 +979,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         churchId,
         shiftId: assignment.shiftId,
       });
-      const { cancelLeadTimeDays } = this.config.assignment;
-      const cancelLeadTimeMs = cancelLeadTimeDays * MILLISECONDS_PER_DAY;
+      const cancelLeadTimeMs = this.cancelLeadTimeDays * MILLISECONDS_PER_DAY;
       const cutoff = addMilliseconds({
         instant: shift.startTime,
         milliseconds: -cancelLeadTimeMs,

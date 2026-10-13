@@ -67,9 +67,13 @@ export class VolunteerController implements FastifyController {
     private readonly volunteerManager: IVolunteerManager,
     @inject('IActiveChurchResolver')
     private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('AppConfig')
-    private readonly config: AppConfig,
-  ) {}
+    @inject('AppConfig') config: AppConfig,
+  ) {
+    const { parked } = config;
+    this.parked = parked;
+  }
+
+  private readonly parked: AppConfig['parked'];
 
   registerRoutes(
     app: FastifyTypedInstance,
@@ -247,7 +251,7 @@ export class VolunteerController implements FastifyController {
       },
     );
 
-    if (this.config.parked.assignmentResponse) {
+    if (this.parked.assignmentResponse) {
       app.patch(
         '/assignments/:assignmentId',
         {
@@ -278,7 +282,7 @@ export class VolunteerController implements FastifyController {
       );
     }
 
-    if (this.config.parked.volunteerCancel) {
+    if (this.parked.volunteerCancel) {
       app.post(
         '/assignments/:assignmentId/cancel',
         {

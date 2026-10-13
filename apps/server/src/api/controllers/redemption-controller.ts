@@ -89,15 +89,15 @@ export class RedemptionController implements FastifyController {
   }: RedemptionControllerDependencies) {
     this.redemptionManager = redemptionManager;
     this.volunteerTransferManager = volunteerTransferManager;
-    this.config = config;
+    this.rateLimit = config.redemptionRateLimit;
   }
 
   private readonly redemptionManager: RedemptionManager;
   private readonly volunteerTransferManager: VolunteerTransferManager;
-  private readonly config: AppConfig;
+  private readonly rateLimit: AppConfig['redemptionRateLimit'];
 
   private isRateLimitedRequest({ key }: ControllerRateLimitInput): boolean {
-    const { windowMs, maxRequests } = this.config.redemptionRateLimit;
+    const { windowMs, maxRequests } = this.rateLimit;
     return isRateLimited({ key, windowMs, maxRequests });
   }
 

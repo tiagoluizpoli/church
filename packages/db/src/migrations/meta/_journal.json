@@ -120,6 +120,13 @@
       "when": 1791928243677,
       "tag": "0016_safe_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791934418936,
+      "tag": "0017_jittery_vanisher",
+      "breakpoints": true
     }
   ]
 }

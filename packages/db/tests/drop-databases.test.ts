@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -14,7 +15,12 @@ import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
 
 // Scoped to this worktree so concurrent integration runs in other worktrees
 // never create or drop the same scratch databases.
-const SCRATCH_WORKTREE = `${process.env.CHURCH_WORKTREE ?? 'unspecified'}_drop_test`;
+// The worktree name is hashed because Postgres truncates identifiers over 63
+// characters, which would make long worktree names collide.
+const SCRATCH_WORKTREE = `drop_${createHash('sha256')
+  .update(process.env.CHURCH_WORKTREE ?? 'unspecified')
+  .digest('hex')
+  .slice(0, 12)}`;
 const KEPT_WORKTREE = `${SCRATCH_WORKTREE}_kept`;
 const PURPOSES: DatabasePurpose[] = ['development', 'integration', 'e2e'];
 const SCRATCH_DATABASES = PURPOSES.map((purpose) =>

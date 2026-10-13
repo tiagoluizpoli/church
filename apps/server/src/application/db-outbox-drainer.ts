@@ -287,7 +287,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     error,
   }: HandleSendFailureInput): Promise<void> {
     const attempts = message.attempts + 1;
-    const policy = this.config.outbox;
+    const { outbox: policy } = this.config;
     if (error.retryable && !hasExhaustedRetries({ attempts, policy })) {
       const retryAt = nextRetryAt({ attempts, policy });
       await this.unitOfWork.run((tx) =>

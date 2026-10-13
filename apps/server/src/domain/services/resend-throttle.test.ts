@@ -9,7 +9,7 @@ import {
 } from './resend-throttle';
 
 const now = parseInstant({ value: '2030-01-02T00:00:00Z' });
-const policy = appConfig.invitationResend;
+const { invitationResend: policy } = appConfig;
 const MINUTE_MS = 60_000;
 
 describe('resend throttle — cooldown', () => {

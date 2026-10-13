@@ -14,7 +14,7 @@ const FIRST_RETRY_BACKOFF_MINUTES = 2;
 const SECOND_RETRY_BACKOFF_MINUTES = 4;
 const THIRD_RETRY_BACKOFF_MINUTES = 8;
 const ATTEMPTS_PAST_THE_BACKOFF_CAP = 10;
-const policy = appConfig.outbox;
+const { outbox: policy } = appConfig;
 
 function backoffMsAfter({ attempts }: { attempts: number }): number {
   const end = nextRetryAt({ attempts, policy });

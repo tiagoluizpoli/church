@@ -163,7 +163,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       this.ensureResendAllowed({ throttleState, now });
 
       const { ttlMs } = this.config.ministryInvitation;
-      const policy = this.config.invitationResend;
+      const { invitationResend: policy } = this.config;
       const expiresAt = addMilliseconds({
         instant: now,
         milliseconds: ttlMs,
@@ -404,7 +404,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
 
   private ensureResendAllowed(input: EnsureResendAllowedInput): void {
     const { throttleState, now } = input;
-    const policy = this.config.invitationResend;
+    const { invitationResend: policy } = this.config;
     if (isResendCooldownActive({ state: throttleState, policy, now })) {
       throw new ResendCooldownActiveError();
     }

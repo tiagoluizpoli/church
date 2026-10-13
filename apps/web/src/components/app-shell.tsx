@@ -190,7 +190,7 @@ export function AppShell({ children, breadcrumbOverrides }: AppShellProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   // Typed wide: the shipped value is a literal `false`.
-  const paletteEnabled: boolean = appConfig.parked.commandPalette;
+  const { commandPalette: paletteEnabled } = appConfig.parked;
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();

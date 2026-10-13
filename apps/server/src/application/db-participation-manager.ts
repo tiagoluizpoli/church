@@ -43,10 +43,6 @@ import type {
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
-import {
-  EVENT_BUILDER_MINISTRY_ONLY_FAIRNESS_FLAG,
-  type IFeatureFlagService,
-} from '../domain/contracts/infrastructure/feature-flag-service';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { MinistryServingProfileRepository } from '../domain/contracts/infrastructure/ministry-serving-profile.repository';
@@ -210,8 +206,6 @@ export class DbParticipationManager implements IParticipationManager {
     private readonly notificationService: NotificationService,
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
-    @inject('IFeatureFlagService')
-    private readonly featureFlagService?: IFeatureFlagService,
   ) {}
 
   async getCycleParticipation(
@@ -1215,44 +1209,6 @@ export class DbParticipationManager implements IParticipationManager {
     // attributed across every participation, derived availability signals are
     // withheld from a Team-scoped read rather than exposing another Team.
     const visibleActiveAssignments = teamId ? [] : activeAssignments;
-    const ministryOnlyFairness =
-      (await this.featureFlagService?.isEnabled(
-        EVENT_BUILDER_MINISTRY_ONLY_FAIRNESS_FLAG,
-        { churchId: churchId as string },
-      )) ?? false;
-    const participationIds = [
-      ...new Set(
-        visibleActiveAssignments
-          .map((assignment) => assignment.participationId)
-          .filter(
-            (participationId): participationId is MinistryParticipation['id'] =>
-              participationId != null,
-          ),
-      ),
-    ];
-    const assignmentParticipations =
-      ministryOnlyFairness && participationIds.length > 0
-        ? await this.participationRepository.listByIds({
-            churchId,
-            participationIds,
-            tx,
-          })
-        : [];
-    const ministryParticipationIds = new Set(
-      assignmentParticipations
-        .filter(
-          (assignmentParticipation) =>
-            assignmentParticipation.ministryId === participation.ministryId,
-        )
-        .map((assignmentParticipation) => assignmentParticipation.id),
-    );
-    const fairnessAssignments = ministryOnlyFairness
-      ? visibleActiveAssignments.filter(
-          (assignment) =>
-            assignment.participationId != null &&
-            ministryParticipationIds.has(assignment.participationId),
-        )
-      : visibleActiveAssignments;
     const assignmentShiftIds = [
       ...new Set(
         visibleActiveAssignments
@@ -1302,7 +1258,7 @@ export class DbParticipationManager implements IParticipationManager {
             volunteer,
             shift,
             activeAssignments: visibleActiveAssignments,
-            fairnessAssignments,
+            fairnessAssignments: visibleActiveAssignments,
             assignmentShiftsById,
             unavailableMarkKeys,
             membershipInfoByVolunteerId,

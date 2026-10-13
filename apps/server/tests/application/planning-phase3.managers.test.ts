@@ -44,7 +44,6 @@ import { DrizzlePlanningEventRepository } from '../../src/infrastructure/reposit
 import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
-import { SchedulingFeatureFlagServiceStub } from '../../src/test-support/feature-flag-service-stub';
 import {
   createSchedulingPhase3Cycle,
   resetSchedulingPhase3Db,
@@ -76,10 +75,6 @@ function createManagers() {
   const ministryRepository = new DrizzleMinistryRepository({
     db: schedulingTestDb,
   });
-  const featureFlagService = new SchedulingFeatureFlagServiceStub({
-    participationDefaultAllIn: false,
-    volunteerDashboardAllowOverlapSave: false,
-  });
   const timeSlotRepository = new DrizzleTimeSlotRepository({
     db: schedulingTestDb,
   });
@@ -101,7 +96,6 @@ function createManagers() {
       shiftRepository,
       servingProfileRepository,
       ministryRepository,
-      featureFlagService,
       timeSlotRepository,
     ),
     templateManager: new DbEventTemplateManager(templateRepository),

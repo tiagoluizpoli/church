@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ChurchId, EventId, RoleId, TimeSlotId } from '../../branded-ids';
+import type { ChurchId, EventId, TimeSlotId } from '../../branded-ids';
 import type { TimeSlotRepository } from '../infrastructure/time-slot.repository';
 
 export function runTimeSlotRepositoryContractTests(
@@ -48,34 +48,6 @@ export function runTimeSlotRepositoryContractTests(
       expect(list.length).toBe(1);
       expect(list[0]?.id).toBe('77777777-7777-7777-7777-777777777771');
       expect(list[0]?.requirements.length).toBe(1);
-    });
-
-    it('should bulk create time slots', async () => {
-      const slots = await repo.bulkCreate(
-        '11111111-1111-1111-1111-111111111111' as ChurchId,
-        {
-          eventId: '66666666-6666-6666-6666-666666666661' as EventId,
-          slots: [
-            {
-              startTime: new Date('2024-06-05T12:00:00Z'),
-              endTime: new Date('2024-06-05T14:00:00Z'),
-              label: 'Second Service',
-              requirements: [
-                {
-                  roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
-                  requiredCount: 2,
-                },
-              ],
-            },
-          ],
-        },
-      );
-
-      expect(slots.length).toBe(1);
-      expect(slots[0]?.id).toBeDefined();
-      expect(slots[0]?.label).toBe('Second Service');
-      expect(slots[0]?.requirements.length).toBe(1);
-      expect(slots[0]?.requirements[0]?.requiredCount).toBe(2);
     });
 
     it('should delete time slots by event', async () => {

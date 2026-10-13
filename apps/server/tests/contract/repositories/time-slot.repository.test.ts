@@ -8,11 +8,9 @@ import type {
 } from '../../../src/domain/branded-ids';
 import { runTimeSlotRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/time-slot.contract-spec';
 import type {
-  BulkCreateTimeSlotsInput,
   CreateTimeSlotInput,
   TimeSlotRepository,
   UpdateTimeSlotInput,
-  UpsertSlotRequirementInput,
 } from '../../../src/domain/contracts/infrastructure/time-slot.repository';
 import {
   SlotRequirement,
@@ -64,70 +62,12 @@ class MockTimeSlotRepository implements TimeSlotRepository {
     );
   }
 
-  async bulkCreate(
-    churchId: ChurchId,
-    input: BulkCreateTimeSlotsInput,
-  ): Promise<TimeSlot[]> {
-    const created: TimeSlot[] = [];
-    for (const item of input.slots) {
-      const slotId = `slot-gen-${this.idCounter++}` as TimeSlotId;
-      const requirements = (item.requirements ?? []).map((reqItem, index) => {
-        return new SlotRequirement(
-          {
-            churchId,
-            slotId,
-            roleId: reqItem.roleId,
-            teamId: reqItem.teamId,
-            requiredCount: reqItem.requiredCount,
-            notes: reqItem.notes,
-          },
-          `req-gen-${slotId}-${index}` as SlotRequirementId,
-        );
-      });
-
-      const slot = new TimeSlot(
-        {
-          churchId,
-          eventId: input.eventId,
-          startTime: fromDate({ date: item.startTime }),
-          endTime: fromDate({ date: item.endTime }),
-          label: item.label,
-          status: 'active',
-          requirements,
-        },
-        slotId,
-      );
-
-      this.slots.set(slot.id, slot);
-      created.push(slot);
-    }
-    return created;
-  }
-
   async deleteByEvent(churchId: ChurchId, eventId: EventId): Promise<void> {
     for (const slot of Array.from(this.slots.values())) {
       if (slot.churchId === churchId && slot.eventId === eventId) {
         this.slots.delete(slot.id);
       }
     }
-  }
-
-  async upsertRequirement(
-    churchId: ChurchId,
-    slotId: TimeSlotId,
-    input: UpsertSlotRequirementInput,
-  ): Promise<SlotRequirement> {
-    return new SlotRequirement(
-      {
-        churchId,
-        slotId,
-        roleId: input.roleId,
-        requiredCount: input.requiredCount,
-        teamId: input.teamId,
-        notes: input.notes,
-      },
-      `req-upsert-${slotId}` as SlotRequirementId,
-    );
   }
 
   async countActiveAssignments(

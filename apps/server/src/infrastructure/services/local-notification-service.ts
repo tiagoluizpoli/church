@@ -6,7 +6,6 @@ import type {
   DeclineNotification,
   NotificationService,
   PublishNotification,
-  ReminderNotification,
   VolunteerScheduleNotification,
 } from '../../domain/contracts/infrastructure/notification-service';
 import type { VolunteerNotificationRepository } from '../../domain/contracts/infrastructure/volunteer-notification.repository';
@@ -29,11 +28,6 @@ export class LocalNotificationService implements NotificationService {
 
   async publish(event: PublishNotification): Promise<void> {
     this.emitter.emit(event.type, event);
-  }
-
-  async notifyReminder(event: ReminderNotification): Promise<void> {
-    console.log('[NotificationService] Reminder:', event);
-    this.emitter.emit('reminder', event);
   }
 
   async notifyVolunteer(event: VolunteerScheduleNotification): Promise<void> {

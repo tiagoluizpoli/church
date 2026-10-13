@@ -14,7 +14,6 @@ import type {
 import type { AssignmentRepository } from '../../src/domain/contracts/infrastructure/assignment.repository';
 import type { AvailabilityRepository } from '../../src/domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '../../src/domain/contracts/infrastructure/event.repository';
-import type { NotificationService } from '../../src/domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../../src/domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../../src/domain/contracts/infrastructure/time-slot.repository';
 import type {
@@ -85,7 +84,6 @@ interface Repos {
   availabilityRepo: AvailabilityRepository;
   volunteerRepo: VolunteerRepository;
   roleRepo: RoleRepository;
-  notificationService: NotificationService;
 }
 
 function createRepos(): Repos {
@@ -179,13 +177,6 @@ function createRepos(): Repos {
     listByMinistry: vi.fn(async () => []),
   };
 
-  const notificationService: NotificationService = {
-    publish: vi.fn(async () => undefined),
-    notifyReminder: vi.fn(async () => undefined),
-    notifyVolunteer: vi.fn(async () => undefined),
-    notifyLeaderOfDecline: vi.fn(async () => undefined),
-  };
-
   return {
     eventRepo,
     slotRepo,
@@ -193,7 +184,6 @@ function createRepos(): Repos {
     availabilityRepo,
     volunteerRepo,
     roleRepo,
-    notificationService,
   };
 }
 
@@ -205,7 +195,6 @@ function createManager(repos: Repos): DbEventManager {
     repos.availabilityRepo,
     repos.volunteerRepo,
     repos.roleRepo,
-    repos.notificationService,
   );
 }
 
@@ -605,21 +594,6 @@ describe('DbEventManager', () => {
     });
   });
 
-  describe('cancelEvent', () => {
-    it('updates the event status to cancelled', async () => {
-      const repos = createRepos();
-      const manager = createManager(repos);
-
-      await manager.cancelEvent({ churchId, eventId });
-
-      expect(repos.eventRepo.updateStatus).toHaveBeenCalledWith(
-        churchId,
-        eventId,
-        { status: 'cancelled' },
-      );
-    });
-  });
-
   describe('createSlot', () => {
     it('creates a slot with the given time range and label', async () => {
       const repos = createRepos();
@@ -801,52 +775,6 @@ describe('DbEventManager', () => {
           notes: 'notes',
         },
       );
-    });
-  });
-
-  describe('sendReminder', () => {
-    it('notifies every volunteer in the event ministry', async () => {
-      const repos = createRepos();
-      const event = buildEvent();
-      vi.mocked(repos.eventRepo.getById).mockResolvedValue(event);
-      vi.mocked(repos.eventRepo.getMinistryId).mockResolvedValue(ministryId);
-      const volunteers = [
-        new Volunteer({ churchId, userId: 'u-1' }, 'vol-1'),
-        new Volunteer({ churchId, userId: 'u-2' }, 'vol-2'),
-      ];
-      vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue(
-        volunteers,
-      );
-
-      const manager = createManager(repos);
-      await manager.sendReminder({ churchId, eventId });
-
-      expect(repos.eventRepo.getById).toHaveBeenCalledWith(churchId, eventId);
-      expect(repos.eventRepo.getMinistryId).toHaveBeenCalledWith(
-        churchId,
-        eventId,
-      );
-      expect(repos.notificationService.notifyReminder).toHaveBeenCalledTimes(2);
-      expect(repos.notificationService.notifyReminder).toHaveBeenCalledWith({
-        churchId,
-        eventId,
-        volunteerId: 'vol-1',
-      });
-      expect(repos.notificationService.notifyReminder).toHaveBeenCalledWith({
-        churchId,
-        eventId,
-        volunteerId: 'vol-2',
-      });
-    });
-
-    it('sends no reminders when the ministry has no volunteers', async () => {
-      const repos = createRepos();
-      vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue([]);
-      const manager = createManager(repos);
-
-      await manager.sendReminder({ churchId, eventId });
-
-      expect(repos.notificationService.notifyReminder).not.toHaveBeenCalled();
     });
   });
 });

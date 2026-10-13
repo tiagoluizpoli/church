@@ -125,18 +125,8 @@ export interface GetScheduleBuilderDataInput {
   ministryId?: MinistryId;
 }
 
-export interface CancelEventInput {
-  eventId: EventId;
-  churchId: ChurchId;
-}
-
 export interface DeleteSlotInput {
   slotId: TimeSlotId;
-  churchId: ChurchId;
-}
-
-export interface SendReminderInput {
-  eventId: EventId;
   churchId: ChurchId;
 }
 
@@ -145,7 +135,6 @@ export interface IEventManager {
     input: GetScheduleBuilderDataInput,
   ): Promise<ScheduleBuilderData>;
   listEvents(input: ListEventsInput): Promise<Event[]>;
-  cancelEvent(input: CancelEventInput): Promise<void>;
   createSlot(input: CreateSlotInput): Promise<TimeSlot>;
   updateSlot(input: UpdateSlotInput): Promise<TimeSlot>;
   deleteSlot(input: DeleteSlotInput): Promise<void>;
@@ -153,5 +142,4 @@ export interface IEventManager {
   upsertSlotRequirement(
     input: UpsertSlotRequirementInput,
   ): Promise<SlotRequirement>;
-  sendReminder(input: SendReminderInput): Promise<void>;
 }

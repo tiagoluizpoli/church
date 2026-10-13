@@ -16,12 +16,12 @@ import {
   ChurchId,
   MinistryId,
   MinistryParticipationId,
+  PlanningCycleId,
   RoleId,
   ShiftId,
   UserId,
   VolunteerId,
 } from '../../src/domain/branded-ids';
-import { BelowFullPublishError } from '../../src/domain/errors/below-full-publish';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -561,20 +561,18 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       status: 'pending',
     });
 
-    await expect(
-      managers.participationManager.publish({
-        churchId: ChurchId.from(seed.churchAId),
-        participationId: MinistryParticipationId.from(
-          sharedEvent.participation.id,
-        ),
-      }),
-    ).rejects.toBeInstanceOf(BelowFullPublishError);
-
-    await managers.participationManager.publish({
+    const publishInput = {
       churchId: ChurchId.from(seed.churchAId),
-      participationId: MinistryParticipationId.from(
-        sharedEvent.participation.id,
-      ),
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+      userId: UserId.from(seed.adminUserId),
+    };
+    const blocked =
+      await managers.participationManager.publishCycle(publishInput);
+    expect(blocked).toMatchObject({ published: false, belowFull: true });
+
+    await managers.participationManager.publishCycle({
+      ...publishInput,
       confirmBelowFull: true,
     });
 

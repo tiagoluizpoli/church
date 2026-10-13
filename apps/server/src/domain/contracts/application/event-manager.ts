@@ -67,21 +67,9 @@ export interface GetScheduleBuilderDataInput {
   ministryId?: MinistryId;
 }
 
-export interface CancelEventInput {
-  eventId: EventId;
-  churchId: ChurchId;
-}
-
-export interface SendReminderInput {
-  eventId: EventId;
-  churchId: ChurchId;
-}
-
 export interface IEventManager {
   getScheduleBuilderData(
     input: GetScheduleBuilderDataInput,
   ): Promise<ScheduleBuilderData>;
   listEvents(input: ListEventsInput): Promise<Event[]>;
-  cancelEvent(input: CancelEventInput): Promise<void>;
-  sendReminder(input: SendReminderInput): Promise<void>;
 }

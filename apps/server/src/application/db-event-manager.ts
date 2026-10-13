@@ -1,17 +1,14 @@
 import 'reflect-metadata';
 import { inject, injectable } from 'tsyringe';
 import type {
-  CancelEventInput,
   GetScheduleBuilderDataInput,
   IEventManager,
   ListEventsInput,
   ScheduleBuilderData,
-  SendReminderInput,
 } from '../domain/contracts/application/event-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
-import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
@@ -33,8 +30,6 @@ export class DbEventManager implements IEventManager {
     private readonly volunteerRepo: VolunteerRepository,
     @inject('IRoleRepository')
     private readonly roleRepo: RoleRepository,
-    @inject('INotificationService')
-    private readonly notificationService: NotificationService,
   ) {}
 
   async getScheduleBuilderData(
@@ -152,32 +147,6 @@ export class DbEventManager implements IEventManager {
       input.churchId,
       input.ministryId,
       input.status,
-    );
-  }
-
-  async cancelEvent(input: CancelEventInput): Promise<void> {
-    const { eventId, churchId } = input;
-    await this.eventRepo.updateStatus(churchId, eventId, {
-      status: 'cancelled',
-    });
-  }
-
-  async sendReminder(input: SendReminderInput): Promise<void> {
-    const { eventId, churchId } = input;
-    await this.eventRepo.getById(churchId, eventId);
-    const ministryId = await this.eventRepo.getMinistryId(churchId, eventId);
-    const volunteers = await this.volunteerRepo.listByMinistry(
-      churchId,
-      ministryId,
-    );
-    await Promise.all(
-      volunteers.map((vol) =>
-        this.notificationService.notifyReminder({
-          churchId: churchId as string,
-          eventId: eventId as string,
-          volunteerId: vol.id as string,
-        }),
-      ),
     );
   }
 }

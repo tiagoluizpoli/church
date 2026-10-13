@@ -43,32 +43,6 @@ const listEvents = (
     },
       );
     }
-  /**
- * Cancel an Event.
- * @summary Cancel an Event
- */
-const cancelEvent = (
-    eventId: string,
- ) => {
-      return apiClient<void>(
-      {url: `/api/v1/events/${eventId}/cancel`, method: 'POST'
-    },
-      );
-    }
-  /**
- * Send an availability reminder VolunteerNotification for an Event.
- * @summary Send Event reminders
- */
-const sendReminders = (
-    eventId: string,
- ) => {
-      return apiClient<void>(
-      {url: `/api/v1/events/${eventId}/reminders`, method: 'POST'
-    },
-      );
-    }
-  return {getScheduleBuilderData,listEvents,cancelEvent,sendReminders}};
+  return {getScheduleBuilderData,listEvents}};
 export type GetScheduleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getEvents>['getScheduleBuilderData']>>>
 export type ListEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getEvents>['listEvents']>>>
-export type CancelEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getEvents>['cancelEvent']>>>
-export type SendRemindersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getEvents>['sendReminders']>>>

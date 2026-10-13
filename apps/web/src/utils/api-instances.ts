@@ -1,5 +1,4 @@
 import { getActiveChurch } from '@/infrastructure/api/active-church';
-import { getAssignments } from '@/infrastructure/api/assignments';
 import { getEvents } from '@/infrastructure/api/events';
 import { getMinistries } from '@/infrastructure/api/ministries';
 import { getPlanning } from '@/infrastructure/api/planning';
@@ -9,47 +8,14 @@ import { getSchedulingCapability } from '@/infrastructure/api/scheduling-capabil
 import { getTailoring } from '@/infrastructure/api/tailoring';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
 
-interface LegacyCreateEventBody {
-  ministryId: string;
-  title: string;
-  description?: string;
-  location?: string;
-  start: string;
-  end: string;
-  eventType?: 'hourly' | 'day_based';
-}
-
-interface LegacyCreateEventResult {
-  id: string;
-}
-
-interface LegacyRoleTemplateSummary {
-  id: string;
-  name: string;
-}
-
-interface LegacyRoleTemplateListResult {
-  items: LegacyRoleTemplateSummary[];
-}
-
 const generatedVolunteerApi = getVolunteer();
 
 export const adminApi = {
   ...getEvents(),
-  ...getAssignments(),
   ...getMinistries(),
   ...getPlanning(),
   ...getTailoring(),
   ...getRostering(),
-  async createEvent(
-    _body: LegacyCreateEventBody,
-  ): Promise<LegacyCreateEventResult> {
-    throw new Error('Quick create is not available on the current admin API.');
-  },
-  async publishEvent(_eventId: string): Promise<void> {},
-  async listRoleTemplates(): Promise<LegacyRoleTemplateListResult> {
-    return { items: [] };
-  },
 };
 export const volunteerApi = {
   ...generatedVolunteerApi,

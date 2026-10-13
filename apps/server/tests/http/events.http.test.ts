@@ -28,8 +28,6 @@ const UNAUTH_ROUTES: Array<{
 }> = [
   { method: 'GET', url: '/api/v1/events/schedule-builder' },
   { method: 'GET', url: '/api/v1/events' },
-  { method: 'POST', url: '/api/v1/events/some-id/cancel' },
-  { method: 'POST', url: '/api/v1/events/some-id/reminders' },
 ];
 
 describe('Event and TimeSlot routes authentication (T056)', () => {

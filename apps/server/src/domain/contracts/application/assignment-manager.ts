@@ -6,22 +6,12 @@ import type {
   RoleId,
   ShiftId,
   TeamId,
-  TimeSlotId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
 import type { ConflictIssue } from '../../conflict/types';
 import type { Assignment } from '../../entities/assignment';
 import type { AssignmentAudit } from '../../entities/assignment-audit';
-
-export interface CreateAssignmentInput {
-  churchId: ChurchId;
-  slotId: TimeSlotId;
-  volunteerId: VolunteerId;
-  roleId: RoleId;
-  actorId: UserId;
-  reason?: string;
-}
 
 export interface AssignmentOverrideInput {
   reason: string;
@@ -70,11 +60,6 @@ export interface DeleteAssignmentInput {
   teamLeaderScopeId?: TeamId;
 }
 
-export interface ListAssignmentAuditLogInput {
-  assignmentId: AssignmentId;
-  churchId: ChurchId;
-}
-
 export interface ListCycleAuditLogInput {
   churchId: ChurchId;
   cycleId: PlanningCycleId;
@@ -82,7 +67,6 @@ export interface ListCycleAuditLogInput {
 }
 
 export interface IAssignmentManager {
-  createAssignment(input: CreateAssignmentInput): Promise<Assignment>;
   getAssignment(input: GetAssignmentInput): Promise<Assignment>;
   createParticipationAssignment(
     input: CreateParticipationAssignmentInput,
@@ -92,7 +76,6 @@ export interface IAssignmentManager {
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment>;
   deleteAssignment(input: DeleteAssignmentInput): Promise<void>;
-  listAuditLog(input: ListAssignmentAuditLogInput): Promise<AssignmentAudit[]>;
   listAuditLogForCycle(
     input: ListCycleAuditLogInput,
   ): Promise<AssignmentAudit[]>;

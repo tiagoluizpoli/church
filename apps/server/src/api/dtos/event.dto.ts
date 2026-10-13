@@ -2,10 +2,6 @@ import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { ScheduleBuilderData } from '../../domain/contracts/application/event-manager';
 import type { Event } from '../../domain/entities/event';
-import {
-  EVENT_SPAN_LABELS,
-  eventSpanLabel,
-} from '../../domain/services/event-span-label';
 
 export const createEventBodySchema = z.object({
   ministryId: z.string(),
@@ -33,7 +29,6 @@ export const eventResponseSchema = z.object({
   start: instantSchema,
   end: instantSchema,
   status: z.enum(['draft', 'scheduled', 'cancelled', 'past']),
-  spanLabel: z.enum(EVENT_SPAN_LABELS),
   createdAt: instantSchema,
   updatedAt: instantSchema,
 });
@@ -127,7 +122,6 @@ function eventToResponse(ev: Event): EventResponse {
     start: ev.start,
     end: ev.end,
     status: ev.status,
-    spanLabel: eventSpanLabel({ start: ev.start, end: ev.end }),
     createdAt: fromDate({ date: ev.createdAt }),
     updatedAt: fromDate({ date: ev.updatedAt }),
   };

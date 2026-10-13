@@ -475,11 +475,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            spanLabel:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -496,7 +491,6 @@ paths:
                             - start
                             - end
                             - status
-                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -1051,11 +1045,6 @@ paths:
                       - scheduled
                       - cancelled
                       - past
-                  spanLabel:
-                    type: string
-                    enum:
-                      - hourly
-                      - day_based
                   createdAt:
                     type: string
                     format: date-time
@@ -1072,7 +1061,6 @@ paths:
                   - start
                   - end
                   - status
-                  - spanLabel
                   - createdAt
                   - updatedAt
                 additionalProperties: false
@@ -1158,11 +1146,6 @@ paths:
                       - scheduled
                       - cancelled
                       - past
-                  spanLabel:
-                    type: string
-                    enum:
-                      - hourly
-                      - day_based
                   createdAt:
                     type: string
                     format: date-time
@@ -1179,7 +1162,6 @@ paths:
                   - start
                   - end
                   - status
-                  - spanLabel
                   - createdAt
                   - updatedAt
                 additionalProperties: false
@@ -1854,11 +1836,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            spanLabel:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -1875,7 +1852,6 @@ paths:
                             - start
                             - end
                             - status
-                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -2157,11 +2133,6 @@ paths:
                             - scheduled
                             - cancelled
                             - past
-                        spanLabel:
-                          type: string
-                          enum:
-                            - hourly
-                            - day_based
                         createdAt:
                           type: string
                           format: date-time
@@ -2178,7 +2149,6 @@ paths:
                         - start
                         - end
                         - status
-                        - spanLabel
                         - createdAt
                         - updatedAt
                       additionalProperties: false
@@ -3165,11 +3135,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            spanLabel:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -3186,7 +3151,6 @@ paths:
                             - start
                             - end
                             - status
-                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -4018,11 +3982,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            spanLabel:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -4039,7 +3998,6 @@ paths:
                             - start
                             - end
                             - status
-                            - spanLabel
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -5960,11 +5918,6 @@ paths:
                           type: string
                         ministryName:
                           type: string
-                        spanLabel:
-                          type: string
-                          enum:
-                            - hourly
-                            - day_based
                         eventStart:
                           type: string
                           format: date-time
@@ -5984,7 +5937,6 @@ paths:
                         - eventTitle
                         - ministryId
                         - ministryName
-                        - spanLabel
                         - eventStart
                         - eventEnd
                         - completionState

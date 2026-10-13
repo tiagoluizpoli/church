@@ -122,7 +122,6 @@ describe('PlanningCycleHeader (T058)', () => {
             title: 'Sunday Service',
             start: '2026-08-02T09:00:00Z',
             end: '2026-08-02T11:00:00Z',
-            spanLabel: 'service',
             status: 'scheduled',
           },
           slots: [
@@ -146,7 +145,6 @@ describe('PlanningCycleHeader (T058)', () => {
             title: 'Wednesday Service',
             start: '2026-08-05T19:00:00Z',
             end: '2026-08-05T20:00:00Z',
-            spanLabel: 'service',
             status: 'scheduled',
           },
           slots: [

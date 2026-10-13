@@ -8,7 +8,10 @@ import type {
   StartEditSlotInput,
 } from './calendar-row';
 import type { CycleCalendarTableRow } from './planning-admin.types';
-import { eventStatusBadgeVariant } from './planning-admin.utils';
+import {
+  eventSpanLabel,
+  eventStatusBadgeVariant,
+} from './planning-admin.utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,7 +101,12 @@ export function PlanningEventCard({
             {formatDayOf({ value: row.start, timeZone: churchTimezone })}
           </div>
           <div className="text-muted-foreground text-xs">
-            {row.spanLabel} · {row.slots.length} slot
+            {eventSpanLabel({
+              start: row.start,
+              end: row.end,
+              timeZone: churchTimezone,
+            })}{' '}
+            · {row.slots.length} slot
             {row.slots.length === 1 ? '' : 's'}
           </div>
         </div>

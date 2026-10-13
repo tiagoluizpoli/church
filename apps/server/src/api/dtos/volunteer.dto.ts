@@ -12,7 +12,6 @@ import type {
   VolunteerDashboard,
 } from '../../domain/contracts/application/volunteer-manager';
 import type { Assignment } from '../../domain/entities/assignment';
-import { EVENT_SPAN_LABELS } from '../../domain/services/event-span-label';
 import {
   type AssignmentResponse,
   assignmentMapper,
@@ -109,7 +108,6 @@ const dashboardAvailabilityTaskSchema = z.object({
   eventTitle: z.string(),
   ministryId: z.string(),
   ministryName: z.string(),
-  spanLabel: z.enum(EVENT_SPAN_LABELS),
   eventStart: instantSchema,
   eventEnd: instantSchema,
   completionState: z.enum(['missing', 'partial', 'complete']),
@@ -233,7 +231,6 @@ function dashboardAvailabilityTaskToResponse(
     eventTitle: task.eventTitle,
     ministryId: task.ministryId,
     ministryName: task.ministryName,
-    spanLabel: task.spanLabel,
     eventStart: parseInstant({ value: task.eventStart }),
     eventEnd: parseInstant({ value: task.eventEnd }),
     completionState: task.completionState,

@@ -48,7 +48,6 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
           start: '2026-07-05T09:00:00.000Z',
           end: '2026-07-05T11:00:00.000Z',
           status: 'scheduled',
-          spanLabel: 'hourly',
           createdAt: '2026-07-01T09:00:00.000Z',
           updatedAt: '2026-07-01T09:00:00.000Z',
         },

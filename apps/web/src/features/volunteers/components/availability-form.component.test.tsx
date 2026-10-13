@@ -25,7 +25,6 @@ describe('AvailabilityForm (T157)', () => {
         event={{
           id: 'event-1',
           title: 'Sunday Service',
-          spanLabel: 'hourly',
           start: '2027-01-04T12:00:00.000Z',
           end: '2027-01-04T14:00:00.000Z',
         }}

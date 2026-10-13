@@ -189,14 +189,6 @@ export const GetPlanningCycle200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetPlanningCycle200EventsItemEventSpanLabel = typeof GetPlanningCycle200EventsItemEventSpanLabel[keyof typeof GetPlanningCycle200EventsItemEventSpanLabel];
-
-
-export const GetPlanningCycle200EventsItemEventSpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetPlanningCycle200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -210,7 +202,6 @@ export type GetPlanningCycle200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetPlanningCycle200EventsItemEventStatus;
-  spanLabel: GetPlanningCycle200EventsItemEventSpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -423,14 +414,6 @@ export const CreatePlanningEvent201Status = {
   past: 'past',
 } as const;
 
-export type CreatePlanningEvent201SpanLabel = typeof CreatePlanningEvent201SpanLabel[keyof typeof CreatePlanningEvent201SpanLabel];
-
-
-export const CreatePlanningEvent201SpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type CreatePlanningEvent201 = {
   id: string;
   churchId: string;
@@ -444,7 +427,6 @@ export type CreatePlanningEvent201 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: CreatePlanningEvent201Status;
-  spanLabel: CreatePlanningEvent201SpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -481,14 +463,6 @@ export const UpdatePlanningEvent200Status = {
   past: 'past',
 } as const;
 
-export type UpdatePlanningEvent200SpanLabel = typeof UpdatePlanningEvent200SpanLabel[keyof typeof UpdatePlanningEvent200SpanLabel];
-
-
-export const UpdatePlanningEvent200SpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type UpdatePlanningEvent200 = {
   id: string;
   churchId: string;
@@ -502,7 +476,6 @@ export type UpdatePlanningEvent200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: UpdatePlanningEvent200Status;
-  spanLabel: UpdatePlanningEvent200SpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -762,14 +735,6 @@ export const GetScheduleBuilderData200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetScheduleBuilderData200EventsItemEventSpanLabel = typeof GetScheduleBuilderData200EventsItemEventSpanLabel[keyof typeof GetScheduleBuilderData200EventsItemEventSpanLabel];
-
-
-export const GetScheduleBuilderData200EventsItemEventSpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetScheduleBuilderData200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -783,7 +748,6 @@ export type GetScheduleBuilderData200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetScheduleBuilderData200EventsItemEventStatus;
-  spanLabel: GetScheduleBuilderData200EventsItemEventSpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -932,14 +896,6 @@ export const ListEvents200EventsItemStatus = {
   past: 'past',
 } as const;
 
-export type ListEvents200EventsItemSpanLabel = typeof ListEvents200EventsItemSpanLabel[keyof typeof ListEvents200EventsItemSpanLabel];
-
-
-export const ListEvents200EventsItemSpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type ListEvents200EventsItem = {
   id: string;
   churchId: string;
@@ -953,7 +909,6 @@ export type ListEvents200EventsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: ListEvents200EventsItemStatus;
-  spanLabel: ListEvents200EventsItemSpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -1357,14 +1312,6 @@ export const GetCycleParticipation200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetCycleParticipation200EventsItemEventSpanLabel = typeof GetCycleParticipation200EventsItemEventSpanLabel[keyof typeof GetCycleParticipation200EventsItemEventSpanLabel];
-
-
-export const GetCycleParticipation200EventsItemEventSpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetCycleParticipation200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -1378,7 +1325,6 @@ export type GetCycleParticipation200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetCycleParticipation200EventsItemEventStatus;
-  spanLabel: GetCycleParticipation200EventsItemEventSpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -1679,14 +1625,6 @@ export const GetCycleBuilderData200EventsItemEventStatus = {
   past: 'past',
 } as const;
 
-export type GetCycleBuilderData200EventsItemEventSpanLabel = typeof GetCycleBuilderData200EventsItemEventSpanLabel[keyof typeof GetCycleBuilderData200EventsItemEventSpanLabel];
-
-
-export const GetCycleBuilderData200EventsItemEventSpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetCycleBuilderData200EventsItemEvent = {
   id: string;
   churchId: string;
@@ -1700,7 +1638,6 @@ export type GetCycleBuilderData200EventsItemEvent = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   end: string;
   status: GetCycleBuilderData200EventsItemEventStatus;
-  spanLabel: GetCycleBuilderData200EventsItemEventSpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
@@ -2406,14 +2343,6 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
-export type GetVolunteerDashboard200AvailabilityTasksItemSpanLabel = typeof GetVolunteerDashboard200AvailabilityTasksItemSpanLabel[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemSpanLabel];
-
-
-export const GetVolunteerDashboard200AvailabilityTasksItemSpanLabel = {
-  hourly: 'hourly',
-  day_based: 'day_based',
-} as const;
-
 export type GetVolunteerDashboard200AvailabilityTasksItemCompletionState = typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState[keyof typeof GetVolunteerDashboard200AvailabilityTasksItemCompletionState];
 
 
@@ -2428,7 +2357,6 @@ export type GetVolunteerDashboard200AvailabilityTasksItem = {
   eventTitle: string;
   ministryId: string;
   ministryName: string;
-  spanLabel: GetVolunteerDashboard200AvailabilityTasksItemSpanLabel;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */
   eventStart: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$ */

@@ -119,7 +119,6 @@ describe('VolunteerDashboard empty-state regressions', () => {
             eventId: 'event-1',
             eventStart: '2099-01-06T09:00:00.000Z',
             eventTitle: 'Youth Gathering',
-            spanLabel: 'hourly',
             ministryId: 'ministry-1',
             ministryName: 'Adult Ministry',
           },

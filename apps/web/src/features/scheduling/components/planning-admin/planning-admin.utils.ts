@@ -1,6 +1,7 @@
 import {
   addMilliseconds,
   type Instant,
+  instantSpan,
   millisecondsBetween,
   parseInstant,
   parseTimeOfDay,
@@ -345,6 +346,27 @@ export function isMultiDayEvent({
   );
 }
 
+export interface EventSpanLabelInput {
+  start: string;
+  end: string;
+  timeZone: string;
+}
+
+/** Label key for an Event: `day_based` when its start and end fall on
+ * different CalendarDays in the Church Timezone, else `hourly`. */
+export function eventSpanLabel({
+  start,
+  end,
+  timeZone,
+}: EventSpanLabelInput): 'hourly' | 'day_based' {
+  const { crossesToNextDay } = instantSpan({
+    start: parseInstant({ value: start }),
+    end: parseInstant({ value: end }),
+    timeZone,
+  });
+  return crossesToNextDay ? 'day_based' : 'hourly';
+}
+
 export function toPlanningCyclesTableRow({
   cycle,
 }: PlanningCyclesTableRowInput): PlanningCyclesTableRow {
@@ -377,7 +399,7 @@ export function toCycleCalendarTableRow({
     eventId: eventGroup.event.id,
     title: eventGroup.event.title,
     start: eventGroup.event.start,
-    spanLabel: eventGroup.event.spanLabel,
+    end: eventGroup.event.end,
     status: eventGroup.event.status,
     slots: eventGroup.slots.map(
       (slot): CycleCalendarSlotRow => ({

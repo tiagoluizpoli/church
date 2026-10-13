@@ -5,7 +5,6 @@ import { env } from '@church/env/server';
 import { container } from 'tsyringe';
 import { AuthorityGuard } from '../../api/auth/authority-guard';
 import { ActiveChurchController } from '../../api/controllers/active-church-controller';
-import { AssignmentController } from '../../api/controllers/assignment-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { EventController } from '../../api/controllers/event-controller';
 import { MinistryController } from '../../api/controllers/ministry-controller';
@@ -335,10 +334,6 @@ export function registerInjections(): void {
   container.registerSingleton(
     injection.controllers.fastify,
     TimeSlotController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
-    AssignmentController,
   );
   container.registerSingleton(
     injection.controllers.fastify,

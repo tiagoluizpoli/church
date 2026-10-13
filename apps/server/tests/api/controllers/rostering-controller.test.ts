@@ -12,7 +12,6 @@ import {
 } from 'vitest';
 import { RosteringController } from '../../../src/api/controllers/rostering-controller';
 import { Assignment } from '../../../src/domain/entities/assignment';
-import { BelowFullPublishError } from '../../../src/domain/errors/below-full-publish';
 import { createFastify } from '../../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../../src/main/fastify/types';
 
@@ -320,29 +319,45 @@ describe('Rostering routes', () => {
     expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/rostering/participations/:id/publish returns 204 and 409 below-full without confirm', async () => {
+  it('POST /api/v1/rostering/cycles/:id/publish returns 200 and reports below-full without confirm', async () => {
+    const url =
+      '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/publish?ministryId=22222222-2222-2222-8222-222222222222';
+    participationManager.publishCycle.mockResolvedValueOnce({
+      published: true,
+      belowFull: false,
+      participations: [],
+    });
+
     const okResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/participations/22222222-2222-2222-8222-222222222222/publish',
+      url,
       payload: { confirmBelowFull: true },
     });
 
-    expect(okResponse.statusCode).toBe(204);
+    expect(okResponse.statusCode).toBe(200);
+    expect(okResponse.json()).toEqual({
+      published: true,
+      belowFull: false,
+      participations: [],
+    });
 
-    participationManager.publish.mockRejectedValueOnce(
-      new BelowFullPublishError(),
-    );
+    participationManager.publishCycle.mockResolvedValueOnce({
+      published: false,
+      belowFull: true,
+      participations: [],
+    });
 
     const blockedResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/participations/22222222-2222-2222-8222-222222222222/publish',
+      url,
       payload: {},
     });
 
-    expect(blockedResponse.statusCode).toBe(409);
+    expect(blockedResponse.statusCode).toBe(200);
     expect(blockedResponse.json()).toEqual({
-      error: 'BELOW_FULL_PUBLISH',
-      message: 'Publishing below full staffing requires confirmation',
+      published: false,
+      belowFull: true,
+      participations: [],
     });
   });
 

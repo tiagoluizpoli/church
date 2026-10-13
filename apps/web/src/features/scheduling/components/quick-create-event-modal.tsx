@@ -4,7 +4,6 @@ import {
   parseCalendarDay,
 } from '@church/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { DatePickerField } from '@/components/date-picker-field';
@@ -16,9 +15,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { adminApi } from '@/utils/api-instances';
 
-export type QuickCreateEventModalTarget =
-  | { kind: 'ministry'; ministryId: string }
-  | { kind: 'planning-cycle'; cycleId: string };
+export type QuickCreateEventModalTarget = {
+  kind: 'planning-cycle';
+  cycleId: string;
+};
 
 interface QuickCreateEventModalProps {
   open: boolean;
@@ -79,7 +79,6 @@ export function QuickCreateEventModal({
   onCreated,
 }: QuickCreateEventModalProps) {
   const { churchTimezone } = useTimezone();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [start, setStart] = useState('');
@@ -88,9 +87,7 @@ export function QuickCreateEventModal({
 
   const create = useMutation({
     mutationFn: (body: CreateEventFormValues) =>
-      target.kind === 'ministry'
-        ? adminApi.createEvent({ ...body, ministryId: target.ministryId })
-        : adminApi.createPlanningEvent(target.cycleId, body),
+      adminApi.createPlanningEvent(target.cycleId, body),
   });
 
   const effectiveEnd = eventType === 'hourly' ? start : end;
@@ -122,12 +119,6 @@ export function QuickCreateEventModal({
       onCreated();
       onOpenChange(false);
       resetForm();
-      if (target.kind === 'ministry') {
-        navigate({
-          to: '/scheduling/tailoring',
-        });
-        return;
-      }
       await queryClient.invalidateQueries({
         queryKey: ['planning-cycle-details', target.cycleId],
       });

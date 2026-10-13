@@ -5,12 +5,7 @@ import { QuickCreateEventModal } from './quick-create-event-modal';
 import { pickCalendarDate } from '@/__tests__/setup/date-picker';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 
-const navigateMock = vi.fn();
 const mutateAsyncMock = vi.fn();
-
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => navigateMock,
-}));
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
@@ -40,7 +35,6 @@ vi.mock('sonner', () => ({
 
 describe('QuickCreateEventModal', () => {
   beforeEach(() => {
-    navigateMock.mockReset();
     mutateAsyncMock.mockReset();
   });
 
@@ -52,7 +46,7 @@ describe('QuickCreateEventModal', () => {
         <QuickCreateEventModal
           open={true}
           onOpenChange={vi.fn()}
-          target={{ kind: 'ministry', ministryId: 'ministry-1' }}
+          target={{ kind: 'planning-cycle', cycleId: 'cycle-1' }}
           onCreated={vi.fn()}
         />
       </TimezoneProvider>,
@@ -74,7 +68,7 @@ describe('QuickCreateEventModal', () => {
     expect(createButton).toBeEnabled();
   }, 30000);
 
-  it('switches to a start/end date range for a day-based event, and stays the same reachable form for a planning-cycle target (FR-012)', async () => {
+  it('switches to a start/end date range for a day-based event (FR-012)', async () => {
     const user = userEvent.setup();
 
     render(

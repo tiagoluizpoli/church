@@ -4,7 +4,6 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
-  useLocation,
 } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -38,9 +37,6 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 });
 
 function RootComponent() {
-  const location = useLocation();
-  const isPrototypeRoute = location.pathname.startsWith('/prototype/');
-
   return (
     <>
       <HeadContent />
@@ -53,12 +49,8 @@ function RootComponent() {
         <Outlet />
         <Toaster richColors />
       </ThemeProvider>
-      {isPrototypeRoute ? null : (
-        <>
-          <TanStackRouterDevtools position="bottom-left" />
-          <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
-        </>
-      )}
+      <TanStackRouterDevtools position="bottom-left" />
+      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
     </>
   );
 }

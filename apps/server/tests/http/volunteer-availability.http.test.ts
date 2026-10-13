@@ -10,7 +10,6 @@ import {
   vi,
 } from 'vitest';
 import { VolunteerController } from '../../src/api/controllers/volunteer-controller';
-import { AvailabilityOverlapError } from '../../src/domain/errors/availability-overlap';
 import { CheckAccessDeniedError } from '../../src/domain/errors/check-access-denied';
 import { createFastify } from '../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../src/main/fastify/types';
@@ -206,7 +205,6 @@ describe('Volunteer availability-check confirm (DL3-HT-09)', () => {
     volunteerManager.confirmAvailabilityCheck.mockResolvedValue({
       state: 'confirmed',
       confirmedAt: new Date('2026-07-15T10:00:00.000Z'),
-      overlaps: [],
     });
 
     const response = await app.inject({
@@ -215,19 +213,6 @@ describe('Volunteer availability-check confirm (DL3-HT-09)', () => {
     });
 
     expect(response.statusCode).toBe(204);
-  });
-
-  it('confirm with a blocked overlap returns 409', async () => {
-    volunteerManager.confirmAvailabilityCheck.mockRejectedValue(
-      new AvailabilityOverlapError(),
-    );
-
-    const response = await app.inject({
-      method: 'POST',
-      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/confirm`,
-    });
-
-    expect(response.statusCode).toBe(409);
   });
 
   it("confirming another volunteer's check returns 403", async () => {

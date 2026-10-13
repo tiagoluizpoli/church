@@ -2386,7 +2386,6 @@ export const GetNotifications200ItemsItemType = {
   assignment_changed: 'assignment_changed',
   assignment_removed: 'assignment_removed',
   availability_reminder: 'availability_reminder',
-  availability_conflict: 'availability_conflict',
   assignment_reminder: 'assignment_reminder',
 } as const;
 

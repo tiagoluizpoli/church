@@ -1,6 +1,5 @@
 import type { CalendarDay } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -19,14 +18,6 @@ const EMPTY_MARK_DRAFT: AvailabilityMarkDraft = {
   wholeDayDates: new Set(),
 };
 
-interface AvailabilityOverlapErrorBody {
-  error: string;
-}
-
-interface IsOverlapConflictInput {
-  error: unknown;
-}
-
 function availabilityCheckQueryKey(checkId: string): string[] {
   return ['availability-check', checkId];
 }
@@ -35,21 +26,12 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong.';
 }
 
-function isOverlapConflict({ error }: IsOverlapConflictInput): boolean {
-  if (!isAxiosError<AvailabilityOverlapErrorBody>(error)) return false;
-  return (
-    error.response?.status === 409 &&
-    error.response?.data?.error === 'AVAILABILITY_OVERLAP'
-  );
-}
-
 export function useVolunteerAvailability() {
   const { churchTimezone } = useTimezone();
   const queryClient = useQueryClient();
   const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null);
   const [markDraft, setMarkDraft] =
     useState<AvailabilityMarkDraft>(EMPTY_MARK_DRAFT);
-  const [overlapWarningVisible, setOverlapWarningVisible] = useState(false);
 
   const checksQuery = useQuery({
     queryKey: AVAILABILITY_CHECKS_QUERY_KEY,
@@ -89,7 +71,6 @@ export function useVolunteerAvailability() {
 
   const selectCheck = (checkId: string) => {
     setSelectedCheckId(checkId);
-    setOverlapWarningVisible(false);
   };
 
   const toggleShift = (shiftId: string) => {
@@ -141,18 +122,10 @@ export function useVolunteerAvailability() {
       await volunteerApi.confirmAvailabilityCheck(selectedCheckId);
     },
     onSuccess: async () => {
-      setOverlapWarningVisible(false);
       toast.success('Availability confirmed.');
       await invalidateChecks();
     },
-    onError: async (error) => {
-      if (isOverlapConflict({ error })) {
-        setOverlapWarningVisible(true);
-        await invalidateChecks();
-        return;
-      }
-      toast.error(getErrorMessage(error));
-    },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   return {
@@ -162,7 +135,6 @@ export function useVolunteerAvailability() {
     detail,
     detailQuery,
     markDraft,
-    overlapWarningVisible,
     saveMarks,
     selectCheck,
     selectedCheckId,

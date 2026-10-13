@@ -80,21 +80,6 @@ export interface CheckShiftRow {
   label?: string;
 }
 
-export interface ListUnmarkedVolunteerShiftsInput {
-  churchId: ChurchId;
-  volunteerId: VolunteerId;
-  planningCycleId: PlanningCycleId;
-  tx?: TransactionContext;
-}
-
-/** A shift the volunteer is still available for (no mark), across all their checks in the cycle. */
-export interface UnmarkedVolunteerShiftRow {
-  shiftId: ShiftId;
-  ministryId: MinistryId;
-  startTime: Instant;
-  endTime: Instant;
-}
-
 export interface ListMinistryLeaderVolunteerIdsInput {
   churchId: ChurchId;
   ministryIds: MinistryId[];
@@ -122,9 +107,6 @@ export interface AvailabilityCheckRepository {
   getCheckContext(input: GetCheckContextInput): Promise<CheckContext>;
   listByVolunteer(input: ListChecksByVolunteerInput): Promise<CheckContext[]>;
   listCheckShifts(input: ListCheckShiftsInput): Promise<CheckShiftRow[]>;
-  listUnmarkedVolunteerShifts(
-    input: ListUnmarkedVolunteerShiftsInput,
-  ): Promise<UnmarkedVolunteerShiftRow[]>;
   listMinistryLeaderVolunteerIds(
     input: ListMinistryLeaderVolunteerIdsInput,
   ): Promise<MinistryLeaderRow[]>;

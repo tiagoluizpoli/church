@@ -47,7 +47,6 @@ describe('AvailabilityCheckDetail (T157)', () => {
         onConfirm={vi.fn()}
         isSavingMarks={false}
         isConfirming={false}
-        overlapWarningVisible={false}
       />,
       { churchTimezone: 'America/Sao_Paulo' },
     );
@@ -79,7 +78,6 @@ describe('AvailabilityCheckDetail (T157)', () => {
         onConfirm={vi.fn()}
         isSavingMarks={false}
         isConfirming={false}
-        overlapWarningVisible={false}
       />,
       { churchTimezone: 'America/Sao_Paulo' },
     );

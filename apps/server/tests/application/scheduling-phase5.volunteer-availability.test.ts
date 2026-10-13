@@ -29,7 +29,6 @@ import {
   VolunteerId,
   VolunteerNotificationId,
 } from '../../src/domain/branded-ids';
-import { AvailabilityOverlapError } from '../../src/domain/errors/availability-overlap';
 import { CheckAccessDeniedError } from '../../src/domain/errors/check-access-denied';
 import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
 import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
@@ -358,7 +357,6 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     });
 
     expect(result.state).toBe('confirmed');
-    expect(result.overlaps).toEqual([]);
 
     const [row] = await schedulingTestDb
       .select()
@@ -401,24 +399,24 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     ).rejects.toThrow(CheckAccessDeniedError);
   });
 
-  it('DL2-VA-05 cross-ministry overlap blocks the confirm', async () => {
+  it('DL2-VA-05 a cross-ministry overlap does not block the confirm or notify leaders', async () => {
     const fixture = await seedPhase5Fixture();
     await seedSecondMinistryBranch({ fixture, overlapping: true });
-    const { volunteerManager } = createPhase5Manager();
+    const { volunteerManager, notificationSpy } = createPhase5Manager();
 
-    await expect(
-      volunteerManager.confirmAvailabilityCheck({
-        checkId: AvailabilityCheckId.from(fixture.checkId),
-        volunteerId: VolunteerId.from(fixture.volunteerId),
-        churchId: ChurchId.from(fixture.seed.churchAId),
-      }),
-    ).rejects.toThrow(AvailabilityOverlapError);
+    const result = await volunteerManager.confirmAvailabilityCheck({
+      checkId: AvailabilityCheckId.from(fixture.checkId),
+      volunteerId: VolunteerId.from(fixture.volunteerId),
+      churchId: ChurchId.from(fixture.seed.churchAId),
+    });
 
+    expect(result.state).toBe('confirmed');
+    expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
     const [row] = await schedulingTestDb
       .select()
       .from(availabilityCheckTable)
       .where(eq(availabilityCheckTable.id, fixture.checkId));
-    expect(row?.state).toBe('pending');
+    expect(row?.state).toBe('confirmed');
   });
 
   it('DL2-VA-07 non-overlapping availability across ministries confirms cleanly', async () => {
@@ -433,7 +431,6 @@ describe('Phase 5 volunteer availability (DL2-VA)', () => {
     });
 
     expect(result.state).toBe('confirmed');
-    expect(result.overlaps).toEqual([]);
     expect(notificationSpy.notifyVolunteer).not.toHaveBeenCalled();
   });
 

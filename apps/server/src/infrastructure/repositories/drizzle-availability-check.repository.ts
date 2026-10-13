@@ -1,6 +1,5 @@
 import { NotFoundError } from '@church/core';
 import {
-  availability,
   availabilityCheck,
   church,
   event,
@@ -13,7 +12,7 @@ import {
   volunteer,
 } from '@church/db';
 import { fromDate } from '@church/time';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type {
   EventId,
   MinistryId,
@@ -33,9 +32,7 @@ import type {
   ListChecksByCycleInput,
   ListChecksByVolunteerInput,
   ListMinistryLeaderVolunteerIdsInput,
-  ListUnmarkedVolunteerShiftsInput,
   MinistryLeaderRow,
-  UnmarkedVolunteerShiftRow,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
@@ -255,58 +252,6 @@ export class DrizzleAvailabilityCheckRepository
       startTime: fromDate({ date: row.startTime }),
       endTime: fromDate({ date: row.endTime }),
       label: row.label ?? undefined,
-    }));
-  }
-
-  async listUnmarkedVolunteerShifts(
-    input: ListUnmarkedVolunteerShiftsInput,
-  ): Promise<UnmarkedVolunteerShiftRow[]> {
-    const db = getClient(this.db, input.tx);
-    const rows = await db
-      .select({
-        shiftId: shift.id,
-        ministryId: ministryVolunteer.ministryId,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-      })
-      .from(availabilityCheck)
-      .innerJoin(
-        ministryVolunteer,
-        eq(ministryVolunteer.id, availabilityCheck.ministryVolunteerId),
-      )
-      .innerJoin(
-        ministryParticipation,
-        eq(ministryParticipation.ministryId, ministryVolunteer.ministryId),
-      )
-      .innerJoin(
-        event,
-        and(
-          eq(event.id, ministryParticipation.eventId),
-          eq(event.planningCycleId, availabilityCheck.planningCycleId),
-        ),
-      )
-      .innerJoin(shift, eq(shift.participationId, ministryParticipation.id))
-      .leftJoin(
-        availability,
-        and(
-          eq(availability.availabilityCheckId, availabilityCheck.id),
-          eq(availability.shiftId, shift.id),
-        ),
-      )
-      .where(
-        and(
-          eq(ministryVolunteer.volunteerId, input.volunteerId),
-          eq(availabilityCheck.planningCycleId, input.planningCycleId),
-          withChurchIsolation(availabilityCheck, input.churchId),
-          isNull(availability.id),
-        ),
-      );
-
-    return rows.map((row) => ({
-      shiftId: row.shiftId as ShiftId,
-      ministryId: row.ministryId as MinistryId,
-      startTime: fromDate({ date: row.startTime }),
-      endTime: fromDate({ date: row.endTime }),
     }));
   }
 

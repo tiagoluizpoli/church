@@ -249,10 +249,7 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   const reassignResponse = await page.request.patch(
     `${SERVER_URL}/api/v1/rostering/assignments/${secondAssignment.id}/reassign`,
     {
-      data: {
-        volunteerId: teamLeader.volunteerId,
-        reason: 'Original volunteer became unavailable mid-cycle',
-      },
+      data: { volunteerId: teamLeader.volunteerId },
     },
   );
   expect(reassignResponse.ok()).toBeTruthy();

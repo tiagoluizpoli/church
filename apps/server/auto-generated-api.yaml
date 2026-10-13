@@ -3854,8 +3854,7 @@ paths:
       summary: Assign a Volunteer to a Shift
       tags:
         - rostering
-      description: Assign a Volunteer to a Role (and optional Team) within a Shift,
-        optionally overriding a detected conflict.
+      description: Assign a Volunteer to a Role (and optional Team) within a Shift.
       requestBody:
         required: true
         content:
@@ -3869,14 +3868,6 @@ paths:
                   type: string
                 teamId:
                   type: string
-                override:
-                  type: object
-                  properties:
-                    reason:
-                      type: string
-                      minLength: 10
-                  required:
-                    - reason
               required:
                 - volunteerId
                 - roleId
@@ -4025,7 +4016,7 @@ paths:
       tags:
         - rostering
       description: Replace the Volunteer on an existing Assignment, keeping its Shift
-        and Role, and record the reason.
+        and Role.
       requestBody:
         required: true
         content:
@@ -4035,12 +4026,8 @@ paths:
               properties:
                 volunteerId:
                   type: string
-                reason:
-                  type: string
-                  minLength: 10
               required:
                 - volunteerId
-                - reason
       parameters:
         - schema:
             type: string

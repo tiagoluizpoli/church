@@ -99,7 +99,6 @@ export function addOptimisticAssignment({
         // The server creates assignments as `pending`; anything else would
         // change the assigned counts the board renders from this row.
         status: 'pending',
-        reason: body.override?.reason,
         assignedAt,
       };
       return { ...shift, assignments: [...shift.assignments, optimistic] };
@@ -136,7 +135,6 @@ export interface ReplaceOptimisticAssignmentVolunteerInput {
   data: CycleBuilderQueryData;
   assignmentId: string;
   volunteerId: string;
-  reason: string;
 }
 
 /**
@@ -148,7 +146,6 @@ export function replaceOptimisticAssignmentVolunteer({
   data,
   assignmentId,
   volunteerId,
-  reason,
 }: ReplaceOptimisticAssignmentVolunteerInput): CycleBuilderQueryData {
   return mapCycleBuilderShifts({
     data,
@@ -159,7 +156,7 @@ export function replaceOptimisticAssignmentVolunteer({
       return {
         ...shift,
         assignments: shift.assignments.map((item) =>
-          item.id === assignmentId ? { ...item, volunteerId, reason } : item,
+          item.id === assignmentId ? { ...item, volunteerId } : item,
         ),
       };
     },

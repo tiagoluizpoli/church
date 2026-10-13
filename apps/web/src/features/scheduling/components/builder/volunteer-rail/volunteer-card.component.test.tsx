@@ -249,7 +249,7 @@ describe('VolunteerCard (T048)', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('warns on Pick me when availability will demand a reason', () => {
+  it('warns on Pick me when availability will demand an override', () => {
     renderWithProviders(
       <VolunteerCard
         volunteer={buildVolunteer({})}
@@ -264,7 +264,7 @@ describe('VolunteerCard (T048)', () => {
     const pickMe = screen.getByTestId('volunteer-pick-me');
     expect(pickMe).toHaveAttribute('data-assign-fit', 'override');
     expect(pickMe).toHaveAccessibleName(
-      'Assign Local Leader to this role — not available for this shift, needs an override reason',
+      'Assign Local Leader to this role — not available for this shift, needs an override',
     );
   });
 

@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
-import { assignmentAudit, ministry } from '@church/db';
+import { assignmentAudit } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -331,7 +331,6 @@ describe('Phase 7 live execution and late changes (US5)', () => {
         assignmentId: AssignmentId.from(assignment.id),
         volunteerId: VolunteerId.from(incoming.volunteer.id),
         actorId: UserId.from(seed.adminUserId),
-        reason: 'Original volunteer became unavailable',
       });
 
     expect(reassigned.volunteerId).toBe(incoming.volunteer.id);
@@ -530,7 +529,6 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         volunteerId: VolunteerId.from(target.volunteer.id),
         roleId: RoleId.from(roleRow.id),
         actorId: UserId.from(seed.adminUserId),
-        override: { reason: 'Direct staffing' },
       });
 
     expect(created.shiftId).toBe(wholeSlotShift.id);
@@ -551,9 +549,8 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       ministryId: seed.ministryAId,
       assignmentId: created.id,
     });
-    expect(audit).toEqual([
-      expect.objectContaining({ action: 'created', reason: 'Direct staffing' }),
-    ]);
+    expect(audit).toEqual([expect.objectContaining({ action: 'created' })]);
+    expect(audit[0]?.reason).toBeUndefined();
   });
 
   it('records Assignment audit entries while parked.auditPanel is off', async () => {
@@ -603,7 +600,6 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         volunteerId: VolunteerId.from(target.volunteer.id),
         roleId: RoleId.from(roleRow.id),
         actorId: UserId.from(seed.adminUserId),
-        override: { reason: 'Audit while parked' },
       });
 
     const audit = await listAssignmentAudit({
@@ -613,12 +609,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       ministryId: seed.ministryAId,
       assignmentId: created.id,
     });
-    expect(audit).toEqual([
-      expect.objectContaining({
-        action: 'created',
-        reason: 'Audit while parked',
-      }),
-    ]);
+    expect(audit).toEqual([expect.objectContaining({ action: 'created' })]);
   });
 
   it('deleteAssignment succeeds without an FK violation and removes the assignment row (audit write happens before delete, in the same transaction)', async () => {
@@ -693,7 +684,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     expect(audit).toEqual([]);
   });
 
-  it('reassignParticipationAssignment keeps the shift and role and records the change as an updated audit entry with its reason', async () => {
+  it('reassignParticipationAssignment keeps the shift and role and records the change as an updated audit entry with no reason', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -752,7 +743,6 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
         assignmentId: AssignmentId.from(assignment.id),
         volunteerId: VolunteerId.from(replacement.volunteer.id),
         actorId: UserId.from(seed.adminUserId),
-        reason: 'Leader approved change',
       });
 
     const stored = await managers.assignmentRepo.getById(
@@ -773,18 +763,11 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       assignmentId: reassigned.id,
     });
     expect(audit).toHaveLength(2);
-    expect(audit).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          action: 'created',
-          reason: 'Leader approved change',
-        }),
-        expect.objectContaining({
-          action: 'updated',
-          reason: 'Leader approved change',
-        }),
-      ]),
-    );
+    expect(audit.map((entry) => entry.action).sort()).toEqual([
+      'created',
+      'updated',
+    ]);
+    expect(audit.map((entry) => entry.reason)).toEqual([undefined, undefined]);
   });
 
   it('createParticipationAssignment rejects a volunteer who is not a member of the requested ministry (NOT_IN_MINISTRY)', async () => {
@@ -843,7 +826,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     ).rejects.toMatchObject({ reason: 'NOT_IN_MINISTRY' });
   });
 
-  it('createParticipationAssignment enforces qualification by ministry policy and warns when marked unavailable', async () => {
+  it('createParticipationAssignment warns on a missing qualification and when marked unavailable', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -881,18 +864,6 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'Soft Qualification Member',
       email: 'soft-qualification-phase7@test.com',
     });
-    const hardMember = await seedVolunteerMembership({
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Hard Qualification Member',
-      email: 'hard-qualification-phase7@test.com',
-    });
-    const overrideMember = await seedVolunteerMembership({
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Override Qualification Member',
-      email: 'override-qualification-phase7@test.com',
-    });
     const qualifiedMember = await seedVolunteerMembership({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
@@ -912,45 +883,6 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       });
     expect(softResult.warnings).toEqual([
       expect.objectContaining({ type: 'NOT_QUALIFIED' }),
-    ]);
-
-    await schedulingTestDb
-      .update(ministry)
-      .set({ enforcementType: 'hard' })
-      .where(eq(ministry.id, seed.ministryAId));
-
-    await expect(
-      managers.assignmentManager.createParticipationAssignment({
-        churchId: ChurchId.from(seed.churchAId),
-        shiftId: ShiftId.from(shift.id),
-        volunteerId: VolunteerId.from(hardMember.volunteer.id),
-        roleId: RoleId.from(ownRole.id),
-        actorId: UserId.from(seed.adminUserId),
-      }),
-    ).rejects.toMatchObject({ reason: 'NOT_QUALIFIED' });
-
-    const overrideReason = 'Leader approved qualification override';
-    const overridden =
-      await managers.assignmentManager.createParticipationAssignment({
-        churchId: ChurchId.from(seed.churchAId),
-        shiftId: ShiftId.from(shift.id),
-        volunteerId: VolunteerId.from(overrideMember.volunteer.id),
-        roleId: RoleId.from(ownRole.id),
-        actorId: UserId.from(seed.adminUserId),
-        override: { reason: overrideReason },
-      });
-    expect(overridden.warnings).toEqual([
-      expect.objectContaining({ type: 'NOT_QUALIFIED' }),
-    ]);
-    const overrideAudit = await listAssignmentAudit({
-      managers,
-      churchId: seed.churchAId,
-      cycleId: cycle.id,
-      ministryId: seed.ministryAId,
-      assignmentId: overridden.assignment.id,
-    });
-    expect(overrideAudit).toEqual([
-      expect.objectContaining({ reason: overrideReason }),
     ]);
 
     await seedRoleQualification({

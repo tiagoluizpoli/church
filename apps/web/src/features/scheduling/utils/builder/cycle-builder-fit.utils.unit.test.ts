@@ -91,8 +91,7 @@ describe('volunteerFitForShiftRole', () => {
   });
 
   it('reads another role’s qualification as unqualified, not as a non-candidate', () => {
-    // Assignable with a reason: the server warns NOT_QUALIFIED and only
-    // refuses under hard enforcement when no override reason came with it.
+    // Assignable after an override: the server only warns NOT_QUALIFIED.
     expect(
       volunteerFitForShiftRole({
         shift,

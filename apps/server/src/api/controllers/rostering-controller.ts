@@ -404,7 +404,7 @@ export class RosteringController implements FastifyController {
           operationId: 'createParticipationAssignment',
           summary: 'Assign a Volunteer to a Shift',
           description:
-            'Assign a Volunteer to a Role (and optional Team) within a Shift, optionally overriding a detected conflict.',
+            'Assign a Volunteer to a Role (and optional Team) within a Shift.',
           body: createParticipationAssignmentBodySchema,
           response: {
             201: createParticipationAssignmentResponseSchema,
@@ -432,7 +432,6 @@ export class RosteringController implements FastifyController {
             teamId: body.teamId ? TeamId.from(body.teamId) : undefined,
             teamLeaderScopeId: scope.teamLeaderScopeId,
             actorId: UserId.from(request.userId),
-            override: body.override,
           });
         return reply
           .status(201)
@@ -481,7 +480,7 @@ export class RosteringController implements FastifyController {
           operationId: 'reassignParticipationAssignment',
           summary: 'Reassign an Assignment to another Volunteer',
           description:
-            'Replace the Volunteer on an existing Assignment, keeping its Shift and Role, and record the reason.',
+            'Replace the Volunteer on an existing Assignment, keeping its Shift and Role.',
           body: reassignAssignmentBodySchema,
           response: {
             200: assignmentResponseSchema,
@@ -505,7 +504,6 @@ export class RosteringController implements FastifyController {
             assignmentId: AssignmentId.from(assignmentId),
             volunteerId: VolunteerId.from(body.volunteerId),
             actorId: UserId.from(request.userId),
-            reason: body.reason,
           });
         return reply.send(assignmentMapper.toResponse(reassigned));
       },

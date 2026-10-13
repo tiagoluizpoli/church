@@ -1636,16 +1636,10 @@ export type ListEligibleVolunteers403 = {
   message: string;
 };
 
-export type CreateParticipationAssignmentBodyOverride = {
-  /** @minLength 10 */
-  reason: string;
-};
-
 export type CreateParticipationAssignmentBody = {
   volunteerId: string;
   roleId: string;
   teamId?: string;
-  override?: CreateParticipationAssignmentBodyOverride;
 };
 
 export type CreateParticipationAssignment201AssignmentStatus = typeof CreateParticipationAssignment201AssignmentStatus[keyof typeof CreateParticipationAssignment201AssignmentStatus];
@@ -1720,8 +1714,6 @@ export type DeleteParticipationAssignment403 = {
 
 export type ReassignParticipationAssignmentBody = {
   volunteerId: string;
-  /** @minLength 10 */
-  reason: string;
 };
 
 export type ReassignParticipationAssignment200Status = typeof ReassignParticipationAssignment200Status[keyof typeof ReassignParticipationAssignment200Status];

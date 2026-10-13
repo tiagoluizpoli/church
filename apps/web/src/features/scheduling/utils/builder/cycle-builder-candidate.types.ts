@@ -28,7 +28,7 @@ export interface PickerVolunteer {
   availabilityStatus: AvailabilityStatus;
   /**
    * Qualified for the role this picker is filling. `false` still lists the
-   * candidate — qualification is overridable with a reason, not a hard filter
+   * candidate — qualification is overridable, not a hard filter
    * (B-2) — it only badges the pick as needing one and sorts it last.
    */
   isQualified?: boolean;

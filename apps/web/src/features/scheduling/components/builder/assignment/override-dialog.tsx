@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { AssignmentOverrideKind } from '../../../utils/builder/cycle-builder-fit.utils';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
@@ -24,15 +22,13 @@ interface OverrideDialogProps {
   /** The role being filled — named in the `not_qualified` variant's copy. */
   roleLabel?: string;
   isPending: boolean;
-  onConfirm: (reason: string) => void;
+  onConfirm: () => void;
   /**
    * The team the conflicted slot belongs to, if any. The badge only reads
    * "Team Leader" when the volunteer leads this specific team (FR-013).
    */
   contextTeamId?: string;
 }
-
-const MIN_REASON = 10;
 
 export function OverrideDialog({
   open,
@@ -46,12 +42,9 @@ export function OverrideDialog({
   onConfirm,
   contextTeamId,
 }: OverrideDialogProps) {
-  const [reason, setReason] = useState('');
-  const tooShort = reason.trim().length < MIN_REASON;
-
   // Qualification is its own override, not a flavour of "unavailable": the
-  // server treats it as a separate `NOT_QUALIFIED` warning that only a reason
-  // clears, and a leader forcing it is answering a different question.
+  // server treats it as a separate `NOT_QUALIFIED` warning, and a leader
+  // forcing it is answering a different question.
   const isNotQualified = conflictType === 'not_qualified';
   const name = formatVolunteerName(volunteerName);
   const conflictText = isNotQualified
@@ -73,19 +66,9 @@ export function OverrideDialog({
             />
           </DialogTitle>
           <DialogDescription>
-            {conflictText} for {slotLabel}. Provide a reason to override.
+            {conflictText} for {slotLabel}.
           </DialogDescription>
         </DialogHeader>
-
-        <Textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason for override (min 10 characters)…"
-          rows={3}
-        />
-        <p className="text-muted-foreground text-xs">
-          {reason.trim().length}/{MIN_REASON}
-        </p>
 
         <DialogFooter>
           <Button
@@ -97,10 +80,10 @@ export function OverrideDialog({
           </Button>
           <Button
             type="button"
-            disabled={tooShort || isPending}
+            disabled={isPending}
             onClick={() => {
               onOpenChange(false);
-              onConfirm(reason.trim());
+              onConfirm();
             }}
           >
             {isPending

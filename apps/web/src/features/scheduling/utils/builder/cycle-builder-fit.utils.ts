@@ -12,13 +12,12 @@ import type {
  * `ready`       — qualified and genuinely free: the obvious drop target.
  * `override`    — qualified but unavailable or double-booked. Still assignable;
  *                 overriding is a real workflow, it just must not look routine —
- *                 and FR-016 requires a reason before it is accepted, which is
+ *                 and FR-016 requires a confirmation before it is accepted, which is
  *                 why the tier carries `conflictType` rather than leaving each
  *                 caller to re-derive it. A caller holding the fit cannot drop
  *                 the conflict on the floor without the compiler noticing.
  * `unqualified` — not qualified for this role, but still assignable: the
- *                 server only warns `NOT_QUALIFIED` and a reason clears it
- *                 under either enforcement mode, so hard-filtering here would
+ *                 server only warns `NOT_QUALIFIED`, so hard-filtering here would
  *                 make the rail's "the leader can overrule" stance a lie
  *                 (B-2). Ranked last and routed to `OverrideDialog`'s
  *                 `not_qualified` variant by every gesture via

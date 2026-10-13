@@ -17,7 +17,6 @@ import type {
 import type { TransactionContext } from '../../src/domain/contracts/infrastructure/transaction-context';
 import { Assignment } from '../../src/domain/entities/assignment';
 import { Event } from '../../src/domain/entities/event';
-import { Ministry } from '../../src/domain/entities/ministry';
 import { MinistryParticipation } from '../../src/domain/entities/ministry-participation';
 import { Shift } from '../../src/domain/entities/shift';
 import { SlotRequirement } from '../../src/domain/entities/slot-requirement';
@@ -55,7 +54,6 @@ const participationRepository = {
   getById: vi.fn(),
   updateState: vi.fn(),
 };
-const ministryRepository = { getById: vi.fn() };
 const volunteerRepository = {
   hasMembershipInMinistry: vi.fn(),
   hasRoleQualification: vi.fn(),
@@ -76,7 +74,6 @@ function createManager(): DbAssignmentManager {
     auditRepository as never,
     shiftRepository as never,
     participationRepository as never,
-    ministryRepository as never,
     volunteerRepository as never,
     availabilityRepository as never,
     planningEventRepository as never,
@@ -155,9 +152,6 @@ beforeEach(() => {
     requirement,
   ]);
   participationRepository.getById.mockResolvedValue(participation('rostering'));
-  ministryRepository.getById.mockResolvedValue(
-    new Ministry({ churchId, name: 'Worship' }, ministryId),
-  );
   volunteerRepository.hasMembershipInMinistry.mockResolvedValue(true);
   volunteerRepository.hasRoleQualification.mockResolvedValue(true);
   volunteerRepository.listMinistryMemberships.mockResolvedValue([

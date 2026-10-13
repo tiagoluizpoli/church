@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { Check, Clock, X } from 'lucide-react';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
@@ -97,22 +98,27 @@ export function AssignmentChip({
           </Badge>
         )}
 
-        {isPublished && confirmationStatus && (
-          <span data-testid="confirmation-badge">
-            {confirmationStatus === 'confirmed' && (
-              <Check className="size-3 text-green-600" aria-label="confirmed" />
-            )}
-            {confirmationStatus === 'declined' && (
-              <X className="size-3 text-destructive" aria-label="declined" />
-            )}
-            {confirmationStatus === 'pending' && (
-              <Clock
-                className="size-3 text-muted-foreground"
-                aria-label="pending"
-              />
-            )}
-          </span>
-        )}
+        {appConfig.parked.assignmentResponse &&
+          isPublished &&
+          confirmationStatus && (
+            <span data-testid="confirmation-badge">
+              {confirmationStatus === 'confirmed' && (
+                <Check
+                  className="size-3 text-green-600"
+                  aria-label="confirmed"
+                />
+              )}
+              {confirmationStatus === 'declined' && (
+                <X className="size-3 text-destructive" aria-label="declined" />
+              )}
+              {confirmationStatus === 'pending' && (
+                <Clock
+                  className="size-3 text-muted-foreground"
+                  aria-label="pending"
+                />
+              )}
+            </span>
+          )}
       </span>
     </button>
   );

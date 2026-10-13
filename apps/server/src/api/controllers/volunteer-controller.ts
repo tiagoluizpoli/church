@@ -68,7 +68,7 @@ export class VolunteerController implements FastifyController {
     @inject('IActiveChurchResolver')
     private readonly activeChurchResolver: IActiveChurchResolver,
     @inject('AppConfig')
-    readonly config: AppConfig,
+    private readonly config: AppConfig,
   ) {}
 
   registerRoutes(
@@ -247,34 +247,36 @@ export class VolunteerController implements FastifyController {
       },
     );
 
-    app.patch(
-      '/assignments/:assignmentId',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'respondToAssignment',
-          summary: 'Respond to an Assignment',
-          description:
-            "Record the current Volunteer's accept/decline response to one of their own Assignments.",
-          body: respondToAssignmentBodySchema,
-          response: { 200: assignmentResponseSchema },
+    if (this.config.parked.assignmentResponse) {
+      app.patch(
+        '/assignments/:assignmentId',
+        {
+          schema: {
+            tags: ['volunteer'],
+            operationId: 'respondToAssignment',
+            summary: 'Respond to an Assignment',
+            description:
+              "Record the current Volunteer's accept/decline response to one of their own Assignments.",
+            body: respondToAssignmentBodySchema,
+            response: { 200: assignmentResponseSchema },
+          },
         },
-      },
-      async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
-        const body = request.body as z.infer<
-          typeof respondToAssignmentBodySchema
-        >;
-        const result = await this.volunteerManager.respondToAssignment({
-          assignmentId: AssignmentId.from(assignmentId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-          response: body.response,
-          reason: body.reason,
-        });
-        return reply.send(volunteerMapper.assignmentToResponse(result));
-      },
-    );
+        async (request, reply) => {
+          const { assignmentId } = request.params as AssignmentRouteParams;
+          const body = request.body as z.infer<
+            typeof respondToAssignmentBodySchema
+          >;
+          const result = await this.volunteerManager.respondToAssignment({
+            assignmentId: AssignmentId.from(assignmentId),
+            volunteerId: VolunteerId.from(request.volunteerId as string),
+            churchId: ChurchId.from(request.churchId),
+            response: body.response,
+            reason: body.reason,
+          });
+          return reply.send(volunteerMapper.assignmentToResponse(result));
+        },
+      );
+    }
 
     app.post(
       '/assignments/:assignmentId/cancel',

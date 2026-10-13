@@ -264,7 +264,7 @@ test('volunteer cancels their own published assignment, the leader is notified a
   );
   expect(publishResponse.ok()).toBeTruthy();
 
-  // Volunteer confirms the Usher assignment, then cancels it — the leader is
+  // Volunteer cancels the Usher assignment — the leader is
   // notified and the slot reopens (DL2-LC-01/03, FR-028, SC-008).
   const volunteerContext = await newPersonaContext({
     browser,
@@ -292,18 +292,6 @@ test('volunteer cancels their own published assignment, the leader is notified a
   const groupContainer = volunteerPage
     .locator('div.border.p-3')
     .filter({ has: groupToggle });
-  const usherRow = groupContainer
-    .locator('div.space-y-3.border.px-3.py-2')
-    .first();
-  const confirmResponsePromise = volunteerPage.waitForResponse(
-    (response) =>
-      response.url().includes(`/assignments/${usherAssignment.id}`) &&
-      response.request().method() === 'PATCH',
-  );
-  await usherRow.getByRole('button', { name: 'Confirm' }).click();
-  const confirmResponse = await confirmResponsePromise;
-  expect(confirmResponse.ok()).toBeTruthy();
-
   const cancelResponsePromise = volunteerPage.waitForResponse(
     (response) =>
       response.url().includes(`/assignments/${usherAssignment.id}/cancel`) &&

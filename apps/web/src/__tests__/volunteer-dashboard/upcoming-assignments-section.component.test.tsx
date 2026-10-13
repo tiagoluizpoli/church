@@ -1,9 +1,27 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../setup/render';
 import { UpcomingAssignmentsSection } from '@/features/volunteers/components/upcoming-assignments-section';
 import type { DashboardAssignmentGroup } from '@/features/volunteers/lib/dashboard-mappers';
+
+const parked = vi.hoisted(() => ({ on: true }));
+
+vi.mock('@church/app-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@church/app-config')>();
+  return {
+    ...actual,
+    get appConfig() {
+      return parked.on
+        ? actual.withAllParkedOn(actual.appConfig)
+        : actual.appConfig;
+    },
+  };
+});
+
+beforeEach(() => {
+  parked.on = true;
+});
 
 const assignmentGroupsFixture: DashboardAssignmentGroup[] = [
   {
@@ -200,5 +218,33 @@ describe('UpcomingAssignmentsSection', () => {
     await user.click(cancelButton);
 
     expect(onCancel).toHaveBeenCalledWith('assignment-1');
+  });
+
+  it('hides the response controls and labels while the response is parked', () => {
+    parked.on = false;
+
+    renderWithProviders(
+      <UpcomingAssignmentsSection
+        groups={assignmentGroupsFixture}
+        expandedEventId="event-1"
+        isOnline={true}
+        responseState="idle"
+        cancelState="idle"
+        onToggleEvent={vi.fn()}
+        onRespond={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Usher')).toBeInTheDocument();
+    expect(screen.queryByText('Needs response')).not.toBeInTheDocument();
+    expect(screen.queryByText('Confirmed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pending')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Confirm' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'I cannot serve' }),
+    ).not.toBeInTheDocument();
   });
 });

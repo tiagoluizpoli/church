@@ -400,7 +400,6 @@ describe('classifyChanges', () => {
 
       expect(plan.e2eSpecPaths).toEqual([
         'tests/volunteer-dashboard/us1-availability.spec.ts',
-        'tests/volunteer-dashboard/us2-assignments.spec.ts',
         'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
         'tests/volunteer-dashboard/us5-offline.spec.ts',
       ]);
@@ -430,7 +429,6 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/us5-live-changes.spec.ts',
-      'tests/volunteer-dashboard/us2-assignments.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -472,7 +470,6 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       'tests/volunteer-dashboard/us1-availability.spec.ts',
-      'tests/volunteer-dashboard/us2-assignments.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
@@ -506,7 +503,6 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       'tests/volunteer-dashboard/us1-availability.spec.ts',
-      'tests/volunteer-dashboard/us2-assignments.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
@@ -537,7 +533,6 @@ describe('classifyChanges', () => {
       'tests/scheduling/us4-roster-publish.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       'tests/volunteer-dashboard/us1-availability.spec.ts',
-      'tests/volunteer-dashboard/us2-assignments.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
@@ -726,7 +721,6 @@ describe('classifyChanges', () => {
       'tests/scheduling/us5-live-changes.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       'tests/volunteer-dashboard/us1-availability.spec.ts',
-      'tests/volunteer-dashboard/us2-assignments.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);

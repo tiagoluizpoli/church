@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   millisecondsBetween,
   parseInstant,
@@ -5,11 +6,7 @@ import {
   setTestClock,
 } from '@church/time';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  hasExhaustedRetries,
-  nextRetryAt,
-  OUTBOX_MAX_ATTEMPTS,
-} from './outbox-retry-policy';
+import { hasExhaustedRetries, nextRetryAt } from './outbox-retry-policy';
 
 const FIXED_NOW = parseInstant({ value: '2027-01-04T12:00:00Z' });
 
@@ -24,12 +21,12 @@ describe('outbox retry policy', () => {
 
   it('has not exhausted retries below the attempt cap', () => {
     expect(hasExhaustedRetries(0)).toBe(false);
-    expect(hasExhaustedRetries(OUTBOX_MAX_ATTEMPTS - 1)).toBe(false);
+    expect(hasExhaustedRetries(appConfig.outbox.maxAttempts - 1)).toBe(false);
   });
 
   it('has exhausted retries at or above the attempt cap', () => {
-    expect(hasExhaustedRetries(OUTBOX_MAX_ATTEMPTS)).toBe(true);
-    expect(hasExhaustedRetries(OUTBOX_MAX_ATTEMPTS + 1)).toBe(true);
+    expect(hasExhaustedRetries(appConfig.outbox.maxAttempts)).toBe(true);
+    expect(hasExhaustedRetries(appConfig.outbox.maxAttempts + 1)).toBe(true);
   });
 
   it('backs off exponentially in minutes', () => {

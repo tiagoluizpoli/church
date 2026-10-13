@@ -1,7 +1,25 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssignmentChip } from './assignment-chip';
+
+const parked = vi.hoisted(() => ({ on: true }));
+
+vi.mock('@church/app-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@church/app-config')>();
+  return {
+    ...actual,
+    get appConfig() {
+      return parked.on
+        ? actual.withAllParkedOn(actual.appConfig)
+        : actual.appConfig;
+    },
+  };
+});
+
+beforeEach(() => {
+  parked.on = true;
+});
 
 describe('AssignmentChip (T100)', () => {
   it('renders the volunteer full name', () => {
@@ -66,6 +84,18 @@ describe('AssignmentChip (T100)', () => {
         screen.queryByTestId('confirmation-badge'),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it('hides the confirmation badge while the response is parked', () => {
+    parked.on = false;
+    render(
+      <AssignmentChip
+        volunteerName="John Doe"
+        confirmationStatus="confirmed"
+        isPublished={true}
+      />,
+    );
+    expect(screen.queryByTestId('confirmation-badge')).not.toBeInTheDocument();
   });
 
   describe('role badge (FR-013)', () => {

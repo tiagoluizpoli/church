@@ -1,4 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   addMilliseconds,
   compareInstants,
@@ -10,10 +11,7 @@ import type { MinistryInvitationId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager as InvitationVerificationCodeManagerContract } from '../domain/contracts/application/invitation-verification-code-manager';
 import type { EmailSender } from '../domain/contracts/infrastructure/email-sender';
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
-import {
-  VERIFICATION_CODE_TTL_MS,
-  validateVerificationCode,
-} from '../domain/entities/invitation-verification-code';
+import { validateVerificationCode } from '../domain/entities/invitation-verification-code';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 
 export interface IssueVerificationCodeInput {
@@ -84,7 +82,7 @@ export class InvitationVerificationCodeManager
     });
     const expiresAt = addMilliseconds({
       instant: fromDate({ date: now }),
-      milliseconds: VERIFICATION_CODE_TTL_MS,
+      milliseconds: appConfig.verificationCode.ttlMs,
     });
     const claimed = await this.repository.claimDelivery({
       ministryInvitationId,

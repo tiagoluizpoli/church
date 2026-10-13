@@ -1,11 +1,10 @@
+import { appConfig } from '@church/app-config';
 import { addMilliseconds, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
   hasResendDailyCapExceeded,
   isResendCooldownActive,
   nextResendThrottleState,
-  RESEND_COOLDOWN_MS,
-  RESEND_DAILY_CAP,
   type ResendThrottleState,
 } from './resend-throttle';
 
@@ -21,7 +20,7 @@ describe('resend throttle — cooldown', () => {
     const state: ResendThrottleState = {
       lastResendAt: addMilliseconds({
         instant: now,
-        milliseconds: -(RESEND_COOLDOWN_MS - 1),
+        milliseconds: -(appConfig.invitationResend.cooldownMs - 1),
       }),
       resendCount: 1,
     };
@@ -32,7 +31,7 @@ describe('resend throttle — cooldown', () => {
     const state: ResendThrottleState = {
       lastResendAt: addMilliseconds({
         instant: now,
-        milliseconds: -RESEND_COOLDOWN_MS,
+        milliseconds: -appConfig.invitationResend.cooldownMs,
       }),
       resendCount: 1,
     };
@@ -44,7 +43,7 @@ describe('resend throttle — daily cap', () => {
   it('is not exceeded below the cap within the window', () => {
     const state: ResendThrottleState = {
       resendWindowStartedAt: now,
-      resendCount: RESEND_DAILY_CAP - 1,
+      resendCount: appConfig.invitationResend.dailyCap - 1,
     };
     expect(hasResendDailyCapExceeded({ state, now })).toBe(false);
   });
@@ -52,7 +51,7 @@ describe('resend throttle — daily cap', () => {
   it('is exceeded at the cap within the window', () => {
     const state: ResendThrottleState = {
       resendWindowStartedAt: now,
-      resendCount: RESEND_DAILY_CAP,
+      resendCount: appConfig.invitationResend.dailyCap,
     };
     expect(hasResendDailyCapExceeded({ state, now })).toBe(true);
   });
@@ -61,9 +60,9 @@ describe('resend throttle — daily cap', () => {
     const state: ResendThrottleState = {
       resendWindowStartedAt: addMilliseconds({
         instant: now,
-        milliseconds: -24 * 60 * 60 * 1000,
+        milliseconds: -appConfig.invitationResend.windowMs,
       }),
-      resendCount: RESEND_DAILY_CAP,
+      resendCount: appConfig.invitationResend.dailyCap,
     };
     expect(hasResendDailyCapExceeded({ state, now })).toBe(false);
   });
@@ -99,9 +98,9 @@ describe('resend throttle — next state', () => {
     const state: ResendThrottleState = {
       resendWindowStartedAt: addMilliseconds({
         instant: now,
-        milliseconds: -24 * 60 * 60 * 1000,
+        milliseconds: -appConfig.invitationResend.windowMs,
       }),
-      resendCount: RESEND_DAILY_CAP,
+      resendCount: appConfig.invitationResend.dailyCap,
     };
     expect(nextResendThrottleState({ state, now })).toEqual({
       lastResendAt: now,

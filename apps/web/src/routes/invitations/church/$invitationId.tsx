@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,8 +24,6 @@ import { redemptionApi } from '@/utils/api-instances';
 export const Route = createFileRoute('/invitations/church/$invitationId')({
   component: ChurchInvitationRedemptionRoute,
 });
-
-const CODE_RESEND_COOLDOWN_MS = 60_000;
 
 const redeemFormSchema = z.object({
   name: z.string().trim().min(1, 'Enter your name'),
@@ -52,7 +51,8 @@ function remainingCooldownSeconds({
   now,
 }: RemainingCooldownSecondsInput): number {
   if (!codeSentAt) return 0;
-  const remainingMs = CODE_RESEND_COOLDOWN_MS - (now - codeSentAt);
+  const remainingMs =
+    appConfig.verificationCode.resendCooldownMs - (now - codeSentAt);
   return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
 }
 

@@ -164,7 +164,6 @@ describe('volunteer-assignments E2E journey recipe', () => {
     expect(eventRow).toMatchObject({
       title: journey.assignment.eventTitle,
       status: 'scheduled',
-      eventType: 'hourly',
     });
     expect(eventRow?.start.toISOString()).toBe(EVENT_STARTS_AT);
     expect(eventRow?.end.toISOString()).toBe(EVENT_ENDS_AT);

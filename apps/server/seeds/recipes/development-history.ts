@@ -304,7 +304,6 @@ async function materializeEvent({
     start: firstSlot.start,
     end: lastSlot.end,
     status: 'past',
-    eventType: 'hourly',
     sourceTemplateId: plannedEvent.sourceTemplateId,
   });
 

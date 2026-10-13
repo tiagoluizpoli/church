@@ -118,7 +118,6 @@ export async function buildRosteringEvent<
     start: startsAt,
     end: endsAt,
     status: eventStatus,
-    eventType: 'hourly',
   });
   const timeSlot = await buildTimeSlot({
     db,

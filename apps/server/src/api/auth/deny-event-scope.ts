@@ -10,9 +10,7 @@ export interface DenyEventScopeInput {
 }
 
 /**
- * Shared by `EventController` and `TimeSlotController` — both gate their
- * per-event routes on the same `canManageEvent` check, so the guard lives
- * here once instead of as a byte-identical private method on each.
+ * Gates per-event routes on the `canManageEvent` check.
  *
  * Returns whether access was denied. `FastifyReply` is a thenable (it
  * resolves once the response is flushed) — `return reply.send(...)` from an

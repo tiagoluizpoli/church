@@ -1,37 +1,6 @@
-import type {
-  ChurchId,
-  EventId,
-  RoleId,
-  TeamId,
-  TimeSlotId,
-} from '../../branded-ids';
-import type { SlotRequirement } from '../../entities/slot-requirement';
+import type { ChurchId, EventId, RoleId, TimeSlotId } from '../../branded-ids';
 import type { TimeSlot } from '../../entities/time-slot';
 import type { TransactionContext } from './transaction-context';
-
-export interface BulkCreateTimeSlotItem {
-  startTime: Date;
-  endTime: Date;
-  label?: string;
-  requirements?: Array<{
-    roleId: RoleId;
-    teamId?: TeamId;
-    requiredCount: number;
-    notes?: string;
-  }>;
-}
-
-export interface BulkCreateTimeSlotsInput {
-  eventId: EventId;
-  slots: BulkCreateTimeSlotItem[];
-}
-
-export interface UpsertSlotRequirementInput {
-  roleId: RoleId;
-  requiredCount: number;
-  teamId?: TeamId;
-  notes?: string;
-}
 
 export interface CreateTimeSlotInput {
   eventId: EventId;
@@ -59,13 +28,7 @@ export interface TimeSlotRepository {
     tx?: TransactionContext,
   ): Promise<TimeSlot[]>;
 
-  bulkCreate(
-    churchId: ChurchId,
-    input: BulkCreateTimeSlotsInput,
-    tx?: TransactionContext,
-  ): Promise<TimeSlot[]>;
-
-  /** Create a single slot (complement to bulkCreate). */
+  /** Create a single slot. */
   create(
     churchId: ChurchId,
     input: CreateTimeSlotInput,
@@ -102,14 +65,6 @@ export interface TimeSlotRepository {
     eventId: EventId,
     tx?: TransactionContext,
   ): Promise<void>;
-
-  /** Insert or update the slot requirement for a given role within a slot. */
-  upsertRequirement(
-    churchId: ChurchId,
-    slotId: TimeSlotId,
-    input: UpsertSlotRequirementInput,
-    tx?: TransactionContext,
-  ): Promise<SlotRequirement>;
 
   /** Count active assignments for a given slot/role pair. */
   countActiveAssignments(

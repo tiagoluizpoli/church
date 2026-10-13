@@ -53,8 +53,6 @@ export const defaultDirectionEnum = pgEnum('default_direction', [
   'all_out',
 ]);
 
-export const eventTypeEnum = pgEnum('event_type', ['hourly', 'day_based']);
-
 export const assignmentStatusEnum = pgEnum('assignment_status', [
   'draft',
   'pending',

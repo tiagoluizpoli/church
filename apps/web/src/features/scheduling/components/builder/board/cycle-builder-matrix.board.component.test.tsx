@@ -22,7 +22,6 @@ const boardData: CycleBuilderData = {
       start: '2026-08-02T09:00:00.000Z',
       end: '2026-08-02T11:00:00.000Z',
       status: 'scheduled',
-      eventType: 'hourly',
       fillRatio: 0,
       requiredCount: 2,
       assignedCount: 0,

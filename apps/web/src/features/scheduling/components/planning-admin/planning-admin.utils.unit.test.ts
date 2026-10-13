@@ -13,6 +13,7 @@ import {
   canCreateTemplate,
   cycleIsLocked,
   describeTimeBlockSpan,
+  eventSpanLabel,
   eventStatusBadgeVariant,
   isMultiDayEvent,
   shiftedEnd,
@@ -45,7 +46,6 @@ function makeEventGroup(slotCount: number): PlanningCycleEventGroup {
       start: '2027-01-03T09:00:00.000Z',
       end: '2027-01-03T11:00:00.000Z',
       status: 'scheduled',
-      eventType: 'hourly',
       createdAt: '2027-01-01T00:00:00.000Z',
       updatedAt: '2027-01-01T00:00:00.000Z',
     },
@@ -222,6 +222,40 @@ describe('isMultiDayEvent', () => {
         eventEnd: '2027-01-02T06:00:00.000Z',
       }),
     ).toBe(true);
+  });
+});
+
+describe('eventSpanLabel', () => {
+  const timeZone = 'America/Sao_Paulo';
+
+  it('labels a Sao Paulo single day hourly', () => {
+    expect(
+      eventSpanLabel({
+        start: '2026-06-28T03:00:00.000Z',
+        end: '2026-06-29T02:59:59.999Z',
+        timeZone,
+      }),
+    ).toBe('hourly');
+  });
+
+  it('labels a Sao Paulo evening event hourly', () => {
+    expect(
+      eventSpanLabel({
+        start: '2026-06-28T23:00:00.000Z',
+        end: '2026-06-29T02:00:00.000Z',
+        timeZone,
+      }),
+    ).toBe('hourly');
+  });
+
+  it('labels a two-day span day_based', () => {
+    expect(
+      eventSpanLabel({
+        start: '2026-06-28T03:00:00.000Z',
+        end: '2026-06-30T02:59:59.999Z',
+        timeZone,
+      }),
+    ).toBe('day_based');
   });
 });
 

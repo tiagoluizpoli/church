@@ -19,7 +19,6 @@ export function mapEvent(row: EventRow): Event {
     start: fromDate({ date: row.start }),
     end: fromDate({ date: row.end }),
     status: row.status as EventProps['status'],
-    eventType: row.eventType as EventProps['eventType'],
   };
 
   return new Event(props, row.id as EventId, row.createdAt, row.updatedAt);

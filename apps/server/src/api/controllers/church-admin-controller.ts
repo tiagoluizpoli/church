@@ -401,7 +401,6 @@ export class ChurchAdminController implements FastifyController {
           location: body.location,
           start: dateFromInstantString({ value: body.start }),
           end: dateFromInstantString({ value: body.end }),
-          eventType: body.eventType,
         });
         return reply.status(201).send(eventMapper.toResponse(event));
       },

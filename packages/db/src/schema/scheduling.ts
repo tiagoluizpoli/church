@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
 import { role, team } from './core';
-import { eventStatusEnum, eventTypeEnum } from './enums';
+import { eventStatusEnum } from './enums';
 import { ministryParticipation } from './participation';
 import { eventTemplate, planningCycle, timeBlock } from './planning';
 
@@ -40,7 +40,6 @@ export const event = pgTable(
       mode: 'date',
     }).notNull(),
     status: eventStatusEnum('status').default('draft').notNull(),
-    eventType: eventTypeEnum('event_type').default('hourly').notNull(),
     createdAt: timestamp('created_at', {
       withTimezone: true,
       mode: 'date',

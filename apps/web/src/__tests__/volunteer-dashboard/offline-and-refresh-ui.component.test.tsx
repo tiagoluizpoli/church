@@ -45,7 +45,6 @@ describe('Volunteer dashboard offline + refresh UI', () => {
           event={{
             id: 'event-1',
             title: 'Youth Gathering',
-            eventType: 'hourly',
             start: '2099-01-05T09:00:00.000Z',
             end: '2099-01-05T11:00:00.000Z',
           }}

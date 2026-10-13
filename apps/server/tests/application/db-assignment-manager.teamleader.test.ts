@@ -106,7 +106,6 @@ function event(status: 'scheduled' | 'past') {
       start,
       end,
       status,
-      eventType: 'hourly',
     },
     'event-1',
   );

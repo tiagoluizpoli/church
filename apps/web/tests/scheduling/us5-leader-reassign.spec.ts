@@ -218,6 +218,13 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
     throw new Error('Expected the owner persona to be eligible.');
   }
 
+  // Both shifts are staffed so the publish is a full one.
+  const firstResponse = await page.request.post(
+    `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/assignments`,
+    { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
+  );
+  expect(firstResponse.ok()).toBeTruthy();
+
   const secondResponse = await page.request.post(
     `${SERVER_URL}/api/v1/rostering/shifts/${fixture.secondShiftId}/assignments`,
     { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },

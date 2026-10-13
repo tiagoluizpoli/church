@@ -979,31 +979,47 @@ describe('Phase 4 participation manager additional surfaces (shift lifecycle, se
     expect(entry?.hasConflict).toBe(true);
   });
 
-  it('publish() rejects while the participation is still tailoring (never fired/rostering)', async () => {
+  it('publishCycle() leaves a participation that is still tailoring unpublished', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation } = await seedCycleWithEvent({ seed });
+    const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { participationManager } = createPhase4Managers();
 
-    await expect(
-      participationManager.publish({
-        churchId: ChurchId.from(seed.churchAId),
-        participationId: MinistryParticipationId.from(participation.id),
-      }),
-    ).rejects.toThrow(IllegalStateTransitionError);
+    const result = await participationManager.publishCycle({
+      churchId: ChurchId.from(seed.churchAId),
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+      userId: UserId.from(seed.adminUserId),
+    });
+
+    expect(result.participations).toEqual([]);
+    const row = await schedulingTestDb
+      .select()
+      .from((await import('@church/db')).ministryParticipation)
+      .where(
+        eq(
+          (await import('@church/db')).ministryParticipation.id,
+          participation.id,
+        ),
+      );
+    expect(row[0]?.state).toBe('tailoring');
   });
 
-  it('publish() succeeds with zero required headcount and sends no notifications', async () => {
+  it('publishCycle() succeeds with zero required headcount and sends no notifications', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { participation } = await seedCycleWithEvent({ seed });
+    const { participation, cycle } = await seedCycleWithEvent({ seed });
     const { participationManager, notificationSpy } = createPhase4Managers();
     const churchId = ChurchId.from(seed.churchAId);
-    const participationId = MinistryParticipationId.from(participation.id);
 
     await schedulingTestDb.execute(
       `UPDATE ministry_participation SET state = 'rostering' WHERE id = '${participation.id}'`,
     );
 
-    await participationManager.publish({ churchId, participationId });
+    await participationManager.publishCycle({
+      churchId,
+      cycleId: PlanningCycleId.from(cycle.id),
+      ministryId: MinistryId.from(seed.ministryAId),
+      userId: UserId.from(seed.adminUserId),
+    });
 
     const row = await schedulingTestDb
       .select()

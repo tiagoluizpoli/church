@@ -192,3 +192,15 @@ describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
     await parkedOn.close();
   });
 });
+
+describe('POST /api/v1/volunteer/assignments/:assignmentId/cancel (parked)', () => {
+  const url =
+    '/api/v1/volunteer/assignments/66666666-6666-4666-8666-666666666666/cancel';
+
+  it('gets 404 with the real config', async () => {
+    const response = await app.inject({ method: 'POST', url });
+
+    expect(response.statusCode).toBe(404);
+    expect(volunteerManager.cancelOwnAssignment).not.toHaveBeenCalled();
+  });
+});

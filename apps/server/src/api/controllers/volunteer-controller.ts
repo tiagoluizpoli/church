@@ -278,27 +278,30 @@ export class VolunteerController implements FastifyController {
       );
     }
 
-    app.post(
-      '/assignments/:assignmentId/cancel',
-      {
-        schema: {
-          tags: ['volunteer'],
-          operationId: 'cancelOwnAssignment',
-          summary: "Cancel one of the caller's Assignments",
-          description: "Cancel one of the current Volunteer's own Assignments.",
-          response: { 204: z.null() },
+    if (this.config.parked.volunteerCancel) {
+      app.post(
+        '/assignments/:assignmentId/cancel',
+        {
+          schema: {
+            tags: ['volunteer'],
+            operationId: 'cancelOwnAssignment',
+            summary: "Cancel one of the caller's Assignments",
+            description:
+              "Cancel one of the current Volunteer's own Assignments.",
+            response: { 204: z.null() },
+          },
         },
-      },
-      async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
-        await this.volunteerManager.cancelOwnAssignment({
-          assignmentId: AssignmentId.from(assignmentId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
-        });
-        return reply.status(204).send(null);
-      },
-    );
+        async (request, reply) => {
+          const { assignmentId } = request.params as AssignmentRouteParams;
+          await this.volunteerManager.cancelOwnAssignment({
+            assignmentId: AssignmentId.from(assignmentId),
+            volunteerId: VolunteerId.from(request.volunteerId as string),
+            churchId: ChurchId.from(request.churchId),
+          });
+          return reply.status(204).send(null);
+        },
+      );
+    }
 
     app.get(
       '/notifications',

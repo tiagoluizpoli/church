@@ -220,7 +220,7 @@ describe('UpcomingAssignmentsSection', () => {
     expect(onCancel).toHaveBeenCalledWith('assignment-1');
   });
 
-  it('hides the response controls and labels while the response is parked', () => {
+  it('hides the response controls, labels and Cancel while they are parked', () => {
     parked.on = false;
 
     renderWithProviders(
@@ -245,6 +245,9 @@ describe('UpcomingAssignmentsSection', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'I cannot serve' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('cancel-assignment-button'),
     ).not.toBeInTheDocument();
   });
 });

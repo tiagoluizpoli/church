@@ -420,17 +420,15 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the Assignment and #217 live-changes journeys for the upcoming-assignments section', () => {
-    const plan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx',
-      ],
-    });
+  it('falls back to the critical smoke set for the upcoming-assignments section', () => {
+    const changedPath =
+      'apps/web/src/features/volunteers/components/upcoming-assignments-section.tsx';
+    const plan = classifyChanges({ changedPaths: [changedPath] });
 
-    expect(plan.e2eSpecPaths).toEqual([
-      'tests/scheduling/us5-live-changes.spec.ts',
-    ]);
-    expect(plan.missingJourneyMappings).toEqual([]);
+    expect(plan.e2eSpecPaths).toEqual(
+      expect.arrayContaining(CRITICAL_SMOKE_SPEC_PATHS),
+    );
+    expect(plan.missingJourneyMappings).toEqual([changedPath]);
   });
 
   it('selects only the offline journey for the offline-specific dashboard files', () => {
@@ -549,7 +547,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
-      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/scheduling/us5-leader-reassign.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -673,14 +671,14 @@ describe('classifyChanges', () => {
     expect(rosteringPlan.e2eSpecPaths).toEqual([
       'tests/scheduling/builder-slot-focus.spec.ts',
       'tests/scheduling/qualification.spec.ts',
-      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/scheduling/us5-leader-reassign.spec.ts',
     ]);
 
     const volunteerControllerPlan = classifyChanges({
       changedPaths: ['apps/server/src/api/controllers/volunteer-controller.ts'],
     });
     expect(volunteerControllerPlan.e2eSpecPaths).toEqual([
-      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/scheduling/us5-leader-reassign.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
     ]);
 
@@ -718,7 +716,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/us2-leader-tailor.spec.ts',
       'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us4-roster-publish.spec.ts',
-      'tests/scheduling/us5-live-changes.spec.ts',
+      'tests/scheduling/us5-leader-reassign.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       'tests/volunteer-dashboard/us1-availability.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',

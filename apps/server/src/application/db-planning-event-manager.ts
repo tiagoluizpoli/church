@@ -30,10 +30,6 @@ import type {
 } from '../domain/contracts/application/planning-event-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
-import {
-  type IFeatureFlagService,
-  PARTICIPATION_DEFAULT_ALL_IN_FLAG,
-} from '../domain/contracts/infrastructure/feature-flag-service';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { MinistryServingProfileRepository } from '../domain/contracts/infrastructure/ministry-serving-profile.repository';
@@ -147,8 +143,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     private readonly servingProfileRepository: MinistryServingProfileRepository,
     @inject('IMinistryRepository')
     private readonly ministryRepository: MinistryRepository,
-    @inject('IFeatureFlagService')
-    private readonly featureFlagService: IFeatureFlagService,
     @inject('ITimeSlotRepository')
     private readonly timeSlotRepository: TimeSlotRepository,
   ) {}
@@ -291,12 +285,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       tx,
     });
     const ministries = await this.ministryRepository.listByChurch(churchId, tx);
-    const globalDefaultAllIn = await this.featureFlagService.isEnabled(
-      PARTICIPATION_DEFAULT_ALL_IN_FLAG,
-      {
-        churchId: churchId as string,
-      },
-    );
 
     const profilesByMinistry = new Map<string, ProfileSeederEntry[]>();
     for (const profile of profiles) {
@@ -319,7 +307,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     return {
       profilesByMinistry,
       directionByMinistry,
-      globalDefaultAllIn,
+      globalDefaultAllIn: false,
       timeZone,
     };
   }

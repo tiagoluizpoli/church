@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
@@ -121,14 +122,16 @@ export function CycleBuilder({
   // instead of stretching a panel that otherwise only carries title + stats.
   const toolbarActions = teamId ? null : (
     <>
-      <Button
-        type="button"
-        size={isMobile ? 'touch' : 'sm'}
-        variant="outline"
-        onClick={() => setAuditOpen(true)}
-      >
-        Audit log
-      </Button>
+      {appConfig.parked.auditPanel ? (
+        <Button
+          type="button"
+          size={isMobile ? 'touch' : 'sm'}
+          variant="outline"
+          onClick={() => setAuditOpen(true)}
+        >
+          Audit log
+        </Button>
+      ) : null}
       <Button
         type="button"
         size={isMobile ? 'touch' : 'sm'}
@@ -180,7 +183,7 @@ export function CycleBuilder({
         teamId={teamId}
       />
 
-      {!teamId ? (
+      {!teamId && appConfig.parked.auditPanel ? (
         <AuditLogPanel
           open={auditOpen}
           onOpenChange={setAuditOpen}

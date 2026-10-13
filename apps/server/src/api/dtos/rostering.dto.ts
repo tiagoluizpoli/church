@@ -67,10 +67,6 @@ export const participationCompletionResponseSchema = z.object({
   completionPercent: z.number(),
 });
 
-export const publishParticipationBodySchema = z.object({
-  confirmBelowFull: z.boolean().optional(),
-});
-
 export const reassignAssignmentBodySchema = z.object({
   volunteerId: z.string(),
   reason: z.string().trim().min(10),

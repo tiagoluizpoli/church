@@ -198,12 +198,6 @@ export interface GetParticipationCompletionInput {
   participationId: MinistryParticipationId;
 }
 
-export interface PublishParticipationInput {
-  churchId: ChurchId;
-  participationId: MinistryParticipationId;
-  confirmBelowFull?: boolean;
-}
-
 export interface ListMinistryCycleSummariesInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -254,7 +248,6 @@ export interface IParticipationManager {
   getCompletion(
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView>;
-  publish(input: PublishParticipationInput): Promise<void>;
   publishCycle(input: PublishCycleInput): Promise<PublishCycleView>;
   listMinistryCycleSummaries(
     input: ListMinistryCycleSummariesInput,

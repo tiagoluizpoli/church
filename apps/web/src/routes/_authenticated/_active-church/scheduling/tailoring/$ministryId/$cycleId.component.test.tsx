@@ -90,7 +90,6 @@ const MINISTRIES_RESPONSE = {
       id: 'ministry-1',
       churchId: 'church-1',
       name: 'Greeters',
-      enforcementType: 'strict',
       defaultDirection: 'all_out',
       createdAt: '2026-07-01T00:00:00',
       updatedAt: '2026-07-01T00:00:00',

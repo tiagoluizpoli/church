@@ -185,8 +185,8 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
  */
 const ASSIGN_FIT_WARNING: Record<AssignableFitTier, string> = {
   ready: '',
-  override: 'not available for this shift, needs an override reason',
-  unqualified: 'not qualified for this role, needs an override reason',
+  override: 'not available for this shift, needs an override',
+  unqualified: 'not qualified for this role, needs an override',
 };
 
 interface VolunteerCardProps {

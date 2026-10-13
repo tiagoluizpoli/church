@@ -430,7 +430,6 @@ export function useCycleBuilder({
             data,
             assignmentId,
             volunteerId: body.volunteerId,
-            reason: body.reason,
           }),
       }),
     onError: (_error, _variables, context) => rollbackOptimistic({ context }),

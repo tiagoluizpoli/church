@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { ministry } from '@church/db';
-import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   buildAvailabilityCheck,
@@ -233,7 +231,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
     ]);
   });
 
-  it('DL2-RS-03/04/05/06/09 creates participation assignments on the requested shift, updates completion, warns on soft overlap, blocks hard overlap, and audits override', async () => {
+  it('DL2-RS-03/04/05/06/09 creates participation assignments on the requested shift, updates completion, and refuses an overlapping assignment', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -362,79 +360,18 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       reason: 'DUPLICATE_ASSIGNMENT',
     });
 
-    const softConflict =
-      await managers.assignmentManager.createParticipationAssignment({
+    await expect(
+      managers.assignmentManager.createParticipationAssignment({
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(targetShift.id),
         volunteerId: VolunteerId.from(overlapVolunteer.volunteer.id),
         roleId: RoleId.from(roleRow.id),
         actorId: UserId.from(seed.adminUserId),
-      });
-    expect(softConflict.warnings).toEqual([
-      expect.objectContaining({ type: 'DOUBLE_BOOKED' }),
-    ]);
-
-    await schedulingTestDb
-      .update(ministry)
-      .set({ enforcementType: 'hard' })
-      .where(eq(ministry.id, seed.ministryAId));
-
-    const hardCandidate = await seedVolunteerMembership({
-      churchId: seed.churchAId,
-      ministryId: seed.ministryAId,
-      name: 'Hard Override',
-      email: 'hard-phase6@test.com',
-    });
-    await seedRoleQualification({
-      churchId: seed.churchAId,
-      membershipId: hardCandidate.membership.id,
-      roleId: roleRow.id,
-    });
-    await seedAssignment({
-      churchId: seed.churchAId,
-      participationId: overlapBranch.participation.id,
-      shiftId: overlapShift.id,
-      volunteerId: hardCandidate.volunteer.id,
-      roleId: roleRow.id,
-      status: 'confirmed',
-    });
-
-    await expect(
-      managers.assignmentManager.createParticipationAssignment({
-        churchId: ChurchId.from(seed.churchAId),
-        shiftId: ShiftId.from(targetShift.id),
-        volunteerId: VolunteerId.from(hardCandidate.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
-        actorId: UserId.from(seed.adminUserId),
       }),
     ).rejects.toMatchObject({
       reason: 'DUPLICATE_ASSIGNMENT',
+      message: 'Volunteer is already assigned to another overlapping shift',
     });
-
-    const overridden =
-      await managers.assignmentManager.createParticipationAssignment({
-        churchId: ChurchId.from(seed.churchAId),
-        shiftId: ShiftId.from(targetShift.id),
-        volunteerId: VolunteerId.from(hardCandidate.volunteer.id),
-        roleId: RoleId.from(roleRow.id),
-        actorId: UserId.from(seed.adminUserId),
-        override: { reason: 'Leader approved staffing override' },
-      });
-    const cycleAudit = await managers.assignmentManager.listAuditLogForCycle({
-      churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
-      ministryId: MinistryId.from(seed.ministryAId),
-    });
-    const audit = cycleAudit.filter(
-      (entry) => entry.assignmentId === overridden.assignment.id,
-    );
-
-    expect(audit).toEqual([
-      expect.objectContaining({
-        action: 'created',
-        reason: 'Leader approved staffing override',
-      }),
-    ]);
   });
 
   it('DL2-PB-01/02/03/04/05/06 publishes one participation in isolation and reveals only published slices', async () => {
@@ -460,7 +397,6 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       id: randomUUID(),
       churchId: seed.churchAId,
       name: 'Second ministry',
-      enforcementType: 'soft',
     });
     const secondParticipation = await buildMinistryParticipation({
       db: schedulingTestDb,

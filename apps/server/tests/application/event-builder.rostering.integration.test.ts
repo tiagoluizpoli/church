@@ -82,7 +82,6 @@ function createAssignmentManager(input?: {
     new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
     new DrizzleShiftRepository({ db: schedulingTestDb }),
     new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
-    new DrizzleMinistryRepository({ db: schedulingTestDb }),
     input?.volunteerRepository ??
       new DrizzleVolunteerRepository({ db: schedulingTestDb }),
     new DrizzleAvailabilityRepository({ db: schedulingTestDb }),

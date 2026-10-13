@@ -12,7 +12,6 @@ import { user } from './auth';
 import { church } from './church';
 import {
   defaultDirectionEnum,
-  enforcementTypeEnum,
   membershipStatusEnum,
   ministryAccessLevelEnum,
   teamAccessLevelEnum,
@@ -26,9 +25,6 @@ export const ministry = pgTable('ministry', {
     .references(() => church.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
-  enforcementType: enforcementTypeEnum('enforcement_type')
-    .default('soft')
-    .notNull(),
   defaultDirection: defaultDirectionEnum('default_direction')
     .default('all_out')
     .notNull(),

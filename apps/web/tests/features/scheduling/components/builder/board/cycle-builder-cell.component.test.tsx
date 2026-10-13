@@ -258,7 +258,7 @@ describe('CycleBuilderCell', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
 
     const assign = screen.getByRole('button', {
-      name: 'Assign Grace Hopper — Not qualified for this role — assigning needs a reason',
+      name: 'Assign Grace Hopper — Not qualified for this role — assigning is an override',
     });
     expect(assign).toHaveClass('text-yellow-700');
 

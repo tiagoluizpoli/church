@@ -13,10 +13,6 @@ import type { ConflictIssue } from '../../conflict/types';
 import type { Assignment } from '../../entities/assignment';
 import type { AssignmentAudit } from '../../entities/assignment-audit';
 
-export interface AssignmentOverrideInput {
-  reason: string;
-}
-
 export interface CreateParticipationAssignmentInput {
   churchId: ChurchId;
   shiftId: ShiftId;
@@ -25,7 +21,6 @@ export interface CreateParticipationAssignmentInput {
   teamId?: TeamId;
   teamLeaderScopeId?: TeamId;
   actorId: UserId;
-  override?: AssignmentOverrideInput;
 }
 
 export interface CreateParticipationAssignmentResult {
@@ -38,19 +33,11 @@ export interface ReassignParticipationAssignmentInput {
   assignmentId: AssignmentId;
   volunteerId: VolunteerId;
   actorId: UserId;
-  reason: string;
 }
 
 export interface GetAssignmentInput {
   assignmentId: AssignmentId;
   churchId: ChurchId;
-}
-
-export interface OverrideAssignmentInput {
-  assignmentId: AssignmentId;
-  churchId: ChurchId;
-  actorId: UserId;
-  reason: string;
 }
 
 export interface DeleteAssignmentInput {
@@ -71,7 +58,6 @@ export interface IAssignmentManager {
   createParticipationAssignment(
     input: CreateParticipationAssignmentInput,
   ): Promise<CreateParticipationAssignmentResult>;
-  overrideAssignment(input: OverrideAssignmentInput): Promise<void>;
   reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment>;

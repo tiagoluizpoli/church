@@ -278,7 +278,7 @@ describe('useCycleBuilder optimistic assignments', () => {
 
     void result.current.reassignAssignment.mutateAsync({
       assignmentId: 'assignment-1',
-      body: { volunteerId: 'bruno', reason: 'Swapped in the cycle builder' },
+      body: { volunteerId: 'bruno' },
     });
 
     await waitFor(() =>

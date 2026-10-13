@@ -14,7 +14,6 @@ describe('ministryMapper', () => {
           churchId: 'c1',
           name: 'Worship',
           description: 'Music team',
-          enforcementType: 'hard',
           defaultDirection: 'all_in',
         },
         'm1',
@@ -27,7 +26,6 @@ describe('ministryMapper', () => {
         churchId: 'c1',
         name: 'Worship',
         description: 'Music team',
-        enforcementType: 'hard',
         defaultDirection: 'all_in',
         createdAt: ministry.createdAt.toISOString(),
         updatedAt: ministry.updatedAt.toISOString(),
@@ -48,7 +46,6 @@ describe('ministryMapper', () => {
       const response = ministryMapper.toResponse(ministry);
 
       expect(response.description).toBeUndefined();
-      expect(response.enforcementType).toBe('soft');
       expect(response.defaultDirection).toBe('all_out');
     });
   });

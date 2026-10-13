@@ -18,7 +18,6 @@ class MockMinistryRepository implements MinistryRepository {
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         name: 'Youth Ministry',
-        enforcementType: 'soft',
       },
       '33333333-3333-3333-3333-333333333331' as MinistryId,
     );
@@ -26,7 +25,6 @@ class MockMinistryRepository implements MinistryRepository {
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         name: 'Adult Ministry',
-        enforcementType: 'soft',
       },
       '33333333-3333-3333-3333-333333333332' as MinistryId,
     );
@@ -34,7 +32,6 @@ class MockMinistryRepository implements MinistryRepository {
       {
         churchId: '11111111-1111-1111-1111-111111111112' as ChurchId,
         name: 'Other Ministry',
-        enforcementType: 'soft',
       },
       'ministry-3' as MinistryId,
     );
@@ -64,7 +61,6 @@ class MockMinistryRepository implements MinistryRepository {
   ): Promise<MinistrySettings> {
     const min = await this.getById(churchId, ministryId);
     return {
-      enforcementType: min.enforcementType,
       defaultDirection: min.defaultDirection,
     };
   }
@@ -78,7 +74,6 @@ class MockMinistryRepository implements MinistryRepository {
         churchId: current.churchId,
         name: current.name,
         description: current.description,
-        enforcementType: current.enforcementType,
         defaultDirection: input.defaultDirection,
       },
       current.id,

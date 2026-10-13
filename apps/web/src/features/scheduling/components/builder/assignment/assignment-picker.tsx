@@ -281,7 +281,7 @@ export function AssignmentPicker({
                         data-testid="picker-option-unqualified"
                       >
                         <TriangleAlertIcon className="size-3 shrink-0" />
-                        Not qualified — needs a reason
+                        Not qualified — needs an override
                       </span>
                     ) : null}
                     {v.alreadyServingAssignments?.length ? (

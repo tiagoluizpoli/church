@@ -102,7 +102,7 @@ const listEligibleVolunteers = (
       );
     }
   /**
- * Assign a Volunteer to a Role (and optional Team) within a Shift, optionally overriding a detected conflict.
+ * Assign a Volunteer to a Role (and optional Team) within a Shift.
  * @summary Assign a Volunteer to a Shift
  */
 const createParticipationAssignment = (
@@ -131,7 +131,7 @@ const deleteParticipationAssignment = (
       );
     }
   /**
- * Replace the Volunteer on an existing Assignment, keeping its Shift and Role, and record the reason.
+ * Replace the Volunteer on an existing Assignment, keeping its Shift and Role.
  * @summary Reassign an Assignment to another Volunteer
  */
 const reassignParticipationAssignment = (

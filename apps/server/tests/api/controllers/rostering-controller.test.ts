@@ -177,9 +177,8 @@ describe('Rostering routes', () => {
       ),
       warnings: [
         {
-          type: 'DOUBLE_BOOKED',
-          details: 'Volunteer is already assigned to another overlapping shift',
-          conflictingId: 'assign-0',
+          type: 'NOT_QUALIFIED',
+          details: 'Volunteer is not qualified for the requested role',
         },
       ],
     });
@@ -190,7 +189,6 @@ describe('Rostering routes', () => {
       payload: {
         volunteerId: 'vol-1',
         roleId: 'role-1',
-        override: { reason: 'Leader approved overlap' },
       },
     });
 
@@ -209,9 +207,8 @@ describe('Rostering routes', () => {
       },
       warnings: [
         {
-          type: 'DOUBLE_BOOKED',
-          details: 'Volunteer is already assigned to another overlapping shift',
-          conflictingId: 'assign-0',
+          type: 'NOT_QUALIFIED',
+          details: 'Volunteer is not qualified for the requested role',
         },
       ],
     });
@@ -381,7 +378,6 @@ describe('Rostering routes', () => {
       url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
-        reason: 'Original volunteer became unavailable',
       },
     });
 
@@ -407,7 +403,6 @@ describe('Rostering routes', () => {
       url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
-        reason: 'Original volunteer became unavailable',
       },
     });
 
@@ -451,7 +446,6 @@ describe('Rostering routes', () => {
       url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
-        reason: 'Original volunteer became unavailable',
       },
     });
 

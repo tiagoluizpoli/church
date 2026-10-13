@@ -68,8 +68,7 @@ function fitRank({ volunteer, roleId }: FitRankInput): number {
  * twice.
  *
  * Qualification is a soft constraint with friction, not a hard filter — the
- * server itself only warns `NOT_QUALIFIED` and lets a reason clear it under
- * either enforcement mode (B-2). So the ranking keeps everyone whose fit ≠
+ * server itself only warns `NOT_QUALIFIED` (B-2). So the ranking keeps everyone whose fit ≠
  * `none`: the rail can never say "No candidates" while the Add picker in the
  * same cell offers someone. An unqualified pick still ends in
  * `OverrideDialog`'s `not_qualified` variant — it just is not hidden first.

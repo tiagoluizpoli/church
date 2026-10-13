@@ -138,7 +138,6 @@ describe('integration composition of the shared seed builders', () => {
       churchId: CHURCH_ID,
       id: '33333333-3333-4333-8333-333333333331',
       name: 'Hospitality',
-      enforcementType: 'hard',
     });
     const team = await buildTeam({
       db: testDb,
@@ -155,7 +154,6 @@ describe('integration composition of the shared seed builders', () => {
       name: 'Usher',
     });
 
-    expect(ministry.enforcementType).toBe('hard');
     expect(team).toMatchObject({
       ministryId: ministry.id,
       churchId: CHURCH_ID,

@@ -2,14 +2,10 @@ import { Entity, type LooseProps } from '@church/core';
 import { type Instant, now, toDate } from '@church/time';
 import type { ChurchId, MinistryId } from '../branded-ids';
 
-export const ENFORCEMENT_TYPE_OPTIONS = ['soft', 'hard'] as const;
-export type EnforcementType = (typeof ENFORCEMENT_TYPE_OPTIONS)[number];
-
 export const DEFAULT_DIRECTION_OPTIONS = ['all_in', 'all_out'] as const;
 export type DefaultDirection = (typeof DEFAULT_DIRECTION_OPTIONS)[number];
 
 export interface MinistrySettings {
-  enforcementType: EnforcementType;
   defaultDirection: DefaultDirection;
 }
 
@@ -17,20 +13,14 @@ export interface MinistryProps {
   churchId: ChurchId;
   name: string;
   description?: string;
-  enforcementType: EnforcementType;
   defaultDirection: DefaultDirection;
   deletedAt?: Instant;
 }
 
 export class Ministry extends Entity<MinistryProps, MinistryId> {
   constructor(
-    props: Omit<
-      LooseProps<MinistryProps>,
-      'enforcementType' | 'defaultDirection'
-    > &
-      Partial<
-        Pick<LooseProps<MinistryProps>, 'enforcementType' | 'defaultDirection'>
-      >,
+    props: Omit<LooseProps<MinistryProps>, 'defaultDirection'> &
+      Partial<Pick<LooseProps<MinistryProps>, 'defaultDirection'>>,
     id?: string,
     createdAt?: Date,
     updatedAt?: Date,
@@ -38,7 +28,6 @@ export class Ministry extends Entity<MinistryProps, MinistryId> {
     super(
       {
         ...props,
-        enforcementType: props.enforcementType ?? 'soft',
         defaultDirection: props.defaultDirection ?? 'all_out',
       } as MinistryProps,
       id as MinistryId,
@@ -57,10 +46,6 @@ export class Ministry extends Entity<MinistryProps, MinistryId> {
 
   get description(): string | undefined {
     return this._props.description;
-  }
-
-  get enforcementType(): EnforcementType {
-    return this._props.enforcementType;
   }
 
   get defaultDirection(): DefaultDirection {

@@ -89,7 +89,6 @@ export function createSchedulingManagers({
       new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
       shiftRepo,
       participationRepo,
-      ministryRepo,
       volunteerRepo,
       availabilityRepo,
       eventRepo,

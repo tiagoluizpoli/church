@@ -217,7 +217,7 @@ describe('Volunteer availability-check confirm (DL3-HT-09)', () => {
     expect(response.statusCode).toBe(204);
   });
 
-  it('confirm with a blocked overlap (flag OFF) returns 409', async () => {
+  it('confirm with a blocked overlap returns 409', async () => {
     volunteerManager.confirmAvailabilityCheck.mockRejectedValue(
       new AvailabilityOverlapError(),
     );
@@ -228,28 +228,6 @@ describe('Volunteer availability-check confirm (DL3-HT-09)', () => {
     });
 
     expect(response.statusCode).toBe(409);
-  });
-
-  it('confirm with flag ON returns 204 even when conflicts were flagged', async () => {
-    volunteerManager.confirmAvailabilityCheck.mockResolvedValue({
-      state: 'confirmed',
-      confirmedAt: new Date('2026-07-15T10:00:00.000Z'),
-      overlaps: [
-        {
-          shiftId: SHIFT_ID,
-          otherShiftId: '99999999-9999-4999-8999-999999999999',
-          ministryId: '33333333-3333-4333-8333-333333333331',
-          otherMinistryId: '33333333-3333-4333-8333-333333333332',
-        },
-      ],
-    });
-
-    const response = await app.inject({
-      method: 'POST',
-      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/confirm`,
-    });
-
-    expect(response.statusCode).toBe(204);
   });
 
   it("confirming another volunteer's check returns 403", async () => {

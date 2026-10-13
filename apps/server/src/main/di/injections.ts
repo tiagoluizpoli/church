@@ -8,7 +8,6 @@ import { ActiveChurchController } from '../../api/controllers/active-church-cont
 import { AssignmentController } from '../../api/controllers/assignment-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { EventController } from '../../api/controllers/event-controller';
-import { FeatureFlagController } from '../../api/controllers/feature-flag-controller';
 import { MinistryController } from '../../api/controllers/ministry-controller';
 import { RedemptionController } from '../../api/controllers/redemption-controller';
 import { RosteringController } from '../../api/controllers/rostering-controller';
@@ -25,7 +24,6 @@ import { DbAuthorityManager } from '../../application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '../../application/db-availability-check-manager';
 import { DbEventManager } from '../../application/db-event-manager';
 import { DbEventTemplateManager } from '../../application/db-event-template-manager';
-import { DbFeatureFlagManager } from '../../application/db-feature-flag-manager';
 import { DbMinistryInvitationManager } from '../../application/db-ministry-invitation-manager';
 import { DbMinistryManager } from '../../application/db-ministry-manager';
 import { DbOutboxDrainer } from '../../application/db-outbox-drainer';
@@ -70,7 +68,6 @@ import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/servic
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { LocalNotificationService } from '../../infrastructure/services/local-notification-service';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
-import { UnleashFeatureFlagService } from '../../infrastructure/services/unleash-feature-flag-service';
 import { injection } from './injection-tokens';
 
 export function registerInjections(): void {
@@ -179,10 +176,6 @@ export function registerInjections(): void {
   container.register(injection.infra.notificationService, {
     useClass: LocalNotificationService,
   });
-  container.registerSingleton(
-    injection.infra.featureFlagService,
-    UnleashFeatureFlagService,
-  );
   if (env.NODE_ENV === 'production') {
     container.register(injection.infra.emailSender, {
       useFactory: () =>
@@ -315,9 +308,6 @@ export function registerInjections(): void {
   container.register(injection.managers.availabilityCheckManager, {
     useClass: DbAvailabilityCheckManager,
   });
-  container.register(injection.managers.featureFlagManager, {
-    useClass: DbFeatureFlagManager,
-  });
   container.register(injection.managers.activeChurchSelectionManager, {
     useClass: DbActiveChurchSelectionManager,
   });
@@ -343,10 +333,6 @@ export function registerInjections(): void {
   container.registerSingleton(
     injection.controllers.fastify,
     MinistryController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
-    FeatureFlagController,
   );
   container.registerSingleton(
     injection.controllers.fastify,

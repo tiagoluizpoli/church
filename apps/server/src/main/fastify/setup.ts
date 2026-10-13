@@ -124,7 +124,6 @@ export async function createFastify() {
           description: 'Active Church Scheduling navigation capability',
         },
         { name: 'volunteer', description: 'Volunteer-facing endpoints' },
-        { name: 'feature-flags', description: 'Feature flag endpoints' },
         {
           name: 'active-church',
           description: 'Active Church selection endpoints',

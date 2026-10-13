@@ -10,8 +10,6 @@ const UNIT_ENV = {
   BETTER_AUTH_SECRET: 'unit-test-placeholder-secret-0123456789',
   BETTER_AUTH_URL: 'http://127.0.0.1:9',
   CORS_ORIGIN: 'http://127.0.0.1:9',
-  UNLEASH_API_URL: 'http://127.0.0.1:9/api',
-  UNLEASH_API_TOKEN: 'unit-test-placeholder-token',
   // The debug-only routes' controller tests exercise them.
   ENABLE_DEBUG_ENDPOINTS: 'true',
 };
@@ -96,7 +94,6 @@ export default defineConfig({
             'tests/application/db-participation-manager.team-scope.test.ts',
             'tests/application/db-event-manager.test.ts',
             'tests/application/db-event-template-manager.test.ts',
-            'tests/application/db-feature-flag-manager.test.ts',
             'tests/application/db-ministry-invitation-manager.test.ts',
             'tests/application/db-outbox-drainer.test.ts',
             'tests/contract/**/*.test.ts',

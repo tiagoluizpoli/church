@@ -523,41 +523,23 @@ describe('env:local values beyond the generated set', () => {
     expect(values.ENABLE_DEBUG_ENDPOINTS).toBe('true');
   });
 
-  it('assumes no Unleash location; it is machine-shared, not a local default', () => {
-    expect(generate({ cwd: featureA }).UNLEASH_API_URL).toBeUndefined();
-  });
-
   it('copies the machine-shared values from the Git common directory into every worktree', () => {
     writeSharedValues({
-      content: '# local Unleash\nUNLEASH_API_TOKEN="default:development.abc"\n',
+      content: '# local Resend\nRESEND_API_KEY="re_abc"\n',
     });
 
-    expect(generate({ cwd: featureA }).UNLEASH_API_TOKEN).toBe(
-      '"default:development.abc"',
-    );
-    expect(generate({ cwd: primary }).UNLEASH_API_TOKEN).toBe(
-      '"default:development.abc"',
-    );
-  });
-
-  it('warns, naming the shared file, when the machine-shared values are missing', () => {
-    const missing = run({ cwd: featureA });
-    writeSharedValues({ content: 'UNLEASH_API_TOKEN=token\n' });
-    const present = run({ cwd: featureA });
-
-    expect(missing.status, missing.output).toBe(0);
-    expect(missing.output).toContain('church-shared.env');
-    expect(present.output).not.toContain('church-shared.env');
+    expect(generate({ cwd: featureA }).RESEND_API_KEY).toBe('"re_abc"');
+    expect(generate({ cwd: primary }).RESEND_API_KEY).toBe('"re_abc"');
   });
 
   it('does not report a quoted shared value the legacy .env repeats as an override', () => {
-    writeSharedValues({ content: 'UNLEASH_API_TOKEN="token"\n' });
-    writeFileSync(join(primary, '.env'), 'UNLEASH_API_TOKEN="token"\n');
+    writeSharedValues({ content: 'RESEND_API_KEY="token"\n' });
+    writeFileSync(join(primary, '.env'), 'RESEND_API_KEY="token"\n');
 
     const result = run({ cwd: primary });
 
     expect(result.status, result.output).toBe(0);
-    expect(result.output).not.toContain('UNLEASH_API_TOKEN');
+    expect(result.output).not.toContain('RESEND_API_KEY');
   });
 
   it('lets a shared value replace a local default', () => {

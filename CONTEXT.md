@@ -55,7 +55,7 @@ A named level of permitted actions within one Scoped Membership. Access Levels a
 _Avoid_: Role, permission flag
 
 **Ministry** (pt-BR: Ministério):
-A high-level department or service area within a Church (e.g., "Kids Ministry", "Worship Ministry"). Carries a ministry-wide `defaultDirection` (all-in / all-out) that decides whether it starts opted into every EventTimeBlock of a Cycle; this overrides a church-wide global default (an Unleash flag today, a church setting later) and is in turn overridden by the leader's manual per-EventTimeBlock choices. `defaultDirection` is not a template concept. Only a ChurchAdmin creates, renames, or archives a Ministry; it is archived, never deleted, and cannot be archived while it still takes part in an Event that is not yet past.
+A high-level department or service area within a Church (e.g., "Kids Ministry", "Worship Ministry"). Carries a ministry-wide `defaultDirection` (all-in / all-out) that decides whether it starts opted into every EventTimeBlock of a Cycle; this overrides a church-wide global default (a church setting later) and is in turn overridden by the leader's manual per-EventTimeBlock choices. `defaultDirection` is not a template concept. Only a ChurchAdmin creates, renames, or archives a Ministry; it is archived, never deleted, and cannot be archived while it still takes part in an Event that is not yet past.
 _Avoid_: Department, group
 
 **Ministry Membership**:

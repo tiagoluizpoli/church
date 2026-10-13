@@ -5,7 +5,7 @@ import { describeDevDomainProblem } from './dev-hostname';
 /**
  * The machine-shared values in one ignored `church-shared.env` in the shared
  * Git directory (ADR-0005): what every worktree on this machine shares, such
- * as where Unleash runs and this machine's development domain. `env:local`
+ * as this machine's development domain. `env:local`
  * copies them into each worktree's `.env.local`; `dns:start` configures the
  * resolver from them. Also the dotenv line format both read.
  */

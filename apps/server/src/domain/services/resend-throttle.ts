@@ -1,12 +1,5 @@
+import { appConfig } from '@church/app-config';
 import { type Instant, millisecondsBetween } from '@church/time';
-
-/** Manual resend cooldown, matching §7's verification-code cooldown. */
-export const RESEND_COOLDOWN_MS = 60_000;
-
-/** Per-invitation daily resend cap (§6.4) — resets on a rolling 24h window. */
-export const RESEND_DAILY_CAP = 10;
-
-const RESEND_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface ResendThrottleState {
   lastResendAt?: Instant;
@@ -26,7 +19,7 @@ export function isResendCooldownActive({
   if (!state.lastResendAt) return false;
   return (
     millisecondsBetween({ start: state.lastResendAt, end: now }) <
-    RESEND_COOLDOWN_MS
+    appConfig.invitationResend.cooldownMs
   );
 }
 
@@ -37,7 +30,7 @@ function isResendWindowExpired({
   if (!state.resendWindowStartedAt) return true;
   return (
     millisecondsBetween({ start: state.resendWindowStartedAt, end: now }) >=
-    RESEND_WINDOW_MS
+    appConfig.invitationResend.windowMs
   );
 }
 
@@ -46,7 +39,7 @@ export function hasResendDailyCapExceeded({
   now,
 }: ResendThrottleCheckInput): boolean {
   if (isResendWindowExpired({ state, now })) return false;
-  return state.resendCount >= RESEND_DAILY_CAP;
+  return state.resendCount >= appConfig.invitationResend.dailyCap;
 }
 
 /** The throttle fields to persist once a resend is allowed through. */

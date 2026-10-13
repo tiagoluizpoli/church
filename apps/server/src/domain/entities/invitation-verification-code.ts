@@ -1,12 +1,9 @@
+import { appConfig } from '@church/app-config';
 import {
   compareInstants,
   type Instant,
   millisecondsBetween,
 } from '@church/time';
-
-export const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
-export const VERIFICATION_CODE_MAX_ATTEMPTS = 5;
-export const VERIFICATION_CODE_RESEND_COOLDOWN_MS = 60 * 1000;
 
 export interface VerificationCodeState {
   codeHash: string;
@@ -64,7 +61,7 @@ export function validateVerificationCode({
   if (compareInstants({ left: state.expiresAt, right: now }) <= 0) {
     return { status: 'expired' };
   }
-  if (state.failedAttempts >= VERIFICATION_CODE_MAX_ATTEMPTS) {
+  if (state.failedAttempts >= appConfig.verificationCode.maxAttempts) {
     return { status: 'attempt-limit-reached' };
   }
   return candidateMatches ? { status: 'valid' } : { status: 'invalid' };
@@ -76,6 +73,6 @@ export function canResendVerificationCode({
 }: CanResendVerificationCodeInput): boolean {
   return (
     millisecondsBetween({ start: state.lastSentAt, end: now }) >=
-    VERIFICATION_CODE_RESEND_COOLDOWN_MS
+    appConfig.verificationCode.resendCooldownMs
   );
 }

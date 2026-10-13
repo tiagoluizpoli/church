@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { invitationVerificationCode } from '@church/db';
 import { addMilliseconds, fromDate, toDate } from '@church/time';
 import { and, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
@@ -9,11 +10,7 @@ import type {
   RecordFailedVerificationAttemptIfAllowedInput,
   ReleaseVerificationCodeDeliveryClaimInput,
 } from '../../domain/contracts/infrastructure/invitation-verification-code.repository';
-import {
-  VERIFICATION_CODE_MAX_ATTEMPTS,
-  VERIFICATION_CODE_RESEND_COOLDOWN_MS,
-  type VerificationCodeState,
-} from '../../domain/entities/invitation-verification-code';
+import type { VerificationCodeState } from '../../domain/entities/invitation-verification-code';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleInvitationVerificationCodeRepositoryInput {
@@ -54,7 +51,7 @@ export class DrizzleInvitationVerificationCodeRepository
     const resendEligibleAt = toDate({
       instant: addMilliseconds({
         instant: fromDate({ date: sentAt }),
-        milliseconds: -VERIFICATION_CODE_RESEND_COOLDOWN_MS,
+        milliseconds: -appConfig.verificationCode.resendCooldownMs,
       }),
     });
     const [row] = await this.db
@@ -128,7 +125,7 @@ export class DrizzleInvitationVerificationCodeRepository
           gt(invitationVerificationCode.expiresAt, now),
           lt(
             invitationVerificationCode.failedAttempts,
-            VERIFICATION_CODE_MAX_ATTEMPTS,
+            appConfig.verificationCode.maxAttempts,
           ),
         ),
       )
@@ -157,7 +154,7 @@ export class DrizzleInvitationVerificationCodeRepository
           gt(invitationVerificationCode.expiresAt, now),
           lt(
             invitationVerificationCode.failedAttempts,
-            VERIFICATION_CODE_MAX_ATTEMPTS,
+            appConfig.verificationCode.maxAttempts,
           ),
         ),
       )

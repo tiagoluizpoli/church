@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   type ChurchRecord,
@@ -13,18 +14,13 @@ import { z } from 'zod';
 import { ChurchSlugTakenError } from '../domain/errors/church-slug-taken';
 import { expiresAtAfter } from './shared-time';
 
-// Better Auth's own default for its `invitation` table — the plugin's HTTP
-// API is bypassed here, so this operation reproduces it rather than leaving
-// the column to drift from what redemption expects.
-const CHURCH_INVITATION_TTL_MS = 48 * 60 * 60 * 1000;
-
 const ORGANIZATION_SLUG_UNIQUE_CONSTRAINT = 'organization_slug_unique';
 
-/** The invitation table's `expiresAt`, `CHURCH_INVITATION_TTL_MS` from now. */
+/** The invitation table's `expiresAt`, `churchInvitation.ttlMs` from now. */
 function churchInvitationExpiresAt(): Date {
   return expiresAtAfter({
     from: now(),
-    milliseconds: CHURCH_INVITATION_TTL_MS,
+    milliseconds: appConfig.churchInvitation.ttlMs,
   });
 }
 

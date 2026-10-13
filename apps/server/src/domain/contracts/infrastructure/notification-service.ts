@@ -17,12 +17,6 @@ export interface PublishNotification {
   assignmentIds: string[];
 }
 
-export interface ReminderNotification {
-  churchId: string;
-  eventId: string;
-  volunteerId: string;
-}
-
 export interface DeclineNotification {
   churchId: string;
   eventId: string;
@@ -48,9 +42,6 @@ export interface VolunteerScheduleNotification {
 
 export interface NotificationService {
   publish(event: PublishNotification): Promise<void>;
-
-  /** Notify a volunteer to submit availability for an event (reminder). */
-  notifyReminder(event: ReminderNotification): Promise<void>;
 
   /** Persist a volunteer-facing scheduling notification for the inbox. */
   notifyVolunteer(event: VolunteerScheduleNotification): Promise<void>;

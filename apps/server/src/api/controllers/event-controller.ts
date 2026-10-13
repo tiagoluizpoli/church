@@ -15,7 +15,6 @@ import type { EventStatus } from '../../domain/entities/event';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
-import { denyEventScope } from '../auth/deny-event-scope';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   eventListResponseSchema,
@@ -37,10 +36,6 @@ interface ScheduleBuilderQuery {
 interface ListEventsQuery {
   ministryId: string;
   status?: string;
-}
-
-interface EventRouteParams {
-  eventId: string;
 }
 
 interface DenyMissingVolunteerProfileInput {
@@ -149,63 +144,6 @@ export class EventController implements FastifyController {
           status: status as EventStatus | undefined,
         });
         return reply.send(eventMapper.listToResponse(events));
-      },
-    );
-
-    app.post(
-      '/:eventId/cancel',
-      {
-        schema: {
-          tags: ['events'],
-          operationId: 'cancelEvent',
-          summary: 'Cancel an Event',
-          description: 'Cancel an Event.',
-        },
-      },
-      async (request, reply) => {
-        const { eventId } = request.params as EventRouteParams;
-        const denied = await denyEventScope({
-          request,
-          reply,
-          eventId,
-          authorityGuard: this.authorityGuard,
-        });
-        if (denied) return;
-
-        await this.eventManager.cancelEvent({
-          eventId: EventId.from(eventId),
-          churchId: ChurchId.from(request.churchId),
-        });
-        return reply.status(201).send({ cancelled: true });
-      },
-    );
-
-    app.post(
-      '/:eventId/reminders',
-      {
-        schema: {
-          tags: ['events'],
-          operationId: 'sendReminders',
-          summary: 'Send Event reminders',
-          description:
-            'Send an availability reminder VolunteerNotification for an Event.',
-        },
-      },
-      async (request, reply) => {
-        const { eventId } = request.params as EventRouteParams;
-        const denied = await denyEventScope({
-          request,
-          reply,
-          eventId,
-          authorityGuard: this.authorityGuard,
-        });
-        if (denied) return;
-
-        await this.eventManager.sendReminder({
-          eventId: EventId.from(eventId),
-          churchId: ChurchId.from(request.churchId),
-        });
-        return reply.status(201).send({ sent: true });
       },
     );
   }

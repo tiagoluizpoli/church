@@ -28,8 +28,6 @@ const UNAUTH_ROUTES: Array<{
 }> = [
   { method: 'GET', url: '/api/v1/events/schedule-builder' },
   { method: 'GET', url: '/api/v1/events' },
-  { method: 'POST', url: '/api/v1/events/some-id/cancel' },
-  { method: 'POST', url: '/api/v1/events/some-id/reminders' },
   { method: 'POST', url: '/api/v1/events/some-id/slots' },
   { method: 'PATCH', url: '/api/v1/events/some-id/slots/slot-id' },
   { method: 'DELETE', url: '/api/v1/events/some-id/slots/slot-id' },

@@ -1,4 +1,4 @@
-import { appConfig } from '@church/app-config';
+import { appConfig, withAllParkedOn } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { parseInstant } from '@church/time';
 import {
@@ -59,16 +59,16 @@ const authorityGuard = {
 
 let app: FastifyTypedInstance;
 
-beforeAll(async () => {
-  app = await createFastify();
+async function buildApp(config: typeof appConfig) {
+  const instanceApp = await createFastify();
   const controller = new RosteringController(
     participationManager as never,
     assignmentManager as never,
     activeChurchResolver as never,
     authorityGuard as never,
-    appConfig,
+    config,
   );
-  await app.register(
+  await instanceApp.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
         prefix: controller.prefix,
@@ -76,11 +76,20 @@ beforeAll(async () => {
     },
     { prefix: '/api/v1' },
   );
-  await app.ready();
+  await instanceApp.ready();
+  return instanceApp;
+}
+
+let parkedOnApp: FastifyTypedInstance;
+
+beforeAll(async () => {
+  app = await buildApp(appConfig);
+  parkedOnApp = await buildApp(withAllParkedOn(appConfig) as typeof appConfig);
 });
 
 afterAll(async () => {
   await app.close();
+  await parkedOnApp.close();
 });
 
 beforeEach(() => {
@@ -520,10 +529,19 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('GET /api/v1/rostering/cycles/:id/audit allows a Ministry leader and denies a non-leader', async () => {
+  it('GET /api/v1/rostering/cycles/:id/audit is 404 while the audit panel is parked', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
+    });
+    expect(response.statusCode).toBe(404);
+    expect(assignmentManager.listAuditLogForCycle).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/v1/rostering/cycles/:id/audit (auditPanel on) allows a Ministry leader and denies a non-leader', async () => {
     assignmentManager.listAuditLogForCycle.mockResolvedValue([]);
 
-    const allowed = await app.inject({
+    const allowed = await parkedOnApp.inject({
       method: 'GET',
       url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
     });
@@ -535,7 +553,7 @@ describe('Rostering routes', () => {
     });
 
     authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
-    const denied = await app.inject({
+    const denied = await parkedOnApp.inject({
       method: 'GET',
       url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
     });

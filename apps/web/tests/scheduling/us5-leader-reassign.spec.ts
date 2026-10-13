@@ -74,7 +74,7 @@ interface ReassignedAssignmentResponse {
 }
 
 interface LiveChangesFixture {
-  participationId: string;
+  cycleId: string;
   firstShiftId: string;
   secondShiftId: string;
 }
@@ -190,7 +190,7 @@ async function setUpLiveChanges({
   }
 
   return {
-    participationId: eventView.participation.id,
+    cycleId: cycle.id,
     firstShiftId: firstShift.id,
     secondShiftId: secondShift.id,
   };
@@ -234,8 +234,11 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
     .assignment;
 
   const publishResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/rostering/participations/${fixture.participationId}/publish`,
-    { data: {} },
+    `${SERVER_URL}/api/v1/rostering/cycles/${fixture.cycleId}/publish`,
+    {
+      params: { ministryId: journey.ministries.worship.id },
+      data: {},
+    },
   );
   expect(publishResponse.ok()).toBeTruthy();
 

@@ -68,7 +68,7 @@ export class VolunteerController implements FastifyController {
     @inject('IActiveChurchResolver')
     private readonly activeChurchResolver: IActiveChurchResolver,
     @inject('AppConfig')
-    private readonly config: AppConfig,
+    readonly config: AppConfig,
   ) {}
 
   registerRoutes(

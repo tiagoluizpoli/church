@@ -173,7 +173,7 @@ export class RosteringController implements FastifyController {
     @inject('AuthorityGuard')
     private readonly authorityGuard: AuthorityGuard,
     @inject('AppConfig')
-    private readonly config: AppConfig,
+    readonly config: AppConfig,
   ) {}
 
   registerRoutes(

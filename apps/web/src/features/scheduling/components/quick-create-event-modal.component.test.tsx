@@ -46,7 +46,7 @@ describe('QuickCreateEventModal', () => {
         <QuickCreateEventModal
           open={true}
           onOpenChange={vi.fn()}
-          target={{ kind: 'planning-cycle', cycleId: 'cycle-1' }}
+          cycleId="cycle-1"
           onCreated={vi.fn()}
         />
       </TimezoneProvider>,
@@ -73,7 +73,7 @@ describe('QuickCreateEventModal', () => {
         <QuickCreateEventModal
           open={true}
           onOpenChange={vi.fn()}
-          target={{ kind: 'planning-cycle', cycleId: 'cycle-1' }}
+          cycleId="cycle-1"
           onCreated={vi.fn()}
         />
       </TimezoneProvider>,
@@ -110,7 +110,7 @@ describe('QuickCreateEventModal', () => {
         <QuickCreateEventModal
           open={true}
           onOpenChange={vi.fn()}
-          target={{ kind: 'planning-cycle', cycleId: 'cycle-1' }}
+          cycleId="cycle-1"
           onCreated={vi.fn()}
         />
       </TimezoneProvider>,

@@ -603,7 +603,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
         <QuickCreateEventModal
           open={addEventOpen}
           onOpenChange={setAddEventOpen}
-          target={{ kind: 'planning-cycle', cycleId: selectedCycleId }}
+          cycleId={selectedCycleId}
           onCreated={() => undefined}
         />
       ) : null}

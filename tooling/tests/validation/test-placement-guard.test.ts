@@ -78,6 +78,18 @@ describe('test placement guard', () => {
     }
   });
 
+  it('rejects a ../ climb in vi.importActual with a type argument', () => {
+    const path = 'apps/server/tests/a/b.test.ts';
+    expect(
+      failuresFor(
+        path,
+        "const m = await vi.importActual<typeof import('x')>('../c');",
+      ),
+    ).toEqual([
+      `${path}: '../c' climbs with ../: import it as @/…, @/tests/… or @/seeds/…`,
+    ]);
+  });
+
   it('allows a ../ climb that leaves the app', () => {
     expect(
       failuresFor(

@@ -1,8 +1,5 @@
 import { posix } from 'node:path';
-import {
-  readApplicationSourceFiles,
-  type SourceFile,
-} from './date-time-seam-guards';
+import { readApplicationSourceFiles, type SourceFile } from './source-files';
 
 const TEST_NAME_PATTERN = /\.(test|spec|contract-spec)\.[cm]?[jt]sx?$/;
 const TEST_FOLDER_PATTERN =
@@ -10,7 +7,7 @@ const TEST_FOLDER_PATTERN =
 
 // Covers: from '…', import '…', import('…'), vi.mock/doMock/importActual('…').
 const MODULE_SPECIFIER_PATTERN =
-  /(?:\bfrom\s*|\bimport\s*\(?\s*|\bvi\.(?:mock|doMock|importActual)\s*\(\s*)(['"])([^'"\n]+)\1/g;
+  /(?:\bfrom\s*|\bimport\s*\(?\s*|\bvi\.(?:mock|doMock|importActual)(?:<.*?>)?\s*\(\s*)(['"])([^'"\n]+)\1/g;
 const TEST_LIBRARY_PATTERN = /^(vitest|@testing-library\/.+|msw(\/.+)?)$/;
 
 export function getTestPlacementFailures({
@@ -20,15 +17,12 @@ export function getTestPlacementFailures({
 }): string[] {
   return files.flatMap(({ path, source }) => {
     const failures: string[] = [];
-    if (
-      path.includes('/src/') &&
-      (TEST_NAME_PATTERN.test(path) || TEST_FOLDER_PATTERN.test(path))
-    ) {
-      failures.push(
-        `${path}: test file under src/: move it to the project's tests/ folder`,
-      );
-    }
     if (path.includes('/src/')) {
+      if (TEST_NAME_PATTERN.test(path) || TEST_FOLDER_PATTERN.test(path)) {
+        failures.push(
+          `${path}: test file under src/: move it to the project's tests/ folder`,
+        );
+      }
       for (const [, , specifier] of source.matchAll(MODULE_SPECIFIER_PATTERN)) {
         if (specifier && TEST_LIBRARY_PATTERN.test(specifier)) {
           failures.push(

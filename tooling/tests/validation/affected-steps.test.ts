@@ -37,17 +37,6 @@ const TEST_PLACEMENT_STEP = {
 };
 
 describe('buildValidationSteps', () => {
-  it('always plans the test-placement guard, even with no lint paths', () => {
-    const { checkLane, checkedLabels } = buildValidationSteps({
-      onlyE2e: false,
-      plan: makePlan({}),
-      skipE2e: false,
-    });
-
-    expect(checkLane).toEqual([TEST_PLACEMENT_STEP]);
-    expect(checkedLabels).toContain('test-placement');
-  });
-
   it('skips the test-placement guard for an E2E-only run', () => {
     const { checkLane } = buildValidationSteps({
       onlyE2e: true,
@@ -58,7 +47,7 @@ describe('buildValidationSteps', () => {
     expect(checkLane).not.toContainEqual(TEST_PLACEMENT_STEP);
   });
 
-  it('plans nothing for an empty plan', () => {
+  it('plans only the test-placement guard for an empty plan', () => {
     const steps = buildValidationSteps({
       onlyE2e: false,
       plan: makePlan({}),
@@ -66,6 +55,7 @@ describe('buildValidationSteps', () => {
     });
 
     expect(steps.checkLane).toEqual([TEST_PLACEMENT_STEP]);
+    expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
   });

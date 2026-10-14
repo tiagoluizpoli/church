@@ -243,6 +243,22 @@ interface DbVolunteerManagerDependencies {
 }
 
 export class DbVolunteerManager implements IVolunteerManager {
+  private readonly volunteerRepo: VolunteerRepository;
+  private readonly assignmentRepo: AssignmentRepository;
+  private readonly availabilityRepo: AvailabilityRepository;
+  private readonly notificationRepo: VolunteerNotificationRepository;
+  private readonly eventRepo: EventRepository;
+  private readonly shiftRepo: ShiftRepository;
+  private readonly ministryRepo: MinistryRepository;
+  private readonly participationRepo: MinistryParticipationRepository;
+  private readonly roleRepo: RoleRepository;
+  private readonly teamRepo: TeamRepository;
+  private readonly availabilityCheckRepo: AvailabilityCheckRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
+
+  private readonly cancelLeadTimeDays: number;
+
   constructor({
     volunteerRepo,
     assignmentRepo,
@@ -272,24 +288,9 @@ export class DbVolunteerManager implements IVolunteerManager {
     this.availabilityCheckRepo = availabilityCheckRepo;
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
-    this.cancelLeadTimeDays = config.assignment.cancelLeadTimeDays;
+    const { assignment } = config;
+    this.cancelLeadTimeDays = assignment.cancelLeadTimeDays;
   }
-
-  private readonly volunteerRepo: VolunteerRepository;
-  private readonly assignmentRepo: AssignmentRepository;
-  private readonly availabilityRepo: AvailabilityRepository;
-  private readonly notificationRepo: VolunteerNotificationRepository;
-  private readonly eventRepo: EventRepository;
-  private readonly shiftRepo: ShiftRepository;
-  private readonly ministryRepo: MinistryRepository;
-  private readonly participationRepo: MinistryParticipationRepository;
-  private readonly roleRepo: RoleRepository;
-  private readonly teamRepo: TeamRepository;
-  private readonly availabilityCheckRepo: AvailabilityCheckRepository;
-  private readonly notificationService: NotificationService;
-  private readonly unitOfWork: UnitOfWork;
-
-  private readonly cancelLeadTimeDays: number;
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
     const { volunteerId, churchId } = input;

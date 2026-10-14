@@ -69,8 +69,7 @@ the lock). A failed run keeps its E2E database state for inspection; the next
 run resets it.
 
 The server relies on its package TypeScript configuration; run server scripts
-through their package scripts. In particular, server decorator metadata is not
-available to root TypeScript execution. `apps/server/auto-generated-api.yaml`
+through their package scripts. `apps/server/auto-generated-api.yaml`
 is input to API generation, not a hand-edited contract.
 
 ## Worktree bootstrap

@@ -109,6 +109,14 @@ interface ChurchAdminControllerDependencies {
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
 
+  private readonly planningCycleManager: IPlanningCycleManager;
+  private readonly eventTemplateManager: IEventTemplateManager;
+  private readonly planningEventManager: IPlanningEventManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly participationManager: IParticipationManager;
+  private readonly ministryManager: IMinistryManager;
+  private readonly authorityGuard: AuthorityGuard;
+
   constructor({
     planningCycleManager,
     eventTemplateManager,
@@ -126,14 +134,6 @@ export class ChurchAdminController implements FastifyController {
     this.ministryManager = ministryManager;
     this.authorityGuard = authorityGuard;
   }
-
-  private readonly planningCycleManager: IPlanningCycleManager;
-  private readonly eventTemplateManager: IEventTemplateManager;
-  private readonly planningEventManager: IPlanningEventManager;
-  private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly participationManager: IParticipationManager;
-  private readonly ministryManager: IMinistryManager;
-  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

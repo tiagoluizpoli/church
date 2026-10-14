@@ -192,6 +192,19 @@ interface DbParticipationManagerDependencies {
 export class DbParticipationManager implements IParticipationManager {
   private readonly splitter = new ShiftSplitter();
 
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly shiftRepository: ShiftRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly assignmentRepository: AssignmentRepository;
+  private readonly availabilityRepository: AvailabilityRepository;
+  private readonly timeSlotRepository: TimeSlotRepository;
+  private readonly volunteerRepository: VolunteerRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly servingProfileRepository: MinistryServingProfileRepository;
+  private readonly roleRepository: RoleRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
+
   constructor({
     participationRepository,
     shiftRepository,
@@ -219,19 +232,6 @@ export class DbParticipationManager implements IParticipationManager {
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
   }
-
-  private readonly participationRepository: MinistryParticipationRepository;
-  private readonly shiftRepository: ShiftRepository;
-  private readonly eventRepository: PlanningEventRepository;
-  private readonly assignmentRepository: AssignmentRepository;
-  private readonly availabilityRepository: AvailabilityRepository;
-  private readonly timeSlotRepository: TimeSlotRepository;
-  private readonly volunteerRepository: VolunteerRepository;
-  private readonly ministryRepository: MinistryRepository;
-  private readonly servingProfileRepository: MinistryServingProfileRepository;
-  private readonly roleRepository: RoleRepository;
-  private readonly notificationService: NotificationService;
-  private readonly unitOfWork: UnitOfWork;
 
   async getCycleParticipation(
     input: GetCycleParticipationInput,

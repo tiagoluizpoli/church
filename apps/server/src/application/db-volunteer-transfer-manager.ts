@@ -65,6 +65,14 @@ interface RecordMismatchInput {
  * another. A former-Church actor has no input here by construction.
  */
 export class DbVolunteerTransferManager implements VolunteerTransferManager {
+  private readonly churchRepository: ChurchRepository;
+  private readonly identityGateway: RedemptionIdentityGateway;
+  private readonly invitationRepository: MinistryInvitationRepository;
+  private readonly securityLogRepository: SecurityLogRepository;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly volunteerRepository: VolunteerRepository;
+  private readonly volunteerTransferRepository: VolunteerTransferRepository;
+
   constructor({
     churchRepository,
     identityGateway,
@@ -82,14 +90,6 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
     this.volunteerRepository = volunteerRepository;
     this.volunteerTransferRepository = volunteerTransferRepository;
   }
-
-  private readonly churchRepository: ChurchRepository;
-  private readonly identityGateway: RedemptionIdentityGateway;
-  private readonly invitationRepository: MinistryInvitationRepository;
-  private readonly securityLogRepository: SecurityLogRepository;
-  private readonly unitOfWork: UnitOfWork;
-  private readonly volunteerRepository: VolunteerRepository;
-  private readonly volunteerTransferRepository: VolunteerTransferRepository;
 
   async getTransferPreview({
     ministryInvitationId,

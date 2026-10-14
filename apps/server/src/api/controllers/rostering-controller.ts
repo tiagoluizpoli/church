@@ -166,6 +166,13 @@ interface RosteringControllerDependencies {
 export class RosteringController implements FastifyController {
   readonly prefix = '/rostering';
 
+  private readonly participationManager: IParticipationManager;
+  private readonly assignmentManager: IAssignmentManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
+
+  private readonly parked: AppConfig['parked'];
+
   constructor({
     participationManager,
     assignmentManager,
@@ -180,13 +187,6 @@ export class RosteringController implements FastifyController {
     const { parked } = config;
     this.parked = parked;
   }
-
-  private readonly participationManager: IParticipationManager;
-  private readonly assignmentManager: IAssignmentManager;
-  private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
-
-  private readonly parked: AppConfig['parked'];
 
   registerRoutes(
     app: FastifyTypedInstance,

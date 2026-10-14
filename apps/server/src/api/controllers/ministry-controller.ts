@@ -59,6 +59,11 @@ interface MinistryControllerDependencies {
 export class MinistryController implements FastifyController {
   readonly prefix = '/ministries';
 
+  private readonly ministryManager: IMinistryManager;
+  private readonly ministryInvitationManager: IMinistryInvitationManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
+
   constructor({
     ministryManager,
     ministryInvitationManager,
@@ -70,11 +75,6 @@ export class MinistryController implements FastifyController {
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
   }
-
-  private readonly ministryManager: IMinistryManager;
-  private readonly ministryInvitationManager: IMinistryInvitationManager;
-  private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

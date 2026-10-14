@@ -44,6 +44,9 @@ interface SchedulingCapabilityControllerDependencies {
 export class SchedulingCapabilityController implements FastifyController {
   readonly prefix = '/scheduling';
 
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
+
   constructor({
     activeChurchResolver,
     authorityGuard,
@@ -51,9 +54,6 @@ export class SchedulingCapabilityController implements FastifyController {
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
   }
-
-  private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

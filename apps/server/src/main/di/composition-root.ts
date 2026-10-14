@@ -267,8 +267,10 @@ export function createCompositionRoot(
     new BetterAuthRedemptionIdentityGateway();
   // One shared capture instance outside production: the redemption debug route
   // reads back what the verification-code manager just sent through it.
-  const captureEmailSender =
-    env.NODE_ENV === 'production' ? undefined : new CaptureEmailSender();
+  const isProduction = env.NODE_ENV === 'production';
+  const captureEmailSender = isProduction
+    ? undefined
+    : new CaptureEmailSender();
   const emailSender =
     overrides.emailSender ??
     captureEmailSender ??
@@ -277,7 +279,10 @@ export function createCompositionRoot(
       from: env.RESEND_FROM_EMAIL,
     });
   const verificationCodeInspector =
-    overrides.verificationCodeInspector ?? captureEmailSender;
+    overrides.verificationCodeInspector ??
+    (emailSender instanceof CaptureEmailSender
+      ? emailSender
+      : captureEmailSender);
 
   // Auth
   const scopeRepository =

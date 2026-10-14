@@ -23,6 +23,13 @@ interface DbEventManagerDependencies {
 }
 
 export class DbEventManager implements IEventManager {
+  private readonly eventRepo: EventRepository;
+  private readonly slotRepo: TimeSlotRepository;
+  private readonly assignmentRepo: AssignmentRepository;
+  private readonly availabilityRepo: AvailabilityRepository;
+  private readonly volunteerRepo: VolunteerRepository;
+  private readonly roleRepo: RoleRepository;
+
   constructor({
     eventRepo,
     slotRepo,
@@ -38,13 +45,6 @@ export class DbEventManager implements IEventManager {
     this.volunteerRepo = volunteerRepo;
     this.roleRepo = roleRepo;
   }
-
-  private readonly eventRepo: EventRepository;
-  private readonly slotRepo: TimeSlotRepository;
-  private readonly assignmentRepo: AssignmentRepository;
-  private readonly availabilityRepo: AvailabilityRepository;
-  private readonly volunteerRepo: VolunteerRepository;
-  private readonly roleRepo: RoleRepository;
 
   async getScheduleBuilderData(
     input: GetScheduleBuilderDataInput,

@@ -13,13 +13,13 @@ interface DbMinistryManagerDependencies {
 }
 
 export class DbMinistryManager implements IMinistryManager {
+  private readonly ministryRepo: MinistryRepository;
+  private readonly volunteerRepo: VolunteerRepository;
+
   constructor({ ministryRepo, volunteerRepo }: DbMinistryManagerDependencies) {
     this.ministryRepo = ministryRepo;
     this.volunteerRepo = volunteerRepo;
   }
-
-  private readonly ministryRepo: MinistryRepository;
-  private readonly volunteerRepo: VolunteerRepository;
 
   async listByLeader(input: ListMinistriesByLeaderInput): Promise<Ministry[]> {
     const { leaderId, churchId } = input;

@@ -134,6 +134,17 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly generator = new CycleEventGenerator();
   private readonly profileSeeder = new ProfileSeeder();
 
+  private readonly cycleRepository: PlanningCycleRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly templateRepository: EventTemplateRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly shiftRepository: ShiftRepository;
+  private readonly servingProfileRepository: MinistryServingProfileRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly timeSlotRepository: TimeSlotRepository;
+
   constructor({
     cycleRepository,
     eventRepository,
@@ -157,17 +168,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.ministryRepository = ministryRepository;
     this.timeSlotRepository = timeSlotRepository;
   }
-
-  private readonly cycleRepository: PlanningCycleRepository;
-  private readonly eventRepository: PlanningEventRepository;
-  private readonly templateRepository: EventTemplateRepository;
-  private readonly churchRepository: ChurchRepository;
-  private readonly unitOfWork: UnitOfWork;
-  private readonly participationRepository: MinistryParticipationRepository;
-  private readonly shiftRepository: ShiftRepository;
-  private readonly servingProfileRepository: MinistryServingProfileRepository;
-  private readonly ministryRepository: MinistryRepository;
-  private readonly timeSlotRepository: TimeSlotRepository;
 
   async generateFromTemplates(
     input: GeneratePlanningTemplatesInput,

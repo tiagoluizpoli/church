@@ -35,6 +35,12 @@ interface DbAvailabilityCheckManagerDependencies {
 }
 
 export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly availabilityCheckRepository: AvailabilityCheckRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
+
   constructor({
     participationRepository,
     eventRepository,
@@ -48,12 +54,6 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
   }
-
-  private readonly participationRepository: MinistryParticipationRepository;
-  private readonly eventRepository: PlanningEventRepository;
-  private readonly availabilityCheckRepository: AvailabilityCheckRepository;
-  private readonly notificationService: NotificationService;
-  private readonly unitOfWork: UnitOfWork;
 
   async fireAvailability(
     input: FireAvailabilityInput,

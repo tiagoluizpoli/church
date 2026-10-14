@@ -1,5 +1,8 @@
 # Church Tooling
 
+Bun and Node versions are pinned in `mise.toml` (`mise install`); `packageManager`
+in `package.json` must name the same Bun.
+
 Run commands from the repository root through existing Bun scripts. Do not
 invoke package tools directly: root scripts carry required environment, filters,
 and task ordering.

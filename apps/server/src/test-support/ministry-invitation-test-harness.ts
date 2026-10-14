@@ -49,15 +49,15 @@ export function createMinistryInvitationTestHarness({
     ministryRepository: ministryRepository,
   });
   const unitOfWork = new DrizzleUnitOfWork({ db });
-  const manager = new DbMinistryInvitationManager(
-    ministryInvitationRepository,
+  const manager = new DbMinistryInvitationManager({
+    repo: ministryInvitationRepository,
     roleRepository,
     ministryRepository,
     authorityManager,
     unitOfWork,
     outboxRepository,
-    appConfig,
-  );
+    config: appConfig,
+  });
 
   return {
     ministryInvitationRepository,

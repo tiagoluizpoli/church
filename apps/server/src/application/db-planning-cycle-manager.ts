@@ -1,6 +1,4 @@
-import 'reflect-metadata';
 import { compareCalendarDays, now, today } from '@church/time';
-import { inject, injectable } from 'tsyringe';
 import type {
   CreatePlanningCycleManagerInput,
   GetPlanningCycleManagerInput,
@@ -25,18 +23,30 @@ interface EnsureResolvedCycleInput {
   churchTimeZone: string;
 }
 
-@injectable()
+interface DbPlanningCycleManagerDependencies {
+  cycleRepository: PlanningCycleRepository;
+  eventRepository: PlanningEventRepository;
+  churchRepository: ChurchRepository;
+  unitOfWork: UnitOfWork;
+}
+
 export class DbPlanningCycleManager implements IPlanningCycleManager {
-  constructor(
-    @inject('IPlanningCycleRepository')
-    private readonly cycleRepository: PlanningCycleRepository,
-    @inject('IPlanningEventRepository')
-    private readonly eventRepository: PlanningEventRepository,
-    @inject('IChurchRepository')
-    private readonly churchRepository: ChurchRepository,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-  ) {}
+  constructor({
+    cycleRepository,
+    eventRepository,
+    churchRepository,
+    unitOfWork,
+  }: DbPlanningCycleManagerDependencies) {
+    this.cycleRepository = cycleRepository;
+    this.eventRepository = eventRepository;
+    this.churchRepository = churchRepository;
+    this.unitOfWork = unitOfWork;
+  }
+
+  private readonly cycleRepository: PlanningCycleRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly unitOfWork: UnitOfWork;
 
   async createCycle(
     input: CreatePlanningCycleManagerInput,

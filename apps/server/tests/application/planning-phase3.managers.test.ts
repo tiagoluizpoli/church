@@ -80,13 +80,13 @@ function createManagers() {
   });
 
   return {
-    cycleManager: new DbPlanningCycleManager(
+    cycleManager: new DbPlanningCycleManager({
       cycleRepository,
       eventRepository,
       churchRepository,
       unitOfWork,
-    ),
-    eventManager: new DbPlanningEventManager(
+    }),
+    eventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
       templateRepository,
@@ -97,8 +97,8 @@ function createManagers() {
       servingProfileRepository,
       ministryRepository,
       timeSlotRepository,
-    ),
-    templateManager: new DbEventTemplateManager(templateRepository),
+    }),
+    templateManager: new DbEventTemplateManager({ templateRepository }),
     timeSlotRepository,
   };
 }

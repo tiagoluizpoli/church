@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
@@ -10,7 +9,6 @@ import {
   toDate,
   today,
 } from '@church/time';
-import { inject, injectable } from 'tsyringe';
 import type {
   ChurchId,
   EventId,
@@ -119,33 +117,57 @@ interface BuildSeedContextInput {
   tx: TransactionContext;
 }
 
-@injectable()
+interface DbPlanningEventManagerDependencies {
+  cycleRepository: PlanningCycleRepository;
+  eventRepository: PlanningEventRepository;
+  templateRepository: EventTemplateRepository;
+  churchRepository: ChurchRepository;
+  unitOfWork: UnitOfWork;
+  participationRepository: MinistryParticipationRepository;
+  shiftRepository: ShiftRepository;
+  servingProfileRepository: MinistryServingProfileRepository;
+  ministryRepository: MinistryRepository;
+  timeSlotRepository: TimeSlotRepository;
+}
+
 export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly generator = new CycleEventGenerator();
   private readonly profileSeeder = new ProfileSeeder();
 
-  constructor(
-    @inject('IPlanningCycleRepository')
-    private readonly cycleRepository: PlanningCycleRepository,
-    @inject('IPlanningEventRepository')
-    private readonly eventRepository: PlanningEventRepository,
-    @inject('IEventTemplateRepository')
-    private readonly templateRepository: EventTemplateRepository,
-    @inject('IChurchRepository')
-    private readonly churchRepository: ChurchRepository,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-    @inject('IMinistryParticipationRepository')
-    private readonly participationRepository: MinistryParticipationRepository,
-    @inject('IShiftRepository')
-    private readonly shiftRepository: ShiftRepository,
-    @inject('IMinistryServingProfileRepository')
-    private readonly servingProfileRepository: MinistryServingProfileRepository,
-    @inject('IMinistryRepository')
-    private readonly ministryRepository: MinistryRepository,
-    @inject('ITimeSlotRepository')
-    private readonly timeSlotRepository: TimeSlotRepository,
-  ) {}
+  constructor({
+    cycleRepository,
+    eventRepository,
+    templateRepository,
+    churchRepository,
+    unitOfWork,
+    participationRepository,
+    shiftRepository,
+    servingProfileRepository,
+    ministryRepository,
+    timeSlotRepository,
+  }: DbPlanningEventManagerDependencies) {
+    this.cycleRepository = cycleRepository;
+    this.eventRepository = eventRepository;
+    this.templateRepository = templateRepository;
+    this.churchRepository = churchRepository;
+    this.unitOfWork = unitOfWork;
+    this.participationRepository = participationRepository;
+    this.shiftRepository = shiftRepository;
+    this.servingProfileRepository = servingProfileRepository;
+    this.ministryRepository = ministryRepository;
+    this.timeSlotRepository = timeSlotRepository;
+  }
+
+  private readonly cycleRepository: PlanningCycleRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly templateRepository: EventTemplateRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly shiftRepository: ShiftRepository;
+  private readonly servingProfileRepository: MinistryServingProfileRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly timeSlotRepository: TimeSlotRepository;
 
   async generateFromTemplates(
     input: GeneratePlanningTemplatesInput,

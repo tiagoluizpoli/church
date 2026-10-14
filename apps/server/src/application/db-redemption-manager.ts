@@ -1,5 +1,4 @@
 import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
-import { injectable } from 'tsyringe';
 import type { VolunteerId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
@@ -97,7 +96,6 @@ function isInvitationRedeemable({
  * will authenticate and call it, while this operation owns the sole database
  * transaction that creates grants and consumes the Ministry Invitation.
  */
-@injectable()
 export class DbRedemptionManager implements RedemptionManager {
   constructor({
     churchRepository,

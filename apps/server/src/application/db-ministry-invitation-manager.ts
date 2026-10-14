@@ -7,8 +7,6 @@ import {
   now as nowInstant,
   toDate,
 } from '@church/time';
-import 'reflect-metadata';
-import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
@@ -73,27 +71,43 @@ interface EnsureResendAllowedInput {
   now: Instant;
 }
 
-@injectable()
+interface DbMinistryInvitationManagerDependencies {
+  repo: MinistryInvitationRepository;
+  roleRepository: RoleRepository;
+  ministryRepository: MinistryRepository;
+  authorityManager: IAuthorityManager;
+  unitOfWork: UnitOfWork;
+  outboxRepository: OutboxRepository;
+  config: AppConfig;
+}
+
 export class DbMinistryInvitationManager implements IMinistryInvitationManager {
-  constructor(
-    @inject('IMinistryInvitationRepository')
-    private readonly repo: MinistryInvitationRepository,
-    @inject('IRoleRepository')
-    private readonly roleRepository: RoleRepository,
-    @inject('IMinistryRepository')
-    private readonly ministryRepository: MinistryRepository,
-    @inject('IAuthorityManager')
-    private readonly authorityManager: IAuthorityManager,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-    @inject('IOutboxRepository')
-    private readonly outboxRepository: OutboxRepository,
-    @inject('AppConfig') config: AppConfig,
-  ) {
+  constructor({
+    repo,
+    roleRepository,
+    ministryRepository,
+    authorityManager,
+    unitOfWork,
+    outboxRepository,
+    config,
+  }: DbMinistryInvitationManagerDependencies) {
+    this.repo = repo;
+    this.roleRepository = roleRepository;
+    this.ministryRepository = ministryRepository;
+    this.authorityManager = authorityManager;
+    this.unitOfWork = unitOfWork;
+    this.outboxRepository = outboxRepository;
     const { ministryInvitation, invitationResend } = config;
     this.invitationTtlMs = ministryInvitation.ttlMs;
     this.resendPolicy = invitationResend;
   }
+
+  private readonly repo: MinistryInvitationRepository;
+  private readonly roleRepository: RoleRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly authorityManager: IAuthorityManager;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly outboxRepository: OutboxRepository;
 
   private readonly invitationTtlMs: number;
   private readonly resendPolicy: AppConfig['invitationResend'];

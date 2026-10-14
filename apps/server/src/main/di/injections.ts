@@ -235,19 +235,70 @@ export function registerInjections(): void {
 
   // Managers
   container.register(injection.managers.assignmentManager, {
-    useClass: DbAssignmentManager,
+    useFactory: () =>
+      new DbAssignmentManager({
+        assignmentRepo: container.resolve(injection.infra.assignmentRepository),
+        auditRepo: container.resolve(injection.infra.assignmentAuditRepository),
+        shiftRepository: container.resolve(injection.infra.shiftRepository),
+        participationRepository: container.resolve(
+          injection.infra.ministryParticipationRepository,
+        ),
+        volunteerRepository: container.resolve(
+          injection.infra.volunteerRepository,
+        ),
+        availabilityRepository: container.resolve(
+          injection.infra.availabilityRepository,
+        ),
+        planningEventRepository: container.resolve(
+          injection.infra.planningEventRepository,
+        ),
+        notificationService: container.resolve(
+          injection.infra.notificationService,
+        ),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.managers.eventManager, {
-    useClass: DbEventManager,
+    useFactory: () =>
+      new DbEventManager({
+        eventRepo: container.resolve(injection.infra.eventRepository),
+        slotRepo: container.resolve(injection.infra.timeSlotRepository),
+        assignmentRepo: container.resolve(injection.infra.assignmentRepository),
+        availabilityRepo: container.resolve(
+          injection.infra.availabilityRepository,
+        ),
+        volunteerRepo: container.resolve(injection.infra.volunteerRepository),
+        roleRepo: container.resolve(injection.infra.roleRepository),
+      }),
   });
   container.register(injection.managers.eventTemplateManager, {
-    useClass: DbEventTemplateManager,
+    useFactory: () =>
+      new DbEventTemplateManager({
+        templateRepository: container.resolve(
+          injection.infra.eventTemplateRepository,
+        ),
+      }),
   });
   container.register(injection.managers.ministryManager, {
-    useClass: DbMinistryManager,
+    useFactory: () =>
+      new DbMinistryManager({
+        ministryRepo: container.resolve(injection.infra.ministryRepository),
+        volunteerRepo: container.resolve(injection.infra.volunteerRepository),
+      }),
   });
   container.register(injection.managers.ministryInvitationManager, {
-    useClass: DbMinistryInvitationManager,
+    useFactory: () =>
+      new DbMinistryInvitationManager({
+        repo: container.resolve(injection.infra.ministryInvitationRepository),
+        roleRepository: container.resolve(injection.infra.roleRepository),
+        ministryRepository: container.resolve(
+          injection.infra.ministryRepository,
+        ),
+        authorityManager: container.resolve(injection.auth.authorityManager),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+        outboxRepository: container.resolve(injection.infra.outboxRepository),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
   });
   container.register(injection.managers.invitationVerificationCodeManager, {
     useFactory: () =>
@@ -331,22 +382,131 @@ export function registerInjections(): void {
       }),
   });
   container.register(injection.managers.planningCycleManager, {
-    useClass: DbPlanningCycleManager,
+    useFactory: () =>
+      new DbPlanningCycleManager({
+        cycleRepository: container.resolve(
+          injection.infra.planningCycleRepository,
+        ),
+        eventRepository: container.resolve(
+          injection.infra.planningEventRepository,
+        ),
+        churchRepository: container.resolve(injection.infra.churchRepository),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.managers.planningEventManager, {
-    useClass: DbPlanningEventManager,
+    useFactory: () =>
+      new DbPlanningEventManager({
+        cycleRepository: container.resolve(
+          injection.infra.planningCycleRepository,
+        ),
+        eventRepository: container.resolve(
+          injection.infra.planningEventRepository,
+        ),
+        templateRepository: container.resolve(
+          injection.infra.eventTemplateRepository,
+        ),
+        churchRepository: container.resolve(injection.infra.churchRepository),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+        participationRepository: container.resolve(
+          injection.infra.ministryParticipationRepository,
+        ),
+        shiftRepository: container.resolve(injection.infra.shiftRepository),
+        servingProfileRepository: container.resolve(
+          injection.infra.ministryServingProfileRepository,
+        ),
+        ministryRepository: container.resolve(
+          injection.infra.ministryRepository,
+        ),
+        timeSlotRepository: container.resolve(
+          injection.infra.timeSlotRepository,
+        ),
+      }),
   });
   container.register(injection.config.appConfig, {
     useValue: appConfig,
   });
   container.register(injection.managers.volunteerManager, {
-    useClass: DbVolunteerManager,
+    useFactory: () =>
+      new DbVolunteerManager({
+        volunteerRepo: container.resolve(injection.infra.volunteerRepository),
+        assignmentRepo: container.resolve(injection.infra.assignmentRepository),
+        availabilityRepo: container.resolve(
+          injection.infra.availabilityRepository,
+        ),
+        notificationRepo: container.resolve(
+          injection.infra.volunteerNotificationRepository,
+        ),
+        eventRepo: container.resolve(injection.infra.eventRepository),
+        shiftRepo: container.resolve(injection.infra.shiftRepository),
+        ministryRepo: container.resolve(injection.infra.ministryRepository),
+        participationRepo: container.resolve(
+          injection.infra.ministryParticipationRepository,
+        ),
+        roleRepo: container.resolve(injection.infra.roleRepository),
+        teamRepo: container.resolve(injection.infra.teamRepository),
+        availabilityCheckRepo: container.resolve(
+          injection.infra.availabilityCheckRepository,
+        ),
+        notificationService: container.resolve(
+          injection.infra.notificationService,
+        ),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
   });
   container.register(injection.managers.participationManager, {
-    useClass: DbParticipationManager,
+    useFactory: () =>
+      new DbParticipationManager({
+        participationRepository: container.resolve(
+          injection.infra.ministryParticipationRepository,
+        ),
+        shiftRepository: container.resolve(injection.infra.shiftRepository),
+        eventRepository: container.resolve(
+          injection.infra.planningEventRepository,
+        ),
+        assignmentRepository: container.resolve(
+          injection.infra.assignmentRepository,
+        ),
+        availabilityRepository: container.resolve(
+          injection.infra.availabilityRepository,
+        ),
+        timeSlotRepository: container.resolve(
+          injection.infra.timeSlotRepository,
+        ),
+        volunteerRepository: container.resolve(
+          injection.infra.volunteerRepository,
+        ),
+        ministryRepository: container.resolve(
+          injection.infra.ministryRepository,
+        ),
+        servingProfileRepository: container.resolve(
+          injection.infra.ministryServingProfileRepository,
+        ),
+        roleRepository: container.resolve(injection.infra.roleRepository),
+        notificationService: container.resolve(
+          injection.infra.notificationService,
+        ),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.managers.availabilityCheckManager, {
-    useClass: DbAvailabilityCheckManager,
+    useFactory: () =>
+      new DbAvailabilityCheckManager({
+        participationRepository: container.resolve(
+          injection.infra.ministryParticipationRepository,
+        ),
+        eventRepository: container.resolve(
+          injection.infra.planningEventRepository,
+        ),
+        availabilityCheckRepository: container.resolve(
+          injection.infra.availabilityCheckRepository,
+        ),
+        notificationService: container.resolve(
+          injection.infra.notificationService,
+        ),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.managers.activeChurchSelectionManager, {
     useFactory: () =>

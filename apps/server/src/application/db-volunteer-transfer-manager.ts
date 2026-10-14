@@ -1,5 +1,4 @@
 import { compareInstants, fromDate, nowAsDate } from '@church/time';
-import { injectable } from 'tsyringe';
 import type {
   ChurchId,
   MinistryInvitationId,
@@ -65,7 +64,6 @@ interface RecordMismatchInput {
  * session, then the one transaction that retires one profile and births
  * another. A former-Church actor has no input here by construction.
  */
-@injectable()
 export class DbVolunteerTransferManager implements VolunteerTransferManager {
   constructor({
     churchRepository,

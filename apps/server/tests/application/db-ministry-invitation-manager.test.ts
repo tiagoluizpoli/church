@@ -1,6 +1,5 @@
 import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
-import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbMinistryInvitationManager } from '../../src/application/db-ministry-invitation-manager';
 import type {
@@ -52,15 +51,15 @@ const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
 const outboxRepository = { findLatestStatusForMinistryInvitation: vi.fn() };
 
 function createManager(): DbMinistryInvitationManager {
-  return new DbMinistryInvitationManager(
-    repo as never,
-    roleRepository as never,
-    ministryRepository as never,
-    authorityManager as never,
-    unitOfWork as never,
-    outboxRepository as never,
-    appConfig,
-  );
+  return new DbMinistryInvitationManager({
+    repo: repo as never,
+    roleRepository: roleRepository as never,
+    ministryRepository: ministryRepository as never,
+    authorityManager: authorityManager as never,
+    unitOfWork: unitOfWork as never,
+    outboxRepository: outboxRepository as never,
+    config: appConfig,
+  });
 }
 
 function baseMintInput() {

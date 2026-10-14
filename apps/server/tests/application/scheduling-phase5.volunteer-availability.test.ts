@@ -60,22 +60,30 @@ interface Phase5Manager {
 
 function createPhase5Manager(): Phase5Manager {
   const notificationSpy = createNotificationServiceSpy();
-  const volunteerManager = new DbVolunteerManager(
-    new DrizzleVolunteerRepository({ db: schedulingTestDb }),
-    new DrizzleAssignmentRepository({ db: schedulingTestDb }),
-    new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
-    new DrizzleVolunteerNotificationRepository({ db: schedulingTestDb }),
-    new DrizzleEventRepository({ db: schedulingTestDb }),
-    new DrizzleShiftRepository({ db: schedulingTestDb }),
-    new DrizzleMinistryRepository({ db: schedulingTestDb }),
-    new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
-    new DrizzleRoleRepository({ db: schedulingTestDb }),
-    new DrizzleTeamRepository({ db: schedulingTestDb }),
-    new DrizzleAvailabilityCheckRepository({ db: schedulingTestDb }),
-    notificationSpy,
-    new DrizzleUnitOfWork({ db: schedulingTestDb }),
-    appConfig,
-  );
+  const volunteerManager = new DbVolunteerManager({
+    volunteerRepo: new DrizzleVolunteerRepository({ db: schedulingTestDb }),
+    assignmentRepo: new DrizzleAssignmentRepository({ db: schedulingTestDb }),
+    availabilityRepo: new DrizzleAvailabilityRepository({
+      db: schedulingTestDb,
+    }),
+    notificationRepo: new DrizzleVolunteerNotificationRepository({
+      db: schedulingTestDb,
+    }),
+    eventRepo: new DrizzleEventRepository({ db: schedulingTestDb }),
+    shiftRepo: new DrizzleShiftRepository({ db: schedulingTestDb }),
+    ministryRepo: new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    participationRepo: new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    }),
+    roleRepo: new DrizzleRoleRepository({ db: schedulingTestDb }),
+    teamRepo: new DrizzleTeamRepository({ db: schedulingTestDb }),
+    availabilityCheckRepo: new DrizzleAvailabilityCheckRepository({
+      db: schedulingTestDb,
+    }),
+    notificationService: notificationSpy,
+    unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
+    config: appConfig,
+  });
 
   return { volunteerManager, notificationSpy };
 }

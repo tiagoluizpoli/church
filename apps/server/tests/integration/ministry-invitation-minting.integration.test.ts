@@ -1,5 +1,4 @@
 import { appConfig } from '@church/app-config';
-import 'reflect-metadata';
 import { compareInstants } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAuthorityManager } from '../../src/application/db-authority-manager';
@@ -47,15 +46,15 @@ const authorityManager = new DbAuthorityManager({
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
 const outboxRepository = new DrizzleOutboxRepository({ db: testDb });
 
-const manager = new DbMinistryInvitationManager(
-  ministryInvitationRepository,
+const manager = new DbMinistryInvitationManager({
+  repo: ministryInvitationRepository,
   roleRepository,
   ministryRepository,
   authorityManager,
   unitOfWork,
   outboxRepository,
-  appConfig,
-);
+  config: appConfig,
+});
 
 let fixture: TwoChurchIdentityFixture;
 

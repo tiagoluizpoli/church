@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import type { AppConfig } from '@church/app-config';
 import {
   addMilliseconds,
@@ -11,7 +10,6 @@ import {
   toDate,
   toTimeOfDay,
 } from '@church/time';
-import { inject, injectable } from 'tsyringe';
 import type { ChurchId, MinistryId, ShiftId } from '../domain/branded-ids';
 import type {
   CancelOwnAssignmentInput,
@@ -227,39 +225,69 @@ function scheduleVolunteerName(name: string | undefined): string | undefined {
   return lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName;
 }
 
-@injectable()
+interface DbVolunteerManagerDependencies {
+  volunteerRepo: VolunteerRepository;
+  assignmentRepo: AssignmentRepository;
+  availabilityRepo: AvailabilityRepository;
+  notificationRepo: VolunteerNotificationRepository;
+  eventRepo: EventRepository;
+  shiftRepo: ShiftRepository;
+  ministryRepo: MinistryRepository;
+  participationRepo: MinistryParticipationRepository;
+  roleRepo: RoleRepository;
+  teamRepo: TeamRepository;
+  availabilityCheckRepo: AvailabilityCheckRepository;
+  notificationService: NotificationService;
+  unitOfWork: UnitOfWork;
+  config: AppConfig;
+}
+
 export class DbVolunteerManager implements IVolunteerManager {
-  constructor(
-    @inject('IVolunteerRepository')
-    private readonly volunteerRepo: VolunteerRepository,
-    @inject('IAssignmentRepository')
-    private readonly assignmentRepo: AssignmentRepository,
-    @inject('IAvailabilityRepository')
-    private readonly availabilityRepo: AvailabilityRepository,
-    @inject('IVolunteerNotificationRepository')
-    private readonly notificationRepo: VolunteerNotificationRepository,
-    @inject('IEventRepository')
-    private readonly eventRepo: EventRepository,
-    @inject('IShiftRepository')
-    private readonly shiftRepo: ShiftRepository,
-    @inject('IMinistryRepository')
-    private readonly ministryRepo: MinistryRepository,
-    @inject('IMinistryParticipationRepository')
-    private readonly participationRepo: MinistryParticipationRepository,
-    @inject('IRoleRepository')
-    private readonly roleRepo: RoleRepository,
-    @inject('ITeamRepository')
-    private readonly teamRepo: TeamRepository,
-    @inject('IAvailabilityCheckRepository')
-    private readonly availabilityCheckRepo: AvailabilityCheckRepository,
-    @inject('INotificationService')
-    private readonly notificationService: NotificationService,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-    @inject('AppConfig') config: AppConfig,
-  ) {
+  constructor({
+    volunteerRepo,
+    assignmentRepo,
+    availabilityRepo,
+    notificationRepo,
+    eventRepo,
+    shiftRepo,
+    ministryRepo,
+    participationRepo,
+    roleRepo,
+    teamRepo,
+    availabilityCheckRepo,
+    notificationService,
+    unitOfWork,
+    config,
+  }: DbVolunteerManagerDependencies) {
+    this.volunteerRepo = volunteerRepo;
+    this.assignmentRepo = assignmentRepo;
+    this.availabilityRepo = availabilityRepo;
+    this.notificationRepo = notificationRepo;
+    this.eventRepo = eventRepo;
+    this.shiftRepo = shiftRepo;
+    this.ministryRepo = ministryRepo;
+    this.participationRepo = participationRepo;
+    this.roleRepo = roleRepo;
+    this.teamRepo = teamRepo;
+    this.availabilityCheckRepo = availabilityCheckRepo;
+    this.notificationService = notificationService;
+    this.unitOfWork = unitOfWork;
     this.cancelLeadTimeDays = config.assignment.cancelLeadTimeDays;
   }
+
+  private readonly volunteerRepo: VolunteerRepository;
+  private readonly assignmentRepo: AssignmentRepository;
+  private readonly availabilityRepo: AvailabilityRepository;
+  private readonly notificationRepo: VolunteerNotificationRepository;
+  private readonly eventRepo: EventRepository;
+  private readonly shiftRepo: ShiftRepository;
+  private readonly ministryRepo: MinistryRepository;
+  private readonly participationRepo: MinistryParticipationRepository;
+  private readonly roleRepo: RoleRepository;
+  private readonly teamRepo: TeamRepository;
+  private readonly availabilityCheckRepo: AvailabilityCheckRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
 
   private readonly cancelLeadTimeDays: number;
 

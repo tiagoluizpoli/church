@@ -57,38 +57,57 @@ import {
 
 function createParticipationManager(): DbParticipationManager {
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
-  return new DbParticipationManager(
-    new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
-    new DrizzleShiftRepository({ db: schedulingTestDb }),
-    new DrizzlePlanningEventRepository({ db: schedulingTestDb }),
-    new DrizzleAssignmentRepository({ db: schedulingTestDb }),
-    new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
-    new DrizzleTimeSlotRepository({ db: schedulingTestDb }),
-    new DrizzleVolunteerRepository({ db: schedulingTestDb }),
-    new DrizzleMinistryRepository({ db: schedulingTestDb }),
-    new DrizzleMinistryServingProfileRepository({ db: schedulingTestDb }),
-    new DrizzleRoleRepository({ db: schedulingTestDb }),
-    createNotificationServiceSpy(),
+  return new DbParticipationManager({
+    participationRepository: new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    }),
+    shiftRepository: new DrizzleShiftRepository({ db: schedulingTestDb }),
+    eventRepository: new DrizzlePlanningEventRepository({
+      db: schedulingTestDb,
+    }),
+    assignmentRepository: new DrizzleAssignmentRepository({
+      db: schedulingTestDb,
+    }),
+    availabilityRepository: new DrizzleAvailabilityRepository({
+      db: schedulingTestDb,
+    }),
+    timeSlotRepository: new DrizzleTimeSlotRepository({ db: schedulingTestDb }),
+    volunteerRepository: new DrizzleVolunteerRepository({
+      db: schedulingTestDb,
+    }),
+    ministryRepository: new DrizzleMinistryRepository({ db: schedulingTestDb }),
+    servingProfileRepository: new DrizzleMinistryServingProfileRepository({
+      db: schedulingTestDb,
+    }),
+    roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
+    notificationService: createNotificationServiceSpy(),
     unitOfWork,
-  );
+  });
 }
 
 function createAssignmentManager(input?: {
   volunteerRepository?: DrizzleVolunteerRepository;
 }): DbAssignmentManager {
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
-  return new DbAssignmentManager(
-    new DrizzleAssignmentRepository({ db: schedulingTestDb }),
-    new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
-    new DrizzleShiftRepository({ db: schedulingTestDb }),
-    new DrizzleMinistryParticipationRepository({ db: schedulingTestDb }),
-    input?.volunteerRepository ??
+  return new DbAssignmentManager({
+    assignmentRepo: new DrizzleAssignmentRepository({ db: schedulingTestDb }),
+    auditRepo: new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
+    shiftRepository: new DrizzleShiftRepository({ db: schedulingTestDb }),
+    participationRepository: new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    }),
+    volunteerRepository:
+      input?.volunteerRepository ??
       new DrizzleVolunteerRepository({ db: schedulingTestDb }),
-    new DrizzleAvailabilityRepository({ db: schedulingTestDb }),
-    new DrizzlePlanningEventRepository({ db: schedulingTestDb }),
-    createNotificationServiceSpy(),
+    availabilityRepository: new DrizzleAvailabilityRepository({
+      db: schedulingTestDb,
+    }),
+    planningEventRepository: new DrizzlePlanningEventRepository({
+      db: schedulingTestDb,
+    }),
+    notificationService: createNotificationServiceSpy(),
     unitOfWork,
-  );
+  });
 }
 
 interface SeedShiftInput {

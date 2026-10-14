@@ -1,8 +1,6 @@
 import type { AppConfig } from '@church/app-config';
 import { env } from '@church/env/server';
 import { nowAsDate, toDate } from '@church/time';
-import 'reflect-metadata';
-import { injectable } from 'tsyringe';
 import type { MinistryId, VolunteerId } from '../domain/branded-ids';
 import type {
   DrainOnceInput,
@@ -40,7 +38,6 @@ import {
   nextRetryAt,
 } from '../domain/services/outbox-retry-policy';
 
-@injectable()
 export class DbOutboxDrainer implements IOutboxDrainer {
   constructor({
     outboxRepository,

@@ -1,6 +1,4 @@
-import 'reflect-metadata';
 import { now, toDate } from '@church/time';
-import { inject, injectable } from 'tsyringe';
 import { TeamRosterMutationPolicy } from '../domain/authority/team-roster-mutation-policy';
 import {
   type AssignmentId,
@@ -58,28 +56,50 @@ interface NotifyReassignmentInput {
   assignmentId: AssignmentId;
 }
 
-@injectable()
+interface DbAssignmentManagerDependencies {
+  assignmentRepo: AssignmentRepository;
+  auditRepo: AssignmentAuditRepository;
+  shiftRepository: ShiftRepository;
+  participationRepository: MinistryParticipationRepository;
+  volunteerRepository: VolunteerRepository;
+  availabilityRepository: AvailabilityRepository;
+  planningEventRepository: PlanningEventRepository;
+  notificationService: NotificationService;
+  unitOfWork: UnitOfWork;
+}
+
 export class DbAssignmentManager implements IAssignmentManager {
-  constructor(
-    @inject('IAssignmentRepository')
-    private readonly assignmentRepo: AssignmentRepository,
-    @inject('IAssignmentAuditRepository')
-    private readonly auditRepo: AssignmentAuditRepository,
-    @inject('IShiftRepository')
-    private readonly shiftRepository: ShiftRepository,
-    @inject('IMinistryParticipationRepository')
-    private readonly participationRepository: MinistryParticipationRepository,
-    @inject('IVolunteerRepository')
-    private readonly volunteerRepository: VolunteerRepository,
-    @inject('IAvailabilityRepository')
-    private readonly availabilityRepository: AvailabilityRepository,
-    @inject('IPlanningEventRepository')
-    private readonly planningEventRepository: PlanningEventRepository,
-    @inject('INotificationService')
-    private readonly notificationService: NotificationService,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-  ) {}
+  constructor({
+    assignmentRepo,
+    auditRepo,
+    shiftRepository,
+    participationRepository,
+    volunteerRepository,
+    availabilityRepository,
+    planningEventRepository,
+    notificationService,
+    unitOfWork,
+  }: DbAssignmentManagerDependencies) {
+    this.assignmentRepo = assignmentRepo;
+    this.auditRepo = auditRepo;
+    this.shiftRepository = shiftRepository;
+    this.participationRepository = participationRepository;
+    this.volunteerRepository = volunteerRepository;
+    this.availabilityRepository = availabilityRepository;
+    this.planningEventRepository = planningEventRepository;
+    this.notificationService = notificationService;
+    this.unitOfWork = unitOfWork;
+  }
+
+  private readonly assignmentRepo: AssignmentRepository;
+  private readonly auditRepo: AssignmentAuditRepository;
+  private readonly shiftRepository: ShiftRepository;
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly volunteerRepository: VolunteerRepository;
+  private readonly availabilityRepository: AvailabilityRepository;
+  private readonly planningEventRepository: PlanningEventRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
 
   async getAssignment(input: GetAssignmentInput): Promise<Assignment> {
     return this.assignmentRepo.getById(input.churchId, input.assignmentId);

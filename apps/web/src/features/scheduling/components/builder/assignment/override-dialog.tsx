@@ -49,9 +49,7 @@ export function OverrideDialog({
   const name = formatVolunteerName(volunteerName);
   const conflictText = isNotQualified
     ? `${name} isn't qualified for ${roleLabel ?? 'this role'}`
-    : conflictType === 'double_booked'
-      ? `${name} is double-booked`
-      : `${name} is unavailable`;
+    : `${name} is unavailable`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

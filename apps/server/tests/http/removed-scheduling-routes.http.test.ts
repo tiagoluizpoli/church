@@ -36,6 +36,12 @@ describe('removed scheduling routes', () => {
       method: 'PUT' as const,
       url: '/api/v1/events/some-id/slots/slot-id/requirements',
     },
+    { method: 'POST' as const, url: '/api/v1/events/some-id/reminders' },
+    { method: 'POST' as const, url: '/api/v1/events/some-id/cancel' },
+    { method: 'POST' as const, url: '/api/v1/assignments' },
+    { method: 'POST' as const, url: '/api/v1/assignments/some-id/override' },
+    { method: 'DELETE' as const, url: '/api/v1/assignments/some-id' },
+    { method: 'GET' as const, url: '/api/v1/assignments/some-id/audit' },
   ];
 
   for (const route of routes) {

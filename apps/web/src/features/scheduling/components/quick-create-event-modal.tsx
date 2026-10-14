@@ -14,15 +14,10 @@ import { Label } from '@/components/ui/label';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { adminApi } from '@/utils/api-instances';
 
-export type QuickCreateEventModalTarget = {
-  kind: 'planning-cycle';
-  cycleId: string;
-};
-
 interface QuickCreateEventModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  target: QuickCreateEventModalTarget;
+  cycleId: string;
   onCreated: () => void;
 }
 
@@ -43,10 +38,8 @@ interface DayRangeBounds {
   end: string;
 }
 
-/** A day range's full span, per the event's own calendar days (FR: hourly
- * events carry all their slots within one day; day-based events span the
- * full start-to-end date range) — read in the Church Timezone, not UTC
- * (#149). Start is `start`'s church-local midnight; end is the last
+/** The full span of the chosen calendar days, read in the Church Timezone,
+ * not UTC (#149). Start is `start`'s church-local midnight; end is the last
  * millisecond before church-local midnight after `end`. */
 function toDayRangeBounds({
   start,
@@ -71,7 +64,7 @@ function toDayRangeBounds({
 export function QuickCreateEventModal({
   open,
   onOpenChange,
-  target,
+  cycleId,
   onCreated,
 }: QuickCreateEventModalProps) {
   const { churchTimezone } = useTimezone();
@@ -82,7 +75,7 @@ export function QuickCreateEventModal({
 
   const create = useMutation({
     mutationFn: (body: CreateEventFormValues) =>
-      adminApi.createPlanningEvent(target.cycleId, body),
+      adminApi.createPlanningEvent(cycleId, body),
   });
 
   // An empty end date means a single-day Event.
@@ -114,7 +107,7 @@ export function QuickCreateEventModal({
       onOpenChange(false);
       resetForm();
       await queryClient.invalidateQueries({
-        queryKey: ['planning-cycle-details', target.cycleId],
+        queryKey: ['planning-cycle-details', cycleId],
       });
       toast.success('Event added to cycle');
     } catch (err) {

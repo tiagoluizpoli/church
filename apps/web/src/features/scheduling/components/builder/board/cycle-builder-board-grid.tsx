@@ -238,7 +238,6 @@ export function CycleBuilderBoardGrid({
                                           cellDerived?.recommendations ?? {
                                             safe: [],
                                             needsResponse: [],
-                                            conflicts: [],
                                           };
                                         const isEditable =
                                           requirement.canMutateAssignments ??
@@ -282,9 +281,6 @@ export function CycleBuilderBoardGrid({
                                             suggestions={suggestionGroups.safe}
                                             needsResponseSuggestions={
                                               suggestionGroups.needsResponse
-                                            }
-                                            conflictSuggestions={
-                                              suggestionGroups.conflicts
                                             }
                                             slotLabel={
                                               slot.label ?? 'this shift'

@@ -16,19 +16,23 @@ import { isOptimisticAssignmentId } from './use-cycle-builder.optimistic';
 import { randomId } from '@/shared/utils/id';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
+interface CreateAssignmentBody {
+  volunteerId: string;
+  roleId: string;
+}
+
 export interface CreateAssignmentInput {
   shiftId: string;
-  body: {
-    volunteerId: string;
-    roleId: string;
-  };
+  body: CreateAssignmentBody;
+}
+
+interface ReassignAssignmentBody {
+  volunteerId: string;
 }
 
 export interface ReassignAssignmentInput {
   assignmentId: string;
-  body: {
-    volunteerId: string;
-  };
+  body: ReassignAssignmentBody;
 }
 
 export interface CycleBuilderMutations {
@@ -65,6 +69,11 @@ interface OverrideState {
 interface UseCycleBuilderActionsInput extends CycleBuilderMutations {
   data: CycleBuilderData;
   onAssignmentApplied?: () => void;
+}
+
+interface FailedWriteEntry {
+  failedWrite: FailedAssignmentWrite;
+  input: CycleBuilderCellSelectInput;
 }
 
 interface ApplyAssignmentInput {
@@ -125,12 +134,7 @@ export function useCycleBuilderActions({
 }: UseCycleBuilderActionsInput) {
   const [collision, setCollision] = useState<CollisionState | null>(null);
   const [override, setOverride] = useState<OverrideState | null>(null);
-  const [failedWrites, setFailedWrites] = useState<
-    Array<{
-      failedWrite: FailedAssignmentWrite;
-      input: CycleBuilderCellSelectInput;
-    }>
-  >([]);
+  const [failedWrites, setFailedWrites] = useState<FailedWriteEntry[]>([]);
   const [announcement, setAnnouncement] = useState('');
   const isSaving =
     createAssignment.isPending ||

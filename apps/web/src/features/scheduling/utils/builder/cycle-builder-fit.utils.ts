@@ -10,47 +10,30 @@ import type {
  * so no two gestures can enforce different rules (B-2).
  *
  * `ready`       — qualified and genuinely free: the obvious drop target.
- * `override`    — qualified but unavailable or double-booked. Still assignable;
- *                 overriding is a real workflow, it just must not look routine —
- *                 and FR-016 requires a confirmation before it is accepted, which is
- *                 why the tier carries `conflictType` rather than leaving each
- *                 caller to re-derive it. A caller holding the fit cannot drop
- *                 the conflict on the floor without the compiler noticing.
+ * `override`    — qualified but unavailable. Still assignable; overriding is a
+ *                 real workflow, it just must not look routine — and FR-016
+ *                 requires a confirmation before it is accepted.
  * `unqualified` — not qualified for this role, but still assignable: the
  *                 server only warns `NOT_QUALIFIED`, so hard-filtering here would
  *                 make the rail's "the leader can overrule" stance a lie
  *                 (B-2). Ranked last and routed to `OverrideDialog`'s
  *                 `not_qualified` variant by every gesture via
  *                 `overrideKindForFit()`.
- * `none`        — not a candidate for this shift at all (not in the ministry,
- *                 not in the cycle). A hard `NOT_IN_MINISTRY` server-side, so
- *                 no gesture may offer it.
+ * `none`        — no gesture may offer it: not a candidate for this shift at
+ *                 all (a hard `NOT_IN_MINISTRY` server-side), or double-booked
+ *                 (a hard `DOUBLE_BOOKED`, never overridable).
  */
 export type ShiftRoleFit =
   | { tier: 'ready' }
-  | { tier: 'override'; conflictType: SoftConflictType }
-  | { tier: 'unqualified'; conflictType?: SoftConflictType }
+  | { tier: 'override' }
+  | { tier: 'unqualified' }
   | { tier: 'none' };
-
-/** Mirrors the picker's own conflict vocabulary (`recommendations()`). */
-export type SoftConflictType = 'double_booked' | 'unavailable';
-
-/**
- * The fit of someone already known to be in a shift's eligible pool. `none`
- * means "not a candidate for this shift at all", which is unreachable once the
- * caller is holding a member of `shift.eligibleVolunteers` — so
- * `shiftRoleFitForEligibleVolunteer` returns this narrower type and its callers
- * need no `none` guard. Only the id-based `volunteerFitForShiftRole` (which can
- * fail to find anyone) widens back to `ShiftRoleFit`.
- */
-export type EligibleShiftRoleFit = Exclude<ShiftRoleFit, { tier: 'none' }>;
 
 /**
  * Every tier a leader may actually commit — `ShiftRoleFit` minus `none`.
- * Includes `unqualified`: assignable with an override reason, not filtered
- * out (B-2).
+ * Includes `unqualified`: assignable with an override, not filtered out (B-2).
  */
-export type AssignableFitTier = EligibleShiftRoleFit['tier'];
+export type AssignableFitTier = Exclude<ShiftRoleFit, { tier: 'none' }>['tier'];
 
 /**
  * What a caller would have to justify. Builder candidates are NOT
@@ -60,7 +43,7 @@ export type AssignableFitTier = EligibleShiftRoleFit['tier'];
  * for its own suggestion groups: nobody is ever *recommended* into a reason
  * they did not ask for.
  */
-export type AssignmentOverrideKind = SoftConflictType | 'not_qualified';
+export type AssignmentOverrideKind = 'unavailable' | 'not_qualified';
 
 interface OverrideKindForFitInput {
   fit: ShiftRoleFit;
@@ -76,7 +59,7 @@ export function overrideKindForFit({
   fit,
 }: OverrideKindForFitInput): AssignmentOverrideKind | undefined {
   if (fit.tier === 'unqualified') return 'not_qualified';
-  if (fit.tier === 'override') return fit.conflictType;
+  if (fit.tier === 'override') return 'unavailable';
   return undefined;
 }
 
@@ -86,8 +69,8 @@ interface IsAssignableFitInput {
 
 /**
  * Whether a leader may commit this pick at all. Only `none` (not a candidate
- * for this shift — not in the ministry, not in the cycle) is a hard no;
- * qualification, like availability, is overridable with a reason (B-2).
+ * for this shift, or double-booked) is a hard no; qualification, like
+ * availability, is overridable (B-2).
  *
  * Written as an exhaustive switch rather than `tier !== 'none'` so that adding
  * a fifth tier fails to compile here instead of silently defaulting to
@@ -142,25 +125,15 @@ interface ShiftRoleFitForEligibleVolunteerInput {
  * that walk `shift.eligibleVolunteers` (the ranking, the picker's list, its
  * recommendations) use this directly, so sharing the rule costs them a field
  * read rather than a scan of the whole eligible list per person.
- *
- * Returns `EligibleShiftRoleFit`, not `ShiftRoleFit`: being handed a member of
- * the eligible pool is exactly what rules `none` out, so callers get that
- * guarantee from the type instead of re-asserting it with a filter that can
- * never fire.
  */
 export function shiftRoleFitForEligibleVolunteer({
   volunteer,
   roleId,
-}: ShiftRoleFitForEligibleVolunteerInput): EligibleShiftRoleFit {
-  const conflictType: SoftConflictType | undefined = volunteer.hasConflict
-    ? 'double_booked'
-    : volunteer.isAvailable
-      ? undefined
-      : 'unavailable';
+}: ShiftRoleFitForEligibleVolunteerInput): ShiftRoleFit {
+  if (volunteer.hasConflict) return { tier: 'none' };
   if (!volunteer.qualifiedRoleIds.includes(roleId))
-    return { tier: 'unqualified', conflictType };
-  if (!conflictType) return { tier: 'ready' };
-  return { tier: 'override', conflictType };
+    return { tier: 'unqualified' };
+  return volunteer.isAvailable ? { tier: 'ready' } : { tier: 'override' };
 }
 
 interface VolunteerFitForShiftRoleInput {

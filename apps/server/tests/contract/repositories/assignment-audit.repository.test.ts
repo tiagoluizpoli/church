@@ -65,19 +65,6 @@ class MockAssignmentAuditRepository implements AssignmentAuditRepository {
     return au;
   }
 
-  async listByAssignment(
-    churchId: ChurchId,
-    assignmentId: AssignmentId,
-  ): Promise<AssignmentAudit[]> {
-    return Array.from(this.audits.values())
-      .filter(
-        (au) => au.churchId === churchId && au.assignmentId === assignmentId,
-      )
-      .sort((a, b) =>
-        compareInstants({ left: b.occurredAt, right: a.occurredAt }),
-      );
-  }
-
   async listByChurch(churchId: ChurchId): Promise<AssignmentAudit[]> {
     return Array.from(this.audits.values())
       .filter((au) => au.churchId === churchId)

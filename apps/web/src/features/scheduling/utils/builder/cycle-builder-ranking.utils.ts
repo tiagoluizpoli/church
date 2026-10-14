@@ -57,7 +57,8 @@ function fitRank({ volunteer, roleId }: FitRankInput): number {
   const { tier } = shiftRoleFitForEligibleVolunteer({ volunteer, roleId });
   if (tier === 'ready') return 0;
   if (tier === 'override') return 1;
-  return 2;
+  if (tier === 'unqualified') return 2;
+  return 3;
 }
 
 /**

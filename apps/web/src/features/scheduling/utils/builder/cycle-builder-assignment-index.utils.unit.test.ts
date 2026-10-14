@@ -315,7 +315,8 @@ describe('candidates', () => {
 
     expect(byId.get('free')).toBe('available');
     expect(byId.get('silent')).toBe('no_response');
-    expect(byId.get('clashing')).toBe('unavailable');
+    // Double-booked is refused outright (DOUBLE_BOOKED), so it is not listed.
+    expect(byId.has('clashing')).toBe(false);
   });
 
   it('carries the cycle workload and the assignments held elsewhere', () => {
@@ -384,17 +385,17 @@ describe('recommendations', () => {
     });
 
     // Recommending is a stronger claim than listing: `candidates()` offers
-    // these three, but nobody is *suggested* into an override reason they did
-    // not go looking for. This is the `isRecommendableFit()` bar.
+    // the two who are not double-booked, but nobody is *suggested* into an
+    // override reason they did not go looking for. This is the
+    // `isRecommendableFit()` bar.
     expect(groups.safe).toEqual([]);
     expect(groups.needsResponse).toEqual([]);
-    expect(groups.conflicts).toEqual([]);
     expect(
       candidates({ shift, roleId: 'role-1', index: indexFor(makeData()) }),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
   });
 
-  it('splits qualified volunteers into safe, needs-response and conflict groups', () => {
+  it('splits qualified volunteers into safe and needs-response groups, never suggesting the double-booked', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({ volunteerId: 'free', volunteerName: 'Ana' }),
@@ -419,8 +420,6 @@ describe('recommendations', () => {
 
     expect(groups.safe.map((row) => row.id)).toEqual(['free']);
     expect(groups.needsResponse.map((row) => row.id)).toEqual(['silent']);
-    expect(groups.conflicts.map((row) => row.id)).toEqual(['clashing']);
-    expect(groups.conflicts[0].conflictType).toBe('double_booked');
   });
 
   it('orders safe picks by longest-since-served ahead of alphabetical order', () => {
@@ -523,13 +522,18 @@ describe('recommendations', () => {
 });
 
 describe('assignableFits', () => {
-  it('offers every eligible tier including unqualified, and honours exclusions', () => {
+  it('offers every assignable tier including unqualified, and honours exclusions', () => {
     const shift = makeShift({
       eligibleVolunteers: [
         makeEligible({ volunteerId: 'ready', volunteerName: 'Ana' }),
         makeEligible({
           volunteerId: 'override',
           volunteerName: 'Bruno',
+          isAvailable: false,
+        }),
+        makeEligible({
+          volunteerId: 'double-booked',
+          volunteerName: 'Eva',
           hasConflict: true,
         }),
         makeEligible({
@@ -551,6 +555,7 @@ describe('assignableFits', () => {
     expect(fits.get('override')).toBe('override');
     expect(fits.get('unqualified')).toBe('unqualified');
     expect(fits.has('excluded')).toBe(false);
+    expect(fits.has('double-booked')).toBe(false);
   });
 
   it('excludes nobody when no exclusion set is supplied', () => {

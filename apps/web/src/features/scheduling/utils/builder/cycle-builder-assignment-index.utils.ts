@@ -16,6 +16,7 @@ import {
 } from './cycle-builder-date.utils';
 import {
   type AssignableFitTier,
+  isAssignableFit,
   isRecommendableFit,
   shiftRoleFitForEligibleVolunteer,
 } from './cycle-builder-fit.utils';
@@ -138,40 +139,36 @@ export function candidates({
   index,
 }: ShiftRoleCandidatesInput): PickerVolunteer[] {
   const assignedVolunteerIds = assignedVolunteerIdsForShift({ shift });
-  // No assignability filter: everyone in `shift.eligibleVolunteers` is by
-  // definition a candidate for it, which is what `EligibleShiftRoleFit`
-  // encodes. The `isAssignableFit()` call that used to sit here could never
-  // remove anyone — it read as a safety net while doing nothing.
-  return shift.eligibleVolunteers
-    .filter((volunteer) => !assignedVolunteerIds.has(volunteer.volunteerId))
-    .map((volunteer) => ({
-      volunteer,
-      fit: shiftRoleFitForEligibleVolunteer({ volunteer, roleId }),
-    }))
-    .map(({ volunteer, fit }) => ({
-      id: volunteer.volunteerId,
-      name: volunteer.volunteerName,
-      membership: {
-        ministryAccessLevel: volunteer.ministryAccessLevel,
-        leadTeamIds: volunteer.leadTeamIds,
-      },
-      availabilityStatus: volunteer.hasConflict
-        ? 'unavailable'
-        : volunteer.isAvailable
-          ? 'available'
-          : 'no_response',
-      // Not filtered out (B-2): the picker still lists an unqualified
-      // candidate, badged so the pick reads as needing a reason rather than
-      // being a free one.
-      isQualified: fit.tier !== 'unqualified',
-      // A candidate is never assigned to *this* shift (filtered above), so all
-      // of their active assignments are elsewhere — the shift-scoped "other"
-      // map and the cycle-wide one coincide here.
-      alreadyAssignedCount: index.workload.get(volunteer.volunteerId) ?? 0,
-      alreadyServingAssignments: index.activeAssignmentsByVolunteerId.get(
-        volunteer.volunteerId,
-      ),
-    }));
+  return (
+    shift.eligibleVolunteers
+      .filter((volunteer) => !assignedVolunteerIds.has(volunteer.volunteerId))
+      .map((volunteer) => ({
+        volunteer,
+        fit: shiftRoleFitForEligibleVolunteer({ volunteer, roleId }),
+      }))
+      // Double-booked candidates are refused outright (DOUBLE_BOOKED): unlisted.
+      .filter(({ fit }) => isAssignableFit({ fit }))
+      .map(({ volunteer, fit }) => ({
+        id: volunteer.volunteerId,
+        name: volunteer.volunteerName,
+        membership: {
+          ministryAccessLevel: volunteer.ministryAccessLevel,
+          leadTeamIds: volunteer.leadTeamIds,
+        },
+        availabilityStatus: volunteer.isAvailable ? 'available' : 'no_response',
+        // Not filtered out (B-2): the picker still lists an unqualified
+        // candidate, badged so the pick reads as needing a reason rather than
+        // being a free one.
+        isQualified: fit.tier !== 'unqualified',
+        // A candidate is never assigned to *this* shift (filtered above), so all
+        // of their active assignments are elsewhere — the shift-scoped "other"
+        // map and the cycle-wide one coincide here.
+        alreadyAssignedCount: index.workload.get(volunteer.volunteerId) ?? 0,
+        alreadyServingAssignments: index.activeAssignmentsByVolunteerId.get(
+          volunteer.volunteerId,
+        ),
+      }))
+  );
 }
 
 interface ShiftRoleRecommendationsInput {
@@ -206,7 +203,6 @@ export function recommendations({
     },
     status,
     workloadCount: index.workload.get(volunteer.volunteerId) ?? 0,
-    conflictType: volunteer.hasConflict ? 'double_booked' : 'unavailable',
     alreadyServingAssignments: index.activeAssignmentsByVolunteerId.get(
       volunteer.volunteerId,
     ),
@@ -219,7 +215,7 @@ export function recommendations({
   );
   return {
     safe: eligible
-      .filter((volunteer) => volunteer.isAvailable && !volunteer.hasConflict)
+      .filter((volunteer) => volunteer.isAvailable)
       .sort((left, right) => {
         const served =
           lastServedMillis({ lastServedAt: left.lastServedAt }) -
@@ -234,13 +230,9 @@ export function recommendations({
       .slice(0, 5)
       .map((volunteer) => toSuggestion(volunteer, 'available')),
     needsResponse: eligible
-      .filter((volunteer) => !volunteer.isAvailable && !volunteer.hasConflict)
+      .filter((volunteer) => !volunteer.isAvailable)
       .slice(0, 5)
       .map((volunteer) => toSuggestion(volunteer, 'needs_response')),
-    conflicts: eligible
-      .filter((volunteer) => volunteer.hasConflict)
-      .slice(0, 5)
-      .map((volunteer) => toSuggestion(volunteer, 'conflict')),
   };
 }
 
@@ -267,12 +259,8 @@ export function assignableFits({
   const fits = new Map<string, AssignableFitTier>();
   for (const volunteer of shift.eligibleVolunteers) {
     if (excludedVolunteerIds?.has(volunteer.volunteerId)) continue;
-    // `EligibleShiftRoleFit['tier']` *is* `AssignableFitTier`, so this needs no
-    // guard and no cast — the previous `isAssignableFit()` test could never
-    // fail, and the `as AssignableFitTier` only existed to paper over the
-    // widened return type it was checking against.
-    const { tier } = shiftRoleFitForEligibleVolunteer({ volunteer, roleId });
-    fits.set(volunteer.volunteerId, tier);
+    const fit = shiftRoleFitForEligibleVolunteer({ volunteer, roleId });
+    if (fit.tier !== 'none') fits.set(volunteer.volunteerId, fit.tier);
   }
   return fits;
 }

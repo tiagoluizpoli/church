@@ -26,9 +26,13 @@ process.env.VITE_SERVER_URL = 'http://localhost:3000';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+    alias: [
+      {
+        find: /^@\/tests\//,
+        replacement: `${path.resolve(__dirname, 'tests')}/`,
+      },
+      { find: /^@\//, replacement: `${path.resolve(__dirname, 'src')}/` },
+    ],
   },
   test: {
     globals: true,

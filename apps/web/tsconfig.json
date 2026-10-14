@@ -13,6 +13,7 @@
     "rootDirs": ["."],
     "baseUrl": ".",
     "paths": {
+      "@/tests/*": ["./tests/*"],
       "@/*": ["./src/*"],
       "server/*": ["../server/*"]
     }

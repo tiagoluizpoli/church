@@ -16,9 +16,20 @@ const UNIT_ENV = {
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@': resolve(import.meta.dirname, './src'),
-    },
+    alias: [
+      {
+        find: /^@\/tests\//,
+        replacement: `${resolve(import.meta.dirname, 'tests')}/`,
+      },
+      {
+        find: /^@\/seeds\//,
+        replacement: `${resolve(import.meta.dirname, 'seeds')}/`,
+      },
+      {
+        find: /^@\//,
+        replacement: `${resolve(import.meta.dirname, 'src')}/`,
+      },
+    ],
   },
   test: {
     coverage: {

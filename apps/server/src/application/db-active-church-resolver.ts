@@ -1,4 +1,3 @@
-import { inject, injectable } from 'tsyringe';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type {
   ActiveChurchResolution,
@@ -28,18 +27,30 @@ interface ResolveAfterMembershipRemovedInput {
   formerChurchId: ChurchId;
 }
 
-@injectable()
+interface DbActiveChurchResolverDependencies {
+  actorRepository: AuthorityActorRepository;
+  membershipRepository: ChurchMembershipRepository;
+  churchRepository: ChurchRepository;
+  unitOfWork: UnitOfWork;
+}
+
 export class DbActiveChurchResolver implements IActiveChurchResolver {
-  constructor(
-    @inject('IAuthorityActorRepository')
-    private readonly actorRepository: AuthorityActorRepository,
-    @inject('IChurchMembershipRepository')
-    private readonly membershipRepository: ChurchMembershipRepository,
-    @inject('IChurchRepository')
-    private readonly churchRepository: ChurchRepository,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-  ) {}
+  private readonly actorRepository: AuthorityActorRepository;
+  private readonly membershipRepository: ChurchMembershipRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly unitOfWork: UnitOfWork;
+
+  constructor({
+    actorRepository,
+    membershipRepository,
+    churchRepository,
+    unitOfWork,
+  }: DbActiveChurchResolverDependencies) {
+    this.actorRepository = actorRepository;
+    this.membershipRepository = membershipRepository;
+    this.churchRepository = churchRepository;
+    this.unitOfWork = unitOfWork;
+  }
 
   async resolve(
     input: ResolveActiveChurchInput,

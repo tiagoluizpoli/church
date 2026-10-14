@@ -50,11 +50,11 @@ function createActiveChurchResolution() {
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new EventController(
-    eventManager as never,
-    activeChurchResolver as never,
-    authorityGuard as never,
-  );
+  const controller = new EventController({
+    eventManager: eventManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    authorityGuard: authorityGuard as never,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

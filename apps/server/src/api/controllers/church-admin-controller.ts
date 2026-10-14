@@ -1,6 +1,4 @@
-import 'reflect-metadata';
 import { parseTimeOfDay } from '@church/time';
-import { inject, injectable } from 'tsyringe';
 import type { z } from 'zod';
 import {
   ChurchId,
@@ -98,26 +96,44 @@ const updatePlanningEventBodySchema = manualPlanningEventBodySchema.partial();
 type ManualPlanningEventBody = z.infer<typeof manualPlanningEventBodySchema>;
 type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
 
-@injectable()
+interface ChurchAdminControllerDependencies {
+  planningCycleManager: IPlanningCycleManager;
+  eventTemplateManager: IEventTemplateManager;
+  planningEventManager: IPlanningEventManager;
+  activeChurchResolver: IActiveChurchResolver;
+  participationManager: IParticipationManager;
+  ministryManager: IMinistryManager;
+  authorityGuard: AuthorityGuard;
+}
+
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
 
-  constructor(
-    @inject('IPlanningCycleManager')
-    private readonly planningCycleManager: IPlanningCycleManager,
-    @inject('IEventTemplateManager')
-    private readonly eventTemplateManager: IEventTemplateManager,
-    @inject('IPlanningEventManager')
-    private readonly planningEventManager: IPlanningEventManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('IParticipationManager')
-    private readonly participationManager: IParticipationManager,
-    @inject('IMinistryManager')
-    private readonly ministryManager: IMinistryManager,
-    @inject('AuthorityGuard')
-    private readonly authorityGuard: AuthorityGuard,
-  ) {}
+  private readonly planningCycleManager: IPlanningCycleManager;
+  private readonly eventTemplateManager: IEventTemplateManager;
+  private readonly planningEventManager: IPlanningEventManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly participationManager: IParticipationManager;
+  private readonly ministryManager: IMinistryManager;
+  private readonly authorityGuard: AuthorityGuard;
+
+  constructor({
+    planningCycleManager,
+    eventTemplateManager,
+    planningEventManager,
+    activeChurchResolver,
+    participationManager,
+    ministryManager,
+    authorityGuard,
+  }: ChurchAdminControllerDependencies) {
+    this.planningCycleManager = planningCycleManager;
+    this.eventTemplateManager = eventTemplateManager;
+    this.planningEventManager = planningEventManager;
+    this.activeChurchResolver = activeChurchResolver;
+    this.participationManager = participationManager;
+    this.ministryManager = ministryManager;
+    this.authorityGuard = authorityGuard;
+  }
 
   registerRoutes(
     app: FastifyTypedInstance,

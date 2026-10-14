@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-import { inject, injectable } from 'tsyringe';
 import type { PlanningCycleId } from '../domain/branded-ids';
 import type {
   CheckStatusRow,
@@ -28,20 +26,34 @@ interface NotifyMembershipsInput {
   memberships: ActiveMinistryMembership[];
 }
 
-@injectable()
+interface DbAvailabilityCheckManagerDependencies {
+  participationRepository: MinistryParticipationRepository;
+  eventRepository: PlanningEventRepository;
+  availabilityCheckRepository: AvailabilityCheckRepository;
+  notificationService: NotificationService;
+  unitOfWork: UnitOfWork;
+}
+
 export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
-  constructor(
-    @inject('IMinistryParticipationRepository')
-    private readonly participationRepository: MinistryParticipationRepository,
-    @inject('IPlanningEventRepository')
-    private readonly eventRepository: PlanningEventRepository,
-    @inject('IAvailabilityCheckRepository')
-    private readonly availabilityCheckRepository: AvailabilityCheckRepository,
-    @inject('INotificationService')
-    private readonly notificationService: NotificationService,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-  ) {}
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly availabilityCheckRepository: AvailabilityCheckRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
+
+  constructor({
+    participationRepository,
+    eventRepository,
+    availabilityCheckRepository,
+    notificationService,
+    unitOfWork,
+  }: DbAvailabilityCheckManagerDependencies) {
+    this.participationRepository = participationRepository;
+    this.eventRepository = eventRepository;
+    this.availabilityCheckRepository = availabilityCheckRepository;
+    this.notificationService = notificationService;
+    this.unitOfWork = unitOfWork;
+  }
 
   async fireAvailability(
     input: FireAvailabilityInput,

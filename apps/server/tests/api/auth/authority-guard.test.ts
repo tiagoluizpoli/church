@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthorityGuard } from '../../../src/api/auth/authority-guard';
 
@@ -13,7 +12,7 @@ const manager = {
 };
 
 function createGuard(): AuthorityGuard {
-  return new AuthorityGuard(manager as never);
+  return new AuthorityGuard({ manager: manager as never });
 }
 
 describe('AuthorityGuard', () => {

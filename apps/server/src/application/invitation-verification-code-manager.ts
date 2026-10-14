@@ -28,7 +28,7 @@ export interface VerifyInvitationCodeInput {
   now?: Date;
 }
 
-export interface VerificationCodeManagerDependencies {
+interface VerificationCodeManagerDependencies {
   repository: InvitationVerificationCodeRepository;
   emailSender: EmailSender;
   generateCode?: () => string;
@@ -53,6 +53,13 @@ interface VerificationCodeValidationErrorInput {
 export class InvitationVerificationCodeManager
   implements InvitationVerificationCodeManagerContract
 {
+  private readonly repository: InvitationVerificationCodeRepository;
+  private readonly emailSender: EmailSender;
+  private readonly generateCode: () => string;
+  private readonly verificationCodeSecret: string;
+  private readonly codeTtlMs: number;
+  private readonly verificationPolicy: AppConfig['verificationCode'];
+
   constructor({
     repository,
     emailSender,
@@ -68,13 +75,6 @@ export class InvitationVerificationCodeManager
     this.codeTtlMs = verificationCode.ttlMs;
     this.verificationPolicy = verificationCode;
   }
-
-  private readonly repository: InvitationVerificationCodeRepository;
-  private readonly emailSender: EmailSender;
-  private readonly generateCode: () => string;
-  private readonly verificationCodeSecret: string;
-  private readonly codeTtlMs: number;
-  private readonly verificationPolicy: AppConfig['verificationCode'];
 
   async issue({
     ministryInvitationId,

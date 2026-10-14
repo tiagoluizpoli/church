@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbAuthorityManager } from '../../src/application/db-authority-manager';
 import type { AuthorityActor } from '../../src/domain/authority/types';
@@ -87,14 +86,14 @@ const ministryRepository = { getById: vi.fn() };
 const teamRepository = { listByIds: vi.fn() };
 
 function createManager(): DbAuthorityManager {
-  return new DbAuthorityManager(
-    actorRepository as never,
-    scopeRepository as never,
-    eventRepository as never,
-    timeSlotRepository as never,
-    ministryRepository as never,
-    teamRepository as never,
-  );
+  return new DbAuthorityManager({
+    actorRepository: actorRepository as never,
+    scopeRepository: scopeRepository as never,
+    eventRepository: eventRepository as never,
+    timeSlotRepository: timeSlotRepository as never,
+    ministryRepository: ministryRepository as never,
+    teamRepository: teamRepository as never,
+  });
 }
 
 beforeEach(() => {

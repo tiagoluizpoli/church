@@ -1,6 +1,6 @@
 name: Setup Church CI environment
 description: >-
-  Install the Bun toolchain, install dependencies, and run database
+  Install the Bun and Node toolchain (mise.toml), install dependencies, and run database
   migrations. It writes no value file: every job injects its configuration
   through the job environment (ADR-0005). Runs after
   actions/checkout@v4, which callers must run first (a local composite action
@@ -19,9 +19,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: latest
+    - name: Install Bun and Node from mise.toml
+      uses: jdx/mise-action@v5
 
     - name: Cache bun dependencies
       uses: actions/cache@v4

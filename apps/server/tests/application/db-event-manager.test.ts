@@ -1,5 +1,4 @@
 import { parseInstant } from '@church/time';
-import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { DbEventManager } from '../../src/application/db-event-manager';
 import type {
@@ -184,14 +183,14 @@ function createRepos(): Repos {
 }
 
 function createManager(repos: Repos): DbEventManager {
-  return new DbEventManager(
-    repos.eventRepo,
-    repos.slotRepo,
-    repos.assignmentRepo,
-    repos.availabilityRepo,
-    repos.volunteerRepo,
-    repos.roleRepo,
-  );
+  return new DbEventManager({
+    eventRepo: repos.eventRepo,
+    slotRepo: repos.slotRepo,
+    assignmentRepo: repos.assignmentRepo,
+    availabilityRepo: repos.availabilityRepo,
+    volunteerRepo: repos.volunteerRepo,
+    roleRepo: repos.roleRepo,
+  });
 }
 
 describe('DbEventManager', () => {

@@ -2,8 +2,6 @@
   "extends": "@church/config/tsconfig.base.json",
   "compilerOptions": {
     "ignoreDeprecations": "5.0",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "verbatimModuleSyntax": false,
     "composite": true,
     "outDir": "dist",

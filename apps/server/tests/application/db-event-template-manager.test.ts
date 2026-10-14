@@ -22,7 +22,9 @@ describe('DbEventTemplateManager', () => {
 
   it('delegates createTemplate to the repository', async () => {
     const repository = createRepository();
-    const manager = new DbEventTemplateManager(repository);
+    const manager = new DbEventTemplateManager({
+      templateRepository: repository,
+    });
 
     const input = {
       churchId,
@@ -38,7 +40,9 @@ describe('DbEventTemplateManager', () => {
 
   it('delegates updateTemplate to the repository', async () => {
     const repository = createRepository();
-    const manager = new DbEventTemplateManager(repository);
+    const manager = new DbEventTemplateManager({
+      templateRepository: repository,
+    });
 
     const input = {
       churchId,
@@ -55,7 +59,9 @@ describe('DbEventTemplateManager', () => {
 
   it('delegates deleteTemplate to the repository', async () => {
     const repository = createRepository();
-    const manager = new DbEventTemplateManager(repository);
+    const manager = new DbEventTemplateManager({
+      templateRepository: repository,
+    });
 
     await manager.deleteTemplate({ churchId, templateId });
 
@@ -64,7 +70,9 @@ describe('DbEventTemplateManager', () => {
 
   it('delegates listTemplates to the repository', async () => {
     const repository = createRepository();
-    const manager = new DbEventTemplateManager(repository);
+    const manager = new DbEventTemplateManager({
+      templateRepository: repository,
+    });
 
     const result = await manager.listTemplates({ churchId });
 

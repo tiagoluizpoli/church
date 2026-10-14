@@ -1,7 +1,5 @@
-import 'reflect-metadata';
 import { auth } from '@church/auth';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import { ChurchId, UserId } from '../../domain/branded-ids';
 import type {
@@ -65,16 +63,24 @@ async function requireSession(
  * *before* an Active Church exists — `selection_required` is this controller's
  * normal, 200-status result, never a denial.
  */
-@injectable()
+interface ActiveChurchControllerDependencies {
+  activeChurchResolver: IActiveChurchResolver;
+  selectionManager: IActiveChurchSelectionManager;
+}
+
 export class ActiveChurchController implements FastifyController {
   readonly prefix = '/active-church';
 
-  constructor(
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('IActiveChurchSelectionManager')
-    private readonly selectionManager: IActiveChurchSelectionManager,
-  ) {}
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly selectionManager: IActiveChurchSelectionManager;
+
+  constructor({
+    activeChurchResolver,
+    selectionManager,
+  }: ActiveChurchControllerDependencies) {
+    this.activeChurchResolver = activeChurchResolver;
+    this.selectionManager = selectionManager;
+  }
 
   registerRoutes(
     app: FastifyTypedInstance,

@@ -1,4 +1,3 @@
-import { inject, injectable } from 'tsyringe';
 import { AuthorityService } from '../domain/authority/authority-service';
 import type { ChurchId, UserId } from '../domain/branded-ids';
 import type {
@@ -26,22 +25,38 @@ interface ResolveActorInput {
   userId: UserId;
 }
 
-@injectable()
+interface DbAuthorityManagerDependencies {
+  actorRepository: AuthorityActorRepository;
+  scopeRepository: SchedulingScopeRepository;
+  eventRepository: EventRepository;
+  timeSlotRepository: TimeSlotRepository;
+  ministryRepository: MinistryRepository;
+  teamRepository?: TeamRepository;
+}
+
 export class DbAuthorityManager implements IAuthorityManager {
-  constructor(
-    @inject('IAuthorityActorRepository')
-    private readonly actorRepository: AuthorityActorRepository,
-    @inject('ISchedulingScopeRepository')
-    private readonly scopeRepository: SchedulingScopeRepository,
-    @inject('IEventRepository')
-    private readonly eventRepository: EventRepository,
-    @inject('ITimeSlotRepository')
-    private readonly timeSlotRepository: TimeSlotRepository,
-    @inject('IMinistryRepository')
-    private readonly ministryRepository: MinistryRepository,
-    @inject('ITeamRepository')
-    private readonly teamRepository?: TeamRepository,
-  ) {}
+  private readonly actorRepository: AuthorityActorRepository;
+  private readonly scopeRepository: SchedulingScopeRepository;
+  private readonly eventRepository: EventRepository;
+  private readonly timeSlotRepository: TimeSlotRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly teamRepository?: TeamRepository;
+
+  constructor({
+    actorRepository,
+    scopeRepository,
+    eventRepository,
+    timeSlotRepository,
+    ministryRepository,
+    teamRepository,
+  }: DbAuthorityManagerDependencies) {
+    this.actorRepository = actorRepository;
+    this.scopeRepository = scopeRepository;
+    this.eventRepository = eventRepository;
+    this.timeSlotRepository = timeSlotRepository;
+    this.ministryRepository = ministryRepository;
+    this.teamRepository = teamRepository;
+  }
 
   async canManageChurch(input: CanManageChurchInput): Promise<boolean> {
     const actor = await this.resolveActor(input);

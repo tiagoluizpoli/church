@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-import { inject, injectable } from 'tsyringe';
 import type {
   CreateEventTemplateManagerInput,
   DeleteEventTemplateManagerInput,
@@ -10,12 +8,16 @@ import type {
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTemplate } from '../domain/entities/event-template';
 
-@injectable()
+interface DbEventTemplateManagerDependencies {
+  templateRepository: EventTemplateRepository;
+}
+
 export class DbEventTemplateManager implements IEventTemplateManager {
-  constructor(
-    @inject('IEventTemplateRepository')
-    private readonly templateRepository: EventTemplateRepository,
-  ) {}
+  private readonly templateRepository: EventTemplateRepository;
+
+  constructor({ templateRepository }: DbEventTemplateManagerDependencies) {
+    this.templateRepository = templateRepository;
+  }
 
   async createTemplate(
     input: CreateEventTemplateManagerInput,

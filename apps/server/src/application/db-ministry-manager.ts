@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-import { inject, injectable } from 'tsyringe';
 import type {
   IMinistryManager,
   ListMinistriesByLeaderInput,
@@ -9,14 +7,19 @@ import type { MinistryRepository } from '../domain/contracts/infrastructure/mini
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Ministry } from '../domain/entities/ministry';
 
-@injectable()
+interface DbMinistryManagerDependencies {
+  ministryRepo: MinistryRepository;
+  volunteerRepo: VolunteerRepository;
+}
+
 export class DbMinistryManager implements IMinistryManager {
-  constructor(
-    @inject('IMinistryRepository')
-    private readonly ministryRepo: MinistryRepository,
-    @inject('IVolunteerRepository')
-    private readonly volunteerRepo: VolunteerRepository,
-  ) {}
+  private readonly ministryRepo: MinistryRepository;
+  private readonly volunteerRepo: VolunteerRepository;
+
+  constructor({ ministryRepo, volunteerRepo }: DbMinistryManagerDependencies) {
+    this.ministryRepo = ministryRepo;
+    this.volunteerRepo = volunteerRepo;
+  }
 
   async listByLeader(input: ListMinistriesByLeaderInput): Promise<Ministry[]> {
     const { leaderId, churchId } = input;

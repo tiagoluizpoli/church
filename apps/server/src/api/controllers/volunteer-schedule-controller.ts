@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-import { inject, injectable } from 'tsyringe';
 import { ChurchId, VolunteerId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
@@ -11,16 +9,24 @@ import {
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 
-@injectable()
+interface VolunteerScheduleControllerDependencies {
+  volunteerManager: IVolunteerManager;
+  activeChurchResolver: IActiveChurchResolver;
+}
+
 export class VolunteerScheduleController implements FastifyController {
   readonly prefix = '/volunteer';
 
-  constructor(
-    @inject('IVolunteerManager')
-    private readonly volunteerManager: IVolunteerManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-  ) {}
+  private readonly volunteerManager: IVolunteerManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+
+  constructor({
+    volunteerManager,
+    activeChurchResolver,
+  }: VolunteerScheduleControllerDependencies) {
+    this.volunteerManager = volunteerManager;
+    this.activeChurchResolver = activeChurchResolver;
+  }
 
   registerRoutes(
     app: FastifyTypedInstance,

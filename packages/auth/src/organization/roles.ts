@@ -1,3 +1,4 @@
+import type { Role } from 'better-auth/plugins/access';
 import { adminAc, memberAc } from 'better-auth/plugins/organization/access';
 
 /**
@@ -16,7 +17,7 @@ import { adminAc, memberAc } from 'better-auth/plugins/organization/access';
 export const organizationRoles = {
   member: memberAc,
   admin: adminAc,
-};
+} satisfies Record<string, Role>;
 
 export type OrganizationRole = keyof typeof organizationRoles;
 

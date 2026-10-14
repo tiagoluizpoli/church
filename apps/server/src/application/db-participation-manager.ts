@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import {
   compareInstants,
   fromDate,
@@ -6,7 +5,6 @@ import {
   now,
   toDate,
 } from '@church/time';
-import { inject, injectable } from 'tsyringe';
 import { TeamRosterMutationPolicy } from '../domain/authority/team-roster-mutation-policy';
 import { type ChurchId, TeamId } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
@@ -176,36 +174,64 @@ interface NotifyParticipationPublishedInput {
   tx?: TransactionContext;
 }
 
-@injectable()
+interface DbParticipationManagerDependencies {
+  participationRepository: MinistryParticipationRepository;
+  shiftRepository: ShiftRepository;
+  eventRepository: PlanningEventRepository;
+  assignmentRepository: AssignmentRepository;
+  availabilityRepository: AvailabilityRepository;
+  timeSlotRepository: TimeSlotRepository;
+  volunteerRepository: VolunteerRepository;
+  ministryRepository: MinistryRepository;
+  servingProfileRepository: MinistryServingProfileRepository;
+  roleRepository: RoleRepository;
+  notificationService: NotificationService;
+  unitOfWork: UnitOfWork;
+}
+
 export class DbParticipationManager implements IParticipationManager {
   private readonly splitter = new ShiftSplitter();
 
-  constructor(
-    @inject('IMinistryParticipationRepository')
-    private readonly participationRepository: MinistryParticipationRepository,
-    @inject('IShiftRepository')
-    private readonly shiftRepository: ShiftRepository,
-    @inject('IPlanningEventRepository')
-    private readonly eventRepository: PlanningEventRepository,
-    @inject('IAssignmentRepository')
-    private readonly assignmentRepository: AssignmentRepository,
-    @inject('IAvailabilityRepository')
-    private readonly availabilityRepository: AvailabilityRepository,
-    @inject('ITimeSlotRepository')
-    private readonly timeSlotRepository: TimeSlotRepository,
-    @inject('IVolunteerRepository')
-    private readonly volunteerRepository: VolunteerRepository,
-    @inject('IMinistryRepository')
-    private readonly ministryRepository: MinistryRepository,
-    @inject('IMinistryServingProfileRepository')
-    private readonly servingProfileRepository: MinistryServingProfileRepository,
-    @inject('IRoleRepository')
-    private readonly roleRepository: RoleRepository,
-    @inject('INotificationService')
-    private readonly notificationService: NotificationService,
-    @inject('IUnitOfWork')
-    private readonly unitOfWork: UnitOfWork,
-  ) {}
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly shiftRepository: ShiftRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly assignmentRepository: AssignmentRepository;
+  private readonly availabilityRepository: AvailabilityRepository;
+  private readonly timeSlotRepository: TimeSlotRepository;
+  private readonly volunteerRepository: VolunteerRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly servingProfileRepository: MinistryServingProfileRepository;
+  private readonly roleRepository: RoleRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
+
+  constructor({
+    participationRepository,
+    shiftRepository,
+    eventRepository,
+    assignmentRepository,
+    availabilityRepository,
+    timeSlotRepository,
+    volunteerRepository,
+    ministryRepository,
+    servingProfileRepository,
+    roleRepository,
+    notificationService,
+    unitOfWork,
+  }: DbParticipationManagerDependencies) {
+    this.participationRepository = participationRepository;
+    this.shiftRepository = shiftRepository;
+    this.eventRepository = eventRepository;
+    this.assignmentRepository = assignmentRepository;
+    this.availabilityRepository = availabilityRepository;
+    this.timeSlotRepository = timeSlotRepository;
+    this.volunteerRepository = volunteerRepository;
+    this.ministryRepository = ministryRepository;
+    this.servingProfileRepository = servingProfileRepository;
+    this.roleRepository = roleRepository;
+    this.notificationService = notificationService;
+    this.unitOfWork = unitOfWork;
+  }
 
   async getCycleParticipation(
     input: GetCycleParticipationInput,

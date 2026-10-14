@@ -10,7 +10,7 @@ Shared config read by the server and the web app: policy values and `parked` swi
 
 ## Read it
 
-- Server: take it through DI, `@inject('AppConfig') config: AppConfig`. DI-built classes never import `appConfig`; domain functions get the values as named params from their caller. Only `main/di/injections.ts`, container-less scripts and seeds import the package.
+- Server: the composition root passes it as the `config` field of the constructor's named object. Root-built classes never import `appConfig`; domain functions get the values as named params from their caller. Only `main/di/composition-root.ts`, container-less scripts and seeds import the package.
 - Web: import `appConfig` directly (no DI on the web).
 - Server classes read the values once in the constructor into named `private readonly` fields (`this.maxAttempts = verificationCode.maxAttempts;`) and keep no `config`; methods use the fields.
 - In a test or script, destructure the values once at the top (`const { maxAttempts } = appConfig.verificationCode;`) and use the short name; no `config.section.key` chains in conditions, arithmetic or call arguments.

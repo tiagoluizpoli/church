@@ -51,11 +51,11 @@ const VOLUNTEER_ID = '55555555-5555-4555-8555-555555555551';
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new VolunteerController(
-    volunteerManager as never,
-    activeChurchResolver as never,
-    appConfig,
-  );
+  const controller = new VolunteerController({
+    volunteerManager: volunteerManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    config: appConfig,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
@@ -153,11 +153,11 @@ describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
 
   async function buildApp(config: typeof appConfig) {
     const instance = await createFastify();
-    const controller = new VolunteerController(
-      volunteerManager as never,
-      activeChurchResolver as never,
+    const controller = new VolunteerController({
+      volunteerManager: volunteerManager as never,
+      activeChurchResolver: activeChurchResolver as never,
       config,
-    );
+    });
     await instance.register(
       async (scope) => {
         scope.register(controller.registerRoutes.bind(controller), {

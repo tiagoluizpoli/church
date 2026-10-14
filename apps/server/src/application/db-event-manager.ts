@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-import { inject, injectable } from 'tsyringe';
 import type {
   GetScheduleBuilderDataInput,
   IEventManager,
@@ -15,22 +13,38 @@ import type { VolunteerRepository } from '../domain/contracts/infrastructure/vol
 import type { Event } from '../domain/entities/event';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 
-@injectable()
+interface DbEventManagerDependencies {
+  eventRepo: EventRepository;
+  slotRepo: TimeSlotRepository;
+  assignmentRepo: AssignmentRepository;
+  availabilityRepo: AvailabilityRepository;
+  volunteerRepo: VolunteerRepository;
+  roleRepo: RoleRepository;
+}
+
 export class DbEventManager implements IEventManager {
-  constructor(
-    @inject('IEventRepository')
-    private readonly eventRepo: EventRepository,
-    @inject('ITimeSlotRepository')
-    private readonly slotRepo: TimeSlotRepository,
-    @inject('IAssignmentRepository')
-    private readonly assignmentRepo: AssignmentRepository,
-    @inject('IAvailabilityRepository')
-    private readonly availabilityRepo: AvailabilityRepository,
-    @inject('IVolunteerRepository')
-    private readonly volunteerRepo: VolunteerRepository,
-    @inject('IRoleRepository')
-    private readonly roleRepo: RoleRepository,
-  ) {}
+  private readonly eventRepo: EventRepository;
+  private readonly slotRepo: TimeSlotRepository;
+  private readonly assignmentRepo: AssignmentRepository;
+  private readonly availabilityRepo: AvailabilityRepository;
+  private readonly volunteerRepo: VolunteerRepository;
+  private readonly roleRepo: RoleRepository;
+
+  constructor({
+    eventRepo,
+    slotRepo,
+    assignmentRepo,
+    availabilityRepo,
+    volunteerRepo,
+    roleRepo,
+  }: DbEventManagerDependencies) {
+    this.eventRepo = eventRepo;
+    this.slotRepo = slotRepo;
+    this.assignmentRepo = assignmentRepo;
+    this.availabilityRepo = availabilityRepo;
+    this.volunteerRepo = volunteerRepo;
+    this.roleRepo = roleRepo;
+  }
 
   async getScheduleBuilderData(
     input: GetScheduleBuilderDataInput,

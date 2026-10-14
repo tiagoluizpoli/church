@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import * as schema from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -25,12 +24,12 @@ async function resetDb(): Promise<void> {
 
 /** Only the Church row is exercised; the other collaborators stay unused. */
 function createManager(): DbActiveChurchSelectionManager {
-  return new DbActiveChurchSelectionManager(
-    {} as never,
-    {} as never,
-    {} as never,
-    new DrizzleChurchRepository({ db: testDb }),
-  );
+  return new DbActiveChurchSelectionManager({
+    membershipRepository: {} as never,
+    authorityManager: {} as never,
+    activeChurchResolver: {} as never,
+    churchRepository: new DrizzleChurchRepository({ db: testDb }),
+  });
 }
 
 describe('DbActiveChurchSelectionManager.getChurchTimezone (integration)', () => {

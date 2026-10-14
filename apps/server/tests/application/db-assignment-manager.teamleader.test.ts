@@ -69,17 +69,17 @@ const unitOfWork = {
 };
 
 function createManager(): DbAssignmentManager {
-  return new DbAssignmentManager(
-    assignmentRepository as never,
-    auditRepository as never,
-    shiftRepository as never,
-    participationRepository as never,
-    volunteerRepository as never,
-    availabilityRepository as never,
-    planningEventRepository as never,
-    notificationService as never,
-    unitOfWork as never,
-  );
+  return new DbAssignmentManager({
+    assignmentRepo: assignmentRepository as never,
+    auditRepo: auditRepository as never,
+    shiftRepository: shiftRepository as never,
+    participationRepository: participationRepository as never,
+    volunteerRepository: volunteerRepository as never,
+    availabilityRepository: availabilityRepository as never,
+    planningEventRepository: planningEventRepository as never,
+    notificationService: notificationService as never,
+    unitOfWork: unitOfWork as never,
+  });
 }
 
 function participation(state: 'rostering' | 'published') {

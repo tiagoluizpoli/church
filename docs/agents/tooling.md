@@ -1,5 +1,8 @@
 # Church Tooling
 
+Bun and Node versions are pinned in `mise.toml` (`mise install`); `packageManager`
+in `package.json` must name the same Bun.
+
 Run commands from the repository root through existing Bun scripts. Do not
 invoke package tools directly: root scripts carry required environment, filters,
 and task ordering.
@@ -69,8 +72,7 @@ the lock). A failed run keeps its E2E database state for inspection; the next
 run resets it.
 
 The server relies on its package TypeScript configuration; run server scripts
-through their package scripts. In particular, server decorator metadata is not
-available to root TypeScript execution. `apps/server/auto-generated-api.yaml`
+through their package scripts. `apps/server/auto-generated-api.yaml`
 is input to API generation, not a hand-edited contract.
 
 ## Worktree bootstrap

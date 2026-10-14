@@ -20,6 +20,13 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Timezone Policy** - Strict "UTC-First" storage with `timestamptz` and contextual local-time rendering
 - **Turborepo** - Optimized monorepo build system
 
+## Requirements
+
+- [mise](https://mise.jdx.dev): `mise install` pins Bun 1.4.3 and Node 26.11.1 from `mise.toml`. Root `package.json` `packageManager` and `mise.toml` must name the same Bun version.
+- Docker and Docker Compose: PostgreSQL 16 runs from `docker-compose.yml`.
+- Git.
+- [Worktrunk](https://worktrunk.dev) (`wt`): creates worktrees and runs the bootstrap hook; see [docs/agents/tooling.md](docs/agents/tooling.md).
+
 ## Getting Started
 
 First, install the dependencies:

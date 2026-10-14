@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbActiveChurchSelectionManager } from '../../src/application/db-active-church-selection-manager';
 import type { ChurchId, UserId } from '../../src/domain/branded-ids';
@@ -21,12 +20,12 @@ const activeChurchResolver = { resolve: vi.fn() };
 const churchRepository = { getById: vi.fn() };
 
 function createManager(): DbActiveChurchSelectionManager {
-  return new DbActiveChurchSelectionManager(
-    membershipRepository as never,
-    authorityManager as never,
-    activeChurchResolver as never,
-    churchRepository as never,
-  );
+  return new DbActiveChurchSelectionManager({
+    membershipRepository: membershipRepository as never,
+    authorityManager: authorityManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    churchRepository: churchRepository as never,
+  });
 }
 
 beforeEach(() => {

@@ -1,4 +1,3 @@
-import { inject, injectable } from 'tsyringe';
 import type { ChurchId } from '../domain/branded-ids';
 import type {
   ActiveChurchResolution,
@@ -43,20 +42,32 @@ interface ResolveAvailableAreasInput {
   churchId: ChurchId;
 }
 
-@injectable()
+interface DbActiveChurchSelectionManagerDependencies {
+  membershipRepository: ChurchMembershipRepository;
+  authorityManager: IAuthorityManager;
+  activeChurchResolver: IActiveChurchResolver;
+  churchRepository: ChurchRepository;
+}
+
 export class DbActiveChurchSelectionManager
   implements IActiveChurchSelectionManager
 {
-  constructor(
-    @inject('IChurchMembershipRepository')
-    private readonly membershipRepository: ChurchMembershipRepository,
-    @inject('IAuthorityManager')
-    private readonly authorityManager: IAuthorityManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('IChurchRepository')
-    private readonly churchRepository: ChurchRepository,
-  ) {}
+  private readonly membershipRepository: ChurchMembershipRepository;
+  private readonly authorityManager: IAuthorityManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly churchRepository: ChurchRepository;
+
+  constructor({
+    membershipRepository,
+    authorityManager,
+    activeChurchResolver,
+    churchRepository,
+  }: DbActiveChurchSelectionManagerDependencies) {
+    this.membershipRepository = membershipRepository;
+    this.authorityManager = authorityManager;
+    this.activeChurchResolver = activeChurchResolver;
+    this.churchRepository = churchRepository;
+  }
 
   async listSelectableChurches(
     input: ListSelectableChurchesInput,

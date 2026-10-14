@@ -10,9 +10,12 @@ import type {
 const sendMock = vi.fn();
 
 vi.mock('resend', () => ({
-  Resend: vi.fn().mockImplementation(() => ({
-    emails: { send: sendMock },
-  })),
+  // `new Resend()` needs a constructible implementation, not an arrow function.
+  Resend: vi.fn(
+    class {
+      emails = { send: sendMock };
+    },
+  ),
 }));
 
 const { ResendEmailSender } = await import('./resend-email-sender');

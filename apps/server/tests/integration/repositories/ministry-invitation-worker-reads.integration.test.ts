@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchId, MinistryId, UserId } from '../../../src/domain/branded-ids';
 import { createMinistryInvitationTestHarness } from '../../../src/test-support/ministry-invitation-test-harness';

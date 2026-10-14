@@ -1,5 +1,4 @@
 import { appConfig } from '@church/app-config';
-import 'reflect-metadata';
 import { compareInstants } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAuthorityManager } from '../../src/application/db-authority-manager';
@@ -37,25 +36,25 @@ const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({
 });
 const roleRepository = new DrizzleRoleRepository({ db: testDb });
 const ministryRepository = new DrizzleMinistryRepository({ db: testDb });
-const authorityManager = new DbAuthorityManager(
-  new DrizzleAuthorityActorResolver({ db: testDb }),
-  new DrizzleSchedulingScopeResolver({ db: testDb }),
-  new DrizzleEventRepository({ db: testDb }),
-  new DrizzleTimeSlotRepository({ db: testDb }),
-  ministryRepository,
-);
+const authorityManager = new DbAuthorityManager({
+  actorRepository: new DrizzleAuthorityActorResolver({ db: testDb }),
+  scopeRepository: new DrizzleSchedulingScopeResolver({ db: testDb }),
+  eventRepository: new DrizzleEventRepository({ db: testDb }),
+  timeSlotRepository: new DrizzleTimeSlotRepository({ db: testDb }),
+  ministryRepository: ministryRepository,
+});
 const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
 const outboxRepository = new DrizzleOutboxRepository({ db: testDb });
 
-const manager = new DbMinistryInvitationManager(
-  ministryInvitationRepository,
+const manager = new DbMinistryInvitationManager({
+  repo: ministryInvitationRepository,
   roleRepository,
   ministryRepository,
   authorityManager,
   unitOfWork,
   outboxRepository,
-  appConfig,
-);
+  config: appConfig,
+});
 
 let fixture: TwoChurchIdentityFixture;
 

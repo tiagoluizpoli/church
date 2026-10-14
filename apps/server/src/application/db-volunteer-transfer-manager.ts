@@ -1,5 +1,4 @@
 import { compareInstants, fromDate, nowAsDate } from '@church/time';
-import { injectable } from 'tsyringe';
 import type {
   ChurchId,
   MinistryInvitationId,
@@ -21,7 +20,7 @@ import type { VolunteerRepository } from '../domain/contracts/infrastructure/vol
 import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 
-export interface DbVolunteerTransferManagerDependencies {
+interface DbVolunteerTransferManagerDependencies {
   churchRepository: ChurchRepository;
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: MinistryInvitationRepository;
@@ -65,8 +64,15 @@ interface RecordMismatchInput {
  * session, then the one transaction that retires one profile and births
  * another. A former-Church actor has no input here by construction.
  */
-@injectable()
 export class DbVolunteerTransferManager implements VolunteerTransferManager {
+  private readonly churchRepository: ChurchRepository;
+  private readonly identityGateway: RedemptionIdentityGateway;
+  private readonly invitationRepository: MinistryInvitationRepository;
+  private readonly securityLogRepository: SecurityLogRepository;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly volunteerRepository: VolunteerRepository;
+  private readonly volunteerTransferRepository: VolunteerTransferRepository;
+
   constructor({
     churchRepository,
     identityGateway,
@@ -84,14 +90,6 @@ export class DbVolunteerTransferManager implements VolunteerTransferManager {
     this.volunteerRepository = volunteerRepository;
     this.volunteerTransferRepository = volunteerTransferRepository;
   }
-
-  private readonly churchRepository: ChurchRepository;
-  private readonly identityGateway: RedemptionIdentityGateway;
-  private readonly invitationRepository: MinistryInvitationRepository;
-  private readonly securityLogRepository: SecurityLogRepository;
-  private readonly unitOfWork: UnitOfWork;
-  private readonly volunteerRepository: VolunteerRepository;
-  private readonly volunteerTransferRepository: VolunteerTransferRepository;
 
   async getTransferPreview({
     ministryInvitationId,

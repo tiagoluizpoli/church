@@ -40,10 +40,10 @@ const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new ActiveChurchController(
-    activeChurchResolver as never,
-    selectionManager as never,
-  );
+  const controller = new ActiveChurchController({
+    activeChurchResolver: activeChurchResolver as never,
+    selectionManager: selectionManager as never,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

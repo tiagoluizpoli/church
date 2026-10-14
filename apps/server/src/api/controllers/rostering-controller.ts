@@ -1,8 +1,6 @@
-import 'reflect-metadata';
 import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
   AssignmentId,
@@ -157,26 +155,38 @@ interface CanReadCycleBuilderInput {
   userId: UserId;
 }
 
-@injectable()
+interface RosteringControllerDependencies {
+  participationManager: IParticipationManager;
+  assignmentManager: IAssignmentManager;
+  activeChurchResolver: IActiveChurchResolver;
+  authorityGuard: AuthorityGuard;
+  config: AppConfig;
+}
+
 export class RosteringController implements FastifyController {
   readonly prefix = '/rostering';
 
-  constructor(
-    @inject('IParticipationManager')
-    private readonly participationManager: IParticipationManager,
-    @inject('IAssignmentManager')
-    private readonly assignmentManager: IAssignmentManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('AuthorityGuard')
-    private readonly authorityGuard: AuthorityGuard,
-    @inject('AppConfig') config: AppConfig,
-  ) {
+  private readonly participationManager: IParticipationManager;
+  private readonly assignmentManager: IAssignmentManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
+
+  private readonly parked: AppConfig['parked'];
+
+  constructor({
+    participationManager,
+    assignmentManager,
+    activeChurchResolver,
+    authorityGuard,
+    config,
+  }: RosteringControllerDependencies) {
+    this.participationManager = participationManager;
+    this.assignmentManager = assignmentManager;
+    this.activeChurchResolver = activeChurchResolver;
+    this.authorityGuard = authorityGuard;
     const { parked } = config;
     this.parked = parked;
   }
-
-  private readonly parked: AppConfig['parked'];
 
   registerRoutes(
     app: FastifyTypedInstance,

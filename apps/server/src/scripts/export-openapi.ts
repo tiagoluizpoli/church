@@ -1,24 +1,21 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import 'reflect-metadata';
 import { appConfig, withAllParkedOn } from '@church/app-config';
-import { container } from 'tsyringe';
-import { injection } from '../main/di/injection-tokens';
-import { registerInjections } from '../main/di/injections';
+import { createCompositionRoot } from '../main/di/composition-root';
 import { registerControllers } from '../main/fastify/register-controllers';
 import { createFastify } from '../main/fastify/setup';
 
 async function exportOpenApi(): Promise<void> {
-  registerInjections();
   // Parked routes stay in the spec so the generated web client keeps them.
-  container.register(injection.config.appConfig, {
-    useValue: withAllParkedOn(appConfig),
-  });
+  const root = createCompositionRoot({ config: withAllParkedOn(appConfig) });
 
   const app = await createFastify();
   await app.register(
     async (instance) => {
-      await registerControllers(instance);
+      await registerControllers({
+        app: instance,
+        controllers: root.controllers,
+      });
     },
     { prefix: '/api/v1' },
   );

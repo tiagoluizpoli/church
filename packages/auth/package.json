@@ -28,6 +28,6 @@
     "@church/config": "workspace:*",
     "@types/pg": "^8.20.0",
     "typescript": "^5",
-    "vitest": "^4.1.5"
+    "vitest": "catalog:"
   }
 }

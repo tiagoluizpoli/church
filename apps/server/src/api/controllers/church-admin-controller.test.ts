@@ -119,15 +119,15 @@ function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new ChurchAdminController(
-    cycleManager as never,
-    templateManager as never,
-    planningEventManager as never,
-    activeChurchResolver as never,
-    participationManager as never,
-    ministryManager as never,
-    authorityGuard as never,
-  );
+  const controller = new ChurchAdminController({
+    planningCycleManager: cycleManager as never,
+    eventTemplateManager: templateManager as never,
+    planningEventManager: planningEventManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    participationManager: participationManager as never,
+    ministryManager: ministryManager as never,
+    authorityGuard: authorityGuard as never,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

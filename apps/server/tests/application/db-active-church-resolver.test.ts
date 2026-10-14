@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbActiveChurchResolver } from '../../src/application/db-active-church-resolver';
 import type { AuthorityActor } from '../../src/domain/authority/types';
@@ -51,12 +50,12 @@ const unitOfWork = { run: vi.fn() };
 const FAKE_TX = { brand: 'fake-tx' } as never;
 
 function createResolver(): DbActiveChurchResolver {
-  return new DbActiveChurchResolver(
-    actorRepository as never,
-    membershipRepository as never,
-    churchRepository as never,
-    unitOfWork as never,
-  );
+  return new DbActiveChurchResolver({
+    actorRepository: actorRepository as never,
+    membershipRepository: membershipRepository as never,
+    churchRepository: churchRepository as never,
+    unitOfWork: unitOfWork as never,
+  });
 }
 
 beforeEach(() => {

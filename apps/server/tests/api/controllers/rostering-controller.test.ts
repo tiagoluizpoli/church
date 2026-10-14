@@ -59,13 +59,13 @@ let app: FastifyTypedInstance;
 
 async function buildApp(config: typeof appConfig) {
   const instanceApp = await createFastify();
-  const controller = new RosteringController(
-    participationManager as never,
-    assignmentManager as never,
-    activeChurchResolver as never,
-    authorityGuard as never,
+  const controller = new RosteringController({
+    participationManager: participationManager as never,
+    assignmentManager: assignmentManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    authorityGuard: authorityGuard as never,
     config,
-  );
+  });
   await instanceApp.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

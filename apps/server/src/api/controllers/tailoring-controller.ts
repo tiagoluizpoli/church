@@ -1,7 +1,5 @@
-import 'reflect-metadata';
 import { parseInstant } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -89,20 +87,32 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
-@injectable()
+interface TailoringControllerDependencies {
+  participationManager: IParticipationManager;
+  availabilityCheckManager: IAvailabilityCheckManager;
+  activeChurchResolver: IActiveChurchResolver;
+  authorityGuard: AuthorityGuard;
+}
+
 export class TailoringController implements FastifyController {
   readonly prefix = '/tailoring';
 
-  constructor(
-    @inject('IParticipationManager')
-    private readonly participationManager: IParticipationManager,
-    @inject('IAvailabilityCheckManager')
-    private readonly availabilityCheckManager: IAvailabilityCheckManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('AuthorityGuard')
-    private readonly authorityGuard: AuthorityGuard,
-  ) {}
+  private readonly participationManager: IParticipationManager;
+  private readonly availabilityCheckManager: IAvailabilityCheckManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
+
+  constructor({
+    participationManager,
+    availabilityCheckManager,
+    activeChurchResolver,
+    authorityGuard,
+  }: TailoringControllerDependencies) {
+    this.participationManager = participationManager;
+    this.availabilityCheckManager = availabilityCheckManager;
+    this.activeChurchResolver = activeChurchResolver;
+    this.authorityGuard = authorityGuard;
+  }
 
   registerRoutes(
     app: FastifyTypedInstance,

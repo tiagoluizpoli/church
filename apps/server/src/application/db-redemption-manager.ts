@@ -1,5 +1,4 @@
 import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
-import { injectable } from 'tsyringe';
 import type { VolunteerId } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
@@ -36,7 +35,7 @@ import type { MinistryInvitation } from '../domain/entities/ministry-invitation'
 import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 
-export interface DbRedemptionManagerDependencies {
+interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: MinistryInvitationRepository;
@@ -97,8 +96,18 @@ function isInvitationRedeemable({
  * will authenticate and call it, while this operation owns the sole database
  * transaction that creates grants and consumes the Ministry Invitation.
  */
-@injectable()
 export class DbRedemptionManager implements RedemptionManager {
+  private readonly churchRepository: ChurchRepository;
+  private readonly identityGateway: RedemptionIdentityGateway;
+  private readonly invitationRepository: MinistryInvitationRepository;
+  private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
+  private readonly redemptionRepository: RedemptionRepository;
+  private readonly securityLogRepository: SecurityLogRepository;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly verificationCodeInspector:
+    | VerificationCodeInspector
+    | undefined;
+
   constructor({
     churchRepository,
     identityGateway,
@@ -118,17 +127,6 @@ export class DbRedemptionManager implements RedemptionManager {
     this.unitOfWork = unitOfWork;
     this.verificationCodeInspector = verificationCodeInspector;
   }
-
-  private readonly churchRepository: ChurchRepository;
-  private readonly identityGateway: RedemptionIdentityGateway;
-  private readonly invitationRepository: MinistryInvitationRepository;
-  private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
-  private readonly redemptionRepository: RedemptionRepository;
-  private readonly securityLogRepository: SecurityLogRepository;
-  private readonly unitOfWork: UnitOfWork;
-  private readonly verificationCodeInspector:
-    | VerificationCodeInspector
-    | undefined;
 
   async getPublicPreview({
     ministryInvitationId,

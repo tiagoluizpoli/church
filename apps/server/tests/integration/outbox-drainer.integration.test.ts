@@ -1,5 +1,4 @@
 import { appConfig } from '@church/app-config';
-import 'reflect-metadata';
 import {
   ministryInvitation,
   ministryVolunteer,

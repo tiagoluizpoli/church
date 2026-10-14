@@ -1,0 +1,166 @@
+import {
+  DrizzleAssignmentAuditRepository,
+  DrizzleAssignmentRepository,
+  DrizzleAvailabilityCheckRepository,
+  DrizzleAvailabilityRepository,
+  DrizzleChurchRepository,
+  DrizzleEventRepository,
+  DrizzleEventTemplateRepository,
+  DrizzleInvitationVerificationCodeRepository,
+  DrizzleMinistryInvitationRepository,
+  DrizzleMinistryParticipationRepository,
+  DrizzleMinistryRepository,
+  DrizzleMinistryServingProfileRepository,
+  DrizzleOutboxRepository,
+  DrizzlePlanningCycleRepository,
+  DrizzlePlanningEventRepository,
+  DrizzleRedemptionRepository,
+  DrizzleRoleRepository,
+  DrizzleSecurityLogRepository,
+  DrizzleShiftRepository,
+  DrizzleTeamRepository,
+  DrizzleTimeSlotRepository,
+  DrizzleUnitOfWork,
+  DrizzleVolunteerNotificationRepository,
+  DrizzleVolunteerRepository,
+  DrizzleVolunteerTransferRepository,
+} from '../../infrastructure/repositories';
+import type { CompositionRootDependencies } from './dependencies';
+
+export type Repositories = Pick<
+  CompositionRootDependencies,
+  | 'eventRepository'
+  | 'eventTemplateRepository'
+  | 'planningCycleRepository'
+  | 'planningEventRepository'
+  | 'volunteerRepository'
+  | 'assignmentRepository'
+  | 'assignmentAuditRepository'
+  | 'availabilityRepository'
+  | 'availabilityCheckRepository'
+  | 'ministryParticipationRepository'
+  | 'ministryServingProfileRepository'
+  | 'shiftRepository'
+  | 'churchRepository'
+  | 'ministryRepository'
+  | 'invitationVerificationCodeRepository'
+  | 'redemptionRepository'
+  | 'volunteerTransferRepository'
+  | 'securityLogRepository'
+  | 'ministryInvitationRepository'
+  | 'outboxRepository'
+  | 'roleRepository'
+  | 'teamRepository'
+  | 'timeSlotRepository'
+  | 'volunteerNotificationRepository'
+  | 'unitOfWork'
+>;
+
+export interface BuildRepositoriesInput {
+  config: CompositionRootDependencies['config'];
+  database: CompositionRootDependencies['db'];
+  overrides: Partial<CompositionRootDependencies>;
+}
+
+export function buildRepositories({
+  config,
+  database,
+  overrides,
+}: BuildRepositoriesInput): Repositories {
+  const eventRepository =
+    overrides.eventRepository ?? new DrizzleEventRepository({ db: database });
+  const eventTemplateRepository =
+    overrides.eventTemplateRepository ??
+    new DrizzleEventTemplateRepository({ db: database });
+  const planningCycleRepository =
+    overrides.planningCycleRepository ??
+    new DrizzlePlanningCycleRepository({ db: database });
+  const planningEventRepository =
+    overrides.planningEventRepository ??
+    new DrizzlePlanningEventRepository({ db: database });
+  const volunteerRepository =
+    overrides.volunteerRepository ??
+    new DrizzleVolunteerRepository({ db: database });
+  const assignmentRepository =
+    overrides.assignmentRepository ??
+    new DrizzleAssignmentRepository({ db: database });
+  const assignmentAuditRepository =
+    overrides.assignmentAuditRepository ??
+    new DrizzleAssignmentAuditRepository({ db: database });
+  const availabilityRepository =
+    overrides.availabilityRepository ??
+    new DrizzleAvailabilityRepository({ db: database });
+  const availabilityCheckRepository =
+    overrides.availabilityCheckRepository ??
+    new DrizzleAvailabilityCheckRepository({ db: database });
+  const ministryParticipationRepository =
+    overrides.ministryParticipationRepository ??
+    new DrizzleMinistryParticipationRepository({ db: database });
+  const ministryServingProfileRepository =
+    overrides.ministryServingProfileRepository ??
+    new DrizzleMinistryServingProfileRepository({ db: database });
+  const shiftRepository =
+    overrides.shiftRepository ?? new DrizzleShiftRepository({ db: database });
+  const churchRepository =
+    overrides.churchRepository ?? new DrizzleChurchRepository({ db: database });
+  const ministryRepository =
+    overrides.ministryRepository ??
+    new DrizzleMinistryRepository({ db: database });
+  const invitationVerificationCodeRepository =
+    overrides.invitationVerificationCodeRepository ??
+    new DrizzleInvitationVerificationCodeRepository({ db: database, config });
+  const redemptionRepository =
+    overrides.redemptionRepository ??
+    new DrizzleRedemptionRepository({ db: database, volunteerRepository });
+  const volunteerTransferRepository =
+    overrides.volunteerTransferRepository ??
+    new DrizzleVolunteerTransferRepository({ db: database });
+  const securityLogRepository =
+    overrides.securityLogRepository ??
+    new DrizzleSecurityLogRepository({ db: database });
+  const ministryInvitationRepository =
+    overrides.ministryInvitationRepository ??
+    new DrizzleMinistryInvitationRepository({ db: database, config });
+  const outboxRepository =
+    overrides.outboxRepository ?? new DrizzleOutboxRepository({ db: database });
+  const roleRepository =
+    overrides.roleRepository ?? new DrizzleRoleRepository({ db: database });
+  const teamRepository =
+    overrides.teamRepository ?? new DrizzleTeamRepository({ db: database });
+  const timeSlotRepository =
+    overrides.timeSlotRepository ??
+    new DrizzleTimeSlotRepository({ db: database });
+  const volunteerNotificationRepository =
+    overrides.volunteerNotificationRepository ??
+    new DrizzleVolunteerNotificationRepository({ db: database });
+  const unitOfWork =
+    overrides.unitOfWork ?? new DrizzleUnitOfWork({ db: database });
+
+  return {
+    eventRepository,
+    eventTemplateRepository,
+    planningCycleRepository,
+    planningEventRepository,
+    volunteerRepository,
+    assignmentRepository,
+    assignmentAuditRepository,
+    availabilityRepository,
+    availabilityCheckRepository,
+    ministryParticipationRepository,
+    ministryServingProfileRepository,
+    shiftRepository,
+    churchRepository,
+    ministryRepository,
+    invitationVerificationCodeRepository,
+    redemptionRepository,
+    volunteerTransferRepository,
+    securityLogRepository,
+    ministryInvitationRepository,
+    outboxRepository,
+    roleRepository,
+    teamRepository,
+    timeSlotRepository,
+    volunteerNotificationRepository,
+    unitOfWork,
+  };
+}

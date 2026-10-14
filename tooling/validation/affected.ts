@@ -295,6 +295,11 @@ export function buildValidationSteps({
         label: 'lint',
       });
     }
+    checkLane.push({
+      args: ['run', 'validate:test-placement'],
+      command: 'bun',
+      label: 'test-placement',
+    });
 
     if (plan.workspaceNames.length > 0) {
       const filters = plan.workspaceNames.flatMap((workspaceName) => [
@@ -318,7 +323,12 @@ export function buildValidationSteps({
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
       else checkLane.push(...layerSteps);
     }
-    checkedLabels.push('lint', 'typecheck', ...ALL_TEST_LAYERS);
+    checkedLabels.push(
+      'lint',
+      'test-placement',
+      'typecheck',
+      ...ALL_TEST_LAYERS,
+    );
   }
 
   let e2eLabel = 'test:e2e';

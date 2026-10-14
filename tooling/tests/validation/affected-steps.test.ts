@@ -30,7 +30,34 @@ function makePlan(overrides: PlanOverrides): ValidationPlan {
 // Existing file, so the deleted-file filter keeps it.
 const LINT_PATH = 'package.json';
 
+const TEST_PLACEMENT_STEP = {
+  args: ['run', 'validate:test-placement'],
+  command: 'bun',
+  label: 'test-placement',
+};
+
 describe('buildValidationSteps', () => {
+  it('always plans the test-placement guard, even with no lint paths', () => {
+    const { checkLane, checkedLabels } = buildValidationSteps({
+      onlyE2e: false,
+      plan: makePlan({}),
+      skipE2e: false,
+    });
+
+    expect(checkLane).toEqual([TEST_PLACEMENT_STEP]);
+    expect(checkedLabels).toContain('test-placement');
+  });
+
+  it('skips the test-placement guard for an E2E-only run', () => {
+    const { checkLane } = buildValidationSteps({
+      onlyE2e: true,
+      plan: makePlan({}),
+      skipE2e: false,
+    });
+
+    expect(checkLane).not.toContainEqual(TEST_PLACEMENT_STEP);
+  });
+
   it('plans nothing for an empty plan', () => {
     const steps = buildValidationSteps({
       onlyE2e: false,
@@ -38,7 +65,7 @@ describe('buildValidationSteps', () => {
       skipE2e: false,
     });
 
-    expect(steps.checkLane).toEqual([]);
+    expect(steps.checkLane).toEqual([TEST_PLACEMENT_STEP]);
     expect(steps.integrationLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
   });
@@ -59,6 +86,7 @@ describe('buildValidationSteps', () => {
         command: 'bun',
         label: 'lint',
       },
+      TEST_PLACEMENT_STEP,
       {
         args: [
           'turbo',

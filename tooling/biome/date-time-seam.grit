@@ -29,11 +29,7 @@ or {
   not $filename <: or {
     r".*packages/time/src/.*",
     r".*packages/db/src/schema/.*",
-    r".*\.test\.tsx?$",
     r".*/tests/.*",
-    r".*/__tests__/.*",
-    r".*/contract-tests/.*",
-    r".*/test-support/.*",
     r".*apps/web/src/components/ui/calendar\.tsx$",
     // @church/core is zero-dep by design and cannot import @church/time;
     // Entity's created/updated timestamps are internal bookkeeping, not

@@ -9,7 +9,7 @@ const TEST_FOLDER_PATTERN =
   /\/(__tests__|test-support|__mocks__|contract-tests)\//;
 
 // Covers: from '…', import '…', import('…'), vi.mock/doMock/importActual('…').
-export const MODULE_SPECIFIER_PATTERN =
+const MODULE_SPECIFIER_PATTERN =
   /(?:\bfrom\s*|\bimport\s*\(?\s*|\bvi\.(?:mock|doMock|importActual)\s*\(\s*)(['"])([^'"\n]+)\1/g;
 const TEST_LIBRARY_PATTERN = /^(vitest|@testing-library\/.+|msw(\/.+)?)$/;
 

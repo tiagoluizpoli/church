@@ -91,11 +91,6 @@ const FIXTURES: Record<string, string> = {
   'packages/db/src/schema/core.ts': RAW_DATE,
   'packages/core/src/entity.ts': RAW_DATE,
   'apps/server/tests/domain/entity.test.ts': RAW_DATE,
-  'apps/web/src/features/x/card.component.test.tsx': RAW_DATE,
-  'apps/web/src/__tests__/setup/render.tsx': RAW_DATE,
-  'apps/server/src/domain/contracts/contract-tests/x.contract-spec.ts':
-    RAW_DATE,
-  'apps/server/src/test-support/fixtures.ts': RAW_DATE,
 };
 
 let workDir = '';

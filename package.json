@@ -46,7 +46,7 @@
     "db:init": "bun run --cwd apps/server db:init-system",
     "db:clean": "turbo -F @church/db db:clean",
     "db:reseed:dev": "bun run --cwd apps/server db:reseed:dev",
-    "lint": "bun run lint:files -- .",
+    "lint": "bun run lint:files -- . && bun run validate:test-placement",
     "lint:files": "biome check --no-errors-on-unmatched --files-ignore-unknown=true",
     "lint:fix": "bun run lint:fix:files -- .",
     "lint:fix:files": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",

@@ -1,7 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { fromDate, parseInstant, toDate } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildRole, buildTeam } from '../../../seeds/builders/ministry';
 import {
   ChurchId,
   MinistryParticipationId,
@@ -9,16 +8,17 @@ import {
   ShiftId,
   TeamId,
   TimeSlotId,
-} from '../../../src/domain/branded-ids';
-import { Shift } from '../../../src/domain/entities/shift';
-import { DrizzleShiftRepository } from '../../../src/infrastructure/repositories/drizzle-shift.repository';
+} from '@/domain/branded-ids';
+import { Shift } from '@/domain/entities/shift';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { buildRole, buildTeam } from '@/seeds/builders/ministry';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 async function seedParticipationGraph(churchId: string, ministryId: string) {
   const cycle = await createSchedulingPhase3Cycle({

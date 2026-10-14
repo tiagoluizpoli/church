@@ -1,12 +1,8 @@
 import { NotFoundError } from '@church/core';
-import type {
-  ChurchId,
-  MinistryId,
-  RoleId,
-} from '../../../src/domain/branded-ids';
-import { runRoleRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/role.contract-spec';
-import type { RoleRepository } from '../../../src/domain/contracts/infrastructure/role.repository';
-import { Role } from '../../../src/domain/entities/role';
+import type { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import { Role } from '@/domain/entities/role';
+import { runRoleRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/role.contract-spec';
 
 class MockRoleRepository implements RoleRepository {
   private roles = new Map<string, Role>();

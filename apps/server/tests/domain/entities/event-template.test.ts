@@ -1,12 +1,9 @@
 import { parseTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { EventTemplate } from '../../../src/domain/entities/event-template';
-import {
-  TimeBlock,
-  type TimeBlockProps,
-} from '../../../src/domain/entities/time-block';
-import { InvalidTimeRangeError } from '../../../src/domain/errors/invalid-time-range';
-import { InvalidWeekdayError } from '../../../src/domain/errors/invalid-weekday';
+import { EventTemplate } from '@/domain/entities/event-template';
+import { TimeBlock, type TimeBlockProps } from '@/domain/entities/time-block';
+import { InvalidTimeRangeError } from '@/domain/errors/invalid-time-range';
+import { InvalidWeekdayError } from '@/domain/errors/invalid-weekday';
 
 interface CreateTimeBlockInput {
   props?: Partial<TimeBlockProps>;

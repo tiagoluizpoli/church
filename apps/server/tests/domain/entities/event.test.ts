@@ -1,10 +1,7 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import {
-  EVENT_STATUS_OPTIONS,
-  Event,
-} from '../../../src/domain/entities/event';
-import { InvalidDateRangeError } from '../../../src/domain/errors/invalid-date-range';
+import { EVENT_STATUS_OPTIONS, Event } from '@/domain/entities/event';
+import { InvalidDateRangeError } from '@/domain/errors/invalid-date-range';
 
 const props = {
   churchId: 'c1',

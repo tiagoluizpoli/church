@@ -11,12 +11,12 @@ import {
   it,
   vi,
 } from 'vitest';
-import { buildMinistry } from '../../seeds/builders/ministry';
-import { buildAssignment } from '../../seeds/builders/scheduling';
-import { buildMinistryMembership } from '../../seeds/builders/volunteer';
-import { RosteringController } from '../../src/api/controllers/rostering-controller';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { RosteringController } from '@/api/controllers/rostering-controller';
+import { createFastify } from '@/main/fastify/setup';
+import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildAssignment } from '@/seeds/builders/scheduling';
+import { buildMinistryMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingManagers,
   seedRequirement,
@@ -24,14 +24,14 @@ import {
   seedRoleQualification,
   seedShift,
   seedVolunteerMembership,
-} from '../application/scheduling-roster.helpers';
+} from '@/tests/application/scheduling-roster.helpers';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 vi.mock('@church/auth', () => ({
   auth: { api: { getSession: vi.fn() } },

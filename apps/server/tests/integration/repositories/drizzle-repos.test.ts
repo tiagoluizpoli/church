@@ -14,6 +14,16 @@
  *   availability-1 (volunteer-1)
  *   audit-1, audit-2 (for assignment-1)
  */
+
+import { seed, testDb, truncateAll } from './setup';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import {
   runAssignmentAuditRepositoryContractTests,
   runAssignmentRepositoryContractTests,
@@ -23,16 +33,7 @@ import {
   runRoleRepositoryContractTests,
   runTimeSlotRepositoryContractTests,
   runVolunteerRepositoryContractTests,
-} from '../../../src/domain/contracts/contract-tests';
-import { DrizzleAssignmentRepository } from '../../../src/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '../../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleChurchRepository } from '../../../src/infrastructure/repositories/drizzle-church.repository';
-import { DrizzleEventRepository } from '../../../src/infrastructure/repositories/drizzle-event.repository';
-import { DrizzleMinistryRepository } from '../../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleRoleRepository } from '../../../src/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleTimeSlotRepository } from '../../../src/infrastructure/repositories/drizzle-time-slot.repository';
-import { DrizzleVolunteerRepository } from '../../../src/infrastructure/repositories/drizzle-volunteer.repository';
-import { seed, testDb, truncateAll } from './setup';
+} from '@/tests/domain/contracts/contract-tests';
 
 runChurchRepositoryContractTests(
   async () => {

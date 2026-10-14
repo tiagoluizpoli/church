@@ -291,16 +291,6 @@
       }
     },
     {
-      "includes": ["apps/server/src/domain/contracts/contract-tests/**"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": "off"
-          }
-        }
-      }
-    },
-    {
       "includes": ["packages/time/**"],
       "linter": {
         "rules": {

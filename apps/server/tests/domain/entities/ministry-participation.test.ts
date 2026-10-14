@@ -1,18 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  ChurchId,
-  EventId,
-  MinistryId,
-} from '../../../src/domain/branded-ids';
+import type { ChurchId, EventId, MinistryId } from '@/domain/branded-ids';
 import {
   aggregateCycleTailoringStatus,
   calculateCompletionPercent,
   MinistryParticipation,
-} from '../../../src/domain/entities/ministry-participation';
+} from '@/domain/entities/ministry-participation';
 import {
   BelowFullPublishError,
   IllegalStateTransitionError,
-} from '../../../src/domain/errors';
+} from '@/domain/errors';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const ministryId = '33333333-3333-4333-8333-333333333331' as MinistryId;

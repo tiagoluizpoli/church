@@ -1,35 +1,32 @@
 import { appConfig } from '@church/app-config';
 import { fromDate } from '@church/time';
-import { buildRole } from '../../seeds/builders/ministry';
-import {
-  buildShift,
-  buildSlotRequirement,
-} from '../../seeds/builders/scheduling';
+import { DbAssignmentManager } from '@/application/db-assignment-manager';
+import { DbParticipationManager } from '@/application/db-participation-manager';
+import { DbVolunteerManager } from '@/application/db-volunteer-manager';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
+import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
+import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
+import { buildRole } from '@/seeds/builders/ministry';
+import { buildShift, buildSlotRequirement } from '@/seeds/builders/scheduling';
 import {
   buildRoleQualification,
   buildVolunteerWithMembership,
-} from '../../seeds/builders/volunteer';
-import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
-import { DbParticipationManager } from '../../src/application/db-participation-manager';
-import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
-import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
-import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
-import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
-import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
-import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTeamRepository } from '../../src/infrastructure/repositories/drizzle-team.repository';
-import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
-import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
-import { schedulingTestDb } from '../scheduling-reshape/setup';
+} from '@/seeds/builders/volunteer';
+import { schedulingTestDb } from '@/tests/scheduling-reshape/setup';
+import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 /**
  * The managers and seed steps the rostering (phase 6) and live-change

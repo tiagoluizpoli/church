@@ -12,18 +12,18 @@ import {
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
   createRosterQualificationRecipe,
   type RosterQualificationJourney,
-} from '../../seeds/e2e/recipes/roster-qualification';
+} from '@/seeds/e2e/recipes/roster-qualification';
 import {
   createRosteringBoardRecipe,
   type RosteringBoardJourney,
-} from '../../seeds/e2e/recipes/rostering-board';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/seeds/e2e/recipes/rostering-board';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 /** After 2026-12-28, the last day the legacy seed's fixed events used. */

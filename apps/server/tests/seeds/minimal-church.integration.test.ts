@@ -16,12 +16,12 @@ import {
 import { verifyPassword } from 'better-auth/crypto';
 import { and, count, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runSeedRecipe } from '../../seeds/recipe';
+import { runSeedRecipe } from '@/seeds/recipe';
 import {
   type MinimalChurchRecipeResult,
   minimalChurchRecipe,
-} from '../../seeds/recipes/minimal-church';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/seeds/recipes/minimal-church';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 interface ExpectAuthenticatableInput {
   userId: string;

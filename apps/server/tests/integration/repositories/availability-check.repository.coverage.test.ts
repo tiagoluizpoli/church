@@ -2,17 +2,17 @@ import { NotFoundError } from '@church/core';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildAvailabilityCheck } from '../../../seeds/builders/availability';
-import { buildShift } from '../../../seeds/builders/scheduling';
-import { AvailabilityCheckId, ChurchId } from '../../../src/domain/branded-ids';
-import { DrizzleAvailabilityCheckRepository } from '../../../src/infrastructure/repositories/drizzle-availability-check.repository';
+import { AvailabilityCheckId, ChurchId } from '@/domain/branded-ids';
+import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { buildAvailabilityCheck } from '@/seeds/builders/availability';
+import { buildShift } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
   beforeEach(async () => {

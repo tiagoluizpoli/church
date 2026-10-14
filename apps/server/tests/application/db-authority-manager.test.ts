@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DbAuthorityManager } from '../../src/application/db-authority-manager';
-import type { AuthorityActor } from '../../src/domain/authority/types';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
+import type { AuthorityActor } from '@/domain/authority/types';
 import type {
   ChurchId,
   EventId,
@@ -10,7 +10,7 @@ import type {
   TeamId,
   TimeSlotId,
   UserId,
-} from '../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
 
 const churchId = 'chu_home' as ChurchId;
 const otherChurchId = 'chu_other' as ChurchId;

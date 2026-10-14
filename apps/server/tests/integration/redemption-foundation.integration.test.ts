@@ -11,35 +11,35 @@ import {
 } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  buildMinistryMembership,
-  buildVolunteer,
-} from '../../seeds/builders/volunteer';
-import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';
-import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
-import { InvitationVerificationCodeManager } from '../../src/application/invitation-verification-code-manager';
+import { testDb, truncateAll } from './repositories/setup';
+import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
+import { DbRedemptionManager } from '@/application/db-redemption-manager';
+import { InvitationVerificationCodeManager } from '@/application/invitation-verification-code-manager';
 import {
   ChurchId,
   MinistryId,
   MinistryInvitationId,
   RoleId,
   UserId,
-} from '../../src/domain/branded-ids';
-import type { RedemptionIdentityGateway } from '../../src/domain/contracts/infrastructure/redemption-identity-gateway';
+} from '@/domain/branded-ids';
+import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
 import {
   DrizzleInvitationVerificationCodeRepository,
   DrizzleRedemptionRepository,
   DrizzleSecurityLogRepository,
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
-} from '../../src/infrastructure/repositories';
-import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
-import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
+} from '@/infrastructure/repositories';
+import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '@/seeds/builders/volunteer';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../test-support/identity-fixtures';
-import { testDb, truncateAll } from './repositories/setup';
+} from '@/tests/test-support/identity-fixtures';
+import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({

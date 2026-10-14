@@ -1,12 +1,12 @@
 import { DomainError } from '@church/core';
 import { describe, expect, it } from 'vitest';
-import { EmailSendError } from '../../src/domain/errors/email-send-error';
-import { InvalidDateRangeError } from '../../src/domain/errors/invalid-date-range';
-import { InvalidRequiredCountError } from '../../src/domain/errors/invalid-required-count';
-import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
-import { MissingOutboxDeliveryRecordError } from '../../src/domain/errors/missing-outbox-delivery-record';
-import { ResendCooldownActiveError } from '../../src/domain/errors/resend-cooldown-active';
-import { ResendDailyCapExceededError } from '../../src/domain/errors/resend-daily-cap-exceeded';
+import { EmailSendError } from '@/domain/errors/email-send-error';
+import { InvalidDateRangeError } from '@/domain/errors/invalid-date-range';
+import { InvalidRequiredCountError } from '@/domain/errors/invalid-required-count';
+import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
+import { MissingOutboxDeliveryRecordError } from '@/domain/errors/missing-outbox-delivery-record';
+import { ResendCooldownActiveError } from '@/domain/errors/resend-cooldown-active';
+import { ResendDailyCapExceededError } from '@/domain/errors/resend-daily-cap-exceeded';
 
 describe('Domain Errors', () => {
   describe('InvalidDateRangeError', () => {

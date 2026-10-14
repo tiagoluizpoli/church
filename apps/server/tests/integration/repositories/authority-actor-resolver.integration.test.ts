@@ -4,22 +4,8 @@ import { parseInstant } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  buildChurch,
-  buildChurchMembership,
-} from '../../../seeds/builders/church';
-import { buildUser } from '../../../seeds/builders/identity';
-import {
-  buildMinistry,
-  buildRole,
-  buildTeam,
-} from '../../../seeds/builders/ministry';
-import {
-  buildMinistryMembership,
-  buildVolunteer,
-} from '../../../seeds/builders/volunteer';
-import { AuthorityService } from '../../../src/domain/authority/authority-service';
-import type { AuthorityResource } from '../../../src/domain/authority/types';
+import { AuthorityService } from '@/domain/authority/authority-service';
+import type { AuthorityResource } from '@/domain/authority/types';
 import {
   ChurchId,
   MinistryId,
@@ -27,8 +13,15 @@ import {
   TeamId,
   UserId,
   VolunteerId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleAuthorityActorResolver } from '../../../src/infrastructure/auth/drizzle-authority-actor-resolver';
+} from '@/domain/branded-ids';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+import { buildMinistry, buildRole, buildTeam } from '@/seeds/builders/ministry';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '@/seeds/builders/volunteer';
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });

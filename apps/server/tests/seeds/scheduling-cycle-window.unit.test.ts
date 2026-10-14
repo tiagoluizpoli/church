@@ -6,7 +6,7 @@ import {
   weekdayIndex,
 } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { planningCycleWindow } from '../../seeds/e2e/recipes/scheduling-cycle-window';
+import { planningCycleWindow } from '@/seeds/e2e/recipes/scheduling-cycle-window';
 
 const SUNDAY = 0;
 const WINDOW_SPAN_DAYS = 29;

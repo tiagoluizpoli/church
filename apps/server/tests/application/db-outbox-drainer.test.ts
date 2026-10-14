@@ -1,14 +1,14 @@
 import { appConfig } from '@church/app-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';
+import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
 import type {
   ChurchId,
   MinistryId,
   RoleId,
   UserId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
-import { EmailSendError } from '../../src/domain/errors/email-send-error';
+} from '@/domain/branded-ids';
+import { EmailSendError } from '@/domain/errors/email-send-error';
 
 const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;

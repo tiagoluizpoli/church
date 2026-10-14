@@ -1,12 +1,8 @@
 import { db } from '@church/db';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type {
-  ChurchId,
-  EventId,
-  TimeSlotId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleTimeSlotRepository } from '../../../src/infrastructure/repositories/drizzle-time-slot.repository';
 import { seed, truncateAll } from './setup';
+import type { ChurchId, EventId, TimeSlotId } from '@/domain/branded-ids';
+import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
 
 const CHURCH = '11111111-1111-1111-1111-111111111111' as ChurchId;
 const EVENT = '66666666-6666-6666-6666-666666666661' as EventId;

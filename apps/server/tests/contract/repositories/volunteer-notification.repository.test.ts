@@ -6,19 +6,19 @@ import type {
   MinistryId,
   VolunteerId,
   VolunteerNotificationId,
-} from '../../../src/domain/branded-ids';
-import { runVolunteerNotificationRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/volunteer-notification.contract-spec';
+} from '@/domain/branded-ids';
 import type {
   CreateVolunteerNotificationInput,
   VolunteerNotificationListInput,
   VolunteerNotificationListResult,
   VolunteerNotificationRepository,
-} from '../../../src/domain/contracts/infrastructure/volunteer-notification.repository';
+} from '@/domain/contracts/infrastructure/volunteer-notification.repository';
 import type {
   VolunteerNotificationPayload,
   VolunteerNotificationType,
-} from '../../../src/domain/entities/volunteer-notification';
-import { VolunteerNotification } from '../../../src/domain/entities/volunteer-notification';
+} from '@/domain/entities/volunteer-notification';
+import { VolunteerNotification } from '@/domain/entities/volunteer-notification';
+import { runVolunteerNotificationRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/volunteer-notification.contract-spec';
 
 const TEST_CHURCH_ID = '11111111-1111-1111-1111-111111111111' as ChurchId;
 const TEST_VOLUNTEER_ID = '44444444-4444-4444-4444-444444444441' as VolunteerId;

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   timeSlotMapper,
   timeSlotResponseSchema,
-} from '../../src/api/dtos/time-slot.dto';
-import { SlotRequirement } from '../../src/domain/entities/slot-requirement';
-import { TimeSlot } from '../../src/domain/entities/time-slot';
+} from '@/api/dtos/time-slot.dto';
+import { SlotRequirement } from '@/domain/entities/slot-requirement';
+import { TimeSlot } from '@/domain/entities/time-slot';
 
 describe('timeSlotMapper', () => {
   describe('requirementToResponse', () => {

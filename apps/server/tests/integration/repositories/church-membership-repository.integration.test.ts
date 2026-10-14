@@ -3,13 +3,10 @@ import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  buildChurch,
-  buildChurchMembership,
-} from '../../../seeds/builders/church';
-import { buildUser } from '../../../seeds/builders/identity';
-import { ChurchId, UserId } from '../../../src/domain/branded-ids';
-import { DrizzleChurchMembershipRepository } from '../../../src/infrastructure/auth/drizzle-church-membership-repository';
+import { ChurchId, UserId } from '@/domain/branded-ids';
+import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
+import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });

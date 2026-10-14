@@ -28,18 +28,18 @@ import { parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import { and, count, countDistinct, eq, isNull, ne, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { createFastify } from '@/main/fastify/setup';
 import {
   SEED_PERSONA_PASSWORD,
   SEED_PLATFORM_OPERATOR_ID,
-} from '../../seeds/blueprints/credentials';
-import { verifyDevelopmentGraph } from '../../seeds/development/verify';
-import { runSeedRecipe, type SeedWriter } from '../../seeds/recipe';
+} from '@/seeds/blueprints/credentials';
+import { verifyDevelopmentGraph } from '@/seeds/development/verify';
+import { runSeedRecipe, type SeedWriter } from '@/seeds/recipe';
 import {
   createDevelopmentRecipe,
   type DevelopmentRecipeResult,
-} from '../../seeds/recipes/development';
-import { createFastify } from '../../src/main/fastify/setup';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/seeds/recipes/development';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
 /** One per (published participation, Volunteer rostered when it was published). */

@@ -1,7 +1,7 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { notificationMapper } from '../../src/api/dtos/notification.dto';
-import { VolunteerNotification } from '../../src/domain/entities/volunteer-notification';
+import { notificationMapper } from '@/api/dtos/notification.dto';
+import { VolunteerNotification } from '@/domain/entities/volunteer-notification';
 
 function createFullNotification() {
   return new VolunteerNotification(

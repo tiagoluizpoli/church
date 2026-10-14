@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DbParticipationManager } from '../../src/application/db-participation-manager';
+import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
   MinistryId,
   PlanningCycleId,
   TeamId,
   UserId,
-} from '../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
 
 const churchId = ChurchId.from('11111111-1111-4111-8111-111111111111');
 const ministryId = MinistryId.from('22222222-2222-4222-8222-222222222222');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Ministry } from '../../../src/domain/entities/ministry';
+import { Ministry } from '@/domain/entities/ministry';
 
 describe('Ministry Entity', () => {
   it('constructs with minimum props', () => {

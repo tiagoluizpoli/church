@@ -1,6 +1,6 @@
 import { isInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { MinistryVolunteer } from '../../../src/domain/entities/ministry-volunteer';
+import { MinistryVolunteer } from '@/domain/entities/ministry-volunteer';
 
 describe('MinistryVolunteer Entity', () => {
   it('constructs with minimum props', () => {

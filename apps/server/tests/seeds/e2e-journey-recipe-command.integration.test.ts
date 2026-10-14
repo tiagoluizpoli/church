@@ -7,11 +7,11 @@ import { fromDate, today } from '@church/time';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { SEED_PERSONA_PASSWORD } from '../../seeds/blueprints/credentials';
+import { SEED_PERSONA_PASSWORD } from '@/seeds/blueprints/credentials';
 import {
   E2E_JOURNEY_RECIPE_NAMES,
   E2E_JOURNEY_TIMEZONE,
-} from '../../seeds/e2e/journey-keys';
+} from '@/seeds/e2e/journey-keys';
 
 const SERVER_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LOAD_COMMAND = join(

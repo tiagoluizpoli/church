@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DbActiveChurchResolver } from '../../src/application/db-active-church-resolver';
-import type { AuthorityActor } from '../../src/domain/authority/types';
-import type {
-  ChurchId,
-  UserId,
-  VolunteerId,
-} from '../../src/domain/branded-ids';
+import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
+import type { AuthorityActor } from '@/domain/authority/types';
+import type { ChurchId, UserId, VolunteerId } from '@/domain/branded-ids';
 
 const churchId = 'chu_home' as ChurchId;
 const otherChurchId = 'chu_other' as ChurchId;

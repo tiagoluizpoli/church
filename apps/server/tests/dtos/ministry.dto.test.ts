@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ministryMapper,
   ministryResponseSchema,
-} from '../../src/api/dtos/ministry.dto';
-import { Ministry } from '../../src/domain/entities/ministry';
+} from '@/api/dtos/ministry.dto';
+import { Ministry } from '@/domain/entities/ministry';
 
 describe('ministryMapper', () => {
   describe('toResponse', () => {

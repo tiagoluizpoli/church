@@ -1,17 +1,13 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for type tests
 
 import { describe, it } from 'vitest';
-import type {
-  AssignmentId,
-  ChurchId,
-  EventId,
-} from '../../../src/domain/branded-ids';
-import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
-import type { AvailabilityRepository } from '../../../src/domain/contracts/infrastructure/availability.repository';
-import type { EventRepository } from '../../../src/domain/contracts/infrastructure/event.repository';
-import type { TimeSlotRepository } from '../../../src/domain/contracts/infrastructure/time-slot.repository';
-import type { TransactionContext } from '../../../src/domain/contracts/infrastructure/transaction-context';
+import type { AssignmentId, ChurchId, EventId } from '@/domain/branded-ids';
+import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
+import type { AvailabilityRepository } from '@/domain/contracts/infrastructure/availability.repository';
+import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { TimeSlotRepository } from '@/domain/contracts/infrastructure/time-slot.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
 describe('User Story 4: Transaction Context Type Safety', () => {
   it('should verify all mutation methods accept an optional TransactionContext', () => {

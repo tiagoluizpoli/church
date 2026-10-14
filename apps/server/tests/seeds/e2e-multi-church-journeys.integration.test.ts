@@ -17,26 +17,22 @@ import {
 } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
+import { snapshotAllRows } from './journey-graph-snapshot';
+import { qualifiedRoleIds } from './qualified-role-ids';
+import { ChurchId, MinistryInvitationId, UserId } from '@/domain/branded-ids';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories';
+import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
   type ActiveChurchSwitchingJourney,
   createActiveChurchSwitchingRecipe,
-} from '../../seeds/e2e/recipes/active-church-switching';
-import { anchoredInstant } from '../../seeds/e2e/recipes/rostering-church';
+} from '@/seeds/e2e/recipes/active-church-switching';
+import { anchoredInstant } from '@/seeds/e2e/recipes/rostering-church';
 import {
   createVolunteerTransferRecipe,
   type VolunteerTransferJourney,
-} from '../../seeds/e2e/recipes/volunteer-transfer';
-import {
-  ChurchId,
-  MinistryInvitationId,
-  UserId,
-} from '../../src/domain/branded-ids';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories';
-import { DrizzleVolunteerTransferRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-transfer.repository';
-import { testDb, truncateAll } from '../integration/repositories/setup';
-import { snapshotAllRows } from './journey-graph-snapshot';
-import { qualifiedRoleIds } from './qualified-role-ids';
+} from '@/seeds/e2e/recipes/volunteer-transfer';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 /** Past the legacy seed's last fixed date (2026-12-28). */

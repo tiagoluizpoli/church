@@ -1,12 +1,12 @@
 import { parseCalendarDay, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import type { ShiftId } from '../../src/domain/branded-ids';
-import { CrossMinistryScopeError } from '../../src/domain/errors/cross-ministry-scope';
+import type { ShiftId } from '@/domain/branded-ids';
+import { CrossMinistryScopeError } from '@/domain/errors/cross-ministry-scope';
 import {
   assertMarksWithinScope,
   expandWholeDayShiftIds,
   resolveShiftAvailability,
-} from '../../src/domain/services/availability-marks';
+} from '@/domain/services/availability-marks';
 
 const shiftA = '11111111-1111-4111-8111-111111111111' as ShiftId;
 const shiftB = '22222222-2222-4222-8222-222222222222' as ShiftId;

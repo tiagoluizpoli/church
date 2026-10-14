@@ -16,8 +16,11 @@ import {
 import { verifyPassword } from 'better-auth/crypto';
 import { and, eq, inArray } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
-import { deriveSeedId } from '../../seeds/builders/derived-id';
+import { countAllRows, snapshotAllRows } from './journey-graph-snapshot';
+import { qualifiedRoleIds } from './qualified-role-ids';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
+import { deriveSeedId } from '@/seeds/builders/derived-id';
 import {
   E2E_JOURNEY_RECIPE_NAMES,
   type E2eJourneyRootKinds,
@@ -26,7 +29,7 @@ import {
   journeySeedId,
   journeyTag,
   resolveJourneyRoots,
-} from '../../seeds/e2e/journey-keys';
+} from '@/seeds/e2e/journey-keys';
 import {
   addRosteringChurchMembership,
   anchoredInstant,
@@ -35,11 +38,8 @@ import {
   type RosteringChurch,
   type RosteringChurchPlan,
   rosteringChurchRootKinds,
-} from '../../seeds/e2e/recipes/rostering-church';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
-import { countAllRows, snapshotAllRows } from './journey-graph-snapshot';
-import { qualifiedRoleIds } from './qualified-role-ids';
+} from '@/seeds/e2e/recipes/rostering-church';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const PLAN = {
   ministries: {

@@ -6,15 +6,15 @@ import {
   ChurchId,
   MinistryId,
   MinistryParticipationId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleMinistryParticipationRepository } from '../../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
+} from '@/domain/branded-ids';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
   beforeEach(async () => {

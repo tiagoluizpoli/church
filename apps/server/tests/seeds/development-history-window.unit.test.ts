@@ -1,6 +1,6 @@
 import { parseCalendarDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { historicalCycleWindow } from '../../seeds/development/history-window';
+import { historicalCycleWindow } from '@/seeds/development/history-window';
 
 describe('historicalCycleWindow', () => {
   it.each([

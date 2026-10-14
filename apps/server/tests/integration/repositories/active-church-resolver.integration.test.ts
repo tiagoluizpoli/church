@@ -3,17 +3,14 @@ import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  buildChurch,
-  buildChurchMembership,
-} from '../../../seeds/builders/church';
-import { buildUser } from '../../../seeds/builders/identity';
-import { DbActiveChurchResolver } from '../../../src/application/db-active-church-resolver';
-import { ChurchId, UserId } from '../../../src/domain/branded-ids';
-import { DrizzleAuthorityActorResolver } from '../../../src/infrastructure/auth/drizzle-authority-actor-resolver';
-import { DrizzleChurchMembershipRepository } from '../../../src/infrastructure/auth/drizzle-church-membership-repository';
-import { DrizzleChurchRepository } from '../../../src/infrastructure/repositories/drizzle-church.repository';
-import { DrizzleUnitOfWork } from '../../../src/infrastructure/repositories/drizzle-unit-of-work';
+import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
+import { ChurchId, UserId } from '@/domain/branded-ids';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });

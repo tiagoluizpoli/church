@@ -1,15 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  buildAvailabilityCheck,
-  buildUnavailabilityMark,
-} from '../../seeds/builders/availability';
-import { buildMinistry, buildTeam } from '../../seeds/builders/ministry';
-import {
-  buildAssignment,
-  buildMinistryParticipation,
-} from '../../seeds/builders/scheduling';
-import { buildTeamMembership } from '../../seeds/builders/volunteer';
+  createSchedulingManagers,
+  seedRequirement,
+  seedRole,
+  seedRoleQualification,
+  seedShift,
+  seedVolunteerMembership,
+} from './scheduling-roster.helpers';
 import {
   ChurchId,
   MinistryId,
@@ -19,22 +17,24 @@ import {
   ShiftId,
   UserId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
+import {
+  buildAvailabilityCheck,
+  buildUnavailabilityMark,
+} from '@/seeds/builders/availability';
+import { buildMinistry, buildTeam } from '@/seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildMinistryParticipation,
+} from '@/seeds/builders/scheduling';
+import { buildTeamMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../scheduling-reshape/setup';
-import {
-  createSchedulingManagers,
-  seedRequirement,
-  seedRole,
-  seedRoleQualification,
-  seedShift,
-  seedVolunteerMembership,
-} from './scheduling-roster.helpers';
+} from '@/tests/scheduling-reshape/setup';
 
 interface SeedTeamInput {
   churchId: string;

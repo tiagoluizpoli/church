@@ -4,14 +4,14 @@ import {
   eventMapper,
   eventResponseSchema,
   scheduleBuilderDataResponseSchema,
-} from '../../src/api/dtos/event.dto';
-import { RoleId, VolunteerId } from '../../src/domain/branded-ids';
-import type { ScheduleBuilderData } from '../../src/domain/contracts/application/event-manager';
-import { Assignment } from '../../src/domain/entities/assignment';
-import { Availability } from '../../src/domain/entities/availability';
-import { Event } from '../../src/domain/entities/event';
-import { SlotRequirement } from '../../src/domain/entities/slot-requirement';
-import { TimeSlot } from '../../src/domain/entities/time-slot';
+} from '@/api/dtos/event.dto';
+import { RoleId, VolunteerId } from '@/domain/branded-ids';
+import type { ScheduleBuilderData } from '@/domain/contracts/application/event-manager';
+import { Assignment } from '@/domain/entities/assignment';
+import { Availability } from '@/domain/entities/availability';
+import { Event } from '@/domain/entities/event';
+import { SlotRequirement } from '@/domain/entities/slot-requirement';
+import { TimeSlot } from '@/domain/entities/time-slot';
 
 const fullEventProps = {
   churchId: 'church-1',

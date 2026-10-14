@@ -1,7 +1,7 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { TimeSlot } from '../../../src/domain/entities/time-slot';
-import { InvalidDateRangeError } from '../../../src/domain/errors/invalid-date-range';
+import { TimeSlot } from '@/domain/entities/time-slot';
+import { InvalidDateRangeError } from '@/domain/errors/invalid-date-range';
 
 describe('TimeSlot Entity', () => {
   it('constructs with valid props', () => {

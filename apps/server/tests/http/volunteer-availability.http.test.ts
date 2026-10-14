@@ -9,10 +9,10 @@ import {
   it,
   vi,
 } from 'vitest';
-import { VolunteerController } from '../../src/api/controllers/volunteer-controller';
-import { CheckAccessDeniedError } from '../../src/domain/errors/check-access-denied';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
+import { createFastify } from '@/main/fastify/setup';
+import type { FastifyTypedInstance } from '@/main/fastify/types';
 
 vi.mock('@church/auth', () => ({
   auth: {

@@ -1,6 +1,6 @@
 import { ministryVolunteer, ministryVolunteerRole } from '@church/db';
 import { eq } from 'drizzle-orm';
-import { testDb } from '../integration/repositories/setup';
+import { testDb } from '@/tests/integration/repositories/setup';
 
 export interface VolunteerIdInput {
   volunteerId: string;

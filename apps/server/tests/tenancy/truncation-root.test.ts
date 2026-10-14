@@ -39,7 +39,7 @@ import {
 } from '@church/db';
 import { sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 /**
  * `truncateAll` roots at `organization` and `user`. Rooting it at `church`

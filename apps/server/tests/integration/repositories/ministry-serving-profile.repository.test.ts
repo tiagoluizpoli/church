@@ -1,13 +1,13 @@
 import { parseTimeOfDay } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildEventTemplate } from '../../../seeds/builders/planning';
-import { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
-import { DrizzleMinistryServingProfileRepository } from '../../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
+import { ChurchId, MinistryId } from '@/domain/branded-ids';
+import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
+import { buildEventTemplate } from '@/seeds/builders/planning';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 async function seedTemplateBlock(input: {
   churchId: string;

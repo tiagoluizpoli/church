@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SlotRequirement } from '../../../src/domain/entities/slot-requirement';
-import { InvalidRequiredCountError } from '../../../src/domain/errors/invalid-required-count';
+import { SlotRequirement } from '@/domain/entities/slot-requirement';
+import { InvalidRequiredCountError } from '@/domain/errors/invalid-required-count';
 
 describe('SlotRequirement Entity', () => {
   it('constructs with valid props', () => {

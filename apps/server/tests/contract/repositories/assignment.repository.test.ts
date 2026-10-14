@@ -10,17 +10,17 @@ import type {
   ShiftId,
   TimeSlotId,
   VolunteerId,
-} from '../../../src/domain/branded-ids';
-import { runAssignmentRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment.contract-spec';
+} from '@/domain/branded-ids';
 import type {
   AssignmentRepository,
   CreateAssignmentInput,
   UpdateAssignmentStatusInput,
-} from '../../../src/domain/contracts/infrastructure/assignment.repository';
+} from '@/domain/contracts/infrastructure/assignment.repository';
 import {
   Assignment,
   type AssignmentStatus,
-} from '../../../src/domain/entities/assignment';
+} from '@/domain/entities/assignment';
+import { runAssignmentRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/assignment.contract-spec';
 
 class MockAssignmentRepository implements AssignmentRepository {
   private assignments = new Map<string, Assignment>();

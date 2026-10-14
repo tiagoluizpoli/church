@@ -1,6 +1,6 @@
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
+import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import type {
   AssignmentId,
   ChurchId,
@@ -13,14 +13,14 @@ import type {
   TimeSlotId,
   UserId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
-import type { TransactionContext } from '../../src/domain/contracts/infrastructure/transaction-context';
-import { Assignment } from '../../src/domain/entities/assignment';
-import { Event } from '../../src/domain/entities/event';
-import { MinistryParticipation } from '../../src/domain/entities/ministry-participation';
-import { Shift } from '../../src/domain/entities/shift';
-import { SlotRequirement } from '../../src/domain/entities/slot-requirement';
-import { RosterActionNotAvailableError } from '../../src/domain/errors/roster-action-not-available';
+} from '@/domain/branded-ids';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import { Assignment } from '@/domain/entities/assignment';
+import { Event } from '@/domain/entities/event';
+import { MinistryParticipation } from '@/domain/entities/ministry-participation';
+import { Shift } from '@/domain/entities/shift';
+import { SlotRequirement } from '@/domain/entities/slot-requirement';
+import { RosterActionNotAvailableError } from '@/domain/errors/roster-action-not-available';
 
 const churchId = 'church-1' as ChurchId;
 const ministryId = 'ministry-1' as MinistryId;

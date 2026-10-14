@@ -1,21 +1,21 @@
 import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DbMinistryInvitationManager } from '../../src/application/db-ministry-invitation-manager';
+import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
 import type {
   ChurchId,
   MinistryId,
   MinistryInvitationId,
   RoleId,
   UserId,
-} from '../../src/domain/branded-ids';
-import { InsufficientInvitationAuthorityError } from '../../src/domain/errors/insufficient-invitation-authority';
-import { InvalidInvitationRoleError } from '../../src/domain/errors/invalid-invitation-role';
-import { InviteeAlreadyMinistryMemberError } from '../../src/domain/errors/invitee-already-ministry-member';
-import { MinistryInvitationNotFoundError } from '../../src/domain/errors/ministry-invitation-not-found';
-import { MissingOutboxDeliveryRecordError } from '../../src/domain/errors/missing-outbox-delivery-record';
-import { ResendCooldownActiveError } from '../../src/domain/errors/resend-cooldown-active';
-import { ResendDailyCapExceededError } from '../../src/domain/errors/resend-daily-cap-exceeded';
+} from '@/domain/branded-ids';
+import { InsufficientInvitationAuthorityError } from '@/domain/errors/insufficient-invitation-authority';
+import { InvalidInvitationRoleError } from '@/domain/errors/invalid-invitation-role';
+import { InviteeAlreadyMinistryMemberError } from '@/domain/errors/invitee-already-ministry-member';
+import { MinistryInvitationNotFoundError } from '@/domain/errors/ministry-invitation-not-found';
+import { MissingOutboxDeliveryRecordError } from '@/domain/errors/missing-outbox-delivery-record';
+import { ResendCooldownActiveError } from '@/domain/errors/resend-cooldown-active';
+import { ResendDailyCapExceededError } from '@/domain/errors/resend-daily-cap-exceeded';
 
 const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;

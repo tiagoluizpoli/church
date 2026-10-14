@@ -61,6 +61,12 @@ export function createAuth() {
         // Churches are provisioned by the Platform Operator, never over HTTP,
         // so the plugin's create-organization route stays shut.
         allowUserToCreateOrganization: false,
+        // Better Auth treats any custom `generateId` as predictable and then
+        // requires a verified email to accept or reject an invitation by id.
+        // Ours mints random UUIDs, and redemption proves the mailbox with its
+        // own emailed code before the account exists, so that gate does not
+        // apply; leaving it on rejects every newly redeemed User.
+        requireEmailVerificationOnInvitation: false,
         // No invitation mailer: the plugin therefore sends nothing and mints no
         // token or link. Invitation delivery is the application's own concern.
         organizationHooks: {

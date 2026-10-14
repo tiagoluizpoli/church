@@ -1,19 +1,19 @@
 import { outboxMessage } from '@church/db';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { testDb, truncateAll } from './setup';
 import {
   ChurchId,
   MinistryId,
   type MinistryInvitationId,
   UserId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleTransactionContext } from '../../../src/infrastructure/repositories';
-import { asTxContext } from '../../../src/infrastructure/repositories/drizzle-transaction-context';
-import { createMinistryInvitationTestHarness } from '../../../src/test-support/ministry-invitation-test-harness';
+} from '@/domain/branded-ids';
+import { DrizzleTransactionContext } from '@/infrastructure/repositories';
+import { asTxContext } from '@/infrastructure/repositories/drizzle-transaction-context';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../test-support/identity-fixtures';
-import { testDb, truncateAll } from './setup';
+} from '@/tests/test-support/identity-fixtures';
+import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 const { outboxRepository, unitOfWork, manager } =
   createMinistryInvitationTestHarness({ db: testDb });

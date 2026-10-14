@@ -3,13 +3,13 @@ import {
   ChurchId,
   VolunteerId,
   VolunteerNotificationId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleVolunteerNotificationRepository } from '../../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
+} from '@/domain/branded-ids';
+import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 describe('DrizzleVolunteerNotificationRepository', () => {
   beforeEach(async () => {

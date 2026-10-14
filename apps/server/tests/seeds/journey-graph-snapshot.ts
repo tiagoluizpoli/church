@@ -1,6 +1,6 @@
 import { verifyPassword } from 'better-auth/crypto';
-import { SEED_PERSONA_PASSWORD } from '../../seeds/blueprints/credentials';
-import { testDb } from '../integration/repositories/setup';
+import { SEED_PERSONA_PASSWORD } from '@/seeds/blueprints/credentials';
+import { testDb } from '@/tests/integration/repositories/setup';
 
 type CountRow = { value: string };
 

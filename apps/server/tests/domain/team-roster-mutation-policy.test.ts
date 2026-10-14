@@ -1,7 +1,7 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { TeamRosterMutationPolicy } from '../../src/domain/authority/team-roster-mutation-policy';
-import type { TeamId } from '../../src/domain/branded-ids';
+import { TeamRosterMutationPolicy } from '@/domain/authority/team-roster-mutation-policy';
+import type { TeamId } from '@/domain/branded-ids';
 
 const ledTeamId = 'team-led' as TeamId;
 const otherTeamId = 'team-other' as TeamId;

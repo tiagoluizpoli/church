@@ -1,12 +1,12 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import {
-  loadPlanningAdminJourney,
-  type PlanningAdminJourney,
-} from '../fixtures/journeys/planning-admin';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
 import { fillDatePickerField } from './date-picker.helpers';
 import { createPlanningCycleViaApi } from './planning-cycle-api.helpers';
 import { dayOfMonth, planningMonth } from './planning-month.helpers';
+import {
+  loadPlanningAdminJourney,
+  type PlanningAdminJourney,
+} from '@/tests/fixtures/journeys/planning-admin';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 /** Mirrors `formatDayOf` (apps/web/src/shared/utils/church-time.ts), which
  * every event display renders through — assertions against

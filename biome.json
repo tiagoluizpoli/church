@@ -291,16 +291,6 @@
       }
     },
     {
-      "includes": ["apps/server/src/domain/contracts/contract-tests/**"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": "off"
-          }
-        }
-      }
-    },
-    {
       "includes": ["packages/time/**"],
       "linter": {
         "rules": {
@@ -343,7 +333,11 @@
       }
     },
     {
-      "includes": ["**/src/routes/**/*", "**/routeTree.gen.ts"],
+      "includes": [
+        "**/src/routes/**/*",
+        "**/tests/routes/**/*",
+        "**/routeTree.gen.ts"
+      ],
       "linter": {
         "rules": {
           "style": {

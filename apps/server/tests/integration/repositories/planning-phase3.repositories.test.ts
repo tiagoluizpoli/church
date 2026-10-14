@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchId, PlanningCycleId } from '../../../src/domain/branded-ids';
-import { DrizzleEventTemplateRepository } from '../../../src/infrastructure/repositories/drizzle-event-template.repository';
-import { DrizzlePlanningCycleRepository } from '../../../src/infrastructure/repositories/drizzle-planning-cycle.repository';
-import { DrizzlePlanningEventRepository } from '../../../src/infrastructure/repositories/drizzle-planning-event.repository';
+import { ChurchId, PlanningCycleId } from '@/domain/branded-ids';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzlePlanningCycleRepository } from '@/infrastructure/repositories/drizzle-planning-cycle.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import {
   createSchedulingPhase3Cycle,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 describe('Phase 3 planning repositories', () => {
   beforeEach(async () => {

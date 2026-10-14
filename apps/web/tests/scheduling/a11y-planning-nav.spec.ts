@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { loadPlanningCycleAccessJourney } from '../fixtures/journeys/planning-admin';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
+import { loadPlanningCycleAccessJourney } from '@/tests/fixtures/journeys/planning-admin';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 // P9/T067 — a11y coverage for the breadcrumb component introduced in T061,
 // following the same pattern as a11y-builder.spec.ts's axe smoke test plus

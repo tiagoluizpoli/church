@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AuthorityService } from '../../src/domain/authority/authority-service';
+import { AuthorityService } from '@/domain/authority/authority-service';
 import type {
   AuthorityActor,
   AuthorityDecision,
@@ -8,14 +8,14 @@ import type {
   ChurchMembershipFact,
   MinistryMembershipFact,
   TeamMembershipFact,
-} from '../../src/domain/authority/types';
+} from '@/domain/authority/types';
 import type {
   ChurchId,
   MinistryId,
   TeamId,
   UserId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
 
 // ---------------------------------------------------------------------------
 // Shared fixtures

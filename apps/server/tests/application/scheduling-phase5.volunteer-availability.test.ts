@@ -9,18 +9,7 @@ import {
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildAvailabilityCheck } from '../../seeds/builders/availability';
-import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
-import {
-  buildAssignment,
-  buildMinistryParticipation,
-  buildShift,
-} from '../../seeds/builders/scheduling';
-import {
-  buildMinistryMembership,
-  buildVolunteerWithMembership,
-} from '../../seeds/builders/volunteer';
-import { DbVolunteerManager } from '../../src/application/db-volunteer-manager';
+import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import {
   AvailabilityCheckId,
   ChurchId,
@@ -28,22 +17,32 @@ import {
   ShiftId,
   VolunteerId,
   VolunteerNotificationId,
-} from '../../src/domain/branded-ids';
-import { CheckAccessDeniedError } from '../../src/domain/errors/check-access-denied';
-import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
-import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
-import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
-import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTeamRepository } from '../../src/infrastructure/repositories/drizzle-team.repository';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
-import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
+} from '@/domain/branded-ids';
+import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
+import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
+import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
+import { buildAvailabilityCheck } from '@/seeds/builders/availability';
+import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildMinistryParticipation,
+  buildShift,
+} from '@/seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteerWithMembership,
+} from '@/seeds/builders/volunteer';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -51,7 +50,8 @@ import {
   type SchedulingPhase3Seed,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
+import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 interface Phase5Manager {
   volunteerManager: DbVolunteerManager;

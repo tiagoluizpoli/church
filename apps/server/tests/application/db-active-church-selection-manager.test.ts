@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DbActiveChurchSelectionManager } from '../../src/application/db-active-church-selection-manager';
-import type { ChurchId, UserId } from '../../src/domain/branded-ids';
+import { DbActiveChurchSelectionManager } from '@/application/db-active-church-selection-manager';
+import type { ChurchId, UserId } from '@/domain/branded-ids';
 
 const userId = 'usr_1' as UserId;
 const churchAId = 'chu_a' as ChurchId;

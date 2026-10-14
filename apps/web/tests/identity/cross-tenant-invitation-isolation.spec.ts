@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
   type CrossTenantInvitationJourney,
   loadCrossTenantInvitationJourney,
-} from '../fixtures/journeys/cross-tenant-invitation';
-import { mintMinistryInvitationAs } from '../fixtures/journeys/identity-actions';
-import { newPersonaRequest } from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/cross-tenant-invitation';
+import { mintMinistryInvitationAs } from '@/tests/fixtures/journeys/identity-actions';
+import { newPersonaRequest } from '@/tests/fixtures/journeys/rostering-church';
 
 // #68 — extends DL4-X1's cross-tenant isolation shape
 // (scheduling/planning-cross-tenant-isolation.spec.ts) to the identity

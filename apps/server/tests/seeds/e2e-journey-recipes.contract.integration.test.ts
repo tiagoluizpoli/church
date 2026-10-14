@@ -1,20 +1,20 @@
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
-import type { E2eJourneyRecipeName } from '../../seeds/e2e/journey-keys';
-import {
-  type E2eJourneyRecipe,
-  runE2eJourneyRecipe,
-} from '../../seeds/e2e/journey-recipe';
-import { E2E_JOURNEY_RECIPES } from '../../seeds/e2e/journey-recipes';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
 import {
   countAllRows,
   type GraphSnapshot,
   rowsMentioning,
   snapshotAllRows,
 } from './journey-graph-snapshot';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
+import type { E2eJourneyRecipeName } from '@/seeds/e2e/journey-keys';
+import {
+  type E2eJourneyRecipe,
+  runE2eJourneyRecipe,
+} from '@/seeds/e2e/journey-recipe';
+import { E2E_JOURNEY_RECIPES } from '@/seeds/e2e/journey-recipes';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 const RECIPE_NAMES = Object.keys(E2E_JOURNEY_RECIPES) as E2eJourneyRecipeName[];

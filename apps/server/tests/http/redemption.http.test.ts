@@ -12,23 +12,23 @@ import {
 } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { RedemptionController } from '../../src/api/controllers/redemption-controller';
-import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
-import { DbVolunteerTransferManager } from '../../src/application/db-volunteer-transfer-manager';
-import { InvitationVerificationCodeManager } from '../../src/application/invitation-verification-code-manager';
+import { RedemptionController } from '@/api/controllers/redemption-controller';
+import { DbRedemptionManager } from '@/application/db-redemption-manager';
+import { DbVolunteerTransferManager } from '@/application/db-volunteer-transfer-manager';
+import { InvitationVerificationCodeManager } from '@/application/invitation-verification-code-manager';
 import {
   ChurchId,
   MinistryId,
   RoleId,
   UserId,
   type VolunteerId,
-} from '../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
 import type {
   AcceptMinistryInvitationInput,
   DeclineMinistryInvitationInput,
   RecordChurchOnlyPartialAcceptanceInput,
   RedemptionRepository,
-} from '../../src/domain/contracts/infrastructure/redemption.repository';
+} from '@/domain/contracts/infrastructure/redemption.repository';
 import type {
   AcceptChurchInvitationInput,
   CreateRedemptionAccountInput,
@@ -36,7 +36,7 @@ import type {
   RedemptionIdentityGateway,
   RejectChurchInvitationInput,
   SetActiveRedemptionChurchInput,
-} from '../../src/domain/contracts/infrastructure/redemption-identity-gateway';
+} from '@/domain/contracts/infrastructure/redemption-identity-gateway';
 import {
   DrizzleInvitationVerificationCodeRepository,
   DrizzleRedemptionRepository,
@@ -44,16 +44,16 @@ import {
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
   DrizzleVolunteerTransferRepository,
-} from '../../src/infrastructure/repositories';
-import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
-import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/infrastructure/repositories';
+import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { createFastify } from '@/main/fastify/setup';
+import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../test-support/identity-fixtures';
+} from '@/tests/test-support/identity-fixtures';
+import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 interface TestRedemptionIdentityGatewayInput {
   db: typeof testDb;

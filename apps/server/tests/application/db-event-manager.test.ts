@@ -1,6 +1,6 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
-import { DbEventManager } from '../../src/application/db-event-manager';
+import { DbEventManager } from '@/application/db-event-manager';
 import type {
   ChurchId,
   EventId,
@@ -8,24 +8,24 @@ import type {
   RoleId,
   TimeSlotId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
-import type { AssignmentRepository } from '../../src/domain/contracts/infrastructure/assignment.repository';
-import type { AvailabilityRepository } from '../../src/domain/contracts/infrastructure/availability.repository';
-import type { EventRepository } from '../../src/domain/contracts/infrastructure/event.repository';
-import type { RoleRepository } from '../../src/domain/contracts/infrastructure/role.repository';
-import type { TimeSlotRepository } from '../../src/domain/contracts/infrastructure/time-slot.repository';
+} from '@/domain/branded-ids';
+import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
+import type { AvailabilityRepository } from '@/domain/contracts/infrastructure/availability.repository';
+import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { TimeSlotRepository } from '@/domain/contracts/infrastructure/time-slot.repository';
 import type {
   MinistryMembership,
   MinistryTeamMembership,
   VolunteerRepository,
-} from '../../src/domain/contracts/infrastructure/volunteer.repository';
-import { Assignment } from '../../src/domain/entities/assignment';
-import { Availability } from '../../src/domain/entities/availability';
-import { Event } from '../../src/domain/entities/event';
-import { Role } from '../../src/domain/entities/role';
-import { TimeSlot } from '../../src/domain/entities/time-slot';
-import { Volunteer } from '../../src/domain/entities/volunteer';
-import { IsolationBreachError } from '../../src/domain/errors/isolation-breach-error';
+} from '@/domain/contracts/infrastructure/volunteer.repository';
+import { Assignment } from '@/domain/entities/assignment';
+import { Availability } from '@/domain/entities/availability';
+import { Event } from '@/domain/entities/event';
+import { Role } from '@/domain/entities/role';
+import { TimeSlot } from '@/domain/entities/time-slot';
+import { Volunteer } from '@/domain/entities/volunteer';
+import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const ministryId = '22222222-2222-4222-8222-222222222222' as MinistryId;

@@ -4,16 +4,13 @@ import type {
   ChurchId,
   MinistryParticipationId,
   TimeSlotId,
-} from '../../src/domain/branded-ids';
-import type { Shift } from '../../src/domain/entities/shift';
-import {
-  InvalidShiftSplitError,
-  ShiftOutOfBoundsError,
-} from '../../src/domain/errors';
+} from '@/domain/branded-ids';
+import type { Shift } from '@/domain/entities/shift';
+import { InvalidShiftSplitError, ShiftOutOfBoundsError } from '@/domain/errors';
 import {
   type ShiftSplitStrategy,
   ShiftSplitter,
-} from '../../src/domain/services/shift-splitter';
+} from '@/domain/services/shift-splitter';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const participationId =

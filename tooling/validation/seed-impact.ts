@@ -158,11 +158,7 @@ interface IsSourcePathInput {
 }
 
 function isSourcePath({ changedPath }: IsSourcePathInput): boolean {
-  return (
-    !changedPath.includes('.test.') &&
-    !changedPath.includes('/tests/') &&
-    !changedPath.includes('/contract-tests/')
-  );
+  return !changedPath.includes('.test.') && !changedPath.includes('/tests/');
 }
 
 export function assessSeedImpact({

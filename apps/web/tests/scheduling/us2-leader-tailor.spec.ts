@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import { loadLeaderTailoringJourney } from '../fixtures/journeys/leader-tailoring';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
+import { loadLeaderTailoringJourney } from '@/tests/fixtures/journeys/leader-tailoring';
 import {
   rosteringTailoringPath,
   signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/rostering-church';
 
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 const CYCLE_NAME = 'US2 Tailoring';

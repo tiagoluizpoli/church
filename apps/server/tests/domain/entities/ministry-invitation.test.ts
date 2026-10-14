@@ -1,7 +1,7 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { RoleId } from '../../../src/domain/branded-ids';
-import { MinistryInvitation } from '../../../src/domain/entities/ministry-invitation';
+import { RoleId } from '@/domain/branded-ids';
+import { MinistryInvitation } from '@/domain/entities/ministry-invitation';
 
 describe('MinistryInvitation Entity', () => {
   it('reports kind "ministry-only" when addressed by inviteeUserId', () => {

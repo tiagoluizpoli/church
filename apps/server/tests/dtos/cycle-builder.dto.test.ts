@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cycleBuilderResponseSchema } from '../../src/api/dtos/cycle-builder.dto';
+import { cycleBuilderResponseSchema } from '@/api/dtos/cycle-builder.dto';
 
 describe('cycleBuilderResponseSchema', () => {
   it('requires a server-derived mutation capability on each requirement', () => {

@@ -1,15 +1,11 @@
 import { fromTimeColumn, parseInstant, parseTimeOfDay } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import type {
-  RoleId,
-  TimeBlockId,
-  TimeSlotId,
-} from '../../src/domain/branded-ids';
+import type { RoleId, TimeBlockId, TimeSlotId } from '@/domain/branded-ids';
 import {
   ProfileSeeder,
   type ProfileSeederEntry,
   type SeedParticipationPlanInput,
-} from '../../src/domain/services/profile-seeder';
+} from '@/domain/services/profile-seeder';
 
 const timeZone = 'America/Sao_Paulo';
 const blockId = '88888888-8888-4888-8888-888888888888' as TimeBlockId;

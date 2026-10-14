@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import {
-  getDateTimeSeamGuardFailures,
-  readApplicationSourceFiles,
-} from '../../validation/date-time-seam-guards';
+import { getDateTimeSeamGuardFailures } from '../../validation/date-time-seam-guards';
+import { readApplicationSourceFiles } from '../../validation/source-files';
 
 describe('date-time seam CI guards', () => {
   it('rejects suppressions of either seam rule', () => {

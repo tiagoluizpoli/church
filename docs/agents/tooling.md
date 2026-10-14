@@ -17,6 +17,7 @@ and task ordering.
 | Story E2E | `bun run test:e2e -- tests/[path].spec.ts` |
 | Complete test suite | `bun run test` |
 | Seed contracts (every recipe, refusals) | `bun run test:seeds` |
+| Test placement guard | `bun run validate:test-placement` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
@@ -41,6 +42,15 @@ one database script outside Varlock. Nothing else loads value files: no
 `--env-file`, no `dotenv`, and each package's `bunfig.toml` turns off Bun's
 automatic `.env` loading. Unit tests read no values at all; the server's
 unit project pins placeholders (`apps/server/vitest.config.ts`).
+
+## Test placement
+
+Tests, and every test helper, setup file, fixture, mock and contract suite,
+live in the owning project's `tests/` directory at the path that mirrors
+`src/`, never under `src`. Tests import source as `@/…`, other test files as
+`@/tests/…` and server seeds as `@/seeds/…`; a relative import only for a file
+in the same folder. `bun run lint` and every `validate:affected` run the
+guard (`bun run validate:test-placement`) and fail otherwise.
 
 ## Seed impact
 

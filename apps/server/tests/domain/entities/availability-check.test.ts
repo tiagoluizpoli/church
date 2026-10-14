@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  ChurchId,
-  PlanningCycleId,
-} from '../../../src/domain/branded-ids';
-import { AvailabilityCheck } from '../../../src/domain/entities/availability-check';
-import { IllegalStateTransitionError } from '../../../src/domain/errors/illegal-state-transition';
+import type { ChurchId, PlanningCycleId } from '@/domain/branded-ids';
+import { AvailabilityCheck } from '@/domain/entities/availability-check';
+import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const planningCycleId =

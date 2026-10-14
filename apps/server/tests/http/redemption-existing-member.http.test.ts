@@ -15,16 +15,11 @@ import { env } from '@church/env/server';
 import { hashPassword, makeSignature } from 'better-auth/crypto';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { RedemptionController } from '../../src/api/controllers/redemption-controller';
-import { DbRedemptionManager } from '../../src/application/db-redemption-manager';
-import { DbVolunteerTransferManager } from '../../src/application/db-volunteer-transfer-manager';
-import { InvitationVerificationCodeManager } from '../../src/application/invitation-verification-code-manager';
-import {
-  ChurchId,
-  MinistryId,
-  RoleId,
-  UserId,
-} from '../../src/domain/branded-ids';
+import { RedemptionController } from '@/api/controllers/redemption-controller';
+import { DbRedemptionManager } from '@/application/db-redemption-manager';
+import { DbVolunteerTransferManager } from '@/application/db-volunteer-transfer-manager';
+import { InvitationVerificationCodeManager } from '@/application/invitation-verification-code-manager';
+import { ChurchId, MinistryId, RoleId, UserId } from '@/domain/branded-ids';
 import {
   DrizzleInvitationVerificationCodeRepository,
   DrizzleRedemptionRepository,
@@ -32,17 +27,17 @@ import {
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
   DrizzleVolunteerTransferRepository,
-} from '../../src/infrastructure/repositories';
-import { BetterAuthRedemptionIdentityGateway } from '../../src/infrastructure/services/better-auth-redemption-identity-gateway';
-import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
-import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/infrastructure/repositories';
+import { BetterAuthRedemptionIdentityGateway } from '@/infrastructure/services/better-auth-redemption-identity-gateway';
+import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { createFastify } from '@/main/fastify/setup';
+import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../test-support/identity-fixtures';
+} from '@/tests/test-support/identity-fixtures';
+import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({

@@ -3,14 +3,14 @@ import { shift } from '@church/db';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildShift } from '../../../seeds/builders/scheduling';
 import {
   ChurchId,
   EventId,
   EventTemplateId,
   PlanningCycleId,
-} from '../../../src/domain/branded-ids';
-import { DrizzlePlanningEventRepository } from '../../../src/infrastructure/repositories/drizzle-planning-event.repository';
+} from '@/domain/branded-ids';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { buildShift } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -18,7 +18,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 describe('DrizzlePlanningEventRepository (extra coverage)', () => {
   beforeEach(async () => {

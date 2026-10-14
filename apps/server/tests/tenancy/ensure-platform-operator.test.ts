@@ -1,8 +1,8 @@
 import { member, user } from '@church/db';
 import { count, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 describe('ensurePlatformOperator', () => {
   beforeEach(async () => {

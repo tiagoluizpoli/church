@@ -1,19 +1,9 @@
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readApplicationSourceFiles, type SourceFile } from './source-files';
 
-const REPO_ROOT = resolve(import.meta.dir, '../..');
-const APPLICATION_ROOTS = ['apps/', 'packages/'];
-const SOURCE_FILE_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
 const SEAM_SUPPRESSION_PATTERN =
   /\bbiome-ignore(?:-[a-z]+)?\s+(?:plugin|lint\/style\/noRestrictedImports)\b/;
 const DATE_FNS_LOCALE_TOKEN_PATTERN =
   /(?:format|formatInTimeZone|lightFormat)\s*\([^;]*?(['"])([pP]+)\1/g;
-
-export interface SourceFile {
-  path: string;
-  source: string;
-}
 
 export function getDateTimeSeamGuardFailures({
   files,
@@ -41,32 +31,8 @@ export function getDateTimeSeamGuardFailures({
   });
 }
 
-export function readApplicationSourceFiles(): SourceFile[] {
-  const paths = execFileSync(
-    'git',
-    ['ls-files', '--cached', '--others', '--exclude-standard'],
-    {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-    },
-  )
-    .split('\n')
-    .filter(Boolean);
-
-  return paths
-    .filter((path) => isGuardedSourcePath({ path }))
-    .map((path) => ({
-      path,
-      source: readFileSync(resolve(REPO_ROOT, path), 'utf8'),
-    }));
-}
-
 function isGuardedSourcePath({ path }: { path: string }): boolean {
-  return (
-    SOURCE_FILE_PATTERN.test(path) &&
-    APPLICATION_ROOTS.some((root) => path.startsWith(root)) &&
-    !path.startsWith('packages/time/')
-  );
+  return !path.startsWith('packages/time/');
 }
 
 if (import.meta.main) {

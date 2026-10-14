@@ -2,15 +2,15 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: needed for type tests
 
 import { describe, it } from 'vitest';
-import type { AssignmentId, AvailabilityId, EventId, MinistryId, RoleId, TimeSlotId, VolunteerId } from '../../../src/domain/branded-ids';
-import type { AssignmentRepository } from '../../../src/domain/contracts/infrastructure/assignment.repository';
-import type { AssignmentAuditRepository } from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
-import type { AvailabilityRepository } from '../../../src/domain/contracts/infrastructure/availability.repository';
-import type { EventRepository } from '../../../src/domain/contracts/infrastructure/event.repository';
-import type { MinistryRepository } from '../../../src/domain/contracts/infrastructure/ministry.repository';
-import type { RoleRepository } from '../../../src/domain/contracts/infrastructure/role.repository';
-import type { TimeSlotRepository } from '../../../src/domain/contracts/infrastructure/time-slot.repository';
-import type { VolunteerRepository } from '../../../src/domain/contracts/infrastructure/volunteer.repository';
+import type { AssignmentId, AvailabilityId, EventId, MinistryId, RoleId, TimeSlotId, VolunteerId } from '@/domain/branded-ids';
+import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
+import type { AvailabilityRepository } from '@/domain/contracts/infrastructure/availability.repository';
+import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { TimeSlotRepository } from '@/domain/contracts/infrastructure/time-slot.repository';
+import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 
 

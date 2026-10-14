@@ -1,12 +1,12 @@
 import { invitation, member, user } from '@church/db';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { BetterAuthRedemptionIdentityGateway } from '../../src/infrastructure/services/better-auth-redemption-identity-gateway';
+import { testDb, truncateAll } from './repositories/setup';
+import { BetterAuthRedemptionIdentityGateway } from '@/infrastructure/services/better-auth-redemption-identity-gateway';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../test-support/identity-fixtures';
-import { testDb, truncateAll } from './repositories/setup';
+} from '@/tests/test-support/identity-fixtures';
 
 let fixture: TwoChurchIdentityFixture;
 

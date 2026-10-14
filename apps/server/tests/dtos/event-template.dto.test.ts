@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   eventTemplateMapper,
   eventTemplateResponseSchema,
-} from '../../src/api/dtos/event-template.dto';
-import { EventTemplate } from '../../src/domain/entities/event-template';
-import { TimeBlock } from '../../src/domain/entities/time-block';
+} from '@/api/dtos/event-template.dto';
+import { EventTemplate } from '@/domain/entities/event-template';
+import { TimeBlock } from '@/domain/entities/time-block';
 
 function createTemplate() {
   const blockOne = new TimeBlock({

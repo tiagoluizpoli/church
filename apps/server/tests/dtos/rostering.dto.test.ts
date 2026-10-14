@@ -3,12 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   createParticipationAssignmentResponseSchema,
   rosteringMapper,
-} from '../../src/api/dtos/rostering.dto';
-import {
-  MinistryParticipationId,
-  VolunteerId,
-} from '../../src/domain/branded-ids';
-import { Assignment } from '../../src/domain/entities/assignment';
+} from '@/api/dtos/rostering.dto';
+import { MinistryParticipationId, VolunteerId } from '@/domain/branded-ids';
+import { Assignment } from '@/domain/entities/assignment';
 
 describe('rosteringMapper', () => {
   describe('eligibleVolunteerToResponse', () => {

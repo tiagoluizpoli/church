@@ -1,11 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { loadRosteringBoardJourney } from '../fixtures/journeys/rostering-board';
+import { loadRosteringBoardJourney } from '@/tests/fixtures/journeys/rostering-board';
 import {
   requirementCellTestId,
   rosteringBuilderPath,
   signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/rostering-church';
 
 // T124 — Accessibility smoke. The journey's own cycle board (rostering-board
 // recipe): opening the builder can write (it creates any missing

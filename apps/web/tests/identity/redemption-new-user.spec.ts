@@ -1,6 +1,6 @@
 import { expect, request, test } from '@playwright/test';
-import { assertServedFromPinnedTarget } from '../fixtures/e2e-target';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
+import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
   assertOk,
   fetchActiveChurchStatus,
@@ -8,11 +8,11 @@ import {
   fetchVolunteerMinistryOptions,
   type MintedMinistryInvitation,
   mintMinistryInvitationAs,
-} from '../fixtures/journeys/identity-actions';
+} from '@/tests/fixtures/journeys/identity-actions';
 import {
   loadMinistryRedemptionJourney,
   type MinistryRedemptionJourney,
-} from '../fixtures/journeys/ministry-redemption';
+} from '@/tests/fixtures/journeys/ministry-redemption';
 
 // #63/DL#100 — a person outside the Church (the "outsider" — never before
 // registered) follows a chained Ministry Invitation link, verifies a

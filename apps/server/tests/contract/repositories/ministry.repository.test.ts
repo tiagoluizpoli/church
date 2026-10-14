@@ -1,14 +1,11 @@
 import { NotFoundError } from '@church/core';
-import type { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
-import { runMinistryRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/ministry.contract-spec';
+import type { ChurchId, MinistryId } from '@/domain/branded-ids';
 import type {
   MinistryRepository,
   UpdateMinistryDefaultDirectionInput,
-} from '../../../src/domain/contracts/infrastructure/ministry.repository';
-import {
-  Ministry,
-  type MinistrySettings,
-} from '../../../src/domain/entities/ministry';
+} from '@/domain/contracts/infrastructure/ministry.repository';
+import { Ministry, type MinistrySettings } from '@/domain/entities/ministry';
+import { runMinistryRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/ministry.contract-spec';
 
 class MockMinistryRepository implements MinistryRepository {
   private ministries = new Map<string, Ministry>();

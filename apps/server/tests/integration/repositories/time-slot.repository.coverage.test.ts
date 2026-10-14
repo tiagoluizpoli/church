@@ -3,26 +3,21 @@ import { shift as shiftTable } from '@church/db';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildRole } from '../../../seeds/builders/ministry';
+import { ChurchId, EventId, RoleId, TimeSlotId } from '@/domain/branded-ids';
+import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { buildRole } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildEvent,
   buildShift,
-} from '../../../seeds/builders/scheduling';
-import {
-  ChurchId,
-  EventId,
-  RoleId,
-  TimeSlotId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleTimeSlotRepository } from '../../../src/infrastructure/repositories/drizzle-time-slot.repository';
+} from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 async function seedEventGraph(churchId: string, ministryId: string) {
   const cycle = await createSchedulingPhase3Cycle({

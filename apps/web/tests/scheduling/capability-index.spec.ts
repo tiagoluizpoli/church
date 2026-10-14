@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { loadMinistryWorkspaceIndexJourney } from '../fixtures/journeys/ministry-workspace-index';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
+import { loadMinistryWorkspaceIndexJourney } from '@/tests/fixtures/journeys/ministry-workspace-index';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 test('a Ministry leader sees only their led Ministry workspace', async ({
   page,

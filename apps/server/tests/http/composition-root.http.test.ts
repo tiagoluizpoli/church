@@ -1,13 +1,13 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { describe, expect, it } from 'vitest';
-import type { MinistryInvitationRepository } from '../../src/domain/contracts/infrastructure/ministry-invitation.repository';
-import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
+import type { MinistryInvitationRepository } from '@/domain/contracts/infrastructure/ministry-invitation.repository';
+import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import {
   type CompositionRootDependencies,
   createCompositionRoot,
-} from '../../src/main/di/composition-root';
-import { registerControllers } from '../../src/main/fastify/register-controllers';
-import { createFastify } from '../../src/main/fastify/setup';
+} from '@/main/di/composition-root';
+import { registerControllers } from '@/main/fastify/register-controllers';
+import { createFastify } from '@/main/fastify/setup';
 
 async function registeredRoutes(
   overrides?: Partial<CompositionRootDependencies>,

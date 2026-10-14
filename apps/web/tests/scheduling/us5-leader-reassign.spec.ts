@@ -1,10 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
   type LiveChangesJourney,
   loadLiveChangesJourney,
-} from '../fixtures/journeys/live-changes';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/live-changes';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 // DL4-US5 (P4, test-plan.md): a leader reassigns a still-open assignment to a
 // different volunteer mid-cycle (FR-029).

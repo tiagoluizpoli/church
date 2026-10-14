@@ -8,14 +8,14 @@ import {
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
-import { createLeaderTailoringRecipe } from '../../seeds/e2e/recipes/leader-tailoring';
-import { createLiveChangesRecipe } from '../../seeds/e2e/recipes/live-changes';
-import { createVolunteerAvailabilityRecipe } from '../../seeds/e2e/recipes/volunteer-availability';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
 import { qualifiedRoleIds, type VolunteerIdInput } from './qualified-role-ids';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
+import { createLeaderTailoringRecipe } from '@/seeds/e2e/recipes/leader-tailoring';
+import { createLiveChangesRecipe } from '@/seeds/e2e/recipes/live-changes';
+import { createVolunteerAvailabilityRecipe } from '@/seeds/e2e/recipes/volunteer-availability';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 /** After the legacy seed's last fixed date (2026-12-28). */

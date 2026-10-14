@@ -1,7 +1,7 @@
 import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
-import { assertServedFromPinnedTarget } from '../e2e-target';
-import { requiredE2eUrl } from '../e2e-urls';
 import { newPersonaRequest, type RosteringPersona } from './rostering-church';
+import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 
 /**
  * Actions the identity journeys (invitation, redemption, church switching,

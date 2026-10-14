@@ -2,13 +2,13 @@ import { NotFoundError } from '@church/core';
 import { ministry } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchId, MinistryId } from '../../../src/domain/branded-ids';
-import { DrizzleMinistryRepository } from '../../../src/infrastructure/repositories/drizzle-ministry.repository';
+import { ChurchId, MinistryId } from '@/domain/branded-ids';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 describe('DrizzleMinistryRepository (extra coverage)', () => {
   beforeEach(async () => {

@@ -1,18 +1,11 @@
 import type { TenancyWriter } from '@church/db';
-import {
-  buildChurch,
-  buildChurchMembership,
-} from '../../seeds/builders/church';
-import { buildUser } from '../../seeds/builders/identity';
-import {
-  buildMinistry,
-  buildRole,
-  buildTeam,
-} from '../../seeds/builders/ministry';
+import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+import { buildMinistry, buildRole, buildTeam } from '@/seeds/builders/ministry';
 import {
   buildMinistryMembership,
   buildVolunteer,
-} from '../../seeds/builders/volunteer';
+} from '@/seeds/builders/volunteer';
 
 export interface TwoChurchIdentityFixtureInput {
   db: TenancyWriter;

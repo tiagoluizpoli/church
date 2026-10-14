@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchId, MinistryId, UserId } from '../../../src/domain/branded-ids';
-import { createMinistryInvitationTestHarness } from '../../../src/test-support/ministry-invitation-test-harness';
+import { testDb, truncateAll } from './setup';
+import { ChurchId, MinistryId, UserId } from '@/domain/branded-ids';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../../test-support/identity-fixtures';
-import { testDb, truncateAll } from './setup';
+} from '@/tests/test-support/identity-fixtures';
+import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 const { ministryInvitationRepository, manager } =
   createMinistryInvitationTestHarness({ db: testDb });

@@ -9,7 +9,7 @@ vi.mock('@church/auth', () => ({
 }));
 
 const { resolveActiveChurchAndPersist } = await import(
-  '../../../src/api/auth/resolve-active-church-and-persist'
+  '@/api/auth/resolve-active-church-and-persist'
 );
 const { auth } = await import('@church/auth');
 

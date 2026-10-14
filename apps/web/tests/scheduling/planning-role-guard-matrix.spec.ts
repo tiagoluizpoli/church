@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { loadPlanningCycleAccessJourney } from '../fixtures/journeys/planning-admin';
+import { loadPlanningCycleAccessJourney } from '@/tests/fixtures/journeys/planning-admin';
 import {
   signInPersonaPage,
   worshipBuilderPath,
-} from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/rostering-church';
 
 // P9/T065 (test-master: exhaustive permission-coverage). T057 only proved
 // denial at /scheduling/planning-cycles (route-level redirect). This closes

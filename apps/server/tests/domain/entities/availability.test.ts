@@ -5,9 +5,9 @@ import type {
   ChurchId,
   ShiftId,
   VolunteerId,
-} from '../../../src/domain/branded-ids';
-import { Availability } from '../../../src/domain/entities/availability';
-import { InvalidTimeRangeError } from '../../../src/domain/errors/invalid-time-range';
+} from '@/domain/branded-ids';
+import { Availability } from '@/domain/entities/availability';
+import { InvalidTimeRangeError } from '@/domain/errors/invalid-time-range';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const availabilityCheckId =

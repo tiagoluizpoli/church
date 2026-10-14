@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Role } from '../../../src/domain/entities/role';
+import { Role } from '@/domain/entities/role';
 
 describe('Role Entity', () => {
   it('constructs with minimum props', () => {

@@ -6,8 +6,8 @@ import { fromDate, today } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED_PERSONA_PASSWORD } from '../../seeds/blueprints/credentials';
-import { DEVELOPMENT_CHURCH_TIMEZONE } from '../../seeds/blueprints/development';
+import { SEED_PERSONA_PASSWORD } from '@/seeds/blueprints/credentials';
+import { DEVELOPMENT_CHURCH_TIMEZONE } from '@/seeds/blueprints/development';
 
 const SERVER_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const RESEED_COMMAND = join(

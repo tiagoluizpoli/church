@@ -16,9 +16,20 @@ const UNIT_ENV = {
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@': resolve(import.meta.dirname, './src'),
-    },
+    alias: [
+      {
+        find: /^@\/tests\//,
+        replacement: `${resolve(import.meta.dirname, 'tests')}/`,
+      },
+      {
+        find: /^@\/seeds\//,
+        replacement: `${resolve(import.meta.dirname, 'seeds')}/`,
+      },
+      {
+        find: /^@\//,
+        replacement: `${resolve(import.meta.dirname, 'src')}/`,
+      },
+    ],
   },
   test: {
     coverage: {
@@ -81,12 +92,7 @@ export default defineConfig({
           name: 'unit',
           env: UNIT_ENV,
           include: [
-            'src/**/*.test.ts',
-            'tests/api/auth/authority-guard.test.ts',
-            'tests/api/auth/active-church-pre-validation.test.ts',
-            'tests/api/auth/resolve-active-church-and-persist.test.ts',
-            'tests/api/controllers/rostering-controller.test.ts',
-            'tests/api/utils/e2e-target-header.test.ts',
+            'tests/api/**/*.test.ts',
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',
@@ -96,9 +102,14 @@ export default defineConfig({
             'tests/application/db-event-template-manager.test.ts',
             'tests/application/db-ministry-invitation-manager.test.ts',
             'tests/application/db-outbox-drainer.test.ts',
+            'tests/application/db-redemption-manager.test.ts',
+            'tests/application/db-volunteer-transfer-manager.test.ts',
+            'tests/application/invitation-verification-code-manager.test.ts',
             'tests/contract/**/*.test.ts',
             'tests/domain/**/*.test.ts',
             'tests/dtos/**/*.test.ts',
+            'tests/infrastructure/**/*.test.ts',
+            'tests/main/**/*.test.ts',
             'tests/seeds/**/*.unit.test.ts',
             'tests/test-support/**/*.test.ts',
           ],

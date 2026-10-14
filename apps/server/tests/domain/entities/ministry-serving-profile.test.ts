@@ -5,13 +5,13 @@ import type {
   MinistryId,
   RoleId,
   TimeBlockId,
-} from '../../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
 import {
   MinistryServingProfile,
   type MinistryServingProfileProps,
-} from '../../../src/domain/entities/ministry-serving-profile';
-import { InvalidRequiredCountError } from '../../../src/domain/errors/invalid-required-count';
-import { InvalidShiftSplitError } from '../../../src/domain/errors/invalid-shift-split';
+} from '@/domain/entities/ministry-serving-profile';
+import { InvalidRequiredCountError } from '@/domain/errors/invalid-required-count';
+import { InvalidShiftSplitError } from '@/domain/errors/invalid-shift-split';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const ministryId = '22222222-2222-4222-8222-222222222222' as MinistryId;

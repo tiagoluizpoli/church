@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { assertServedFromPinnedTarget } from '../fixtures/e2e-target';
+import { assertServedFromPinnedTarget } from '@/tests/fixtures/e2e-target';
 import {
   type AcceptMinistryInvitationOutcome,
   fetchActiveChurchStatus,
@@ -7,11 +7,11 @@ import {
   type MintedMinistryInvitation,
   mintMinistryInvitationAs,
   signIn,
-} from '../fixtures/journeys/identity-actions';
+} from '@/tests/fixtures/journeys/identity-actions';
 import {
   loadMinistryRedemptionJourney,
   type MinistryRedemptionJourney,
-} from '../fixtures/journeys/ministry-redemption';
+} from '@/tests/fixtures/journeys/ministry-redemption';
 
 // #64/DL#107 — a Church Member who does not yet volunteer (spec 024 §11.3's
 // `memberOnlyA` — the member-but-not-Volunteer state), signed out, opens a

@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import {
   shortVolunteerName,
   signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
-import { loadVolunteerDashboardJourney } from '../fixtures/journeys/volunteer-dashboard';
+} from '@/tests/fixtures/journeys/rostering-church';
+import { loadVolunteerDashboardJourney } from '@/tests/fixtures/journeys/volunteer-dashboard';
 
 const DASHBOARD_URL = '/dashboard?section=ministry_schedule';
 

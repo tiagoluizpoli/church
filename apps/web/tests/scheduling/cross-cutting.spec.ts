@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import { loadPlanningAdminJourney } from '../fixtures/journeys/planning-admin';
-import { loadPlanningCycleTenantsJourney } from '../fixtures/journeys/planning-cycle-tenants';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
+import { loadPlanningAdminJourney } from '@/tests/fixtures/journeys/planning-admin';
+import { loadPlanningCycleTenantsJourney } from '@/tests/fixtures/journeys/planning-cycle-tenants';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 // DL4-X1/X2/X3 (test-plan.md): cross-cutting checks that apply across every
 // user story rather than to one of them.

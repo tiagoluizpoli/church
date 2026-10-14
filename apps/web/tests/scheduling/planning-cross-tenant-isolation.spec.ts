@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import { loadPlanningCycleTenantsJourney } from '../fixtures/journeys/planning-cycle-tenants';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
+import { loadPlanningCycleTenantsJourney } from '@/tests/fixtures/journeys/planning-cycle-tenants';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 // P9/T064 (test-master, catastrophic-failure coverage): a ChurchAdmin from
 // Church A must never see Church B's cycle data through the

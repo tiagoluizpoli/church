@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { signIn } from '../fixtures/journeys/identity-actions';
+import { signIn } from '@/tests/fixtures/journeys/identity-actions';
 import {
   readSharedPersonas,
   VOLUNTEER_STORAGE_STATE,
-} from '../fixtures/shared-personas';
+} from '@/tests/fixtures/shared-personas';
 
 // #66 — proves the route guards consolidated by #53 behave in a real
 // browser: an unauthenticated deep link to a scheduling page sends the

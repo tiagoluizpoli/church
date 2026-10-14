@@ -1,5 +1,5 @@
 import { type APIResponse, expect, type Page } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 
 /**
  * Seeds planning state through the admin API, for specs whose assertions

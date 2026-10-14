@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { loadRosteringBoardJourney } from '../fixtures/journeys/rostering-board';
+import { loadRosteringBoardJourney } from '@/tests/fixtures/journeys/rostering-board';
 import {
   rosteringBuilderPath,
   signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/rostering-church';
 
 /**
  * 023 phase 3 — slot-aware rail.

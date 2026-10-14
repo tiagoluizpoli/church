@@ -3,12 +3,12 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '@/__tests__/setup/render';
 import { CycleBuilderCell } from '@/features/scheduling/components/builder/board/cycle-builder-cell';
 import type {
   CycleBuilderAssignment,
   CycleBuilderShiftSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
+import { renderWithProviders } from '@/tests/setup/render';
 
 const shift: CycleBuilderShiftSummary = {
   shiftId: 'shift-1',

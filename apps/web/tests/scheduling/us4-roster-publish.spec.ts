@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
-import { loadRosterPublishJourney } from '../fixtures/journeys/roster-publish';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
+import { loadRosterPublishJourney } from '@/tests/fixtures/journeys/roster-publish';
 import {
   newPersonaContext,
   requirementCellTestId,
   rosteringTailoringPath,
   shortVolunteerName,
   signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/rostering-church';
 
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 

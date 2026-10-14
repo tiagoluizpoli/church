@@ -5,13 +5,13 @@ import {
   fetchVolunteerMinistryOptions,
   mintMinistryInvitationAs,
   signIn,
-} from '../fixtures/journeys/identity-actions';
+} from '@/tests/fixtures/journeys/identity-actions';
 import {
   newPersonaContext,
   requirementCellTestId,
   rosteringBuilderPath,
-} from '../fixtures/journeys/rostering-church';
-import { loadVolunteerTransferJourney } from '../fixtures/journeys/volunteer-transfer';
+} from '@/tests/fixtures/journeys/rostering-church';
+import { loadVolunteerTransferJourney } from '@/tests/fixtures/journeys/volunteer-transfer';
 
 // #65 — proves the hardest identity journey end to end: a User who is a
 // member of both Churches and an active Volunteer in the second (Church B)

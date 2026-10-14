@@ -7,8 +7,11 @@ import {
   type TestInfo,
 } from '@playwright/test';
 import { z } from 'zod';
-import { requiredE2eUrl } from '../e2e-urls';
-import { resolveActiveChurch, signInPersona } from '../persona-session';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
+import {
+  resolveActiveChurch,
+  signInPersona,
+} from '@/tests/fixtures/persona-session';
 
 /**
  * The web half of the rostering Church base

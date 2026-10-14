@@ -1,9 +1,9 @@
 import { expect, type Page, test } from '@playwright/test';
-import { loadActiveChurchSwitchingJourney } from '../fixtures/journeys/active-church-switching';
+import { loadActiveChurchSwitchingJourney } from '@/tests/fixtures/journeys/active-church-switching';
 import {
   fetchActiveChurchStatus,
   signIn,
-} from '../fixtures/journeys/identity-actions';
+} from '@/tests/fixtures/journeys/identity-actions';
 
 // #67 — proves the Active Church selector and switcher (#54) hold together
 // for a real dual-membership User: spec 024 §1.5 / §11.7 item 5. Lands on

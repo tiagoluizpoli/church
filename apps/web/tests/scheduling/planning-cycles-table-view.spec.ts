@@ -1,12 +1,4 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test';
-import {
-  loadPlanningAdminJourney,
-  type PlanningAdminJourney,
-} from '../fixtures/journeys/planning-admin';
-import {
-  newPersonaContext,
-  signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
 import { fillDatePickerField } from './date-picker.helpers';
 import {
   applyTemplatesViaApi,
@@ -19,6 +11,14 @@ import {
   planningMonth,
 } from './planning-month.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
+import {
+  loadPlanningAdminJourney,
+  type PlanningAdminJourney,
+} from '@/tests/fixtures/journeys/planning-admin';
+import {
+  newPersonaContext,
+  signInPersonaPage,
+} from '@/tests/fixtures/journeys/rostering-church';
 
 interface SeededCycle {
   journey: PlanningAdminJourney;

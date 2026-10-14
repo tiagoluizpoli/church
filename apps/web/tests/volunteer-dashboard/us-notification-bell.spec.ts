@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
-import { loadVolunteerDashboardJourney } from '../fixtures/journeys/volunteer-dashboard';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
+import { loadVolunteerDashboardJourney } from '@/tests/fixtures/journeys/volunteer-dashboard';
 
 test('US2: bell shows unread count, opens dropdown, deep-links, and views full history', async ({
   page,

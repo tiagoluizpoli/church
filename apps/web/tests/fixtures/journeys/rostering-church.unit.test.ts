@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { dateLabel } from '../../../src/features/scheduling/utils/builder/cycle-builder-date.utils';
 import { dayFilterName } from './rostering-church';
+import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
 
 interface ShowOnlyLabelInput {
   day: string;

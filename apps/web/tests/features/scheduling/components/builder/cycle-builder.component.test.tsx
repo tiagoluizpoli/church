@@ -3,9 +3,9 @@ import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '@/__tests__/setup/render';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
+import { renderWithProviders } from '@/tests/setup/render';
 
 const parked = vi.hoisted(() => ({ auditPanel: true }));
 

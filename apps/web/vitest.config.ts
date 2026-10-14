@@ -50,14 +50,14 @@ export default defineConfig({
     // nothing measurable versus 3 or 4.
     maxWorkers: 2,
     // Inherited by every project below; a project's own `setupFiles` add to it.
-    setupFiles: ['./src/__tests__/setup/clock.ts'],
+    setupFiles: ['./tests/setup/clock.ts'],
     projects: [
       {
         extends: true,
         test: {
           name: 'unit',
           environment: 'node',
-          include: ['src/**/*.unit.test.ts', 'tests/**/*.unit.test.ts'],
+          include: ['tests/**/*.unit.test.ts'],
         },
       },
       {
@@ -65,11 +65,8 @@ export default defineConfig({
         test: {
           name: 'component',
           environment: 'jsdom',
-          include: [
-            'src/**/*.component.test.{ts,tsx}',
-            'tests/**/*.component.test.{ts,tsx}',
-          ],
-          setupFiles: ['./src/__tests__/setup/component.ts'],
+          include: ['tests/**/*.component.test.{ts,tsx}'],
+          setupFiles: ['./tests/setup/component.ts'],
           testTimeout: 20000,
         },
       },
@@ -78,7 +75,7 @@ export default defineConfig({
         test: {
           name: 'integration',
           environment: 'node',
-          include: ['src/**/*.integration.test.ts'],
+          include: ['tests/**/*.integration.test.ts'],
         },
       },
     ],

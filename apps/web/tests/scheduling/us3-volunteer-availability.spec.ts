@@ -1,13 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
-import { requiredE2eUrl } from '../fixtures/e2e-urls';
+import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
   newPersonaContext,
   signInPersonaPage,
-} from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/rostering-church';
 import {
   loadVolunteerAvailabilityJourney,
   type VolunteerAvailabilityJourney,
-} from '../fixtures/journeys/volunteer-availability';
+} from '@/tests/fixtures/journeys/volunteer-availability';
 
 // DL4-US3 (P2, test-plan.md): a volunteer who belongs to two ministries opens
 // their availability checks (one per ministry for the locked cycle), marks a

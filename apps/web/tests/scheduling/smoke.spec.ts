@@ -2,14 +2,14 @@ import { expect, test } from '@playwright/test';
 import {
   loadRosteringBoardJourney,
   type RosteringBoardJourney,
-} from '../fixtures/journeys/rostering-board';
+} from '@/tests/fixtures/journeys/rostering-board';
 import {
   dayFilterName,
   requirementCellTestId,
   rosteringTailoringPath,
   signInPersonaPage,
   worshipBuilderPath,
-} from '../fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/rostering-church';
 
 // T123 — Full system smoke: the journey's own cycle board (rostering-board
 // recipe) renders its key regions for an authenticated leader.

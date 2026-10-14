@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { loadPlanningAdminJourney } from '../fixtures/journeys/planning-admin';
-import { signInPersonaPage } from '../fixtures/journeys/rostering-church';
 import { fillDatePickerField } from './date-picker.helpers';
 import { planningMonth } from './planning-month.helpers';
+import { loadPlanningAdminJourney } from '@/tests/fixtures/journeys/planning-admin';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 test('planning-cycles, new, and $cycleId are distinct addressable URLs with working back/forward (FR-015, FR-016, SC-007)', async ({
   page,

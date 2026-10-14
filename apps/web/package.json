@@ -69,13 +69,13 @@
     "@types/react-dom": "catalog:",
     "@vite-pwa/assets-generator": "^1.0.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "@vitest/ui": "^4.1.9",
+    "@vitest/ui": "^5.0.4",
     "jsdom": "^29.1.1",
     "msw": "^2.14.6",
     "postcss": "^8.5.3",
     "tailwindcss": "catalog:",
     "typescript": "^5",
     "vite": "^6.2.2",
-    "vitest": "^4.1.9"
+    "vitest": "catalog:"
   }
 }

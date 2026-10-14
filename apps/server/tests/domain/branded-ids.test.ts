@@ -6,7 +6,7 @@ import {
   ParticipationSlotInclusionId,
   TeamId,
   VolunteerNotificationId,
-} from '../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
 
 describe('Branded ID factories', () => {
   it.each([

@@ -8,21 +8,17 @@ import {
 } from '@church/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { buildChurch } from '../../seeds/builders/church';
-import { buildUser } from '../../seeds/builders/identity';
-import { buildMinistry } from '../../seeds/builders/ministry';
+import { DbMinistryManager } from '@/application/db-ministry-manager';
+import { ChurchId, MinistryId, VolunteerId } from '@/domain/branded-ids';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import { buildChurch } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+import { buildMinistry } from '@/seeds/builders/ministry';
 import {
   buildMinistryMembership,
   buildVolunteer,
-} from '../../seeds/builders/volunteer';
-import { DbMinistryManager } from '../../src/application/db-ministry-manager';
-import {
-  ChurchId,
-  MinistryId,
-  VolunteerId,
-} from '../../src/domain/branded-ids';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
+} from '@/seeds/builders/volunteer';
 
 const CHURCH = ChurchId.from('11111111-1111-1111-1111-111111111111');
 const LEADER_VOL = VolunteerId.from('aaaa0001-aaaa-aaaa-aaaa-aaaaaaaaaaaa');

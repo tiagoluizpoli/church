@@ -6,16 +6,13 @@ import type {
   RoleId,
   UserId,
   VolunteerId,
-} from '../../../src/domain/branded-ids';
-import { runVolunteerRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/volunteer.contract-spec';
+} from '@/domain/branded-ids';
 import type {
   MinistryMembership,
   VolunteerRepository,
-} from '../../../src/domain/contracts/infrastructure/volunteer.repository';
-import {
-  Volunteer,
-  type VolunteerStatus,
-} from '../../../src/domain/entities/volunteer';
+} from '@/domain/contracts/infrastructure/volunteer.repository';
+import { Volunteer, type VolunteerStatus } from '@/domain/entities/volunteer';
+import { runVolunteerRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/volunteer.contract-spec';
 
 class MockVolunteerRepository implements VolunteerRepository {
   private volunteers = new Map<string, Volunteer>();

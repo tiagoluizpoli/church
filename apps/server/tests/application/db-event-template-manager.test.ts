@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
-import { ChurchId, EventTemplateId } from '../../src/domain/branded-ids';
-import type { EventTemplateRepository } from '../../src/domain/contracts/infrastructure/event-template.repository';
-import type { EventTemplate } from '../../src/domain/entities/event-template';
+import { DbEventTemplateManager } from '@/application/db-event-template-manager';
+import { ChurchId, EventTemplateId } from '@/domain/branded-ids';
+import type { EventTemplateRepository } from '@/domain/contracts/infrastructure/event-template.repository';
+import type { EventTemplate } from '@/domain/entities/event-template';
 
 describe('DbEventTemplateManager', () => {
   const churchId = ChurchId.from('church-1');

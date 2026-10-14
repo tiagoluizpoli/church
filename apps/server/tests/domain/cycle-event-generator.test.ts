@@ -9,17 +9,17 @@ import type {
   EventId,
   EventTemplateId,
   TimeBlockId,
-} from '../../src/domain/branded-ids';
-import { EventTemplate } from '../../src/domain/entities/event-template';
-import { PlanningCycle } from '../../src/domain/entities/planning-cycle';
-import { TimeBlock } from '../../src/domain/entities/time-block';
+} from '@/domain/branded-ids';
+import { EventTemplate } from '@/domain/entities/event-template';
+import { PlanningCycle } from '@/domain/entities/planning-cycle';
+import { TimeBlock } from '@/domain/entities/time-block';
 import {
   CycleEventGenerator,
   type ExistingGeneratedEvent,
   type ExistingGeneratedSlotFingerprint,
   type GeneratedCycleAppendSlotPlan,
   type GeneratedCycleCreateEventPlan,
-} from '../../src/domain/services/cycle-event-generator';
+} from '@/domain/services/cycle-event-generator';
 
 const churchId = '11111111-1111-1111-1111-111111111111';
 const templateId = '22222222-2222-2222-2222-222222222222' as EventTemplateId;

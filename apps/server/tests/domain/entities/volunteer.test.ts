@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Volunteer } from '../../../src/domain/entities/volunteer';
+import { Volunteer } from '@/domain/entities/volunteer';
 
 describe('Volunteer Entity', () => {
   it('constructs with minimum props', () => {

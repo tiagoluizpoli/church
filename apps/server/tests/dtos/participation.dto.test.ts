@@ -3,19 +3,19 @@ import { describe, expect, it } from 'vitest';
 import {
   participationMapper,
   shiftResponseSchema,
-} from '../../src/api/dtos/participation.dto';
-import { PlanningCycleId } from '../../src/domain/branded-ids';
+} from '@/api/dtos/participation.dto';
+import { PlanningCycleId } from '@/domain/branded-ids';
 import type {
   CycleParticipationView,
   MinistryCycleSummaryView,
   ParticipationEventView,
   ParticipationSlotView,
-} from '../../src/domain/contracts/application/participation-manager';
-import { Event } from '../../src/domain/entities/event';
-import { MinistryParticipation } from '../../src/domain/entities/ministry-participation';
-import { Shift } from '../../src/domain/entities/shift';
-import { SlotRequirement } from '../../src/domain/entities/slot-requirement';
-import { TimeSlot } from '../../src/domain/entities/time-slot';
+} from '@/domain/contracts/application/participation-manager';
+import { Event } from '@/domain/entities/event';
+import { MinistryParticipation } from '@/domain/entities/ministry-participation';
+import { Shift } from '@/domain/entities/shift';
+import { SlotRequirement } from '@/domain/entities/slot-requirement';
+import { TimeSlot } from '@/domain/entities/time-slot';
 
 function buildParticipation(): MinistryParticipation {
   return new MinistryParticipation({

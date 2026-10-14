@@ -1,20 +1,16 @@
 import { appConfig } from '@church/app-config';
 import { compareInstants } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DbAuthorityManager } from '../../src/application/db-authority-manager';
-import { DbMinistryInvitationManager } from '../../src/application/db-ministry-invitation-manager';
-import {
-  ChurchId,
-  MinistryId,
-  RoleId,
-  UserId,
-} from '../../src/domain/branded-ids';
-import { InsufficientInvitationAuthorityError } from '../../src/domain/errors/insufficient-invitation-authority';
-import { InvalidInvitationRoleError } from '../../src/domain/errors/invalid-invitation-role';
-import { InviteeAlreadyMinistryMemberError } from '../../src/domain/errors/invitee-already-ministry-member';
-import { MinistryInvitationNotFoundError } from '../../src/domain/errors/ministry-invitation-not-found';
-import { DrizzleAuthorityActorResolver } from '../../src/infrastructure/auth/drizzle-authority-actor-resolver';
-import { DrizzleSchedulingScopeResolver } from '../../src/infrastructure/auth/drizzle-scheduling-scope-resolver';
+import { testDb, truncateAll } from './repositories/setup';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
+import { ChurchId, MinistryId, RoleId, UserId } from '@/domain/branded-ids';
+import { InsufficientInvitationAuthorityError } from '@/domain/errors/insufficient-invitation-authority';
+import { InvalidInvitationRoleError } from '@/domain/errors/invalid-invitation-role';
+import { InviteeAlreadyMinistryMemberError } from '@/domain/errors/invitee-already-ministry-member';
+import { MinistryInvitationNotFoundError } from '@/domain/errors/ministry-invitation-not-found';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
   DrizzleEventRepository,
   DrizzleMinistryInvitationRepository,
@@ -23,12 +19,11 @@ import {
   DrizzleRoleRepository,
   DrizzleTimeSlotRepository,
   DrizzleUnitOfWork,
-} from '../../src/infrastructure/repositories';
+} from '@/infrastructure/repositories';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../test-support/identity-fixtures';
-import { testDb, truncateAll } from './repositories/setup';
+} from '@/tests/test-support/identity-fixtures';
 
 const ministryInvitationRepository = new DrizzleMinistryInvitationRepository({
   db: testDb,

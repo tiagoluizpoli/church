@@ -4,12 +4,9 @@ import type {
   ChurchId,
   MinistryParticipationId,
   TimeSlotId,
-} from '../../../src/domain/branded-ids';
-import { Shift } from '../../../src/domain/entities/shift';
-import {
-  InvalidTimeRangeError,
-  ShiftOutOfBoundsError,
-} from '../../../src/domain/errors';
+} from '@/domain/branded-ids';
+import { Shift } from '@/domain/entities/shift';
+import { InvalidTimeRangeError, ShiftOutOfBoundsError } from '@/domain/errors';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const participationId =

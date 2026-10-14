@@ -6,19 +6,8 @@ import {
 import { fromDate, parseInstant } from '@church/time';
 import { and, eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildRole } from '../../seeds/builders/ministry';
-import {
-  buildAssignment,
-  buildAssignmentAudit,
-  buildShift,
-  buildSlotRequirement,
-} from '../../seeds/builders/scheduling';
-import {
-  buildRoleQualification,
-  buildVolunteerWithMembership,
-} from '../../seeds/builders/volunteer';
-import { DbAssignmentManager } from '../../src/application/db-assignment-manager';
-import { DbParticipationManager } from '../../src/application/db-participation-manager';
+import { DbAssignmentManager } from '@/application/db-assignment-manager';
+import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
   MinistryId,
@@ -28,24 +17,34 @@ import {
   ShiftId,
   UserId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
-import { HardConstraintError } from '../../src/domain/conflict/errors/hard-constraint-error';
-import type { TransactionContext } from '../../src/domain/contracts/infrastructure/transaction-context';
-import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
-import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
-import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
-import { DrizzleTransactionContext } from '../../src/infrastructure/repositories/drizzle-transaction-context';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
-import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
-import type { AnyDrizzleDb } from '../../src/infrastructure/repositories/types';
-import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
+} from '@/domain/branded-ids';
+import { HardConstraintError } from '@/domain/conflict/errors/hard-constraint-error';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleTransactionContext } from '@/infrastructure/repositories/drizzle-transaction-context';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import { buildRole } from '@/seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildAssignmentAudit,
+  buildShift,
+  buildSlotRequirement,
+} from '@/seeds/builders/scheduling';
+import {
+  buildRoleQualification,
+  buildVolunteerWithMembership,
+} from '@/seeds/builders/volunteer';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -53,7 +52,8 @@ import {
   schedulingTestDb,
   schedulingTestPool,
   seedSchedulingPhase3Base,
-} from '../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
+import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 function createParticipationManager(): DbParticipationManager {
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });

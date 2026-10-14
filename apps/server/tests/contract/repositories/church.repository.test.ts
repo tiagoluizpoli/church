@@ -1,12 +1,12 @@
 import { NotFoundError } from '@church/core';
-import type { ChurchId } from '../../../src/domain/branded-ids';
-import { runChurchRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/church.contract-spec';
+import type { ChurchId } from '@/domain/branded-ids';
 import type {
   ChurchRepository,
   GetChurchByIdInput,
   GetChurchBySlugInput,
-} from '../../../src/domain/contracts/infrastructure/church.repository';
-import { Church, type ChurchSlug } from '../../../src/domain/entities/church';
+} from '@/domain/contracts/infrastructure/church.repository';
+import { Church, type ChurchSlug } from '@/domain/entities/church';
+import { runChurchRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/church.contract-spec';
 
 class MockChurchRepository implements ChurchRepository {
   private churches = new Map<string, Church>();

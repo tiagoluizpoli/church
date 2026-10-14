@@ -16,19 +16,15 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   buildAvailabilityCheck,
   buildUnavailabilityMark,
-} from '../../seeds/builders/availability';
+} from '@/seeds/builders/availability';
 import {
   buildChurch,
   buildChurchMembership,
   buildProvisionedChurch,
-} from '../../seeds/builders/church';
-import { buildUser } from '../../seeds/builders/identity';
-import {
-  buildMinistry,
-  buildRole,
-  buildTeam,
-} from '../../seeds/builders/ministry';
-import { buildEventTemplate } from '../../seeds/builders/planning';
+} from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+import { buildMinistry, buildRole, buildTeam } from '@/seeds/builders/ministry';
+import { buildEventTemplate } from '@/seeds/builders/planning';
 import {
   buildAssignedShift,
   buildAssignment,
@@ -39,13 +35,13 @@ import {
   buildShift,
   buildSlotRequirement,
   buildTimeSlot,
-} from '../../seeds/builders/scheduling';
+} from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
   buildVolunteer,
   buildVolunteerWithMembership,
-} from '../../seeds/builders/volunteer';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/seeds/builders/volunteer';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
 const ADMIN_USER_ID = 'builders-admin';

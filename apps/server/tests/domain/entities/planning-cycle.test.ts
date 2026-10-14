@@ -1,8 +1,8 @@
 import { parseCalendarDay, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { PlanningCycle } from '../../../src/domain/entities/planning-cycle';
-import { IllegalStateTransitionError } from '../../../src/domain/errors/illegal-state-transition';
-import { InvalidDateRangeError } from '../../../src/domain/errors/invalid-date-range';
+import { PlanningCycle } from '@/domain/entities/planning-cycle';
+import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
+import { InvalidDateRangeError } from '@/domain/errors/invalid-date-range';
 
 function createPlanningCycle() {
   return new PlanningCycle({

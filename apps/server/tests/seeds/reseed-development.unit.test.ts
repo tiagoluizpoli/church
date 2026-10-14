@@ -7,7 +7,7 @@ import {
   type ReseedPhases,
   resolveReseedAnchor,
   runReseedPhases,
-} from '../../seeds/development/reseed';
+} from '@/seeds/development/reseed';
 
 describe('parseReseedArguments', () => {
   it('leaves the anchor to the Church Timezone default when none is given', () => {

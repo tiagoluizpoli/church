@@ -7,32 +7,32 @@ import {
 import { fromDate, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  buildAssignedShift,
-  buildEvent,
-  buildMinistryParticipation,
-  buildPlanningCycle,
-} from '../../seeds/builders/scheduling';
-import {
-  buildMinistryMembership,
-  buildVolunteer,
-} from '../../seeds/builders/volunteer';
-import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';
+import { testDb, truncateAll } from './repositories/setup';
+import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
 import {
   ChurchId,
   MinistryId,
   MinistryInvitationId,
   UserId,
-} from '../../src/domain/branded-ids';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories';
-import { DrizzleVolunteerTransferRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-transfer.repository';
-import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
-import { createMinistryInvitationTestHarness } from '../../src/test-support/ministry-invitation-test-harness';
+} from '@/domain/branded-ids';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories';
+import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
+import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import {
+  buildAssignedShift,
+  buildEvent,
+  buildMinistryParticipation,
+  buildPlanningCycle,
+} from '@/seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '@/seeds/builders/volunteer';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../test-support/identity-fixtures';
-import { testDb, truncateAll } from './repositories/setup';
+} from '@/tests/test-support/identity-fixtures';
+import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 const {
   outboxRepository,

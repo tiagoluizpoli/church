@@ -8,11 +8,11 @@ import {
   it,
   vi,
 } from 'vitest';
-import { VolunteerController } from '../../src/api/controllers/volunteer-controller';
-import { AssignmentAccessDeniedError } from '../../src/domain/errors/assignment-access-denied';
-import { CancelWindowClosedError } from '../../src/domain/errors/cancel-window-closed';
-import { createFastify } from '../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../src/main/fastify/types';
+import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import { AssignmentAccessDeniedError } from '@/domain/errors/assignment-access-denied';
+import { CancelWindowClosedError } from '@/domain/errors/cancel-window-closed';
+import { createFastify } from '@/main/fastify/setup';
+import type { FastifyTypedInstance } from '@/main/fastify/types';
 
 vi.mock('@church/auth', () => ({
   auth: {

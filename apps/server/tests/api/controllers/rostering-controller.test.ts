@@ -10,10 +10,10 @@ import {
   it,
   vi,
 } from 'vitest';
-import { RosteringController } from '../../../src/api/controllers/rostering-controller';
-import { Assignment } from '../../../src/domain/entities/assignment';
-import { createFastify } from '../../../src/main/fastify/setup';
-import type { FastifyTypedInstance } from '../../../src/main/fastify/types';
+import { RosteringController } from '@/api/controllers/rostering-controller';
+import { Assignment } from '@/domain/entities/assignment';
+import { createFastify } from '@/main/fastify/setup';
+import type { FastifyTypedInstance } from '@/main/fastify/types';
 
 vi.mock('@church/auth', () => ({
   auth: {

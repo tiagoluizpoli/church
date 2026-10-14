@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   E2E_TARGET_HEADER,
   registerE2eTargetHeader,
-} from '../../../src/api/utils/e2e-target-header';
+} from '@/api/utils/e2e-target-header';
 
 // #253: the redemption journeys prove an invitation was provisioned and
 // redeemed against the run's pinned target by reading this header off the

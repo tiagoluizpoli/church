@@ -2,23 +2,23 @@ import { ministryVolunteer } from '@church/db';
 import { fromDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildAvailabilityCheck } from '../../../seeds/builders/availability';
-import { buildShift } from '../../../seeds/builders/scheduling';
 import {
   AvailabilityCheckId,
   ChurchId,
   EventId,
   ShiftId,
   VolunteerId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleAvailabilityRepository } from '../../../src/infrastructure/repositories/drizzle-availability.repository';
+} from '@/domain/branded-ids';
+import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
+import { buildAvailabilityCheck } from '@/seeds/builders/availability';
+import { buildShift } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 async function seedCheckWithShift(
   churchId: string,

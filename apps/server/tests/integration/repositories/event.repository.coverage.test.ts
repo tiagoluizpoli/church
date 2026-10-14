@@ -1,12 +1,12 @@
 import { NotFoundError } from '@church/core';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchId, EventId } from '../../../src/domain/branded-ids';
-import { DrizzleEventRepository } from '../../../src/infrastructure/repositories/drizzle-event.repository';
+import { ChurchId, EventId } from '@/domain/branded-ids';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 describe('DrizzleEventRepository (extra coverage)', () => {
   beforeEach(async () => {

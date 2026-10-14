@@ -6,14 +6,14 @@ import type {
   ChurchId,
   EventId,
   UserId,
-} from '../../../src/domain/branded-ids';
-import { runAssignmentAuditRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/assignment-audit.contract-spec';
+} from '@/domain/branded-ids';
 import type {
   AssignmentAuditLogEntry,
   AssignmentAuditRepository,
   CreateAssignmentAuditInput,
-} from '../../../src/domain/contracts/infrastructure/assignment-audit.repository';
-import { AssignmentAudit } from '../../../src/domain/entities/assignment-audit';
+} from '@/domain/contracts/infrastructure/assignment-audit.repository';
+import { AssignmentAudit } from '@/domain/entities/assignment-audit';
+import { runAssignmentAuditRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/assignment-audit.contract-spec';
 
 class MockAssignmentAuditRepository implements AssignmentAuditRepository {
   private audits = new Map<string, AssignmentAudit>();

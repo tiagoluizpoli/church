@@ -11,12 +11,12 @@ import {
 } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
   createRosterPublishRecipe,
   type RosterPublishJourney,
-} from '../../seeds/e2e/recipes/roster-publish';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/seeds/e2e/recipes/roster-publish';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 /** Past the legacy seed's last fixed date (2026-12-28). */

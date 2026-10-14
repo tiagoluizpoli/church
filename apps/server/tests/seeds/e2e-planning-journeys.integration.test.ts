@@ -2,14 +2,14 @@ import { member, planningCycle } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
-import { createMinistryWorkspaceIndexRecipe } from '../../seeds/e2e/recipes/ministry-workspace-index';
-import { createPlanningAdminRecipe } from '../../seeds/e2e/recipes/planning-admin';
-import { createPlanningCycleAccessRecipe } from '../../seeds/e2e/recipes/planning-cycle-access';
-import { createPlanningCycleTenantsRecipe } from '../../seeds/e2e/recipes/planning-cycle-tenants';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
+import { createMinistryWorkspaceIndexRecipe } from '@/seeds/e2e/recipes/ministry-workspace-index';
+import { createPlanningAdminRecipe } from '@/seeds/e2e/recipes/planning-admin';
+import { createPlanningCycleAccessRecipe } from '@/seeds/e2e/recipes/planning-cycle-access';
+import { createPlanningCycleTenantsRecipe } from '@/seeds/e2e/recipes/planning-cycle-tenants';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-12-28' });
 

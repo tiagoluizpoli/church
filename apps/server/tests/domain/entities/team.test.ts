@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Team } from '../../../src/domain/entities/team';
+import { Team } from '@/domain/entities/team';
 
 describe('Team Entity', () => {
   it('constructs with props', () => {

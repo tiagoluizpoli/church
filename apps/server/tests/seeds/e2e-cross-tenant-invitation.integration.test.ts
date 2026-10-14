@@ -2,14 +2,14 @@ import { member, ministry } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
   type CrossTenantInvitationJourney,
   createCrossTenantInvitationRecipe,
-} from '../../seeds/e2e/recipes/cross-tenant-invitation';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/seeds/e2e/recipes/cross-tenant-invitation';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 

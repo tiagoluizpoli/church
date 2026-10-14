@@ -4,11 +4,14 @@ import { assignmentAudit } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  buildAvailabilityCheck,
-  buildUnavailabilityMark,
-} from '../../seeds/builders/availability';
-import { buildMinistry } from '../../seeds/builders/ministry';
-import { buildAssignment } from '../../seeds/builders/scheduling';
+  createSchedulingManagers,
+  type SchedulingManagers,
+  seedRequirement,
+  seedRole,
+  seedRoleQualification,
+  seedShift,
+  seedVolunteerMembership,
+} from './scheduling-roster.helpers';
 import {
   AssignmentId,
   ChurchId,
@@ -19,25 +22,22 @@ import {
   ShiftId,
   UserId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
-import { AssignmentAccessDeniedError } from '../../src/domain/errors/assignment-access-denied';
-import { CancelWindowClosedError } from '../../src/domain/errors/cancel-window-closed';
+} from '@/domain/branded-ids';
+import { AssignmentAccessDeniedError } from '@/domain/errors/assignment-access-denied';
+import { CancelWindowClosedError } from '@/domain/errors/cancel-window-closed';
+import {
+  buildAvailabilityCheck,
+  buildUnavailabilityMark,
+} from '@/seeds/builders/availability';
+import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../scheduling-reshape/setup';
-import {
-  createSchedulingManagers,
-  type SchedulingManagers,
-  seedRequirement,
-  seedRole,
-  seedRoleQualification,
-  seedShift,
-  seedVolunteerMembership,
-} from './scheduling-roster.helpers';
+} from '@/tests/scheduling-reshape/setup';
 
 interface SeedAssignmentInput {
   churchId: string;

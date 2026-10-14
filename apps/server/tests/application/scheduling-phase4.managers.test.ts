@@ -7,15 +7,9 @@ import {
 import { fromDate, parseInstant, parseTimeOfDay } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
-import {
-  buildAssignment,
-  buildMinistryParticipation,
-} from '../../seeds/builders/scheduling';
-import { buildVolunteerWithMembership } from '../../seeds/builders/volunteer';
-import { DbAuthorityManager } from '../../src/application/db-authority-manager';
-import { DbAvailabilityCheckManager } from '../../src/application/db-availability-check-manager';
-import { DbParticipationManager } from '../../src/application/db-participation-manager';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
+import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
   MinistryId,
@@ -26,33 +20,38 @@ import {
   TimeBlockId,
   TimeSlotId,
   UserId,
-} from '../../src/domain/branded-ids';
-import type { NotificationService } from '../../src/domain/contracts/infrastructure/notification-service';
+} from '@/domain/branded-ids';
+import type { NotificationService } from '@/domain/contracts/infrastructure/notification-service';
 import {
   CrossMinistryScopeError,
   IllegalStateTransitionError,
   InvalidRequiredCountError,
   InvalidShiftSplitError,
   ShiftOutOfBoundsError,
-} from '../../src/domain/errors';
-import { DrizzleAuthorityActorResolver } from '../../src/infrastructure/auth/drizzle-authority-actor-resolver';
-import { DrizzleSchedulingScopeResolver } from '../../src/infrastructure/auth/drizzle-scheduling-scope-resolver';
-import { DrizzleAssignmentRepository } from '../../src/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAvailabilityRepository } from '../../src/infrastructure/repositories/drizzle-availability.repository';
-import { DrizzleAvailabilityCheckRepository } from '../../src/infrastructure/repositories/drizzle-availability-check.repository';
-import { DrizzleEventRepository } from '../../src/infrastructure/repositories/drizzle-event.repository';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
-import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
-import { DrizzleRoleRepository } from '../../src/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
-import { DrizzleVolunteerRepository } from '../../src/infrastructure/repositories/drizzle-volunteer.repository';
-import { DrizzleVolunteerNotificationRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { LocalNotificationService } from '../../src/infrastructure/services/local-notification-service';
-import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
+} from '@/domain/errors';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
+import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
+import { LocalNotificationService } from '@/infrastructure/services/local-notification-service';
+import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
+import {
+  buildAssignment,
+  buildMinistryParticipation,
+} from '@/seeds/builders/scheduling';
+import { buildVolunteerWithMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -61,7 +60,8 @@ import {
   type SchedulingPhase3Seed,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
+import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 interface Phase4Managers {
   participationManager: DbParticipationManager;

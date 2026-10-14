@@ -3,8 +3,8 @@ import type {
   ChurchId,
   MinistryParticipationId,
   TimeSlotId,
-} from '../../../src/domain/branded-ids';
-import { ParticipationSlotInclusion } from '../../../src/domain/entities/participation-slot-inclusion';
+} from '@/domain/branded-ids';
+import { ParticipationSlotInclusion } from '@/domain/entities/participation-slot-inclusion';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const participationId =

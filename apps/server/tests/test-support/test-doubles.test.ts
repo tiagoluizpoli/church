@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createNotificationServiceSpy } from '../../src/test-support/notification-service-spy';
+import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 describe('createNotificationServiceSpy', () => {
   it('records notification calls', async () => {

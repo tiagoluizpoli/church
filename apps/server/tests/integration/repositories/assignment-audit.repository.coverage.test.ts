@@ -2,25 +2,17 @@ import { timeSlot } from '@church/db';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildRole } from '../../../seeds/builders/ministry';
-import {
-  buildAssignment,
-  buildShift,
-} from '../../../seeds/builders/scheduling';
-import {
-  AssignmentId,
-  ChurchId,
-  EventId,
-  UserId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleAssignmentAuditRepository } from '../../../src/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { AssignmentId, ChurchId, EventId, UserId } from '@/domain/branded-ids';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { buildRole } from '@/seeds/builders/ministry';
+import { buildAssignment, buildShift } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 async function seedAssignment(input: {
   churchId: string;

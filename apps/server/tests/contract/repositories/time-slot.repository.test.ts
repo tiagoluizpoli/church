@@ -5,18 +5,18 @@ import type {
   EventId,
   RoleId,
   TimeSlotId,
-} from '../../../src/domain/branded-ids';
-import { runTimeSlotRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/time-slot.contract-spec';
+} from '@/domain/branded-ids';
 import type {
   CreateTimeSlotInput,
   TimeSlotRepository,
   UpdateTimeSlotInput,
-} from '../../../src/domain/contracts/infrastructure/time-slot.repository';
+} from '@/domain/contracts/infrastructure/time-slot.repository';
 import {
   SlotRequirement,
   type SlotRequirementId,
-} from '../../../src/domain/entities/slot-requirement';
-import { TimeSlot } from '../../../src/domain/entities/time-slot';
+} from '@/domain/entities/slot-requirement';
+import { TimeSlot } from '@/domain/entities/time-slot';
+import { runTimeSlotRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/time-slot.contract-spec';
 
 class MockTimeSlotRepository implements TimeSlotRepository {
   private slots = new Map<string, TimeSlot>();

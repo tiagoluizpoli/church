@@ -17,39 +17,39 @@ import {
 } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildMinistry, buildRole } from '../../seeds/builders/ministry';
-import { buildTimeSlot } from '../../seeds/builders/scheduling';
-import { DbEventTemplateManager } from '../../src/application/db-event-template-manager';
-import { DbPlanningCycleManager } from '../../src/application/db-planning-cycle-manager';
-import { DbPlanningEventManager } from '../../src/application/db-planning-event-manager';
+import { DbEventTemplateManager } from '@/application/db-event-template-manager';
+import { DbPlanningCycleManager } from '@/application/db-planning-cycle-manager';
+import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import {
   ChurchId,
   EventId,
   PlanningCycleId,
   TimeSlotId,
-} from '../../src/domain/branded-ids';
+} from '@/domain/branded-ids';
 import {
   EventOutsidePlanningCycleError,
   IllegalStateTransitionError,
   LastRemainingSlotError,
   OverlappingCycleError,
-} from '../../src/domain/errors';
-import { DrizzleChurchRepository } from '../../src/infrastructure/repositories/drizzle-church.repository';
-import { DrizzleEventTemplateRepository } from '../../src/infrastructure/repositories/drizzle-event-template.repository';
-import { DrizzleMinistryRepository } from '../../src/infrastructure/repositories/drizzle-ministry.repository';
-import { DrizzleMinistryParticipationRepository } from '../../src/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '../../src/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
-import { DrizzlePlanningCycleRepository } from '../../src/infrastructure/repositories/drizzle-planning-cycle.repository';
-import { DrizzlePlanningEventRepository } from '../../src/infrastructure/repositories/drizzle-planning-event.repository';
-import { DrizzleShiftRepository } from '../../src/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTimeSlotRepository } from '../../src/infrastructure/repositories/drizzle-time-slot.repository';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories/drizzle-unit-of-work';
+} from '@/domain/errors';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
+import { DrizzlePlanningCycleRepository } from '@/infrastructure/repositories/drizzle-planning-cycle.repository';
+import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
+import { buildTimeSlot } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 function createManagers() {
   const cycleRepository = new DrizzlePlanningCycleRepository({

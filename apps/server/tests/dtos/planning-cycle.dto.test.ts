@@ -8,10 +8,10 @@ import { describe, expect, it } from 'vitest';
 import {
   planningCycleMapper,
   planningCycleResponseSchema,
-} from '../../src/api/dtos/planning-cycle.dto';
-import { Event } from '../../src/domain/entities/event';
-import { PlanningCycle } from '../../src/domain/entities/planning-cycle';
-import { TimeSlot } from '../../src/domain/entities/time-slot';
+} from '@/api/dtos/planning-cycle.dto';
+import { Event } from '@/domain/entities/event';
+import { PlanningCycle } from '@/domain/entities/planning-cycle';
+import { TimeSlot } from '@/domain/entities/time-slot';
 
 function createPlanningCycle() {
   return new PlanningCycle({

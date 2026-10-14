@@ -4,19 +4,19 @@ import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SEED_PLATFORM_OPERATOR_ID } from '../../seeds/blueprints/credentials';
+import { snapshotAllRows } from './journey-graph-snapshot';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
 import {
   buildMinistryMembership,
   buildVolunteer,
-} from '../../seeds/builders/volunteer';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
+} from '@/seeds/builders/volunteer';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
   createMinistryRedemptionRecipe,
   type MinistryRedemptionJourney,
-} from '../../seeds/e2e/recipes/ministry-redemption';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
-import { snapshotAllRows } from './journey-graph-snapshot';
+} from '@/seeds/e2e/recipes/ministry-redemption';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 

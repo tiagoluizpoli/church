@@ -4,9 +4,9 @@ import {
   assignmentAuditResponseSchema,
   assignmentMapper,
   assignmentResponseSchema,
-} from '../../src/api/dtos/assignment.dto';
-import { Assignment } from '../../src/domain/entities/assignment';
-import { AssignmentAudit } from '../../src/domain/entities/assignment-audit';
+} from '@/api/dtos/assignment.dto';
+import { Assignment } from '@/domain/entities/assignment';
+import { AssignmentAudit } from '@/domain/entities/assignment-audit';
 
 describe('assignmentMapper', () => {
   describe('toResponse', () => {

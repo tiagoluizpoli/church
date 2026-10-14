@@ -10,7 +10,7 @@ vi.mock('@church/auth', () => ({
 }));
 
 const { createActiveChurchPreValidation } = await import(
-  '../../../src/api/auth/active-church-pre-validation'
+  '@/api/auth/active-church-pre-validation'
 );
 const { auth } = await import('@church/auth');
 

@@ -3,12 +3,9 @@ import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { parseCalendarDay, parseInstant } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import {
-  buildChurch,
-  buildChurchMembership,
-} from '../../../seeds/builders/church';
-import { buildUser } from '../../../seeds/builders/identity';
-import { buildMinistry, buildRole } from '../../../seeds/builders/ministry';
+import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildAssignmentAudit,
@@ -18,11 +15,11 @@ import {
   buildShift,
   buildSlotRequirement,
   buildTimeSlot,
-} from '../../../seeds/builders/scheduling';
+} from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
   buildVolunteer,
-} from '../../../seeds/builders/volunteer';
+} from '@/seeds/builders/volunteer';
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 

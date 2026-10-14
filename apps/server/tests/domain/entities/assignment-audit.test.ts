@@ -1,6 +1,6 @@
 import { isInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { AssignmentAudit } from '../../../src/domain/entities/assignment-audit';
+import { AssignmentAudit } from '@/domain/entities/assignment-audit';
 
 describe('AssignmentAudit Entity', () => {
   it('constructs with valid props', () => {

@@ -15,31 +15,31 @@ import {
 import { fromDate, parseCalendarDay, parseInstant } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildAvailabilityCheck } from '../../seeds/builders/availability';
-import {
-  buildAssignedShift,
-  buildEvent,
-  buildMinistryParticipation,
-  buildPlanningCycle,
-} from '../../seeds/builders/scheduling';
-import {
-  buildMinistryMembership,
-  buildVolunteer,
-} from '../../seeds/builders/volunteer';
 import {
   ChurchId,
   MinistryId,
   MinistryInvitationId,
   UserId,
   VolunteerId,
-} from '../../src/domain/branded-ids';
-import { DrizzleUnitOfWork } from '../../src/infrastructure/repositories';
-import { DrizzleVolunteerTransferRepository } from '../../src/infrastructure/repositories/drizzle-volunteer-transfer.repository';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/domain/branded-ids';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories';
+import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositories/drizzle-volunteer-transfer.repository';
+import { buildAvailabilityCheck } from '@/seeds/builders/availability';
+import {
+  buildAssignedShift,
+  buildEvent,
+  buildMinistryParticipation,
+  buildPlanningCycle,
+} from '@/seeds/builders/scheduling';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '@/seeds/builders/volunteer';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
-} from '../test-support/identity-fixtures';
+} from '@/tests/test-support/identity-fixtures';
 
 const COMMIT = new Date('2026-09-15T12:00:00.000Z');
 const CORRELATION_ID = 'transfer-corr-0001';

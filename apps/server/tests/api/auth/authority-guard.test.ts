@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AuthorityGuard } from '../../../src/api/auth/authority-guard';
+import { AuthorityGuard } from '@/api/auth/authority-guard';
 
 const manager = {
   canManageChurch: vi.fn(),

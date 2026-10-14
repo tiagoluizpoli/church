@@ -1,7 +1,7 @@
 import { isInstant, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { volunteerMapper } from '../../src/api/dtos/volunteer.dto';
-import { Assignment } from '../../src/domain/entities/assignment';
+import { volunteerMapper } from '@/api/dtos/volunteer.dto';
+import { Assignment } from '@/domain/entities/assignment';
 
 describe('volunteerMapper', () => {
   describe('dashboardToResponse', () => {

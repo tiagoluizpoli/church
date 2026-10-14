@@ -12,14 +12,14 @@ import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runE2eJourneyRecipe } from '../../seeds/e2e/journey-recipe';
+import { snapshotAllRows } from './journey-graph-snapshot';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
   createVolunteerAssignmentsRecipe,
   type VolunteerAssignmentsJourney,
-} from '../../seeds/e2e/recipes/volunteer-assignments';
-import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
-import { testDb, truncateAll } from '../integration/repositories/setup';
-import { snapshotAllRows } from './journey-graph-snapshot';
+} from '@/seeds/e2e/recipes/volunteer-assignments';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
 /** America/Sao_Paulo is UTC-3 all year (no DST), so 09:00 and 11:00 local. */

@@ -4,8 +4,8 @@ import * as schema from '@church/db';
 import { createChurch } from '@church/db';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runInitSystem } from '../../src/scripts/init-system';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+import { runInitSystem } from '@/scripts/init-system';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 describe('runInitSystem', () => {
   const seedPath = join(__dirname, 'test-seed.json');

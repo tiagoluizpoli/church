@@ -3,12 +3,12 @@ import { invitation, organization, user } from '@church/db';
 import { count, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { ChurchSlugTakenError } from '../../src/domain/errors/church-slug-taken';
+import { ChurchSlugTakenError } from '@/domain/errors/church-slug-taken';
 import {
   provisionChurch,
   repairChurchInvitation,
-} from '../../src/scripts/provision-church';
-import { testDb, truncateAll } from '../integration/repositories/setup';
+} from '@/scripts/provision-church';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const OPERATOR_USER_ID = 'operator-1';
 

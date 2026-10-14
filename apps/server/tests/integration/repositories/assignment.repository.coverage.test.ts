@@ -1,7 +1,5 @@
 import { fromDate } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildRole } from '../../../seeds/builders/ministry';
-import { buildShift } from '../../../seeds/builders/scheduling';
 import {
   ChurchId,
   EventId,
@@ -9,15 +7,17 @@ import {
   ShiftId,
   TimeSlotId,
   VolunteerId,
-} from '../../../src/domain/branded-ids';
-import { DrizzleAssignmentRepository } from '../../../src/infrastructure/repositories/drizzle-assignment.repository';
+} from '@/domain/branded-ids';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { buildRole } from '@/seeds/builders/ministry';
+import { buildShift } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
-} from '../../scheduling-reshape/setup';
+} from '@/tests/scheduling-reshape/setup';
 
 async function seedEventGraph(churchId: string, ministryId: string) {
   const cycle = await createSchedulingPhase3Cycle({

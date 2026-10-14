@@ -7,24 +7,24 @@ import type {
   PlanningCycleId,
   RoleId,
   TimeSlotId,
-} from '../../../src/domain/branded-ids';
-import { runEventRepositoryContractTests } from '../../../src/domain/contracts/contract-tests/event.contract-spec';
+} from '@/domain/branded-ids';
 import type {
   CreateEventInput,
   EventRepository,
   UpdateEventInput,
   UpdateEventStatusInput,
-} from '../../../src/domain/contracts/infrastructure/event.repository';
+} from '@/domain/contracts/infrastructure/event.repository';
 import {
   Event,
   type EventStatus,
   type EventWithSlots,
-} from '../../../src/domain/entities/event';
+} from '@/domain/entities/event';
 import {
   SlotRequirement,
   type SlotRequirementId,
-} from '../../../src/domain/entities/slot-requirement';
-import { TimeSlot } from '../../../src/domain/entities/time-slot';
+} from '@/domain/entities/slot-requirement';
+import { TimeSlot } from '@/domain/entities/time-slot';
+import { runEventRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/event.contract-spec';
 
 class MockEventRepository implements EventRepository {
   private events = new Map<string, Event>();

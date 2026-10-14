@@ -43,7 +43,7 @@
   "devDependencies": {
     "@church/config": "workspace:*",
     "@types/pg": "catalog:",
-    "better-auth": "1.5.5",
+    "better-auth": "catalog:",
     "drizzle-kit": "^0.31.8",
     "typescript": "^5",
     "vitest": "catalog:"

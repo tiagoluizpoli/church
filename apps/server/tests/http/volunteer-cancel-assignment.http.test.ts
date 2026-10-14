@@ -38,11 +38,11 @@ let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new VolunteerController(
-    volunteerManager as never,
-    activeChurchResolver as never,
-    withAllParkedOn(appConfig) as never,
-  );
+  const controller = new VolunteerController({
+    volunteerManager: volunteerManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    config: withAllParkedOn(appConfig) as never,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

@@ -1,6 +1,4 @@
-import 'reflect-metadata';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -49,18 +47,28 @@ interface DenyMinistryScopeInput {
   ministryId: string;
 }
 
-@injectable()
+interface EventControllerDependencies {
+  eventManager: IEventManager;
+  activeChurchResolver: IActiveChurchResolver;
+  authorityGuard: AuthorityGuard;
+}
+
 export class EventController implements FastifyController {
   readonly prefix = '/events';
 
-  constructor(
-    @inject('IEventManager')
-    private readonly eventManager: IEventManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('AuthorityGuard')
-    private readonly authorityGuard: AuthorityGuard,
-  ) {}
+  constructor({
+    eventManager,
+    activeChurchResolver,
+    authorityGuard,
+  }: EventControllerDependencies) {
+    this.eventManager = eventManager;
+    this.activeChurchResolver = activeChurchResolver;
+    this.authorityGuard = authorityGuard;
+  }
+
+  private readonly eventManager: IEventManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

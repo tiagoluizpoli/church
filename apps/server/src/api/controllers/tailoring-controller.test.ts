@@ -84,12 +84,12 @@ function createShift(): Shift {
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new TailoringController(
-    participationManager as never,
-    availabilityCheckManager as never,
-    activeChurchResolver as never,
-    authorityGuard as never,
-  );
+  const controller = new TailoringController({
+    participationManager: participationManager as never,
+    availabilityCheckManager: availabilityCheckManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    authorityGuard: authorityGuard as never,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

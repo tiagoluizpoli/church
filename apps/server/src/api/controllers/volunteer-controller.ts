@@ -1,7 +1,5 @@
-import 'reflect-metadata';
 import type { AppConfig } from '@church/app-config';
 import { instantSchema, toDate } from '@church/time';
-import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
   AssignmentId,
@@ -54,7 +52,12 @@ const getNotificationsQuerystringSchema = z.object({
   limit: z.coerce.number().optional(),
 });
 
-@injectable()
+interface VolunteerControllerDependencies {
+  volunteerManager: IVolunteerManager;
+  activeChurchResolver: IActiveChurchResolver;
+  config: AppConfig;
+}
+
 export class VolunteerController implements FastifyController {
   readonly prefix = '/volunteer';
   // `VolunteerId.from(request.volunteerId as string)` below: this
@@ -62,16 +65,19 @@ export class VolunteerController implements FastifyController {
   // route, so `volunteerId` is always present here despite being optional
   // on `FastifyRequest`.
 
-  constructor(
-    @inject('IVolunteerManager')
-    private readonly volunteerManager: IVolunteerManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('AppConfig') config: AppConfig,
-  ) {
+  constructor({
+    volunteerManager,
+    activeChurchResolver,
+    config,
+  }: VolunteerControllerDependencies) {
+    this.volunteerManager = volunteerManager;
+    this.activeChurchResolver = activeChurchResolver;
     const { parked } = config;
     this.parked = parked;
   }
+
+  private readonly volunteerManager: IVolunteerManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
 
   private readonly parked: AppConfig['parked'];
 

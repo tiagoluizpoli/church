@@ -1,6 +1,4 @@
-import 'reflect-metadata';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -51,20 +49,32 @@ interface DenyMissingVolunteerProfileInput {
   reply: FastifyReply;
 }
 
-@injectable()
+interface MinistryControllerDependencies {
+  ministryManager: IMinistryManager;
+  ministryInvitationManager: IMinistryInvitationManager;
+  activeChurchResolver: IActiveChurchResolver;
+  authorityGuard: AuthorityGuard;
+}
+
 export class MinistryController implements FastifyController {
   readonly prefix = '/ministries';
 
-  constructor(
-    @inject('IMinistryManager')
-    private readonly ministryManager: IMinistryManager,
-    @inject('IMinistryInvitationManager')
-    private readonly ministryInvitationManager: IMinistryInvitationManager,
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('AuthorityGuard')
-    private readonly authorityGuard: AuthorityGuard,
-  ) {}
+  constructor({
+    ministryManager,
+    ministryInvitationManager,
+    activeChurchResolver,
+    authorityGuard,
+  }: MinistryControllerDependencies) {
+    this.ministryManager = ministryManager;
+    this.ministryInvitationManager = ministryInvitationManager;
+    this.activeChurchResolver = activeChurchResolver;
+    this.authorityGuard = authorityGuard;
+  }
+
+  private readonly ministryManager: IMinistryManager;
+  private readonly ministryInvitationManager: IMinistryInvitationManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

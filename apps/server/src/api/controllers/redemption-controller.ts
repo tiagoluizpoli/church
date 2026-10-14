@@ -1,9 +1,7 @@
-import 'reflect-metadata';
 import type { AppConfig } from '@church/app-config';
 import { auth } from '@church/auth';
 import { fromDate, nowAsDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { MinistryInvitationId, UserId } from '../../domain/branded-ids';
 import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
@@ -78,7 +76,6 @@ interface ControllerRateLimitInput {
 
 const publicRateLimit = new Map<string, number[]>();
 
-@injectable()
 export class RedemptionController implements FastifyController {
   readonly prefix = '/redemption';
 

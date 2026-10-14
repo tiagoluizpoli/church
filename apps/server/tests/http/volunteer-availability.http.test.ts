@@ -92,11 +92,11 @@ function createCheckDetail(): MockCheckDetail {
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new VolunteerController(
-    volunteerManager as never,
-    activeChurchResolver as never,
-    appConfig,
-  );
+  const controller = new VolunteerController({
+    volunteerManager: volunteerManager as never,
+    activeChurchResolver: activeChurchResolver as never,
+    config: appConfig,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

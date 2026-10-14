@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import { ChurchId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -38,16 +36,24 @@ const schedulingCapabilityResponseSchema = z.object({
  * Resolves navigation capability for the Active Church. This response never
  * authorizes resource access; protected routes continue through AuthorityService.
  */
-@injectable()
+interface SchedulingCapabilityControllerDependencies {
+  activeChurchResolver: IActiveChurchResolver;
+  authorityGuard: AuthorityGuard;
+}
+
 export class SchedulingCapabilityController implements FastifyController {
   readonly prefix = '/scheduling';
 
-  constructor(
-    @inject('IActiveChurchResolver')
-    private readonly activeChurchResolver: IActiveChurchResolver,
-    @inject('AuthorityGuard')
-    private readonly authorityGuard: AuthorityGuard,
-  ) {}
+  constructor({
+    activeChurchResolver,
+    authorityGuard,
+  }: SchedulingCapabilityControllerDependencies) {
+    this.activeChurchResolver = activeChurchResolver;
+    this.authorityGuard = authorityGuard;
+  }
+
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

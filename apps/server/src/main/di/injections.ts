@@ -523,31 +523,93 @@ export function registerInjections(): void {
   });
 
   // Controllers
-  container.registerSingleton(
-    injection.controllers.fastify,
-    ActiveChurchController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
-    ChurchAdminController,
-  );
-  container.registerSingleton(injection.controllers.fastify, EventController);
-  container.registerSingleton(
-    injection.controllers.fastify,
-    MinistryController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
-    TailoringController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
-    RosteringController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
-    SchedulingCapabilityController,
-  );
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new ActiveChurchController({
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        selectionManager: container.resolve(
+          injection.managers.activeChurchSelectionManager,
+        ),
+      }),
+  });
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new ChurchAdminController({
+        planningCycleManager: container.resolve(
+          injection.managers.planningCycleManager,
+        ),
+        eventTemplateManager: container.resolve(
+          injection.managers.eventTemplateManager,
+        ),
+        planningEventManager: container.resolve(
+          injection.managers.planningEventManager,
+        ),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        participationManager: container.resolve(
+          injection.managers.participationManager,
+        ),
+        ministryManager: container.resolve(injection.managers.ministryManager),
+        authorityGuard: container.resolve(injection.auth.authorityGuard),
+      }),
+  });
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new EventController({
+        eventManager: container.resolve(injection.managers.eventManager),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        authorityGuard: container.resolve(injection.auth.authorityGuard),
+      }),
+  });
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new MinistryController({
+        ministryManager: container.resolve(injection.managers.ministryManager),
+        ministryInvitationManager: container.resolve(
+          injection.managers.ministryInvitationManager,
+        ),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        authorityGuard: container.resolve(injection.auth.authorityGuard),
+      }),
+  });
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new TailoringController({
+        participationManager: container.resolve(
+          injection.managers.participationManager,
+        ),
+        availabilityCheckManager: container.resolve(
+          injection.managers.availabilityCheckManager,
+        ),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        authorityGuard: container.resolve(injection.auth.authorityGuard),
+      }),
+  });
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new RosteringController({
+        participationManager: container.resolve(
+          injection.managers.participationManager,
+        ),
+        assignmentManager: container.resolve(
+          injection.managers.assignmentManager,
+        ),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        authorityGuard: container.resolve(injection.auth.authorityGuard),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
+  });
   container.register(injection.controllers.fastify, {
     useFactory: () =>
       new RedemptionController({
@@ -560,12 +622,36 @@ export function registerInjections(): void {
         config: container.resolve<AppConfig>(injection.config.appConfig),
       }),
   });
-  container.registerSingleton(
-    injection.controllers.fastify,
-    VolunteerController,
-  );
-  container.registerSingleton(
-    injection.controllers.fastify,
-    VolunteerScheduleController,
-  );
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new SchedulingCapabilityController({
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        authorityGuard: container.resolve(injection.auth.authorityGuard),
+      }),
+  });
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new VolunteerController({
+        volunteerManager: container.resolve(
+          injection.managers.volunteerManager,
+        ),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        config: container.resolve<AppConfig>(injection.config.appConfig),
+      }),
+  });
+  container.register(injection.controllers.fastify, {
+    useFactory: () =>
+      new VolunteerScheduleController({
+        volunteerManager: container.resolve(
+          injection.managers.volunteerManager,
+        ),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+      }),
+  });
 }

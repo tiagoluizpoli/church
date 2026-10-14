@@ -31,10 +31,10 @@ let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   app = await createFastify();
-  const controller = new SchedulingCapabilityController(
-    activeChurchResolver as never,
-    authorityGuard as never,
-  );
+  const controller = new SchedulingCapabilityController({
+    activeChurchResolver: activeChurchResolver as never,
+    authorityGuard: authorityGuard as never,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

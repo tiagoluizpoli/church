@@ -71,6 +71,9 @@ interface ActiveChurchControllerDependencies {
 export class ActiveChurchController implements FastifyController {
   readonly prefix = '/active-church';
 
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly selectionManager: IActiveChurchSelectionManager;
+
   constructor({
     activeChurchResolver,
     selectionManager,
@@ -78,9 +81,6 @@ export class ActiveChurchController implements FastifyController {
     this.activeChurchResolver = activeChurchResolver;
     this.selectionManager = selectionManager;
   }
-
-  private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly selectionManager: IActiveChurchSelectionManager;
 
   registerRoutes(
     app: FastifyTypedInstance,

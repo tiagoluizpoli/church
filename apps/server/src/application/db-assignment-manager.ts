@@ -69,6 +69,16 @@ interface DbAssignmentManagerDependencies {
 }
 
 export class DbAssignmentManager implements IAssignmentManager {
+  private readonly assignmentRepo: AssignmentRepository;
+  private readonly auditRepo: AssignmentAuditRepository;
+  private readonly shiftRepository: ShiftRepository;
+  private readonly participationRepository: MinistryParticipationRepository;
+  private readonly volunteerRepository: VolunteerRepository;
+  private readonly availabilityRepository: AvailabilityRepository;
+  private readonly planningEventRepository: PlanningEventRepository;
+  private readonly notificationService: NotificationService;
+  private readonly unitOfWork: UnitOfWork;
+
   constructor({
     assignmentRepo,
     auditRepo,
@@ -90,16 +100,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
   }
-
-  private readonly assignmentRepo: AssignmentRepository;
-  private readonly auditRepo: AssignmentAuditRepository;
-  private readonly shiftRepository: ShiftRepository;
-  private readonly participationRepository: MinistryParticipationRepository;
-  private readonly volunteerRepository: VolunteerRepository;
-  private readonly availabilityRepository: AvailabilityRepository;
-  private readonly planningEventRepository: PlanningEventRepository;
-  private readonly notificationService: NotificationService;
-  private readonly unitOfWork: UnitOfWork;
 
   async getAssignment(input: GetAssignmentInput): Promise<Assignment> {
     return this.assignmentRepo.getById(input.churchId, input.assignmentId);

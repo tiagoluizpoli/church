@@ -97,6 +97,11 @@ interface TailoringControllerDependencies {
 export class TailoringController implements FastifyController {
   readonly prefix = '/tailoring';
 
+  private readonly participationManager: IParticipationManager;
+  private readonly availabilityCheckManager: IAvailabilityCheckManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
+
   constructor({
     participationManager,
     availabilityCheckManager,
@@ -108,11 +113,6 @@ export class TailoringController implements FastifyController {
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
   }
-
-  private readonly participationManager: IParticipationManager;
-  private readonly availabilityCheckManager: IAvailabilityCheckManager;
-  private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

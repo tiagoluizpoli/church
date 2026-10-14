@@ -82,6 +82,16 @@ interface DbMinistryInvitationManagerDependencies {
 }
 
 export class DbMinistryInvitationManager implements IMinistryInvitationManager {
+  private readonly repo: MinistryInvitationRepository;
+  private readonly roleRepository: RoleRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly authorityManager: IAuthorityManager;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly outboxRepository: OutboxRepository;
+
+  private readonly invitationTtlMs: number;
+  private readonly resendPolicy: AppConfig['invitationResend'];
+
   constructor({
     repo,
     roleRepository,
@@ -101,16 +111,6 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
     this.invitationTtlMs = ministryInvitation.ttlMs;
     this.resendPolicy = invitationResend;
   }
-
-  private readonly repo: MinistryInvitationRepository;
-  private readonly roleRepository: RoleRepository;
-  private readonly ministryRepository: MinistryRepository;
-  private readonly authorityManager: IAuthorityManager;
-  private readonly unitOfWork: UnitOfWork;
-  private readonly outboxRepository: OutboxRepository;
-
-  private readonly invitationTtlMs: number;
-  private readonly resendPolicy: AppConfig['invitationResend'];
 
   async mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation> {
     const { churchId, ministryId, inviterId, ministryAccessLevel, roleIds } =

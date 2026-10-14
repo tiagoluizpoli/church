@@ -13,11 +13,11 @@ interface DbEventTemplateManagerDependencies {
 }
 
 export class DbEventTemplateManager implements IEventTemplateManager {
+  private readonly templateRepository: EventTemplateRepository;
+
   constructor({ templateRepository }: DbEventTemplateManagerDependencies) {
     this.templateRepository = templateRepository;
   }
-
-  private readonly templateRepository: EventTemplateRepository;
 
   async createTemplate(
     input: CreateEventTemplateManagerInput,

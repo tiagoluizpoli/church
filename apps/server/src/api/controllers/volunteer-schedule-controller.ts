@@ -17,6 +17,9 @@ interface VolunteerScheduleControllerDependencies {
 export class VolunteerScheduleController implements FastifyController {
   readonly prefix = '/volunteer';
 
+  private readonly volunteerManager: IVolunteerManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+
   constructor({
     volunteerManager,
     activeChurchResolver,
@@ -24,9 +27,6 @@ export class VolunteerScheduleController implements FastifyController {
     this.volunteerManager = volunteerManager;
     this.activeChurchResolver = activeChurchResolver;
   }
-
-  private readonly volunteerManager: IVolunteerManager;
-  private readonly activeChurchResolver: IActiveChurchResolver;
 
   registerRoutes(
     app: FastifyTypedInstance,

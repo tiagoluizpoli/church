@@ -97,6 +97,17 @@ function isInvitationRedeemable({
  * transaction that creates grants and consumes the Ministry Invitation.
  */
 export class DbRedemptionManager implements RedemptionManager {
+  private readonly churchRepository: ChurchRepository;
+  private readonly identityGateway: RedemptionIdentityGateway;
+  private readonly invitationRepository: MinistryInvitationRepository;
+  private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
+  private readonly redemptionRepository: RedemptionRepository;
+  private readonly securityLogRepository: SecurityLogRepository;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly verificationCodeInspector:
+    | VerificationCodeInspector
+    | undefined;
+
   constructor({
     churchRepository,
     identityGateway,
@@ -116,17 +127,6 @@ export class DbRedemptionManager implements RedemptionManager {
     this.unitOfWork = unitOfWork;
     this.verificationCodeInspector = verificationCodeInspector;
   }
-
-  private readonly churchRepository: ChurchRepository;
-  private readonly identityGateway: RedemptionIdentityGateway;
-  private readonly invitationRepository: MinistryInvitationRepository;
-  private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
-  private readonly redemptionRepository: RedemptionRepository;
-  private readonly securityLogRepository: SecurityLogRepository;
-  private readonly unitOfWork: UnitOfWork;
-  private readonly verificationCodeInspector:
-    | VerificationCodeInspector
-    | undefined;
 
   async getPublicPreview({
     ministryInvitationId,

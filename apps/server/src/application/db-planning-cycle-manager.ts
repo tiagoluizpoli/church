@@ -31,6 +31,11 @@ interface DbPlanningCycleManagerDependencies {
 }
 
 export class DbPlanningCycleManager implements IPlanningCycleManager {
+  private readonly cycleRepository: PlanningCycleRepository;
+  private readonly eventRepository: PlanningEventRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly unitOfWork: UnitOfWork;
+
   constructor({
     cycleRepository,
     eventRepository,
@@ -42,11 +47,6 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
   }
-
-  private readonly cycleRepository: PlanningCycleRepository;
-  private readonly eventRepository: PlanningEventRepository;
-  private readonly churchRepository: ChurchRepository;
-  private readonly unitOfWork: UnitOfWork;
 
   async createCycle(
     input: CreatePlanningCycleManagerInput,

@@ -65,6 +65,11 @@ export class VolunteerController implements FastifyController {
   // route, so `volunteerId` is always present here despite being optional
   // on `FastifyRequest`.
 
+  private readonly volunteerManager: IVolunteerManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+
+  private readonly parked: AppConfig['parked'];
+
   constructor({
     volunteerManager,
     activeChurchResolver,
@@ -75,11 +80,6 @@ export class VolunteerController implements FastifyController {
     const { parked } = config;
     this.parked = parked;
   }
-
-  private readonly volunteerManager: IVolunteerManager;
-  private readonly activeChurchResolver: IActiveChurchResolver;
-
-  private readonly parked: AppConfig['parked'];
 
   registerRoutes(
     app: FastifyTypedInstance,

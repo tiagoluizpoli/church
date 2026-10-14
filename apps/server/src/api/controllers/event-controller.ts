@@ -56,6 +56,10 @@ interface EventControllerDependencies {
 export class EventController implements FastifyController {
   readonly prefix = '/events';
 
+  private readonly eventManager: IEventManager;
+  private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly authorityGuard: AuthorityGuard;
+
   constructor({
     eventManager,
     activeChurchResolver,
@@ -65,10 +69,6 @@ export class EventController implements FastifyController {
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
   }
-
-  private readonly eventManager: IEventManager;
-  private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
 
   registerRoutes(
     app: FastifyTypedInstance,

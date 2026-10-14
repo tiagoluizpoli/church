@@ -1,5 +1,7 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { describe, expect, it } from 'vitest';
+import type { MinistryInvitationRepository } from '../../src/domain/contracts/infrastructure/ministry-invitation.repository';
+import { CaptureEmailSender } from '../../src/infrastructure/services/capture-email-sender';
 import {
   type CompositionRootDependencies,
   createCompositionRoot,
@@ -56,7 +58,42 @@ describe('composition root', () => {
   });
 
   it('builds ten controllers', () => {
-    expect(createCompositionRoot().controllers).toHaveLength(10);
+    const { controllers } = createCompositionRoot();
+    expect(controllers).toHaveLength(10);
+    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(10);
+  });
+
+  it('reads the debug code back from an overridden capture email sender', async () => {
+    const emailSender = new CaptureEmailSender();
+    await emailSender.send({
+      payload: {
+        kind: 'invitation.verification-code',
+        to: 'invitee@example.com',
+        churchName: 'Church',
+        code: '123456',
+      },
+    });
+    const { controllers } = createCompositionRoot({
+      emailSender,
+      ministryInvitationRepository: {
+        findPublicRedemptionPreview: async () => ({
+          email: 'invitee@example.com',
+          churchName: 'Church',
+        }),
+      } as unknown as MinistryInvitationRepository,
+    });
+    const app = await createFastify();
+    await app.register(
+      async (instance) => registerControllers({ app: instance, controllers }),
+      { prefix: '/api/v1' },
+    );
+    await app.ready();
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/church/${crypto.randomUUID()}/debug-code`,
+    });
+    await app.close();
+    expect(response.json()).toEqual({ code: '123456' });
   });
 
   it('leaves parked routes out by default', async () => {

@@ -1,9 +1,8 @@
-import 'reflect-metadata';
 import { type AppConfig, appConfig } from '@church/app-config';
 import { db } from '@church/db';
 import { env } from '@church/env/server';
-import { container } from 'tsyringe';
 import { AuthorityGuard } from '../../api/auth/authority-guard';
+import type { FastifyController } from '../../api/contracts/fastify-controller';
 import { ActiveChurchController } from '../../api/controllers/active-church-controller';
 import { ChurchAdminController } from '../../api/controllers/church-admin-controller';
 import { EventController } from '../../api/controllers/event-controller';
@@ -32,6 +31,55 @@ import { DbRedemptionManager } from '../../application/db-redemption-manager';
 import { DbVolunteerManager } from '../../application/db-volunteer-manager';
 import { DbVolunteerTransferManager } from '../../application/db-volunteer-transfer-manager';
 import { InvitationVerificationCodeManager } from '../../application/invitation-verification-code-manager';
+import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
+import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
+import type { IAuthorityManager } from '../../domain/contracts/application/authority-manager';
+import type { IAvailabilityCheckManager } from '../../domain/contracts/application/availability-check-manager';
+import type { IEventManager } from '../../domain/contracts/application/event-manager';
+import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
+import type { InvitationVerificationCodeManager as IInvitationVerificationCodeManager } from '../../domain/contracts/application/invitation-verification-code-manager';
+import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
+import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
+import type { IOutboxDrainer } from '../../domain/contracts/application/outbox-drainer';
+import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
+import type { IPlanningCycleManager } from '../../domain/contracts/application/planning-cycle-manager';
+import type { IPlanningEventManager } from '../../domain/contracts/application/planning-event-manager';
+import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
+import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
+import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
+import type { AssignmentRepository } from '../../domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '../../domain/contracts/infrastructure/assignment-audit.repository';
+import type { AuthorityActorRepository } from '../../domain/contracts/infrastructure/authority-actor.repository';
+import type { AvailabilityRepository } from '../../domain/contracts/infrastructure/availability.repository';
+import type { AvailabilityCheckRepository } from '../../domain/contracts/infrastructure/availability-check.repository';
+import type { ChurchRepository } from '../../domain/contracts/infrastructure/church.repository';
+import type { ChurchMembershipRepository } from '../../domain/contracts/infrastructure/church-membership.repository';
+import type { EmailSender } from '../../domain/contracts/infrastructure/email-sender';
+import type { EventRepository } from '../../domain/contracts/infrastructure/event.repository';
+import type { EventTemplateRepository } from '../../domain/contracts/infrastructure/event-template.repository';
+import type { InvitationVerificationCodeRepository } from '../../domain/contracts/infrastructure/invitation-verification-code.repository';
+import type { MinistryRepository } from '../../domain/contracts/infrastructure/ministry.repository';
+import type { MinistryInvitationRepository } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
+import type { MinistryParticipationRepository } from '../../domain/contracts/infrastructure/ministry-participation.repository';
+import type { MinistryServingProfileRepository } from '../../domain/contracts/infrastructure/ministry-serving-profile.repository';
+import type { NotificationService } from '../../domain/contracts/infrastructure/notification-service';
+import type { OutboxRepository } from '../../domain/contracts/infrastructure/outbox.repository';
+import type { PlanningCycleRepository } from '../../domain/contracts/infrastructure/planning-cycle.repository';
+import type { PlanningEventRepository } from '../../domain/contracts/infrastructure/planning-event.repository';
+import type { RedemptionRepository } from '../../domain/contracts/infrastructure/redemption.repository';
+import type { RedemptionIdentityGateway } from '../../domain/contracts/infrastructure/redemption-identity-gateway';
+import type { RoleRepository } from '../../domain/contracts/infrastructure/role.repository';
+import type { SchedulingScopeRepository } from '../../domain/contracts/infrastructure/scheduling-scope.repository';
+import type { SecurityLogRepository } from '../../domain/contracts/infrastructure/security-log.repository';
+import type { ShiftRepository } from '../../domain/contracts/infrastructure/shift.repository';
+import type { TeamRepository } from '../../domain/contracts/infrastructure/team.repository';
+import type { TimeSlotRepository } from '../../domain/contracts/infrastructure/time-slot.repository';
+import type { UnitOfWork } from '../../domain/contracts/infrastructure/unit-of-work';
+import type { VerificationCodeInspector } from '../../domain/contracts/infrastructure/verification-code-inspector';
+import type { VolunteerRepository } from '../../domain/contracts/infrastructure/volunteer.repository';
+import type { VolunteerNotificationRepository } from '../../domain/contracts/infrastructure/volunteer-notification.repository';
+import type { VolunteerTransferRepository } from '../../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { DrizzleAuthorityActorResolver } from '../../infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '../../infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '../../infrastructure/auth/drizzle-scheduling-scope-resolver';
@@ -66,592 +114,414 @@ import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/servic
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { LocalNotificationService } from '../../infrastructure/services/local-notification-service';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
-import { injection } from './injection-tokens';
 
-export function registerInjections(): void {
-  container.register(injection.infra.redemptionIdentityGateway, {
-    useFactory: () => new BetterAuthRedemptionIdentityGateway(),
-  });
-  container.register(injection.auth.scopeRepository, {
-    useFactory: () => new DrizzleSchedulingScopeResolver({ db }),
-  });
-  container.register(injection.auth.authorityActorRepository, {
-    useFactory: () => new DrizzleAuthorityActorResolver({ db }),
-  });
-  container.register(injection.auth.authorityManager, {
-    useFactory: () =>
-      new DbAuthorityManager({
-        actorRepository: container.resolve(
-          injection.auth.authorityActorRepository,
-        ),
-        scopeRepository: container.resolve(injection.auth.scopeRepository),
-        eventRepository: container.resolve(injection.infra.eventRepository),
-        timeSlotRepository: container.resolve(
-          injection.infra.timeSlotRepository,
-        ),
-        ministryRepository: container.resolve(
-          injection.infra.ministryRepository,
-        ),
-        teamRepository: container.resolve(injection.infra.teamRepository),
-      }),
-  });
-  container.register(injection.auth.authorityGuard, {
-    useFactory: () =>
-      new AuthorityGuard({
-        manager: container.resolve(injection.auth.authorityManager),
-      }),
-  });
-  container.register(injection.auth.churchMembershipRepository, {
-    useFactory: () => new DrizzleChurchMembershipRepository({ db }),
-  });
-  container.register(injection.auth.activeChurchResolver, {
-    useFactory: () =>
-      new DbActiveChurchResolver({
-        actorRepository: container.resolve(
-          injection.auth.authorityActorRepository,
-        ),
-        membershipRepository: container.resolve(
-          injection.auth.churchMembershipRepository,
-        ),
-        churchRepository: container.resolve(injection.infra.churchRepository),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-      }),
-  });
-  container.register(injection.infra.eventRepository, {
-    useFactory: () => new DrizzleEventRepository({ db }),
-  });
-  container.register(injection.infra.eventTemplateRepository, {
-    useFactory: () => new DrizzleEventTemplateRepository({ db }),
-  });
-  container.register(injection.infra.planningCycleRepository, {
-    useFactory: () => new DrizzlePlanningCycleRepository({ db }),
-  });
-  container.register(injection.infra.planningEventRepository, {
-    useFactory: () => new DrizzlePlanningEventRepository({ db }),
-  });
-  container.register(injection.infra.volunteerRepository, {
-    useFactory: () => new DrizzleVolunteerRepository({ db }),
-  });
-  container.register(injection.infra.assignmentRepository, {
-    useFactory: () => new DrizzleAssignmentRepository({ db }),
-  });
-  container.register(injection.infra.assignmentAuditRepository, {
-    useFactory: () => new DrizzleAssignmentAuditRepository({ db }),
-  });
-  container.register(injection.infra.availabilityRepository, {
-    useFactory: () => new DrizzleAvailabilityRepository({ db }),
-  });
-  container.register(injection.infra.availabilityCheckRepository, {
-    useFactory: () => new DrizzleAvailabilityCheckRepository({ db }),
-  });
-  container.register(injection.infra.ministryParticipationRepository, {
-    useFactory: () => new DrizzleMinistryParticipationRepository({ db }),
-  });
-  container.register(injection.infra.ministryServingProfileRepository, {
-    useFactory: () => new DrizzleMinistryServingProfileRepository({ db }),
-  });
-  container.register(injection.infra.shiftRepository, {
-    useFactory: () => new DrizzleShiftRepository({ db }),
-  });
-  container.register(injection.infra.churchRepository, {
-    useFactory: () => new DrizzleChurchRepository({ db }),
-  });
-  container.register(injection.infra.ministryRepository, {
-    useFactory: () => new DrizzleMinistryRepository({ db }),
-  });
-  container.register(injection.infra.invitationVerificationCodeRepository, {
-    useFactory: () =>
-      new DrizzleInvitationVerificationCodeRepository({
-        db,
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.infra.redemptionRepository, {
-    useFactory: () =>
-      new DrizzleRedemptionRepository({
-        db,
-        volunteerRepository: container.resolve(
-          injection.infra.volunteerRepository,
-        ),
-      }),
-  });
-  container.register(injection.infra.volunteerTransferRepository, {
-    useFactory: () => new DrizzleVolunteerTransferRepository({ db }),
-  });
-  container.register(injection.infra.securityLogRepository, {
-    useFactory: () => new DrizzleSecurityLogRepository({ db }),
-  });
-  container.register(injection.infra.ministryInvitationRepository, {
-    useFactory: () =>
-      new DrizzleMinistryInvitationRepository({
-        db,
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.infra.outboxRepository, {
-    useFactory: () => new DrizzleOutboxRepository({ db }),
-  });
-  container.register(injection.infra.roleRepository, {
-    useFactory: () => new DrizzleRoleRepository({ db }),
-  });
-  container.register(injection.infra.teamRepository, {
-    useFactory: () => new DrizzleTeamRepository({ db }),
-  });
-  container.register(injection.infra.timeSlotRepository, {
-    useFactory: () => new DrizzleTimeSlotRepository({ db }),
-  });
-  container.register(injection.infra.volunteerNotificationRepository, {
-    useFactory: () => new DrizzleVolunteerNotificationRepository({ db }),
-  });
-  container.register(injection.infra.unitOfWork, {
-    useFactory: () => new DrizzleUnitOfWork({ db }),
-  });
-  container.register(injection.infra.notificationService, {
-    useFactory: () =>
-      new LocalNotificationService({
-        volunteerNotificationRepo: container.resolve(
-          injection.infra.volunteerNotificationRepository,
-        ),
-      }),
-  });
-  if (env.NODE_ENV === 'production') {
-    container.register(injection.infra.emailSender, {
-      useFactory: () =>
-        new ResendEmailSender({
-          apiKey: env.RESEND_API_KEY ?? '',
-          from: env.RESEND_FROM_EMAIL,
-        }),
+interface CompositionRootDependencies {
+  config: AppConfig;
+  db: typeof db;
+  // Repositories
+  eventRepository: EventRepository;
+  eventTemplateRepository: EventTemplateRepository;
+  planningCycleRepository: PlanningCycleRepository;
+  planningEventRepository: PlanningEventRepository;
+  volunteerRepository: VolunteerRepository;
+  assignmentRepository: AssignmentRepository;
+  assignmentAuditRepository: AssignmentAuditRepository;
+  availabilityRepository: AvailabilityRepository;
+  availabilityCheckRepository: AvailabilityCheckRepository;
+  churchRepository: ChurchRepository;
+  ministryRepository: MinistryRepository;
+  invitationVerificationCodeRepository: InvitationVerificationCodeRepository;
+  ministryInvitationRepository: MinistryInvitationRepository;
+  redemptionRepository: RedemptionRepository;
+  volunteerTransferRepository: VolunteerTransferRepository;
+  securityLogRepository: SecurityLogRepository;
+  outboxRepository: OutboxRepository;
+  ministryParticipationRepository: MinistryParticipationRepository;
+  ministryServingProfileRepository: MinistryServingProfileRepository;
+  shiftRepository: ShiftRepository;
+  roleRepository: RoleRepository;
+  teamRepository: TeamRepository;
+  timeSlotRepository: TimeSlotRepository;
+  volunteerNotificationRepository: VolunteerNotificationRepository;
+  unitOfWork: UnitOfWork;
+  // Services
+  notificationService: NotificationService;
+  emailSender: EmailSender;
+  redemptionIdentityGateway: RedemptionIdentityGateway;
+  /** Non-production only; set alongside a capturing `emailSender`. */
+  verificationCodeInspector: VerificationCodeInspector;
+  // Auth
+  scopeRepository: SchedulingScopeRepository;
+  authorityActorRepository: AuthorityActorRepository;
+  authorityManager: IAuthorityManager;
+  authorityGuard: AuthorityGuard;
+  churchMembershipRepository: ChurchMembershipRepository;
+  activeChurchResolver: IActiveChurchResolver;
+  // Managers
+  eventManager: IEventManager;
+  eventTemplateManager: IEventTemplateManager;
+  planningCycleManager: IPlanningCycleManager;
+  planningEventManager: IPlanningEventManager;
+  volunteerManager: IVolunteerManager;
+  assignmentManager: IAssignmentManager;
+  availabilityCheckManager: IAvailabilityCheckManager;
+  ministryManager: IMinistryManager;
+  ministryInvitationManager: IMinistryInvitationManager;
+  invitationVerificationCodeManager: IInvitationVerificationCodeManager;
+  redemptionManager: RedemptionManager;
+  volunteerTransferManager: VolunteerTransferManager;
+  outboxDrainer: IOutboxDrainer;
+  participationManager: IParticipationManager;
+  activeChurchSelectionManager: IActiveChurchSelectionManager;
+}
+
+interface CompositionRoot {
+  controllers: FastifyController[];
+  outboxDrainer: IOutboxDrainer;
+}
+
+export function createCompositionRoot(
+  overrides: Partial<CompositionRootDependencies> = {},
+): CompositionRoot {
+  const config = overrides.config ?? appConfig;
+  const database = overrides.db ?? db;
+
+  // Repositories
+  const eventRepository =
+    overrides.eventRepository ?? new DrizzleEventRepository({ db: database });
+  const eventTemplateRepository =
+    overrides.eventTemplateRepository ??
+    new DrizzleEventTemplateRepository({ db: database });
+  const planningCycleRepository =
+    overrides.planningCycleRepository ??
+    new DrizzlePlanningCycleRepository({ db: database });
+  const planningEventRepository =
+    overrides.planningEventRepository ??
+    new DrizzlePlanningEventRepository({ db: database });
+  const volunteerRepository =
+    overrides.volunteerRepository ??
+    new DrizzleVolunteerRepository({ db: database });
+  const assignmentRepository =
+    overrides.assignmentRepository ??
+    new DrizzleAssignmentRepository({ db: database });
+  const assignmentAuditRepository =
+    overrides.assignmentAuditRepository ??
+    new DrizzleAssignmentAuditRepository({ db: database });
+  const availabilityRepository =
+    overrides.availabilityRepository ??
+    new DrizzleAvailabilityRepository({ db: database });
+  const availabilityCheckRepository =
+    overrides.availabilityCheckRepository ??
+    new DrizzleAvailabilityCheckRepository({ db: database });
+  const ministryParticipationRepository =
+    overrides.ministryParticipationRepository ??
+    new DrizzleMinistryParticipationRepository({ db: database });
+  const ministryServingProfileRepository =
+    overrides.ministryServingProfileRepository ??
+    new DrizzleMinistryServingProfileRepository({ db: database });
+  const shiftRepository =
+    overrides.shiftRepository ?? new DrizzleShiftRepository({ db: database });
+  const churchRepository =
+    overrides.churchRepository ?? new DrizzleChurchRepository({ db: database });
+  const ministryRepository =
+    overrides.ministryRepository ??
+    new DrizzleMinistryRepository({ db: database });
+  const invitationVerificationCodeRepository =
+    overrides.invitationVerificationCodeRepository ??
+    new DrizzleInvitationVerificationCodeRepository({ db: database, config });
+  const redemptionRepository =
+    overrides.redemptionRepository ??
+    new DrizzleRedemptionRepository({ db: database, volunteerRepository });
+  const volunteerTransferRepository =
+    overrides.volunteerTransferRepository ??
+    new DrizzleVolunteerTransferRepository({ db: database });
+  const securityLogRepository =
+    overrides.securityLogRepository ??
+    new DrizzleSecurityLogRepository({ db: database });
+  const ministryInvitationRepository =
+    overrides.ministryInvitationRepository ??
+    new DrizzleMinistryInvitationRepository({ db: database, config });
+  const outboxRepository =
+    overrides.outboxRepository ?? new DrizzleOutboxRepository({ db: database });
+  const roleRepository =
+    overrides.roleRepository ?? new DrizzleRoleRepository({ db: database });
+  const teamRepository =
+    overrides.teamRepository ?? new DrizzleTeamRepository({ db: database });
+  const timeSlotRepository =
+    overrides.timeSlotRepository ??
+    new DrizzleTimeSlotRepository({ db: database });
+  const volunteerNotificationRepository =
+    overrides.volunteerNotificationRepository ??
+    new DrizzleVolunteerNotificationRepository({ db: database });
+  const unitOfWork =
+    overrides.unitOfWork ?? new DrizzleUnitOfWork({ db: database });
+
+  // Services
+  const notificationService =
+    overrides.notificationService ??
+    new LocalNotificationService({
+      volunteerNotificationRepo: volunteerNotificationRepository,
     });
-  } else {
-    // One shared instance outside production: the redemption debug route
-    // reads back what the verification-code manager just sent through it.
-    const captureEmailSender = new CaptureEmailSender();
-    container.registerInstance(injection.infra.emailSender, captureEmailSender);
-    container.registerInstance(
-      injection.infra.verificationCodeInspector,
-      captureEmailSender,
-    );
-  }
+  const redemptionIdentityGateway =
+    overrides.redemptionIdentityGateway ??
+    new BetterAuthRedemptionIdentityGateway();
+  // One shared capture instance outside production: the redemption debug route
+  // reads back what the verification-code manager just sent through it.
+  const captureEmailSender =
+    env.NODE_ENV === 'production' ? undefined : new CaptureEmailSender();
+  const emailSender =
+    overrides.emailSender ??
+    captureEmailSender ??
+    new ResendEmailSender({
+      apiKey: env.RESEND_API_KEY ?? '',
+      from: env.RESEND_FROM_EMAIL,
+    });
+  const verificationCodeInspector =
+    overrides.verificationCodeInspector ?? captureEmailSender;
+
+  // Auth
+  const scopeRepository =
+    overrides.scopeRepository ??
+    new DrizzleSchedulingScopeResolver({ db: database });
+  const authorityActorRepository =
+    overrides.authorityActorRepository ??
+    new DrizzleAuthorityActorResolver({ db: database });
+  const churchMembershipRepository =
+    overrides.churchMembershipRepository ??
+    new DrizzleChurchMembershipRepository({ db: database });
+  const authorityManager =
+    overrides.authorityManager ??
+    new DbAuthorityManager({
+      actorRepository: authorityActorRepository,
+      scopeRepository,
+      eventRepository,
+      timeSlotRepository,
+      ministryRepository,
+      teamRepository,
+    });
+  const authorityGuard =
+    overrides.authorityGuard ??
+    new AuthorityGuard({ manager: authorityManager });
+  const activeChurchResolver =
+    overrides.activeChurchResolver ??
+    new DbActiveChurchResolver({
+      actorRepository: authorityActorRepository,
+      membershipRepository: churchMembershipRepository,
+      churchRepository,
+      unitOfWork,
+    });
 
   // Managers
-  container.register(injection.managers.assignmentManager, {
-    useFactory: () =>
-      new DbAssignmentManager({
-        assignmentRepo: container.resolve(injection.infra.assignmentRepository),
-        auditRepo: container.resolve(injection.infra.assignmentAuditRepository),
-        shiftRepository: container.resolve(injection.infra.shiftRepository),
-        participationRepository: container.resolve(
-          injection.infra.ministryParticipationRepository,
-        ),
-        volunteerRepository: container.resolve(
-          injection.infra.volunteerRepository,
-        ),
-        availabilityRepository: container.resolve(
-          injection.infra.availabilityRepository,
-        ),
-        planningEventRepository: container.resolve(
-          injection.infra.planningEventRepository,
-        ),
-        notificationService: container.resolve(
-          injection.infra.notificationService,
-        ),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-      }),
-  });
-  container.register(injection.managers.eventManager, {
-    useFactory: () =>
-      new DbEventManager({
-        eventRepo: container.resolve(injection.infra.eventRepository),
-        slotRepo: container.resolve(injection.infra.timeSlotRepository),
-        assignmentRepo: container.resolve(injection.infra.assignmentRepository),
-        availabilityRepo: container.resolve(
-          injection.infra.availabilityRepository,
-        ),
-        volunteerRepo: container.resolve(injection.infra.volunteerRepository),
-        roleRepo: container.resolve(injection.infra.roleRepository),
-      }),
-  });
-  container.register(injection.managers.eventTemplateManager, {
-    useFactory: () =>
-      new DbEventTemplateManager({
-        templateRepository: container.resolve(
-          injection.infra.eventTemplateRepository,
-        ),
-      }),
-  });
-  container.register(injection.managers.ministryManager, {
-    useFactory: () =>
-      new DbMinistryManager({
-        ministryRepo: container.resolve(injection.infra.ministryRepository),
-        volunteerRepo: container.resolve(injection.infra.volunteerRepository),
-      }),
-  });
-  container.register(injection.managers.ministryInvitationManager, {
-    useFactory: () =>
-      new DbMinistryInvitationManager({
-        repo: container.resolve(injection.infra.ministryInvitationRepository),
-        roleRepository: container.resolve(injection.infra.roleRepository),
-        ministryRepository: container.resolve(
-          injection.infra.ministryRepository,
-        ),
-        authorityManager: container.resolve(injection.auth.authorityManager),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-        outboxRepository: container.resolve(injection.infra.outboxRepository),
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.managers.invitationVerificationCodeManager, {
-    useFactory: () =>
-      new InvitationVerificationCodeManager({
-        repository: container.resolve(
-          injection.infra.invitationVerificationCodeRepository,
-        ),
-        emailSender: container.resolve(injection.infra.emailSender),
-        verificationCodeSecret: env.BETTER_AUTH_SECRET,
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.managers.redemptionManager, {
-    useFactory: () =>
-      new DbRedemptionManager({
-        churchRepository: container.resolve(injection.infra.churchRepository),
-        identityGateway: container.resolve(
-          injection.infra.redemptionIdentityGateway,
-        ),
-        invitationRepository: container.resolve(
-          injection.infra.ministryInvitationRepository,
-        ),
-        invitationVerificationCodeManager: container.resolve(
-          injection.managers.invitationVerificationCodeManager,
-        ),
-        redemptionRepository: container.resolve(
-          injection.infra.redemptionRepository,
-        ),
-        securityLogRepository: container.resolve(
-          injection.infra.securityLogRepository,
-        ),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-        verificationCodeInspector: debugEndpointsEnabled()
-          ? container.resolve(injection.infra.verificationCodeInspector)
-          : undefined,
-      }),
-  });
-  container.register(injection.managers.volunteerTransferManager, {
-    useFactory: () =>
-      new DbVolunteerTransferManager({
-        churchRepository: container.resolve(injection.infra.churchRepository),
-        identityGateway: container.resolve(
-          injection.infra.redemptionIdentityGateway,
-        ),
-        invitationRepository: container.resolve(
-          injection.infra.ministryInvitationRepository,
-        ),
-        securityLogRepository: container.resolve(
-          injection.infra.securityLogRepository,
-        ),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-        volunteerRepository: container.resolve(
-          injection.infra.volunteerRepository,
-        ),
-        volunteerTransferRepository: container.resolve(
-          injection.infra.volunteerTransferRepository,
-        ),
-      }),
-  });
-  container.register(injection.managers.outboxDrainer, {
-    useFactory: () =>
-      new DbOutboxDrainer({
-        outboxRepository: container.resolve(injection.infra.outboxRepository),
-        invitationRepository: container.resolve(
-          injection.infra.ministryInvitationRepository,
-        ),
-        churchRepository: container.resolve(injection.infra.churchRepository),
-        ministryRepository: container.resolve(
-          injection.infra.ministryRepository,
-        ),
-        roleRepository: container.resolve(injection.infra.roleRepository),
-        volunteerRepository: container.resolve(
-          injection.infra.volunteerRepository,
-        ),
-        volunteerTransferRepository: container.resolve(
-          injection.infra.volunteerTransferRepository,
-        ),
-        emailSender: container.resolve(injection.infra.emailSender),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.managers.planningCycleManager, {
-    useFactory: () =>
-      new DbPlanningCycleManager({
-        cycleRepository: container.resolve(
-          injection.infra.planningCycleRepository,
-        ),
-        eventRepository: container.resolve(
-          injection.infra.planningEventRepository,
-        ),
-        churchRepository: container.resolve(injection.infra.churchRepository),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-      }),
-  });
-  container.register(injection.managers.planningEventManager, {
-    useFactory: () =>
-      new DbPlanningEventManager({
-        cycleRepository: container.resolve(
-          injection.infra.planningCycleRepository,
-        ),
-        eventRepository: container.resolve(
-          injection.infra.planningEventRepository,
-        ),
-        templateRepository: container.resolve(
-          injection.infra.eventTemplateRepository,
-        ),
-        churchRepository: container.resolve(injection.infra.churchRepository),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-        participationRepository: container.resolve(
-          injection.infra.ministryParticipationRepository,
-        ),
-        shiftRepository: container.resolve(injection.infra.shiftRepository),
-        servingProfileRepository: container.resolve(
-          injection.infra.ministryServingProfileRepository,
-        ),
-        ministryRepository: container.resolve(
-          injection.infra.ministryRepository,
-        ),
-        timeSlotRepository: container.resolve(
-          injection.infra.timeSlotRepository,
-        ),
-      }),
-  });
-  container.register(injection.config.appConfig, {
-    useValue: appConfig,
-  });
-  container.register(injection.managers.volunteerManager, {
-    useFactory: () =>
-      new DbVolunteerManager({
-        volunteerRepo: container.resolve(injection.infra.volunteerRepository),
-        assignmentRepo: container.resolve(injection.infra.assignmentRepository),
-        availabilityRepo: container.resolve(
-          injection.infra.availabilityRepository,
-        ),
-        notificationRepo: container.resolve(
-          injection.infra.volunteerNotificationRepository,
-        ),
-        eventRepo: container.resolve(injection.infra.eventRepository),
-        shiftRepo: container.resolve(injection.infra.shiftRepository),
-        ministryRepo: container.resolve(injection.infra.ministryRepository),
-        participationRepo: container.resolve(
-          injection.infra.ministryParticipationRepository,
-        ),
-        roleRepo: container.resolve(injection.infra.roleRepository),
-        teamRepo: container.resolve(injection.infra.teamRepository),
-        availabilityCheckRepo: container.resolve(
-          injection.infra.availabilityCheckRepository,
-        ),
-        notificationService: container.resolve(
-          injection.infra.notificationService,
-        ),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.managers.participationManager, {
-    useFactory: () =>
-      new DbParticipationManager({
-        participationRepository: container.resolve(
-          injection.infra.ministryParticipationRepository,
-        ),
-        shiftRepository: container.resolve(injection.infra.shiftRepository),
-        eventRepository: container.resolve(
-          injection.infra.planningEventRepository,
-        ),
-        assignmentRepository: container.resolve(
-          injection.infra.assignmentRepository,
-        ),
-        availabilityRepository: container.resolve(
-          injection.infra.availabilityRepository,
-        ),
-        timeSlotRepository: container.resolve(
-          injection.infra.timeSlotRepository,
-        ),
-        volunteerRepository: container.resolve(
-          injection.infra.volunteerRepository,
-        ),
-        ministryRepository: container.resolve(
-          injection.infra.ministryRepository,
-        ),
-        servingProfileRepository: container.resolve(
-          injection.infra.ministryServingProfileRepository,
-        ),
-        roleRepository: container.resolve(injection.infra.roleRepository),
-        notificationService: container.resolve(
-          injection.infra.notificationService,
-        ),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-      }),
-  });
-  container.register(injection.managers.availabilityCheckManager, {
-    useFactory: () =>
-      new DbAvailabilityCheckManager({
-        participationRepository: container.resolve(
-          injection.infra.ministryParticipationRepository,
-        ),
-        eventRepository: container.resolve(
-          injection.infra.planningEventRepository,
-        ),
-        availabilityCheckRepository: container.resolve(
-          injection.infra.availabilityCheckRepository,
-        ),
-        notificationService: container.resolve(
-          injection.infra.notificationService,
-        ),
-        unitOfWork: container.resolve(injection.infra.unitOfWork),
-      }),
-  });
-  container.register(injection.managers.activeChurchSelectionManager, {
-    useFactory: () =>
-      new DbActiveChurchSelectionManager({
-        membershipRepository: container.resolve(
-          injection.auth.churchMembershipRepository,
-        ),
-        authorityManager: container.resolve(injection.auth.authorityManager),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        churchRepository: container.resolve(injection.infra.churchRepository),
-      }),
-  });
+  const assignmentManager =
+    overrides.assignmentManager ??
+    new DbAssignmentManager({
+      assignmentRepo: assignmentRepository,
+      auditRepo: assignmentAuditRepository,
+      shiftRepository,
+      participationRepository: ministryParticipationRepository,
+      volunteerRepository,
+      availabilityRepository,
+      planningEventRepository,
+      notificationService,
+      unitOfWork,
+    });
+  const eventManager =
+    overrides.eventManager ??
+    new DbEventManager({
+      eventRepo: eventRepository,
+      slotRepo: timeSlotRepository,
+      assignmentRepo: assignmentRepository,
+      availabilityRepo: availabilityRepository,
+      volunteerRepo: volunteerRepository,
+      roleRepo: roleRepository,
+    });
+  const eventTemplateManager =
+    overrides.eventTemplateManager ??
+    new DbEventTemplateManager({ templateRepository: eventTemplateRepository });
+  const ministryManager =
+    overrides.ministryManager ??
+    new DbMinistryManager({
+      ministryRepo: ministryRepository,
+      volunteerRepo: volunteerRepository,
+    });
+  const ministryInvitationManager =
+    overrides.ministryInvitationManager ??
+    new DbMinistryInvitationManager({
+      repo: ministryInvitationRepository,
+      roleRepository,
+      ministryRepository,
+      authorityManager,
+      unitOfWork,
+      outboxRepository,
+      config,
+    });
+  const invitationVerificationCodeManager =
+    overrides.invitationVerificationCodeManager ??
+    new InvitationVerificationCodeManager({
+      repository: invitationVerificationCodeRepository,
+      emailSender,
+      verificationCodeSecret: env.BETTER_AUTH_SECRET,
+      config,
+    });
+  const redemptionManager =
+    overrides.redemptionManager ??
+    new DbRedemptionManager({
+      churchRepository,
+      identityGateway: redemptionIdentityGateway,
+      invitationRepository: ministryInvitationRepository,
+      invitationVerificationCodeManager,
+      redemptionRepository,
+      securityLogRepository,
+      unitOfWork,
+      verificationCodeInspector: debugEndpointsEnabled()
+        ? verificationCodeInspector
+        : undefined,
+    });
+  const volunteerTransferManager =
+    overrides.volunteerTransferManager ??
+    new DbVolunteerTransferManager({
+      churchRepository,
+      identityGateway: redemptionIdentityGateway,
+      invitationRepository: ministryInvitationRepository,
+      securityLogRepository,
+      unitOfWork,
+      volunteerRepository,
+      volunteerTransferRepository,
+    });
+  const outboxDrainer =
+    overrides.outboxDrainer ??
+    new DbOutboxDrainer({
+      outboxRepository,
+      invitationRepository: ministryInvitationRepository,
+      churchRepository,
+      ministryRepository,
+      roleRepository,
+      volunteerRepository,
+      volunteerTransferRepository,
+      emailSender,
+      unitOfWork,
+      config,
+    });
+  const planningCycleManager =
+    overrides.planningCycleManager ??
+    new DbPlanningCycleManager({
+      cycleRepository: planningCycleRepository,
+      eventRepository: planningEventRepository,
+      churchRepository,
+      unitOfWork,
+    });
+  const planningEventManager =
+    overrides.planningEventManager ??
+    new DbPlanningEventManager({
+      cycleRepository: planningCycleRepository,
+      eventRepository: planningEventRepository,
+      templateRepository: eventTemplateRepository,
+      churchRepository,
+      unitOfWork,
+      participationRepository: ministryParticipationRepository,
+      shiftRepository,
+      servingProfileRepository: ministryServingProfileRepository,
+      ministryRepository,
+      timeSlotRepository,
+    });
+  const volunteerManager =
+    overrides.volunteerManager ??
+    new DbVolunteerManager({
+      volunteerRepo: volunteerRepository,
+      assignmentRepo: assignmentRepository,
+      availabilityRepo: availabilityRepository,
+      notificationRepo: volunteerNotificationRepository,
+      eventRepo: eventRepository,
+      shiftRepo: shiftRepository,
+      ministryRepo: ministryRepository,
+      participationRepo: ministryParticipationRepository,
+      roleRepo: roleRepository,
+      teamRepo: teamRepository,
+      availabilityCheckRepo: availabilityCheckRepository,
+      notificationService,
+      unitOfWork,
+      config,
+    });
+  const participationManager =
+    overrides.participationManager ??
+    new DbParticipationManager({
+      participationRepository: ministryParticipationRepository,
+      shiftRepository,
+      eventRepository: planningEventRepository,
+      assignmentRepository,
+      availabilityRepository,
+      timeSlotRepository,
+      volunteerRepository,
+      ministryRepository,
+      servingProfileRepository: ministryServingProfileRepository,
+      roleRepository,
+      notificationService,
+      unitOfWork,
+    });
+  const availabilityCheckManager =
+    overrides.availabilityCheckManager ??
+    new DbAvailabilityCheckManager({
+      participationRepository: ministryParticipationRepository,
+      eventRepository: planningEventRepository,
+      availabilityCheckRepository,
+      notificationService,
+      unitOfWork,
+    });
+  const activeChurchSelectionManager =
+    overrides.activeChurchSelectionManager ??
+    new DbActiveChurchSelectionManager({
+      membershipRepository: churchMembershipRepository,
+      authorityManager,
+      activeChurchResolver,
+      churchRepository,
+    });
 
-  // Controllers
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new ActiveChurchController({
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        selectionManager: container.resolve(
-          injection.managers.activeChurchSelectionManager,
-        ),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new ChurchAdminController({
-        planningCycleManager: container.resolve(
-          injection.managers.planningCycleManager,
-        ),
-        eventTemplateManager: container.resolve(
-          injection.managers.eventTemplateManager,
-        ),
-        planningEventManager: container.resolve(
-          injection.managers.planningEventManager,
-        ),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        participationManager: container.resolve(
-          injection.managers.participationManager,
-        ),
-        ministryManager: container.resolve(injection.managers.ministryManager),
-        authorityGuard: container.resolve(injection.auth.authorityGuard),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new EventController({
-        eventManager: container.resolve(injection.managers.eventManager),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        authorityGuard: container.resolve(injection.auth.authorityGuard),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new MinistryController({
-        ministryManager: container.resolve(injection.managers.ministryManager),
-        ministryInvitationManager: container.resolve(
-          injection.managers.ministryInvitationManager,
-        ),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        authorityGuard: container.resolve(injection.auth.authorityGuard),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new TailoringController({
-        participationManager: container.resolve(
-          injection.managers.participationManager,
-        ),
-        availabilityCheckManager: container.resolve(
-          injection.managers.availabilityCheckManager,
-        ),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        authorityGuard: container.resolve(injection.auth.authorityGuard),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new RosteringController({
-        participationManager: container.resolve(
-          injection.managers.participationManager,
-        ),
-        assignmentManager: container.resolve(
-          injection.managers.assignmentManager,
-        ),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        authorityGuard: container.resolve(injection.auth.authorityGuard),
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new RedemptionController({
-        redemptionManager: container.resolve(
-          injection.managers.redemptionManager,
-        ),
-        volunteerTransferManager: container.resolve(
-          injection.managers.volunteerTransferManager,
-        ),
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new SchedulingCapabilityController({
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        authorityGuard: container.resolve(injection.auth.authorityGuard),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new VolunteerController({
-        volunteerManager: container.resolve(
-          injection.managers.volunteerManager,
-        ),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-        config: container.resolve<AppConfig>(injection.config.appConfig),
-      }),
-  });
-  container.register(injection.controllers.fastify, {
-    useFactory: () =>
-      new VolunteerScheduleController({
-        volunteerManager: container.resolve(
-          injection.managers.volunteerManager,
-        ),
-        activeChurchResolver: container.resolve(
-          injection.auth.activeChurchResolver,
-        ),
-      }),
-  });
+  const controllers: FastifyController[] = [
+    new ActiveChurchController({
+      activeChurchResolver,
+      selectionManager: activeChurchSelectionManager,
+    }),
+    new ChurchAdminController({
+      planningCycleManager,
+      eventTemplateManager,
+      planningEventManager,
+      activeChurchResolver,
+      participationManager,
+      ministryManager,
+      authorityGuard,
+    }),
+    new EventController({ eventManager, activeChurchResolver, authorityGuard }),
+    new MinistryController({
+      ministryManager,
+      ministryInvitationManager,
+      activeChurchResolver,
+      authorityGuard,
+    }),
+    new TailoringController({
+      participationManager,
+      availabilityCheckManager,
+      activeChurchResolver,
+      authorityGuard,
+    }),
+    new RosteringController({
+      participationManager,
+      assignmentManager,
+      activeChurchResolver,
+      authorityGuard,
+      config,
+    }),
+    new SchedulingCapabilityController({
+      activeChurchResolver,
+      authorityGuard,
+    }),
+    new RedemptionController({
+      redemptionManager,
+      volunteerTransferManager,
+      config,
+    }),
+    new VolunteerController({ volunteerManager, activeChurchResolver, config }),
+    new VolunteerScheduleController({ volunteerManager, activeChurchResolver }),
+  ];
+
+  return { controllers, outboxDrainer };
 }

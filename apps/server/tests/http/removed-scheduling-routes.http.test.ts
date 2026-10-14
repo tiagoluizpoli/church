@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { registerInjections } from '../../src/main/di/injections';
+import { createCompositionRoot } from '../../src/main/di/injections';
 import { registerControllers } from '../../src/main/fastify/register-controllers';
 import { createFastify } from '../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../src/main/fastify/types';
@@ -7,11 +7,15 @@ import type { FastifyTypedInstance } from '../../src/main/fastify/types';
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  registerInjections();
+  const root = createCompositionRoot();
   app = await createFastify();
-  await app.register(async (instance) => registerControllers(instance), {
-    prefix: '/api/v1',
-  });
+  await app.register(
+    async (instance) =>
+      registerControllers({ app: instance, controllers: root.controllers }),
+    {
+      prefix: '/api/v1',
+    },
+  );
   await app.ready();
 });
 

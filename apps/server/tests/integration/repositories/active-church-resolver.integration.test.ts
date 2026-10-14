@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import * as schema from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -123,12 +122,12 @@ async function seed(): Promise<void> {
 }
 
 function createResolver(): DbActiveChurchResolver {
-  return new DbActiveChurchResolver(
-    new DrizzleAuthorityActorResolver({ db: testDb }),
-    new DrizzleChurchMembershipRepository({ db: testDb }),
-    new DrizzleChurchRepository({ db: testDb }),
-    new DrizzleUnitOfWork({ db: testDb }),
-  );
+  return new DbActiveChurchResolver({
+    actorRepository: new DrizzleAuthorityActorResolver({ db: testDb }),
+    membershipRepository: new DrizzleChurchMembershipRepository({ db: testDb }),
+    churchRepository: new DrizzleChurchRepository({ db: testDb }),
+    unitOfWork: new DrizzleUnitOfWork({ db: testDb }),
+  });
 }
 
 describe('DbActiveChurchResolver (integration, real repeatable-read transaction)', () => {

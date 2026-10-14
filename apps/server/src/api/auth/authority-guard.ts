@@ -1,4 +1,3 @@
-import { inject, injectable } from 'tsyringe';
 import type {
   CanManageChurchInput,
   CanManageEventInput,
@@ -13,18 +12,22 @@ import type {
   SchedulingCapabilityProjection,
 } from '../../domain/contracts/application/authority-manager';
 
+interface AuthorityGuardDependencies {
+  manager: IAuthorityManager;
+}
+
 /**
  * Controller-facing wrapper around `IAuthorityManager` — supersedes
  * `SchedulingRbacGuard` and the inline `ctx.isAdmin` / `ctx.isLeader`
  * route-role checks it replaces. Every controller authorization check goes
  * through here.
  */
-@injectable()
 export class AuthorityGuard {
-  constructor(
-    @inject('IAuthorityManager')
-    private readonly manager: IAuthorityManager,
-  ) {}
+  private readonly manager: IAuthorityManager;
+
+  constructor({ manager }: AuthorityGuardDependencies) {
+    this.manager = manager;
+  }
 
   canManageChurch(input: CanManageChurchInput): Promise<boolean> {
     return this.manager.canManageChurch(input);

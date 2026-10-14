@@ -1,7 +1,5 @@
-import type { ChurchId, VolunteerId } from '../../domain/branded-ids';
-import 'reflect-metadata';
 import { EventEmitter } from 'node:events';
-import { inject, injectable } from 'tsyringe';
+import type { ChurchId, VolunteerId } from '../../domain/branded-ids';
 import type {
   DeclineNotification,
   NotificationService,
@@ -10,14 +8,18 @@ import type {
 } from '../../domain/contracts/infrastructure/notification-service';
 import type { VolunteerNotificationRepository } from '../../domain/contracts/infrastructure/volunteer-notification.repository';
 
-@injectable()
+interface LocalNotificationServiceDependencies {
+  volunteerNotificationRepo: VolunteerNotificationRepository;
+}
+
 export class LocalNotificationService implements NotificationService {
   private readonly emitter = new EventEmitter();
+  private readonly volunteerNotificationRepo: VolunteerNotificationRepository;
 
-  constructor(
-    @inject('IVolunteerNotificationRepository')
-    private readonly volunteerNotificationRepo: VolunteerNotificationRepository,
-  ) {
+  constructor({
+    volunteerNotificationRepo,
+  }: LocalNotificationServiceDependencies) {
+    this.volunteerNotificationRepo = volunteerNotificationRepo;
     this.emitter.on('event_published', (payload) => {
       console.log('[NotificationService] Event published:', payload);
     });

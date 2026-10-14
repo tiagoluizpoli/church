@@ -337,13 +337,21 @@ describe('Phase 4 participation manager (DL2-PT)', () => {
     ).rejects.toThrow();
 
     // AuthorityManager scope: leader of ministryA cannot manage churchB participation
-    const authorityManager = new DbAuthorityManager(
-      new DrizzleAuthorityActorResolver({ db: schedulingTestDb }),
-      new DrizzleSchedulingScopeResolver({ db: schedulingTestDb }),
-      new DrizzleEventRepository({ db: schedulingTestDb }),
-      new DrizzleTimeSlotRepository({ db: schedulingTestDb }),
-      new DrizzleMinistryRepository({ db: schedulingTestDb }),
-    );
+    const authorityManager = new DbAuthorityManager({
+      actorRepository: new DrizzleAuthorityActorResolver({
+        db: schedulingTestDb,
+      }),
+      scopeRepository: new DrizzleSchedulingScopeResolver({
+        db: schedulingTestDb,
+      }),
+      eventRepository: new DrizzleEventRepository({ db: schedulingTestDb }),
+      timeSlotRepository: new DrizzleTimeSlotRepository({
+        db: schedulingTestDb,
+      }),
+      ministryRepository: new DrizzleMinistryRepository({
+        db: schedulingTestDb,
+      }),
+    });
     await expect(
       authorityManager.canManageParticipation({
         churchId: ChurchId.from(seed.churchAId),
@@ -689,7 +697,9 @@ describe('Phase 4 availability check manager (DL2-AF)', () => {
       db: schedulingTestDb,
     });
     const { availabilityManager } = createPhase4Managers(
-      new LocalNotificationService(notificationRepository),
+      new LocalNotificationService({
+        volunteerNotificationRepo: notificationRepository,
+      }),
     );
 
     await availabilityManager.fireAvailability({

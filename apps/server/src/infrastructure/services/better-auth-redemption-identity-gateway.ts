@@ -1,5 +1,4 @@
 import { auth } from '@church/auth';
-import { injectable } from 'tsyringe';
 import { z } from 'zod';
 import { UserId } from '../../domain/branded-ids';
 import type {
@@ -16,7 +15,6 @@ const signInResponseSchema = z.object({
   user: z.object({ id: z.string() }),
 });
 
-@injectable()
 export class BetterAuthRedemptionIdentityGateway
   implements RedemptionIdentityGateway
 {

@@ -70,7 +70,7 @@ import { injection } from './injection-tokens';
 
 export function registerInjections(): void {
   container.register(injection.infra.redemptionIdentityGateway, {
-    useClass: BetterAuthRedemptionIdentityGateway,
+    useFactory: () => new BetterAuthRedemptionIdentityGateway(),
   });
   container.register(injection.auth.scopeRepository, {
     useFactory: () => new DrizzleSchedulingScopeResolver({ db }),
@@ -79,16 +79,43 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleAuthorityActorResolver({ db }),
   });
   container.register(injection.auth.authorityManager, {
-    useClass: DbAuthorityManager,
+    useFactory: () =>
+      new DbAuthorityManager({
+        actorRepository: container.resolve(
+          injection.auth.authorityActorRepository,
+        ),
+        scopeRepository: container.resolve(injection.auth.scopeRepository),
+        eventRepository: container.resolve(injection.infra.eventRepository),
+        timeSlotRepository: container.resolve(
+          injection.infra.timeSlotRepository,
+        ),
+        ministryRepository: container.resolve(
+          injection.infra.ministryRepository,
+        ),
+        teamRepository: container.resolve(injection.infra.teamRepository),
+      }),
   });
   container.register(injection.auth.authorityGuard, {
-    useClass: AuthorityGuard,
+    useFactory: () =>
+      new AuthorityGuard({
+        manager: container.resolve(injection.auth.authorityManager),
+      }),
   });
   container.register(injection.auth.churchMembershipRepository, {
     useFactory: () => new DrizzleChurchMembershipRepository({ db }),
   });
   container.register(injection.auth.activeChurchResolver, {
-    useClass: DbActiveChurchResolver,
+    useFactory: () =>
+      new DbActiveChurchResolver({
+        actorRepository: container.resolve(
+          injection.auth.authorityActorRepository,
+        ),
+        membershipRepository: container.resolve(
+          injection.auth.churchMembershipRepository,
+        ),
+        churchRepository: container.resolve(injection.infra.churchRepository),
+        unitOfWork: container.resolve(injection.infra.unitOfWork),
+      }),
   });
   container.register(injection.infra.eventRepository, {
     useFactory: () => new DrizzleEventRepository({ db }),
@@ -180,7 +207,12 @@ export function registerInjections(): void {
     useFactory: () => new DrizzleUnitOfWork({ db }),
   });
   container.register(injection.infra.notificationService, {
-    useClass: LocalNotificationService,
+    useFactory: () =>
+      new LocalNotificationService({
+        volunteerNotificationRepo: container.resolve(
+          injection.infra.volunteerNotificationRepository,
+        ),
+      }),
   });
   if (env.NODE_ENV === 'production') {
     container.register(injection.infra.emailSender, {
@@ -317,7 +349,17 @@ export function registerInjections(): void {
     useClass: DbAvailabilityCheckManager,
   });
   container.register(injection.managers.activeChurchSelectionManager, {
-    useClass: DbActiveChurchSelectionManager,
+    useFactory: () =>
+      new DbActiveChurchSelectionManager({
+        membershipRepository: container.resolve(
+          injection.auth.churchMembershipRepository,
+        ),
+        authorityManager: container.resolve(injection.auth.authorityManager),
+        activeChurchResolver: container.resolve(
+          injection.auth.activeChurchResolver,
+        ),
+        churchRepository: container.resolve(injection.infra.churchRepository),
+      }),
   });
 
   // Controllers

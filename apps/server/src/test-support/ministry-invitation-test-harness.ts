@@ -41,13 +41,13 @@ export function createMinistryInvitationTestHarness({
   const volunteerTransferRepository = new DrizzleVolunteerTransferRepository({
     db,
   });
-  const authorityManager = new DbAuthorityManager(
-    new DrizzleAuthorityActorResolver({ db }),
-    new DrizzleSchedulingScopeResolver({ db }),
-    new DrizzleEventRepository({ db }),
-    new DrizzleTimeSlotRepository({ db }),
-    ministryRepository,
-  );
+  const authorityManager = new DbAuthorityManager({
+    actorRepository: new DrizzleAuthorityActorResolver({ db }),
+    scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
+    eventRepository: new DrizzleEventRepository({ db }),
+    timeSlotRepository: new DrizzleTimeSlotRepository({ db }),
+    ministryRepository: ministryRepository,
+  });
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const manager = new DbMinistryInvitationManager(
     ministryInvitationRepository,

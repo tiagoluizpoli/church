@@ -1,15 +1,14 @@
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { describe, expect, it } from 'vitest';
-import { createCompositionRoot } from '../../src/main/di/injections';
+import {
+  type CompositionRootDependencies,
+  createCompositionRoot,
+} from '../../src/main/di/composition-root';
 import { registerControllers } from '../../src/main/fastify/register-controllers';
 import { createFastify } from '../../src/main/fastify/setup';
 
-type CompositionRootOverrides = NonNullable<
-  Parameters<typeof createCompositionRoot>[0]
->;
-
 async function registeredRoutes(
-  overrides?: CompositionRootOverrides,
+  overrides?: Partial<CompositionRootDependencies>,
 ): Promise<string[]> {
   const { controllers } = createCompositionRoot(overrides);
   const app = await createFastify();

@@ -35,7 +35,7 @@ import type { MinistryInvitation } from '../domain/entities/ministry-invitation'
 import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 
-export interface DbRedemptionManagerDependencies {
+interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: MinistryInvitationRepository;

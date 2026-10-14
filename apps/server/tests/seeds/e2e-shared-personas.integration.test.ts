@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { account, member, ministryVolunteer, volunteer } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';

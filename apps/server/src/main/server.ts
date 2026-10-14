@@ -1,5 +1,5 @@
 import { env } from '@church/env/server';
-import { createCompositionRoot } from './di/injections';
+import { createCompositionRoot } from './di/composition-root';
 import { registerControllers } from './fastify/register-controllers';
 import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';

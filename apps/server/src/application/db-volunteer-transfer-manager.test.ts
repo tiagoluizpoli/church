@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { parseInstant } from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import {

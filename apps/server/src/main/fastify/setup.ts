@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { auth } from '@church/auth';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';

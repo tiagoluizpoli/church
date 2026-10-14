@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { appConfig } from '@church/app-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbOutboxDrainer } from '../../src/application/db-outbox-drainer';

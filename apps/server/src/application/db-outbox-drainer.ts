@@ -325,7 +325,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }
 }
 
-export interface DbOutboxDrainerDependencies {
+interface DbOutboxDrainerDependencies {
   config: AppConfig;
   outboxRepository: OutboxRepository;
   invitationRepository: MinistryInvitationRepository;

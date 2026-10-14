@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createCompositionRoot } from '../../src/main/di/injections';
+import { createCompositionRoot } from '../../src/main/di/composition-root';
 import { registerControllers } from '../../src/main/fastify/register-controllers';
 import { createFastify } from '../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../src/main/fastify/types';

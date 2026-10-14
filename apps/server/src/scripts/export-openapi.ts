@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { appConfig, withAllParkedOn } from '@church/app-config';
-import { createCompositionRoot } from '../main/di/injections';
+import { createCompositionRoot } from '../main/di/composition-root';
 import { registerControllers } from '../main/fastify/register-controllers';
 import { createFastify } from '../main/fastify/setup';
 

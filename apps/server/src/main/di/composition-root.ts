@@ -115,7 +115,7 @@ import { CaptureEmailSender } from '../../infrastructure/services/capture-email-
 import { LocalNotificationService } from '../../infrastructure/services/local-notification-service';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
 
-interface CompositionRootDependencies {
+export interface CompositionRootDependencies {
   config: AppConfig;
   db: typeof db;
   // Repositories

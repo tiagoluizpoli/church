@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { outboxMessage } from '@church/db';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {

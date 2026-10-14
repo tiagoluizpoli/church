@@ -55,7 +55,7 @@ interface InvitationPreviewFields {
   expiresAt: Date;
 }
 
-export interface RedemptionControllerDependencies {
+interface RedemptionControllerDependencies {
   redemptionManager: RedemptionManager;
   volunteerTransferManager: VolunteerTransferManager;
   config: AppConfig;

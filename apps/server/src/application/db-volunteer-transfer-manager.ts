@@ -20,7 +20,7 @@ import type { VolunteerRepository } from '../domain/contracts/infrastructure/vol
 import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 
-export interface DbVolunteerTransferManagerDependencies {
+interface DbVolunteerTransferManagerDependencies {
   churchRepository: ChurchRepository;
   identityGateway: RedemptionIdentityGateway;
   invitationRepository: MinistryInvitationRepository;

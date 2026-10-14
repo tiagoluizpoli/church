@@ -28,7 +28,7 @@ export interface VerifyInvitationCodeInput {
   now?: Date;
 }
 
-export interface VerificationCodeManagerDependencies {
+interface VerificationCodeManagerDependencies {
   repository: InvitationVerificationCodeRepository;
   emailSender: EmailSender;
   generateCode?: () => string;

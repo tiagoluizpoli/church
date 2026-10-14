@@ -37,6 +37,13 @@ interface DrizzleAssignmentRepositoryInput {
   db: AnyDrizzleDb;
 }
 
+interface ListRangeInput {
+  churchId: ChurchId;
+  timeCondition: SQL;
+  volunteerId?: VolunteerId;
+  tx?: TransactionContext;
+}
+
 export class DrizzleAssignmentRepository implements AssignmentRepository {
   constructor({ db }: DrizzleAssignmentRepositoryInput) {
     this.db = db;
@@ -203,12 +210,15 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     tx?: TransactionContext,
   ): Promise<Assignment[]> {
     // Overlap, not "starts inside": catches earlier-starting Shifts and lets back-to-back ones through.
-    return this.listRange(
+    return this.listRange({
       churchId,
-      and(lt(shift.startTime, endTime), gt(shift.endTime, startTime)) as SQL,
+      timeCondition: and(
+        lt(shift.startTime, endTime),
+        gt(shift.endTime, startTime),
+      ) as SQL,
       volunteerId,
       tx,
-    );
+    });
   }
 
   listByRange(
@@ -217,20 +227,19 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     endTime: Date,
     tx?: TransactionContext,
   ): Promise<Assignment[]> {
-    return this.listRange(
+    return this.listRange({
       churchId,
-      between(shift.startTime, startTime, endTime),
-      undefined,
+      timeCondition: between(shift.startTime, startTime, endTime),
       tx,
-    );
+    });
   }
 
-  private async listRange(
-    churchId: ChurchId,
-    timeCondition: SQL,
-    volunteerId?: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
+  private async listRange({
+    churchId,
+    timeCondition,
+    volunteerId,
+    tx,
+  }: ListRangeInput): Promise<Assignment[]> {
     const conditions: SQL[] = [
       withChurchIsolation(assignment, churchId),
       timeCondition,

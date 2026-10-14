@@ -11,8 +11,12 @@ project guidance overrides them.
 
 Run repository commands from the root through its Bun scripts. Use
 `bun run validate:affected` after a changed implementation slice; reserve
-`bun run validate` for final handoff or merge validation. Test files belong in
-the owning project's `test` directory. Details: [tooling](docs/agents/tooling.md).
+`bun run validate` for final handoff or merge validation. Tests, and every
+test helper, setup file, fixture, mock and contract suite, live in the owning
+project's `tests/` directory at the path that mirrors `src/`, never under
+`src`. Tests import source as `@/…`, other test files as `@/tests/…` and server
+seeds as `@/seeds/…`; a relative import only for a file in the same folder.
+`bun run lint` fails otherwise. Details: [tooling](docs/agents/tooling.md).
 
 ### Routes
 

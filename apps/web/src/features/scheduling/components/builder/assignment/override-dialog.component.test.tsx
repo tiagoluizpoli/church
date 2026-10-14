@@ -6,7 +6,7 @@ import { OverrideDialog } from './override-dialog';
 const baseProps = {
   open: true,
   onOpenChange: vi.fn(),
-  conflictType: 'double_booked' as const,
+  conflictType: 'unavailable' as const,
   volunteerName: 'John Doe',
   slotLabel: '9:00 AM – 11:00 AM',
   isPending: false,
@@ -16,7 +16,7 @@ const baseProps = {
 describe('OverrideDialog (T104)', () => {
   it('describes the conflict with the abbreviated volunteer name', () => {
     render(<OverrideDialog {...baseProps} />);
-    expect(screen.getByText(/John D\. is double-booked/i)).toBeVisible();
+    expect(screen.getByText(/John D\. is unavailable/i)).toBeVisible();
   });
 
   it('names the role in the not-qualified variant (B-2)', async () => {

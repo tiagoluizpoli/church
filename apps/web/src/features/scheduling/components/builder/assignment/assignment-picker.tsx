@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 interface SuggestionGroups {
   safe: SuggestedVolunteer[];
   needsResponse: SuggestedVolunteer[];
-  conflicts: SuggestedVolunteer[];
 }
 
 interface DeduplicateSuggestionGroupsInput {
@@ -111,7 +110,6 @@ export function AssignmentPicker({
           ? [
               ...displayedSuggestions.safe,
               ...displayedSuggestions.needsResponse,
-              ...displayedSuggestions.conflicts,
             ].map((suggestion) => suggestion.id)
           : [],
       ),
@@ -124,8 +122,7 @@ export function AssignmentPicker({
     onSelectSuggestion &&
       displayedSuggestions &&
       (displayedSuggestions.safe.length > 0 ||
-        displayedSuggestions.needsResponse.length > 0 ||
-        displayedSuggestions.conflicts.length > 0),
+        displayedSuggestions.needsResponse.length > 0),
   );
 
   useLayoutEffect(() => {
@@ -224,18 +221,6 @@ export function AssignmentPicker({
               <SuggestionList
                 suggestions={displayedSuggestions.needsResponse}
                 title="Needs response"
-                collapsible
-                onAssign={(suggestion) => {
-                  onSelectSuggestion(suggestion);
-                  onOpenChange(false);
-                }}
-                contextTeamId={contextTeamId}
-              />
-            ) : null}
-            {displayedSuggestions.conflicts.length > 0 ? (
-              <SuggestionList
-                suggestions={displayedSuggestions.conflicts}
-                title="Conflict options — override required"
                 collapsible
                 onAssign={(suggestion) => {
                   onSelectSuggestion(suggestion);
@@ -346,6 +331,5 @@ function deduplicateSuggestionGroups({
   return {
     safe: deduplicate(suggestions.safe),
     needsResponse: deduplicate(suggestions.needsResponse),
-    conflicts: deduplicate(suggestions.conflicts),
   };
 }

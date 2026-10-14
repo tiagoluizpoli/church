@@ -201,7 +201,7 @@ describe('useCycleBuilderActions', () => {
     sourceShift.eligibleVolunteers = sourceShift.eligibleVolunteers.map(
       (volunteer) =>
         volunteer.volunteerId === 'volunteer-b'
-          ? { ...volunteer, hasConflict: true }
+          ? { ...volunteer, isAvailable: false }
           : volunteer,
     );
 

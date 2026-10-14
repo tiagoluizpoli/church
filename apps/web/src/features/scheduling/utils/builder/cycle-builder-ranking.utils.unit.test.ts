@@ -189,19 +189,25 @@ describe('rankVolunteersForShiftRole', () => {
           qualifiedRoleIds: ['role-2'],
         }),
         makeEligible({
-          volunteerId: 'conflicted',
+          volunteerId: 'unavailable',
           volunteerName: 'Bruno',
+          isAvailable: false,
+        }),
+        makeEligible({
+          volunteerId: 'double-booked',
+          volunteerName: 'Carla',
           hasConflict: true,
         }),
       ],
     });
 
-    // Fit tier order is ready → override → unqualified: a qualified person
-    // who needs an availability override still outranks an unqualified one.
+    // Fit tier order is ready → override → unqualified → blocked: a qualified
+    // person who needs an availability override still outranks an unqualified
+    // one, and a double-booked one (never assignable) comes last.
     expect(
       rankVolunteersForShiftRole({ shift, roleId: 'role-1', assignments: [] })
         .ids,
-    ).toEqual(['conflicted', 'unqualified']);
+    ).toEqual(['unavailable', 'unqualified', 'double-booked']);
   });
 
   it('badges nobody as ideal when the ministry has configured no qualifications', () => {

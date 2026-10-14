@@ -43,6 +43,5 @@ export interface SuggestedVolunteer {
   membership?: AssigneeMembership;
   status: 'available' | 'partial' | 'needs_response' | 'conflict';
   workloadCount: number;
-  conflictType?: 'double_booked' | 'unavailable';
   alreadyServingAssignments?: ServingAssignmentContext[];
 }

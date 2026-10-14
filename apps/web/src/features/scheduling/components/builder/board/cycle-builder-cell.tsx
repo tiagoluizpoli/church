@@ -44,7 +44,6 @@ interface CycleBuilderCellProps {
   pickerVolunteers: PickerVolunteer[];
   suggestions: SuggestedVolunteer[];
   needsResponseSuggestions: SuggestedVolunteer[];
-  conflictSuggestions: SuggestedVolunteer[];
   slotLabel: string;
   selectedVolunteerId?: string;
   selectedVolunteerName?: string;
@@ -116,7 +115,6 @@ export function CycleBuilderCell({
   pickerVolunteers,
   suggestions,
   needsResponseSuggestions,
-  conflictSuggestions,
   slotLabel,
   selectedVolunteerId,
   selectedVolunteerName,
@@ -350,7 +348,6 @@ export function CycleBuilderCell({
             suggestions={{
               safe: suggestions,
               needsResponse: needsResponseSuggestions,
-              conflicts: conflictSuggestions,
             }}
             onSelectSuggestion={selectSuggestion}
             onSelect={(volunteerId) => commit({ volunteerId })}

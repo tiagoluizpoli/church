@@ -28,7 +28,6 @@ export interface AvailabilityCheckDetailProps {
   onConfirm: () => void;
   isSavingMarks: boolean;
   isConfirming: boolean;
-  overlapWarningVisible: boolean;
 }
 
 interface ShiftAvailabilityRowProps {
@@ -105,7 +104,6 @@ export function AvailabilityCheckDetail({
   onConfirm,
   isSavingMarks,
   isConfirming,
-  overlapWarningVisible,
 }: AvailabilityCheckDetailProps) {
   const { churchTimezone } = useTimezone();
   const isEditable = check.state !== 'confirmed';
@@ -139,17 +137,6 @@ export function AvailabilityCheckDetail({
             />
           ))}
         </div>
-
-        {overlapWarningVisible ? (
-          <div
-            data-testid="overlap-warning"
-            className="border border-destructive p-3 text-destructive text-sm"
-          >
-            This check overlaps a shift you are already marked available for in
-            another ministry. Adjust your marks before confirming, or ask your
-            leader to resolve the conflict.
-          </div>
-        ) : null}
 
         {isEditable ? (
           <div className="flex flex-wrap items-center gap-3">

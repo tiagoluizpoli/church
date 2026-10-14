@@ -3,17 +3,6 @@ import { z } from 'zod';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
 
-export const createAssignmentBodySchema = z.object({
-  slotId: z.string(),
-  volunteerId: z.string(),
-  roleId: z.string(),
-  reason: z.string().optional(),
-});
-
-export const overrideAssignmentBodySchema = z.object({
-  reason: z.string().trim().min(10),
-});
-
 export const assignmentResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),

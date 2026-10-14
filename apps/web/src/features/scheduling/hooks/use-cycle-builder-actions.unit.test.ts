@@ -41,7 +41,6 @@ function dataWithAssignments(
         start: '2027-01-04T03:00:00.000Z',
         end: '2027-01-05T02:59:59.999Z',
         status: 'draft',
-        eventType: 'hourly',
         fillRatio: 0,
         requiredCount: 1,
         assignedCount: assignments.length,
@@ -106,7 +105,7 @@ function mutations(): CycleBuilderMutations {
 }
 
 describe('useCycleBuilderActions', () => {
-  it('propagates an override reason when replacing an existing assignment', async () => {
+  it('reassigns an existing assignment once the override is confirmed', async () => {
     const writes = mutations();
     const { result } = renderHook(() =>
       useCycleBuilderActions({
@@ -129,20 +128,17 @@ describe('useCycleBuilderActions', () => {
     );
 
     expect(result.current.override).not.toBeNull();
-    act(() => result.current.confirmOverride('Leader approved the exception'));
+    act(() => result.current.confirmOverride());
 
     await waitFor(() =>
       expect(writes.reassignAssignment.mutateAsync).toHaveBeenCalledWith({
         assignmentId: 'assignment-1',
-        body: {
-          volunteerId: 'volunteer-b',
-          reason: 'Leader approved the exception',
-        },
+        body: { volunteerId: 'volunteer-b' },
       }),
     );
   });
 
-  it('requires and preserves a reason before moving a conflicted volunteer', async () => {
+  it('requires a confirmed override before moving a conflicted volunteer', async () => {
     const writes = mutations();
     const source = assignment({
       id: 'source-assignment',
@@ -171,14 +167,13 @@ describe('useCycleBuilderActions', () => {
     });
     expect(result.current.override).not.toBeNull();
 
-    act(() => result.current.confirmOverride('Leader approved the move'));
+    act(() => result.current.confirmOverride());
     await waitFor(() =>
       expect(writes.createAssignment.mutateAsync).toHaveBeenCalledWith({
         shiftId: 'shift-1',
         body: {
           volunteerId: 'volunteer-b',
           roleId: 'role-1',
-          override: { reason: 'Leader approved the move' },
         },
       }),
     );
@@ -187,7 +182,7 @@ describe('useCycleBuilderActions', () => {
     );
   });
 
-  it('requires a reason for a conflicted swap leg and sends it to both writes', async () => {
+  it('requires a confirmed override for a conflicted swap leg before both writes', async () => {
     const writes = mutations();
     const source = assignment({
       id: 'source-assignment',
@@ -206,7 +201,7 @@ describe('useCycleBuilderActions', () => {
     sourceShift.eligibleVolunteers = sourceShift.eligibleVolunteers.map(
       (volunteer) =>
         volunteer.volunteerId === 'volunteer-b'
-          ? { ...volunteer, hasConflict: true }
+          ? { ...volunteer, isAvailable: false }
           : volunteer,
     );
 
@@ -227,22 +222,16 @@ describe('useCycleBuilderActions', () => {
     });
     expect(result.current.override).not.toBeNull();
 
-    act(() => result.current.confirmOverride('Leader approved the swap'));
+    act(() => result.current.confirmOverride());
     await waitFor(() =>
       expect(writes.reassignAssignment.mutateAsync).toHaveBeenNthCalledWith(1, {
         assignmentId: 'source-assignment',
-        body: {
-          volunteerId: 'volunteer-b',
-          reason: 'Leader approved the swap',
-        },
+        body: { volunteerId: 'volunteer-b' },
       }),
     );
     expect(writes.reassignAssignment.mutateAsync).toHaveBeenNthCalledWith(2, {
       assignmentId: 'target-assignment',
-      body: {
-        volunteerId: 'volunteer-a',
-        reason: 'Leader approved the swap',
-      },
+      body: { volunteerId: 'volunteer-a' },
     });
   });
 

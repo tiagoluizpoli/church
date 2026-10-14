@@ -20,8 +20,6 @@ import type {
   PublishCycle200,
   PublishCycleBody,
   PublishCycleParams,
-  PublishParticipation204,
-  PublishParticipationBody,
   ReassignParticipationAssignment200,
   ReassignParticipationAssignmentBody
 } from './churchAPI.schemas';
@@ -104,7 +102,7 @@ const listEligibleVolunteers = (
       );
     }
   /**
- * Assign a Volunteer to a Role (and optional Team) within a Shift, optionally overriding a detected conflict.
+ * Assign a Volunteer to a Role (and optional Team) within a Shift.
  * @summary Assign a Volunteer to a Shift
  */
 const createParticipationAssignment = (
@@ -133,7 +131,7 @@ const deleteParticipationAssignment = (
       );
     }
   /**
- * Replace the Volunteer on an existing Assignment, keeping its Shift and Role, and record the reason.
+ * Replace the Volunteer on an existing Assignment, keeping its Shift and Role.
  * @summary Reassign an Assignment to another Volunteer
  */
 const reassignParticipationAssignment = (
@@ -159,22 +157,7 @@ const getParticipationCompletion = (
     },
       );
     }
-  /**
- * Publish one Ministry's roster for an Event, making its slice of the schedule visible to its Volunteers.
- * @summary Publish a single MinistryParticipation
- */
-const publishParticipation = (
-    participationId: string,
-    publishParticipationBody: PublishParticipationBody,
- ) => {
-      return apiClient<PublishParticipation204>(
-      {url: `/api/v1/rostering/participations/${participationId}/publish`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: publishParticipationBody
-    },
-      );
-    }
-  return {listTeamRosterCycles,getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion,publishParticipation}};
+  return {listTeamRosterCycles,getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
 export type ListTeamRosterCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['listTeamRosterCycles']>>>
 export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getCycleBuilderData']>>>
 export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getCycleAuditLog']>>>
@@ -184,4 +167,3 @@ export type CreateParticipationAssignmentResult = NonNullable<Awaited<ReturnType
 export type DeleteParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['deleteParticipationAssignment']>>>
 export type ReassignParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['reassignParticipationAssignment']>>>
 export type GetParticipationCompletionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getParticipationCompletion']>>>
-export type PublishParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['publishParticipation']>>>

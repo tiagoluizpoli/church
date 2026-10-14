@@ -17,7 +17,6 @@ export interface DashboardAvailabilityTask {
   eventTitle: string;
   ministryId: string;
   ministryName: string;
-  eventType: 'hourly' | 'day_based';
   eventStart: string;
   eventEnd: string;
   completionState: 'missing' | 'partial' | 'complete';
@@ -156,17 +155,9 @@ export interface ConfirmAvailabilityCheckInput {
   churchId: ChurchId;
 }
 
-export interface AvailabilityOverlapItem {
-  shiftId: string;
-  otherShiftId: string;
-  ministryId: string;
-  otherMinistryId: string;
-}
-
 export interface ConfirmAvailabilityCheckResult {
   state: AvailabilityCheckState;
   confirmedAt: Instant;
-  overlaps: AvailabilityOverlapItem[];
 }
 
 export interface RespondToAssignmentInput {

@@ -1,6 +1,15 @@
 import { NotFoundError } from '@church/core';
 import { assignment, shift, timeSlot } from '@church/db';
-import { and, between, count, eq, inArray, type SQL } from 'drizzle-orm';
+import {
+  and,
+  between,
+  count,
+  eq,
+  gt,
+  inArray,
+  lt,
+  type SQL,
+} from 'drizzle-orm';
 import type {
   AssignmentId,
   ChurchId,
@@ -26,6 +35,13 @@ import type { AnyDrizzleDb } from './types';
 
 interface DrizzleAssignmentRepositoryInput {
   db: AnyDrizzleDb;
+}
+
+interface ListRangeInput {
+  churchId: ChurchId;
+  timeCondition: SQL;
+  volunteerId?: VolunteerId;
+  tx?: TransactionContext;
 }
 
 export class DrizzleAssignmentRepository implements AssignmentRepository {
@@ -193,7 +209,16 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     endTime: Date,
     tx?: TransactionContext,
   ): Promise<Assignment[]> {
-    return this.listRange(churchId, startTime, endTime, volunteerId, tx);
+    // Overlap, not "starts inside": catches earlier-starting Shifts and lets back-to-back ones through.
+    return this.listRange({
+      churchId,
+      timeCondition: and(
+        lt(shift.startTime, endTime),
+        gt(shift.endTime, startTime),
+      ) as SQL,
+      volunteerId,
+      tx,
+    });
   }
 
   listByRange(
@@ -202,19 +227,22 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     endTime: Date,
     tx?: TransactionContext,
   ): Promise<Assignment[]> {
-    return this.listRange(churchId, startTime, endTime, undefined, tx);
+    return this.listRange({
+      churchId,
+      timeCondition: between(shift.startTime, startTime, endTime),
+      tx,
+    });
   }
 
-  private async listRange(
-    churchId: ChurchId,
-    startTime: Date,
-    endTime: Date,
-    volunteerId?: VolunteerId,
-    tx?: TransactionContext,
-  ): Promise<Assignment[]> {
+  private async listRange({
+    churchId,
+    timeCondition,
+    volunteerId,
+    tx,
+  }: ListRangeInput): Promise<Assignment[]> {
     const conditions: SQL[] = [
       withChurchIsolation(assignment, churchId),
-      between(shift.startTime, startTime, endTime),
+      timeCondition,
     ];
     if (volunteerId) conditions.push(eq(assignment.volunteerId, volunteerId));
     const rows = await getClient(this.db, tx)

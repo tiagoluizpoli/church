@@ -109,7 +109,6 @@ function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
     {
       churchId: '11111111-1111-1111-1111-111111111111',
       name: 'Projection',
-      enforcementType: 'soft',
       defaultDirection,
     },
     '33333333-3333-3333-3333-333333333333',
@@ -282,7 +281,6 @@ describe('Church admin planning routes', () => {
           title: 'Domingo',
           start: parseInstant({ value: '2026-06-28T03:00:00.000Z' }),
           end: parseInstant({ value: '2026-06-29T02:59:59.999Z' }),
-          eventType: 'hourly',
         },
         '33333333-3333-3333-3333-333333333333',
         new Date('2026-06-01T00:00:00.000Z'),
@@ -297,7 +295,6 @@ describe('Church admin planning routes', () => {
         title: 'Domingo',
         start: '2026-06-28T03:00:00.000Z',
         end: '2026-06-29T02:59:59.999Z',
-        eventType: 'hourly',
       },
     });
 
@@ -381,7 +378,6 @@ describe('Church admin planning routes', () => {
     expect(patchResponse.json()).toMatchObject({
       id: '33333333-3333-3333-3333-333333333333',
       defaultDirection: 'all_in',
-      enforcementType: 'soft',
     });
   });
 

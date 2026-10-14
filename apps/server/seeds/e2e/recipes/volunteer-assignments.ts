@@ -179,7 +179,6 @@ export function createVolunteerAssignmentsRecipe({
       start: startsAt,
       end: endsAt,
       status: 'scheduled',
-      eventType: 'hourly',
     });
     const timeSlot = await buildTimeSlot({
       db,

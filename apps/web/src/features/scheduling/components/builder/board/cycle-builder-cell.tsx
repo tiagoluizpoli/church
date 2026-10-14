@@ -44,7 +44,6 @@ interface CycleBuilderCellProps {
   pickerVolunteers: PickerVolunteer[];
   suggestions: SuggestedVolunteer[];
   needsResponseSuggestions: SuggestedVolunteer[];
-  conflictSuggestions: SuggestedVolunteer[];
   slotLabel: string;
   selectedVolunteerId?: string;
   selectedVolunteerName?: string;
@@ -80,7 +79,7 @@ interface CycleBuilderCellProps {
 const FIT_EXPLANATION: Record<ShiftRoleFit['tier'], string | undefined> = {
   ready: undefined,
   override: 'Not available for this shift — assigning is an override',
-  unqualified: 'Not qualified for this role — assigning needs a reason',
+  unqualified: 'Not qualified for this role — assigning is an override',
   none: undefined,
 };
 
@@ -116,7 +115,6 @@ export function CycleBuilderCell({
   pickerVolunteers,
   suggestions,
   needsResponseSuggestions,
-  conflictSuggestions,
   slotLabel,
   selectedVolunteerId,
   selectedVolunteerName,
@@ -350,7 +348,6 @@ export function CycleBuilderCell({
             suggestions={{
               safe: suggestions,
               needsResponse: needsResponseSuggestions,
-              conflicts: conflictSuggestions,
             }}
             onSelectSuggestion={selectSuggestion}
             onSelect={(volunteerId) => commit({ volunteerId })}

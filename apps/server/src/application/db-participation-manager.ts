@@ -34,7 +34,6 @@ import type {
   PublishCycleInput,
   PublishCycleParticipationOutcome,
   PublishCycleView,
-  PublishParticipationInput,
   SetInclusionsInput,
   SplitShiftsManagerInput,
   UpdateShiftManagerInput,
@@ -796,41 +795,6 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       }),
     );
-  }
-
-  async publish(input: PublishParticipationInput): Promise<void> {
-    await this.unitOfWork.run(async (tx) => {
-      const participation = await this.participationRepository.getById({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-      if (participation.state === 'availability_fired') {
-        participation.startRostering();
-      }
-
-      const completion = await this.getCompletionInternal({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      });
-      participation.publish({
-        completionPercent: completion.completionPercent,
-        confirmBelowFull: input.confirmBelowFull,
-      });
-      await this.participationRepository.updateState({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        state: participation.state,
-        tx,
-      });
-
-      await this.notifyParticipationPublished({
-        churchId: input.churchId,
-        participation,
-        tx,
-      });
-    });
   }
 
   async publishCycle(input: PublishCycleInput): Promise<PublishCycleView> {

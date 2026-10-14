@@ -51,7 +51,6 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         start: input.start,
         end: input.end,
         status: input.status,
-        eventType: input.eventType,
       })
       .returning();
 

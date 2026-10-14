@@ -43,7 +43,6 @@ export function VolunteerAvailabilityPage() {
             onConfirm={() => availability.confirmCheck.mutate()}
             isSavingMarks={availability.saveMarks.isPending}
             isConfirming={availability.confirmCheck.isPending}
-            overlapWarningVisible={availability.overlapWarningVisible}
           />
         ) : null
       ) : null}

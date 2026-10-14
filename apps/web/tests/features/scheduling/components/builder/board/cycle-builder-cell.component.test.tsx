@@ -95,7 +95,6 @@ function renderCell(
           },
         ]}
         needsResponseSuggestions={[]}
-        conflictSuggestions={[]}
         slotLabel="Morning service"
         isPublished={false}
         onFocus={vi.fn()}
@@ -198,7 +197,7 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            hasConflict: true,
+            isAvailable: false,
             qualifiedRoleIds: ['role-1'],
           },
         ],
@@ -223,6 +222,30 @@ describe('CycleBuilderCell', () => {
     // The explanation used to live in a native `title`, reachable by neither
     // keyboard nor screen reader.
     expect(assign).not.toHaveAttribute('title');
+  });
+
+  it('offers no assign affordance for a double-booked volunteer (DOUBLE_BOOKED is never overridable)', () => {
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          {
+            ...shift.eligibleVolunteers[0],
+            hasConflict: true,
+            qualifiedRoleIds: ['role-1'],
+          },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.getByTestId('cycle-requirement-shift-1-role-1'),
+    ).toHaveAttribute('data-selected-fit', 'none');
+    expect(
+      screen.queryByRole('button', { name: /^Assign Grace Hopper/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('offers an unqualified selection with a warning instead of hiding it (B-2)', async () => {
@@ -258,7 +281,7 @@ describe('CycleBuilderCell', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
 
     const assign = screen.getByRole('button', {
-      name: 'Assign Grace Hopper — Not qualified for this role — assigning needs a reason',
+      name: 'Assign Grace Hopper — Not qualified for this role — assigning is an override',
     });
     expect(assign).toHaveClass('text-yellow-700');
 
@@ -284,7 +307,7 @@ describe('CycleBuilderCell', () => {
         eligibleVolunteers: [
           {
             ...shift.eligibleVolunteers[0],
-            hasConflict: true,
+            isAvailable: false,
             qualifiedRoleIds: ['role-1'],
           },
         ],
@@ -303,7 +326,7 @@ describe('CycleBuilderCell', () => {
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({
         volunteerId: 'volunteer-1',
-        conflictType: 'double_booked',
+        conflictType: 'unavailable',
       }),
     );
   });

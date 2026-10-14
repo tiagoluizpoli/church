@@ -74,7 +74,7 @@ describe('AssignmentPicker', () => {
     // surface — but it says what the pick will cost, and it is not the top one
     // even though she is the more available of the two.
     expect(screen.getByTestId('picker-option-unqualified')).toHaveTextContent(
-      'Not qualified — needs a reason',
+      'Not qualified — needs an override',
     );
     const names = screen
       .getAllByTestId('picker-option-name')

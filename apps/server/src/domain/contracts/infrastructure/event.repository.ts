@@ -5,12 +5,7 @@ import type {
   MinistryId,
   PlanningCycleId,
 } from '../../branded-ids';
-import type {
-  Event,
-  EventStatus,
-  EventType,
-  EventWithSlots,
-} from '../../entities/event';
+import type { Event, EventStatus, EventWithSlots } from '../../entities/event';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateEventInput {
@@ -22,7 +17,6 @@ export interface CreateEventInput {
   start: Date;
   end: Date;
   status?: EventStatus;
-  eventType?: EventType;
 }
 
 export interface UpdateEventStatusInput {

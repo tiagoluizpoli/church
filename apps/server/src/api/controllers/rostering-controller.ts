@@ -41,7 +41,6 @@ import {
   createParticipationAssignmentResponseSchema,
   eligibleVolunteerListResponseSchema,
   participationCompletionResponseSchema,
-  publishParticipationBodySchema,
   reassignAssignmentBodySchema,
   rosteringMapper,
 } from '../dtos/rostering.dto';
@@ -101,7 +100,6 @@ const teamRosterCycleListResponseSchema = z.object({
 type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
-type PublishParticipationBody = z.infer<typeof publishParticipationBodySchema>;
 type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
 type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
 
@@ -406,7 +404,7 @@ export class RosteringController implements FastifyController {
           operationId: 'createParticipationAssignment',
           summary: 'Assign a Volunteer to a Shift',
           description:
-            'Assign a Volunteer to a Role (and optional Team) within a Shift, optionally overriding a detected conflict.',
+            'Assign a Volunteer to a Role (and optional Team) within a Shift.',
           body: createParticipationAssignmentBodySchema,
           response: {
             201: createParticipationAssignmentResponseSchema,
@@ -434,7 +432,6 @@ export class RosteringController implements FastifyController {
             teamId: body.teamId ? TeamId.from(body.teamId) : undefined,
             teamLeaderScopeId: scope.teamLeaderScopeId,
             actorId: UserId.from(request.userId),
-            override: body.override,
           });
         return reply
           .status(201)
@@ -483,7 +480,7 @@ export class RosteringController implements FastifyController {
           operationId: 'reassignParticipationAssignment',
           summary: 'Reassign an Assignment to another Volunteer',
           description:
-            'Replace the Volunteer on an existing Assignment, keeping its Shift and Role, and record the reason.',
+            'Replace the Volunteer on an existing Assignment, keeping its Shift and Role.',
           body: reassignAssignmentBodySchema,
           response: {
             200: assignmentResponseSchema,
@@ -507,7 +504,6 @@ export class RosteringController implements FastifyController {
             assignmentId: AssignmentId.from(assignmentId),
             volunteerId: VolunteerId.from(body.volunteerId),
             actorId: UserId.from(request.userId),
-            reason: body.reason,
           });
         return reply.send(assignmentMapper.toResponse(reassigned));
       },
@@ -542,38 +538,6 @@ export class RosteringController implements FastifyController {
           participationId: MinistryParticipationId.from(participationId),
         });
         return reply.send(rosteringMapper.completionToResponse(completion));
-      },
-    );
-
-    app.post(
-      '/participations/:participationId/publish',
-      {
-        schema: {
-          tags: ['rostering'],
-          operationId: 'publishParticipation',
-          summary: 'Publish a single MinistryParticipation',
-          description:
-            "Publish one Ministry's roster for an Event, making its slice of the schedule visible to its Volunteers.",
-          body: publishParticipationBodySchema,
-          response: { 204: z.null(), 403: errorResponseSchema },
-        },
-      },
-      async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
-        const denied = await this.denyParticipationScope({
-          request,
-          reply,
-          participationId,
-        });
-        if (denied) return;
-
-        const body = request.body as PublishParticipationBody;
-        await this.participationManager.publish({
-          churchId: ChurchId.from(request.churchId),
-          participationId: MinistryParticipationId.from(participationId),
-          confirmBelowFull: body.confirmBelowFull,
-        });
-        return reply.status(204).send(null);
       },
     );
   }

@@ -7,26 +7,21 @@ import {
   type ChurchId,
   type RoleId,
   TeamId,
-  type UserId,
   type VolunteerId,
 } from '../domain/branded-ids';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
-  CreateAssignmentInput,
   CreateParticipationAssignmentInput,
   CreateParticipationAssignmentResult,
   DeleteAssignmentInput,
   GetAssignmentInput,
   IAssignmentManager,
-  ListAssignmentAuditLogInput,
   ListCycleAuditLogInput,
-  OverrideAssignmentInput,
   ReassignParticipationAssignmentInput,
 } from '../domain/contracts/application/assignment-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
-import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
@@ -74,8 +69,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     private readonly shiftRepository: ShiftRepository,
     @inject('IMinistryParticipationRepository')
     private readonly participationRepository: MinistryParticipationRepository,
-    @inject('IMinistryRepository')
-    private readonly ministryRepository: MinistryRepository,
     @inject('IVolunteerRepository')
     private readonly volunteerRepository: VolunteerRepository,
     @inject('IAvailabilityRepository')
@@ -87,25 +80,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     @inject('IUnitOfWork')
     private readonly unitOfWork: UnitOfWork,
   ) {}
-
-  async createAssignment(input: CreateAssignmentInput): Promise<Assignment> {
-    const { churchId, slotId, volunteerId, roleId, actorId, reason } = input;
-    const assignment = await this.assignmentRepo.create(churchId, {
-      slotId,
-      volunteerId,
-      roleId,
-      status: 'pending',
-      reason,
-      assignedBy: actorId,
-    });
-    await this.auditRepo.create(churchId, {
-      assignmentId: assignment.id,
-      actorId: actorId as UserId,
-      action: 'created',
-      reason,
-    });
-    return assignment;
-  }
 
   async getAssignment(input: GetAssignmentInput): Promise<Assignment> {
     return this.assignmentRepo.getById(input.churchId, input.assignmentId);
@@ -165,16 +139,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     });
   }
 
-  async overrideAssignment(input: OverrideAssignmentInput): Promise<void> {
-    await this.assignmentRepo.getById(input.churchId, input.assignmentId);
-    await this.auditRepo.create(input.churchId, {
-      assignmentId: input.assignmentId,
-      actorId: input.actorId,
-      action: 'updated',
-      reason: input.reason,
-    });
-  }
-
   async reassignParticipationAssignment(
     input: ReassignParticipationAssignmentInput,
   ): Promise<Assignment> {
@@ -196,7 +160,6 @@ export class DbAssignmentManager implements IAssignmentManager {
               volunteerId: input.volunteerId,
               roleId: currentAssignment.roleId,
               actorId: input.actorId,
-              override: { reason: input.reason },
             },
             tx,
           );
@@ -215,7 +178,6 @@ export class DbAssignmentManager implements IAssignmentManager {
             assignmentId: nextAssignmentResult.assignment.id,
             actorId: input.actorId,
             action: 'updated',
-            reason: input.reason,
           },
           tx,
         );
@@ -244,12 +206,6 @@ export class DbAssignmentManager implements IAssignmentManager {
     return nextAssignment;
   }
 
-  async listAuditLog(
-    input: ListAssignmentAuditLogInput,
-  ): Promise<AssignmentAudit[]> {
-    return this.auditRepo.listByAssignment(input.churchId, input.assignmentId);
-  }
-
   async listAuditLogForCycle(
     input: ListCycleAuditLogInput,
   ): Promise<AssignmentAudit[]> {
@@ -274,12 +230,6 @@ export class DbAssignmentManager implements IAssignmentManager {
       participationId: shift.participationId,
       tx,
     });
-    const ministry = await this.ministryRepository.getById(
-      input.churchId,
-      participation.ministryId,
-      tx,
-    );
-
     if (input.teamLeaderScopeId) {
       if (input.teamId !== input.teamLeaderScopeId) {
         throw new RosterActionNotAvailableError();
@@ -330,12 +280,6 @@ export class DbAssignmentManager implements IAssignmentManager {
         type: 'NOT_QUALIFIED',
         details: 'Volunteer is not qualified for the requested role',
       });
-      if (ministry.enforcementType === 'hard' && !input.override?.reason) {
-        throw new HardConstraintError(
-          'NOT_QUALIFIED',
-          'Volunteer is not qualified for the requested role',
-        );
-      }
     }
 
     if (
@@ -377,24 +321,13 @@ export class DbAssignmentManager implements IAssignmentManager {
       });
     }
 
+    // Church-wide, so an overlap in any Ministry is refused.
     const hasOverlapConflict = overlappingAssignments.some(
       (assignment) =>
         assignment.shiftId !== shift.id &&
         isActiveAssignmentStatus(assignment.status),
     );
     if (hasOverlapConflict) {
-      warnings.push({
-        type: 'DOUBLE_BOOKED' as const,
-        details: 'Volunteer is already assigned to another overlapping shift',
-        conflictingId: overlappingAssignments[0]?.id as string,
-      });
-    }
-
-    if (
-      ministry.enforcementType === 'hard' &&
-      hasOverlapConflict &&
-      !input.override?.reason
-    ) {
       throw new HardConstraintError(
         'DUPLICATE_ASSIGNMENT',
         'Volunteer is already assigned to another overlapping shift',
@@ -410,7 +343,6 @@ export class DbAssignmentManager implements IAssignmentManager {
         volunteerId: input.volunteerId,
         roleId: input.roleId,
         status: 'pending',
-        reason: input.override?.reason,
         assignedBy: input.actorId,
       },
       tx,
@@ -432,7 +364,6 @@ export class DbAssignmentManager implements IAssignmentManager {
         assignmentId: assignment.id,
         actorId: input.actorId,
         action: 'created',
-        reason: input.override?.reason,
       },
       tx,
     );

@@ -12,8 +12,8 @@ import {
 // DL4-US3 (P2, test-plan.md): a volunteer who belongs to two ministries opens
 // their availability checks (one per ministry for the locked cycle), marks a
 // shift unavailable on one check, then confirms a check that has a
-// cross-ministry, same-date shift overlap, which always blocks the confirm
-// (FR-020, SC-007). This used to
+// cross-ministry, same-date shift overlap: the confirm succeeds, since the
+// overlap is refused at assign time (DOUBLE_BOOKED). This used to
 // also cover the leader seeing per-volunteer acknowledgement state on the
 // tailoring page — see the KNOWN GAP note in the first test below.
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
@@ -43,10 +43,6 @@ interface ParticipationEventViewResponse {
 
 interface CycleParticipationResponse {
   events: ParticipationEventViewResponse[];
-}
-
-interface ConfirmOverlapErrorResponse {
-  error: string;
 }
 
 interface FireAvailabilityForMinistryParams {
@@ -254,7 +250,7 @@ async function openWorshipCheckAndMarkOneShiftUnavailable({
   expect(marksResponse.ok()).toBeTruthy();
 }
 
-test('volunteer in two ministries is blocked by a cross-ministry overlap', async ({
+test('volunteer in two ministries confirms despite a cross-ministry overlap', async ({
   browser,
   page,
 }, testInfo) => {
@@ -273,18 +269,13 @@ test('volunteer in two ministries is blocked by a cross-ministry overlap', async
   await page.getByTestId('confirm-availability-button').click();
   const confirmResponse = await confirmResponsePromise;
 
-  // An overlap always blocks the confirm (DL2-VA-05, FR-020).
-  expect(confirmResponse.status()).toBe(409);
-  const confirmError =
-    (await confirmResponse.json()) as ConfirmOverlapErrorResponse;
-  expect(confirmError.error).toBe('AVAILABILITY_OVERLAP');
-  await expect(page.getByTestId('overlap-warning')).toBeVisible();
+  // An overlap no longer blocks the confirm (DL2-VA-05).
+  expect(confirmResponse.status()).toBe(204);
 
   // A single-ministry volunteer's clean confirm still exercises the
   // underlying availability-confirm flow, even though the leader-facing
   // verification that used to follow it is gone — see the note below.
-  // Uses the team-leader persona, a member of Worship alone: the leader
-  // belongs to both ministries and would hit the same overlap.
+  // Uses the team-leader persona, a member of Worship alone.
   const singleMinistryActorContext = await newPersonaContext({
     browser,
     persona: journey.personas.teamLeader,

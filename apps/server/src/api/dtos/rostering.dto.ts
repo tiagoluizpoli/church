@@ -48,11 +48,6 @@ export const createParticipationAssignmentBodySchema = z.object({
   volunteerId: z.string(),
   roleId: z.string(),
   teamId: z.string().optional(),
-  override: z
-    .object({
-      reason: z.string().trim().min(10),
-    })
-    .optional(),
 });
 
 export const createParticipationAssignmentResponseSchema = z.object({
@@ -67,13 +62,8 @@ export const participationCompletionResponseSchema = z.object({
   completionPercent: z.number(),
 });
 
-export const publishParticipationBodySchema = z.object({
-  confirmBelowFull: z.boolean().optional(),
-});
-
 export const reassignAssignmentBodySchema = z.object({
   volunteerId: z.string(),
-  reason: z.string().trim().min(10),
 });
 
 export const rosteringMapper = {

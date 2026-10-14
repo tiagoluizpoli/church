@@ -147,14 +147,12 @@ export async function seed(): Promise<void> {
     churchId,
     id: adultMinistryId,
     name: 'Adult Ministry',
-    enforcementType: 'soft',
   });
   await buildMinistry({
     db: testDb,
     churchId,
     id: '33333333-3333-3333-3333-333333333332',
     name: 'Youth Ministry',
-    enforcementType: 'hard',
   });
 
   // Roles (ministry-1: Greeter + Usher — alphabetical for list test)

@@ -138,7 +138,6 @@ describe('integration composition of the shared seed builders', () => {
       churchId: CHURCH_ID,
       id: '33333333-3333-4333-8333-333333333331',
       name: 'Hospitality',
-      enforcementType: 'hard',
     });
     const team = await buildTeam({
       db: testDb,
@@ -155,7 +154,6 @@ describe('integration composition of the shared seed builders', () => {
       name: 'Usher',
     });
 
-    expect(ministry.enforcementType).toBe('hard');
     expect(team).toMatchObject({
       ministryId: ministry.id,
       churchId: CHURCH_ID,
@@ -412,7 +410,6 @@ describe('integration composition of the shared seed builders', () => {
       .where(eq(availability.availabilityCheckId, check.id));
     expect(marks.map((mark) => mark.shiftId)).toEqual([shiftRow.id]);
     expect(cycle.startDate).toEqual(new Date('2024-06-01T00:00:00Z'));
-    expect(planned.eventType).toBe('hourly');
     const [storedAssignment] = await testDb
       .select()
       .from(assignment)

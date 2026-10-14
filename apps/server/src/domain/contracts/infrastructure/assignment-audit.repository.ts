@@ -51,12 +51,6 @@ export interface AssignmentAuditRepository {
     tx?: TransactionContext,
   ): Promise<AssignmentAudit>;
 
-  listByAssignment(
-    churchId: ChurchId,
-    assignmentId: AssignmentId,
-    tx?: TransactionContext,
-  ): Promise<AssignmentAudit[]>;
-
   /** Cycle-wide audit entries for one ministry's participations, church-isolated. */
   listByCycle(
     input: ListAuditByCycleInput,

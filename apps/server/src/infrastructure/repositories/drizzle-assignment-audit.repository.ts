@@ -11,12 +11,7 @@ import {
 } from '@church/db';
 import { fromDate, nowAsDate } from '@church/time';
 import { aliasedTable, and, desc, eq } from 'drizzle-orm';
-import type {
-  AssignmentId,
-  ChurchId,
-  EventId,
-  UserId,
-} from '../../domain/branded-ids';
+import type { ChurchId, EventId, UserId } from '../../domain/branded-ids';
 import type {
   AssignmentAuditLogEntry,
   AssignmentAuditRepository,
@@ -67,24 +62,6 @@ export class DrizzleAssignmentAuditRepository
       .returning();
     if (!row) throw new Error('AssignmentAudit insert failed');
     return mapAssignmentAudit(row);
-  }
-
-  async listByAssignment(
-    churchId: ChurchId,
-    assignmentId: AssignmentId,
-    tx?: TransactionContext,
-  ): Promise<AssignmentAudit[]> {
-    const rows = await getClient(this.db, tx)
-      .select()
-      .from(assignmentAudit)
-      .where(
-        and(
-          withChurchIsolation(assignmentAudit, churchId),
-          eq(assignmentAudit.assignmentId, assignmentId),
-        ),
-      )
-      .orderBy(desc(assignmentAudit.timestamp));
-    return rows.map(mapAssignmentAudit);
   }
 
   async listByCycle(

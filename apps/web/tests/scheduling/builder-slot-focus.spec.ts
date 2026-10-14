@@ -80,9 +80,6 @@ test.describe('slot focus drives the volunteer rail', () => {
     });
     if (await overridePrompt.isVisible().catch(() => false)) {
       await page
-        .getByPlaceholder(/Reason for override/)
-        .fill('Leader approved this assignment');
-      await page
         .getByRole('button', { name: /Confirm Override|Assign anyway/ })
         .click();
     }

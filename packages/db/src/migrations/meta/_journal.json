@@ -106,6 +106,27 @@
       "when": 1789700000000,
       "tag": "0014_event-start-end-rename",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791922609024,
+      "tag": "0015_lean_scarlet_witch",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791928243677,
+      "tag": "0016_safe_bushwacker",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791934418936,
+      "tag": "0017_jittery_vanisher",
+      "breakpoints": true
     }
   ]
 }

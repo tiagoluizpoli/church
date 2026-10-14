@@ -121,7 +121,7 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     expect(created.reason).toBe('initial assignment');
   });
 
-  it('listByAssignment, listByChurch, and listByActor all order desc by timestamp', async () => {
+  it('listByChurch and listByActor both order desc by timestamp', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { assignment: assignmentRow } = await seedAssignment({
       churchId: seed.churchAId,
@@ -140,16 +140,17 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
       action: 'status_change',
     });
 
-    const byAssignment = await repo.listByAssignment(churchId, assignmentId);
-    expect(byAssignment).toHaveLength(2);
-    expect(byAssignment[0]?.action).toBe('status_change');
-    expect(byAssignment[1]?.action).toBe('created');
-
     const byChurch = await repo.listByChurch(churchId);
-    expect(byChurch).toHaveLength(2);
+    expect(byChurch.map((audit) => audit.action)).toEqual([
+      'status_change',
+      'created',
+    ]);
 
     const byActor = await repo.listByActor(churchId, actorId);
-    expect(byActor).toHaveLength(2);
+    expect(byActor.map((audit) => audit.action)).toEqual([
+      'status_change',
+      'created',
+    ]);
 
     const otherChurchAudits = await repo.listByChurch(
       ChurchId.from(seed.churchBId),

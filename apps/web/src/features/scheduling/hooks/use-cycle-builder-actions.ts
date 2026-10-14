@@ -16,21 +16,23 @@ import { isOptimisticAssignmentId } from './use-cycle-builder.optimistic';
 import { randomId } from '@/shared/utils/id';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
+interface CreateAssignmentBody {
+  volunteerId: string;
+  roleId: string;
+}
+
 export interface CreateAssignmentInput {
   shiftId: string;
-  body: {
-    volunteerId: string;
-    roleId: string;
-    override?: { reason: string };
-  };
+  body: CreateAssignmentBody;
+}
+
+interface ReassignAssignmentBody {
+  volunteerId: string;
 }
 
 export interface ReassignAssignmentInput {
   assignmentId: string;
-  body: {
-    volunteerId: string;
-    reason: string;
-  };
+  body: ReassignAssignmentBody;
 }
 
 export interface CycleBuilderMutations {
@@ -69,16 +71,21 @@ interface UseCycleBuilderActionsInput extends CycleBuilderMutations {
   onAssignmentApplied?: () => void;
 }
 
+interface FailedWriteEntry {
+  failedWrite: FailedAssignmentWrite;
+  input: CycleBuilderCellSelectInput;
+}
+
 interface ApplyAssignmentInput {
   input: CycleBuilderCellSelectInput;
-  overrideReason?: string;
   mode?: 'create' | 'reassign';
 }
 
 interface ApplyCollisionInput {
   action: CollisionAction;
   collision?: CollisionState;
-  overrideReason?: string;
+  /** The leader already confirmed the conflict in the override dialog. */
+  overrideConfirmed?: boolean;
 }
 
 interface RemoveAssignmentInput {
@@ -127,13 +134,7 @@ export function useCycleBuilderActions({
 }: UseCycleBuilderActionsInput) {
   const [collision, setCollision] = useState<CollisionState | null>(null);
   const [override, setOverride] = useState<OverrideState | null>(null);
-  const [failedWrites, setFailedWrites] = useState<
-    Array<{
-      failedWrite: FailedAssignmentWrite;
-      input: CycleBuilderCellSelectInput;
-      overrideReason?: string;
-    }>
-  >([]);
+  const [failedWrites, setFailedWrites] = useState<FailedWriteEntry[]>([]);
   const [announcement, setAnnouncement] = useState('');
   const isSaving =
     createAssignment.isPending ||
@@ -195,7 +196,6 @@ export function useCycleBuilderActions({
 
   const applyAssignment = async ({
     input,
-    overrideReason,
     mode,
   }: ApplyAssignmentInput): Promise<boolean> => {
     const volunteerName = volunteerNameFor(input);
@@ -205,10 +205,7 @@ export function useCycleBuilderActions({
       if (!shouldCreate && input.assignmentId) {
         await reassignAssignment.mutateAsync({
           assignmentId: input.assignmentId,
-          body: {
-            volunteerId: input.volunteerId,
-            reason: overrideReason ?? 'Reassigned from the cycle builder',
-          },
+          body: { volunteerId: input.volunteerId },
         });
       } else {
         await createAssignment.mutateAsync({
@@ -216,7 +213,6 @@ export function useCycleBuilderActions({
           body: {
             volunteerId: input.volunteerId,
             roleId: input.roleId,
-            override: overrideReason ? { reason: overrideReason } : undefined,
           },
         });
       }
@@ -248,7 +244,6 @@ export function useCycleBuilderActions({
             message,
           },
           input,
-          overrideReason,
         },
       ]);
       report({
@@ -262,7 +257,7 @@ export function useCycleBuilderActions({
   const applyCollision = async ({
     action,
     collision: collisionOverride,
-    overrideReason,
+    overrideConfirmed,
   }: ApplyCollisionInput) => {
     const activeCollision = collisionOverride ?? collision;
     if (!activeCollision) return;
@@ -293,7 +288,7 @@ export function useCycleBuilderActions({
       swapConflictType && !input.conflictType
         ? { ...input, conflictType: swapConflictType }
         : input;
-    if (overrideInput.conflictType && overrideReason === undefined) {
+    if (overrideInput.conflictType && !overrideConfirmed) {
       setCollision(null);
       setOverride({
         input: overrideInput,
@@ -309,7 +304,6 @@ export function useCycleBuilderActions({
     if (action === 'both') {
       await applyAssignment({
         input,
-        overrideReason,
         mode: target ? 'create' : undefined,
       });
       return;
@@ -318,7 +312,7 @@ export function useCycleBuilderActions({
     const sourceName = source.volunteerName ?? source.volunteerId;
     const targetName = target?.volunteerName ?? target?.volunteerId ?? '';
     if (!(target && action === 'swap')) {
-      const applied = await applyAssignment({ input, overrideReason });
+      const applied = await applyAssignment({ input });
       if (!applied) return;
       try {
         await deleteAssignment.mutateAsync(source.id);
@@ -334,10 +328,7 @@ export function useCycleBuilderActions({
     try {
       await reassignAssignment.mutateAsync({
         assignmentId: source.id,
-        body: {
-          volunteerId: target.volunteerId,
-          reason: overrideReason ?? 'Swapped in the cycle builder',
-        },
+        body: { volunteerId: target.volunteerId },
       });
     } catch (error) {
       report({
@@ -350,10 +341,7 @@ export function useCycleBuilderActions({
     try {
       await reassignAssignment.mutateAsync({
         assignmentId: target.id,
-        body: {
-          volunteerId: input.volunteerId,
-          reason: overrideReason ?? 'Swapped in the cycle builder',
-        },
+        body: { volunteerId: input.volunteerId },
       });
     } catch (error) {
       report({
@@ -424,10 +412,7 @@ export function useCycleBuilderActions({
         (item) => item.failedWrite.failedWriteId !== failedWriteId,
       ),
     );
-    void applyAssignment({
-      input: record.input,
-      overrideReason: record.overrideReason,
-    });
+    void applyAssignment({ input: record.input });
   };
 
   const dismissFailedWrite = (failedWriteId: string) => {
@@ -443,7 +428,7 @@ export function useCycleBuilderActions({
     [failedWrites],
   );
 
-  const confirmOverride = (reason: string) => {
+  const confirmOverride = () => {
     const confirmedOverride = override;
     setOverride(null);
     if (!confirmedOverride) return;
@@ -451,14 +436,11 @@ export function useCycleBuilderActions({
       void applyCollision({
         action: confirmedOverride.collisionAction,
         collision: confirmedOverride.collision,
-        overrideReason: reason,
+        overrideConfirmed: true,
       });
       return;
     }
-    void applyAssignment({
-      input: confirmedOverride.input,
-      overrideReason: reason,
-    });
+    void applyAssignment({ input: confirmedOverride.input });
   };
 
   const removeAssignment = async ({

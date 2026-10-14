@@ -221,7 +221,7 @@ function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
           <QuickCreateEventModal
             open={createEventOpen}
             onOpenChange={setCreateEventOpen}
-            target={{ kind: 'planning-cycle', cycleId: selectedCycle.id }}
+            cycleId={selectedCycle.id}
             onCreated={() => undefined}
           />
         </>

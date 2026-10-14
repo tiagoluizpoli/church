@@ -352,8 +352,8 @@ export function CycleBuilderMatrix(props: Props) {
       )?.volunteerName,
       slotLabel: focused.slotLabel,
       roleLabel: focused.roleLabel,
-      // Whatever this pick has to justify — unavailable, double-booked, or
-      // not qualified — comes from the shared predicate, never from this call
+      // Whatever this pick has to justify — unavailable or not qualified —
+      // comes from the shared predicate, never from this call
       // site's own reading of the tier (FR-016).
       conflictType: overrideKindForFit({ fit }),
     });

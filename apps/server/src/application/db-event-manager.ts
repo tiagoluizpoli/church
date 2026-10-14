@@ -1,31 +1,18 @@
 import 'reflect-metadata';
-import { fromDate, toDate } from '@church/time';
 import { inject, injectable } from 'tsyringe';
-import { AssignmentManagerService } from '../domain/assignment/assignment-manager-service';
-import type { SlotGenerationStrategy } from '../domain/assignment/types';
 import type {
-  CancelEventInput,
-  CreateSlotInput,
-  DeleteSlotInput,
-  GenerateSlotsInput,
   GetScheduleBuilderDataInput,
   IEventManager,
   ListEventsInput,
   ScheduleBuilderData,
-  SendReminderInput,
-  UpdateSlotInput,
-  UpsertSlotRequirementInput,
 } from '../domain/contracts/application/event-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
-import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Event } from '../domain/entities/event';
-import type { SlotRequirement } from '../domain/entities/slot-requirement';
-import type { TimeSlot } from '../domain/entities/time-slot';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 
 @injectable()
@@ -43,8 +30,6 @@ export class DbEventManager implements IEventManager {
     private readonly volunteerRepo: VolunteerRepository,
     @inject('IRoleRepository')
     private readonly roleRepo: RoleRepository,
-    @inject('INotificationService')
-    private readonly notificationService: NotificationService,
   ) {}
 
   async getScheduleBuilderData(
@@ -162,108 +147,6 @@ export class DbEventManager implements IEventManager {
       input.churchId,
       input.ministryId,
       input.status,
-    );
-  }
-
-  async cancelEvent(input: CancelEventInput): Promise<void> {
-    const { eventId, churchId } = input;
-    await this.eventRepo.updateStatus(churchId, eventId, {
-      status: 'cancelled',
-    });
-  }
-
-  async createSlot(input: CreateSlotInput): Promise<TimeSlot> {
-    const { churchId, eventId, startTime, endTime, label } = input;
-    return this.slotRepo.create(churchId, {
-      eventId,
-      startTime,
-      endTime,
-      label,
-    });
-  }
-
-  async updateSlot(input: UpdateSlotInput): Promise<TimeSlot> {
-    const { churchId, slotId, startTime, endTime, label } = input;
-    return this.slotRepo.update(churchId, slotId, {
-      startTime,
-      endTime,
-      label,
-    });
-  }
-
-  async deleteSlot(input: DeleteSlotInput): Promise<void> {
-    return this.slotRepo.deleteById(input.churchId, input.slotId);
-  }
-
-  async generateSlots(input: GenerateSlotsInput): Promise<TimeSlot[]> {
-    const { churchId, eventId, strategy } = input;
-    const ev = await this.eventRepo.getById(churchId, eventId);
-    const existingSlots = await this.slotRepo.listByEvent(churchId, eventId);
-
-    const strategyWithInstants: SlotGenerationStrategy =
-      strategy.kind === 'template-based'
-        ? {
-            kind: 'template-based',
-            periods: strategy.periods.map((period) => ({
-              ...period,
-              startTime: fromDate({ date: period.startTime }),
-              endTime: fromDate({ date: period.endTime }),
-            })),
-          }
-        : strategy;
-
-    const result = AssignmentManagerService.generateSlots({
-      churchId: churchId as string,
-      eventId: eventId as string,
-      eventStartTime: ev.start,
-      eventEndTime: ev.end,
-      strategy: strategyWithInstants,
-      existingSlots,
-    });
-
-    const bulkItems = result.slots.map(({ slot, requirements }) => ({
-      startTime: toDate({ instant: slot.startTime }),
-      endTime: toDate({ instant: slot.endTime }),
-      label: slot.label,
-      requirements: requirements.map((r) => ({
-        roleId: r.roleId,
-        teamId: r.teamId,
-        requiredCount: r.requiredCount,
-        notes: r.notes,
-      })),
-    }));
-
-    return this.slotRepo.bulkCreate(churchId, { eventId, slots: bulkItems });
-  }
-
-  async upsertSlotRequirement(
-    input: UpsertSlotRequirementInput,
-  ): Promise<SlotRequirement> {
-    const { churchId, slotId, roleId, teamId, requiredCount, notes } = input;
-    return this.slotRepo.upsertRequirement(churchId, slotId, {
-      roleId,
-      teamId,
-      requiredCount,
-      notes,
-    });
-  }
-
-  async sendReminder(input: SendReminderInput): Promise<void> {
-    const { eventId, churchId } = input;
-    await this.eventRepo.getById(churchId, eventId);
-    const ministryId = await this.eventRepo.getMinistryId(churchId, eventId);
-    const volunteers = await this.volunteerRepo.listByMinistry(
-      churchId,
-      ministryId,
-    );
-    await Promise.all(
-      volunteers.map((vol) =>
-        this.notificationService.notifyReminder({
-          churchId: churchId as string,
-          eventId: eventId as string,
-          volunteerId: vol.id as string,
-        }),
-      ),
     );
   }
 }

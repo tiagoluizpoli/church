@@ -28,6 +28,20 @@ describe('removed scheduling routes', () => {
       url: '/api/v1/admin/events/legacy/apply-template',
     },
     { method: 'PUT' as const, url: '/api/v1/volunteer/availability' },
+    { method: 'POST' as const, url: '/api/v1/events/some-id/slots' },
+    { method: 'PATCH' as const, url: '/api/v1/events/some-id/slots/slot-id' },
+    { method: 'DELETE' as const, url: '/api/v1/events/some-id/slots/slot-id' },
+    { method: 'POST' as const, url: '/api/v1/events/some-id/slots/generate' },
+    {
+      method: 'PUT' as const,
+      url: '/api/v1/events/some-id/slots/slot-id/requirements',
+    },
+    { method: 'POST' as const, url: '/api/v1/events/some-id/reminders' },
+    { method: 'POST' as const, url: '/api/v1/events/some-id/cancel' },
+    { method: 'POST' as const, url: '/api/v1/assignments' },
+    { method: 'POST' as const, url: '/api/v1/assignments/some-id/override' },
+    { method: 'DELETE' as const, url: '/api/v1/assignments/some-id' },
+    { method: 'GET' as const, url: '/api/v1/assignments/some-id/audit' },
   ];
 
   for (const route of routes) {

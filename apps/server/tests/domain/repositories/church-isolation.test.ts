@@ -79,7 +79,7 @@ describe('User Story 3: Church Isolation Type Safety', () => {
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       timeSlotRepo.listByEvent('plain-string', 'event-1' as EventId);
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      timeSlotRepo.bulkCreate('plain-string', {} as any);
+      timeSlotRepo.create('plain-string', {} as any);
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       timeSlotRepo.deleteByEvent('plain-string', 'event-1' as EventId);
 
@@ -96,8 +96,6 @@ describe('User Story 3: Church Isolation Type Safety', () => {
       const auditRepo = {} as AssignmentAuditRepository;
       // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
       auditRepo.create('plain-string', {} as any);
-      // @ts-expect-error - First parameter must be branded ChurchId, not a plain string
-      auditRepo.listByAssignment('plain-string', 'assignment-1' as AssignmentId);
     }
   });
 });

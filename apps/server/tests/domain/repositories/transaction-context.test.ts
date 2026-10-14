@@ -47,7 +47,7 @@ describe('User Story 4: Transaction Context Type Safety', () => {
 
       // 3. TimeSlotRepository
       const timeSlotRepo = {} as TimeSlotRepository;
-      timeSlotRepo.bulkCreate(churchId, {} as any, tx);
+      timeSlotRepo.create(churchId, {} as any, tx);
       timeSlotRepo.deleteByEvent(churchId, 'event-1' as EventId, tx);
 
       // 4. AssignmentRepository

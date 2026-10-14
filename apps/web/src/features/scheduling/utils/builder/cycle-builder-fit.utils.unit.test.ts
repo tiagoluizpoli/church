@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isAssignableFit,
   overrideKindForFit,
   volunteerFitForShiftRole,
 } from './cycle-builder-fit.utils';
@@ -73,36 +74,40 @@ describe('volunteerFitForShiftRole', () => {
     ).toEqual({ tier: 'ready' });
   });
 
-  it('reads a qualified but unavailable or double-booked volunteer as an override', () => {
+  it('reads a qualified but unavailable volunteer as an override', () => {
     expect(
       volunteerFitForShiftRole({
         shift,
         roleId: 'role-1',
         volunteerId: 'silent',
       }),
-    ).toEqual({ tier: 'override', conflictType: 'unavailable' });
-    expect(
-      volunteerFitForShiftRole({
-        shift,
-        roleId: 'role-1',
-        volunteerId: 'conflicted',
-      }),
-    ).toEqual({ tier: 'override', conflictType: 'double_booked' });
+    ).toEqual({ tier: 'override' });
+  });
+
+  it('blocks a double-booked volunteer: not assignable, no override (DOUBLE_BOOKED is always refused)', () => {
+    const fit = volunteerFitForShiftRole({
+      shift,
+      roleId: 'role-1',
+      volunteerId: 'conflicted',
+    });
+
+    expect(fit).toEqual({ tier: 'none' });
+    expect(isAssignableFit({ fit })).toBe(false);
+    expect(overrideKindForFit({ fit })).toBeUndefined();
   });
 
   it('reads another role’s qualification as unqualified, not as a non-candidate', () => {
-    // Assignable with a reason: the server warns NOT_QUALIFIED and only
-    // refuses under hard enforcement when no override reason came with it.
+    // Assignable after an override: the server only warns NOT_QUALIFIED.
     expect(
       volunteerFitForShiftRole({
         shift,
         roleId: 'role-1',
         volunteerId: 'other-role',
       }),
-    ).toEqual({ tier: 'unqualified', conflictType: undefined });
+    ).toEqual({ tier: 'unqualified' });
   });
 
-  it('carries the availability conflict on an unqualified fit so one dialog covers both', () => {
+  it('blocks a double-booked volunteer even when unqualified', () => {
     const doubleTrouble = makeShift({
       eligibleVolunteers: [
         makeEligible({
@@ -120,12 +125,12 @@ describe('volunteerFitForShiftRole', () => {
         roleId: 'role-1',
         volunteerId: 'ana',
       }),
-    ).toEqual({ tier: 'unqualified', conflictType: 'double_booked' });
+    ).toEqual({ tier: 'none' });
   });
 
   it('offers nothing for someone who is not a candidate for this shift at all', () => {
-    // `none` now means exactly one thing — not in this shift's eligible pool,
-    // which the server rejects hard as NOT_IN_MINISTRY. No gesture offers it.
+    // Not in this shift's eligible pool: the server rejects it hard as
+    // NOT_IN_MINISTRY. No gesture offers it.
     expect(
       volunteerFitForShiftRole({
         shift,
@@ -152,7 +157,7 @@ describe('volunteerFitForShiftRole', () => {
         roleId: 'role-1',
         volunteerId: 'ana',
       }),
-    ).toEqual({ tier: 'unqualified', conflictType: undefined });
+    ).toEqual({ tier: 'unqualified' });
   });
 });
 
@@ -162,58 +167,17 @@ describe('overrideKindForFit', () => {
     expect(overrideKindForFit({ fit: { tier: 'none' } })).toBeUndefined();
   });
 
-  it('forwards the availability conflict of an override fit', () => {
-    expect(
-      overrideKindForFit({
-        fit: { tier: 'override', conflictType: 'double_booked' },
-      }),
-    ).toBe('double_booked');
+  it('asks an override fit to justify unavailability', () => {
+    expect(overrideKindForFit({ fit: { tier: 'override' } })).toBe(
+      'unavailable',
+    );
   });
 
-  it('reports qualification ahead of availability, so one reason covers both', () => {
+  it('asks an unqualified fit to justify qualification', () => {
     expect(
       overrideKindForFit({
-        fit: { tier: 'unqualified', conflictType: 'unavailable' },
+        fit: { tier: 'unqualified' },
       }),
     ).toBe('not_qualified');
-  });
-});
-
-describe('volunteerFitForShiftRole conflict cause', () => {
-  it('names the conflict so an override can reach the reason dialog (FR-016)', () => {
-    const shift = makeShift({
-      eligibleVolunteers: [
-        makeEligible({
-          volunteerId: 'double-booked',
-          volunteerName: 'Ana',
-          hasConflict: true,
-        }),
-        makeEligible({
-          volunteerId: 'unavailable',
-          volunteerName: 'Bruno',
-          isAvailable: false,
-        }),
-      ],
-    });
-
-    const doubleBooked = volunteerFitForShiftRole({
-      shift,
-      roleId: 'role-1',
-      volunteerId: 'double-booked',
-    });
-    const unavailable = volunteerFitForShiftRole({
-      shift,
-      roleId: 'role-1',
-      volunteerId: 'unavailable',
-    });
-
-    expect(doubleBooked).toEqual({
-      tier: 'override',
-      conflictType: 'double_booked',
-    });
-    expect(unavailable).toEqual({
-      tier: 'override',
-      conflictType: 'unavailable',
-    });
   });
 });

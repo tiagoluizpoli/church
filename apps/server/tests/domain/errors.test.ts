@@ -1,11 +1,5 @@
 import { DomainError } from '@church/core';
 import { describe, expect, it } from 'vitest';
-import {
-  DuplicateSlotsError,
-  EmptyScheduleError,
-  InvalidStateTransitionError,
-  PublishValidationError,
-} from '../../src/domain/assignment/errors';
 import { EmailSendError } from '../../src/domain/errors/email-send-error';
 import { InvalidDateRangeError } from '../../src/domain/errors/invalid-date-range';
 import { InvalidRequiredCountError } from '../../src/domain/errors/invalid-required-count';
@@ -111,36 +105,6 @@ describe('Domain Errors', () => {
     });
   });
 
-  describe('DuplicateSlotsError', () => {
-    it('inherits from DomainError and Error', () => {
-      const error = new DuplicateSlotsError();
-      expect(error).toBeInstanceOf(DomainError);
-      expect(error).toBeInstanceOf(Error);
-    });
-
-    it('has the correct name and message', () => {
-      const error = new DuplicateSlotsError();
-      expect(error.name).toBe('DuplicateSlotsError');
-      expect(error.message).toBe(
-        'Event already has existing slots. Delete them before regenerating.',
-      );
-    });
-  });
-
-  describe('EmptyScheduleError', () => {
-    it('inherits from DomainError and Error', () => {
-      const error = new EmptyScheduleError();
-      expect(error).toBeInstanceOf(DomainError);
-      expect(error).toBeInstanceOf(Error);
-    });
-
-    it('has the correct name and message', () => {
-      const error = new EmptyScheduleError();
-      expect(error.name).toBe('EmptyScheduleError');
-      expect(error.message).toBe('Cannot publish an event with no assignments');
-    });
-  });
-
   describe('EmailSendError', () => {
     it('inherits from DomainError and Error', () => {
       const error = new EmailSendError({
@@ -160,53 +124,6 @@ describe('Domain Errors', () => {
       expect(error.code).toBe('EMAIL_SEND_FAILED');
       expect(error.message).toBe('send failed');
       expect(error.retryable).toBe(false);
-    });
-  });
-
-  describe('InvalidStateTransitionError', () => {
-    it('inherits from DomainError and Error', () => {
-      const error = new InvalidStateTransitionError('draft', 'cancel');
-      expect(error).toBeInstanceOf(DomainError);
-      expect(error).toBeInstanceOf(Error);
-    });
-
-    it('stores status and action and formats the message', () => {
-      const error = new InvalidStateTransitionError('draft', 'cancel');
-      expect(error.name).toBe('InvalidStateTransitionError');
-      expect(error.currentStatus).toBe('draft');
-      expect(error.attemptedAction).toBe('cancel');
-      expect(error.message).toBe("Cannot cancel: event is in 'draft' status");
-    });
-  });
-
-  describe('PublishValidationError', () => {
-    it('inherits from DomainError and Error', () => {
-      const error = new PublishValidationError([]);
-      expect(error).toBeInstanceOf(DomainError);
-      expect(error).toBeInstanceOf(Error);
-    });
-
-    it('stores failures and formats the message', () => {
-      const failures = [
-        {
-          assignmentId: 'a-1',
-          volunteerId: 'v-1',
-          reason: 'NOT_QUALIFIED' as const,
-          message: 'Volunteer is not qualified',
-        },
-        {
-          assignmentId: 'a-2',
-          volunteerId: 'v-2',
-          reason: 'DUPLICATE_ASSIGNMENT' as const,
-          message: 'Volunteer has a conflict',
-        },
-      ];
-      const error = new PublishValidationError(failures);
-      expect(error.name).toBe('PublishValidationError');
-      expect(error.failures).toEqual(failures);
-      expect(error.message).toBe(
-        'Cannot publish: 2 assignment(s) fail hard constraints',
-      );
     });
   });
 });

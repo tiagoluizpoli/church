@@ -1,7 +1,5 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
-export const enforcementTypeEnum = pgEnum('enforcement_type', ['soft', 'hard']);
-
 export const volunteerStatusEnum = pgEnum('volunteer_status', [
   'active',
   'inactive',
@@ -53,8 +51,6 @@ export const defaultDirectionEnum = pgEnum('default_direction', [
   'all_out',
 ]);
 
-export const eventTypeEnum = pgEnum('event_type', ['hourly', 'day_based']);
-
 export const assignmentStatusEnum = pgEnum('assignment_status', [
   'draft',
   'pending',
@@ -78,7 +74,6 @@ export const volunteerNotificationTypeEnum = pgEnum(
     'assignment_changed',
     'assignment_removed',
     'availability_reminder',
-    'availability_conflict',
     'assignment_reminder',
   ],
 );

@@ -12,7 +12,6 @@ import {
 } from 'vitest';
 import { RosteringController } from '../../../src/api/controllers/rostering-controller';
 import { Assignment } from '../../../src/domain/entities/assignment';
-import { BelowFullPublishError } from '../../../src/domain/errors/below-full-publish';
 import { createFastify } from '../../../src/main/fastify/setup';
 import type { FastifyTypedInstance } from '../../../src/main/fastify/types';
 
@@ -32,7 +31,6 @@ const participationManager = {
   listMinistryCycleSummaries: vi.fn(),
   listEligibleVolunteers: vi.fn(),
   getCompletion: vi.fn(),
-  publish: vi.fn(),
   getCycleBuilderData: vi.fn(),
   publishCycle: vi.fn(),
 };
@@ -179,9 +177,8 @@ describe('Rostering routes', () => {
       ),
       warnings: [
         {
-          type: 'DOUBLE_BOOKED',
-          details: 'Volunteer is already assigned to another overlapping shift',
-          conflictingId: 'assign-0',
+          type: 'NOT_QUALIFIED',
+          details: 'Volunteer is not qualified for the requested role',
         },
       ],
     });
@@ -192,7 +189,6 @@ describe('Rostering routes', () => {
       payload: {
         volunteerId: 'vol-1',
         roleId: 'role-1',
-        override: { reason: 'Leader approved overlap' },
       },
     });
 
@@ -211,9 +207,8 @@ describe('Rostering routes', () => {
       },
       warnings: [
         {
-          type: 'DOUBLE_BOOKED',
-          details: 'Volunteer is already assigned to another overlapping shift',
-          conflictingId: 'assign-0',
+          type: 'NOT_QUALIFIED',
+          details: 'Volunteer is not qualified for the requested role',
         },
       ],
     });
@@ -320,29 +315,45 @@ describe('Rostering routes', () => {
     expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/rostering/participations/:id/publish returns 204 and 409 below-full without confirm', async () => {
+  it('POST /api/v1/rostering/cycles/:id/publish returns 200 and reports below-full without confirm', async () => {
+    const url =
+      '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/publish?ministryId=22222222-2222-2222-8222-222222222222';
+    participationManager.publishCycle.mockResolvedValueOnce({
+      published: true,
+      belowFull: false,
+      participations: [],
+    });
+
     const okResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/participations/22222222-2222-2222-8222-222222222222/publish',
+      url,
       payload: { confirmBelowFull: true },
     });
 
-    expect(okResponse.statusCode).toBe(204);
+    expect(okResponse.statusCode).toBe(200);
+    expect(okResponse.json()).toEqual({
+      published: true,
+      belowFull: false,
+      participations: [],
+    });
 
-    participationManager.publish.mockRejectedValueOnce(
-      new BelowFullPublishError(),
-    );
+    participationManager.publishCycle.mockResolvedValueOnce({
+      published: false,
+      belowFull: true,
+      participations: [],
+    });
 
     const blockedResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/participations/22222222-2222-2222-8222-222222222222/publish',
+      url,
       payload: {},
     });
 
-    expect(blockedResponse.statusCode).toBe(409);
+    expect(blockedResponse.statusCode).toBe(200);
     expect(blockedResponse.json()).toEqual({
-      error: 'BELOW_FULL_PUBLISH',
-      message: 'Publishing below full staffing requires confirmation',
+      published: false,
+      belowFull: true,
+      participations: [],
     });
   });
 
@@ -367,7 +378,6 @@ describe('Rostering routes', () => {
       url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
-        reason: 'Original volunteer became unavailable',
       },
     });
 
@@ -393,7 +403,6 @@ describe('Rostering routes', () => {
       url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
-        reason: 'Original volunteer became unavailable',
       },
     });
 
@@ -437,7 +446,6 @@ describe('Rostering routes', () => {
       url: '/api/v1/rostering/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
-        reason: 'Original volunteer became unavailable',
       },
     });
 
@@ -579,5 +587,15 @@ describe('Rostering routes', () => {
       message: 'Not a leader of this ministry',
     });
     expect(participationManager.publishCycle).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/v1/rostering/participations/:id/publish is gone (404)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rostering/participations/11111111-1111-1111-8111-111111111111/publish',
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });

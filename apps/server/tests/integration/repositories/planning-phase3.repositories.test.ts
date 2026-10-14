@@ -165,7 +165,6 @@ describe('Phase 3 planning repositories', () => {
       start: new Date('2026-08-05T22:00:00.000Z'),
       end: new Date('2026-08-06T00:00:00.000Z'),
       status: 'draft',
-      eventType: 'day_based',
     });
 
     await repository.seedParticipations({

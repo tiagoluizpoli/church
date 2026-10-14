@@ -433,7 +433,7 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     // range / colliding with an existing day.
     await fillDatePickerField({
       page,
-      trigger: addDialog.getByLabel('Date'),
+      trigger: addDialog.getByLabel('Start date'),
       date: nonSundayDay({ day: dayOfMonth({ monthStart, dayOfMonth: 15 }) }),
     });
     await addDialog.getByRole('button', { name: 'Create' }).click();

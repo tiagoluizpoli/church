@@ -48,7 +48,6 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
           start: '2026-07-05T09:00:00.000Z',
           end: '2026-07-05T11:00:00.000Z',
           status: 'scheduled',
-          eventType: 'hourly',
           createdAt: '2026-07-01T09:00:00.000Z',
           updatedAt: '2026-07-01T09:00:00.000Z',
         },
@@ -121,31 +120,10 @@ describe('addOptimisticAssignment', () => {
         volunteerId: 'bruno',
         roleId: 'role-1',
         status: 'pending',
-        reason: undefined,
         assignedAt: '2026-07-02T10:00:00.000Z',
       },
     ]);
     expect(shifts[1].assignments).toEqual([]);
-  });
-
-  it('carries the override reason so the row matches what the server will store', () => {
-    const data = makeData({ assignments: [] });
-
-    const next = addOptimisticAssignment({
-      data,
-      assignmentId: 'optimistic:1',
-      shiftId: 'shift-1',
-      body: {
-        volunteerId: 'bruno',
-        roleId: 'role-1',
-        override: { reason: 'Only trained operator available' },
-      },
-      assignedAt: '2026-07-02T10:00:00.000Z',
-    });
-
-    expect(next.events[0].slots[0].shifts[0].assignments[0].reason).toBe(
-      'Only trained operator available',
-    );
   });
 
   it('leaves the previous cache untouched so a rollback can restore it', () => {
@@ -208,20 +186,18 @@ describe('removeOptimisticAssignment', () => {
 });
 
 describe('replaceOptimisticAssignmentVolunteer', () => {
-  it('swaps the volunteer in place and records the reason', () => {
+  it('swaps the volunteer in place', () => {
     const data = makeData({ assignments: [EXISTING_ASSIGNMENT] });
 
     const next = replaceOptimisticAssignmentVolunteer({
       data,
       assignmentId: 'assignment-1',
       volunteerId: 'bruno',
-      reason: 'Swapped in the cycle builder',
     });
 
     expect(next.events[0].slots[0].shifts[0].assignments[0]).toEqual({
       ...EXISTING_ASSIGNMENT,
       volunteerId: 'bruno',
-      reason: 'Swapped in the cycle builder',
     });
     expect(data.events[0].slots[0].shifts[0].assignments[0].volunteerId).toBe(
       'ana',

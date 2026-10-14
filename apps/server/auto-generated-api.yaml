@@ -475,11 +475,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -496,7 +491,6 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -999,11 +993,6 @@ paths:
                   type: string
                   format: date-time
                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                eventType:
-                  type: string
-                  enum:
-                    - hourly
-                    - day_based
               required:
                 - title
                 - start
@@ -1051,11 +1040,6 @@ paths:
                       - scheduled
                       - cancelled
                       - past
-                  eventType:
-                    type: string
-                    enum:
-                      - hourly
-                      - day_based
                   createdAt:
                     type: string
                     format: date-time
@@ -1072,7 +1056,6 @@ paths:
                   - start
                   - end
                   - status
-                  - eventType
                   - createdAt
                   - updatedAt
                 additionalProperties: false
@@ -1105,11 +1088,6 @@ paths:
                   type: string
                   format: date-time
                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                eventType:
-                  type: string
-                  enum:
-                    - hourly
-                    - day_based
       parameters:
         - schema:
             type: string
@@ -1158,11 +1136,6 @@ paths:
                       - scheduled
                       - cancelled
                       - past
-                  eventType:
-                    type: string
-                    enum:
-                      - hourly
-                      - day_based
                   createdAt:
                     type: string
                     format: date-time
@@ -1179,7 +1152,6 @@ paths:
                   - start
                   - end
                   - status
-                  - eventType
                   - createdAt
                   - updatedAt
                 additionalProperties: false
@@ -1763,11 +1735,6 @@ paths:
                     type: string
                   description:
                     type: string
-                  enforcementType:
-                    type: string
-                    enum:
-                      - soft
-                      - hard
                   defaultDirection:
                     type: string
                     enum:
@@ -1785,7 +1752,6 @@ paths:
                   - id
                   - churchId
                   - name
-                  - enforcementType
                   - defaultDirection
                   - createdAt
                   - updatedAt
@@ -1854,11 +1820,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -1875,7 +1836,6 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -2157,11 +2117,6 @@ paths:
                             - scheduled
                             - cancelled
                             - past
-                        eventType:
-                          type: string
-                          enum:
-                            - hourly
-                            - day_based
                         createdAt:
                           type: string
                           format: date-time
@@ -2178,660 +2133,11 @@ paths:
                         - start
                         - end
                         - status
-                        - eventType
                         - createdAt
                         - updatedAt
                       additionalProperties: false
                 required:
                   - events
-                additionalProperties: false
-  /api/v1/events/{eventId}/cancel:
-    post:
-      operationId: cancelEvent
-      summary: Cancel an Event
-      tags:
-        - events
-      description: Cancel an Event.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/events/{eventId}/reminders:
-    post:
-      operationId: sendReminders
-      summary: Send Event reminders
-      tags:
-        - events
-      description: Send an availability reminder VolunteerNotification for an Event.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/events/{eventId}/slots:
-    post:
-      operationId: createSlot
-      summary: Create a TimeSlot on an Event
-      tags:
-        - time-slots
-      description: Create a TimeSlot within an Event.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                startTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                label:
-                  type: string
-              required:
-                - startTime
-                - endTime
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  eventId:
-                    type: string
-                  startTime:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                  endTime:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                  label:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - active
-                      - cancelled
-                  requirements:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        slotId:
-                          type: string
-                        roleId:
-                          type: string
-                        teamId:
-                          type: string
-                        requiredCount:
-                          type: number
-                        notes:
-                          type: string
-                      required:
-                        - id
-                        - slotId
-                        - roleId
-                        - requiredCount
-                      additionalProperties: false
-                required:
-                  - id
-                  - churchId
-                  - eventId
-                  - startTime
-                  - endTime
-                  - status
-                  - requirements
-                additionalProperties: false
-  /api/v1/events/{eventId}/slots/{slotId}:
-    patch:
-      operationId: updateSlot
-      summary: Update a TimeSlot
-      tags:
-        - time-slots
-      description: Update a TimeSlot's bounds or label.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                startTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                endTime:
-                  type: string
-                  format: date-time
-                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                label:
-                  type: string
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: slotId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  eventId:
-                    type: string
-                  startTime:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                  endTime:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                  label:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - active
-                      - cancelled
-                  requirements:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        slotId:
-                          type: string
-                        roleId:
-                          type: string
-                        teamId:
-                          type: string
-                        requiredCount:
-                          type: number
-                        notes:
-                          type: string
-                      required:
-                        - id
-                        - slotId
-                        - roleId
-                        - requiredCount
-                      additionalProperties: false
-                required:
-                  - id
-                  - churchId
-                  - eventId
-                  - startTime
-                  - endTime
-                  - status
-                  - requirements
-                additionalProperties: false
-    delete:
-      operationId: deleteSlot
-      summary: Delete a TimeSlot
-      tags:
-        - time-slots
-      description: Delete a TimeSlot from an Event.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: slotId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/events/{eventId}/slots/generate:
-    post:
-      operationId: generateSlots
-      summary: Generate TimeSlots for an Event
-      tags:
-        - time-slots
-      description: Generate TimeSlots for an Event, either as an equal split or from a
-        set of manually labelled TimeSlots with their own requirements.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                strategy:
-                  oneOf:
-                    - type: object
-                      properties:
-                        kind:
-                          type: string
-                          enum:
-                            - equal-split
-                        slotDurationMinutes:
-                          type: integer
-                          exclusiveMinimum: true
-                          maximum: 9007199254740991
-                      required:
-                        - kind
-                        - slotDurationMinutes
-                    - type: object
-                      properties:
-                        kind:
-                          type: string
-                          enum:
-                            - template-based
-                        periods:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              label:
-                                type: string
-                              startTime:
-                                type: string
-                                format: date-time
-                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                              endTime:
-                                type: string
-                                format: date-time
-                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                              requirements:
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    roleId:
-                                      type: string
-                                    teamId:
-                                      type: string
-                                    requiredCount:
-                                      type: integer
-                                      exclusiveMinimum: true
-                                      maximum: 9007199254740991
-                                    notes:
-                                      type: string
-                                  required:
-                                    - roleId
-                                    - requiredCount
-                            required:
-                              - label
-                              - startTime
-                              - endTime
-                      required:
-                        - kind
-                        - periods
-              required:
-                - strategy
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  slots:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        churchId:
-                          type: string
-                        eventId:
-                          type: string
-                        startTime:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                        endTime:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                        label:
-                          type: string
-                        status:
-                          type: string
-                          enum:
-                            - active
-                            - cancelled
-                        requirements:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              slotId:
-                                type: string
-                              roleId:
-                                type: string
-                              teamId:
-                                type: string
-                              requiredCount:
-                                type: number
-                              notes:
-                                type: string
-                            required:
-                              - id
-                              - slotId
-                              - roleId
-                              - requiredCount
-                            additionalProperties: false
-                      required:
-                        - id
-                        - churchId
-                        - eventId
-                        - startTime
-                        - endTime
-                        - status
-                        - requirements
-                      additionalProperties: false
-                required:
-                  - slots
-                additionalProperties: false
-  /api/v1/events/{eventId}/slots/{slotId}/requirements:
-    put:
-      operationId: upsertSlotRequirement
-      summary: Set a TimeSlot staffing requirement
-      tags:
-        - time-slots
-      description: Set the staffing headcount for a Role (and optional Team) within a
-        TimeSlot.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                roleId:
-                  type: string
-                teamId:
-                  type: string
-                requiredCount:
-                  type: integer
-                  minimum: 1
-                  maximum: 9007199254740991
-                notes:
-                  type: string
-              required:
-                - roleId
-                - requiredCount
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: slotId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  slotId:
-                    type: string
-                  roleId:
-                    type: string
-                  teamId:
-                    type: string
-                  requiredCount:
-                    type: number
-                  notes:
-                    type: string
-                required:
-                  - id
-                  - slotId
-                  - roleId
-                  - requiredCount
-                additionalProperties: false
-  /api/v1/assignments/:
-    post:
-      operationId: createAssignment
-      summary: Create an Assignment
-      tags:
-        - assignments
-      description: Assign a Volunteer to a Role within a TimeSlot, rejecting the
-        request if the caller does not manage that TimeSlot.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                slotId:
-                  type: string
-                volunteerId:
-                  type: string
-                roleId:
-                  type: string
-                reason:
-                  type: string
-              required:
-                - slotId
-                - volunteerId
-                - roleId
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  slotId:
-                    type: string
-                  participationId:
-                    type: string
-                  shiftId:
-                    type: string
-                  volunteerId:
-                    type: string
-                  roleId:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - pending
-                      - confirmed
-                      - declined
-                      - cancelled
-                  reason:
-                    type: string
-                  assignedAt:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                  assignedBy:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - slotId
-                  - volunteerId
-                  - roleId
-                  - status
-                  - assignedAt
-                additionalProperties: false
-  /api/v1/assignments/{assignmentId}/override:
-    post:
-      operationId: overrideAssignment
-      summary: Override an Assignment
-      tags:
-        - assignments
-      description: Record an override reason against an existing Assignment in its
-        audit log.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                reason:
-                  type: string
-                  minLength: 10
-              required:
-                - reason
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: assignmentId
-          required: true
-      responses:
-        "201":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  overridden:
-                    type: boolean
-                    enum:
-                      - true
-                required:
-                  - overridden
-                additionalProperties: false
-  /api/v1/assignments/{assignmentId}:
-    delete:
-      operationId: deleteAssignment
-      summary: Delete an Assignment
-      tags:
-        - assignments
-      description: Remove a Volunteer Assignment from its TimeSlot.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: assignmentId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-  /api/v1/assignments/{assignmentId}/audit:
-    get:
-      operationId: getAssignmentAudit
-      summary: Get an Assignment's audit log
-      tags:
-        - assignments
-      description: List the recorded audit entries for a single Assignment.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: assignmentId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        assignmentId:
-                          type: string
-                        actorId:
-                          type: string
-                        action:
-                          type: string
-                          enum:
-                            - created
-                            - updated
-                            - deleted
-                            - status_change
-                            - event_published
-                            - event_cancelled
-                        reason:
-                          type: string
-                        timestamp:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
-                      required:
-                        - id
-                        - assignmentId
-                        - actorId
-                        - action
-                        - timestamp
-                      additionalProperties: false
-                required:
-                  - items
                 additionalProperties: false
   /api/v1/ministries/:
     get:
@@ -2861,11 +2167,6 @@ paths:
                           type: string
                         description:
                           type: string
-                        enforcementType:
-                          type: string
-                          enum:
-                            - soft
-                            - hard
                         defaultDirection:
                           type: string
                           enum:
@@ -2883,7 +2184,6 @@ paths:
                         - id
                         - churchId
                         - name
-                        - enforcementType
                         - defaultDirection
                         - createdAt
                         - updatedAt
@@ -3165,11 +2465,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -3186,7 +2481,6 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -4018,11 +3312,6 @@ paths:
                                 - scheduled
                                 - cancelled
                                 - past
-                            eventType:
-                              type: string
-                              enum:
-                                - hourly
-                                - day_based
                             createdAt:
                               type: string
                               format: date-time
@@ -4039,7 +3328,6 @@ paths:
                             - start
                             - end
                             - status
-                            - eventType
                             - createdAt
                             - updatedAt
                           additionalProperties: false
@@ -4554,8 +3842,7 @@ paths:
       summary: Assign a Volunteer to a Shift
       tags:
         - rostering
-      description: Assign a Volunteer to a Role (and optional Team) within a Shift,
-        optionally overriding a detected conflict.
+      description: Assign a Volunteer to a Role (and optional Team) within a Shift.
       requestBody:
         required: true
         content:
@@ -4569,14 +3856,6 @@ paths:
                   type: string
                 teamId:
                   type: string
-                override:
-                  type: object
-                  properties:
-                    reason:
-                      type: string
-                      minLength: 10
-                  required:
-                    - reason
               required:
                 - volunteerId
                 - roleId
@@ -4725,7 +4004,7 @@ paths:
       tags:
         - rostering
       description: Replace the Volunteer on an existing Assignment, keeping its Shift
-        and Role, and record the reason.
+        and Role.
       requestBody:
         required: true
         content:
@@ -4735,12 +4014,8 @@ paths:
               properties:
                 volunteerId:
                   type: string
-                reason:
-                  type: string
-                  minLength: 10
               required:
                 - volunteerId
-                - reason
       parameters:
         - schema:
             type: string
@@ -4845,54 +4120,6 @@ paths:
                   - assignedCount
                   - completionPercent
                 additionalProperties: false
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
-  /api/v1/rostering/participations/{participationId}/publish:
-    post:
-      operationId: publishParticipation
-      summary: Publish a single MinistryParticipation
-      tags:
-        - rostering
-      description: Publish one Ministry's roster for an Event, making its slice of the
-        schedule visible to its Volunteers.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                confirmBelowFull:
-                  type: boolean
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: participationId
-          required: true
-      responses:
-        "204":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: string
-                nullable: true
-                enum:
-                  - null
         "403":
           description: Default Response
           content:
@@ -5960,11 +5187,6 @@ paths:
                           type: string
                         ministryName:
                           type: string
-                        eventType:
-                          type: string
-                          enum:
-                            - hourly
-                            - day_based
                         eventStart:
                           type: string
                           format: date-time
@@ -5984,7 +5206,6 @@ paths:
                         - eventTitle
                         - ministryId
                         - ministryName
-                        - eventType
                         - eventStart
                         - eventEnd
                         - completionState
@@ -6684,7 +5905,6 @@ paths:
                             - assignment_changed
                             - assignment_removed
                             - availability_reminder
-                            - availability_conflict
                             - assignment_reminder
                         title:
                           type: string

@@ -6,7 +6,7 @@ import { OverrideDialog } from './override-dialog';
 const baseProps = {
   open: true,
   onOpenChange: vi.fn(),
-  conflictType: 'double_booked' as const,
+  conflictType: 'unavailable' as const,
   volunteerName: 'John Doe',
   slotLabel: '9:00 AM – 11:00 AM',
   isPending: false,
@@ -16,10 +16,10 @@ const baseProps = {
 describe('OverrideDialog (T104)', () => {
   it('describes the conflict with the abbreviated volunteer name', () => {
     render(<OverrideDialog {...baseProps} />);
-    expect(screen.getByText(/John D\. is double-booked/i)).toBeVisible();
+    expect(screen.getByText(/John D\. is unavailable/i)).toBeVisible();
   });
 
-  it('names the role in the not-qualified variant and still demands a reason (B-2)', async () => {
+  it('names the role in the not-qualified variant (B-2)', async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     render(
@@ -37,11 +37,8 @@ describe('OverrideDialog (T104)', () => {
       screen.getByText(/John D\. isn't qualified for Sound/i),
     ).toBeVisible();
 
-    const confirm = screen.getByRole('button', { name: /assign anyway/i });
-    expect(confirm).toBeDisabled();
-    await user.type(screen.getByRole('textbox'), 'covering for Ana');
-    await user.click(confirm);
-    expect(onConfirm).toHaveBeenCalledWith('covering for Ana');
+    await user.click(screen.getByRole('button', { name: /assign anyway/i }));
+    expect(onConfirm).toHaveBeenCalledOnce();
   });
 
   it('falls back to generic role copy when the gesture sent no role name', () => {
@@ -51,33 +48,13 @@ describe('OverrideDialog (T104)', () => {
     ).toBeVisible();
   });
 
-  it('disables Confirm until the reason reaches 10 characters', async () => {
-    const user = userEvent.setup();
-    render(<OverrideDialog {...baseProps} />);
-    const confirm = screen.getByRole('button', { name: /confirm override/i });
-    expect(confirm).toBeDisabled();
-
-    await user.type(screen.getByRole('textbox'), 'too short'); // 9 chars
-    expect(confirm).toBeDisabled();
-
-    await user.type(screen.getByRole('textbox'), '!'); // now 10
-    expect(confirm).toBeEnabled();
-  });
-
-  it('shows a character counter', async () => {
-    const user = userEvent.setup();
-    render(<OverrideDialog {...baseProps} />);
-    await user.type(screen.getByRole('textbox'), 'abcde');
-    expect(screen.getByText('5/10')).toBeVisible();
-  });
-
-  it('calls onConfirm with the trimmed reason', async () => {
+  it('asks for no reason and confirms in one click', async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     render(<OverrideDialog {...baseProps} onConfirm={onConfirm} />);
-    await user.type(screen.getByRole('textbox'), '  valid reason text  ');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /confirm override/i }));
-    expect(onConfirm).toHaveBeenCalledWith('valid reason text');
+    expect(onConfirm).toHaveBeenCalledOnce();
   });
 
   it('shows a pending label while saving', () => {

@@ -68,7 +68,6 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
           start: '2026-07-05T09:00:00.000Z',
           end: '2026-07-05T11:00:00.000Z',
           status: 'scheduled',
-          eventType: 'hourly',
           createdAt: '2026-07-01T09:00:00.000Z',
           updatedAt: '2026-07-01T09:00:00.000Z',
         },
@@ -279,7 +278,7 @@ describe('useCycleBuilder optimistic assignments', () => {
 
     void result.current.reassignAssignment.mutateAsync({
       assignmentId: 'assignment-1',
-      body: { volunteerId: 'bruno', reason: 'Swapped in the cycle builder' },
+      body: { volunteerId: 'bruno' },
     });
 
     await waitFor(() =>

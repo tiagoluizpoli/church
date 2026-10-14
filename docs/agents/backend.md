@@ -20,7 +20,7 @@ Load for backend, API, database, security, tenancy, or infrastructure work.
   keep the whole `config`.
 - Domain functions never read config. Their DI-built caller destructures the
   values and passes them as named params (for example `policy`).
-- Only the composition root (`main/di/composition-root.ts`), container-less scripts
+- Only the composition root (`main/di/`), container-less scripts
   and seeds import `@church/app-config` directly.
 - Select backend and test specialist skills when their descriptions fit the
   identified work.

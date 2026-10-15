@@ -79,8 +79,6 @@ interface Props {
   onDismissFailedWrite?: (failedWriteId: string) => void;
   /** Audit/publish controls, rendered on the filter toolbar's own row. */
   actions?: ReactNode;
-  /** Present only when the board is opened through a TeamLeader's Team route. */
-  teamId?: string;
 }
 
 export function CycleBuilderMatrix(props: Props) {
@@ -420,7 +418,6 @@ export function CycleBuilderMatrix(props: Props) {
               )?.name;
               if (!shiftContext || !(requirement?.canMutateAssignments ?? true))
                 return;
-              if (props.teamId && target.assignmentId) return;
               if (shiftContext && shift && roleLabel) {
                 const eventTimeBlockLabel =
                   shiftContext.eventTimeBlock.label ?? 'this shift';
@@ -499,7 +496,6 @@ export function CycleBuilderMatrix(props: Props) {
               filtersAreDefault={filtersAreDefault}
               onClearFilters={clearFilters}
               dragScroll={boardDragScroll}
-              teamId={props.teamId}
             />
             <fieldset disabled={!canManageAnyRequirement} className="contents">
               <VolunteerPoolSidebar

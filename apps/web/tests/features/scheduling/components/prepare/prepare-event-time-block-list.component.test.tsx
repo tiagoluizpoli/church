@@ -95,7 +95,6 @@ describe('PrepareEventTimeBlockList day-grouping (US3/T026)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
 
     renderWithProviders(
@@ -157,7 +156,6 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const onSplitShifts = vi.fn();
     const onSaveHeadcounts = vi.fn();
@@ -215,7 +213,6 @@ describe('PrepareEventTimeBlockList inclusion toggle (US3/T021)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -265,7 +262,6 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -315,7 +311,6 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -382,7 +377,6 @@ describe('PrepareEventTimeBlockList default single shift on inclusion (US3/T021a
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -493,7 +487,6 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -536,7 +529,6 @@ describe('PrepareEventTimeBlockList invalid headcount rejection (US3/T023b)', ()
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -605,7 +597,6 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
               availability: [],
               volunteers: [],
               sectors: [{ id: 'sector-1', name: 'Stage' }],
-              callerTeamIds: null,
             });
         }),
     );
@@ -676,7 +667,6 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
         availability: [],
         volunteers: [],
         sectors: [{ id: 'sector-1', name: 'Stage' }],
-        callerTeamIds: null,
       });
     const user = userEvent.setup();
 
@@ -710,7 +700,6 @@ describe('PrepareEventTimeBlockList role-catalog fetch failure surfaces to the l
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -762,7 +751,6 @@ describe('PrepareEventTimeBlockList independent per-time-block unsaved indicator
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -793,7 +781,6 @@ describe('PrepareEventTimeBlockList independent per-time-block unsaved indicator
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -866,7 +853,6 @@ describe('PrepareEventTimeBlockList exact-string display under a non-UTC ambient
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -950,7 +936,6 @@ describe('PrepareEventTimeBlockList Sector × Role grid (Spec 05a #494)', () => 
       ],
       events: [],
       volunteers: [],
-      callerTeamIds: null,
     });
     const onSaveHeadcounts = vi.fn();
     const user = userEvent.setup();
@@ -1001,7 +986,6 @@ describe('PrepareEventTimeBlockList Sector × Role grid (Spec 05a #494)', () => 
       sectors: [],
       events: [],
       volunteers: [],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 

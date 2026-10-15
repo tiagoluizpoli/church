@@ -165,13 +165,11 @@ afterEach(() => resetClock());
 interface RenderBuilderInput {
   createAssignment?: () => Promise<unknown>;
   data?: CycleBuilderData;
-  teamId?: string;
 }
 
 function renderBuilder({
   createAssignment,
   data = builderData,
-  teamId,
 }: RenderBuilderInput = {}) {
   const mutateAsync = vi.fn(createAssignment ?? (() => Promise.resolve({})));
   renderWithProviders(
@@ -187,7 +185,6 @@ function renderBuilder({
       createAssignment={{ isPending: false, mutateAsync }}
       deleteAssignment={{ isPending: false, mutateAsync: vi.fn() }}
       reassignAssignment={{ isPending: false, mutateAsync: vi.fn() }}
-      teamId={teamId}
     />,
   );
   return { mutateAsync };
@@ -290,168 +287,7 @@ describe('CycleBuilder assignment announcements (B-3)', () => {
   });
 });
 
-describe('CycleBuilder TeamLeader affordances (#200)', () => {
-  it('allows assignment in a future assign cell for the led Team, without ministry-wide controls', async () => {
-    const data: CycleBuilderData = {
-      ...builderData,
-      events: builderData.events.map((event) => ({
-        ...event,
-        eventTimeBlocks: event.eventTimeBlocks.map((eventTimeBlock) => ({
-          ...eventTimeBlock,
-          shifts: eventTimeBlock.shifts.map((shift) => ({
-            ...shift,
-            requirements: shift.requirements.map((requirement) => ({
-              ...requirement,
-              teamId: 'team-1',
-            })),
-          })),
-        })),
-      })),
-    };
-    const { mutateAsync } = renderBuilder({ data, teamId: 'team-1' });
-
-    expect(
-      screen.queryByRole('button', { name: 'Publish cycle' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Audit log' }),
-    ).not.toBeInTheDocument();
-
-    await assignGraceHopper();
-
-    expect(mutateAsync).toHaveBeenCalledWith({
-      shiftId: 'shift-1',
-      body: { volunteerId: 'volunteer-1', roleId: 'role-1' },
-    });
-  });
-
-  it('allows remove and reassign affordances in a future assign cell for the led Team', async () => {
-    const user = userEvent.setup();
-    const data = teamGuardData({ requirementTeamId: 'team-1' });
-    data.events[0].eventTimeBlocks[0].shifts[0].eligibleVolunteers.push({
-      volunteerId: 'volunteer-2',
-      volunteerName: 'Ada Lovelace',
-      isAvailable: true,
-      hasConflict: false,
-      qualifiedRoleIds: ['role-1'],
-      ministryAccessLevel: 'volunteer',
-      leadTeamIds: [],
-    });
-    renderBuilder({ data, teamId: 'team-1' });
-
-    expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
-    ).toHaveAttribute('data-drop-target', 'append');
-    expect(
-      screen.getByTestId('cycle-assignment-assignment-1'),
-    ).not.toHaveAttribute('data-drop-target');
-
-    await user.click(screen.getByTestId('assignment-chip'));
-
-    expect(screen.getByRole('button', { name: 'Unassign' })).toBeVisible();
-    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
-  });
-
-  it("keeps another Team's cell readable but immutable", async () => {
-    const user = userEvent.setup();
-    renderBuilder({
-      data: teamGuardData({ requirementTeamId: 'team-2' }),
-      teamId: 'team-1',
-    });
-
-    const cell = screen.getByTestId('cycle-requirement-shift-1-role-1');
-    expect(cell).toBeVisible();
-    expect(cell).not.toHaveAttribute('data-drop-target');
-    expect(screen.queryByRole('button', { name: 'Add' })).toBeNull();
-
-    const assignment = screen.getByTestId('cycle-assignment-assignment-1');
-    expect(assignment).not.toHaveAttribute('data-drop-target');
-    await user.click(screen.getByTestId('assignment-chip'));
-    expect(screen.queryByTestId('assignment-picker')).toBeNull();
-
-    expect(screen.queryByTestId('volunteer-select-shift')).toBeNull();
-    for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
-      expect(grip).toBeDisabled();
-    }
-  });
-
-  it('keeps a started event immutable for its TeamLeader', () => {
-    renderBuilder({
-      data: teamGuardData({
-        requirementTeamId: 'team-1',
-        start: '2026-08-01T12:00:00.000Z',
-        canMutateAssignments: false,
-      }),
-      teamId: 'team-1',
-    });
-
-    expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
-    ).not.toHaveAttribute('data-drop-target');
-    expect(screen.queryByRole('button', { name: 'Add' })).toBeNull();
-    expect(screen.queryByTestId('volunteer-select-shift')).toBeNull();
-    for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
-      expect(grip).toBeDisabled();
-    }
-  });
-
-  it('keeps a published participation immutable for its TeamLeader', () => {
-    renderBuilder({
-      data: teamGuardData({
-        requirementTeamId: 'team-1',
-        state: 'published',
-        canMutateAssignments: false,
-      }),
-      teamId: 'team-1',
-    });
-
-    expect(
-      screen.getByTestId('cycle-requirement-shift-1-role-1'),
-    ).not.toHaveAttribute('data-drop-target');
-    expect(screen.queryByRole('button', { name: 'Add' })).toBeNull();
-    expect(screen.queryByTestId('volunteer-select-shift')).toBeNull();
-    for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
-      expect(grip).toBeDisabled();
-    }
-  });
-
-  it('does not turn rail picks into writes when a readable unled-Team cell is focused', async () => {
-    const user = userEvent.setup();
-    const data = teamGuardData({ requirementTeamId: 'team-2' });
-    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
-    shift.requirements.push({
-      roleId: 'role-2',
-      teamId: 'team-1',
-      peopleNeeded: 1,
-    });
-    shift.eligibleVolunteers.push({
-      volunteerId: 'volunteer-2',
-      volunteerName: 'Ada Lovelace',
-      isAvailable: true,
-      hasConflict: false,
-      qualifiedRoleIds: ['role-1', 'role-2'],
-      ministryAccessLevel: 'volunteer',
-      leadTeamIds: [],
-    });
-    data.roles.push({ id: 'role-2', name: 'Host' });
-
-    renderBuilder({ data, teamId: 'team-1' });
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Show volunteers for Greeter first',
-      }),
-    );
-
-    expect(screen.queryByTestId('volunteer-pick-me')).toBeNull();
-    expect(screen.getAllByTestId('volunteer-select-shift')).not.toHaveLength(0);
-
-    await user.click(
-      screen.getByRole('button', { name: 'Show volunteers for Host first' }),
-    );
-    expect(screen.getByTestId('volunteer-pick-me')).toBeVisible();
-  });
-
+describe('CycleBuilder toolbar and requirement affordances', () => {
   it('opens the Audit log panel when the switch is on', async () => {
     renderBuilder();
 

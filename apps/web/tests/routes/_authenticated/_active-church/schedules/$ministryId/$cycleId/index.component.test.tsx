@@ -208,7 +208,6 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     splitParticipationShifts.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -248,7 +247,6 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
 
     renderWorkspace();
@@ -283,7 +281,6 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
 
     renderWorkspace();
@@ -319,7 +316,6 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -359,7 +355,6 @@ describe('Prepare workspace route composition (US3/T028)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -420,7 +415,6 @@ describe('Prepare workspace headcount save partial-failure isolation (Iteration 
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     upsertShiftRequirement.mockImplementation(
       (_shiftId: string, body: ShiftRequirementBody) =>
@@ -503,7 +497,6 @@ describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
 
@@ -620,7 +613,6 @@ describe('Prepare workspace batched save (US4/T029)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     askAvailability.mockResolvedValue({
@@ -660,7 +652,6 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -696,7 +687,6 @@ describe('Prepare workspace send-availability confirmation (P0 hardening)', () =
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     askAvailability.mockResolvedValue({
@@ -746,7 +736,6 @@ describe('Prepare workspace remains editable post-release (US4/T030/FR-017)', ()
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     resendAvailabilityReminder.mockResolvedValue(undefined);
@@ -802,7 +791,6 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     const user = userEvent.setup();
 
@@ -833,7 +821,6 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     const user = userEvent.setup();
@@ -869,7 +856,6 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
 
     const { router } = renderWorkspace();
@@ -896,7 +882,6 @@ describe('Prepare workspace double-submit guard (US4/T030b)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     let resolveFire: (() => void) | undefined;
@@ -943,7 +928,6 @@ describe('Prepare workspace mid-flight save unmount (US4/T030c)', () => {
       availability: [],
       volunteers: [],
       sectors: [{ id: 'sector-1', name: 'Stage' }],
-      callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     askAvailability.mockImplementation(

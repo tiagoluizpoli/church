@@ -107,7 +107,6 @@ export const scheduleBuilderDataResponseSchema = z.object({
   ),
   roles: z.array(z.object({ id: z.string(), name: z.string() })),
   sectors: z.array(z.object({ id: z.string(), name: z.string() })),
-  callerTeamIds: z.array(z.string()).nullable(),
 });
 
 function eventToResponse(ev: Event): EventResponse {
@@ -185,7 +184,6 @@ export const eventMapper = {
         id: sector.id as string,
         name: sector.name,
       })),
-      callerTeamIds: data.callerTeamIds,
     };
   },
 };

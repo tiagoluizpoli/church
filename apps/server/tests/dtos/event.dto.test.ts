@@ -210,7 +210,6 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         { id: RoleId.from('role-2'), name: 'Sound Tech' },
       ],
       sectors: [{ id: SectorId.from('sector-1'), name: 'Stage' }],
-      callerTeamIds: ['team-1'],
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);
@@ -325,10 +324,9 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     ]);
 
     expect(response.sectors).toEqual([{ id: 'sector-1', name: 'Stage' }]);
-    expect(response.callerTeamIds).toEqual(['team-1']);
   });
 
-  it('maps an all-empty schedule builder payload with a null callerTeamIds', () => {
+  it('maps an all-empty schedule builder payload', () => {
     const data: ScheduleBuilderData = {
       events: [],
       assignments: [],
@@ -336,7 +334,6 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       volunteers: [],
       roles: [],
       sectors: [],
-      callerTeamIds: null,
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);
@@ -348,7 +345,6 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       volunteers: [],
       roles: [],
       sectors: [],
-      callerTeamIds: null,
     });
   });
 
@@ -371,7 +367,6 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       volunteers: [],
       roles: [],
       sectors: [],
-      callerTeamIds: null,
     };
 
     const response = eventMapper.scheduleBuilderToResponse(data);

@@ -47,7 +47,6 @@ export const eligibleVolunteerListResponseSchema = z.object({
 export const createParticipationAssignmentBodySchema = z.object({
   volunteerId: z.string(),
   roleId: z.string(),
-  teamId: z.string().optional(),
 });
 
 export const createParticipationAssignmentResponseSchema = z.object({

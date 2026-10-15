@@ -5,7 +5,6 @@ import type {
   MinistryId,
   RoleId,
   ShiftId,
-  TeamId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -18,8 +17,6 @@ export interface CreateParticipationAssignmentInput {
   shiftId: ShiftId;
   volunteerId: VolunteerId;
   roleId: RoleId;
-  teamId?: TeamId;
-  teamLeaderScopeId?: TeamId;
   actorId: UserId;
 }
 
@@ -44,7 +41,6 @@ export interface DeleteAssignmentInput {
   assignmentId: AssignmentId;
   churchId: ChurchId;
   actorId: UserId;
-  teamLeaderScopeId?: TeamId;
 }
 
 export interface ListCycleAuditLogInput {

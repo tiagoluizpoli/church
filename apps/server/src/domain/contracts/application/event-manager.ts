@@ -54,12 +54,6 @@ export interface ScheduleBuilderData {
   roles: ScheduleBuilderRoleOption[];
   /** The Ministry's Sectors, ordered by name. */
   sectors: ScheduleBuilderSectorOption[];
-  /**
-   * Teams the calling TeamLeader may schedule for, or `null` when the caller
-   * is a ministry leader and therefore unrestricted. A TeamLeader can lead
-   * more than one team, so this is a list.
-   */
-  callerTeamIds: string[] | null;
 }
 
 export interface GetScheduleBuilderDataInput {

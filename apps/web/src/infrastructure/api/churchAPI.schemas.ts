@@ -841,8 +841,6 @@ export type GetScheduleBuilderData200 = {
   volunteers: GetScheduleBuilderData200VolunteersItem[];
   roles: GetScheduleBuilderData200RolesItem[];
   sectors: GetScheduleBuilderData200SectorsItem[];
-  /** @nullable */
-  callerTeamIds: string[] | null;
 };
 
 export type GetScheduleBuilderData401 = {
@@ -1323,28 +1321,8 @@ export type GetAvailabilityStatus200 = {
   statuses: GetAvailabilityStatus200StatusesItem[];
 };
 
-export type ListTeamScheduleCyclesParams = {
-ministryId: string;
-teamId?: string;
-};
-
-export type ListTeamScheduleCycles200CyclesItem = {
-  cycleId: string;
-  name: string;
-};
-
-export type ListTeamScheduleCycles200 = {
-  cycles: ListTeamScheduleCycles200CyclesItem[];
-};
-
-export type ListTeamScheduleCycles403 = {
-  error: string;
-  message: string;
-};
-
 export type GetCycleBuilderDataParams = {
 ministryId: string;
-teamId?: string;
 };
 
 export type GetCycleBuilderData200EventsItemParticipationState = typeof GetCycleBuilderData200EventsItemParticipationState[keyof typeof GetCycleBuilderData200EventsItemParticipationState];
@@ -1530,7 +1508,6 @@ export type GetCycleBuilderData403 = {
 
 export type GetCycleAuditLogParams = {
 ministryId: string;
-teamId?: string;
 };
 
 export type GetCycleAuditLog200ItemsItemAction = typeof GetCycleAuditLog200ItemsItemAction[keyof typeof GetCycleAuditLog200ItemsItemAction];
@@ -1566,7 +1543,6 @@ export type GetCycleAuditLog403 = {
 
 export type PublishCycleParams = {
 ministryId: string;
-teamId?: string;
 };
 
 export type PublishCycleBody = {
@@ -1633,7 +1609,6 @@ export type ListEligibleVolunteers403 = {
 export type CreateParticipationAssignmentBody = {
   volunteerId: string;
   roleId: string;
-  teamId?: string;
 };
 
 export type CreateParticipationAssignment201AssignmentStatus = typeof CreateParticipationAssignment201AssignmentStatus[keyof typeof CreateParticipationAssignment201AssignmentStatus];
@@ -1686,10 +1661,6 @@ export type CreateParticipationAssignment201 = {
 export type CreateParticipationAssignment403 = {
   error: string;
   message: string;
-};
-
-export type DeleteParticipationAssignmentParams = {
-teamId?: string;
 };
 
 /**
@@ -1759,14 +1730,6 @@ export type GetSchedulingCapability200EntriesItem = {
   kind: 'ministry';
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
-  name: string;
-} | {
-  kind: 'team';
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-  ministryId: string;
-  ministryName: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-  teamId: string;
   name: string;
 };
 

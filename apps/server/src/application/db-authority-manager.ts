@@ -7,8 +7,6 @@ import type {
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
-  CanManageTeamInput,
-  CanManageTeamShiftInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
   SchedulingCapabilityProjection,
@@ -18,7 +16,6 @@ import type { EventRepository } from '../domain/contracts/infrastructure/event.r
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SchedulingScopeRepository } from '../domain/contracts/infrastructure/scheduling-scope.repository';
-import type { TeamRepository } from '../domain/contracts/infrastructure/team.repository';
 
 interface ResolveActorInput {
   churchId: ChurchId;
@@ -31,7 +28,6 @@ interface DbAuthorityManagerDependencies {
   eventRepository: EventRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   ministryRepository: MinistryRepository;
-  teamRepository?: TeamRepository;
 }
 
 export class DbAuthorityManager implements IAuthorityManager {
@@ -40,7 +36,6 @@ export class DbAuthorityManager implements IAuthorityManager {
   private readonly eventRepository: EventRepository;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
   private readonly ministryRepository: MinistryRepository;
-  private readonly teamRepository?: TeamRepository;
 
   constructor({
     actorRepository,
@@ -48,14 +43,12 @@ export class DbAuthorityManager implements IAuthorityManager {
     eventRepository,
     eventTimeBlockRepository,
     ministryRepository,
-    teamRepository,
   }: DbAuthorityManagerDependencies) {
     this.actorRepository = actorRepository;
     this.scopeRepository = scopeRepository;
     this.eventRepository = eventRepository;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
     this.ministryRepository = ministryRepository;
-    this.teamRepository = teamRepository;
   }
 
   async canManageChurch(input: CanManageChurchInput): Promise<boolean> {
@@ -78,35 +71,6 @@ export class DbAuthorityManager implements IAuthorityManager {
         ministryId: input.ministryId,
       },
     }).allowed;
-  }
-
-  async canManageTeam(input: CanManageTeamInput): Promise<boolean> {
-    const actor = await this.resolveActor(input);
-    return AuthorityService.authorize({
-      actor,
-      action: 'manage',
-      resource: {
-        type: 'team',
-        churchId: input.churchId,
-        ministryId: input.ministryId,
-        teamId: input.teamId,
-      },
-    }).allowed;
-  }
-
-  async canManageTeamShift(input: CanManageTeamShiftInput): Promise<boolean> {
-    const ministryId = await this.scopeRepository.resolveShiftMinistry({
-      churchId: input.churchId,
-      shiftId: input.shiftId,
-    });
-    if (!ministryId || !this.teamRepository) return false;
-
-    const [team] = await this.teamRepository.listByIds(input.churchId, [
-      input.teamId,
-    ]);
-    if (!team || team.ministryId !== ministryId) return false;
-
-    return this.canManageTeam({ ...input, ministryId });
   }
 
   async canManageParticipation(
@@ -181,54 +145,7 @@ export class DbAuthorityManager implements IAuthorityManager {
         return { kind: 'ministry' as const, ministryId, name: ministry.name };
       }),
     );
-    const ledTeamMemberships = actor.teamMemberships.filter(
-      (membership) =>
-        AuthorityService.authorize({
-          actor,
-          action: 'manage',
-          resource: {
-            type: 'team',
-            churchId: input.churchId,
-            ministryId: membership.ministryId,
-            teamId: membership.teamId,
-          },
-        }).allowed,
-    );
-    const teams =
-      ledTeamMemberships.length === 0
-        ? []
-        : ((await this.teamRepository?.listByIds(
-            input.churchId,
-            ledTeamMemberships.map((membership) => membership.teamId),
-          )) ?? []);
-    const ministries = await Promise.all(
-      [
-        ...new Set(
-          ledTeamMemberships.map((membership) => membership.ministryId),
-        ),
-      ].map((ministryId) =>
-        this.ministryRepository.getById(input.churchId, ministryId),
-      ),
-    );
-    const ministryNames = new Map(
-      ministries.map((ministry) => [ministry.id, ministry.name]),
-    );
-    const teamEntries = teams.flatMap((team) => {
-      if (ledMinistryIds.includes(team.ministryId)) return [];
-      const ministryName = ministryNames.get(team.ministryId);
-      return ministryName
-        ? [
-            {
-              kind: 'team' as const,
-              ministryId: team.ministryId,
-              ministryName,
-              teamId: team.id,
-              name: team.name,
-            },
-          ]
-        : [];
-    });
-    const entries = [...ministryEntries, ...teamEntries];
+    const entries = ministryEntries;
     return { canAccessScheduling: entries.length > 0, entries };
   }
 

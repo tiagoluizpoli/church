@@ -8,7 +8,6 @@ import type {
   RoleId,
   SectorId,
   ShiftId,
-  TeamId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -52,8 +51,6 @@ export interface GetCycleBuilderDataInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
-  /** Limits the read model to one led Team; absent for Ministry leaders. */
-  teamId?: TeamId;
   userId: UserId;
 }
 
@@ -202,8 +199,6 @@ export interface GetParticipationCompletionInput {
 export interface ListScheduleSummariesInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  /** Limits summaries to cycles with schedule work for this Team. */
-  teamId?: TeamId;
 }
 
 /** Iteration 3 (research.md R15/R16): one row per sent `Cycle`

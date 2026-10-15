@@ -275,9 +275,7 @@ describe('DbEventManager', () => {
           eventId,
           volunteerId: leaderId,
         }),
-      ).rejects.toThrow(
-        'Volunteer does not have leader or TeamLeader privileges',
-      );
+      ).rejects.toThrow('Volunteer does not have leader privileges');
     });
 
     it('throws IsolationBreachError when the caller is a plain team member, not a ministry leader or TeamLeader', async () => {
@@ -297,9 +295,7 @@ describe('DbEventManager', () => {
           eventId,
           volunteerId: teamAVolunteerId,
         }),
-      ).rejects.toThrow(
-        'Volunteer does not have leader or TeamLeader privileges',
-      );
+      ).rejects.toThrow('Volunteer does not have leader privileges');
     });
 
     it('derives ministryId from the event when not provided, and skips lookup when provided', async () => {
@@ -394,7 +390,6 @@ describe('DbEventManager', () => {
         volunteerId: leaderId,
       });
 
-      expect(result.callerTeamIds).toBeNull();
       expect(result.volunteers.map((v) => v.id)).toEqual(
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
@@ -436,75 +431,26 @@ describe('DbEventManager', () => {
       );
     });
 
-    it('scopes a TeamLeader to only the team they lead, not every team they belong to', async () => {
+    it('treats a TeamLeader as a plain volunteer and refuses the read', async () => {
       const repos = createRepos();
       vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
         buildMembership({
           volunteerId: teamLeaderId,
-          // Ordinary Ministry Member — TeamLeader-ness lives on the team
-          // membership below, not on ministryAccessLevel.
           ministryAccessLevel: 'volunteer',
           teamMemberships: [
             teamMembership({ teamId: 'team-a', accessLevel: 'leader' }),
           ],
         }),
-        buildMembership({
-          volunteerId: teamAVolunteerId,
-          ministryAccessLevel: 'volunteer',
-          // Also in a team the TeamLeader does not lead.
-          teamMemberships: [
-            teamMembership({ teamId: 'team-a' }),
-            teamMembership({ teamId: 'team-c' }),
-          ],
-        }),
-        buildMembership({
-          volunteerId: teamBVolunteerId,
-          ministryAccessLevel: 'volunteer',
-          teamMemberships: [teamMembership({ teamId: 'team-b' })],
-        }),
       ]);
-      const volunteers = [
-        new Volunteer(
-          { churchId, userId: 'u-team-leader', name: 'Team Leader' },
-          teamLeaderId,
-        ),
-        new Volunteer(
-          { churchId, userId: 'u-a', name: 'Team A Vol' },
-          teamAVolunteerId,
-        ),
-        new Volunteer(
-          { churchId, userId: 'u-b', name: 'Team B Vol' },
-          teamBVolunteerId,
-        ),
-      ];
-      vi.mocked(repos.volunteerRepo.listByMinistry).mockResolvedValue(
-        volunteers,
-      );
-
       const manager = createManager(repos);
-      const result = await manager.getScheduleBuilderData({
-        churchId,
-        eventId,
-        volunteerId: teamLeaderId,
-      });
 
-      expect(result.callerTeamIds).toEqual(['team-a']);
-      expect(result.volunteers.map((v) => v.id)).toEqual(
-        expect.arrayContaining([teamLeaderId, teamAVolunteerId]),
-      );
-      expect(result.volunteers).toHaveLength(2);
-      // Team B is outside the TeamLeader's led scope entirely.
-      expect(result.volunteers.map((v) => v.id)).not.toContain(
-        teamBVolunteerId,
-      );
-      // Team memberships outside the TeamLeader's led scope must not travel,
-      // even for a volunteer who is otherwise visible (team-c is dropped).
-      expect(
-        result.volunteers.find((v) => v.id === teamAVolunteerId)?.teamIds,
-      ).toEqual(['team-a']);
-      const callerOption = result.volunteers.find((v) => v.id === teamLeaderId);
-      expect(callerOption?.ministryAccessLevel).toBe('volunteer');
-      expect(callerOption?.leadTeamIds).toEqual(['team-a']);
+      await expect(
+        manager.getScheduleBuilderData({
+          churchId,
+          eventId,
+          volunteerId: teamLeaderId,
+        }),
+      ).rejects.toThrow('Volunteer does not have leader privileges');
     });
 
     it('falls back to the volunteer id as the name when name is missing', async () => {

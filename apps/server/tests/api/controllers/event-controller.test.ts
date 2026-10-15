@@ -104,7 +104,6 @@ describe('Event controller authorization wiring', () => {
       volunteers: [],
       roles: [],
       sectors: [],
-      callerTeamIds: null,
     });
 
     const response = await app.inject({
@@ -127,7 +126,6 @@ describe('Event controller authorization wiring', () => {
       volunteers: [],
       roles: [],
       sectors,
-      callerTeamIds: null,
     });
 
     const response = await app.inject({

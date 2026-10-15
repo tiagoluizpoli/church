@@ -10,7 +10,6 @@ import {
   MinistryParticipationId,
   RoleId,
   ShiftId,
-  TeamId,
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -51,18 +50,12 @@ interface CycleRouteParams {
   cycleId: string;
 }
 
-interface TeamRouteParams {
-  teamId: string;
-}
-
 interface CycleMinistryQuery {
   ministryId: string;
-  teamId?: string;
 }
 
 const cycleMinistryQuerySchema = z.object({
   ministryId: z.string(),
-  teamId: z.string().optional(),
 });
 
 interface ShiftRouteParams {
@@ -73,26 +66,9 @@ interface AssignmentRouteParams {
   assignmentId: string;
 }
 
-interface AssignmentMutationQuery {
-  teamId?: string;
-}
-
-const assignmentMutationQuerySchema = z.object({
-  teamId: z.string().optional(),
-});
-
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
-});
-
-const teamScheduleCycleListResponseSchema = z.object({
-  cycles: z.array(
-    z.object({
-      cycleId: z.string(),
-      name: z.string(),
-    }),
-  ),
 });
 
 type CreateParticipationAssignmentBody = z.infer<
@@ -112,24 +88,10 @@ interface ResolveOwnedAssignmentResult {
   denied: boolean;
 }
 
-interface ResolveScheduleAssignmentInput extends ResolveOwnedAssignmentInput {
-  teamId?: string;
-}
-
-interface ResolveScheduleAssignmentResult extends ResolveOwnedAssignmentResult {
-  teamLeaderScopeId?: TeamId;
-}
-
 interface ResolveScheduleShiftInput {
   request: FastifyRequest;
   reply: FastifyReply;
   shiftId: string;
-  teamId?: string;
-}
-
-interface ResolveScheduleShiftResult {
-  denied: boolean;
-  teamLeaderScopeId?: TeamId;
 }
 
 interface DenyAssignActionInput {
@@ -151,7 +113,6 @@ interface DenyShiftScopeInput {
 interface CanReadCycleBuilderInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  teamId?: TeamId;
   userId: UserId;
 }
 
@@ -198,51 +159,6 @@ export class AssignController implements FastifyController {
     );
 
     app.get(
-      '/teams/:teamId/cycles-summary',
-      {
-        schema: {
-          tags: ['assign'],
-          operationId: 'listTeamScheduleCycles',
-          summary: "List a Team's readable schedule cycles",
-          description:
-            'List the sent Cycles in a Ministry that a TeamLeader may open as a read-only schedule.',
-          querystring: cycleMinistryQuerySchema,
-          response: {
-            200: teamScheduleCycleListResponseSchema,
-            403: errorResponseSchema,
-          },
-        },
-      },
-      async (request, reply) => {
-        const { teamId } = request.params as TeamRouteParams;
-        const { ministryId } = request.query as CycleMinistryQuery;
-        const allowed = await this.authorityGuard.canManageTeam({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(ministryId),
-          teamId: TeamId.from(teamId),
-          userId: UserId.from(request.userId),
-        });
-        if (!allowed) {
-          return reply.status(403).send({
-            error: 'FORBIDDEN',
-            message: 'Not a leader of this team',
-          });
-        }
-        const cycles = await this.participationManager.listScheduleSummaries({
-          churchId: ChurchId.from(request.churchId),
-          ministryId: MinistryId.from(ministryId),
-          teamId: TeamId.from(teamId),
-        });
-        return reply.send({
-          cycles: cycles.map((cycle) => ({
-            cycleId: cycle.cycleId,
-            name: cycle.name,
-          })),
-        });
-      },
-    );
-
-    app.get(
       '/cycles/:cycleId/builder',
       {
         schema: {
@@ -260,12 +176,11 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleRouteParams;
-        const { ministryId, teamId } = request.query as CycleMinistryQuery;
+        const { ministryId } = request.query as CycleMinistryQuery;
 
         const allowed = await this.canReadCycleBuilder({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
-          teamId: teamId ? TeamId.from(teamId) : undefined,
           userId: UserId.from(request.userId),
         });
         if (!allowed) {
@@ -279,7 +194,6 @@ export class AssignController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
-          teamId: teamId ? TeamId.from(teamId) : undefined,
           userId: UserId.from(request.userId),
         });
         return reply.send(cycleBuilderMapper.toResponse(view));
@@ -412,8 +326,7 @@ export class AssignController implements FastifyController {
           tags: ['assign'],
           operationId: 'createParticipationAssignment',
           summary: 'Assign a Volunteer to a Shift',
-          description:
-            'Assign a Volunteer to a Role (and optional Team) within a Shift.',
+          description: 'Assign a Volunteer to a Role within a Shift.',
           body: createParticipationAssignmentBodySchema,
           response: {
             201: createParticipationAssignmentResponseSchema,
@@ -428,7 +341,6 @@ export class AssignController implements FastifyController {
           request,
           reply,
           shiftId,
-          teamId: body.teamId,
         });
         if (scope.denied) return;
 
@@ -438,8 +350,6 @@ export class AssignController implements FastifyController {
             shiftId: ShiftId.from(shiftId),
             volunteerId: VolunteerId.from(body.volunteerId),
             roleId: RoleId.from(body.roleId),
-            teamId: body.teamId ? TeamId.from(body.teamId) : undefined,
-            teamLeaderScopeId: scope.teamLeaderScopeId,
             actorId: UserId.from(request.userId),
           });
         return reply
@@ -456,18 +366,15 @@ export class AssignController implements FastifyController {
           operationId: 'deleteParticipationAssignment',
           summary: 'Delete an Assignment',
           description: 'Remove a Volunteer Assignment from its Shift.',
-          querystring: assignmentMutationQuerySchema,
           response: { 204: z.null(), 403: errorResponseSchema },
         },
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
-        const { teamId } = request.query as AssignmentMutationQuery;
         const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
           assignmentId,
-          teamId,
         });
         if (resolved.denied) return;
 
@@ -475,7 +382,6 @@ export class AssignController implements FastifyController {
           assignmentId: AssignmentId.from(assignmentId),
           churchId: ChurchId.from(request.churchId),
           actorId: UserId.from(request.userId),
-          teamLeaderScopeId: resolved.teamLeaderScopeId,
         });
         return reply.status(204).send(null);
       },
@@ -584,8 +490,7 @@ export class AssignController implements FastifyController {
     request,
     reply,
     assignmentId,
-    teamId,
-  }: ResolveScheduleAssignmentInput): Promise<ResolveScheduleAssignmentResult> {
+  }: ResolveOwnedAssignmentInput): Promise<ResolveOwnedAssignmentResult> {
     let assignment: Assignment;
     try {
       assignment = await this.assignmentManager.getAssignment({
@@ -608,23 +513,15 @@ export class AssignController implements FastifyController {
       request,
       reply,
       shiftId: assignment.shiftId,
-      teamId,
     });
-    return scope.denied
-      ? { denied: true }
-      : {
-          assignment,
-          denied: false,
-          teamLeaderScopeId: scope.teamLeaderScopeId,
-        };
+    return scope.denied ? { denied: true } : { assignment, denied: false };
   }
 
   private async resolveScheduleShift({
     request,
     reply,
     shiftId,
-    teamId,
-  }: ResolveScheduleShiftInput): Promise<ResolveScheduleShiftResult> {
+  }: ResolveScheduleShiftInput): Promise<ResolveOwnedAssignmentResult> {
     const churchId = ChurchId.from(request.churchId);
     const userId = UserId.from(request.userId);
     const brandedShiftId = ShiftId.from(shiftId);
@@ -636,20 +533,6 @@ export class AssignController implements FastifyController {
       })
     ) {
       return { denied: false };
-    }
-
-    if (teamId) {
-      const teamLeaderScopeId = TeamId.from(teamId);
-      if (
-        await this.authorityGuard.canManageTeamShift({
-          churchId,
-          shiftId: brandedShiftId,
-          teamId: teamLeaderScopeId,
-          userId,
-        })
-      ) {
-        return { denied: false, teamLeaderScopeId };
-      }
     }
 
     this.denyAssignAction({ reply });
@@ -687,25 +570,12 @@ export class AssignController implements FastifyController {
   private async canReadCycleBuilder({
     churchId,
     ministryId,
-    teamId,
     userId,
   }: CanReadCycleBuilderInput): Promise<boolean> {
-    if (
-      await this.authorityGuard.canManageMinistry({
-        churchId,
-        ministryId,
-        userId,
-      })
-    ) {
-      return true;
-    }
-    return teamId
-      ? this.authorityGuard.canManageTeam({
-          churchId,
-          ministryId,
-          teamId,
-          userId,
-        })
-      : false;
+    return this.authorityGuard.canManageMinistry({
+      churchId,
+      ministryId,
+      userId,
+    });
   }
 }

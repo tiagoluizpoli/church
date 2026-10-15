@@ -16,7 +16,6 @@ const churchId = 'chu_home' as ChurchId;
 const otherChurchId = 'chu_other' as ChurchId;
 const ministryId = 'min_worship' as MinistryId;
 const teamId = 'team_greeting' as TeamId;
-const secondTeamId = 'team_welcome' as TeamId;
 const userId = 'usr_1' as UserId;
 
 function adminActor(): AuthorityActor {
@@ -83,7 +82,6 @@ const scopeRepository = {
 const eventRepository = { getMinistryId: vi.fn() };
 const eventTimeBlockRepository = { getById: vi.fn() };
 const ministryRepository = { getById: vi.fn() };
-const teamRepository = { listByIds: vi.fn() };
 
 function createManager(): DbAuthorityManager {
   return new DbAuthorityManager({
@@ -92,7 +90,6 @@ function createManager(): DbAuthorityManager {
     eventRepository: eventRepository as never,
     eventTimeBlockRepository: eventTimeBlockRepository as never,
     ministryRepository: ministryRepository as never,
-    teamRepository: teamRepository as never,
   });
 }
 
@@ -187,36 +184,6 @@ describe('DbAuthorityManager', () => {
     ).resolves.toBe(false);
   });
 
-  it('canManageTeamShift allows only the explicitly led Team owning the Shift ministry', async () => {
-    const manager = createManager();
-    const shiftId = 'shift_1' as ShiftId;
-
-    scopeRepository.resolveShiftMinistry.mockResolvedValue(ministryId);
-    teamRepository.listByIds.mockResolvedValue([
-      { id: teamId, ministryId, name: 'Greeting' },
-    ]);
-    actorRepository.resolveActor.mockResolvedValue(teamLeaderActor());
-
-    await expect(
-      manager.canManageTeamShift({ churchId, shiftId, teamId, userId }),
-    ).resolves.toBe(true);
-  });
-
-  it('canManageTeamShift denies a forged Team from another Ministry without resolving the actor', async () => {
-    const manager = createManager();
-    const shiftId = 'shift_1' as ShiftId;
-
-    scopeRepository.resolveShiftMinistry.mockResolvedValue(ministryId);
-    teamRepository.listByIds.mockResolvedValue([
-      { id: teamId, ministryId: 'min_other', name: 'Other' },
-    ]);
-
-    await expect(
-      manager.canManageTeamShift({ churchId, shiftId, teamId, userId }),
-    ).resolves.toBe(false);
-    expect(actorRepository.resolveActor).not.toHaveBeenCalled();
-  });
-
   it('canManageEvent resolves the owning Ministry via EventRepository then delegates', async () => {
     const manager = createManager();
     const eventId = 'evt_1' as EventId;
@@ -290,13 +257,23 @@ describe('DbAuthorityManager', () => {
     ).resolves.toEqual({ canAccessScheduling: false, entries: [] });
   });
 
-  it('projects a TeamLeader only to the team they lead', async () => {
+  it('projects a TeamLeader like a plain Volunteer, with no team entry', async () => {
     const manager = createManager();
 
     actorRepository.resolveActor.mockResolvedValueOnce(teamLeaderActor());
-    teamRepository.listByIds.mockResolvedValueOnce([
-      { id: teamId, ministryId, name: 'Greeting' },
-    ]);
+
+    await expect(
+      manager.resolveSchedulingCapability({ churchId, userId }),
+    ).resolves.toEqual({ canAccessScheduling: false, entries: [] });
+  });
+
+  it('projects only the Ministry for a Ministry leader who also leads a Team', async () => {
+    const manager = createManager();
+
+    actorRepository.resolveActor.mockResolvedValueOnce({
+      ...ministryLeaderActor(),
+      teamMemberships: teamLeaderActor().teamMemberships,
+    });
     ministryRepository.getById.mockResolvedValueOnce({
       id: ministryId,
       name: 'Worship',
@@ -306,113 +283,7 @@ describe('DbAuthorityManager', () => {
       manager.resolveSchedulingCapability({ churchId, userId }),
     ).resolves.toEqual({
       canAccessScheduling: true,
-      entries: [
-        {
-          kind: 'team',
-          ministryId,
-          ministryName: 'Worship',
-          teamId,
-          name: 'Greeting',
-        },
-      ],
-    });
-  });
-
-  it('projects every Team a TeamLeader leads, grouped by its owning Ministry', async () => {
-    const manager = createManager();
-    actorRepository.resolveActor.mockResolvedValueOnce({
-      ...teamLeaderActor(),
-      teamMemberships: [
-        ...teamLeaderActor().teamMemberships,
-        {
-          churchId,
-          ministryId,
-          teamId: secondTeamId,
-          accessLevel: 'leader',
-        },
-      ],
-    });
-    teamRepository.listByIds.mockResolvedValueOnce([
-      { id: teamId, ministryId, name: 'Greeting' },
-      { id: secondTeamId, ministryId, name: 'Welcome' },
-    ]);
-    ministryRepository.getById.mockResolvedValue({
-      id: ministryId,
-      name: 'Worship',
-    });
-
-    await expect(
-      manager.resolveSchedulingCapability({ churchId, userId }),
-    ).resolves.toEqual({
-      canAccessScheduling: true,
-      entries: [
-        {
-          kind: 'team',
-          ministryId,
-          ministryName: 'Worship',
-          teamId,
-          name: 'Greeting',
-        },
-        {
-          kind: 'team',
-          ministryId,
-          ministryName: 'Worship',
-          teamId: secondTeamId,
-          name: 'Welcome',
-        },
-      ],
-    });
-  });
-
-  it('keeps mixed Ministry and Team leadership at their actual scopes', async () => {
-    const manager = createManager();
-    const teamOnlyMinistryId = 'min_kids' as MinistryId;
-    const teamOnlyTeamId = 'team_checkin' as TeamId;
-
-    actorRepository.resolveActor.mockResolvedValueOnce({
-      ...ministryLeaderActor(),
-      teamMemberships: [
-        {
-          churchId,
-          ministryId,
-          teamId,
-          accessLevel: 'leader',
-        },
-        {
-          churchId,
-          ministryId: teamOnlyMinistryId,
-          teamId: teamOnlyTeamId,
-          accessLevel: 'leader',
-        },
-      ],
-    });
-    ministryRepository.getById
-      .mockResolvedValueOnce({ id: ministryId, name: 'Worship' })
-      .mockResolvedValueOnce({ id: ministryId, name: 'Worship' })
-      .mockResolvedValueOnce({ id: teamOnlyMinistryId, name: 'Kids' });
-    teamRepository.listByIds.mockResolvedValueOnce([
-      { id: teamId, ministryId, name: 'Greeting' },
-      {
-        id: teamOnlyTeamId,
-        ministryId: teamOnlyMinistryId,
-        name: 'Check-in',
-      },
-    ]);
-
-    await expect(
-      manager.resolveSchedulingCapability({ churchId, userId }),
-    ).resolves.toEqual({
-      canAccessScheduling: true,
-      entries: [
-        { kind: 'ministry', ministryId, name: 'Worship' },
-        {
-          kind: 'team',
-          ministryId: teamOnlyMinistryId,
-          ministryName: 'Kids',
-          teamId: teamOnlyTeamId,
-          name: 'Check-in',
-        },
-      ],
+      entries: [{ kind: 'ministry', ministryId, name: 'Worship' }],
     });
   });
 

@@ -2036,11 +2036,6 @@ paths:
                         - id
                         - name
                       additionalProperties: false
-                  callerTeamIds:
-                    nullable: true
-                    type: array
-                    items:
-                      type: string
                 required:
                   - events
                   - assignments
@@ -2048,7 +2043,6 @@ paths:
                   - volunteers
                   - roles
                   - sectors
-                  - callerTeamIds
                 additionalProperties: false
         "401":
           description: Default Response
@@ -3175,69 +3169,6 @@ paths:
       responses:
         "200":
           description: Default Response
-  /api/v1/assign/teams/{teamId}/cycles-summary:
-    get:
-      operationId: listTeamScheduleCycles
-      summary: List a Team's readable schedule cycles
-      tags:
-        - assign
-      description: List the sent Cycles in a Ministry that a TeamLeader may open as a
-        read-only schedule.
-      parameters:
-        - schema:
-            type: string
-          in: query
-          name: ministryId
-          required: true
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
-        - schema:
-            type: string
-          in: path
-          name: teamId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  cycles:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        cycleId:
-                          type: string
-                        name:
-                          type: string
-                      required:
-                        - cycleId
-                        - name
-                      additionalProperties: false
-                required:
-                  - cycles
-                additionalProperties: false
-        "403":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/builder:
     get:
       operationId: getCycleBuilderData
@@ -3252,11 +3183,6 @@ paths:
           in: query
           name: ministryId
           required: true
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
         - schema:
             type: string
           in: path
@@ -3624,11 +3550,6 @@ paths:
           required: true
         - schema:
             type: string
-          in: query
-          name: teamId
-          required: false
-        - schema:
-            type: string
           in: path
           name: cycleId
           required: true
@@ -3714,11 +3635,6 @@ paths:
           in: query
           name: ministryId
           required: true
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
         - schema:
             type: string
           in: path
@@ -3865,7 +3781,7 @@ paths:
       summary: Assign a Volunteer to a Shift
       tags:
         - assign
-      description: Assign a Volunteer to a Role (and optional Team) within a Shift.
+      description: Assign a Volunteer to a Role within a Shift.
       requestBody:
         required: true
         content:
@@ -3876,8 +3792,6 @@ paths:
                 volunteerId:
                   type: string
                 roleId:
-                  type: string
-                teamId:
                   type: string
               required:
                 - volunteerId
@@ -3985,11 +3899,6 @@ paths:
         - assign
       description: Remove a Volunteer Assignment from its Shift.
       parameters:
-        - schema:
-            type: string
-          in: query
-          name: teamId
-          required: false
         - schema:
             type: string
           in: path
@@ -4204,31 +4113,6 @@ paths:
                           required:
                             - kind
                             - ministryId
-                            - name
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - team
-                            ministryId:
-                              type: string
-                              format: uuid
-                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-                            ministryName:
-                              type: string
-                            teamId:
-                              type: string
-                              format: uuid
-                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-                            name:
-                              type: string
-                          required:
-                            - kind
-                            - ministryId
-                            - ministryName
-                            - teamId
                             - name
                           additionalProperties: false
                 required:

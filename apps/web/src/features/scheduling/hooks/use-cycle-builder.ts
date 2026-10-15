@@ -20,7 +20,6 @@ import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 interface UseCycleBuilderParams {
   cycleId: string;
   ministryId: string;
-  teamId?: string;
 }
 
 interface CreateCycleAssignmentParams {
@@ -328,13 +327,11 @@ function mapCycleBuilderData(
 export function useCycleBuilder({
   cycleId,
   ministryId,
-  teamId,
 }: UseCycleBuilderParams) {
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId, teamId],
-    queryFn: () =>
-      adminApi.getCycleBuilderData(cycleId, { ministryId, teamId }),
+    queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
+    queryFn: () => adminApi.getCycleBuilderData(cycleId, { ministryId }),
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
   });
@@ -344,7 +341,7 @@ export function useCycleBuilder({
       adminApi.publishCycle(cycleId, { confirmBelowFull }, { ministryId }),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({
-        queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId, teamId],
+        queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
       });
       // Publishing is the most consequential action in the builder and was the
       // only mutation here that reported nothing back. `published` is false
@@ -361,7 +358,7 @@ export function useCycleBuilder({
     },
   });
 
-  const queryKey = [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId, teamId];
+  const queryKey = [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId];
 
   // Fire-and-forget on purpose: the cache already holds the optimistic result,
   // so awaiting the refetch would only keep `mutateAsync` — and the toast that
@@ -392,10 +389,7 @@ export function useCycleBuilder({
 
   const createAssignment = useMutation({
     mutationFn: ({ shiftId, body }: CreateCycleAssignmentParams) =>
-      adminApi.createParticipationAssignment(
-        shiftId,
-        teamId ? { ...body, teamId } : body,
-      ),
+      adminApi.createParticipationAssignment(shiftId, body),
     onMutate: ({ shiftId, body }) =>
       applyOptimistic({
         update: ({ data }) =>
@@ -413,10 +407,7 @@ export function useCycleBuilder({
 
   const deleteAssignment = useMutation({
     mutationFn: (assignmentId: string) =>
-      adminApi.deleteParticipationAssignment(
-        assignmentId,
-        teamId ? { teamId } : undefined,
-      ),
+      adminApi.deleteParticipationAssignment(assignmentId),
     onMutate: (assignmentId) =>
       applyOptimistic({
         update: ({ data }) =>

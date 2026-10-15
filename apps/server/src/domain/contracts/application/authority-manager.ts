@@ -1,11 +1,11 @@
 import type {
   ChurchId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   ShiftId,
   TeamId,
-  TimeSlotId,
   UserId,
 } from '../../branded-ids';
 
@@ -52,9 +52,9 @@ export interface CanManageEventInput {
   userId: UserId;
 }
 
-export interface CanManageEventSlotInput {
+export interface CanManageEventTimeBlockInput {
   churchId: ChurchId;
-  slotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   userId: UserId;
 }
 
@@ -82,7 +82,7 @@ export interface SchedulingCapabilityProjection {
 
 /**
  * Resolves the calling `AuthorityActor` and the Ministry owning a bare
- * resource id (Participation, Shift, Event, TimeSlot), then asks
+ * resource id (Participation, Shift, Event, EventTimeBlock), then asks
  * `AuthorityService` for a `manage` decision. Supersedes `SchedulingRbacManager`
  * for callers migrated onto AuthorityService.
  */
@@ -94,7 +94,9 @@ export interface IAuthorityManager {
   canManageParticipation(input: CanManageParticipationInput): Promise<boolean>;
   canManageShift(input: CanManageShiftInput): Promise<boolean>;
   canManageEvent(input: CanManageEventInput): Promise<boolean>;
-  canManageEventSlot(input: CanManageEventSlotInput): Promise<boolean>;
+  canManageEventTimeBlock(
+    input: CanManageEventTimeBlockInput,
+  ): Promise<boolean>;
   resolveSchedulingCapability(
     input: HasSchedulingAccessInput,
   ): Promise<SchedulingCapabilityProjection>;

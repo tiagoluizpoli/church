@@ -199,7 +199,7 @@ export function useCycleBuilderActions({
     mode,
   }: ApplyAssignmentInput): Promise<boolean> => {
     const volunteerName = volunteerNameFor(input);
-    const slotLabel = input.slotLabel ?? 'this shift';
+    const eventTimeBlockLabel = input.eventTimeBlockLabel ?? 'this shift';
     const shouldCreate = mode === 'create' || (!mode && !input.assignmentId);
     try {
       if (!shouldCreate && input.assignmentId) {
@@ -226,7 +226,7 @@ export function useCycleBuilderActions({
       );
       onAssignmentApplied?.();
       report({
-        message: `Assigned ${volunteerName} to ${slotLabel}`,
+        message: `Assigned ${volunteerName} to ${eventTimeBlockLabel}`,
         tone: 'success',
       });
       return true;
@@ -247,7 +247,7 @@ export function useCycleBuilderActions({
         },
       ]);
       report({
-        message: `Could not assign ${volunteerName} to ${slotLabel}: ${message}`,
+        message: `Could not assign ${volunteerName} to ${eventTimeBlockLabel}: ${message}`,
         tone: 'error',
       });
       return false;

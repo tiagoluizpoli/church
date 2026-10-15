@@ -30,11 +30,11 @@ export type CalendarVisibleRow =
   | {
       kind: 'slot';
       parentId: string;
-      slotId: string;
+      eventTimeBlockId: string;
       label: string;
       startTime: string;
       endTime: string;
-      isOnlySlotInEvent: boolean;
+      isOnlyEventTimeBlockInEvent: boolean;
     };
 
 export interface BuildVisibleCalendarRowsInput {
@@ -59,11 +59,11 @@ export function buildVisibleCalendarRows({
         (slot): CalendarVisibleRow => ({
           kind: 'slot',
           parentId: row.eventId,
-          slotId: slot.slotId,
+          eventTimeBlockId: slot.eventTimeBlockId,
           label: slot.label,
           startTime: slot.startTime,
           endTime: slot.endTime,
-          isOnlySlotInEvent: slot.isOnlySlotInEvent,
+          isOnlyEventTimeBlockInEvent: slot.isOnlyEventTimeBlockInEvent,
         }),
       ),
     ];
@@ -77,7 +77,7 @@ export interface VisibleRowIdInput {
 export function visibleRowId({ visibleRow }: VisibleRowIdInput): string {
   return visibleRow.kind === 'parent'
     ? `event-${visibleRow.row.eventId}`
-    : `slot-${visibleRow.parentId}-${visibleRow.slotId}`;
+    : `event-time-block-${visibleRow.parentId}-${visibleRow.eventTimeBlockId}`;
 }
 
 export interface CalendarRowEventIdInput {
@@ -96,9 +96,9 @@ export interface CalendarRowKeyInput {
   visibleRow: CalendarVisibleRow;
   isExpanded: boolean;
   isConfirmingDeleteEvent: boolean;
-  isConfirmingDeleteSlot: boolean;
+  isConfirmingDeleteEventTimeBlock: boolean;
   deleteEventPending: boolean;
-  deleteSlotPending: boolean;
+  deleteEventTimeBlockPending: boolean;
 }
 
 /** `DataTable` keys and identifies each react-aria row by this wrapper's
@@ -113,17 +113,17 @@ export function calendarRowKey({
   visibleRow,
   isExpanded,
   isConfirmingDeleteEvent,
-  isConfirmingDeleteSlot,
+  isConfirmingDeleteEventTimeBlock,
   deleteEventPending,
-  deleteSlotPending,
+  deleteEventTimeBlockPending,
 }: CalendarRowKeyInput): string {
   const id = visibleRowId({ visibleRow });
   const dataFingerprint =
     visibleRow.kind === 'parent'
       ? `${visibleRow.row.title}-${visibleRow.row.start}-${visibleRow.row.status}-${visibleRow.row.slots.length}`
-      : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlySlotInEvent}`;
+      : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
 
-  return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteSlot ? 'deleting-slot' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteSlotPending ? 'slot-pending' : 'slot-idle'}`;
+  return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEvent ? 'deleting' : 'normal'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventPending ? 'event-pending' : 'event-idle'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
 }
 
 interface ConfirmDeleteDialogContentProps {
@@ -169,13 +169,13 @@ export interface StartEditEventInput {
   row: CycleCalendarTableRow;
 }
 
-export interface StartCreateSlotInput {
+export interface StartCreateEventTimeBlockInput {
   row: CycleCalendarTableRow;
 }
 
-export interface StartEditSlotInput {
+export interface StartEditEventTimeBlockInput {
   parentId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   label: string;
   startTime: string;
   endTime: string;
@@ -190,14 +190,14 @@ export interface ConfirmDeleteEventInput {
   eventId: string;
 }
 
-export interface ConfirmDeleteSlotOpenChangeInput {
-  slotId: string;
+export interface ConfirmDeleteEventTimeBlockOpenChangeInput {
+  eventTimeBlockId: string;
   open: boolean;
 }
 
-export interface ConfirmDeleteSlotInput {
+export interface ConfirmDeleteEventTimeBlockInput {
   eventId: string;
-  slotId: string;
+  eventTimeBlockId: string;
 }
 
 export interface RenderCalendarCellInput {
@@ -206,18 +206,22 @@ export interface RenderCalendarCellInput {
   isExpanded: boolean;
   isReadOnly: boolean;
   isConfirmingDeleteEvent: boolean;
-  isConfirmingDeleteSlot: boolean;
+  isConfirmingDeleteEventTimeBlock: boolean;
   deleteEventPending: boolean;
-  deleteSlotPending: boolean;
+  deleteEventTimeBlockPending: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
-  onAddSlotRequest: (input: StartCreateSlotInput) => void;
+  onAddEventTimeBlockRequest: (input: StartCreateEventTimeBlockInput) => void;
   onEditEventRequest: (input: StartEditEventInput) => void;
   onDeleteEventOpenChange: (input: ConfirmDeleteEventOpenChangeInput) => void;
   onDeleteEventConfirm: (input: ConfirmDeleteEventInput) => void;
-  onEditSlotRequest: (input: StartEditSlotInput) => void;
-  onDeleteSlotOpenChange: (input: ConfirmDeleteSlotOpenChangeInput) => void;
-  onDeleteSlotConfirm: (input: ConfirmDeleteSlotInput) => void;
+  onEditEventTimeBlockRequest: (input: StartEditEventTimeBlockInput) => void;
+  onDeleteEventTimeBlockOpenChange: (
+    input: ConfirmDeleteEventTimeBlockOpenChangeInput,
+  ) => void;
+  onDeleteEventTimeBlockConfirm: (
+    input: ConfirmDeleteEventTimeBlockInput,
+  ) => void;
 }
 
 /** Cell content for one calendar `DataTable` row: either a day/event parent
@@ -230,18 +234,18 @@ export function renderCalendarCell({
   isExpanded,
   isReadOnly,
   isConfirmingDeleteEvent,
-  isConfirmingDeleteSlot,
+  isConfirmingDeleteEventTimeBlock,
   deleteEventPending,
-  deleteSlotPending,
+  deleteEventTimeBlockPending,
   timeZone,
   onToggleExpand,
-  onAddSlotRequest,
+  onAddEventTimeBlockRequest,
   onEditEventRequest,
   onDeleteEventOpenChange,
   onDeleteEventConfirm,
-  onEditSlotRequest,
-  onDeleteSlotOpenChange,
-  onDeleteSlotConfirm,
+  onEditEventTimeBlockRequest,
+  onDeleteEventTimeBlockOpenChange,
+  onDeleteEventTimeBlockConfirm,
 }: RenderCalendarCellInput) {
   return item.kind === 'parent' ? (
     <ParentRowCell
@@ -253,22 +257,22 @@ export function renderCalendarCell({
       deletePending={deleteEventPending}
       timeZone={timeZone}
       onToggleExpand={onToggleExpand}
-      onAddSlotRequest={onAddSlotRequest}
+      onAddEventTimeBlockRequest={onAddEventTimeBlockRequest}
       onEditEventRequest={onEditEventRequest}
       onDeleteOpenChange={onDeleteEventOpenChange}
       onDeleteConfirm={onDeleteEventConfirm}
     />
   ) : (
-    <SlotRowCell
+    <EventTimeBlockRowCell
       column={column}
       visibleRow={item}
       isReadOnly={isReadOnly}
-      isConfirmingDelete={isConfirmingDeleteSlot}
-      deletePending={deleteSlotPending}
+      isConfirmingDelete={isConfirmingDeleteEventTimeBlock}
+      deletePending={deleteEventTimeBlockPending}
       timeZone={timeZone}
-      onEditSlotRequest={onEditSlotRequest}
-      onDeleteOpenChange={onDeleteSlotOpenChange}
-      onDeleteConfirm={onDeleteSlotConfirm}
+      onEditEventTimeBlockRequest={onEditEventTimeBlockRequest}
+      onDeleteOpenChange={onDeleteEventTimeBlockOpenChange}
+      onDeleteConfirm={onDeleteEventTimeBlockConfirm}
     />
   );
 }
@@ -282,7 +286,7 @@ interface ParentRowCellProps {
   deletePending: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
-  onAddSlotRequest: (input: StartCreateSlotInput) => void;
+  onAddEventTimeBlockRequest: (input: StartCreateEventTimeBlockInput) => void;
   onEditEventRequest: (input: StartEditEventInput) => void;
   onDeleteOpenChange: (input: ConfirmDeleteEventOpenChangeInput) => void;
   onDeleteConfirm: (input: ConfirmDeleteEventInput) => void;
@@ -297,7 +301,7 @@ function ParentRowCell({
   deletePending,
   timeZone,
   onToggleExpand,
-  onAddSlotRequest,
+  onAddEventTimeBlockRequest,
   onEditEventRequest,
   onDeleteOpenChange,
   onDeleteConfirm,
@@ -338,7 +342,7 @@ function ParentRowCell({
             size="icon-xs"
             variant="ghost"
             aria-label={`Add slot to ${row.title}`}
-            onClick={() => onAddSlotRequest({ row })}
+            onClick={() => onAddEventTimeBlockRequest({ row })}
           >
             <Plus className="size-3.5" />
           </Button>
@@ -383,29 +387,31 @@ function ParentRowCell({
   );
 }
 
-interface SlotRowCellProps {
+interface EventTimeBlockRowCellProps {
   column: DataTableColumn;
   visibleRow: Extract<CalendarVisibleRow, { kind: 'slot' }>;
   isReadOnly: boolean;
   isConfirmingDelete: boolean;
   deletePending: boolean;
   timeZone: string;
-  onEditSlotRequest: (input: StartEditSlotInput) => void;
-  onDeleteOpenChange: (input: ConfirmDeleteSlotOpenChangeInput) => void;
-  onDeleteConfirm: (input: ConfirmDeleteSlotInput) => void;
+  onEditEventTimeBlockRequest: (input: StartEditEventTimeBlockInput) => void;
+  onDeleteOpenChange: (
+    input: ConfirmDeleteEventTimeBlockOpenChangeInput,
+  ) => void;
+  onDeleteConfirm: (input: ConfirmDeleteEventTimeBlockInput) => void;
 }
 
-function SlotRowCell({
+function EventTimeBlockRowCell({
   column,
   visibleRow,
   isReadOnly,
   isConfirmingDelete,
   deletePending,
   timeZone,
-  onEditSlotRequest,
+  onEditEventTimeBlockRequest,
   onDeleteOpenChange,
   onDeleteConfirm,
-}: SlotRowCellProps) {
+}: EventTimeBlockRowCellProps) {
   return (
     <>
       {column.id === 'event' ? (
@@ -428,9 +434,9 @@ function SlotRowCell({
             variant="ghost"
             aria-label={`Edit slot ${visibleRow.label}`}
             onClick={() =>
-              onEditSlotRequest({
+              onEditEventTimeBlockRequest({
                 parentId: visibleRow.parentId,
-                slotId: visibleRow.slotId,
+                eventTimeBlockId: visibleRow.eventTimeBlockId,
                 label: visibleRow.label,
                 startTime: visibleRow.startTime,
                 endTime: visibleRow.endTime,
@@ -439,7 +445,7 @@ function SlotRowCell({
           >
             <Pencil className="size-3.5" />
           </Button>
-          {visibleRow.isOnlySlotInEvent ? (
+          {visibleRow.isOnlyEventTimeBlockInEvent ? (
             <Button
               type="button"
               size="icon-xs"
@@ -453,7 +459,10 @@ function SlotRowCell({
             <AlertDialog
               open={isConfirmingDelete}
               onOpenChange={(open) =>
-                onDeleteOpenChange({ slotId: visibleRow.slotId, open })
+                onDeleteOpenChange({
+                  eventTimeBlockId: visibleRow.eventTimeBlockId,
+                  open,
+                })
               }
             >
               <AlertDialogTrigger
@@ -476,7 +485,7 @@ function SlotRowCell({
                 onConfirm={() =>
                   onDeleteConfirm({
                     eventId: visibleRow.parentId,
-                    slotId: visibleRow.slotId,
+                    eventTimeBlockId: visibleRow.eventTimeBlockId,
                   })
                 }
               />

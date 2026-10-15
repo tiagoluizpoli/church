@@ -18,7 +18,7 @@ interface OverrideDialogProps {
   conflictType: AssignmentOverrideKind;
   volunteerName: string;
   volunteerMembership?: AssigneeMembership;
-  slotLabel: string;
+  eventTimeBlockLabel: string;
   /** The role being filled — named in the `not_qualified` variant's copy. */
   roleLabel?: string;
   isPending: boolean;
@@ -36,7 +36,7 @@ export function OverrideDialog({
   conflictType,
   volunteerName,
   volunteerMembership,
-  slotLabel,
+  eventTimeBlockLabel,
   roleLabel,
   isPending,
   onConfirm,
@@ -64,7 +64,7 @@ export function OverrideDialog({
             />
           </DialogTitle>
           <DialogDescription>
-            {conflictText} for {slotLabel}.
+            {conflictText} for {eventTimeBlockLabel}.
           </DialogDescription>
         </DialogHeader>
 

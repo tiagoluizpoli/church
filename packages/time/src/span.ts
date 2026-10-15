@@ -23,7 +23,7 @@ function timeOfDayMinutes({ time }: TimeOfDayMinutesInput): number {
   return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 }
 
-/** Duration and midnight-crossing for a wall-clock TimeBlock pair: an end
+/** Duration and midnight-crossing for a wall-clock TemplateTimeBlock pair: an end
  * earlier than its start crosses onto the next CalendarDay, per `CONTEXT.md`. */
 export function timeOfDaySpan({ start, end }: TimeOfDaySpanInput): Span {
   const startMinutes = timeOfDayMinutes({ time: start });

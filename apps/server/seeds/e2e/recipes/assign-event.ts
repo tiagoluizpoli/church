@@ -1,10 +1,10 @@
 import type { CalendarDay, Instant, TimeOfDay } from '@church/time';
 import {
   buildEvent,
+  buildEventTimeBlock,
   buildMinistryParticipation,
   buildShift,
-  buildSlotRequirement,
-  buildTimeSlot,
+  buildShiftRequirement,
   type EventStatus,
   type ParticipationState,
 } from '../../builders/scheduling';
@@ -27,7 +27,7 @@ export interface AssignCycleSummary {
 
 export interface AssignRequirementPlan {
   roleId: string;
-  requiredCount: number;
+  peopleNeeded: number;
   /** Scopes the requirement to one Team (a TeamLeader's schedule seat). */
   teamId?: string;
 }
@@ -66,7 +66,7 @@ export interface BuildAssignEventInput<
 export interface AssignRequirement {
   id: string;
   roleId: string;
-  requiredCount: number;
+  peopleNeeded: number;
   teamId: string | null;
 }
 
@@ -78,7 +78,7 @@ export interface AssignEvent<TRequirementKey extends string> {
   startsAt: Instant;
   endsAt: Instant;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   shiftId: string;
   requirements: Record<TRequirementKey, AssignRequirement>;
 }
@@ -119,11 +119,11 @@ export async function buildAssignEvent<
     end: endsAt,
     status: eventStatus,
   });
-  const timeSlot = await buildTimeSlot({
+  const eventTimeBlock = await buildEventTimeBlock({
     db,
     churchId,
     eventId: event.id,
-    id: idOf({ kind: `time-slot:${key}` }),
+    id: idOf({ kind: `event-time-block:${key}` }),
     start: startsAt,
     end: endsAt,
   });
@@ -134,13 +134,13 @@ export async function buildAssignEvent<
     eventId: event.id,
     id: idOf({ kind: `participation:${key}` }),
     state: participationState,
-    timeSlotIds: [timeSlot.id],
+    eventTimeBlockIds: [eventTimeBlock.id],
   });
   const shift = await buildShift({
     db,
     churchId,
     participationId: participation.id,
-    timeSlotId: timeSlot.id,
+    eventTimeBlockId: eventTimeBlock.id,
     id: idOf({ kind: `shift:${key}` }),
     start: startsAt,
     end: endsAt,
@@ -148,20 +148,20 @@ export async function buildAssignEvent<
 
   const built: Record<string, AssignRequirement> = {};
   for (const [requirementKey, requirement] of Object.entries(requirements)) {
-    const row = await buildSlotRequirement({
+    const row = await buildShiftRequirement({
       db,
       churchId,
       participationId: participation.id,
       shiftId: shift.id,
       roleId: requirement.roleId,
-      id: idOf({ kind: `slot-requirement:${key}:${requirementKey}` }),
-      requiredCount: requirement.requiredCount,
+      id: idOf({ kind: `shift-requirement:${key}:${requirementKey}` }),
+      peopleNeeded: requirement.peopleNeeded,
       teamId: requirement.teamId,
     });
     built[requirementKey] = {
       id: row.id,
       roleId: row.roleId,
-      requiredCount: row.requiredCount,
+      peopleNeeded: row.peopleNeeded,
       teamId: row.teamId,
     };
   }
@@ -173,7 +173,7 @@ export async function buildAssignEvent<
     startsAt,
     endsAt,
     participationId: participation.id,
-    timeSlotId: timeSlot.id,
+    eventTimeBlockId: eventTimeBlock.id,
     shiftId: shift.id,
     // Built by iterating the plan's own keys, so the record is complete.
     requirements: built as Record<

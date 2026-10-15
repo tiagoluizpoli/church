@@ -2,8 +2,8 @@ import { millisecondsBetween, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
   ChurchId,
+  EventTimeBlockId,
   MinistryParticipationId,
-  TimeSlotId,
 } from '@/domain/branded-ids';
 import type { Shift } from '@/domain/entities/shift';
 import { InvalidShiftSplitError, ShiftOutOfBoundsError } from '@/domain/errors';
@@ -16,8 +16,8 @@ const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const participationId =
   '55555555-5555-4555-8555-555555555555' as MinistryParticipationId;
 
-const timeSlot = {
-  id: '66666666-6666-4666-8666-666666666666' as TimeSlotId,
+const eventTimeBlock = {
+  id: '66666666-6666-4666-8666-666666666666' as EventTimeBlockId,
   startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
   endTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
 };
@@ -28,7 +28,7 @@ function split(strategy: ShiftSplitStrategy): Shift[] {
   return splitter.split({
     churchId,
     participationId,
-    timeSlot,
+    eventTimeBlock,
     strategy,
   });
 }
@@ -38,8 +38,8 @@ interface AssertExactTilingInput {
 }
 
 function assertExactTiling({ shifts }: AssertExactTilingInput): void {
-  expect(shifts[0]?.startTime).toEqual(timeSlot.startTime);
-  expect(shifts[shifts.length - 1]?.endTime).toEqual(timeSlot.endTime);
+  expect(shifts[0]?.startTime).toEqual(eventTimeBlock.startTime);
+  expect(shifts[shifts.length - 1]?.endTime).toEqual(eventTimeBlock.endTime);
 
   for (let index = 1; index < shifts.length; index += 1) {
     expect(shifts[index]?.startTime).toEqual(shifts[index - 1]?.endTime);
@@ -63,8 +63,8 @@ describe('ShiftSplitter (DL1-SS)', () => {
     const shifts = split({ kind: 'equal-n', n: 1 });
 
     expect(shifts).toHaveLength(1);
-    expect(shifts[0]?.startTime).toEqual(timeSlot.startTime);
-    expect(shifts[0]?.endTime).toEqual(timeSlot.endTime);
+    expect(shifts[0]?.startTime).toEqual(eventTimeBlock.startTime);
+    expect(shifts[0]?.endTime).toEqual(eventTimeBlock.endTime);
   });
 
   it('DL1-SS-03 final shift absorbs the remainder when span is not divisible (CL-014)', () => {
@@ -102,8 +102,8 @@ describe('ShiftSplitter (DL1-SS)', () => {
   });
 
   it('rejects a split count too high for the slot duration', () => {
-    const shortSlot = {
-      id: timeSlot.id,
+    const shortEventTimeBlock = {
+      id: eventTimeBlock.id,
       startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-08-02T09:00:00.001Z' }),
     };
@@ -112,7 +112,7 @@ describe('ShiftSplitter (DL1-SS)', () => {
       splitter.split({
         churchId,
         participationId,
-        timeSlot: shortSlot,
+        eventTimeBlock: shortEventTimeBlock,
         strategy: { kind: 'equal-n', n: 2 },
       }),
     ).toThrow(InvalidShiftSplitError);

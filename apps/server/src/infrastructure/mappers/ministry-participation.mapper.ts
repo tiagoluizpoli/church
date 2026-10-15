@@ -1,25 +1,25 @@
 import type {
   ministryParticipation,
-  participationSlotInclusion,
+  participationEventTimeBlockInclusion,
 } from '@church/db';
 import { fromDate } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
-  ParticipationSlotInclusionId,
-  TimeSlotId,
+  ParticipationEventTimeBlockInclusionId,
 } from '../../domain/branded-ids';
 import type { MinistryParticipationProps } from '../../domain/entities/ministry-participation';
 import { MinistryParticipation } from '../../domain/entities/ministry-participation';
-import type { ParticipationSlotInclusionProps } from '../../domain/entities/participation-slot-inclusion';
-import { ParticipationSlotInclusion } from '../../domain/entities/participation-slot-inclusion';
+import type { ParticipationEventTimeBlockInclusionProps } from '../../domain/entities/participation-event-time-block-inclusion';
+import { ParticipationEventTimeBlockInclusion } from '../../domain/entities/participation-event-time-block-inclusion';
 
 type MinistryParticipationRow = InferSelectModel<typeof ministryParticipation>;
-type ParticipationSlotInclusionRow = InferSelectModel<
-  typeof participationSlotInclusion
+type ParticipationEventTimeBlockInclusionRow = InferSelectModel<
+  typeof participationEventTimeBlockInclusion
 >;
 
 export function mapMinistryParticipation(
@@ -41,17 +41,17 @@ export function mapMinistryParticipation(
   });
 }
 
-export function mapParticipationSlotInclusion(
-  row: ParticipationSlotInclusionRow,
-): ParticipationSlotInclusion {
-  const props: ParticipationSlotInclusionProps = {
+export function mapParticipationEventTimeBlockInclusion(
+  row: ParticipationEventTimeBlockInclusionRow,
+): ParticipationEventTimeBlockInclusion {
+  const props: ParticipationEventTimeBlockInclusionProps = {
     churchId: row.churchId as ChurchId,
     participationId: row.participationId as MinistryParticipationId,
-    timeSlotId: row.timeSlotId as TimeSlotId,
+    eventTimeBlockId: row.eventTimeBlockId as EventTimeBlockId,
   };
 
-  return new ParticipationSlotInclusion({
+  return new ParticipationEventTimeBlockInclusion({
     props,
-    id: row.id as ParticipationSlotInclusionId,
+    id: row.id as ParticipationEventTimeBlockInclusionId,
   });
 }

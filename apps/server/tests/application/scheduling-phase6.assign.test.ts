@@ -18,15 +18,15 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
-import {
-  buildAvailabilityCheck,
-  buildUnavailabilityMark,
-} from '@/seeds/builders/availability';
 import { buildMinistry, buildTeam } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildMinistryParticipation,
 } from '@/seeds/builders/scheduling';
+import {
+  buildAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
 import { buildTeamMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingPhase3Cycle,
@@ -46,23 +46,23 @@ async function seedTeam(input: SeedTeamInput) {
   return await buildTeam({ db: schedulingTestDb, ...input });
 }
 
-interface SeedAvailabilityMarkInput {
+interface SeedUnavailableShiftInput {
   churchId: string;
   cycleId: string;
   membershipId: string;
   shiftId: string;
 }
 
-async function seedAvailabilityMark(input: SeedAvailabilityMarkInput) {
+async function seedUnavailableShift(input: SeedUnavailableShiftInput) {
   const check = await buildAvailabilityCheck({
     db: schedulingTestDb,
     churchId: input.churchId,
     cycleId: input.cycleId,
-    ministryVolunteerId: input.membershipId,
+    ministryMembershipId: input.membershipId,
     state: 'pending',
   });
 
-  await buildUnavailabilityMark({
+  await buildUnavailableShift({
     db: schedulingTestDb,
     churchId: input.churchId,
     availabilityCheckId: check.id,
@@ -127,7 +127,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const targetShift = await seedShift({
       churchId: seed.churchAId,
       participationId: upcoming.participation.id,
-      timeSlotId: upcoming.slot.id,
+      eventTimeBlockId: upcoming.slot.id,
       startTime: new Date('2026-08-10T09:00:00.000Z'),
       endTime: new Date('2026-08-10T10:00:00.000Z'),
       label: 'Target shift',
@@ -135,7 +135,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const oldShift = await seedShift({
       churchId: seed.churchAId,
       participationId: history.participation.id,
-      timeSlotId: history.slot.id,
+      eventTimeBlockId: history.slot.id,
       startTime: new Date('2026-08-03T09:00:00.000Z'),
       endTime: new Date('2026-08-03T10:00:00.000Z'),
       label: 'Older shift',
@@ -143,7 +143,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const recentShift = await seedShift({
       churchId: seed.churchAId,
       participationId: history.participation.id,
-      timeSlotId: history.slot.id,
+      eventTimeBlockId: history.slot.id,
       startTime: new Date('2026-08-03T10:00:00.000Z'),
       endTime: new Date('2026-08-03T11:00:00.000Z'),
       label: 'Recent shift',
@@ -153,7 +153,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       participationId: upcoming.participation.id,
       shiftId: targetShift.id,
       roleId: roleRow.id,
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
 
     const ada = await seedVolunteerMembership({
@@ -206,7 +206,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       roleId: roleRow.id,
       status: 'confirmed',
     });
-    await seedAvailabilityMark({
+    await seedUnavailableShift({
       churchId: seed.churchAId,
       cycleId: cycle.id,
       membershipId: alan.membership.id,
@@ -266,7 +266,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const targetShift = await seedShift({
       churchId: seed.churchAId,
       participationId: primary.participation.id,
-      timeSlotId: primary.slot.id,
+      eventTimeBlockId: primary.slot.id,
       startTime: new Date('2026-09-07T09:00:00.000Z'),
       endTime: new Date('2026-09-07T10:00:00.000Z'),
       label: 'Target',
@@ -274,7 +274,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const overlapShift = await seedShift({
       churchId: seed.churchAId,
       participationId: overlapBranch.participation.id,
-      timeSlotId: overlapBranch.slot.id,
+      eventTimeBlockId: overlapBranch.slot.id,
       startTime: new Date('2026-09-07T09:30:00.000Z'),
       endTime: new Date('2026-09-07T10:30:00.000Z'),
       label: 'Overlap',
@@ -284,7 +284,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       participationId: primary.participation.id,
       shiftId: targetShift.id,
       roleId: roleRow.id,
-      requiredCount: 2,
+      peopleNeeded: 2,
     });
 
     const firstVolunteer = await seedVolunteerMembership({
@@ -345,7 +345,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         participationId: MinistryParticipationId.from(primary.participation.id),
       });
     expect(completionAfterFirst.assignedCount).toBe(1);
-    expect(completionAfterFirst.requiredCount).toBe(2);
+    expect(completionAfterFirst.peopleNeeded).toBe(2);
     expect(completionAfterFirst.completionPercent).toBe(50);
 
     await expect(
@@ -404,7 +404,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       ministryId: secondMinistry.id,
       eventId: sharedEvent.event.id,
       state: 'assigning',
-      timeSlotIds: [],
+      eventTimeBlockIds: [],
     });
 
     const roleA = await seedRole({
@@ -420,7 +420,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const primaryShift = await seedShift({
       churchId: seed.churchAId,
       participationId: sharedEvent.participation.id,
-      timeSlotId: sharedEvent.slot.id,
+      eventTimeBlockId: sharedEvent.slot.id,
       startTime: new Date('2026-10-04T09:00:00.000Z'),
       endTime: new Date('2026-10-04T10:00:00.000Z'),
       label: 'Primary',
@@ -428,7 +428,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const secondaryShift = await seedShift({
       churchId: seed.churchAId,
       participationId: secondParticipation.id,
-      timeSlotId: sharedEvent.slot.id,
+      eventTimeBlockId: sharedEvent.slot.id,
       startTime: new Date('2026-10-04T10:00:00.000Z'),
       endTime: new Date('2026-10-04T11:00:00.000Z'),
       label: 'Secondary',
@@ -438,14 +438,14 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       participationId: sharedEvent.participation.id,
       shiftId: primaryShift.id,
       roleId: roleA.id,
-      requiredCount: 2,
+      peopleNeeded: 2,
     });
     await seedRequirement({
       churchId: seed.churchAId,
       participationId: secondParticipation.id,
       shiftId: secondaryShift.id,
       roleId: roleB.id,
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
 
     const primaryVolunteer = await seedVolunteerMembership({
@@ -609,7 +609,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.slot.id,
       startTime: new Date('2026-11-08T09:00:00.000Z'),
       endTime: new Date('2026-11-08T10:00:00.000Z'),
       label: 'Front doors',
@@ -620,7 +620,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       shiftId: shift.id,
       roleId: hostRole.id,
       teamId: alphaTeam.id,
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
     await seedRequirement({
       churchId: seed.churchAId,
@@ -628,7 +628,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       shiftId: shift.id,
       roleId: hostRole.id,
       teamId: betaTeam.id,
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
     await seedAssignment({
       churchId: seed.churchAId,
@@ -726,18 +726,18 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       teamId: alphaTeam.id,
     });
     // Second team membership for the same ministry membership row — this is
-    // the multi-team scenario introduced by ministry_volunteer_team.
+    // the multi-team scenario introduced by ministry_membership_team.
     await buildTeamMembership({
       db: schedulingTestDb,
       churchId: seed.churchAId,
-      ministryVolunteerId: dualVolunteer.membership.id,
+      ministryMembershipId: dualVolunteer.membership.id,
       teamId: betaTeam.id,
       accessLevel: 'member',
     });
     const shift = await seedShift({
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.slot.id,
       startTime: new Date('2026-12-06T09:00:00.000Z'),
       endTime: new Date('2026-12-06T10:00:00.000Z'),
       label: 'Front doors',
@@ -748,7 +748,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       shiftId: shift.id,
       roleId: hostRole.id,
       teamId: alphaTeam.id,
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
     await seedRequirement({
       churchId: seed.churchAId,
@@ -756,7 +756,7 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       shiftId: shift.id,
       roleId: hostRole.id,
       teamId: betaTeam.id,
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
     await seedAssignment({
       churchId: seed.churchAId,

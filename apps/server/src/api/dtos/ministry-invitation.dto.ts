@@ -4,7 +4,7 @@ import type { MinistryInvitationDeliveryStatus } from '../../domain/contracts/ap
 import { MINISTRY_INVITATION_DELIVERY_STATUS_OPTIONS } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { MinistryInvitation } from '../../domain/entities/ministry-invitation';
 import { MINISTRY_INVITATION_STATUS_OPTIONS } from '../../domain/entities/ministry-invitation';
-import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-volunteer';
+import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { redemptionPathFor } from '../../domain/services/ministry-invitation-redemption-path';
 
 export const mintMinistryInvitationBodySchema = z.object({

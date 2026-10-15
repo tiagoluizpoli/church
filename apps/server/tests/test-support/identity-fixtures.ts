@@ -42,7 +42,7 @@ export interface TwoChurchIdentityFixture {
   dualMemberAB: string;
   /** `dualMemberAB`'s active `volunteer` row id, in Church B. */
   dualMemberABVolunteerInB: string;
-  /** `dualMemberAB`'s `ministry_volunteer` row id, in `ministryInB`. */
+  /** `dualMemberAB`'s `ministry_membership` row id, in `ministryInB`. */
   dualMemberABMembershipInB: string;
 }
 

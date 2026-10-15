@@ -20,29 +20,29 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 import {
-  buildSlotDayMarkers,
+  buildEventTimeBlockDayMarkers,
   classifyPrepareFetchError,
-  countIncludedSlots,
+  countIncludedEventTimeBlocks,
   countShifts,
   createInitialHeadcountDrafts,
   createInitialSplitForms,
-  filterSlotsByName,
-  filterSlotsByTimeOfDay,
+  filterEventTimeBlocksByName,
+  filterEventTimeBlocksByTimeOfDay,
   type SplitFormState,
   type TimeWindowFilter,
   toHeadcountKey,
   validateManualSpans,
 } from '@/features/scheduling/components/participation-prepare.utils';
 import { PrepareCalendar } from '@/features/scheduling/components/prepare/prepare-calendar';
-import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import {
   type HeadcountSave,
   type HeadcountSavesForShift,
-  PrepareSlotList,
-} from '@/features/scheduling/components/prepare/prepare-slot-list';
+  PrepareEventTimeBlockList,
+} from '@/features/scheduling/components/prepare/prepare-event-time-block-list';
+import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import type {
   GetCycleParticipation200EventsItem,
-  GetCycleParticipation200EventsItemSlotsItem,
+  GetCycleParticipation200EventsItemEventTimeBlocksItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
@@ -79,18 +79,18 @@ function getErrorMessage(error: unknown): string {
 
 interface SaveInclusionsParams {
   participationId: string;
-  timeSlotId: string;
-  timeSlotIds: string[];
+  eventTimeBlockId: string;
+  eventTimeBlockIds: string[];
 }
 
 interface SplitShiftsParams {
   participationId: string;
-  slotView: GetCycleParticipation200EventsItemSlotsItem;
+  eventTimeBlockView: GetCycleParticipation200EventsItemEventTimeBlocksItem;
 }
 
 interface SaveHeadcountsParams {
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   headcountSavesByShift: HeadcountSavesForShift[];
 }
 
@@ -99,40 +99,42 @@ interface HeadcountSaveAttempt {
   headcount: HeadcountSave;
 }
 
-interface SplitDirtySlotIdsParams {
+interface SplitDirtyEventTimeBlockIdsParams {
   splitForms: Record<string, SplitFormState>;
   savedSplitForms: Record<string, SplitFormState>;
 }
 
-interface HeadcountDirtySlotIdsParams {
+interface HeadcountDirtyEventTimeBlockIdsParams {
   events: GetCycleParticipation200EventsItem[];
   headcountDrafts: Record<string, string>;
   savedHeadcountDrafts: Record<string, string>;
 }
 
-function getSplitDirtySlotIds({
+function getSplitDirtyEventTimeBlockIds({
   splitForms,
   savedSplitForms,
-}: SplitDirtySlotIdsParams): Set<string> {
+}: SplitDirtyEventTimeBlockIdsParams): Set<string> {
   return new Set(
     Object.keys(splitForms).filter(
-      (slotId) =>
-        JSON.stringify(splitForms[slotId]) !==
-        JSON.stringify(savedSplitForms[slotId]),
+      (eventTimeBlockId) =>
+        JSON.stringify(splitForms[eventTimeBlockId]) !==
+        JSON.stringify(savedSplitForms[eventTimeBlockId]),
     ),
   );
 }
 
-function getHeadcountDirtySlotIds({
+function getHeadcountDirtyEventTimeBlockIds({
   events,
   headcountDrafts,
   savedHeadcountDrafts,
-}: HeadcountDirtySlotIdsParams): Set<string> {
-  const dirtySlotIds = new Set<string>();
+}: HeadcountDirtyEventTimeBlockIdsParams): Set<string> {
+  const dirtyEventTimeBlockIds = new Set<string>();
 
   for (const eventView of events) {
-    for (const slotView of eventView.slots) {
-      const shiftIds = new Set(slotView.shifts.map((shift) => shift.id));
+    for (const eventTimeBlockView of eventView.slots) {
+      const shiftIds = new Set(
+        eventTimeBlockView.shifts.map((shift) => shift.id),
+      );
       const keys = new Set([
         ...Object.keys(headcountDrafts),
         ...Object.keys(savedHeadcountDrafts),
@@ -145,11 +147,11 @@ function getHeadcountDirtySlotIds({
         );
       });
 
-      if (hasDirtyDraft) dirtySlotIds.add(slotView.slot.id);
+      if (hasDirtyDraft) dirtyEventTimeBlockIds.add(eventTimeBlockView.slot.id);
     }
   }
 
-  return dirtySlotIds;
+  return dirtyEventTimeBlockIds;
 }
 
 interface EditSessionState {
@@ -185,12 +187,12 @@ type EditSessionAction =
     }
   | {
       type: 'split-form-changed';
-      timeSlotId: string;
+      eventTimeBlockId: string;
       nextForm: SplitFormState;
     }
   | { type: 'headcount-draft-changed'; key: string; value: string }
   | { type: 'inclusion-saved'; participationId: string }
-  | { type: 'split-saved'; participationId: string; slotId: string }
+  | { type: 'split-saved'; participationId: string; eventTimeBlockId: string }
   | {
       type: 'headcounts-saved';
       participationId: string;
@@ -223,7 +225,7 @@ function editSessionReducer(
         ...state,
         splitForms: {
           ...state.splitForms,
-          [action.timeSlotId]: action.nextForm,
+          [action.eventTimeBlockId]: action.nextForm,
         },
       };
     case 'headcount-draft-changed':
@@ -247,7 +249,7 @@ function editSessionReducer(
         ...state,
         savedSplitForms: {
           ...state.savedSplitForms,
-          [action.slotId]: state.splitForms[action.slotId],
+          [action.eventTimeBlockId]: state.splitForms[action.eventTimeBlockId],
         },
         touchedParticipationIds: new Set([
           ...state.touchedParticipationIds,
@@ -340,13 +342,13 @@ function PrepareWorkspaceRoute() {
     });
   }, [cycleId, ministryId, participationQuery.data]);
 
-  const splitDirtySlotIds = useMemo(
-    () => getSplitDirtySlotIds({ splitForms, savedSplitForms }),
+  const splitDirtyEventTimeBlockIds = useMemo(
+    () => getSplitDirtyEventTimeBlockIds({ splitForms, savedSplitForms }),
     [savedSplitForms, splitForms],
   );
-  const headcountDirtySlotIds = useMemo(
+  const headcountDirtyEventTimeBlockIds = useMemo(
     () =>
-      getHeadcountDirtySlotIds({
+      getHeadcountDirtyEventTimeBlockIds({
         events,
         headcountDrafts,
         savedHeadcountDrafts,
@@ -363,10 +365,10 @@ function PrepareWorkspaceRoute() {
   const saveInclusions = useMutation({
     mutationFn: async ({
       participationId,
-      timeSlotIds,
+      eventTimeBlockIds,
     }: SaveInclusionsParams) => {
       await adminApi.setParticipationInclusions(participationId, {
-        timeSlotIds,
+        eventTimeBlockIds,
       });
       return { participationId };
     },
@@ -378,8 +380,11 @@ function PrepareWorkspaceRoute() {
   });
 
   const splitShifts = useMutation({
-    mutationFn: async ({ participationId, slotView }: SplitShiftsParams) => {
-      const form = splitForms[slotView.slot.id];
+    mutationFn: async ({
+      participationId,
+      eventTimeBlockView,
+    }: SplitShiftsParams) => {
+      const form = splitForms[eventTimeBlockView.slot.id];
       if (!form) throw new Error('Split form is missing.');
 
       if (form.mode === 'equal') {
@@ -390,18 +395,24 @@ function PrepareWorkspaceRoute() {
 
         await adminApi.splitParticipationShifts(
           participationId,
-          slotView.slot.id,
+          eventTimeBlockView.slot.id,
           { strategy: { kind: 'equal-n', n: count } },
         );
-        return { participationId, slotId: slotView.slot.id };
+        return {
+          participationId,
+          eventTimeBlockId: eventTimeBlockView.slot.id,
+        };
       }
 
-      const error = validateManualSpans({ slotView, spans: form.manualSpans });
+      const error = validateManualSpans({
+        eventTimeBlockView,
+        spans: form.manualSpans,
+      });
       if (error) throw new Error(error);
 
       await adminApi.splitParticipationShifts(
         participationId,
-        slotView.slot.id,
+        eventTimeBlockView.slot.id,
         {
           strategy: {
             kind: 'manual',
@@ -413,11 +424,15 @@ function PrepareWorkspaceRoute() {
           },
         },
       );
-      return { participationId, slotId: slotView.slot.id };
+      return { participationId, eventTimeBlockId: eventTimeBlockView.slot.id };
     },
-    onSuccess: async ({ participationId, slotId }) => {
+    onSuccess: async ({ participationId, eventTimeBlockId }) => {
       toast.success('Shifts updated.');
-      dispatchEditSession({ type: 'split-saved', participationId, slotId });
+      dispatchEditSession({
+        type: 'split-saved',
+        participationId,
+        eventTimeBlockId,
+      });
       await refreshParticipation();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -426,7 +441,7 @@ function PrepareWorkspaceRoute() {
   const saveHeadcounts = useMutation({
     mutationFn: async ({
       participationId,
-      timeSlotId,
+      eventTimeBlockId,
       headcountSavesByShift,
     }: SaveHeadcountsParams) => {
       const attempts: HeadcountSaveAttempt[] = headcountSavesByShift.flatMap(
@@ -438,7 +453,7 @@ function PrepareWorkspaceRoute() {
           adminApi.upsertShiftRequirement(shiftId, {
             roleId: headcount.roleId,
             teamId: headcount.teamId,
-            requiredCount: headcount.requiredCount,
+            peopleNeeded: headcount.peopleNeeded,
           }),
         ),
       );
@@ -447,7 +462,7 @@ function PrepareWorkspaceRoute() {
       );
       return {
         participationId,
-        timeSlotId,
+        eventTimeBlockId,
         savedHeadcounts,
         failedCount: attempts.length - savedHeadcounts.length,
       };
@@ -458,7 +473,7 @@ function PrepareWorkspaceRoute() {
         participationId,
         savedHeadcounts: savedHeadcounts.map(({ shiftId, headcount }) => ({
           key: toHeadcountKey(shiftId, headcount.roleId),
-          value: String(headcount.requiredCount),
+          value: String(headcount.peopleNeeded),
         })),
       });
       if (failedCount > 0) {
@@ -500,7 +515,8 @@ function PrepareWorkspaceRoute() {
   });
 
   const hasUnsavedDraftEdits =
-    splitDirtySlotIds.size > 0 || headcountDirtySlotIds.size > 0;
+    splitDirtyEventTimeBlockIds.size > 0 ||
+    headcountDirtyEventTimeBlockIds.size > 0;
   const hasUnsentChanges = touchedParticipationIds.size > 0;
   const isDirty = hasUnsentChanges || hasUnsavedDraftEdits;
   const blocker = useBlocker({
@@ -509,7 +525,7 @@ function PrepareWorkspaceRoute() {
     withResolver: true,
   });
 
-  const eventDayMarkers = buildSlotDayMarkers({
+  const eventDayMarkers = buildEventTimeBlockDayMarkers({
     events,
     timeZone: churchTimezone,
   });
@@ -519,20 +535,20 @@ function PrepareWorkspaceRoute() {
         .map((eventView) => ({
           ...eventView,
           slots: eventView.slots.filter(
-            (slotView) =>
+            (eventTimeBlockView) =>
               dayOf({
-                value: slotView.slot.startTime,
+                value: eventTimeBlockView.slot.startTime,
                 timeZone: churchTimezone,
               }) === selectedDate,
           ),
         }))
         .filter((eventView) => eventView.slots.length > 0)
     : events;
-  const nameFiltered = filterSlotsByName({
+  const nameFiltered = filterEventTimeBlocksByName({
     events: dayFiltered,
     query: nameQuery,
   });
-  const filteredEvents = filterSlotsByTimeOfDay({
+  const filteredEvents = filterEventTimeBlocksByTimeOfDay({
     events: nameFiltered,
     filter: timeWindowFilter,
     timeZone: churchTimezone,
@@ -556,7 +572,7 @@ function PrepareWorkspaceRoute() {
     participationQuery.refetch();
   };
 
-  const includedSlotCount = countIncludedSlots(events);
+  const includedEventTimeBlockCount = countIncludedEventTimeBlocks(events);
   const shiftCount = countShifts(events);
   const eventCount = events.length;
   const touchedEventTitles = events
@@ -593,7 +609,7 @@ function PrepareWorkspaceRoute() {
                 />
                 <StatChip
                   label="Slots"
-                  value={includedSlotCount}
+                  value={includedEventTimeBlockCount}
                   testId="prepare-included-count"
                 />
                 <StatChip
@@ -697,55 +713,59 @@ function PrepareWorkspaceRoute() {
             />
           </div>
 
-          <PrepareSlotList
+          <PrepareEventTimeBlockList
             events={filteredEvents}
             ministryId={ministryId}
             splitForms={splitForms}
             headcountDrafts={headcountDrafts}
             savedHeadcountDrafts={savedHeadcountDrafts}
-            splitDirtySlotIds={splitDirtySlotIds}
-            headcountDirtySlotIds={headcountDirtySlotIds}
-            pendingHeadcountSlotId={
+            splitDirtyEventTimeBlockIds={splitDirtyEventTimeBlockIds}
+            headcountDirtyEventTimeBlockIds={headcountDirtyEventTimeBlockIds}
+            pendingHeadcountEventTimeBlockId={
               saveHeadcounts.isPending
-                ? (saveHeadcounts.variables?.timeSlotId ?? null)
+                ? (saveHeadcounts.variables?.eventTimeBlockId ?? null)
                 : null
             }
-            pendingSplitSlotId={
+            pendingSplitEventTimeBlockId={
               splitShifts.isPending
-                ? (splitShifts.variables?.slotView.slot.id ?? null)
+                ? (splitShifts.variables?.eventTimeBlockView.slot.id ?? null)
                 : null
             }
-            pendingInclusionSlotId={
+            pendingInclusionEventTimeBlockId={
               saveInclusions.isPending
-                ? (saveInclusions.variables?.timeSlotId ?? null)
+                ? (saveInclusions.variables?.eventTimeBlockId ?? null)
                 : null
             }
-            onToggleInclusion={({ participationId, timeSlotId, checked }) => {
+            onToggleInclusion={({
+              participationId,
+              eventTimeBlockId,
+              checked,
+            }) => {
               const participationEvents = events.find(
                 (eventView) => eventView.participation.id === participationId,
               );
               const currentIncluded = (participationEvents?.slots ?? [])
-                .filter((slotView) => slotView.included)
-                .map((slotView) => slotView.slot.id);
+                .filter((eventTimeBlockView) => eventTimeBlockView.included)
+                .map((eventTimeBlockView) => eventTimeBlockView.slot.id);
               const nextIncluded = checked
-                ? [...new Set([...currentIncluded, timeSlotId])]
-                : currentIncluded.filter((id) => id !== timeSlotId);
+                ? [...new Set([...currentIncluded, eventTimeBlockId])]
+                : currentIncluded.filter((id) => id !== eventTimeBlockId);
 
               saveInclusions.mutate({
                 participationId,
-                timeSlotId,
-                timeSlotIds: nextIncluded,
+                eventTimeBlockId,
+                eventTimeBlockIds: nextIncluded,
               });
             }}
-            onSplitFormChange={({ timeSlotId, nextForm }) =>
+            onSplitFormChange={({ eventTimeBlockId, nextForm }) =>
               dispatchEditSession({
                 type: 'split-form-changed',
-                timeSlotId,
+                eventTimeBlockId,
                 nextForm,
               })
             }
-            onSplitShifts={({ participationId, slotView }) =>
-              splitShifts.mutate({ participationId, slotView })
+            onSplitShifts={({ participationId, eventTimeBlockView }) =>
+              splitShifts.mutate({ participationId, eventTimeBlockView })
             }
             onHeadcountChange={({ shiftId, roleId, value }) =>
               dispatchEditSession({
@@ -756,12 +776,12 @@ function PrepareWorkspaceRoute() {
             }
             onSaveHeadcounts={({
               participationId,
-              timeSlotId,
+              eventTimeBlockId,
               headcountSavesByShift,
             }) =>
               saveHeadcounts.mutate({
                 participationId,
-                timeSlotId,
+                eventTimeBlockId,
                 headcountSavesByShift,
               })
             }

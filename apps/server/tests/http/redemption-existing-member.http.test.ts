@@ -5,7 +5,7 @@ import {
   identityAudit,
   member,
   ministryInvitation,
-  ministryVolunteer,
+  ministryMembership,
   outboxMessage,
   session,
   user,
@@ -256,9 +256,9 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       expect(acceptedInvitation?.status).toBe('accepted');
       const [membership] = await testDb
         .select()
-        .from(ministryVolunteer)
+        .from(ministryMembership)
         .innerJoin(member, eq(member.userId, fixture.existingChurchMemberA))
-        .where(eq(ministryVolunteer.ministryId, fixture.ministryOneA));
+        .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
       expect(membership).toBeDefined();
     });
 

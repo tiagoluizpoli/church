@@ -353,7 +353,9 @@ export class RedemptionController implements FastifyController {
             withdrawnAssignments: preview.withdrawnAssignments.map(
               (assignment) => ({
                 eventName: assignment.eventName,
-                timeSlotStart: fromDate({ date: assignment.timeSlotStart }),
+                eventTimeBlockStart: fromDate({
+                  date: assignment.eventTimeBlockStart,
+                }),
                 roleName: assignment.roleName,
               }),
             ),

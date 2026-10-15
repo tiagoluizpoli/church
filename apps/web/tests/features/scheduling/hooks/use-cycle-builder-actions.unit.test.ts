@@ -17,7 +17,7 @@ function assignment(
 ): CycleBuilderAssignment {
   return {
     churchId: 'church-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     roleId: 'role-1',
     status: 'confirmed',
@@ -42,29 +42,29 @@ function dataWithAssignments(
         end: '2027-01-05T02:59:59.999Z',
         status: 'draft',
         fillRatio: 0,
-        requiredCount: 1,
+        peopleNeeded: 1,
         assignedCount: assignments.length,
-        slotCount: 1,
+        eventTimeBlockCount: 1,
         slots: [
           {
-            slotId: 'slot-1',
+            eventTimeBlockId: 'event-time-block-1',
             label: 'Morning',
             startTime: '2027-01-04T12:00:00.000Z',
             endTime: '2027-01-04T13:00:00.000Z',
             included: true,
-            requiredCount: 1,
+            peopleNeeded: 1,
             assignedCount: assignments.length,
             shiftCount: 1,
             shifts: [
               {
                 shiftId: 'shift-1',
-                slotId: 'slot-1',
+                eventTimeBlockId: 'event-time-block-1',
                 label: 'Morning',
                 startTime: '2027-01-04T12:00:00.000Z',
                 endTime: '2027-01-04T13:00:00.000Z',
-                requiredCount: 1,
+                peopleNeeded: 1,
                 assignedCount: assignments.length,
-                requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+                requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
                 assignments,
                 eligibleVolunteerCount: 2,
                 eligibleVolunteers: [

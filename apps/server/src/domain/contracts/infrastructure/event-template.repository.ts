@@ -2,7 +2,7 @@ import type { ChurchId, EventTemplateId } from '../../branded-ids';
 import type { EventTemplate } from '../../entities/event-template';
 import type { TransactionContext } from './transaction-context';
 
-export interface EventTemplateBlockInput {
+export interface EventTemplateTimeBlockInput {
   label: string;
   startTime: string;
   endTime: string;
@@ -13,7 +13,7 @@ export interface CreateEventTemplateInput {
   churchId: ChurchId;
   name: string;
   weekday: number;
-  blocks: EventTemplateBlockInput[];
+  blocks: EventTemplateTimeBlockInput[];
   tx?: TransactionContext;
 }
 
@@ -22,7 +22,7 @@ export interface UpdateEventTemplateInput {
   templateId: EventTemplateId;
   name: string;
   weekday: number;
-  blocks: EventTemplateBlockInput[];
+  blocks: EventTemplateTimeBlockInput[];
   tx?: TransactionContext;
 }
 

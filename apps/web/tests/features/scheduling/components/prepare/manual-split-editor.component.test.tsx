@@ -35,8 +35,8 @@ describe('ManualSplitEditor mode switching (US3/T022/T023)', () => {
   it('renders as shadcn Select, not a native <select>', () => {
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={SINGLE_FORM}
         onSplitFormChange={vi.fn()}
       />,
@@ -49,8 +49,8 @@ describe('ManualSplitEditor mode switching (US3/T022/T023)', () => {
   it('shows no equal-count or manual-span controls in single-shift mode', () => {
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={SINGLE_FORM}
         onSplitFormChange={vi.fn()}
       />,
@@ -65,8 +65,8 @@ describe('ManualSplitEditor mode switching (US3/T022/T023)', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={EQUAL_FORM}
         onSplitFormChange={onSplitFormChange}
       />,
@@ -87,8 +87,8 @@ describe('ManualSplitEditor mode switching (US3/T022/T023)', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={MANUAL_FORM}
         onSplitFormChange={onSplitFormChange}
       />,
@@ -107,8 +107,8 @@ describe('ManualSplitEditor mode switching (US3/T022/T023)', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={SINGLE_FORM}
         onSplitFormChange={onSplitFormChange}
       />,
@@ -127,8 +127,8 @@ describe('ManualSplitEditor mode switching (US3/T022/T023)', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={EQUAL_FORM}
         onSplitFormChange={onSplitFormChange}
       />,
@@ -149,8 +149,8 @@ describe('ManualSplitEditor manual spans (T001/T023)', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={{ mode: 'manual', equalCount: '2', manualSpans: [] }}
         onSplitFormChange={onSplitFormChange}
       />,
@@ -172,8 +172,8 @@ describe('ManualSplitEditor manual spans (T001/T023)', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ManualSplitEditor
-        slotIndex={0}
-        slotId="slot-1"
+        eventTimeBlockIndex={0}
+        eventTimeBlockId="event-time-block-1"
         splitForm={{
           mode: 'manual',
           equalCount: '2',
@@ -195,24 +195,27 @@ describe('ManualSplitEditor manual spans (T001/T023)', () => {
 });
 
 describe('createManualSplitSchema regression-equivalence with validateManualSpans (Iteration 2/T048a/FR-027)', () => {
-  const SLOT_VIEW: GetCycleParticipation200EventsItem['slots'][number] = {
-    slot: {
-      id: 'slot-1',
-      churchId: 'church-1',
-      eventId: 'event-1',
-      startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
-      endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
-      label: 'Greeter',
-      status: 'active',
+  const EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['slots'][number] =
+    {
+      slot: {
+        id: 'event-time-block-1',
+        churchId: 'church-1',
+        eventId: 'event-1',
+        startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
+        endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
+        label: 'Greeter',
+        status: 'active',
+        requirements: [],
+      },
+      included: true,
+      shifts: [],
       requirements: [],
-    },
-    included: true,
-    shifts: [],
-    requirements: [],
-  };
+    };
 
   function parseManual(spans: SplitFormState['manualSpans']) {
-    return createManualSplitSchema({ slotView: SLOT_VIEW }).safeParse({
+    return createManualSplitSchema({
+      eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
+    }).safeParse({
       mode: 'manual',
       equalCount: '2',
       manualSpans: spans,
@@ -318,7 +321,9 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
 
   it('is a no-op (never rejects) in equal-split mode, matching validateManualSpans only being consulted for manual mode', () => {
     expect(
-      createManualSplitSchema({ slotView: SLOT_VIEW }).safeParse({
+      createManualSplitSchema({
+        eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
+      }).safeParse({
         mode: 'equal',
         equalCount: '3',
         manualSpans: [
@@ -332,19 +337,21 @@ describe('createManualSplitSchema regression-equivalence with validateManualSpan
     ).toBe(true);
   });
 
-  it('accepts a manual span within a parent TimeSlot whose own bounds cross midnight', () => {
-    const overnightSlotView: GetCycleParticipation200EventsItem['slots'][number] =
+  it('accepts a manual span within a parent EventTimeBlock whose own bounds cross midnight', () => {
+    const overnightEventTimeBlockView: GetCycleParticipation200EventsItem['slots'][number] =
       {
-        ...SLOT_VIEW,
+        ...EVENT_TIME_BLOCK_VIEW,
         slot: {
-          ...SLOT_VIEW.slot,
+          ...EVENT_TIME_BLOCK_VIEW.slot,
           startTime: '2026-07-12T22:00:00Z',
           endTime: '2026-07-13T02:00:00Z',
         },
       };
 
     expect(
-      createManualSplitSchema({ slotView: overnightSlotView }).safeParse({
+      createManualSplitSchema({
+        eventTimeBlockView: overnightEventTimeBlockView,
+      }).safeParse({
         mode: 'manual',
         equalCount: '2',
         manualSpans: [

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { cycleMapper, cycleResponseSchema } from '@/api/dtos/cycle.dto';
 import { Cycle } from '@/domain/entities/cycle';
 import { Event } from '@/domain/entities/event';
-import { TimeSlot } from '@/domain/entities/time-slot';
+import { EventTimeBlock } from '@/domain/entities/event-time-block';
 
 function createCycle() {
   return new Cycle({
@@ -35,8 +35,8 @@ function createEvent() {
   );
 }
 
-function createTimeSlot() {
-  return new TimeSlot(
+function createEventTimeBlock() {
+  return new EventTimeBlock(
     {
       churchId: '11111111-1111-1111-1111-111111111111',
       eventId: '33333333-3333-3333-3333-333333333333',
@@ -85,8 +85,8 @@ describe('cycleMapper', () => {
   it('maps cycle details with an event that has multiple slots', () => {
     const cycle = createCycle();
     const event = createEvent();
-    const slotOne = createTimeSlot();
-    const slotTwo = new TimeSlot(
+    const eventTimeBlockOne = createEventTimeBlock();
+    const eventTimeBlockTwo = new EventTimeBlock(
       {
         churchId: '11111111-1111-1111-1111-111111111111',
         eventId: '33333333-3333-3333-3333-333333333333',
@@ -99,7 +99,7 @@ describe('cycleMapper', () => {
 
     const response = cycleMapper.detailsToResponse({
       cycle,
-      events: [{ event, slots: [slotOne, slotTwo] }],
+      events: [{ event, slots: [eventTimeBlockOne, eventTimeBlockTwo] }],
     });
 
     expect(response.cycle.id).toBe('22222222-2222-2222-2222-222222222222');

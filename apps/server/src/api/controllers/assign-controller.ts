@@ -228,12 +228,11 @@ export class AssignController implements FastifyController {
             message: 'Not a leader of this team',
           });
         }
-        const cycles =
-          await this.participationManager.listMinistryCycleSummaries({
-            churchId: ChurchId.from(request.churchId),
-            ministryId: MinistryId.from(ministryId),
-            teamId: TeamId.from(teamId),
-          });
+        const cycles = await this.participationManager.listScheduleSummaries({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          teamId: TeamId.from(teamId),
+        });
         return reply.send({
           cycles: cycles.map((cycle) => ({
             cycleId: cycle.cycleId,
@@ -251,7 +250,7 @@ export class AssignController implements FastifyController {
           operationId: 'getCycleBuilderData',
           summary: 'Get cycle builder data for a Ministry',
           description:
-            "Get a Ministry's schedule-building view of a Cycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.",
+            "Get a Ministry's schedule-building view of a Cycle: its MinistryParticipations, Shifts, ShiftRequirements, and Assignments.",
           querystring: cycleMinistryQuerySchema,
           response: {
             200: cycleBuilderResponseSchema,
@@ -527,7 +526,7 @@ export class AssignController implements FastifyController {
           operationId: 'getParticipationCompletion',
           summary: "Get a MinistryParticipation's staffing completion",
           description:
-            'Get how fully a MinistryParticipation is staffed against its SlotRequirements.',
+            'Get how fully a MinistryParticipation is staffed against its ShiftRequirements.',
           response: {
             200: participationCompletionResponseSchema,
             403: errorResponseSchema,

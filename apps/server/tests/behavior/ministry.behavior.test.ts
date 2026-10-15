@@ -1,7 +1,7 @@
 import {
   db,
   ministry,
-  ministryVolunteer,
+  ministryMembership,
   organization,
   user,
   volunteer,
@@ -29,7 +29,7 @@ const MV_LEADER_A = 'eeee0001-eeee-eeee-eeee-eeeeeeeeeeee';
 const MV_MEMBER_B = 'ffff0002-ffff-ffff-ffff-ffffffffffff';
 
 async function truncate() {
-  await db.delete(ministryVolunteer);
+  await db.delete(ministryMembership);
   await db.delete(volunteer);
   await db.delete(ministry);
   // Delete the organization, not the church extension row: cascading from the

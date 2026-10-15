@@ -27,8 +27,8 @@ export interface AssignmentAuditLogEntry {
   assignmentId: string;
   volunteerId: string;
   volunteerName: string;
-  slotId: string;
-  slotLabel: string;
+  eventTimeBlockId: string;
+  eventTimeBlockLabel: string;
   roleId: string;
   roleName: string;
   action: AssignmentAuditAction;

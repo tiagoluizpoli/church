@@ -15,7 +15,7 @@ import {
 } from '@church/time';
 import type {
   CycleBuilderEventSummary,
-  CycleBuilderSlotSummary,
+  CycleBuilderEventTimeBlockSummary,
 } from '../../hooks/use-cycle-builder';
 import { churchTimeOfDay } from '@/shared/utils/church-time';
 
@@ -89,7 +89,7 @@ interface EventDayKeysInput {
  * stretches it across two dates west of UTC (and pulls it a day early east of
  * UTC) and grows a phantom column for the neighbouring day. A 22:00 Friday →
  * 01:00 Saturday Event still starts on Friday (US4, #151); its *own* slots
- * are placed under their start day by `eventSlotsOnDay` below, never dragged
+ * are placed under their start day by `eventTimeBlocksOnDay` below, never dragged
  * onto the wrong column by a UTC/browser-timezone read.
  */
 export function eventDayKeys({
@@ -117,7 +117,7 @@ export function deriveEventDates({
   return [...result].sort();
 }
 
-interface EventSlotsOnDayInput {
+interface EventTimeBlocksOnDayInput {
   event: CycleBuilderEventSummary;
   day: string;
   timeZone: string;
@@ -130,11 +130,11 @@ interface EventSlotsOnDayInput {
  * several days, and an assignment made against it would look like it had landed
  * on all of them.
  */
-export function eventSlotsOnDay({
+export function eventTimeBlocksOnDay({
   event,
   day,
   timeZone,
-}: EventSlotsOnDayInput): CycleBuilderSlotSummary[] {
+}: EventTimeBlocksOnDayInput): CycleBuilderEventTimeBlockSummary[] {
   return event.slots.filter(
     (slot) => churchDayOf({ value: slot.startTime, timeZone }) === day,
   );
@@ -156,7 +156,7 @@ interface EventOccursOnDayInput {
  * Saturday session) without the Event earning a second, empty card on the far
  * side — it renders only under its start CalendarDay (US4, #151). A genuinely
  * multi-day event still earns a card on every day it has a slot on, via
- * `eventSlotsOnDay`.
+ * `eventTimeBlocksOnDay`.
  */
 export function eventOccursOnDay({
   event,
@@ -166,7 +166,7 @@ export function eventOccursOnDay({
   if (event.slots.length === 0) {
     return churchDayOf({ value: event.start, timeZone }) === day;
   }
-  return eventSlotsOnDay({ event, day, timeZone }).length > 0;
+  return eventTimeBlocksOnDay({ event, day, timeZone }).length > 0;
 }
 
 interface EnumerateDatesInput {

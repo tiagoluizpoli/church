@@ -7,12 +7,15 @@ import { assignMapper, eligibleVolunteerResponseSchema } from './assign.dto';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
+  eventTimeBlockMapper,
+  eventTimeBlockResponseSchema,
+} from './event-time-block.dto';
+import {
   participationMapper,
   participationResponseSchema,
   shiftRequirementResponseSchema,
   shiftResponseSchema,
 } from './participation.dto';
-import { timeSlotMapper, timeSlotResponseSchema } from './time-slot.dto';
 
 // Cycle builder read (R1) — composes existing atomic schemas; no new leaf shapes.
 // Nesting: cycle -> events -> slots -> shifts.
@@ -31,19 +34,19 @@ export type CycleBuilderShiftViewResponse = z.infer<
   typeof cycleBuilderShiftViewSchema
 >;
 
-export const cycleBuilderSlotViewSchema = z.object({
-  slot: timeSlotResponseSchema,
+export const cycleBuilderEventTimeBlockViewSchema = z.object({
+  slot: eventTimeBlockResponseSchema,
   included: z.boolean(),
   shifts: z.array(cycleBuilderShiftViewSchema),
 });
-export type CycleBuilderSlotViewResponse = z.infer<
-  typeof cycleBuilderSlotViewSchema
+export type CycleBuilderEventTimeBlockViewResponse = z.infer<
+  typeof cycleBuilderEventTimeBlockViewSchema
 >;
 
 export const cycleBuilderEventViewSchema = z.object({
   participation: participationResponseSchema, // carries state (assign/published)
   event: eventResponseSchema,
-  slots: z.array(cycleBuilderSlotViewSchema),
+  slots: z.array(cycleBuilderEventTimeBlockViewSchema),
 });
 export type CycleBuilderEventViewResponse = z.infer<
   typeof cycleBuilderEventViewSchema
@@ -75,7 +78,7 @@ export const publishCycleParticipationOutcomeSchema = z.object({
     'assigning',
     'published',
   ]),
-  requiredCount: z.number(),
+  peopleNeeded: z.number(),
   assignedCount: z.number(),
 });
 export type PublishCycleParticipationOutcomeResponse = z.infer<
@@ -97,7 +100,7 @@ export const publishCycleMapper = {
       participations: view.participations.map((participation) => ({
         participationId: participation.participationId as string,
         state: participation.state,
-        requiredCount: participation.requiredCount,
+        peopleNeeded: participation.peopleNeeded,
         assignedCount: participation.assignedCount,
       })),
     };
@@ -110,10 +113,10 @@ export const cycleBuilderMapper = {
       events: view.events.map((eventView) => ({
         participation: participationMapper.toResponse(eventView.participation),
         event: eventMapper.toResponse(eventView.event),
-        slots: eventView.slots.map((slotView) => ({
-          slot: timeSlotMapper.toResponse(slotView.slot),
-          included: slotView.included,
-          shifts: slotView.shifts.map((shiftView) => ({
+        slots: eventView.slots.map((eventTimeBlockView) => ({
+          slot: eventTimeBlockMapper.toResponse(eventTimeBlockView.slot),
+          included: eventTimeBlockView.included,
+          shifts: eventTimeBlockView.shifts.map((shiftView) => ({
             shift: participationMapper.shiftToResponse(shiftView.shift),
             requirements: shiftView.requirements.map((requirement) => ({
               ...participationMapper.requirementToResponse(

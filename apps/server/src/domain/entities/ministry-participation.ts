@@ -42,19 +42,19 @@ export interface PublishParticipationInput {
 
 export interface CalculateCompletionPercentInput {
   assignedCount: number;
-  requiredCount: number;
+  peopleNeeded: number;
 }
 
 /** Zero required headcount counts as fully staffed (CL-022). */
 export function calculateCompletionPercent({
   assignedCount,
-  requiredCount,
+  peopleNeeded,
 }: CalculateCompletionPercentInput): number {
-  if (requiredCount <= 0) {
+  if (peopleNeeded <= 0) {
     return 100;
   }
 
-  return Math.min(100, Math.round((assignedCount / requiredCount) * 100));
+  return Math.min(100, Math.round((assignedCount / peopleNeeded) * 100));
 }
 
 export type CyclePrepareStatus = 'not_started' | 'in_progress' | 'published';

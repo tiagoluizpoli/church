@@ -1,8 +1,8 @@
 import {
   member,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   volunteer,
 } from '@church/db';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -26,7 +26,7 @@ import type {
   AuthorityActorRepository,
   ResolveAuthorityActorInput,
 } from '../../domain/contracts/infrastructure/authority-actor.repository';
-import type { MinistryAccessLevel } from '../../domain/entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
 import { getClient, withActiveVolunteer } from '../repositories/helpers';
 import type { AnyDrizzleDb } from '../repositories/types';
 
@@ -177,16 +177,16 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
     const { db, churchId, volunteerId } = input;
     const rows = await db
       .select({
-        id: ministryVolunteer.id,
-        ministryId: ministryVolunteer.ministryId,
-        ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
+        id: ministryMembership.id,
+        ministryId: ministryMembership.ministryId,
+        ministryAccessLevel: ministryMembership.ministryAccessLevel,
       })
-      .from(ministryVolunteer)
+      .from(ministryMembership)
       .where(
         and(
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.churchId, churchId),
-          eq(ministryVolunteer.status, 'active'),
+          eq(ministryMembership.volunteerId, volunteerId),
+          eq(ministryMembership.churchId, churchId),
+          eq(ministryMembership.status, 'active'),
         ),
       );
 
@@ -198,22 +198,22 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
     const [teamRows, roleRows] = await Promise.all([
       db
         .select({
-          membershipId: ministryVolunteerTeam.ministryVolunteerId,
-          teamId: ministryVolunteerTeam.teamId,
-          accessLevel: ministryVolunteerTeam.accessLevel,
+          membershipId: ministryMembershipTeam.ministryMembershipId,
+          teamId: ministryMembershipTeam.teamId,
+          accessLevel: ministryMembershipTeam.accessLevel,
         })
-        .from(ministryVolunteerTeam)
+        .from(ministryMembershipTeam)
         .where(
-          inArray(ministryVolunteerTeam.ministryVolunteerId, membershipIds),
+          inArray(ministryMembershipTeam.ministryMembershipId, membershipIds),
         ),
       db
         .select({
-          membershipId: ministryVolunteerRole.ministryVolunteerId,
-          roleId: ministryVolunteerRole.roleId,
+          membershipId: ministryMembershipRole.ministryMembershipId,
+          roleId: ministryMembershipRole.roleId,
         })
-        .from(ministryVolunteerRole)
+        .from(ministryMembershipRole)
         .where(
-          inArray(ministryVolunteerRole.ministryVolunteerId, membershipIds),
+          inArray(ministryMembershipRole.ministryMembershipId, membershipIds),
         ),
     ]);
 

@@ -1,8 +1,8 @@
 import {
   type CycleBuilderData,
   type CycleBuilderEventSummary,
+  type CycleBuilderEventTimeBlockSummary,
   type CycleBuilderShiftSummary,
-  type CycleBuilderSlotSummary,
   isActiveAssignment,
 } from '../../hooks/use-cycle-builder';
 
@@ -24,7 +24,7 @@ export function findShiftById({
 
 export interface ShiftContext {
   event: CycleBuilderEventSummary;
-  slot: CycleBuilderSlotSummary;
+  slot: CycleBuilderEventTimeBlockSummary;
   shift: CycleBuilderShiftSummary;
 }
 
@@ -66,7 +66,7 @@ interface RoleHasRoomInput {
 export function roleHasRoom({ shift, roleId }: RoleHasRoomInput): boolean {
   const required =
     shift.requirements.find((requirement) => requirement.roleId === roleId)
-      ?.requiredCount ?? 0;
+      ?.peopleNeeded ?? 0;
   const active = shift.assignments.filter(
     (assignment) =>
       assignment.roleId === roleId &&
@@ -108,14 +108,14 @@ export interface FocusedShift {
   roleId: string;
   /** The role's own name, for copy that must not read "this role" (B-2). */
   roleLabel: string;
-  slotLabel: string;
+  eventTimeBlockLabel: string;
   ids: string[];
   idealVolunteerId?: string;
 }
 
 interface BuildFocusLabelInput {
   roleLabel: string;
-  slotLabel: string;
+  eventTimeBlockLabel: string;
   eventTitle: string;
   dateText: string;
 }
@@ -129,9 +129,9 @@ interface BuildFocusLabelInput {
  */
 export function buildFocusLabel({
   roleLabel,
-  slotLabel,
+  eventTimeBlockLabel,
   eventTitle,
   dateText,
 }: BuildFocusLabelInput): string {
-  return `${roleLabel} · ${slotLabel} · ${eventTitle} · ${dateText}`;
+  return `${roleLabel} · ${eventTimeBlockLabel} · ${eventTitle} · ${dateText}`;
 }

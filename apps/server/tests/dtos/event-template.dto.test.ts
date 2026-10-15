@@ -5,10 +5,10 @@ import {
   eventTemplateResponseSchema,
 } from '@/api/dtos/event-template.dto';
 import { EventTemplate } from '@/domain/entities/event-template';
-import { TimeBlock } from '@/domain/entities/time-block';
+import { TemplateTimeBlock } from '@/domain/entities/template-time-block';
 
 function createTemplate() {
-  const blockOne = new TimeBlock({
+  const blockOne = new TemplateTimeBlock({
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       templateId: '22222222-2222-2222-2222-222222222222',
@@ -19,7 +19,7 @@ function createTemplate() {
     },
     id: '33333333-3333-3333-3333-333333333331',
   });
-  const blockTwo = new TimeBlock({
+  const blockTwo = new TemplateTimeBlock({
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       templateId: '22222222-2222-2222-2222-222222222222',

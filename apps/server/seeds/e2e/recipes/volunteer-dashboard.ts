@@ -152,7 +152,7 @@ export function createVolunteerDashboardRecipe({
       requirements: {
         careHost: {
           roleId: care.roles.careHost.id,
-          requiredCount: 1,
+          peopleNeeded: 1,
           teamId: care.teams.care.id,
         },
       },
@@ -184,7 +184,7 @@ export function createVolunteerDashboardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, requiredCount: 1 },
+        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
       },
     });
 
@@ -206,7 +206,7 @@ export function createVolunteerDashboardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, requiredCount: 1 },
+        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
       },
     });
 

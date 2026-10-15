@@ -3,7 +3,10 @@ import { z } from 'zod';
 import type { CycleDetails } from '../../domain/contracts/application/cycle-manager';
 import type { Cycle } from '../../domain/entities/cycle';
 import { eventMapper, eventResponseSchema } from './event.dto';
-import { timeSlotMapper, timeSlotResponseSchema } from './time-slot.dto';
+import {
+  eventTimeBlockMapper,
+  eventTimeBlockResponseSchema,
+} from './event-time-block.dto';
 
 export const createCycleBodySchema = z.object({
   name: z.string().min(1),
@@ -35,7 +38,7 @@ export const cycleDetailsResponseSchema = z.object({
   events: z.array(
     z.object({
       event: eventResponseSchema,
-      slots: z.array(timeSlotResponseSchema),
+      slots: z.array(eventTimeBlockResponseSchema),
     }),
   ),
 });
@@ -65,7 +68,7 @@ export const cycleMapper = {
       cycle: toCycleResponse(details.cycle),
       events: details.events.map((eventGroup) => ({
         event: eventMapper.toResponse(eventGroup.event),
-        slots: eventGroup.slots.map(timeSlotMapper.toResponse),
+        slots: eventGroup.slots.map(eventTimeBlockMapper.toResponse),
       })),
     };
   },

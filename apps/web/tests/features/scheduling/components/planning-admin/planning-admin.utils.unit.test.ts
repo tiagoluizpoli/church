@@ -4,15 +4,15 @@ import type {
   CycleEventGroup,
   CycleFormState,
   SelectedCycle,
-  TemplateBlockDraft,
   TemplateFormState,
+  TemplateTimeBlockDraft,
 } from '@/features/scheduling/components/planning-admin/planning-admin.types';
 import {
-  calculateTotalSlots,
+  calculateTotalEventTimeBlocks,
   canCreateCycle,
   canCreateTemplate,
   cycleIsSent,
-  describeTimeBlockSpan,
+  describeTemplateTimeBlockSpan,
   eventSpanLabel,
   eventStatusBadgeVariant,
   isMultiDayEvent,
@@ -34,7 +34,7 @@ function makeCycle(overrides: Partial<SelectedCycle> = {}): SelectedCycle {
   };
 }
 
-function makeEventGroup(slotCount: number): CycleEventGroup {
+function makeEventGroup(eventTimeBlockCount: number): CycleEventGroup {
   return {
     event: {
       id: 'event-1',
@@ -47,8 +47,8 @@ function makeEventGroup(slotCount: number): CycleEventGroup {
       createdAt: '2027-01-01T00:00:00.000Z',
       updatedAt: '2027-01-01T00:00:00.000Z',
     },
-    slots: Array.from({ length: slotCount }, (_unused, index) => ({
-      id: `slot-${index}`,
+    slots: Array.from({ length: eventTimeBlockCount }, (_unused, index) => ({
+      id: `event-time-block-${index}`,
       churchId: 'church-1',
       eventId: 'event-1',
       startTime: '2027-01-03T09:00:00.000Z',
@@ -70,11 +70,11 @@ function makeCycleForm(
   };
 }
 
-function makeTemplateBlock(
-  overrides: Partial<TemplateBlockDraft> = {},
-): TemplateBlockDraft {
+function makeTemplateTimeBlock(
+  overrides: Partial<TemplateTimeBlockDraft> = {},
+): TemplateTimeBlockDraft {
   return {
-    id: 'template-block-1',
+    id: 'template-time-block-1',
     label: 'Welcome',
     startTime: fromTimeColumn({ value: '09:00:00' }),
     endTime: fromTimeColumn({ value: '09:30:00' }),
@@ -88,7 +88,7 @@ function makeTemplateForm(
   return {
     name: 'Sunday',
     weekday: '0',
-    blocks: [makeTemplateBlock()],
+    blocks: [makeTemplateTimeBlock()],
     ...overrides,
   };
 }
@@ -156,21 +156,21 @@ describe('canCreateTemplate', () => {
     expect(
       canCreateTemplate({
         templateForm: makeTemplateForm({
-          blocks: [makeTemplateBlock({ label: '' })],
+          blocks: [makeTemplateTimeBlock({ label: '' })],
         }),
       }),
     ).toBe(false);
     expect(
       canCreateTemplate({
         templateForm: makeTemplateForm({
-          blocks: [makeTemplateBlock({ startTime: null })],
+          blocks: [makeTemplateTimeBlock({ startTime: null })],
         }),
       }),
     ).toBe(false);
     expect(
       canCreateTemplate({
         templateForm: makeTemplateForm({
-          blocks: [makeTemplateBlock({ endTime: null })],
+          blocks: [makeTemplateTimeBlock({ endTime: null })],
         }),
       }),
     ).toBe(false);
@@ -181,7 +181,7 @@ describe('canCreateTemplate', () => {
       canCreateTemplate({
         templateForm: makeTemplateForm({
           blocks: [
-            makeTemplateBlock({
+            makeTemplateTimeBlock({
               startTime: fromTimeColumn({ value: '22:00:00' }),
               endTime: fromTimeColumn({ value: '06:00:00' }),
             }),
@@ -196,7 +196,7 @@ describe('canCreateTemplate', () => {
     expect(
       canCreateTemplate({
         templateForm: makeTemplateForm({
-          blocks: [makeTemplateBlock({ startTime: time, endTime: time })],
+          blocks: [makeTemplateTimeBlock({ startTime: time, endTime: time })],
         }),
       }),
     ).toBe(false);
@@ -269,10 +269,10 @@ describe('shiftedEnd', () => {
   });
 });
 
-describe('describeTimeBlockSpan', () => {
+describe('describeTemplateTimeBlockSpan', () => {
   it('describes a same-day block by its duration', () => {
     expect(
-      describeTimeBlockSpan({
+      describeTemplateTimeBlockSpan({
         startTime: fromTimeColumn({ value: '09:00:00' }),
         endTime: fromTimeColumn({ value: '09:30:00' }),
       }),
@@ -281,7 +281,7 @@ describe('describeTimeBlockSpan', () => {
 
   it('marks an overnight block as ending the next day (ADR-0003)', () => {
     expect(
-      describeTimeBlockSpan({
+      describeTemplateTimeBlockSpan({
         startTime: fromTimeColumn({ value: '22:00:00' }),
         endTime: fromTimeColumn({ value: '02:00:00' }),
       }),
@@ -289,15 +289,15 @@ describe('describeTimeBlockSpan', () => {
   });
 });
 
-describe('calculateTotalSlots', () => {
+describe('calculateTotalEventTimeBlocks', () => {
   it('sums slot counts across every event group', () => {
     const events = [makeEventGroup(2), makeEventGroup(1)];
 
-    expect(calculateTotalSlots({ events })).toBe(3);
+    expect(calculateTotalEventTimeBlocks({ events })).toBe(3);
   });
 
   it('is zero for undefined events', () => {
-    expect(calculateTotalSlots({ events: undefined })).toBe(0);
+    expect(calculateTotalEventTimeBlocks({ events: undefined })).toBe(0);
   });
 });
 

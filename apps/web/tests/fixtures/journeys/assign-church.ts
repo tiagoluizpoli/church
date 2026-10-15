@@ -143,7 +143,7 @@ export function assignMinistrySchema<
 export const ASSIGN_REQUIREMENT_SCHEMA = z.object({
   id: z.string().min(1),
   roleId: z.string().min(1),
-  requiredCount: z.number().int().positive(),
+  peopleNeeded: z.number().int().positive(),
   teamId: z.string().min(1).nullable(),
 });
 
@@ -165,7 +165,7 @@ export function assignEventSchema<const TRequirementKey extends string>({
     startsAt: z.string().min(1),
     endsAt: z.string().min(1),
     participationId: z.string().min(1),
-    timeSlotId: z.string().min(1),
+    eventTimeBlockId: z.string().min(1),
     shiftId: z.string().min(1),
     requirements: keyedObjectSchema({
       keys: requirements,
@@ -178,7 +178,7 @@ export interface LoadAssignJourneyInput {
   testInfo: Pick<TestInfo, 'testId' | 'repeatEachIndex'>;
 }
 
-export interface MinistryCyclePathInput {
+export interface SchedulePathInput {
   ministryId: string;
   cycleId: string;
 }
@@ -239,7 +239,7 @@ export function worshipBuilderPath({
 export function assignPreparePath({
   ministryId,
   cycleId,
-}: MinistryCyclePathInput): string {
+}: SchedulePathInput): string {
   return `/schedules/${ministryId}/${cycleId}`;
 }
 

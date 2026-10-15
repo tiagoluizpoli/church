@@ -139,7 +139,7 @@ export const transferPreviewResponseSchema = z.discriminatedUnion('kind', [
     withdrawnAssignments: z.array(
       z.object({
         eventName: z.string(),
-        timeSlotStart: instantSchema,
+        eventTimeBlockStart: instantSchema,
         roleName: z.string(),
       }),
     ),

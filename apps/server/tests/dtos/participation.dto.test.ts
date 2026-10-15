@@ -7,15 +7,15 @@ import {
 import { CycleId } from '@/domain/branded-ids';
 import type {
   CycleParticipationView,
-  MinistryCycleSummaryView,
+  ParticipationEventTimeBlockView,
   ParticipationEventView,
-  ParticipationSlotView,
+  ScheduleSummaryView,
 } from '@/domain/contracts/application/participation-manager';
 import { Event } from '@/domain/entities/event';
+import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
 import { Shift } from '@/domain/entities/shift';
-import { SlotRequirement } from '@/domain/entities/slot-requirement';
-import { TimeSlot } from '@/domain/entities/time-slot';
+import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 
 function buildParticipation(): MinistryParticipation {
   return new MinistryParticipation({
@@ -42,8 +42,8 @@ function buildEvent(): Event {
   );
 }
 
-function buildSlot(): TimeSlot {
-  return new TimeSlot(
+function buildEventTimeBlock(): EventTimeBlock {
+  return new EventTimeBlock(
     {
       churchId: 'church-1',
       eventId: 'event-1',
@@ -51,7 +51,7 @@ function buildSlot(): TimeSlot {
       endTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
       label: 'Slot A',
     },
-    'slot-1',
+    'event-time-block-1',
   );
 }
 
@@ -60,7 +60,7 @@ function buildShift(label?: string): Shift {
     props: {
       churchId: 'church-1',
       participationId: 'participation-1',
-      timeSlotId: 'slot-1',
+      eventTimeBlockId: 'event-time-block-1',
       startTime: parseInstant({ value: '2026-05-15T09:00:00Z' }),
       endTime: parseInstant({ value: '2026-05-15T09:30:00Z' }),
       label,
@@ -91,7 +91,7 @@ describe('participationMapper', () => {
       expect(participationMapper.shiftToResponse(shift)).toEqual({
         id: 'shift-1',
         participationId: 'participation-1',
-        timeSlotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         startTime: shift.startTime,
         endTime: shift.endTime,
         label: 'First Half',
@@ -108,7 +108,7 @@ describe('participationMapper', () => {
       expect(participationMapper.shiftToResponse(shift)).toEqual({
         id: 'shift-1',
         participationId: 'participation-1',
-        timeSlotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         startTime: shift.startTime,
         endTime: shift.endTime,
         label: undefined,
@@ -118,15 +118,15 @@ describe('participationMapper', () => {
 
   describe('requirementToResponse', () => {
     it('maps a requirement with shiftId, participationId, teamId, and notes present', () => {
-      const requirement = new SlotRequirement(
+      const requirement = new ShiftRequirement(
         {
           churchId: 'church-1',
-          slotId: 'slot-1',
+          eventTimeBlockId: 'event-time-block-1',
           shiftId: 'shift-1',
           participationId: 'participation-1',
           roleId: 'role-1',
           teamId: 'team-1',
-          requiredCount: 2,
+          peopleNeeded: 2,
           notes: 'arrive early',
         },
         'req-1',
@@ -138,18 +138,18 @@ describe('participationMapper', () => {
         participationId: 'participation-1',
         roleId: 'role-1',
         teamId: 'team-1',
-        requiredCount: 2,
+        peopleNeeded: 2,
         notes: 'arrive early',
       });
     });
 
     it('maps a requirement with shiftId, participationId, teamId, and notes absent', () => {
-      const requirement = new SlotRequirement(
+      const requirement = new ShiftRequirement(
         {
           churchId: 'church-1',
-          slotId: 'slot-1',
+          eventTimeBlockId: 'event-time-block-1',
           roleId: 'role-1',
-          requiredCount: 1,
+          peopleNeeded: 1,
         },
         'req-2',
       );
@@ -160,7 +160,7 @@ describe('participationMapper', () => {
         participationId: '',
         roleId: 'role-1',
         teamId: undefined,
-        requiredCount: 1,
+        peopleNeeded: 1,
         notes: undefined,
       });
     });
@@ -182,7 +182,7 @@ describe('participationMapper', () => {
       expect(response.shifts[0]).toEqual({
         id: 'shift-1',
         participationId: 'participation-1',
-        timeSlotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         startTime: shift.startTime,
         endTime: shift.endTime,
         label: 'Only Shift',
@@ -194,29 +194,29 @@ describe('participationMapper', () => {
     it('maps a full nested structure with populated slots, shifts, and requirements', () => {
       const participation = buildParticipation();
       const event = buildEvent();
-      const slot = buildSlot();
+      const slot = buildEventTimeBlock();
       const shift = buildShift('Morning Shift');
-      const requirement = new SlotRequirement(
+      const requirement = new ShiftRequirement(
         {
           churchId: 'church-1',
-          slotId: 'slot-1',
+          eventTimeBlockId: 'event-time-block-1',
           shiftId: 'shift-1',
           participationId: 'participation-1',
           roleId: 'role-1',
-          requiredCount: 1,
+          peopleNeeded: 1,
         },
         'req-1',
       );
 
-      const populatedSlotView: ParticipationSlotView = {
+      const populatedEventTimeBlockView: ParticipationEventTimeBlockView = {
         slot,
         included: true,
         shifts: [shift],
         requirements: [requirement],
       };
 
-      const emptySlotView: ParticipationSlotView = {
-        slot: buildSlot(),
+      const emptyEventTimeBlockView: ParticipationEventTimeBlockView = {
+        slot: buildEventTimeBlock(),
         included: false,
         shifts: [],
         requirements: [],
@@ -225,7 +225,7 @@ describe('participationMapper', () => {
       const eventView: ParticipationEventView = {
         participation,
         event,
-        slots: [populatedSlotView, emptySlotView],
+        slots: [populatedEventTimeBlockView, emptyEventTimeBlockView],
       };
 
       const view: CycleParticipationView = {
@@ -244,26 +244,27 @@ describe('participationMapper', () => {
       );
       expect(mappedEventView.slots).toHaveLength(2);
 
-      const [populatedSlot, emptySlot] = mappedEventView.slots;
-      if (!populatedSlot || !emptySlot) {
+      const [populatedEventTimeBlock, emptyEventTimeBlock] =
+        mappedEventView.slots;
+      if (!populatedEventTimeBlock || !emptyEventTimeBlock) {
         throw new Error('expected mapped slots');
       }
-      expect(populatedSlot.included).toBe(true);
-      expect(populatedSlot.shifts).toHaveLength(1);
-      expect(populatedSlot.requirements).toHaveLength(1);
-      expect(populatedSlot.requirements[0]).toEqual({
+      expect(populatedEventTimeBlock.included).toBe(true);
+      expect(populatedEventTimeBlock.shifts).toHaveLength(1);
+      expect(populatedEventTimeBlock.requirements).toHaveLength(1);
+      expect(populatedEventTimeBlock.requirements[0]).toEqual({
         id: 'req-1',
         shiftId: 'shift-1',
         participationId: 'participation-1',
         roleId: 'role-1',
         teamId: undefined,
-        requiredCount: 1,
+        peopleNeeded: 1,
         notes: undefined,
       });
 
-      expect(emptySlot.included).toBe(false);
-      expect(emptySlot.shifts).toEqual([]);
-      expect(emptySlot.requirements).toEqual([]);
+      expect(emptyEventTimeBlock.included).toBe(false);
+      expect(emptyEventTimeBlock.shifts).toEqual([]);
+      expect(emptyEventTimeBlock.requirements).toEqual([]);
     });
 
     it('maps an empty events list', () => {
@@ -275,22 +276,22 @@ describe('participationMapper', () => {
     });
   });
 
-  describe('ministryCycleSummaryListToResponse', () => {
+  describe('scheduleSummaryListToResponse', () => {
     it('maps a summary view, recovering its CalendarDay bounds from raw Dates', () => {
-      const view: MinistryCycleSummaryView = {
+      const view: ScheduleSummaryView = {
         cycleId: CycleId.from('cycle-1'),
         name: 'July 2026',
         startDate: new Date('2026-07-01T00:00:00.000Z'),
         endDate: new Date('2026-08-01T00:00:00.000Z'),
         isPartOf: true,
         eventCount: 4,
-        slotCount: 8,
+        eventTimeBlockCount: 8,
         status: 'in_progress',
         availabilityRequestedForAll: false,
         availabilityRequestedForAny: true,
       };
 
-      const response = participationMapper.ministryCycleSummaryListToResponse([
+      const response = participationMapper.scheduleSummaryListToResponse([
         view,
       ]);
 
@@ -302,7 +303,7 @@ describe('participationMapper', () => {
           endDate: '2026-08-01',
           isPartOf: true,
           eventCount: 4,
-          slotCount: 8,
+          eventTimeBlockCount: 8,
           status: 'in_progress',
           availabilityRequestedForAll: false,
           availabilityRequestedForAny: true,

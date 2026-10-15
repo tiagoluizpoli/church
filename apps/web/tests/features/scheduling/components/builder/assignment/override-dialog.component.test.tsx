@@ -8,7 +8,7 @@ const baseProps = {
   onOpenChange: vi.fn(),
   conflictType: 'unavailable' as const,
   volunteerName: 'John Doe',
-  slotLabel: '9:00 AM – 11:00 AM',
+  eventTimeBlockLabel: '9:00 AM – 11:00 AM',
   isPending: false,
   onConfirm: vi.fn(),
 };

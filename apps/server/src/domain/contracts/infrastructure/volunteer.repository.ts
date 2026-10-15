@@ -5,7 +5,7 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
-import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { Volunteer, VolunteerStatus } from '../../entities/volunteer';
 import type { TransactionContext } from './transaction-context';
 
@@ -14,7 +14,7 @@ export interface VolunteerLeadership {
   ministryName: string;
 }
 
-/** Mirrors `ministry_volunteer_team.access_level` — TeamLeader is `'leader'` here, scoped to that one team. */
+/** Mirrors `ministry_membership_team.access_level` — TeamLeader is `'leader'` here, scoped to that one team. */
 export type TeamAccessLevel = 'leader' | 'member';
 
 export interface MinistryTeamMembership {

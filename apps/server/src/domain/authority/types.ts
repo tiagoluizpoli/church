@@ -6,12 +6,12 @@ import type {
   UserId,
   VolunteerId,
 } from '../branded-ids';
-import type { MinistryAccessLevel } from '../entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../entities/ministry-membership';
 
 export const CHURCH_ACCESS_LEVEL_OPTIONS = ['member', 'admin'] as const;
 export type ChurchAccessLevel = (typeof CHURCH_ACCESS_LEVEL_OPTIONS)[number];
 
-/** Mirrors `ministry_volunteer_team.access_level` — TeamLeader is `'leader'` here, scoped to that one team. */
+/** Mirrors `ministry_membership_team.access_level` — TeamLeader is `'leader'` here, scoped to that one team. */
 export const TEAM_ACCESS_LEVEL_OPTIONS = ['member', 'leader'] as const;
 export type TeamAccessLevel = (typeof TEAM_ACCESS_LEVEL_OPTIONS)[number];
 

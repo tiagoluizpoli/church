@@ -1,23 +1,23 @@
 import { NotFoundError } from '@church/core';
-import { shift, slotRequirement } from '@church/db';
+import { shift, shiftRequirement } from '@church/db';
 import { toDate } from '@church/time';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type {
   CreateShiftsInput,
   DeleteShiftInput,
-  DeleteShiftsBySlotInput,
+  DeleteShiftsByEventTimeBlockInput,
   GetShiftInput,
   ListRequirementsByParticipationInput,
+  ListShiftsByEventTimeBlockInput,
   ListShiftsByParticipationInput,
-  ListShiftsBySlotInput,
   ShiftRepository,
   UpdateShiftInput,
   UpsertShiftRequirementInput,
 } from '../../domain/contracts/infrastructure/shift.repository';
 import type { Shift } from '../../domain/entities/shift';
-import type { SlotRequirement } from '../../domain/entities/slot-requirement';
+import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
+import { mapShiftRequirement } from '../mappers/event-time-block.mapper';
 import { mapShift } from '../mappers/shift.mapper';
-import { mapSlotRequirement } from '../mappers/slot.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
@@ -45,7 +45,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
           id: entity.id,
           churchId: input.churchId,
           participationId: entity.participationId,
-          timeSlotId: entity.timeSlotId,
+          eventTimeBlockId: entity.eventTimeBlockId,
           startTime: toDate({ instant: entity.startTime }),
           endTime: toDate({ instant: entity.endTime }),
           label: entity.label ?? null,
@@ -97,7 +97,9 @@ export class DrizzleShiftRepository implements ShiftRepository {
     return rows.map(mapShift);
   }
 
-  async listBySlot(input: ListShiftsBySlotInput): Promise<Shift[]> {
+  async listByEventTimeBlock(
+    input: ListShiftsByEventTimeBlockInput,
+  ): Promise<Shift[]> {
     const db = getClient(this.db, input.tx);
     const rows = await db
       .select()
@@ -105,7 +107,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
       .where(
         and(
           eq(shift.participationId, input.participationId),
-          eq(shift.timeSlotId, input.timeSlotId),
+          eq(shift.eventTimeBlockId, input.eventTimeBlockId),
           withChurchIsolation(shift, input.churchId),
         ),
       )
@@ -152,14 +154,16 @@ export class DrizzleShiftRepository implements ShiftRepository {
       );
   }
 
-  async deleteBySlot(input: DeleteShiftsBySlotInput): Promise<void> {
+  async deleteByEventTimeBlock(
+    input: DeleteShiftsByEventTimeBlockInput,
+  ): Promise<void> {
     const db = getClient(this.db, input.tx);
     await db
       .delete(shift)
       .where(
         and(
           eq(shift.participationId, input.participationId),
-          eq(shift.timeSlotId, input.timeSlotId),
+          eq(shift.eventTimeBlockId, input.eventTimeBlockId),
           withChurchIsolation(shift, input.churchId),
         ),
       );
@@ -167,50 +171,50 @@ export class DrizzleShiftRepository implements ShiftRepository {
 
   async upsertRequirement(
     input: UpsertShiftRequirementInput,
-  ): Promise<SlotRequirement> {
+  ): Promise<ShiftRequirement> {
     const db = getClient(this.db, input.tx);
     const teamCondition = input.teamId
-      ? eq(slotRequirement.teamId, input.teamId)
-      : isNull(slotRequirement.teamId);
+      ? eq(shiftRequirement.teamId, input.teamId)
+      : isNull(shiftRequirement.teamId);
     const [existing] = await db
       .select()
-      .from(slotRequirement)
+      .from(shiftRequirement)
       .where(
         and(
-          eq(slotRequirement.shiftId, input.shiftId),
-          eq(slotRequirement.roleId, input.roleId),
+          eq(shiftRequirement.shiftId, input.shiftId),
+          eq(shiftRequirement.roleId, input.roleId),
           teamCondition,
-          withChurchIsolation(slotRequirement, input.churchId),
+          withChurchIsolation(shiftRequirement, input.churchId),
         ),
       )
       .limit(1);
 
     if (existing) {
       const [updated] = await db
-        .update(slotRequirement)
+        .update(shiftRequirement)
         .set({
-          requiredCount: input.requiredCount,
+          peopleNeeded: input.peopleNeeded,
           notes: input.notes ?? null,
         })
-        .where(eq(slotRequirement.id, existing.id))
+        .where(eq(shiftRequirement.id, existing.id))
         .returning();
 
       if (!updated) {
         throw new Error('Slot requirement update failed');
       }
 
-      return mapSlotRequirement(updated);
+      return mapShiftRequirement(updated);
     }
 
     const [inserted] = await db
-      .insert(slotRequirement)
+      .insert(shiftRequirement)
       .values({
         churchId: input.churchId,
         participationId: input.participationId,
         shiftId: input.shiftId,
         roleId: input.roleId,
         teamId: input.teamId ?? null,
-        requiredCount: input.requiredCount,
+        peopleNeeded: input.peopleNeeded,
         notes: input.notes ?? null,
       })
       .returning();
@@ -219,23 +223,23 @@ export class DrizzleShiftRepository implements ShiftRepository {
       throw new Error('Slot requirement insert failed');
     }
 
-    return mapSlotRequirement(inserted);
+    return mapShiftRequirement(inserted);
   }
 
   async listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,
-  ): Promise<SlotRequirement[]> {
+  ): Promise<ShiftRequirement[]> {
     const db = getClient(this.db, input.tx);
     const rows = await db
       .select()
-      .from(slotRequirement)
+      .from(shiftRequirement)
       .where(
         and(
-          eq(slotRequirement.participationId, input.participationId),
-          withChurchIsolation(slotRequirement, input.churchId),
+          eq(shiftRequirement.participationId, input.participationId),
+          withChurchIsolation(shiftRequirement, input.churchId),
         ),
       );
 
-    return rows.map((row) => mapSlotRequirement(row));
+    return rows.map((row) => mapShiftRequirement(row));
   }
 }

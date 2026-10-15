@@ -8,10 +8,10 @@ import {
 import { RoleId, VolunteerId } from '@/domain/branded-ids';
 import type { ScheduleBuilderData } from '@/domain/contracts/application/event-manager';
 import { Assignment } from '@/domain/entities/assignment';
-import { Availability } from '@/domain/entities/availability';
 import { Event } from '@/domain/entities/event';
-import { SlotRequirement } from '@/domain/entities/slot-requirement';
-import { TimeSlot } from '@/domain/entities/time-slot';
+import { EventTimeBlock } from '@/domain/entities/event-time-block';
+import { ShiftRequirement } from '@/domain/entities/shift-requirement';
+import { Availability } from '@/domain/entities/unavailable-shift';
 
 const fullEventProps = {
   churchId: 'church-1',
@@ -113,28 +113,28 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
   it('maps a fully populated schedule builder payload', () => {
     const event = new Event(fullEventProps, 'event-1');
 
-    const requirementWithExtras = new SlotRequirement(
+    const requirementWithExtras = new ShiftRequirement(
       {
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-1',
         teamId: 'team-1',
-        requiredCount: 2,
+        peopleNeeded: 2,
         notes: 'Bring instruments',
       },
       'req-1',
     );
-    const requirementWithoutExtras = new SlotRequirement(
+    const requirementWithoutExtras = new ShiftRequirement(
       {
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-2',
-        requiredCount: 1,
+        peopleNeeded: 1,
       },
       'req-2',
     );
 
-    const slot = new TimeSlot(
+    const slot = new EventTimeBlock(
       {
         churchId: 'church-1',
         eventId: 'event-1',
@@ -143,13 +143,13 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         label: 'Worship Set',
         requirements: [requirementWithExtras, requirementWithoutExtras],
       },
-      'slot-1',
+      'event-time-block-1',
     );
 
     const assignmentWithExtras = new Assignment(
       {
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         participationId: 'participation-1',
         shiftId: 'shift-1',
         volunteerId: 'volunteer-1',
@@ -163,7 +163,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     const assignmentWithoutExtras = new Assignment(
       {
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         volunteerId: 'volunteer-2',
         roleId: 'role-2',
         assignedAt: parseInstant({ value: '2026-01-11T00:00:00Z' }),
@@ -171,7 +171,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       'assignment-2',
     );
 
-    const availabilityMark = new Availability({
+    const unavailableShift = new Availability({
       props: {
         churchId: 'church-1',
         availabilityCheckId: 'check-1',
@@ -186,7 +186,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     const data: ScheduleBuilderData = {
       events: [{ event, slots: [slot] }],
       assignments: [assignmentWithExtras, assignmentWithoutExtras],
-      availability: [availabilityMark],
+      availability: [unavailableShift],
       volunteers: [
         {
           id: VolunteerId.from('volunteer-1'),
@@ -218,9 +218,9 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
     expect(response.events[0]?.event.id).toBe('event-1');
     expect(response.events[0]?.slots).toHaveLength(1);
 
-    const mappedSlot = response.events[0]?.slots[0];
-    expect(mappedSlot).toMatchObject({
-      id: 'slot-1',
+    const mappedEventTimeBlock = response.events[0]?.slots[0];
+    expect(mappedEventTimeBlock).toMatchObject({
+      id: 'event-time-block-1',
       churchId: 'church-1',
       eventId: 'event-1',
       startTime: '2026-05-15T10:00:00.000Z',
@@ -228,21 +228,21 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       label: 'Worship Set',
       status: 'active',
     });
-    expect(mappedSlot?.requirements).toEqual([
+    expect(mappedEventTimeBlock?.requirements).toEqual([
       {
         id: 'req-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-1',
         teamId: 'team-1',
-        requiredCount: 2,
+        peopleNeeded: 2,
         notes: 'Bring instruments',
       },
       {
         id: 'req-2',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         roleId: 'role-2',
         teamId: undefined,
-        requiredCount: 1,
+        peopleNeeded: 1,
         notes: undefined,
       },
     ]);
@@ -251,7 +251,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       {
         id: 'assignment-1',
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         participationId: 'participation-1',
         shiftId: 'shift-1',
         volunteerId: 'volunteer-1',
@@ -264,7 +264,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       {
         id: 'assignment-2',
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         participationId: undefined,
         shiftId: undefined,
         volunteerId: 'volunteer-2',
@@ -350,14 +350,14 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
 
   it('maps an event with slots that have no requirements', () => {
     const event = new Event(minimalEventProps, 'event-2');
-    const slot = new TimeSlot(
+    const slot = new EventTimeBlock(
       {
         churchId: 'church-2',
         eventId: 'event-2',
         startTime: parseInstant({ value: '2026-05-16T10:00:00Z' }),
         endTime: parseInstant({ value: '2026-05-16T11:00:00Z' }),
       },
-      'slot-2',
+      'event-time-block-2',
     );
 
     const data: ScheduleBuilderData = {

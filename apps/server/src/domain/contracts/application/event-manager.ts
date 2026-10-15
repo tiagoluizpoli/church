@@ -6,10 +6,10 @@ import type {
   VolunteerId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
-import type { Availability } from '../../entities/availability';
 import type { Event, EventStatus } from '../../entities/event';
-import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
-import type { TimeSlot } from '../../entities/time-slot';
+import type { EventTimeBlock } from '../../entities/event-time-block';
+import type { MinistryAccessLevel } from '../../entities/ministry-membership';
+import type { Availability } from '../../entities/unavailable-shift';
 
 export interface ListEventsInput {
   churchId: ChurchId;
@@ -19,7 +19,7 @@ export interface ListEventsInput {
 
 export interface ScheduleBuilderEventGroup {
   event: Event;
-  slots: TimeSlot[];
+  slots: EventTimeBlock[];
 }
 
 export interface ScheduleBuilderVolunteerOption {

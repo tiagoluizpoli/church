@@ -18,7 +18,7 @@ export interface ListActiveMembershipsInput {
 }
 
 export interface ActiveMinistryMembership {
-  ministryVolunteerId: string;
+  ministryMembershipId: string;
   volunteerId: VolunteerId;
   volunteerName: string;
 }
@@ -26,13 +26,13 @@ export interface ActiveMinistryMembership {
 export interface ListChecksByCycleInput {
   churchId: ChurchId;
   cycleId: CycleId;
-  ministryVolunteerIds?: string[];
+  ministryMembershipIds?: string[];
   tx?: TransactionContext;
 }
 
 export interface NewAvailabilityCheckInput {
   cycleId: CycleId;
-  ministryVolunteerId: string;
+  ministryMembershipId: string;
 }
 
 export interface CreateChecksInput {

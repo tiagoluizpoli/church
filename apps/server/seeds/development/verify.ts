@@ -3,9 +3,9 @@ import {
   church,
   member,
   ministry,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   organization,
   role,
   team,
@@ -139,14 +139,14 @@ async function ministryProblems({
   const [memberships] = await db
     .select({
       total: count(),
-      leaders: sql<number>`count(*) filter (where ${ministryVolunteer.ministryAccessLevel} = 'leader')::int`,
+      leaders: sql<number>`count(*) filter (where ${ministryMembership.ministryAccessLevel} = 'leader')::int`,
     })
-    .from(ministryVolunteer)
+    .from(ministryMembership)
     .where(
       and(
-        eq(ministryVolunteer.ministryId, ministryId),
-        eq(ministryVolunteer.status, 'active'),
-        isNull(ministryVolunteer.leftAt),
+        eq(ministryMembership.ministryId, ministryId),
+        eq(ministryMembership.status, 'active'),
+        isNull(ministryMembership.leftAt),
       ),
     );
   if (memberships?.total !== expected.memberships) {
@@ -162,15 +162,15 @@ async function ministryProblems({
 
   const [qualifications] = await db
     .select({ value: count() })
-    .from(ministryVolunteerRole)
+    .from(ministryMembershipRole)
     .innerJoin(
-      ministryVolunteer,
-      eq(ministryVolunteer.id, ministryVolunteerRole.ministryVolunteerId),
+      ministryMembership,
+      eq(ministryMembership.id, ministryMembershipRole.ministryMembershipId),
     )
-    .innerJoin(role, eq(role.id, ministryVolunteerRole.roleId))
+    .innerJoin(role, eq(role.id, ministryMembershipRole.roleId))
     .where(
       and(
-        eq(ministryVolunteer.ministryId, ministryId),
+        eq(ministryMembership.ministryId, ministryId),
         eq(role.ministryId, ministryId),
       ),
     );
@@ -192,12 +192,12 @@ async function ministryProblems({
   const teamLeaders = byName({
     rows: await db
       .select({ name: team.name, value: count() })
-      .from(ministryVolunteerTeam)
-      .innerJoin(team, eq(team.id, ministryVolunteerTeam.teamId))
+      .from(ministryMembershipTeam)
+      .innerJoin(team, eq(team.id, ministryMembershipTeam.teamId))
       .where(
         and(
           eq(team.ministryId, ministryId),
-          eq(ministryVolunteerTeam.accessLevel, 'leader'),
+          eq(ministryMembershipTeam.accessLevel, 'leader'),
         ),
       )
       .groupBy(team.name),
@@ -355,9 +355,9 @@ async function graphWideProblems({ db }: DbInput): Promise<string[]> {
   const crossMinistry = await countOf({
     db,
     query: sql`select count(*) as value from (
-        select ${ministryVolunteer.volunteerId} from ${ministryVolunteer}
-        where ${ministryVolunteer.status} = 'active' and ${ministryVolunteer.leftAt} is null
-        group by ${ministryVolunteer.volunteerId} having count(*) > 1
+        select ${ministryMembership.volunteerId} from ${ministryMembership}
+        where ${ministryMembership.status} = 'active' and ${ministryMembership.leftAt} is null
+        group by ${ministryMembership.volunteerId} having count(*) > 1
       ) as cross_ministry`,
   });
   if (crossMinistry !== expectedCrossMinistryVolunteers()) {
@@ -369,7 +369,7 @@ async function graphWideProblems({ db }: DbInput): Promise<string[]> {
   const outsideChurch = await countOf({
     db,
     query: sql`select (
-        (select count(*) from ${ministryVolunteer} mv
+        (select count(*) from ${ministryMembership} mv
           join ${volunteer} v on v.id = mv.volunteer_id
           join ${ministry} m on m.id = mv.ministry_id
           where mv.church_id <> v.church_id or mv.church_id <> m.church_id)
@@ -377,12 +377,12 @@ async function graphWideProblems({ db }: DbInput): Promise<string[]> {
           where r.church_id <> m.church_id)
       + (select count(*) from ${team} t join ${ministry} m on m.id = t.ministry_id
           where t.church_id <> m.church_id)
-      + (select count(*) from ${ministryVolunteerRole} q
-          join ${ministryVolunteer} mv on mv.id = q.ministry_volunteer_id
+      + (select count(*) from ${ministryMembershipRole} q
+          join ${ministryMembership} mv on mv.id = q.ministry_membership_id
           join ${role} r on r.id = q.role_id
           where q.church_id <> mv.church_id or r.church_id <> mv.church_id)
-      + (select count(*) from ${ministryVolunteerTeam} tm
-          join ${ministryVolunteer} mv on mv.id = tm.ministry_volunteer_id
+      + (select count(*) from ${ministryMembershipTeam} tm
+          join ${ministryMembership} mv on mv.id = tm.ministry_membership_id
           join ${team} t on t.id = tm.team_id
           where tm.church_id <> mv.church_id or t.church_id <> mv.church_id)
       + (select count(*) from ${volunteer} v
@@ -397,11 +397,11 @@ async function graphWideProblems({ db }: DbInput): Promise<string[]> {
   const misqualified = await countOf({
     db,
     query: sql`select (
-        (select count(*) from ${ministryVolunteer} mv
-          where not exists (select 1 from ${ministryVolunteerRole} q
-            where q.ministry_volunteer_id = mv.id))
-      + (select count(*) from ${ministryVolunteerRole} q
-          join ${ministryVolunteer} mv on mv.id = q.ministry_volunteer_id
+        (select count(*) from ${ministryMembership} mv
+          where not exists (select 1 from ${ministryMembershipRole} q
+            where q.ministry_membership_id = mv.id))
+      + (select count(*) from ${ministryMembershipRole} q
+          join ${ministryMembership} mv on mv.id = q.ministry_membership_id
           join ${role} r on r.id = q.role_id
           where r.ministry_id <> mv.ministry_id)
       ) as value`,

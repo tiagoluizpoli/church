@@ -14,9 +14,9 @@ const getCycle = vi.fn();
 const createPlanningEvent = vi.fn().mockResolvedValue({ id: 'event-new' });
 const updatePlanningEvent = vi.fn().mockResolvedValue({});
 const cancelPlanningEvent = vi.fn().mockResolvedValue(undefined);
-const createPlanningEventSlot = vi.fn().mockResolvedValue({});
-const updatePlanningEventSlot = vi.fn().mockResolvedValue({});
-const deletePlanningEventSlot = vi.fn().mockResolvedValue(undefined);
+const createPlanningEventTimeBlock = vi.fn().mockResolvedValue({});
+const updatePlanningEventTimeBlock = vi.fn().mockResolvedValue({});
+const deletePlanningEventTimeBlock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -26,12 +26,12 @@ vi.mock('@/utils/api-instances', () => ({
     createPlanningEvent: (...args: unknown[]) => createPlanningEvent(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
     cancelPlanningEvent: (...args: unknown[]) => cancelPlanningEvent(...args),
-    createPlanningEventSlot: (...args: unknown[]) =>
-      createPlanningEventSlot(...args),
-    updatePlanningEventSlot: (...args: unknown[]) =>
-      updatePlanningEventSlot(...args),
-    deletePlanningEventSlot: (...args: unknown[]) =>
-      deletePlanningEventSlot(...args),
+    createPlanningEventTimeBlock: (...args: unknown[]) =>
+      createPlanningEventTimeBlock(...args),
+    updatePlanningEventTimeBlock: (...args: unknown[]) =>
+      updatePlanningEventTimeBlock(...args),
+    deletePlanningEventTimeBlock: (...args: unknown[]) =>
+      deletePlanningEventTimeBlock(...args),
   },
 }));
 
@@ -95,13 +95,13 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
         },
         slots: [
           {
-            id: 'slot-1',
+            id: 'event-time-block-1',
             label: 'Worship',
             startTime: '2026-08-02T09:00:00Z',
             endTime: '2026-08-02T10:00:00Z',
           },
           {
-            id: 'slot-2',
+            id: 'event-time-block-2',
             label: 'Message',
             startTime: '2026-08-02T10:00:00Z',
             endTime: '2026-08-02T11:00:00Z',
@@ -118,7 +118,7 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
         },
         slots: [
           {
-            id: 'slot-3',
+            id: 'event-time-block-3',
             label: null,
             startTime: '2026-08-05T19:00:00Z',
             endTime: '2026-08-05T20:00:00Z',
@@ -195,9 +195,9 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
 
-    const slotTimeCells = within(table).getAllByText(isTimeRangeText);
-    expect(slotTimeCells.length).toBeGreaterThan(0);
-    for (const cell of slotTimeCells) {
+    const eventTimeBlockTimeCells = within(table).getAllByText(isTimeRangeText);
+    expect(eventTimeBlockTimeCells.length).toBeGreaterThan(0);
+    for (const cell of eventTimeBlockTimeCells) {
       expect(cell.textContent).not.toMatch(/Z/);
     }
   });
@@ -223,7 +223,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
-    const utcSlotTime =
+    const utcEventTimeBlockTime =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
 
     cleanup();
@@ -235,10 +235,10 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
     await user.click(
       within(table).getByRole('button', { name: 'Expand Sunday Service' }),
     );
-    const kiritimatiSlotTime =
+    const kiritimatiEventTimeBlockTime =
       within(table).getAllByText(isTimeRangeText)[0].textContent;
 
-    expect(kiritimatiSlotTime).not.toBe(utcSlotTime);
+    expect(kiritimatiEventTimeBlockTime).not.toBe(utcEventTimeBlockTime);
   });
 });
 
@@ -423,7 +423,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
-  it('deleting a non-last slot, after confirming, calls the delete-slot handler', async () => {
+  it('deleting a non-last slot, after confirming, calls the delete-event-time-block handler', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -453,10 +453,10 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
 
     await waitFor(() =>
-      expect(deletePlanningEventSlot).toHaveBeenCalledWith(
+      expect(deletePlanningEventTimeBlock).toHaveBeenCalledWith(
         'cycle-1',
         'event-1',
-        'slot-1',
+        'event-time-block-1',
       ),
     );
   });
@@ -508,7 +508,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
-  it('keeps the desktop delete-slot confirm dialog open with a "Deleting…" label until the mutation settles', async () => {
+  it('keeps the desktop delete-event-time-block confirm dialog open with a "Deleting…" label until the mutation settles', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -522,7 +522,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     });
     getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
     let resolveDelete: () => void = () => undefined;
-    deletePlanningEventSlot.mockImplementation(
+    deletePlanningEventTimeBlock.mockImplementation(
       () =>
         new Promise<void>((resolve) => {
           resolveDelete = resolve;
@@ -599,7 +599,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     ).toHaveClass('text-destructive');
   });
 
-  it('adding a slot to a day, after filling the dialog, calls the create-slot handler', async () => {
+  it('adding a slot to a day, after filling the dialog, calls the create-event-time-block handler', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -627,7 +627,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Add slot' }));
 
     await waitFor(() =>
-      expect(createPlanningEventSlot).toHaveBeenCalledWith(
+      expect(createPlanningEventTimeBlock).toHaveBeenCalledWith(
         'cycle-1',
         'event-1',
         expect.objectContaining({ label: 'Prayer' }),
@@ -687,7 +687,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
-  it('editing a slot, after changing start/end time, calls the update-slot handler', async () => {
+  it('editing a slot, after changing start/end time, calls the update-event-time-block handler', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -716,21 +716,23 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
     await fillTimeOfDayField({
       user,
-      field: within(dialog).getByTestId('edit-slot-start-time-field'),
+      field: within(dialog).getByTestId(
+        'edit-event-time-block-start-time-field',
+      ),
       time: '08:30',
     });
     await fillTimeOfDayField({
       user,
-      field: within(dialog).getByTestId('edit-slot-end-time-field'),
+      field: within(dialog).getByTestId('edit-event-time-block-end-time-field'),
       time: '09:30',
     });
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
-      expect(updatePlanningEventSlot).toHaveBeenCalledWith(
+      expect(updatePlanningEventTimeBlock).toHaveBeenCalledWith(
         'cycle-1',
         'event-1',
-        'slot-1',
+        'event-time-block-1',
         expect.objectContaining({
           label: 'Worship',
           startTime: expect.any(String),
@@ -801,7 +803,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
           },
           slots: [
             {
-              id: 'slot-1',
+              id: 'event-time-block-1',
               label: 'Worship',
               startTime: '2026-08-02T09:00:00Z',
               endTime: '2026-08-02T10:00:00Z',
@@ -818,7 +820,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
           },
           slots: [
             {
-              id: 'slot-2',
+              id: 'event-time-block-2',
               label: 'Check-in',
               startTime: '2026-08-08T09:00:00Z',
               endTime: '2026-08-08T10:00:00Z',
@@ -860,10 +862,10 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Add slot' });
     expect(
-      within(dialog).getByTestId('create-slot-start-time-field'),
+      within(dialog).getByTestId('create-event-time-block-start-time-field'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('create-slot-end-time-field'),
+      within(dialog).getByTestId('create-event-time-block-end-time-field'),
     ).toBeInTheDocument();
   });
 
@@ -883,19 +885,19 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Add slot' });
     expect(
-      within(dialog).getByTestId('create-slot-start-date'),
+      within(dialog).getByTestId('create-event-time-block-start-date'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('create-slot-start-time'),
+      within(dialog).getByTestId('create-event-time-block-start-time'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('create-slot-end-date'),
+      within(dialog).getByTestId('create-event-time-block-end-date'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('create-slot-end-time'),
+      within(dialog).getByTestId('create-event-time-block-end-time'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).queryByTestId('create-slot-start-time-field'),
+      within(dialog).queryByTestId('create-event-time-block-start-time-field'),
     ).not.toBeInTheDocument();
   });
 
@@ -916,10 +918,10 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
     expect(
-      within(dialog).getByTestId('edit-slot-start-time-field'),
+      within(dialog).getByTestId('edit-event-time-block-start-time-field'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('edit-slot-end-time-field'),
+      within(dialog).getByTestId('edit-event-time-block-end-time-field'),
     ).toBeInTheDocument();
   });
 
@@ -940,19 +942,19 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit slot' });
     expect(
-      within(dialog).getByTestId('edit-slot-start-date'),
+      within(dialog).getByTestId('edit-event-time-block-start-date'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('edit-slot-start-time'),
+      within(dialog).getByTestId('edit-event-time-block-start-time'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('edit-slot-end-date'),
+      within(dialog).getByTestId('edit-event-time-block-end-date'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByTestId('edit-slot-end-time'),
+      within(dialog).getByTestId('edit-event-time-block-end-time'),
     ).toBeInTheDocument();
     expect(
-      within(dialog).queryByTestId('edit-slot-start-time-field'),
+      within(dialog).queryByTestId('edit-event-time-block-start-time-field'),
     ).not.toBeInTheDocument();
   });
 });

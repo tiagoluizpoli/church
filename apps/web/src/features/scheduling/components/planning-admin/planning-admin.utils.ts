@@ -10,7 +10,7 @@ import {
 } from '@church/time';
 import { isAxiosError } from 'axios';
 import type {
-  CycleCalendarSlotRow,
+  CycleCalendarEventTimeBlockRow,
   CycleCalendarTableRow,
   CycleEventGroup,
   CycleFormState,
@@ -18,9 +18,9 @@ import type {
   CyclesTableRow,
   PlanningTemplateSummary,
   SelectedCycle,
-  TemplateBlockDraft,
   TemplateFormState,
   TemplateLibraryTableRow,
+  TemplateTimeBlockDraft,
 } from './planning-admin.types';
 import type {
   CreateEventTemplateBody,
@@ -40,7 +40,7 @@ export const WEEKDAYS = [
   'Saturday',
 ] as const;
 
-let templateBlockDraftCounter = 0;
+let templateTemplateTimeBlockDraftCounter = 0;
 
 interface FormatDateInput {
   date: string;
@@ -66,8 +66,8 @@ interface SelectedCycleIdInput {
   selectedCycleId: string | null;
 }
 
-interface SortTemplateBlocksInput {
-  blocks: TemplateBlockDraft[];
+interface SortTemplateTimeBlocksInput {
+  blocks: TemplateTimeBlockDraft[];
 }
 
 interface CycleStateVariantInput {
@@ -78,7 +78,7 @@ interface EventStatusVariantInput {
   status: GetCycle200EventsItemEventStatus;
 }
 
-interface TotalSlotsInput {
+interface TotalEventTimeBlocksInput {
   events: CycleEventGroup[] | undefined;
 }
 
@@ -114,11 +114,11 @@ export function createEmptyCycleForm(): CycleFormState {
   };
 }
 
-export function createEmptyTemplateBlock(): TemplateBlockDraft {
-  templateBlockDraftCounter += 1;
+export function createEmptyTemplateTimeBlock(): TemplateTimeBlockDraft {
+  templateTemplateTimeBlockDraftCounter += 1;
 
   return {
-    id: `template-block-${templateBlockDraftCounter}`,
+    id: `template-time-block-${templateTemplateTimeBlockDraftCounter}`,
     label: '',
     startTime: null,
     endTime: null,
@@ -129,7 +129,7 @@ export function createEmptyTemplateForm(): TemplateFormState {
   return {
     name: '',
     weekday: '0',
-    blocks: [createEmptyTemplateBlock()],
+    blocks: [createEmptyTemplateTimeBlock()],
   };
 }
 
@@ -202,25 +202,25 @@ export function describeTemplate({ template }: DescribeTemplateInput): string {
   return `${WEEKDAYS[template.weekday] ?? 'Unknown'} · ${template.blocks.length} block${template.blocks.length === 1 ? '' : 's'}`;
 }
 
-export interface DescribeTimeBlockSpanInput {
+export interface DescribeTemplateTimeBlockSpanInput {
   startTime: TimeOfDay;
   endTime: TimeOfDay;
 }
 
 /** `Runs 4h · ends next day` for a block whose end crosses midnight, or
  * `Runs 30m` for a same-day span (ADR-0003's computed-span confirmation). */
-export function describeTimeBlockSpan({
+export function describeTemplateTimeBlockSpan({
   startTime,
   endTime,
-}: DescribeTimeBlockSpanInput): string {
+}: DescribeTemplateTimeBlockSpanInput): string {
   return describeSpan({
     span: timeOfDaySpan({ start: startTime, end: endTime }),
   });
 }
 
-export function sortTemplateBlocks({
+export function sortTemplateTimeBlocks({
   blocks,
-}: SortTemplateBlocksInput): CreateEventTemplateBody['blocks'] {
+}: SortTemplateTimeBlocksInput): CreateEventTemplateBody['blocks'] {
   return blocks.map((block, index) => {
     if (!block.startTime || !block.endTime) {
       throw new Error('Block is missing a start or end time');
@@ -289,7 +289,9 @@ export function shiftedEnd({
   });
 }
 
-export function calculateTotalSlots({ events }: TotalSlotsInput): number {
+export function calculateTotalEventTimeBlocks({
+  events,
+}: TotalEventTimeBlocksInput): number {
   return (
     events?.reduce((count, eventGroup) => count + eventGroup.slots.length, 0) ??
     0
@@ -393,7 +395,7 @@ export function toTemplateLibraryTableRow({
 export function toCycleCalendarTableRow({
   eventGroup,
 }: CycleCalendarTableRowInput): CycleCalendarTableRow {
-  const isOnlySlotInEvent = eventGroup.slots.length === 1;
+  const isOnlyEventTimeBlockInEvent = eventGroup.slots.length === 1;
 
   return {
     eventId: eventGroup.event.id,
@@ -402,12 +404,12 @@ export function toCycleCalendarTableRow({
     end: eventGroup.event.end,
     status: eventGroup.event.status,
     slots: eventGroup.slots.map(
-      (slot): CycleCalendarSlotRow => ({
-        slotId: slot.id,
+      (slot): CycleCalendarEventTimeBlockRow => ({
+        eventTimeBlockId: slot.id,
         label: slot.label ?? 'Slot',
         startTime: slot.startTime,
         endTime: slot.endTime,
-        isOnlySlotInEvent,
+        isOnlyEventTimeBlockInEvent,
       }),
     ),
   };

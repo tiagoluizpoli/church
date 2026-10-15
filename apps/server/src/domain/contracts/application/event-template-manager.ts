@@ -1,7 +1,7 @@
 import type { ChurchId, EventTemplateId } from '../../branded-ids';
 import type { EventTemplate } from '../../entities/event-template';
 
-export interface EventTemplateBlockManagerInput {
+export interface EventTemplateTimeBlockManagerInput {
   label: string;
   startTime: string;
   endTime: string;
@@ -12,7 +12,7 @@ export interface CreateEventTemplateManagerInput {
   churchId: ChurchId;
   name: string;
   weekday: number;
-  blocks: EventTemplateBlockManagerInput[];
+  blocks: EventTemplateTimeBlockManagerInput[];
 }
 
 export interface UpdateEventTemplateManagerInput {
@@ -20,7 +20,7 @@ export interface UpdateEventTemplateManagerInput {
   templateId: EventTemplateId;
   name: string;
   weekday: number;
-  blocks: EventTemplateBlockManagerInput[];
+  blocks: EventTemplateTimeBlockManagerInput[];
 }
 
 export interface DeleteEventTemplateManagerInput {

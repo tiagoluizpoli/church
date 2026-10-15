@@ -245,11 +245,11 @@ function WithdrawnAssignmentsList({
       <ul className="space-y-1 text-muted-foreground text-sm">
         {assignments.map((assignment) => (
           <li
-            key={`${assignment.eventName}-${assignment.timeSlotStart}-${assignment.roleName}`}
+            key={`${assignment.eventName}-${assignment.eventTimeBlockStart}-${assignment.roleName}`}
           >
             {assignment.eventName} ·{' '}
             {formatInstant({
-              instant: parseInstant({ value: assignment.timeSlotStart }),
+              instant: parseInstant({ value: assignment.eventTimeBlockStart }),
               timeZone: 'UTC',
             })}{' '}
             · {assignment.roleName}

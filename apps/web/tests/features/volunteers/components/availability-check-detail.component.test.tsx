@@ -40,12 +40,15 @@ describe('AvailabilityCheckDetail (T157)', () => {
             },
           ],
         }}
-        markDraft={{ markedShiftIds: new Set(), wholeDayDates: new Set() }}
+        unavailableShiftDraft={{
+          markedShiftIds: new Set(),
+          wholeDayDates: new Set(),
+        }}
         onToggleShift={vi.fn()}
         onToggleWholeDay={vi.fn()}
-        onSaveMarks={vi.fn()}
+        onSaveUnavailableShifts={vi.fn()}
         onConfirm={vi.fn()}
-        isSavingMarks={false}
+        isSavingUnavailableShifts={false}
         isConfirming={false}
       />,
       { churchTimezone: 'America/Sao_Paulo' },
@@ -71,12 +74,15 @@ describe('AvailabilityCheckDetail (T157)', () => {
           confirmedAt: '2027-01-04T23:15:00.000Z',
           shifts: [],
         }}
-        markDraft={{ markedShiftIds: new Set(), wholeDayDates: new Set() }}
+        unavailableShiftDraft={{
+          markedShiftIds: new Set(),
+          wholeDayDates: new Set(),
+        }}
         onToggleShift={vi.fn()}
         onToggleWholeDay={vi.fn()}
-        onSaveMarks={vi.fn()}
+        onSaveUnavailableShifts={vi.fn()}
         onConfirm={vi.fn()}
-        isSavingMarks={false}
+        isSavingUnavailableShifts={false}
         isConfirming={false}
       />,
       { churchTimezone: 'America/Sao_Paulo' },

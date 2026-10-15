@@ -10,13 +10,13 @@ const ROWS: MinistryPrepareSummaryRow[] = [
     ministryId: 'ministry-1',
     ministryName: 'Greeters',
     eventCount: 3,
-    slotCount: 9,
+    eventTimeBlockCount: 9,
   },
   {
     ministryId: 'ministry-2',
     ministryName: 'Untouched Ministry',
     eventCount: 0,
-    slotCount: 0,
+    eventTimeBlockCount: 0,
   },
 ];
 

@@ -188,7 +188,7 @@ export function createVolunteerTransferRecipe({
       eventStatus: 'draft',
       participationState: 'preparing',
       requirements: {
-        porter: { roleId: hospitality.roles.porter.id, requiredCount: 1 },
+        porter: { roleId: hospitality.roles.porter.id, peopleNeeded: 1 },
       },
     });
     const assignment = await buildAssignment({

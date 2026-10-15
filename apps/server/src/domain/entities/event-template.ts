@@ -1,13 +1,13 @@
 import { Entity, type LooseProps } from '@church/core';
 import type { ChurchId, EventTemplateId } from '../branded-ids';
 import { InvalidWeekdayError } from '../errors/invalid-weekday';
-import type { TimeBlock } from './time-block';
+import type { TemplateTimeBlock } from './template-time-block';
 
 export interface EventTemplateProps {
   churchId: ChurchId;
   name: string;
   weekday: number;
-  blocks: TimeBlock[];
+  blocks: TemplateTimeBlock[];
 }
 
 export interface EventTemplateInput {
@@ -48,7 +48,7 @@ export class EventTemplate extends Entity<EventTemplateProps, EventTemplateId> {
     return this._props.weekday;
   }
 
-  get blocks(): TimeBlock[] {
+  get blocks(): TemplateTimeBlock[] {
     return this._props.blocks;
   }
 }

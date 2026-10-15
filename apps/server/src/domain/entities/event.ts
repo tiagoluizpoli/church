@@ -8,7 +8,7 @@ import type {
   MinistryId,
 } from '../branded-ids';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
-import type { TimeSlot } from './time-slot';
+import type { EventTimeBlock } from './event-time-block';
 
 export const EVENT_STATUS_OPTIONS = [
   'draft',
@@ -30,9 +30,9 @@ export interface EventProps {
   status: EventStatus;
 }
 
-export interface EventWithSlots {
+export interface EventWithEventTimeBlocks {
   event: Event;
-  slots: TimeSlot[];
+  slots: EventTimeBlock[];
 }
 
 export class Event extends Entity<EventProps, EventId> {

@@ -113,9 +113,9 @@ export function CycleBuilderHeader({
                 value={counts.eventCount}
               />
               <HeaderStatChip
-                testId="cycle-builder-slot-count"
+                testId="cycle-builder-event-time-block-count"
                 label="Slots"
-                value={counts.slotCount}
+                value={counts.eventTimeBlockCount}
               />
               <HeaderStatChip
                 testId="cycle-builder-shift-count"

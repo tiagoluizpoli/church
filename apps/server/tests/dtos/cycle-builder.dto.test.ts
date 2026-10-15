@@ -27,7 +27,7 @@ describe('cycleBuilderResponseSchema', () => {
           slots: [
             {
               slot: {
-                id: 'slot-1',
+                id: 'event-time-block-1',
                 churchId: 'church-1',
                 eventId: 'event-1',
                 startTime: '2027-01-01T09:00:00.000Z',
@@ -41,7 +41,7 @@ describe('cycleBuilderResponseSchema', () => {
                   shift: {
                     id: 'shift-1',
                     participationId: 'participation-1',
-                    timeSlotId: 'slot-1',
+                    eventTimeBlockId: 'event-time-block-1',
                     startTime: '2027-01-01T09:00:00.000Z',
                     endTime: '2027-01-01T11:00:00.000Z',
                   },
@@ -51,7 +51,7 @@ describe('cycleBuilderResponseSchema', () => {
                       shiftId: 'shift-1',
                       participationId: 'participation-1',
                       roleId: 'role-1',
-                      requiredCount: 1,
+                      peopleNeeded: 1,
                       canMutateAssignments: true,
                     },
                   ],

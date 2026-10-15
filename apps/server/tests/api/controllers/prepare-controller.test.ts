@@ -34,7 +34,7 @@ const participationManager = {
   updateShift: vi.fn(),
   deleteShift: vi.fn(),
   upsertRequirement: vi.fn(),
-  listMinistryCycleSummaries: vi.fn(),
+  listScheduleSummaries: vi.fn(),
 };
 
 const availabilityCheckManager = {
@@ -70,12 +70,12 @@ function createShift(): Shift {
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       participationId: '22222222-2222-2222-8222-222222222222',
-      timeSlotId: '33333333-3333-3333-8333-333333333333',
+      eventTimeBlockId: '33333333-3333-3333-8333-333333333333',
       startTime: parseInstant({ value: '2026-08-03T09:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
       label: 'Welcome',
     },
-    slotBounds: {
+    eventTimeBlockBounds: {
       startTime: parseInstant({ value: '2026-08-03T09:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-08-03T10:00:00.000Z' }),
     },
@@ -132,7 +132,7 @@ describe('Prepare participation routes', () => {
     expect(availabilityCheckManager.askAvailability).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/prepare/participations/:id/slots/:slotId/shifts returns 201', async () => {
+  it('POST /api/v1/prepare/participations/:id/slots/:eventTimeBlockId/shifts returns 201', async () => {
     participationManager.splitShifts.mockResolvedValue([createShift()]);
 
     const response = await app.inject({
@@ -152,7 +152,7 @@ describe('Prepare participation routes', () => {
         {
           id: '66666666-6666-6666-8666-666666666666',
           participationId: '22222222-2222-2222-8222-222222222222',
-          timeSlotId: '33333333-3333-3333-8333-333333333333',
+          eventTimeBlockId: '33333333-3333-3333-8333-333333333333',
           startTime: '2026-08-03T09:00:00.000Z',
           endTime: '2026-08-03T10:00:00.000Z',
           label: 'Welcome',
@@ -161,7 +161,7 @@ describe('Prepare participation routes', () => {
     });
   });
 
-  it('POST /api/v1/prepare/participations/:id/slots/:slotId/shifts returns 409 for out-of-bounds splits', async () => {
+  it('POST /api/v1/prepare/participations/:id/slots/:eventTimeBlockId/shifts returns 409 for out-of-bounds splits', async () => {
     participationManager.splitShifts.mockRejectedValue(
       new ShiftOutOfBoundsError(),
     );
@@ -189,7 +189,7 @@ describe('Prepare participation routes', () => {
     });
   });
 
-  it('POST /api/v1/prepare/participations/:id/slots/:slotId/shifts returns 403 for another ministry scope', async () => {
+  it('POST /api/v1/prepare/participations/:id/slots/:eventTimeBlockId/shifts returns 403 for another ministry scope', async () => {
     authorityGuard.canManageParticipation.mockResolvedValue(false);
 
     const response = await app.inject({
@@ -283,7 +283,7 @@ describe('Prepare participation routes', () => {
   });
 
   it('GET /api/v1/prepare/ministries/:ministryId/cycles-summary returns 200 matching the DTO schema', async () => {
-    participationManager.listMinistryCycleSummaries.mockResolvedValue([
+    participationManager.listScheduleSummaries.mockResolvedValue([
       {
         cycleId: '11111111-1111-1111-8111-111111111111',
         name: 'August',
@@ -291,7 +291,7 @@ describe('Prepare participation routes', () => {
         endDate: new Date('2026-08-31T00:00:00.000Z'),
         isPartOf: true,
         eventCount: 2,
-        slotCount: 3,
+        eventTimeBlockCount: 3,
         status: 'in_progress',
         availabilityRequestedForAll: false,
         availabilityRequestedForAny: false,
@@ -313,16 +313,14 @@ describe('Prepare participation routes', () => {
           endDate: '2026-08-31',
           isPartOf: true,
           eventCount: 2,
-          slotCount: 3,
+          eventTimeBlockCount: 3,
           status: 'in_progress',
           availabilityRequestedForAll: false,
           availabilityRequestedForAny: false,
         },
       ],
     });
-    expect(
-      participationManager.listMinistryCycleSummaries,
-    ).toHaveBeenCalledWith({
+    expect(participationManager.listScheduleSummaries).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
       ministryId: '22222222-2222-2222-8222-222222222222',
     });
@@ -341,8 +339,6 @@ describe('Prepare participation routes', () => {
       error: 'FORBIDDEN',
       message: 'Not a leader of this ministry',
     });
-    expect(
-      participationManager.listMinistryCycleSummaries,
-    ).not.toHaveBeenCalled();
+    expect(participationManager.listScheduleSummaries).not.toHaveBeenCalled();
   });
 });

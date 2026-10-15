@@ -4,8 +4,8 @@ import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AvailabilityCheckId, ChurchId } from '@/domain/branded-ids';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
-import { buildAvailabilityCheck } from '@/seeds/builders/availability';
 import { buildShift } from '@/seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -49,7 +49,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
   });
 
   it('listCheckShifts defaults a missing shift label to undefined', async () => {
-    const { ministryVolunteer } = await import('@church/db');
+    const { ministryMembership } = await import('@church/db');
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -71,7 +71,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       db: schedulingTestDb,
       churchId: seed.churchAId,
       participationId: graph.participation.id,
-      timeSlotId: graph.slot.id,
+      eventTimeBlockId: graph.slot.id,
       start: fromDate({ date: graph.slot.startTime }),
       end: fromDate({ date: graph.slot.endTime }),
       label: null,
@@ -79,8 +79,8 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
 
     const [membership] = await schedulingTestDb
       .select()
-      .from(ministryVolunteer)
-      .where(eq(ministryVolunteer.volunteerId, seed.adminVolunteerId))
+      .from(ministryMembership)
+      .where(eq(ministryMembership.volunteerId, seed.adminVolunteerId))
       .limit(1);
     if (!membership) throw new Error('ministry volunteer seed missing');
 
@@ -88,7 +88,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       db: schedulingTestDb,
       churchId: seed.churchAId,
       cycleId: cycle.id,
-      ministryVolunteerId: membership.id,
+      ministryMembershipId: membership.id,
     });
 
     const repo = new DrizzleAvailabilityCheckRepository({

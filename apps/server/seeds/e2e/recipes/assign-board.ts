@@ -30,11 +30,11 @@ import {
 
 /**
  * The cycle board a ChurchAdmin leader schedules (#329: smoke,
- * builder-slot-focus, a11y-builder): one Worship cycle with three Events on
+ * builder-event-time-block-focus, a11y-builder): one Worship cycle with three Events on
  * different days.
  *
  * - `service`: a published Participation needing two Ushers, all open. The
- *   board's first requirement, which smoke and builder-slot-focus fill.
+ *   board's first requirement, which smoke and builder-event-time-block-focus fill.
  * - `teamService`: a draft Event at `availability_requested`, needing one Team
  *   Alpha Greeter and one Usher.
  * - `assignedService`: read-only for every journey — a published Host seat
@@ -216,7 +216,7 @@ export function createAssignBoardRecipe({
       eventStatus: 'draft',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, requiredCount: 2 },
+        usher: { roleId: worship.roles.usher.id, peopleNeeded: 2 },
       },
     });
     const teamService = await buildAssignEvent({
@@ -235,10 +235,10 @@ export function createAssignBoardRecipe({
       requirements: {
         greeter: {
           roleId: worship.roles.greeter.id,
-          requiredCount: 1,
+          peopleNeeded: 1,
           teamId: worship.teams.alpha.id,
         },
-        usher: { roleId: worship.roles.usher.id, requiredCount: 1 },
+        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
       },
     });
 
@@ -256,7 +256,7 @@ export function createAssignBoardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        host: { roleId: worship.roles.host.id, requiredCount: 3 },
+        host: { roleId: worship.roles.host.id, peopleNeeded: 3 },
       },
     });
     const hostAssignments: HostAssignmentPlan[] = [

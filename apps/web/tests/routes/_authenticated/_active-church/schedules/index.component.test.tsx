@@ -94,9 +94,9 @@ describe('Prepare ministry list route (US1/T013)', () => {
     expect(
       screen.getByTestId('prepare-ministry-event-total'),
     ).toHaveTextContent('1');
-    expect(screen.getByTestId('prepare-ministry-slot-total')).toHaveTextContent(
-      '2',
-    );
+    expect(
+      screen.getByTestId('prepare-ministry-event-time-block-total'),
+    ).toHaveTextContent('2');
   });
 
   it('navigates to the ministry route when the Prepare button is activated', async () => {

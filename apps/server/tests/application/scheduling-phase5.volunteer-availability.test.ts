@@ -21,7 +21,6 @@ import {
 import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
@@ -29,16 +28,17 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
+import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
-import { buildAvailabilityCheck } from '@/seeds/builders/availability';
 import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildMinistryParticipation,
   buildShift,
 } from '@/seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
   buildVolunteerWithMembership,
@@ -63,7 +63,7 @@ function createPhase5Manager(): Phase5Manager {
   const volunteerManager = new DbVolunteerManager({
     volunteerRepo: new DrizzleVolunteerRepository({ db: schedulingTestDb }),
     assignmentRepo: new DrizzleAssignmentRepository({ db: schedulingTestDb }),
-    availabilityRepo: new DrizzleAvailabilityRepository({
+    unavailableShiftRepo: new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     }),
     notificationRepo: new DrizzleVolunteerNotificationRepository({
@@ -91,7 +91,7 @@ function createPhase5Manager(): Phase5Manager {
 interface SeedShiftInput {
   churchId: string;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   startTime: Date;
   endTime: Date;
   label?: string;
@@ -102,7 +102,7 @@ async function seedShift(input: SeedShiftInput) {
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
-    timeSlotId: input.timeSlotId,
+    eventTimeBlockId: input.eventTimeBlockId,
     start: fromDate({ date: input.startTime }),
     end: fromDate({ date: input.endTime }),
     label: input.label,
@@ -112,7 +112,7 @@ async function seedShift(input: SeedShiftInput) {
 interface SeedCheckInput {
   churchId: string;
   cycleId: string;
-  ministryVolunteerId: string;
+  ministryMembershipId: string;
   state?: 'pending' | 'confirmed';
 }
 
@@ -121,7 +121,7 @@ async function seedCheck(input: SeedCheckInput) {
     db: schedulingTestDb,
     churchId: input.churchId,
     cycleId: input.cycleId,
-    ministryVolunteerId: input.ministryVolunteerId,
+    ministryMembershipId: input.ministryMembershipId,
     state: input.state ?? 'pending',
   });
 }
@@ -131,7 +131,7 @@ interface Phase5Fixture {
   cycleId: string;
   eventId: string;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   shiftMorning: SeededShift;
   shiftEvening: SeededShift;
   volunteerId: string;
@@ -171,7 +171,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   const shiftMorning = await seedShift({
     churchId: seed.churchAId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.slot.id,
     startTime: new Date('2026-08-02T12:00:00.000Z'),
     endTime: new Date('2026-08-02T15:00:00.000Z'),
     label: 'Morning',
@@ -179,7 +179,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   const shiftEvening = await seedShift({
     churchId: seed.churchAId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.slot.id,
     startTime: new Date('2026-08-02T18:00:00.000Z'),
     endTime: new Date('2026-08-02T22:00:00.000Z'),
     label: 'Evening',
@@ -197,7 +197,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   const check = await seedCheck({
     churchId: seed.churchAId,
     cycleId: cycle.id,
-    ministryVolunteerId: membership.id,
+    ministryMembershipId: membership.id,
   });
 
   return {
@@ -205,7 +205,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
     cycleId: cycle.id,
     eventId: graph.event.id,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.slot.id,
     shiftMorning,
     shiftEvening,
     volunteerId: VOLUNTEER_ID,
@@ -256,14 +256,14 @@ async function seedSecondMinistryBranch({
     ministryId: secondMinistry.id,
     eventId: fixture.eventId,
     state: 'preparing',
-    timeSlotIds: [],
+    eventTimeBlockIds: [],
   });
 
   // Overlapping: intersects the Morning shift (12:00-15:00). Otherwise disjoint (15:00-17:00 touches edges only).
   await seedShift({
     churchId: fixture.seed.churchAId,
     participationId: secondParticipation.id,
-    timeSlotId: fixture.timeSlotId,
+    eventTimeBlockId: fixture.eventTimeBlockId,
     startTime: overlapping
       ? new Date('2026-08-02T14:00:00.000Z')
       : new Date('2026-08-02T15:00:00.000Z'),
@@ -286,7 +286,7 @@ async function seedSecondMinistryBranch({
   const check = await seedCheck({
     churchId: fixture.seed.churchAId,
     cycleId: fixture.cycleId,
-    ministryVolunteerId: membership.id,
+    ministryMembershipId: membership.id,
   });
 
   return {
@@ -505,7 +505,7 @@ async function seedPublishedAssignment(input: SeedPublishedAssignmentInput) {
   const shift = await seedShift({
     churchId: input.churchId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.slot.id,
     startTime: input.eventStart,
     endTime: input.eventEnd,
     label: 'Dashboard shift',

@@ -3,10 +3,14 @@ import type {
   CycleId,
   EventId,
   EventTemplateId,
-  TimeBlockId,
-  TimeSlotId,
+  EventTimeBlockId,
+  TemplateTimeBlockId,
 } from '../../branded-ids';
-import type { Event, EventStatus, EventWithSlots } from '../../entities/event';
+import type {
+  Event,
+  EventStatus,
+  EventWithEventTimeBlocks,
+} from '../../entities/event';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreatePlanningEventInput {
@@ -52,10 +56,10 @@ export interface ListCycleEventsInput {
   tx?: TransactionContext;
 }
 
-export interface CreatePlanningTimeSlotInput {
+export interface CreatePlanningEventTimeBlockInput {
   churchId: ChurchId;
   eventId: EventId;
-  sourceTemplateBlockId?: TimeBlockId;
+  sourceTemplateTimeBlockId?: TemplateTimeBlockId;
   startTime: Date;
   endTime: Date;
   label?: string;
@@ -73,14 +77,18 @@ export interface PlanningEventRepository {
   updateEvent(input: UpdatePlanningEventInput): Promise<Event>;
   getEvent(input: GetPlanningEventInput): Promise<Event>;
   /**
-   * Hard-deletes an event row. The `event → timeSlot → shift → assignment`
+   * Hard-deletes an event row. The `event → eventTimeBlock → shift → assignment`
    * (and `assignment → assignmentAudit`) foreign keys all cascade, so slots,
    * shifts, draft assignments and their audits go with it. Only ever called
    * for `draft` events — those never reached `scheduled`, so no volunteer has
    * seen them (see BL-020 / issue #12).
    */
   deleteEvent(input: DeletePlanningEventInput): Promise<void>;
-  listCycleEvents(input: ListCycleEventsInput): Promise<EventWithSlots[]>;
-  createTimeSlot(input: CreatePlanningTimeSlotInput): Promise<TimeSlotId>;
+  listCycleEvents(
+    input: ListCycleEventsInput,
+  ): Promise<EventWithEventTimeBlocks[]>;
+  createEventTimeBlock(
+    input: CreatePlanningEventTimeBlockInput,
+  ): Promise<EventTimeBlockId>;
   seedParticipations(input: SeedPlanningParticipationsInput): Promise<void>;
 }

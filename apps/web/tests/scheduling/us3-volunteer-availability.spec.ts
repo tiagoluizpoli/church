@@ -144,12 +144,12 @@ async function setUpTwoMinistryOverlapCycle({
   }
 
   const worshipProfileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/serving-profile`,
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/usual-setup`,
     {
       data: {
         entries: [
           {
-            sourceTemplateBlockId: block.id,
+            sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
@@ -163,12 +163,12 @@ async function setUpTwoMinistryOverlapCycle({
   expect(worshipProfileResponse.ok()).toBeTruthy();
 
   const careProfileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${careMinistryId}/serving-profile`,
+    `${SERVER_URL}/api/v1/admin/ministries/${careMinistryId}/usual-setup`,
     {
       data: {
         entries: [
           {
-            sourceTemplateBlockId: block.id,
+            sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [
@@ -238,16 +238,16 @@ async function openWorshipCheckAndMarkOneShiftUnavailable({
   const shiftRows = page.getByTestId('shift-availability-row');
   expect(await shiftRows.count()).toBeGreaterThanOrEqual(2);
 
-  const marksResponsePromise = page.waitForResponse(
+  const unavailableShiftsResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes('/availability-checks/') &&
-      response.url().endsWith('/marks') &&
+      response.url().endsWith('/unavailable-shifts') &&
       response.request().method() === 'PUT',
   );
   await shiftRows.first().getByTestId('mark-unavailable-toggle').click();
-  await page.getByTestId('save-marks-button').click();
-  const marksResponse = await marksResponsePromise;
-  expect(marksResponse.ok()).toBeTruthy();
+  await page.getByTestId('save-unavailable-shifts-button').click();
+  const unavailableShiftsResponse = await unavailableShiftsResponsePromise;
+  expect(unavailableShiftsResponse.ok()).toBeTruthy();
 }
 
 test('volunteer in two ministries confirms despite a cross-ministry overlap', async ({

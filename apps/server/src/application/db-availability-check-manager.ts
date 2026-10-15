@@ -84,25 +84,25 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
         {
           churchId: input.churchId,
           cycleId,
-          ministryVolunteerIds: memberships.map(
-            (membership) => membership.ministryVolunteerId,
+          ministryMembershipIds: memberships.map(
+            (membership) => membership.ministryMembershipId,
           ),
           tx,
         },
       );
       const existingMembershipIds = new Set(
-        existingChecks.map((check) => check.ministryVolunteerId),
+        existingChecks.map((check) => check.ministryMembershipId),
       );
       const missingMemberships = memberships.filter(
         (membership) =>
-          !existingMembershipIds.has(membership.ministryVolunteerId),
+          !existingMembershipIds.has(membership.ministryMembershipId),
       );
 
       const createdChecks = await this.availabilityCheckRepository.createMany({
         churchId: input.churchId,
         checks: missingMemberships.map((membership) => ({
           cycleId,
-          ministryVolunteerId: membership.ministryVolunteerId,
+          ministryMembershipId: membership.ministryMembershipId,
         })),
         tx,
       });
@@ -164,16 +164,16 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     const checks = await this.availabilityCheckRepository.listByCycle({
       churchId: input.churchId,
       cycleId: input.cycleId,
-      ministryVolunteerIds: memberships.map(
-        (membership) => membership.ministryVolunteerId,
+      ministryMembershipIds: memberships.map(
+        (membership) => membership.ministryMembershipId,
       ),
     });
     const checkByMembershipId = new Map(
-      checks.map((check) => [check.ministryVolunteerId, check]),
+      checks.map((check) => [check.ministryMembershipId, check]),
     );
 
     return memberships.map((membership) => {
-      const check = checkByMembershipId.get(membership.ministryVolunteerId);
+      const check = checkByMembershipId.get(membership.ministryMembershipId);
       return {
         volunteerId: membership.volunteerId as string,
         volunteerName: membership.volunteerName,
@@ -205,17 +205,17 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     const checks = await this.availabilityCheckRepository.listByCycle({
       churchId: input.churchId,
       cycleId: event.cycleId,
-      ministryVolunteerIds: memberships.map(
-        (membership) => membership.ministryVolunteerId,
+      ministryMembershipIds: memberships.map(
+        (membership) => membership.ministryMembershipId,
       ),
     });
     const pendingMembershipIds = new Set(
       checks
         .filter((check) => check.state === 'pending')
-        .map((check) => check.ministryVolunteerId),
+        .map((check) => check.ministryMembershipId),
     );
     const pendingMemberships = memberships.filter((membership) =>
-      pendingMembershipIds.has(membership.ministryVolunteerId),
+      pendingMembershipIds.has(membership.ministryMembershipId),
     );
 
     await this.notifyMemberships({

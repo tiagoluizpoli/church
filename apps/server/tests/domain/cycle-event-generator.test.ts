@@ -8,23 +8,23 @@ import { describe, expect, it } from 'vitest';
 import type {
   EventId,
   EventTemplateId,
-  TimeBlockId,
+  TemplateTimeBlockId,
 } from '@/domain/branded-ids';
 import { Cycle } from '@/domain/entities/cycle';
 import { EventTemplate } from '@/domain/entities/event-template';
-import { TimeBlock } from '@/domain/entities/time-block';
+import { TemplateTimeBlock } from '@/domain/entities/template-time-block';
 import {
   CycleEventGenerator,
   type ExistingGeneratedEvent,
-  type ExistingGeneratedSlotFingerprint,
-  type GeneratedCycleAppendSlotPlan,
+  type ExistingGeneratedEventTimeBlockFingerprint,
+  type GeneratedCycleAppendEventTimeBlockPlan,
   type GeneratedCycleCreateEventPlan,
 } from '@/domain/services/cycle-event-generator';
 
 const churchId = '11111111-1111-1111-1111-111111111111';
 const templateId = '22222222-2222-2222-2222-222222222222' as EventTemplateId;
-const blockAId = '33333333-3333-3333-3333-333333333331' as TimeBlockId;
-const blockBId = '33333333-3333-3333-3333-333333333332' as TimeBlockId;
+const blockAId = '33333333-3333-3333-3333-333333333331' as TemplateTimeBlockId;
+const blockBId = '33333333-3333-3333-3333-333333333332' as TemplateTimeBlockId;
 
 // Two-week cycle: 2026-07-01 (Wed) through 2026-07-15 (exclusive),
 // so weekday=3 (Wednesday) matches 2026-07-01 and 2026-07-08.
@@ -46,7 +46,7 @@ function createTemplate(): EventTemplate {
       name: 'Wednesday Service',
       weekday: 3,
       blocks: [
-        new TimeBlock({
+        new TemplateTimeBlock({
           props: {
             churchId,
             templateId,
@@ -57,7 +57,7 @@ function createTemplate(): EventTemplate {
           },
           id: blockAId,
         }),
-        new TimeBlock({
+        new TemplateTimeBlock({
           props: {
             churchId,
             templateId,
@@ -102,13 +102,13 @@ describe('CycleEventGenerator', () => {
     );
     expect(first?.slots).toHaveLength(2);
     expect(first?.slots[0]).toMatchObject({
-      sourceTemplateBlockId: blockAId,
+      sourceTemplateTimeBlockId: blockAId,
       label: 'Gathering',
       startTime: parseInstant({ value: '2026-07-01T09:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
     });
     expect(first?.slots[1]).toMatchObject({
-      sourceTemplateBlockId: blockBId,
+      sourceTemplateTimeBlockId: blockBId,
       label: 'Service',
       startTime: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-07-01T11:00:00.000Z' }),
@@ -141,8 +141,8 @@ describe('CycleEventGenerator', () => {
     });
 
     expect(plans).toHaveLength(2);
-    const appended = plans[0] as GeneratedCycleAppendSlotPlan;
-    expect(appended.kind).toBe('append_slots');
+    const appended = plans[0] as GeneratedCycleAppendEventTimeBlockPlan;
+    expect(appended.kind).toBe('append_event_time_blocks');
     expect(appended.eventId).toBe('existing-event-1');
     expect(appended.slots).toHaveLength(2);
 
@@ -171,18 +171,18 @@ describe('CycleEventGenerator', () => {
   });
 
   it('skips blocks whose fingerprint already exists and skips the date entirely once all blocks are generated', () => {
-    const existingFingerprints: ExistingGeneratedSlotFingerprint[] = [
+    const existingFingerprints: ExistingGeneratedEventTimeBlockFingerprint[] = [
       {
         eventDate: parseCalendarDay({ value: '2026-07-01' }),
-        sourceTemplateBlockId: blockAId,
+        sourceTemplateTimeBlockId: blockAId,
       },
       {
         eventDate: parseCalendarDay({ value: '2026-07-08' }),
-        sourceTemplateBlockId: blockAId,
+        sourceTemplateTimeBlockId: blockAId,
       },
       {
         eventDate: parseCalendarDay({ value: '2026-07-08' }),
-        sourceTemplateBlockId: blockBId,
+        sourceTemplateTimeBlockId: blockBId,
       },
     ];
 
@@ -199,12 +199,12 @@ describe('CycleEventGenerator', () => {
     expect(plans).toHaveLength(1);
     const plan = plans[0] as GeneratedCycleCreateEventPlan;
     expect(plan.slots).toHaveLength(1);
-    expect(plan.slots[0]?.sourceTemplateBlockId).toBe(blockBId);
+    expect(plan.slots[0]?.sourceTemplateTimeBlockId).toBe(blockBId);
   });
 
   it('resolves an overnight block onto the following CalendarDay', () => {
     const overnightBlockId =
-      '33333333-3333-3333-3333-333333333333' as TimeBlockId;
+      '33333333-3333-3333-3333-333333333333' as TemplateTimeBlockId;
     const overnightTemplateId =
       '22222222-2222-2222-2222-222222222223' as EventTemplateId;
     const overnightTemplate = new EventTemplate({
@@ -213,7 +213,7 @@ describe('CycleEventGenerator', () => {
         name: 'Overnight Watch',
         weekday: 3,
         blocks: [
-          new TimeBlock({
+          new TemplateTimeBlock({
             props: {
               churchId,
               templateId: overnightTemplateId,
@@ -251,7 +251,7 @@ describe('CycleEventGenerator', () => {
         name: 'Monday Group',
         weekday: 1,
         blocks: [
-          new TimeBlock({
+          new TemplateTimeBlock({
             props: {
               churchId,
               templateId: 'no-monday-template',

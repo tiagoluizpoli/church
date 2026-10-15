@@ -39,12 +39,12 @@ interface CycleBuilderCellProps {
   shift: CycleBuilderShiftSummary;
   roleId: string;
   roleLabel: string;
-  requiredCount: number;
+  peopleNeeded: number;
   assignments: CycleBuilderAssignment[];
   pickerVolunteers: PickerVolunteer[];
   suggestions: SuggestedVolunteer[];
   needsResponseSuggestions: SuggestedVolunteer[];
-  slotLabel: string;
+  eventTimeBlockLabel: string;
   selectedVolunteerId?: string;
   selectedVolunteerName?: string;
   isPublished: boolean;
@@ -95,7 +95,7 @@ export interface CycleBuilderCellSelectInput {
   volunteerId: string;
   volunteerName?: string;
   assignmentId?: string;
-  slotLabel?: string;
+  eventTimeBlockLabel?: string;
   /** Names the role in override copy, so it never has to say "this role". */
   roleLabel?: string;
   /**
@@ -110,12 +110,12 @@ export function CycleBuilderCell({
   shift,
   roleId,
   roleLabel,
-  requiredCount,
+  peopleNeeded,
   assignments,
   pickerVolunteers,
   suggestions,
   needsResponseSuggestions,
-  slotLabel,
+  eventTimeBlockLabel,
   selectedVolunteerId,
   selectedVolunteerName,
   isPublished,
@@ -133,7 +133,7 @@ export function CycleBuilderCell({
 }: CycleBuilderCellProps) {
   const isTouch = useFormControlSize() === 'touch';
   const [addPickerOpen, setAddPickerOpen] = useState(false);
-  const canAdd = assignments.length < requiredCount;
+  const canAdd = assignments.length < peopleNeeded;
   const selectedVolunteerIsAssignedToShift = shift.assignments.some(
     (assignment) =>
       assignment.volunteerId === selectedVolunteerId &&
@@ -190,7 +190,7 @@ export function CycleBuilderCell({
       volunteerId: input.volunteerId,
       volunteerName: input.volunteerName,
       assignmentId: input.assignmentId,
-      slotLabel,
+      eventTimeBlockLabel,
       roleLabel,
       conflictType: overrideKindForFit({
         fit: volunteerFitForShiftRole({
@@ -280,7 +280,7 @@ export function CycleBuilderCell({
           onToggleFocus={onToggleFocus}
         />
         <span className="shrink-0 text-muted-foreground text-xs">
-          {assignments.length}/{requiredCount}
+          {assignments.length}/{peopleNeeded}
         </span>
       </div>
 

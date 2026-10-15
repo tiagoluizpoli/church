@@ -268,28 +268,34 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
     await createTemplateDialog.getByTestId('template-weekday-select').click();
     await page.getByTestId('template-weekday-option-0').click();
     const firstBlock = createTemplateDialog
-      .getByTestId('template-block-row')
+      .getByTestId('template-time-block-row')
       .first();
-    await firstBlock.getByTestId('template-block-label-input').fill('Worship');
+    await firstBlock
+      .getByTestId('template-time-block-label-input')
+      .fill('Worship');
     await fillTimeOfDayField({
-      field: firstBlock.getByTestId('template-block-start-time-input'),
+      field: firstBlock.getByTestId('template-time-block-start-time-input'),
       time: '09:00',
     });
     await fillTimeOfDayField({
-      field: firstBlock.getByTestId('template-block-end-time-input'),
+      field: firstBlock.getByTestId('template-time-block-end-time-input'),
       time: '10:00',
     });
-    await createTemplateDialog.getByTestId('add-template-block-button').click();
+    await createTemplateDialog
+      .getByTestId('add-template-time-block-button')
+      .click();
     const secondBlock = createTemplateDialog
-      .getByTestId('template-block-row')
+      .getByTestId('template-time-block-row')
       .nth(1);
-    await secondBlock.getByTestId('template-block-label-input').fill('Message');
+    await secondBlock
+      .getByTestId('template-time-block-label-input')
+      .fill('Message');
     await fillTimeOfDayField({
-      field: secondBlock.getByTestId('template-block-start-time-input'),
+      field: secondBlock.getByTestId('template-time-block-start-time-input'),
       time: '10:00',
     });
     await fillTimeOfDayField({
-      field: secondBlock.getByTestId('template-block-end-time-input'),
+      field: secondBlock.getByTestId('template-time-block-end-time-input'),
       time: '11:00',
     });
     await createTemplateDialog.getByTestId('create-template-button').click();
@@ -372,10 +378,14 @@ test.describe('Cycles day/slot edit and delete (US3)', () => {
 
     // Edit the slot itself.
     await table.getByRole('button', { name: 'Edit slot Worship' }).click();
-    const editSlotDialog = page.getByRole('dialog', { name: 'Edit slot' });
-    await editSlotDialog.getByLabel('Label').fill('Worship (edited)');
-    await editSlotDialog.getByRole('button', { name: 'Save' }).click();
-    await expect(editSlotDialog).not.toBeAttached();
+    const editEventTimeBlockDialog = page.getByRole('dialog', {
+      name: 'Edit slot',
+    });
+    await editEventTimeBlockDialog.getByLabel('Label').fill('Worship (edited)');
+    await editEventTimeBlockDialog
+      .getByRole('button', { name: 'Save' })
+      .click();
+    await expect(editEventTimeBlockDialog).not.toBeAttached();
     await expect(table.getByText('Worship (edited)')).toBeVisible();
 
     // Delete the whole day. cancelPlanningEvent soft-deletes at the data
@@ -462,27 +472,39 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       .filter({ hasText: templateName })
       .first();
     await templatedCard.getByRole('button', { name: /^Add slot to/ }).click();
-    const addSlotDialog = page.getByRole('dialog', { name: 'Add slot' });
-    await addSlotDialog.getByLabel('Label').fill('Prayer');
+    const addEventTimeBlockDialog = page.getByRole('dialog', {
+      name: 'Add slot',
+    });
+    await addEventTimeBlockDialog.getByLabel('Label').fill('Prayer');
     await fillTimeOfDayField({
-      field: addSlotDialog.getByTestId('create-slot-start-time-field'),
+      field: addEventTimeBlockDialog.getByTestId(
+        'create-event-time-block-start-time-field',
+      ),
       time: '08:00',
     });
     await fillTimeOfDayField({
-      field: addSlotDialog.getByTestId('create-slot-end-time-field'),
+      field: addEventTimeBlockDialog.getByTestId(
+        'create-event-time-block-end-time-field',
+      ),
       time: '08:30',
     });
-    await addSlotDialog.getByRole('button', { name: 'Add slot' }).click();
-    await expect(addSlotDialog).not.toBeAttached();
+    await addEventTimeBlockDialog
+      .getByRole('button', { name: 'Add slot' })
+      .click();
+    await expect(addEventTimeBlockDialog).not.toBeAttached();
     await expect(templatedCard.getByText('Prayer')).toBeVisible();
 
     await templatedCard
       .getByRole('button', { name: 'Edit slot Prayer' })
       .click();
-    const editSlotDialog = page.getByRole('dialog', { name: 'Edit slot' });
-    await editSlotDialog.getByLabel('Label').fill('Prayer (edited)');
-    await editSlotDialog.getByRole('button', { name: 'Save' }).click();
-    await expect(editSlotDialog).not.toBeAttached();
+    const editEventTimeBlockDialog = page.getByRole('dialog', {
+      name: 'Edit slot',
+    });
+    await editEventTimeBlockDialog.getByLabel('Label').fill('Prayer (edited)');
+    await editEventTimeBlockDialog
+      .getByRole('button', { name: 'Save' })
+      .click();
+    await expect(editEventTimeBlockDialog).not.toBeAttached();
     await expect(templatedCard.getByText('Prayer (edited)')).toBeVisible();
 
     // Delete the added slot; the day's original templated slot must remain

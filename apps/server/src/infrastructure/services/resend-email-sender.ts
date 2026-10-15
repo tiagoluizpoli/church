@@ -152,7 +152,7 @@ function renderTransferDigestHtml({
   const items = payload.withdrawnAssignments
     .map(
       (a) =>
-        `<li>${a.eventName} — ${formatInstant({ instant: fromDate({ date: a.timeSlotStart }), timeZone: 'UTC' })} — ${a.roleName}</li>`,
+        `<li>${a.eventName} — ${formatInstant({ instant: fromDate({ date: a.eventTimeBlockStart }), timeZone: 'UTC' })} — ${a.roleName}</li>`,
     )
     .join('');
   return `

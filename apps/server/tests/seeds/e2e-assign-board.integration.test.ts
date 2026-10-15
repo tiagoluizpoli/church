@@ -2,12 +2,12 @@ import {
   assignment,
   cycle,
   event,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   ministryParticipation,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
   shift,
-  slotRequirement,
+  shiftRequirement,
 } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
@@ -59,13 +59,13 @@ async function qualifiedRoleIds({
   volunteerId,
 }: VolunteerIdInput): Promise<string[]> {
   const rows = await testDb
-    .select({ roleId: ministryVolunteerRole.roleId })
-    .from(ministryVolunteerRole)
+    .select({ roleId: ministryMembershipRole.roleId })
+    .from(ministryMembershipRole)
     .innerJoin(
-      ministryVolunteer,
-      eq(ministryVolunteer.id, ministryVolunteerRole.ministryVolunteerId),
+      ministryMembership,
+      eq(ministryMembership.id, ministryMembershipRole.ministryMembershipId),
     )
-    .where(eq(ministryVolunteer.volunteerId, volunteerId));
+    .where(eq(ministryMembership.volunteerId, volunteerId));
   return rows.map((row) => row.roleId).sort();
 }
 
@@ -75,13 +75,13 @@ interface TeamIdInput {
 
 async function teamMembers({ teamId }: TeamIdInput): Promise<string[]> {
   const rows = await testDb
-    .select({ volunteerId: ministryVolunteer.volunteerId })
-    .from(ministryVolunteerTeam)
+    .select({ volunteerId: ministryMembership.volunteerId })
+    .from(ministryMembershipTeam)
     .innerJoin(
-      ministryVolunteer,
-      eq(ministryVolunteer.id, ministryVolunteerTeam.ministryVolunteerId),
+      ministryMembership,
+      eq(ministryMembership.id, ministryMembershipTeam.ministryMembershipId),
     )
-    .where(eq(ministryVolunteerTeam.teamId, teamId));
+    .where(eq(ministryMembershipTeam.teamId, teamId));
   return rows.map((row) => row.volunteerId).sort();
 }
 
@@ -140,37 +140,37 @@ describe('assign-board E2E journey recipe', () => {
 
     const requirements = await testDb
       .select({
-        shiftId: slotRequirement.shiftId,
-        roleId: slotRequirement.roleId,
-        requiredCount: slotRequirement.requiredCount,
-        teamId: slotRequirement.teamId,
+        shiftId: shiftRequirement.shiftId,
+        roleId: shiftRequirement.roleId,
+        peopleNeeded: shiftRequirement.peopleNeeded,
+        teamId: shiftRequirement.teamId,
       })
-      .from(slotRequirement)
-      .where(eq(slotRequirement.churchId, journey.church.id));
+      .from(shiftRequirement)
+      .where(eq(shiftRequirement.churchId, journey.church.id));
     expect(requirements).toEqual(
       expect.arrayContaining([
         {
           shiftId: service.shiftId,
           roleId: worship.roles.usher.id,
-          requiredCount: 2,
+          peopleNeeded: 2,
           teamId: null,
         },
         {
           shiftId: teamService.shiftId,
           roleId: worship.roles.greeter.id,
-          requiredCount: 1,
+          peopleNeeded: 1,
           teamId: worship.teams.alpha.id,
         },
         {
           shiftId: teamService.shiftId,
           roleId: worship.roles.usher.id,
-          requiredCount: 1,
+          peopleNeeded: 1,
           teamId: null,
         },
         {
           shiftId: assignedService.shiftId,
           roleId: worship.roles.host.id,
-          requiredCount: 3,
+          peopleNeeded: 3,
           teamId: null,
         },
       ]),
@@ -222,7 +222,7 @@ describe('assign-board E2E journey recipe', () => {
     expect(assignedService.day).toBe('2026-03-28');
     expect(assignedService.requirements.host).toMatchObject({
       roleId: journey.ministries.worship.roles.host.id,
-      requiredCount: 3,
+      peopleNeeded: 3,
     });
     const rows = await testDb
       .select({
@@ -255,7 +255,7 @@ describe('assign-board E2E journey recipe', () => {
         },
       ]),
     );
-    // The seats smoke and builder-slot-focus fill start empty.
+    // The seats smoke and builder-event-time-block-focus fill start empty.
     expect(rows).toHaveLength(3);
   });
 
@@ -342,15 +342,15 @@ describe('assign-qualification E2E journey recipe', () => {
       ].sort(),
     );
     const [leadership] = await testDb
-      .select({ accessLevel: ministryVolunteerTeam.accessLevel })
-      .from(ministryVolunteerTeam)
+      .select({ accessLevel: ministryMembershipTeam.accessLevel })
+      .from(ministryMembershipTeam)
       .innerJoin(
-        ministryVolunteer,
-        eq(ministryVolunteer.id, ministryVolunteerTeam.ministryVolunteerId),
+        ministryMembership,
+        eq(ministryMembership.id, ministryMembershipTeam.ministryMembershipId),
       )
       .where(
         eq(
-          ministryVolunteer.volunteerId,
+          ministryMembership.volunteerId,
           journey.personas.teamLeader.volunteerId,
         ),
       );

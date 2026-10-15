@@ -2,10 +2,10 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
   ConfirmDeleteEventInput,
-  ConfirmDeleteSlotInput,
-  StartCreateSlotInput,
+  ConfirmDeleteEventTimeBlockInput,
+  StartCreateEventTimeBlockInput,
   StartEditEventInput,
-  StartEditSlotInput,
+  StartEditEventTimeBlockInput,
 } from './calendar-row';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
@@ -32,12 +32,14 @@ export interface PlanningEventCardProps {
   row: CycleCalendarTableRow;
   isReadOnly: boolean;
   deleteEventPending: boolean;
-  deleteSlotPending: boolean;
-  onAddSlotRequest: (input: StartCreateSlotInput) => void;
+  deleteEventTimeBlockPending: boolean;
+  onAddEventTimeBlockRequest: (input: StartCreateEventTimeBlockInput) => void;
   onEditEventRequest: (input: StartEditEventInput) => void;
   onDeleteEventConfirm: (input: ConfirmDeleteEventInput) => void;
-  onEditSlotRequest: (input: StartEditSlotInput) => void;
-  onDeleteSlotConfirm: (input: ConfirmDeleteSlotInput) => void;
+  onEditEventTimeBlockRequest: (input: StartEditEventTimeBlockInput) => void;
+  onDeleteEventTimeBlockConfirm: (
+    input: ConfirmDeleteEventTimeBlockInput,
+  ) => void;
 }
 
 /** Which delete-confirm dialog (if any) is open on this card — kept local
@@ -47,18 +49,18 @@ export interface PlanningEventCardProps {
 type ConfirmState =
   | { kind: 'none' }
   | { kind: 'event' }
-  | { kind: 'slot'; slotId: string };
+  | { kind: 'slot'; eventTimeBlockId: string };
 
 export function PlanningEventCard({
   row,
   isReadOnly,
   deleteEventPending,
-  deleteSlotPending,
-  onAddSlotRequest,
+  deleteEventTimeBlockPending,
+  onAddEventTimeBlockRequest,
   onEditEventRequest,
   onDeleteEventConfirm,
-  onEditSlotRequest,
-  onDeleteSlotConfirm,
+  onEditEventTimeBlockRequest,
+  onDeleteEventTimeBlockConfirm,
 }: PlanningEventCardProps) {
   const [confirmState, setConfirmState] = useState<ConfirmState>({
     kind: 'none',
@@ -67,7 +69,7 @@ export function PlanningEventCard({
 
   /** Auto-close the confirm dialog on the falling edge of pending (mutation
    * settled) instead of synchronously in the click handler — otherwise the
-   * dialog disappears before `deleteEventPending`/`deleteSlotPending` ever
+   * dialog disappears before `deleteEventPending`/`deleteEventTimeBlockPending` ever
    * gets a chance to render, leaving no visible feedback during the delete. */
   const prevDeleteEventPendingRef = useRef(deleteEventPending);
   useEffect(() => {
@@ -79,15 +81,20 @@ export function PlanningEventCard({
     prevDeleteEventPendingRef.current = deleteEventPending;
   }, [deleteEventPending]);
 
-  const prevDeleteSlotPendingRef = useRef(deleteSlotPending);
+  const prevDeleteEventTimeBlockPendingRef = useRef(
+    deleteEventTimeBlockPending,
+  );
   useEffect(() => {
-    if (prevDeleteSlotPendingRef.current && !deleteSlotPending) {
+    if (
+      prevDeleteEventTimeBlockPendingRef.current &&
+      !deleteEventTimeBlockPending
+    ) {
       setConfirmState((current) =>
         current.kind === 'slot' ? { kind: 'none' } : current,
       );
     }
-    prevDeleteSlotPendingRef.current = deleteSlotPending;
-  }, [deleteSlotPending]);
+    prevDeleteEventTimeBlockPendingRef.current = deleteEventTimeBlockPending;
+  }, [deleteEventTimeBlockPending]);
 
   return (
     <div
@@ -122,7 +129,7 @@ export function PlanningEventCard({
             size="touch"
             variant="ghost"
             aria-label={`Add slot to ${row.title}`}
-            onClick={() => onAddSlotRequest({ row })}
+            onClick={() => onAddEventTimeBlockRequest({ row })}
           >
             <Plus className="size-3.5" /> Add slot
           </Button>
@@ -181,8 +188,8 @@ export function PlanningEventCard({
         <ul className="mt-3 space-y-2 text-muted-foreground text-xs">
           {row.slots.map((slot) => (
             <li
-              key={slot.slotId}
-              data-testid="planning-slot-item"
+              key={slot.eventTimeBlockId}
+              data-testid="planning-event-time-block-item"
               className="flex items-center justify-between gap-2"
             >
               <span>
@@ -203,9 +210,9 @@ export function PlanningEventCard({
                     variant="ghost"
                     aria-label={`Edit slot ${slot.label}`}
                     onClick={() =>
-                      onEditSlotRequest({
+                      onEditEventTimeBlockRequest({
                         parentId: row.eventId,
-                        slotId: slot.slotId,
+                        eventTimeBlockId: slot.eventTimeBlockId,
                         label: slot.label,
                         startTime: slot.startTime,
                         endTime: slot.endTime,
@@ -214,7 +221,7 @@ export function PlanningEventCard({
                   >
                     <Pencil className="size-3.5" />
                   </Button>
-                  {slot.isOnlySlotInEvent ? (
+                  {slot.isOnlyEventTimeBlockInEvent ? (
                     <Button
                       type="button"
                       size="icon-touch"
@@ -228,12 +235,15 @@ export function PlanningEventCard({
                     <AlertDialog
                       open={
                         confirmState.kind === 'slot' &&
-                        confirmState.slotId === slot.slotId
+                        confirmState.eventTimeBlockId === slot.eventTimeBlockId
                       }
                       onOpenChange={(open) =>
                         setConfirmState(
                           open
-                            ? { kind: 'slot', slotId: slot.slotId }
+                            ? {
+                                kind: 'slot',
+                                eventTimeBlockId: slot.eventTimeBlockId,
+                              }
                             : { kind: 'none' },
                         )
                       }
@@ -258,20 +268,24 @@ export function PlanningEventCard({
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel disabled={deleteSlotPending}>
+                          <AlertDialogCancel
+                            disabled={deleteEventTimeBlockPending}
+                          >
                             Cancel
                           </AlertDialogCancel>
                           <AlertDialogAction
                             variant="destructive"
-                            disabled={deleteSlotPending}
+                            disabled={deleteEventTimeBlockPending}
                             onClick={() =>
-                              onDeleteSlotConfirm({
+                              onDeleteEventTimeBlockConfirm({
                                 eventId: row.eventId,
-                                slotId: slot.slotId,
+                                eventTimeBlockId: slot.eventTimeBlockId,
                               })
                             }
                           >
-                            {deleteSlotPending ? 'Deleting…' : 'Delete slot'}
+                            {deleteEventTimeBlockPending
+                              ? 'Deleting…'
+                              : 'Delete slot'}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

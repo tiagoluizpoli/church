@@ -2,10 +2,10 @@ import type {
   AssignmentId,
   ChurchId,
   EventId,
+  EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
-  TimeSlotId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
@@ -13,7 +13,7 @@ import type { Assignment, AssignmentStatus } from '../../entities/assignment';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateAssignmentInput {
-  slotId?: TimeSlotId;
+  eventTimeBlockId?: EventTimeBlockId;
   participationId?: MinistryParticipationId;
   shiftId?: ShiftId;
   volunteerId: VolunteerId;
@@ -41,16 +41,16 @@ export interface AssignmentRepository {
     tx?: TransactionContext,
   ): Promise<Assignment>;
 
-  findBySlotAndVolunteer(
+  findByEventTimeBlockAndVolunteer(
     churchId: ChurchId,
-    slotId: TimeSlotId,
+    eventTimeBlockId: EventTimeBlockId,
     volunteerId: VolunteerId,
     tx?: TransactionContext,
   ): Promise<Assignment | null>;
 
-  listBySlot(
+  listByEventTimeBlock(
     churchId: ChurchId,
-    slotId: TimeSlotId,
+    eventTimeBlockId: EventTimeBlockId,
     tx?: TransactionContext,
   ): Promise<Assignment[]>;
 
@@ -128,9 +128,9 @@ export interface AssignmentRepository {
     tx?: TransactionContext,
   ): Promise<void>;
 
-  listDeclinedBySlot(
+  listDeclinedByEventTimeBlock(
     churchId: ChurchId,
-    slotId: TimeSlotId,
+    eventTimeBlockId: EventTimeBlockId,
     tx?: TransactionContext,
   ): Promise<Assignment[]>;
 }

@@ -1,6 +1,6 @@
 import type { ChurchId, MinistryId, RoleId, UserId } from '../../branded-ids';
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
-import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { TransactionContext } from './transaction-context';
 
 export interface AcquireMintLockInput {

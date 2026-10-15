@@ -26,18 +26,18 @@ interface ParticipationSummaryResponse {
   state: string;
 }
 
-interface SlotSummaryResponse {
+interface EventTimeBlockSummaryResponse {
   id: string;
   label?: string;
 }
 
-interface SlotEntryResponse {
-  slot: SlotSummaryResponse;
+interface EventTimeBlockEntryResponse {
+  slot: EventTimeBlockSummaryResponse;
 }
 
 interface ParticipationEventResponse {
   participation: ParticipationSummaryResponse;
-  slots: SlotEntryResponse[];
+  slots: EventTimeBlockEntryResponse[];
 }
 
 interface ParticipationResponse {
@@ -47,7 +47,7 @@ interface ParticipationResponse {
 test('leader prepares participation, splits shifts, sets headcounts, and requests availability', async ({
   page,
 }, testInfo) => {
-  // The journey owns its Church, Ministry and serving profile: no other
+  // The journey owns its Church, Ministry and usual setup: no other
   // spec can replace the profile between the PUT and apply-templates.
   const journey = loadLeaderPrepareJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.leader });
@@ -92,25 +92,25 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
   expect(templateResponse.ok()).toBeTruthy();
   const templateBody = (await templateResponse.json()) as TemplateResponse;
 
-  const servingProfileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${ministryId}/serving-profile`,
+  const usualSetupResponse = await page.request.put(
+    `${SERVER_URL}/api/v1/admin/ministries/${ministryId}/usual-setup`,
     {
       data: {
         entries: [
           {
-            sourceTemplateBlockId: templateBody.blocks[0]?.id,
+            sourceTemplateTimeBlockId: templateBody.blocks[0]?.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [{ roleId, count: 1 }],
           },
           {
-            sourceTemplateBlockId: templateBody.blocks[1]?.id,
+            sourceTemplateTimeBlockId: templateBody.blocks[1]?.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [{ roleId, count: 1 }],
           },
           {
-            sourceTemplateBlockId: templateBody.blocks[2]?.id,
+            sourceTemplateTimeBlockId: templateBody.blocks[2]?.id,
             serves: false,
             shiftSplit: { kind: 'equal', count: 1 },
             headcounts: [],
@@ -119,7 +119,7 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
       },
     },
   );
-  expect(servingProfileResponse.ok()).toBeTruthy();
+  expect(usualSetupResponse.ok()).toBeTruthy();
 
   const applyResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/cycles/${cycleBody.id}/apply-templates`,
@@ -149,48 +149,62 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
     (await participationResponse.json()) as ParticipationResponse;
   const firstEvent = participationBody.events[0];
   if (!firstEvent) throw new Error('No events found for cycle participation');
-  const welcomeSlot = firstEvent.slots.find((s) => s.slot.label === 'Welcome');
-  const messageSlot = firstEvent.slots.find((s) => s.slot.label === 'Message');
-  const prayerSlot = firstEvent.slots.find((s) => s.slot.label === 'Prayer');
-  if (!welcomeSlot || !messageSlot || !prayerSlot) {
+  const welcomeEventTimeBlock = firstEvent.slots.find(
+    (s) => s.slot.label === 'Welcome',
+  );
+  const messageEventTimeBlock = firstEvent.slots.find(
+    (s) => s.slot.label === 'Message',
+  );
+  const prayerEventTimeBlock = firstEvent.slots.find(
+    (s) => s.slot.label === 'Prayer',
+  );
+  if (
+    !welcomeEventTimeBlock ||
+    !messageEventTimeBlock ||
+    !prayerEventTimeBlock
+  ) {
     throw new Error('Expected Welcome/Message/Prayer slots not found');
   }
 
   const welcomeRow = page.getByTestId(
-    `prepare-slot-row-${welcomeSlot.slot.id}`,
+    `prepare-event-time-block-row-${welcomeEventTimeBlock.slot.id}`,
   );
   const messageRow = page.getByTestId(
-    `prepare-slot-row-${messageSlot.slot.id}`,
+    `prepare-event-time-block-row-${messageEventTimeBlock.slot.id}`,
   );
-  const prayerRow = page.getByTestId(`prepare-slot-row-${prayerSlot.slot.id}`);
+  const prayerRow = page.getByTestId(
+    `prepare-event-time-block-row-${prayerEventTimeBlock.slot.id}`,
+  );
 
   await expect(
-    welcomeRow.getByTestId(`serving-toggle-${welcomeSlot.slot.id}`),
+    welcomeRow.getByTestId(`serving-toggle-${welcomeEventTimeBlock.slot.id}`),
   ).toBeChecked();
   await expect(
-    messageRow.getByTestId(`serving-toggle-${messageSlot.slot.id}`),
+    messageRow.getByTestId(`serving-toggle-${messageEventTimeBlock.slot.id}`),
   ).toBeChecked();
   await expect(
-    prayerRow.getByTestId(`serving-toggle-${prayerSlot.slot.id}`),
+    prayerRow.getByTestId(`serving-toggle-${prayerEventTimeBlock.slot.id}`),
   ).not.toBeChecked();
 
   await welcomeRow
-    .getByTestId(`toggle-slot-expand-${welcomeSlot.slot.id}`)
+    .getByTestId(
+      `toggle-event-time-block-expand-${welcomeEventTimeBlock.slot.id}`,
+    )
     .click();
   const welcomeEditor = welcomeRow.getByTestId(
-    `prepare-slot-editor-${welcomeSlot.slot.id}`,
+    `prepare-event-time-block-editor-${welcomeEventTimeBlock.slot.id}`,
   );
   // `equal-split-count`/`shift-mode-select` are keyed by a constant local
   // index (one editor per row, always index 0), not the slot id — scoping
   // to `welcomeEditor` disambiguates them from every other expanded row's
   // editor on the page. A slot starts in "single shift" mode regardless of
-  // the serving profile's suggested split — the leader must explicitly
+  // the usual setup's suggested split — the leader must explicitly
   // switch to "Equal split" before the count field appears.
   await welcomeEditor.getByTestId('shift-mode-select-0').click();
   await page.getByRole('option', { name: 'Equal split' }).click();
   await welcomeEditor.getByTestId('equal-split-count-0').fill('2');
   await welcomeRow
-    .getByTestId(`save-split-button-${welcomeSlot.slot.id}`)
+    .getByTestId(`save-split-button-${welcomeEventTimeBlock.slot.id}`)
     .click();
 
   const shiftRows = welcomeEditor.locator(
@@ -198,7 +212,7 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
   );
   await expect(shiftRows).toHaveCount(2);
 
-  // The role catalog can list more roles than the serving profile set a
+  // The role catalog can list more roles than the usual setup set a
   // headcount for — the editor requires a value for every listed role
   // before "Save headcounts" enables, so fill all of them per shift.
   const firstShiftInputs = shiftRows
@@ -216,7 +230,7 @@ test('leader prepares participation, splits shifts, sets headcounts, and request
     await secondShiftInputs.nth(i).fill('1');
   }
   await welcomeRow
-    .getByTestId(`save-headcounts-button-${welcomeSlot.slot.id}`)
+    .getByTestId(`save-headcounts-button-${welcomeEventTimeBlock.slot.id}`)
     .click();
 
   await page.getByTestId('save-and-ask-availability-button').click();

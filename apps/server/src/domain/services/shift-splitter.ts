@@ -6,8 +6,8 @@ import {
 } from '@church/time';
 import type {
   ChurchId,
+  EventTimeBlockId,
   MinistryParticipationId,
-  TimeSlotId,
 } from '../branded-ids';
 import { Shift } from '../entities/shift';
 import { InvalidShiftSplitError } from '../errors/invalid-shift-split';
@@ -30,8 +30,8 @@ export interface ManualSplitStrategy {
 
 export type ShiftSplitStrategy = EqualNSplitStrategy | ManualSplitStrategy;
 
-export interface SplitTargetTimeSlot {
-  id: TimeSlotId;
+export interface SplitTargetEventTimeBlock {
+  id: EventTimeBlockId;
   startTime: Instant;
   endTime: Instant;
 }
@@ -39,7 +39,7 @@ export interface SplitTargetTimeSlot {
 export interface SplitShiftsInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlot: SplitTargetTimeSlot;
+  eventTimeBlock: SplitTargetEventTimeBlock;
   strategy: ShiftSplitStrategy;
 }
 
@@ -98,14 +98,14 @@ export class ShiftSplitter {
   split({
     churchId,
     participationId,
-    timeSlot,
+    eventTimeBlock,
     strategy,
   }: SplitShiftsInput): Shift[] {
     const spans: ManualSplitSpan[] =
       strategy.kind === 'equal-n'
         ? computeEqualSpans({
-            startTime: timeSlot.startTime,
-            endTime: timeSlot.endTime,
+            startTime: eventTimeBlock.startTime,
+            endTime: eventTimeBlock.endTime,
             n: strategy.n,
           })
         : normalizeManualSpans({ spans: strategy.spans });
@@ -116,14 +116,14 @@ export class ShiftSplitter {
           props: {
             churchId,
             participationId,
-            timeSlotId: timeSlot.id,
+            eventTimeBlockId: eventTimeBlock.id,
             startTime: span.startTime,
             endTime: span.endTime,
             label: span.label,
           },
-          slotBounds: {
-            startTime: timeSlot.startTime,
-            endTime: timeSlot.endTime,
+          eventTimeBlockBounds: {
+            startTime: eventTimeBlock.startTime,
+            endTime: eventTimeBlock.endTime,
           },
         }),
     );

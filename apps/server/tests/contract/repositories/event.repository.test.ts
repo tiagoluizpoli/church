@@ -4,9 +4,9 @@ import type {
   ChurchId,
   CycleId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   RoleId,
-  TimeSlotId,
 } from '@/domain/branded-ids';
 import type {
   CreateEventInput,
@@ -17,18 +17,18 @@ import type {
 import {
   Event,
   type EventStatus,
-  type EventWithSlots,
+  type EventWithEventTimeBlocks,
 } from '@/domain/entities/event';
+import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import {
-  SlotRequirement,
-  type SlotRequirementId,
-} from '@/domain/entities/slot-requirement';
-import { TimeSlot } from '@/domain/entities/time-slot';
+  ShiftRequirement,
+  type ShiftRequirementId,
+} from '@/domain/entities/shift-requirement';
 import { runEventRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/event.contract-spec';
 
 class MockEventRepository implements EventRepository {
   private events = new Map<string, Event>();
-  private slots = new Map<string, TimeSlot[]>();
+  private slots = new Map<string, EventTimeBlock[]>();
   private ministries = new Map<string, MinistryId>();
   private idCounter = 1;
 
@@ -67,17 +67,18 @@ class MockEventRepository implements EventRepository {
       '33333333-3333-3333-3333-333333333331' as MinistryId,
     );
 
-    const req = new SlotRequirement(
+    const req = new ShiftRequirement(
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
-        slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        eventTimeBlockId:
+          '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
-        requiredCount: 1,
+        peopleNeeded: 1,
       },
-      '88888888-8888-8888-8888-888888888881' as SlotRequirementId,
+      '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
     );
 
-    const slot = new TimeSlot(
+    const slot = new EventTimeBlock(
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         eventId: e1.id,
@@ -86,7 +87,7 @@ class MockEventRepository implements EventRepository {
         status: 'active',
         requirements: [req],
       },
-      '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+      '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
     );
 
     this.slots.set(e1.id, [slot]);
@@ -100,7 +101,10 @@ class MockEventRepository implements EventRepository {
     return e;
   }
 
-  async getWithSlots(churchId: ChurchId, id: EventId): Promise<EventWithSlots> {
+  async getWithEventTimeBlocks(
+    churchId: ChurchId,
+    id: EventId,
+  ): Promise<EventWithEventTimeBlocks> {
     const event = await this.getById(churchId, id);
     const slots = this.slots.get(id) ?? [];
     return { event, slots };

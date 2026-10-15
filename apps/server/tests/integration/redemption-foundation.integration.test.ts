@@ -3,8 +3,8 @@ import {
   identityAudit,
   invitationVerificationCode,
   ministryInvitation,
-  ministryVolunteer,
-  ministryVolunteerRole,
+  ministryMembership,
+  ministryMembershipRole,
   outboxMessage,
   securityLog,
   volunteer,
@@ -333,13 +333,13 @@ describe('checkpoint-three redemption persistence', () => {
     );
     const [membership] = await testDb
       .select()
-      .from(ministryVolunteer)
-      .where(eq(ministryVolunteer.volunteerId, volunteerId));
+      .from(ministryMembership)
+      .where(eq(ministryMembership.volunteerId, volunteerId));
     const grantedRoles = await testDb
-      .select({ roleId: ministryVolunteerRole.roleId })
-      .from(ministryVolunteerRole)
+      .select({ roleId: ministryMembershipRole.roleId })
+      .from(ministryMembershipRole)
       .where(
-        eq(ministryVolunteerRole.ministryVolunteerId, membership?.id ?? ''),
+        eq(ministryMembershipRole.ministryMembershipId, membership?.id ?? ''),
       );
 
     expect(membership?.ministryId).toBe(fixture.ministryOneA);
@@ -419,12 +419,12 @@ describe('checkpoint-three redemption persistence', () => {
     const invitation = await mintInvitation();
     const { redemptionManager } = createHarness();
     const existingMemberships = await testDb
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
       .where(
         and(
-          eq(ministryVolunteer.churchId, fixture.churchA.id),
-          eq(ministryVolunteer.ministryId, fixture.ministryOneA),
+          eq(ministryMembership.churchId, fixture.churchA.id),
+          eq(ministryMembership.ministryId, fixture.ministryOneA),
         ),
       );
 
@@ -446,12 +446,12 @@ describe('checkpoint-three redemption persistence', () => {
       .from(ministryInvitation)
       .where(eq(ministryInvitation.id, invitation.id));
     const acceptedMemberships = await testDb
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
       .where(
         and(
-          eq(ministryVolunteer.churchId, fixture.churchA.id),
-          eq(ministryVolunteer.ministryId, fixture.ministryOneA),
+          eq(ministryMembership.churchId, fixture.churchA.id),
+          eq(ministryMembership.ministryId, fixture.ministryOneA),
         ),
       );
     const redemptionOutbox = await testDb
@@ -486,14 +486,14 @@ describe('existing-member and lifecycle branches (#105)', () => {
     expect(outcome.kind).toBe('full-success');
     const [membership] = await testDb
       .select({
-        ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
+        ministryAccessLevel: ministryMembership.ministryAccessLevel,
       })
-      .from(ministryVolunteer)
-      .innerJoin(volunteer, eq(volunteer.id, ministryVolunteer.volunteerId))
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
       .where(
         and(
           eq(volunteer.userId, fixture.memberNoVolunteerA),
-          eq(ministryVolunteer.ministryId, fixture.ministryOneA),
+          eq(ministryMembership.ministryId, fixture.ministryOneA),
         ),
       );
     expect(membership?.ministryAccessLevel).toBe('volunteer');
@@ -554,19 +554,19 @@ describe('existing-member and lifecycle branches (#105)', () => {
     expect(outcome).toMatchObject({ kind: 'full-success' });
     const memberships = await testDb
       .select({
-        id: ministryVolunteer.id,
-        ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
+        id: ministryMembership.id,
+        ministryAccessLevel: ministryMembership.ministryAccessLevel,
       })
-      .from(ministryVolunteer)
-      .where(eq(ministryVolunteer.volunteerId, existingVolunteer.id));
+      .from(ministryMembership)
+      .where(eq(ministryMembership.volunteerId, existingVolunteer.id));
     expect(memberships).toEqual([
       { id: existingMembership.id, ministryAccessLevel: 'leader' },
     ]);
     const grantedRoles = await testDb
-      .select({ roleId: ministryVolunteerRole.roleId })
-      .from(ministryVolunteerRole)
+      .select({ roleId: ministryMembershipRole.roleId })
+      .from(ministryMembershipRole)
       .where(
-        eq(ministryVolunteerRole.ministryVolunteerId, existingMembership.id),
+        eq(ministryMembershipRole.ministryMembershipId, existingMembership.id),
       );
     expect(grantedRoles).toEqual([{ roleId: fixture.roleInMinistryOneA }]);
     const allVolunteersForUser = await testDb
@@ -644,9 +644,9 @@ describe('existing-member and lifecycle branches (#105)', () => {
 
     expect(secondVolunteerId).toBe(firstVolunteerId);
     const memberships = await testDb
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
-      .innerJoin(volunteer, eq(volunteer.id, ministryVolunteer.volunteerId))
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
       .where(eq(volunteer.userId, fixture.memberNoVolunteerA));
     expect(memberships).toHaveLength(1);
     const audits = await testDb
@@ -680,13 +680,13 @@ describe('existing-member and lifecycle branches (#105)', () => {
       churchId: fixture.churchA.id,
     });
     const memberships = await testDb
-      .select({ id: ministryVolunteer.id })
-      .from(ministryVolunteer)
-      .innerJoin(volunteer, eq(volunteer.id, ministryVolunteer.volunteerId))
+      .select({ id: ministryMembership.id })
+      .from(ministryMembership)
+      .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
       .where(
         and(
           eq(volunteer.userId, fixture.memberNoVolunteerA),
-          eq(ministryVolunteer.ministryId, fixture.ministryOneA),
+          eq(ministryMembership.ministryId, fixture.ministryOneA),
         ),
       );
     expect(memberships).toHaveLength(1);

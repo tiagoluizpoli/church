@@ -1,4 +1,4 @@
-import { timeSlot } from '@church/db';
+import { eventTimeBlock } from '@church/db';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -40,7 +40,7 @@ async function seedAssignment(input: {
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: graph.participation.id,
-    timeSlotId: graph.slot.id,
+    eventTimeBlockId: graph.slot.id,
     start: fromDate({ date: graph.slot.startTime }),
     end: fromDate({ date: graph.slot.endTime }),
     label: input.label === undefined ? 'Whole slot' : input.label,
@@ -163,9 +163,9 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     });
     // Null out the time slot's label to exercise the ISO-start-time fallback.
     await schedulingTestDb
-      .update(timeSlot)
+      .update(eventTimeBlock)
       .set({ label: null })
-      .where(eq(timeSlot.eventId, event.id));
+      .where(eq(eventTimeBlock.eventId, event.id));
 
     const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });
     const churchId = ChurchId.from(seed.churchAId);
@@ -187,8 +187,8 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     expect(entry?.volunteerId).toBe(seed.adminVolunteerId);
     expect(entry?.volunteerName).toBe('Scheduling Admin');
     expect(entry?.actorName).toBe('Scheduling Admin');
-    // Slot has no label, so slotLabel falls back to the ISO start time.
-    expect(entry?.slotLabel).toBe(slot.startTime.toISOString());
+    // Slot has no label, so eventTimeBlockLabel falls back to the ISO start time.
+    expect(entry?.eventTimeBlockLabel).toBe(slot.startTime.toISOString());
   });
 
   it('listByEvent defaults a missing reason to null', async () => {

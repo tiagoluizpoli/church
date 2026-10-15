@@ -546,7 +546,7 @@ describe('decline endpoints', () => {
       withdrawnAssignments: [
         {
           eventName: 'Transfer Sunday',
-          timeSlotStart: new Date('2026-09-20T09:00:00.000Z'),
+          eventTimeBlockStart: new Date('2026-09-20T09:00:00.000Z'),
           roleName: 'Greeter',
         },
       ],
@@ -567,7 +567,7 @@ describe('decline endpoints', () => {
       withdrawnAssignments: [
         {
           eventName: 'Transfer Sunday',
-          timeSlotStart: '2026-09-20T09:00:00.000Z',
+          eventTimeBlockStart: '2026-09-20T09:00:00.000Z',
           roleName: 'Greeter',
         },
       ],

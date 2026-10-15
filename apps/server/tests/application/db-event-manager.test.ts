@@ -4,26 +4,26 @@ import { DbEventManager } from '@/application/db-event-manager';
 import type {
   ChurchId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   RoleId,
-  TimeSlotId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
-import type { AvailabilityRepository } from '@/domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
-import type { TimeSlotRepository } from '@/domain/contracts/infrastructure/time-slot.repository';
+import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 import type {
   MinistryMembership,
   MinistryTeamMembership,
   VolunteerRepository,
 } from '@/domain/contracts/infrastructure/volunteer.repository';
 import { Assignment } from '@/domain/entities/assignment';
-import { Availability } from '@/domain/entities/availability';
 import { Event } from '@/domain/entities/event';
+import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { Role } from '@/domain/entities/role';
-import { TimeSlot } from '@/domain/entities/time-slot';
+import { Availability } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 
@@ -31,7 +31,8 @@ const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
 const ministryId = '22222222-2222-4222-8222-222222222222' as MinistryId;
 const eventId = '33333333-3333-4333-8333-333333333333' as EventId;
 const roleId = '44444444-4444-4444-8444-444444444444' as RoleId;
-const slotId = '55555555-5555-4555-8555-555555555555' as TimeSlotId;
+const eventTimeBlockId =
+  '55555555-5555-4555-8555-555555555555' as EventTimeBlockId;
 const leaderId = 'leader-1' as VolunteerId;
 const teamLeaderId = 'team-leader-1' as VolunteerId;
 const teamAVolunteerId = 'volunteer-team-a' as VolunteerId;
@@ -76,9 +77,9 @@ function buildMembership(
 
 interface Repos {
   eventRepo: EventRepository;
-  slotRepo: TimeSlotRepository;
+  eventTimeBlockRepo: EventTimeBlockRepository;
   assignmentRepo: AssignmentRepository;
-  availabilityRepo: AvailabilityRepository;
+  unavailableShiftRepo: UnavailableShiftRepository;
   volunteerRepo: VolunteerRepository;
   roleRepo: RoleRepository;
 }
@@ -87,21 +88,21 @@ function createRepos(): Repos {
   const eventRepo: EventRepository = {
     getMinistryId: vi.fn(async () => ministryId),
     getById: vi.fn(async () => buildEvent()),
-    getWithSlots: vi.fn(),
+    getWithEventTimeBlocks: vi.fn(),
     listByMinistry: vi.fn(async () => []),
     create: vi.fn(),
     updateStatus: vi.fn(async () => undefined),
     update: vi.fn(),
   };
 
-  const slotRepo: TimeSlotRepository = {
+  const eventTimeBlockRepo: EventTimeBlockRepository = {
     getById: vi.fn(),
     listByEvent: vi.fn(async () => []),
     create: vi.fn(
-      async (_churchId, input) => new TimeSlot({ ...input, churchId }),
+      async (_churchId, input) => new EventTimeBlock({ ...input, churchId }),
     ),
     update: vi.fn(async (_churchId, id, input) => {
-      const slot = new TimeSlot(
+      const slot = new EventTimeBlock(
         {
           churchId,
           eventId,
@@ -126,8 +127,8 @@ function createRepos(): Repos {
   const assignmentRepo: AssignmentRepository = {
     create: vi.fn(),
     getById: vi.fn(),
-    findBySlotAndVolunteer: vi.fn(),
-    listBySlot: vi.fn(),
+    findByEventTimeBlockAndVolunteer: vi.fn(),
+    listByEventTimeBlock: vi.fn(),
     listByEvent: vi.fn(async () => []),
     listByParticipation: vi.fn(),
     listByShift: vi.fn(),
@@ -139,14 +140,14 @@ function createRepos(): Repos {
     countByVolunteerInRange: vi.fn(),
     deleteByEvent: vi.fn(),
     deleteById: vi.fn(),
-    listDeclinedBySlot: vi.fn(),
+    listDeclinedByEventTimeBlock: vi.fn(),
   };
 
-  const availabilityRepo: AvailabilityRepository = {
+  const unavailableShiftRepo: UnavailableShiftRepository = {
     listByVolunteerForEvent: vi.fn(),
     listByVolunteers: vi.fn(async () => []),
-    listMarksByCheck: vi.fn(),
-    replaceMarksForCheck: vi.fn(),
+    listUnavailableShiftsByCheck: vi.fn(),
+    replaceUnavailableShiftsForCheck: vi.fn(),
   };
 
   const volunteerRepo: VolunteerRepository = {
@@ -174,9 +175,9 @@ function createRepos(): Repos {
 
   return {
     eventRepo,
-    slotRepo,
+    eventTimeBlockRepo,
     assignmentRepo,
-    availabilityRepo,
+    unavailableShiftRepo,
     volunteerRepo,
     roleRepo,
   };
@@ -185,9 +186,9 @@ function createRepos(): Repos {
 function createManager(repos: Repos): DbEventManager {
   return new DbEventManager({
     eventRepo: repos.eventRepo,
-    slotRepo: repos.slotRepo,
+    eventTimeBlockRepo: repos.eventTimeBlockRepo,
     assignmentRepo: repos.assignmentRepo,
-    availabilityRepo: repos.availabilityRepo,
+    unavailableShiftRepo: repos.unavailableShiftRepo,
     volunteerRepo: repos.volunteerRepo,
     roleRepo: repos.roleRepo,
   });
@@ -342,7 +343,7 @@ describe('DbEventManager', () => {
           },
         }),
       ];
-      vi.mocked(repos.availabilityRepo.listByVolunteers).mockResolvedValue(
+      vi.mocked(repos.unavailableShiftRepo.listByVolunteers).mockResolvedValue(
         availability,
       );
 
@@ -389,7 +390,7 @@ describe('DbEventManager', () => {
       expect(result.roles).toEqual([{ id: roleId, name: 'Usher' }]);
       expect(result.assignments).toEqual([]);
       expect(result.availability).toBe(availability);
-      expect(repos.availabilityRepo.listByVolunteers).toHaveBeenCalledWith(
+      expect(repos.unavailableShiftRepo.listByVolunteers).toHaveBeenCalledWith(
         churchId,
         expect.arrayContaining([leaderId, teamAVolunteerId, teamBVolunteerId]),
       );
@@ -515,28 +516,30 @@ describe('DbEventManager', () => {
       });
 
       expect(result.availability).toEqual([]);
-      expect(repos.availabilityRepo.listByVolunteers).not.toHaveBeenCalled();
+      expect(
+        repos.unavailableShiftRepo.listByVolunteers,
+      ).not.toHaveBeenCalled();
     });
 
     it('includes the event and its slots plus raw assignments in the result', async () => {
       const repos = createRepos();
       const event = buildEvent();
       const slots = [
-        new TimeSlot(
+        new EventTimeBlock(
           {
             churchId,
             eventId,
             startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
             endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
           },
-          slotId,
+          eventTimeBlockId,
         ),
       ];
       const assignments = [
         new Assignment(
           {
             churchId,
-            slotId,
+            eventTimeBlockId,
             volunteerId: leaderId,
             roleId,
           },
@@ -544,7 +547,7 @@ describe('DbEventManager', () => {
         ),
       ];
       vi.mocked(repos.eventRepo.getById).mockResolvedValue(event);
-      vi.mocked(repos.slotRepo.listByEvent).mockResolvedValue(slots);
+      vi.mocked(repos.eventTimeBlockRepo.listByEvent).mockResolvedValue(slots);
       vi.mocked(repos.assignmentRepo.listByEvent).mockResolvedValue(
         assignments,
       );

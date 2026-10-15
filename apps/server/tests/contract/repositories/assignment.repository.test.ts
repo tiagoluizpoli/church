@@ -5,10 +5,10 @@ import type {
   AssignmentId,
   ChurchId,
   EventId,
+  EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
-  TimeSlotId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type {
@@ -30,7 +30,8 @@ class MockAssignmentRepository implements AssignmentRepository {
     const a1 = new Assignment(
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
-        slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        eventTimeBlockId:
+          '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
         volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         status: 'confirmed',
@@ -40,7 +41,8 @@ class MockAssignmentRepository implements AssignmentRepository {
     const a2 = new Assignment(
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
-        slotId: '77777777-7777-7777-7777-777777777771' as TimeSlotId,
+        eventTimeBlockId:
+          '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
         volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         status: 'declined',
@@ -51,7 +53,8 @@ class MockAssignmentRepository implements AssignmentRepository {
     const a3 = new Assignment(
       {
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
-        slotId: '77777777-7777-7777-7777-777777777772' as TimeSlotId,
+        eventTimeBlockId:
+          '77777777-7777-7777-7777-777777777772' as EventTimeBlockId,
         volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         status: 'confirmed',
@@ -72,9 +75,9 @@ class MockAssignmentRepository implements AssignmentRepository {
     const a = new Assignment(
       {
         churchId,
-        slotId:
-          input.slotId ??
-          ('77777777-7777-7777-7777-777777777771' as TimeSlotId),
+        eventTimeBlockId:
+          input.eventTimeBlockId ??
+          ('77777777-7777-7777-7777-777777777771' as EventTimeBlockId),
         participationId: input.participationId,
         shiftId: input.shiftId,
         volunteerId: input.volunteerId,
@@ -97,15 +100,15 @@ class MockAssignmentRepository implements AssignmentRepository {
     return a;
   }
 
-  async findBySlotAndVolunteer(
+  async findByEventTimeBlockAndVolunteer(
     churchId: ChurchId,
-    slotId: TimeSlotId,
+    eventTimeBlockId: EventTimeBlockId,
     volunteerId: VolunteerId,
   ): Promise<Assignment | null> {
     for (const a of this.assignments.values()) {
       if (
         a.churchId === churchId &&
-        a.slotId === slotId &&
+        a.eventTimeBlockId === eventTimeBlockId &&
         a.volunteerId === volunteerId
       ) {
         return a;
@@ -114,12 +117,12 @@ class MockAssignmentRepository implements AssignmentRepository {
     return null;
   }
 
-  async listBySlot(
+  async listByEventTimeBlock(
     churchId: ChurchId,
-    slotId: TimeSlotId,
+    eventTimeBlockId: EventTimeBlockId,
   ): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
-      (a) => a.churchId === churchId && a.slotId === slotId,
+      (a) => a.churchId === churchId && a.eventTimeBlockId === eventTimeBlockId,
     );
   }
 
@@ -178,7 +181,7 @@ class MockAssignmentRepository implements AssignmentRepository {
     _startTime: Date,
     _endTime: Date,
   ): Promise<Assignment[]> {
-    // For mock/test range queries, slot-1 has startTime in June 2024
+    // For mock/test range queries, event-time-block-1 has startTime in June 2024
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.volunteerId === volunteerId,
     );
@@ -230,14 +233,14 @@ class MockAssignmentRepository implements AssignmentRepository {
     }
   }
 
-  async listDeclinedBySlot(
+  async listDeclinedByEventTimeBlock(
     churchId: ChurchId,
-    slotId: TimeSlotId,
+    eventTimeBlockId: EventTimeBlockId,
   ): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) =>
         a.churchId === churchId &&
-        a.slotId === slotId &&
+        a.eventTimeBlockId === eventTimeBlockId &&
         a.status === 'declined',
     );
   }

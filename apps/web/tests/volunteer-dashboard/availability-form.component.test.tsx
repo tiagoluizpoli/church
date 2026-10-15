@@ -21,13 +21,13 @@ describe('AvailabilityForm', () => {
         event={eventFixture}
         slots={[
           {
-            slotId: 'slot-1',
+            eventTimeBlockId: 'event-time-block-1',
             label: '8:00 AM Service',
             startTime: '2099-01-05T08:00:00.000Z',
             endTime: '2099-01-05T09:30:00.000Z',
           },
           {
-            slotId: 'slot-2',
+            eventTimeBlockId: 'event-time-block-2',
             label: '10:30 AM Service',
             startTime: '2099-01-05T10:30:00.000Z',
             endTime: '2099-01-05T12:00:00.000Z',
@@ -64,11 +64,11 @@ describe('AvailabilityForm', () => {
     expect(onSave).toHaveBeenCalledWith({
       answers: [
         {
-          slotId: 'slot-1',
+          eventTimeBlockId: 'event-time-block-1',
           response: 'available',
         },
         {
-          slotId: 'slot-2',
+          eventTimeBlockId: 'event-time-block-2',
           response: 'unavailable',
         },
       ],
@@ -84,7 +84,7 @@ describe('AvailabilityForm', () => {
         event={eventFixture}
         slots={[
           {
-            slotId: 'slot-1',
+            eventTimeBlockId: 'event-time-block-1',
             label: '8:00 AM Service',
             startTime: '2099-01-05T08:00:00.000Z',
             endTime: '2099-01-05T09:30:00.000Z',

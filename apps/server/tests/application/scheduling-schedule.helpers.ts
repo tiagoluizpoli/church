@@ -5,22 +5,22 @@ import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
-import { DrizzleAvailabilityRepository } from '@/infrastructure/repositories/drizzle-availability.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
-import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
-import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
+import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { DrizzleVolunteerNotificationRepository } from '@/infrastructure/repositories/drizzle-volunteer-notification.repository';
 import { buildRole } from '@/seeds/builders/ministry';
-import { buildShift, buildSlotRequirement } from '@/seeds/builders/scheduling';
+import { buildShift, buildShiftRequirement } from '@/seeds/builders/scheduling';
 import {
   buildRoleQualification,
   buildVolunteerWithMembership,
@@ -66,10 +66,12 @@ export function createSchedulingManagers({
     db: schedulingTestDb,
   });
   const ministryRepo = new DrizzleMinistryRepository({ db: schedulingTestDb });
-  const availabilityRepo = new DrizzleAvailabilityRepository({
+  const unavailableShiftRepo = new DrizzleUnavailableShiftRepository({
     db: schedulingTestDb,
   });
-  const timeSlotRepo = new DrizzleTimeSlotRepository({ db: schedulingTestDb });
+  const eventTimeBlockRepo = new DrizzleEventTimeBlockRepository({
+    db: schedulingTestDb,
+  });
   const eventRepo = new DrizzlePlanningEventRepository({
     db: schedulingTestDb,
   });
@@ -87,7 +89,7 @@ export function createSchedulingManagers({
       shiftRepository: shiftRepo,
       participationRepository: participationRepo,
       volunteerRepository: volunteerRepo,
-      availabilityRepository: availabilityRepo,
+      unavailableShiftRepository: unavailableShiftRepo,
       planningEventRepository: eventRepo,
       notificationService: notificationSpy,
       unitOfWork,
@@ -97,11 +99,11 @@ export function createSchedulingManagers({
       shiftRepository: shiftRepo,
       eventRepository: eventRepo,
       assignmentRepository: assignmentRepo,
-      availabilityRepository: availabilityRepo,
-      timeSlotRepository: timeSlotRepo,
+      unavailableShiftRepository: unavailableShiftRepo,
+      eventTimeBlockRepository: eventTimeBlockRepo,
       volunteerRepository: volunteerRepo,
       ministryRepository: ministryRepo,
-      servingProfileRepository: new DrizzleMinistryServingProfileRepository({
+      usualSetupRepository: new DrizzleUsualSetupRepository({
         db: schedulingTestDb,
       }),
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
@@ -111,7 +113,7 @@ export function createSchedulingManagers({
     volunteerManager: new DbVolunteerManager({
       volunteerRepo,
       assignmentRepo,
-      availabilityRepo,
+      unavailableShiftRepo,
       notificationRepo: new DrizzleVolunteerNotificationRepository({
         db: schedulingTestDb,
       }),
@@ -170,7 +172,7 @@ export async function seedRoleQualification(
   await buildRoleQualification({
     db: schedulingTestDb,
     churchId: input.churchId,
-    ministryVolunteerId: input.membershipId,
+    ministryMembershipId: input.membershipId,
     roleId: input.roleId,
   });
 }
@@ -178,7 +180,7 @@ export async function seedRoleQualification(
 export interface SeedShiftInput {
   churchId: string;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   startTime: Date;
   endTime: Date;
   label: string;
@@ -189,7 +191,7 @@ export async function seedShift(input: SeedShiftInput) {
     db: schedulingTestDb,
     churchId: input.churchId,
     participationId: input.participationId,
-    timeSlotId: input.timeSlotId,
+    eventTimeBlockId: input.eventTimeBlockId,
     start: fromDate({ date: input.startTime }),
     end: fromDate({ date: input.endTime }),
     label: input.label,
@@ -201,10 +203,10 @@ export interface SeedRequirementInput {
   participationId: string;
   shiftId: string;
   roleId: string;
-  requiredCount: number;
+  peopleNeeded: number;
   teamId?: string;
 }
 
 export async function seedRequirement(input: SeedRequirementInput) {
-  return await buildSlotRequirement({ db: schedulingTestDb, ...input });
+  return await buildShiftRequirement({ db: schedulingTestDb, ...input });
 }

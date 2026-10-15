@@ -75,19 +75,19 @@ describe('MinistryParticipation lifecycle (DL1-MP)', () => {
 
   it('DL1-MP-05 computes completion percent; zero required means 100% (CL-022)', () => {
     expect(
-      calculateCompletionPercent({ assignedCount: 3, requiredCount: 4 }),
+      calculateCompletionPercent({ assignedCount: 3, peopleNeeded: 4 }),
     ).toBe(75);
     expect(
-      calculateCompletionPercent({ assignedCount: 0, requiredCount: 5 }),
+      calculateCompletionPercent({ assignedCount: 0, peopleNeeded: 5 }),
     ).toBe(0);
     expect(
-      calculateCompletionPercent({ assignedCount: 5, requiredCount: 5 }),
+      calculateCompletionPercent({ assignedCount: 5, peopleNeeded: 5 }),
     ).toBe(100);
     expect(
-      calculateCompletionPercent({ assignedCount: 0, requiredCount: 0 }),
+      calculateCompletionPercent({ assignedCount: 0, peopleNeeded: 0 }),
     ).toBe(100);
     expect(
-      calculateCompletionPercent({ assignedCount: 7, requiredCount: 5 }),
+      calculateCompletionPercent({ assignedCount: 7, peopleNeeded: 5 }),
     ).toBe(100);
   });
 

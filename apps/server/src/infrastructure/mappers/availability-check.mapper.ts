@@ -17,7 +17,7 @@ export function mapAvailabilityCheck(
   const props: AvailabilityCheckProps = {
     churchId: row.churchId as ChurchId,
     cycleId: row.cycleId as CycleId,
-    ministryVolunteerId: row.ministryVolunteerId,
+    ministryMembershipId: row.ministryMembershipId,
     state: row.state as AvailabilityCheckProps['state'],
     confirmedAt: row.confirmedAt
       ? fromDate({ date: row.confirmedAt })

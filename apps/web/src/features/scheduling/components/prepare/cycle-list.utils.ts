@@ -1,12 +1,12 @@
 import { compareCalendarDays, parseCalendarDay } from '@church/time';
 import { toCalendarDateString } from '@/features/scheduling/components/participation-prepare.utils';
 import type {
-  ListMinistryCycleSummaries200CyclesItem,
-  ListMinistryCycleSummaries200CyclesItemStatus,
+  ListScheduleSummaries200CyclesItem,
+  ListScheduleSummaries200CyclesItemStatus,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
-export type CyclePrepareStatus = ListMinistryCycleSummaries200CyclesItemStatus;
+export type CyclePrepareStatus = ListScheduleSummaries200CyclesItemStatus;
 
 export interface PrepareCycleSummary {
   id: string;
@@ -15,7 +15,7 @@ export interface PrepareCycleSummary {
   startDate: string;
   endDate: string;
   eventCount: number;
-  slotCount: number;
+  eventTimeBlockCount: number;
   status: CyclePrepareStatus;
   isPartOf: boolean;
   availabilityRequestedForAll: boolean;
@@ -68,13 +68,13 @@ function isDateWithinRange({ date, filter }: IsDateWithinRangeInput): boolean {
  * join across `listEvents`/`listCycles` outright (post-analyze
  * findings I1/I2) — every sent cycle church-wide is included here,
  * including ones this ministry has zero events in (`isPartOf: false`). */
-export interface BuildMinistryCycleSummariesInput {
-  cycles: ListMinistryCycleSummaries200CyclesItem[];
+export interface BuildScheduleSummariesInput {
+  cycles: ListScheduleSummaries200CyclesItem[];
 }
 
-export function buildMinistryCycleSummaries({
+export function buildScheduleSummaries({
   cycles,
-}: BuildMinistryCycleSummariesInput): PrepareCycleSummary[] {
+}: BuildScheduleSummariesInput): PrepareCycleSummary[] {
   return [...cycles]
     .sort((left, right) =>
       compareCalendarDays({
@@ -91,7 +91,7 @@ export function buildMinistryCycleSummaries({
       startDate: cycle.startDate,
       endDate: cycle.endDate,
       eventCount: cycle.eventCount,
-      slotCount: cycle.slotCount,
+      eventTimeBlockCount: cycle.eventTimeBlockCount,
       status: cycle.status,
       isPartOf: cycle.isPartOf,
       availabilityRequestedForAll: cycle.availabilityRequestedForAll,

@@ -96,7 +96,7 @@ describe('assignMapper', () => {
       new Assignment(
         {
           churchId: 'c1',
-          slotId: 's1',
+          eventTimeBlockId: 's1',
           volunteerId: 'v1',
           roleId: 'r1',
         },
@@ -154,14 +154,14 @@ describe('assignMapper', () => {
     it('maps a completion view', () => {
       const response = assignMapper.completionToResponse({
         participationId: MinistryParticipationId.from('p1'),
-        requiredCount: 5,
+        peopleNeeded: 5,
         assignedCount: 3,
         completionPercent: 60,
       });
 
       expect(response).toEqual({
         participationId: 'p1',
-        requiredCount: 5,
+        peopleNeeded: 5,
         assignedCount: 3,
         completionPercent: 60,
       });

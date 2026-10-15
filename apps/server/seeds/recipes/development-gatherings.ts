@@ -5,10 +5,7 @@ import type {
   StaffingNeed,
 } from '../blueprints/gatherings';
 import { deriveSeedId } from '../builders/derived-id';
-import {
-  buildEventTemplate,
-  buildMinistryServingProfile,
-} from '../builders/planning';
+import { buildEventTemplate, buildUsualSetup } from '../builders/planning';
 import type { SeedWriter } from '../recipe';
 
 /** The ids one seeded Ministry exposes to the planning data built on it. */
@@ -18,7 +15,7 @@ export interface SeededMinistryStructure {
   teamIdByName: Map<string, string>;
 }
 
-export interface SeededTemplateBlock {
+export interface SeededTemplateTimeBlock {
   key: GatheringBlockKey;
   id: string;
   templateId: string;
@@ -27,7 +24,7 @@ export interface SeededTemplateBlock {
 }
 
 export interface SeededGatherings {
-  blocks: readonly SeededTemplateBlock[];
+  blocks: readonly SeededTemplateTimeBlock[];
 }
 
 export interface StaffingNeedIds {
@@ -84,7 +81,7 @@ export interface LoadGatheringsInput {
 
 /**
  * The Church's standing planning rules: its EventTemplates and every
- * Ministry's serving profile for each of their TimeBlocks.
+ * Ministry's usual setup for each of their TemplateTimeBlocks.
  */
 export async function loadGatherings({
   db,
@@ -92,26 +89,28 @@ export async function loadGatherings({
   blueprint,
   ministries,
 }: LoadGatheringsInput): Promise<SeededGatherings> {
-  const blocks: SeededTemplateBlock[] = [];
+  const blocks: SeededTemplateTimeBlock[] = [];
   for (const templateBlueprint of blueprint.templates) {
     const templateId = deriveSeedId({
       kind: 'event-template',
       parentIds: [churchId, templateBlueprint.name],
     });
-    const templateBlocks = templateBlueprint.blocks.map((block) => ({
-      ...block,
-      id: deriveSeedId({
-        kind: 'time-block',
-        parentIds: [templateId, block.key],
+    const templateTemplateTimeBlocks = templateBlueprint.blocks.map(
+      (block) => ({
+        ...block,
+        id: deriveSeedId({
+          kind: 'template-time-block',
+          parentIds: [templateId, block.key],
+        }),
       }),
-    }));
+    );
     await buildEventTemplate({
       db,
       churchId,
       id: templateId,
       name: templateBlueprint.name,
       weekday: templateBlueprint.weekday,
-      blocks: templateBlocks.map((block) => ({
+      blocks: templateTemplateTimeBlocks.map((block) => ({
         id: block.id,
         label: block.label,
         startTime: parseTimeOfDay({ value: block.startTime }),
@@ -119,7 +118,7 @@ export async function loadGatherings({
       })),
     });
     blocks.push(
-      ...templateBlocks.map((block) => ({
+      ...templateTemplateTimeBlocks.map((block) => ({
         key: block.key,
         id: block.id,
         templateId,
@@ -133,13 +132,13 @@ export async function loadGatherings({
     const ministry = requireMinistry({ ministries, name: rule.ministry.name });
     for (const block of blocks) {
       const needs = rule.blocks[block.key];
-      await buildMinistryServingProfile({
+      await buildUsualSetup({
         db,
         churchId,
         ministryId: ministry.ministryId,
-        sourceTemplateBlockId: block.id,
+        sourceTemplateTimeBlockId: block.id,
         id: deriveSeedId({
-          kind: 'ministry-serving-profile',
+          kind: 'usual-setup',
           parentIds: [ministry.ministryId, block.id],
         }),
         serves: needs !== null,

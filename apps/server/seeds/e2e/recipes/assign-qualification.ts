@@ -160,10 +160,10 @@ export function createAssignQualificationRecipe({
       requirements: {
         greeter: {
           roleId: worship.roles.greeter.id,
-          requiredCount: 1,
+          peopleNeeded: 1,
           teamId: worship.teams.alpha.id,
         },
-        usher: { roleId: worship.roles.usher.id, requiredCount: 1 },
+        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
       },
     });
 

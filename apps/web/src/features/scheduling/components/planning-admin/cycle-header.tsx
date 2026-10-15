@@ -75,9 +75,9 @@ export function CycleHeader({ showName = true }: CycleHeaderProps) {
         value={String(counts.eventCount)}
       />
       <HeaderStatChip
-        testId="cycle-slot-count-chip"
+        testId="cycle-event-time-block-count-chip"
         label="Slots"
-        value={String(counts.slotCount)}
+        value={String(counts.eventTimeBlockCount)}
       />
     </div>
   );

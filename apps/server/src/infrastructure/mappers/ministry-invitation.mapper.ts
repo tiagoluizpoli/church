@@ -10,7 +10,7 @@ import type {
 } from '../../domain/branded-ids';
 import type { MinistryInvitationProps } from '../../domain/entities/ministry-invitation';
 import { MinistryInvitation } from '../../domain/entities/ministry-invitation';
-import type { MinistryAccessLevel } from '../../domain/entities/ministry-volunteer';
+import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
 
 type MinistryInvitationRow = InferSelectModel<typeof ministryInvitation>;
 

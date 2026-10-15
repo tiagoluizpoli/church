@@ -23,7 +23,7 @@ export interface DeclineNotification {
   leaderUserId: string;
   volunteerId: string;
   volunteerName: string;
-  slotLabel: string;
+  eventTimeBlockLabel: string;
   roleName: string;
 }
 

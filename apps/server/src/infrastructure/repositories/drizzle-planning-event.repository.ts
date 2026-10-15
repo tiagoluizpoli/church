@@ -1,18 +1,18 @@
 import { NotFoundError } from '@church/core';
 import {
   event,
+  eventTimeBlock,
   ministry,
   ministryParticipation,
   shift,
-  slotRequirement,
-  timeSlot,
+  shiftRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, eq } from 'drizzle-orm';
-import type { TimeSlotId } from '../../domain/branded-ids';
+import type { EventTimeBlockId } from '../../domain/branded-ids';
 import type {
   CreatePlanningEventInput,
-  CreatePlanningTimeSlotInput,
+  CreatePlanningEventTimeBlockInput,
   DeletePlanningEventInput,
   GetPlanningEventInput,
   ListCycleEventsInput,
@@ -20,9 +20,15 @@ import type {
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
-import type { Event, EventWithSlots } from '../../domain/entities/event';
+import type {
+  Event,
+  EventWithEventTimeBlocks,
+} from '../../domain/entities/event';
 import { mapEvent } from '../mappers/event.mapper';
-import { mapSlotRequirement, mapTimeSlot } from '../mappers/slot.mapper';
+import {
+  mapEventTimeBlock,
+  mapShiftRequirement,
+} from '../mappers/event-time-block.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
@@ -139,7 +145,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
 
   async listCycleEvents(
     input: ListCycleEventsInput,
-  ): Promise<EventWithSlots[]> {
+  ): Promise<EventWithEventTimeBlocks[]> {
     const db = getClient(this.db, input.tx);
     const eventRows = await db
       .select()
@@ -154,29 +160,29 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
 
     return Promise.all(
       eventRows.map(async (eventRow) => {
-        const slotRows = await db
+        const eventTimeBlockRows = await db
           .select()
-          .from(timeSlot)
+          .from(eventTimeBlock)
           .where(
             and(
-              eq(timeSlot.eventId, eventRow.id),
-              withChurchIsolation(timeSlot, input.churchId),
+              eq(eventTimeBlock.eventId, eventRow.id),
+              withChurchIsolation(eventTimeBlock, input.churchId),
             ),
           )
-          .orderBy(asc(timeSlot.startTime));
+          .orderBy(asc(eventTimeBlock.startTime));
 
         const slots = await Promise.all(
-          slotRows.map(async (slotRow) => {
+          eventTimeBlockRows.map(async (eventTimeBlockRow) => {
             const requirementRows = await db
-              .select({ requirement: slotRequirement })
-              .from(slotRequirement)
-              .innerJoin(shift, eq(shift.id, slotRequirement.shiftId))
-              .where(eq(shift.timeSlotId, slotRow.id));
+              .select({ requirement: shiftRequirement })
+              .from(shiftRequirement)
+              .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+              .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
 
-            return mapTimeSlot(
-              slotRow,
+            return mapEventTimeBlock(
+              eventTimeBlockRow,
               requirementRows.map(({ requirement }) =>
-                mapSlotRequirement(requirement, slotRow.id),
+                mapShiftRequirement(requirement, eventTimeBlockRow.id),
               ),
             );
           }),
@@ -190,27 +196,27 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     );
   }
 
-  async createTimeSlot(
-    input: CreatePlanningTimeSlotInput,
-  ): Promise<TimeSlotId> {
+  async createEventTimeBlock(
+    input: CreatePlanningEventTimeBlockInput,
+  ): Promise<EventTimeBlockId> {
     const db = getClient(this.db, input.tx);
-    const [slotRow] = await db
-      .insert(timeSlot)
+    const [eventTimeBlockRow] = await db
+      .insert(eventTimeBlock)
       .values({
         churchId: input.churchId,
         eventId: input.eventId,
-        sourceTemplateBlockId: input.sourceTemplateBlockId ?? null,
+        sourceTemplateTimeBlockId: input.sourceTemplateTimeBlockId ?? null,
         startTime: input.startTime,
         endTime: input.endTime,
         label: input.label ?? null,
       })
       .returning();
 
-    if (!slotRow) {
+    if (!eventTimeBlockRow) {
       throw new Error('Planning slot insert failed');
     }
 
-    return slotRow.id as TimeSlotId;
+    return eventTimeBlockRow.id as EventTimeBlockId;
   }
 
   async seedParticipations(

@@ -9,8 +9,8 @@
  *   volunteer-1 (user-1, church-1), volunteer-2 (user-2, church-1)
  *   role-1 (Usher, ministry-1), role-2 (Greeter, ministry-1)
  *   event-1 (draft, June 5), event-2 (published, June 4)
- *   slot-1 (event-1 slot), slot-requirement-1
- *   assignment-1 (confirmed, volunteer-1+slot-1), assignment-2 (declined, volunteer-2+slot-1)
+ *   event-time-block-1 (event-1 slot), shift-requirement-1
+ *   assignment-1 (confirmed, volunteer-1+event-time-block-1), assignment-2 (declined, volunteer-2+event-time-block-1)
  *   availability-1 (volunteer-1)
  *   audit-1, audit-2 (for assignment-1)
  */
@@ -20,18 +20,18 @@ import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizz
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import {
   runAssignmentAuditRepositoryContractTests,
   runAssignmentRepositoryContractTests,
   runChurchRepositoryContractTests,
   runEventRepositoryContractTests,
+  runEventTimeBlockRepositoryContractTests,
   runMinistryRepositoryContractTests,
   runRoleRepositoryContractTests,
-  runTimeSlotRepositoryContractTests,
   runVolunteerRepositoryContractTests,
 } from '@/tests/domain/contracts/contract-tests';
 
@@ -90,11 +90,11 @@ runEventRepositoryContractTests(
   },
 );
 
-runTimeSlotRepositoryContractTests(
+runEventTimeBlockRepositoryContractTests(
   async () => {
     await truncateAll();
     await seed();
-    return new DrizzleTimeSlotRepository({ db: testDb });
+    return new DrizzleEventTimeBlockRepository({ db: testDb });
   },
   async () => {
     await truncateAll();

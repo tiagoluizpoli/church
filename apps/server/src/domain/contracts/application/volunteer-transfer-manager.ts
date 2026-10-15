@@ -16,7 +16,7 @@ export interface TransferPreviewMembership {
 
 export interface TransferPreviewAssignment {
   eventName: string;
-  timeSlotStart: Date;
+  eventTimeBlockStart: Date;
   roleName: string;
 }
 

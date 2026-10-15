@@ -172,7 +172,7 @@ describe('Phase 3 planning repositories', () => {
       eventId: createdEvent.id,
     });
 
-    await repository.createTimeSlot({
+    await repository.createEventTimeBlock({
       churchId: ChurchId.from(seed.churchAId),
       eventId: createdEvent.id,
       startTime: new Date('2026-08-05T22:00:00.000Z'),
@@ -187,7 +187,7 @@ describe('Phase 3 planning repositories', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0]?.event.sourceTemplateId).toBeUndefined();
-    expect(events[0]?.slots[0]?.sourceTemplateBlockId).toBeUndefined();
+    expect(events[0]?.slots[0]?.sourceTemplateTimeBlockId).toBeUndefined();
     expect(events[0]?.slots[0]?.label).toBe('Opening');
   });
 });

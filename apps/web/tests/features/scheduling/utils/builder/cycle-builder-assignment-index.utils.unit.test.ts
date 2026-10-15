@@ -4,8 +4,8 @@ import type {
   CycleBuilderData,
   CycleBuilderEligibleVolunteerSummary,
   CycleBuilderEventSummary,
+  CycleBuilderEventTimeBlockSummary,
   CycleBuilderShiftSummary,
-  CycleBuilderSlotSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
   assignableFits,
@@ -36,7 +36,7 @@ function makeAssignment(
 ): CycleBuilderAssignment {
   return {
     churchId: 'church-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     shiftId: 'shift-1',
     roleId: 'role-1',
     status: 'confirmed',
@@ -64,13 +64,13 @@ function makeShift(
 ): CycleBuilderShiftSummary {
   return {
     shiftId: 'shift-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
-    requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+    requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
     assignments: [],
     eligibleVolunteerCount: 0,
     eligibleVolunteers: [],
@@ -78,16 +78,16 @@ function makeShift(
   };
 }
 
-function makeSlot(
-  overrides: Partial<CycleBuilderSlotSummary> = {},
-): CycleBuilderSlotSummary {
+function makeEventTimeBlock(
+  overrides: Partial<CycleBuilderEventTimeBlockSummary> = {},
+): CycleBuilderEventTimeBlockSummary {
   return {
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
     included: true,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     shiftCount: 1,
     shifts: [makeShift()],
@@ -107,10 +107,10 @@ function makeEvent(
     end: '2027-01-05T02:59:59.999Z',
     status: 'draft',
     fillRatio: 0,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
-    slotCount: 1,
-    slots: [makeSlot()],
+    eventTimeBlockCount: 1,
+    slots: [makeEventTimeBlock()],
     ...overrides,
   };
 }
@@ -120,7 +120,7 @@ function makeData(overrides: Partial<CycleBuilderData> = {}): CycleBuilderData {
     events: [
       makeEvent({
         slots: [
-          makeSlot({
+          makeEventTimeBlock({
             shifts: [
               makeShift({ shiftId: 'shift-1', label: 'Morning' }),
               makeShift({ shiftId: 'shift-2', label: 'Evening' }),
@@ -589,13 +589,13 @@ describe('buildCellDerivedIndex', () => {
       events: [
         makeEvent({
           slots: [
-            makeSlot({
+            makeEventTimeBlock({
               shifts: [
                 makeShift({
                   shiftId: 'shift-1',
                   requirements: [
-                    { roleId: 'role-1', requiredCount: 1 },
-                    { roleId: 'role-2', requiredCount: 1 },
+                    { roleId: 'role-1', peopleNeeded: 1 },
+                    { roleId: 'role-2', peopleNeeded: 1 },
                   ],
                   eligibleVolunteers,
                 }),
@@ -634,7 +634,9 @@ describe('buildCellDerivedIndex', () => {
     const data = makeData({
       events: [
         makeEvent({
-          slots: [makeSlot({ shifts: [makeShift({ requirements: [] })] })],
+          slots: [
+            makeEventTimeBlock({ shifts: [makeShift({ requirements: [] })] }),
+          ],
         }),
       ],
     });

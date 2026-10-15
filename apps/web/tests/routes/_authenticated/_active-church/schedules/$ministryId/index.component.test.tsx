@@ -1,19 +1,19 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ListMinistryCycleSummaries200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
+import type { ListScheduleSummaries200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderRoute } from '@/tests/setup/render-route';
 
-const listMinistryCycleSummaries = vi.fn();
+const listScheduleSummaries = vi.fn();
 const listMinistries = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
-    listMinistryCycleSummaries: (...args: unknown[]) =>
-      listMinistryCycleSummaries(...args),
+    listScheduleSummaries: (...args: unknown[]) =>
+      listScheduleSummaries(...args),
     listMinistries: (...args: unknown[]) => listMinistries(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
@@ -39,7 +39,7 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 beforeEach(() => {
-  listMinistryCycleSummaries.mockReset();
+  listScheduleSummaries.mockReset();
   listMinistries.mockReset();
   listMinistries.mockResolvedValue({
     ministries: [{ id: 'ministry-1', name: 'Greeters' }],
@@ -47,7 +47,7 @@ beforeEach(() => {
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
 });
 
-function renderMinistryCycleList() {
+function renderScheduleList() {
   return renderRoute({
     initialPath: '/schedules/ministry-1',
     churchTimezone: 'UTC',
@@ -55,8 +55,8 @@ function renderMinistryCycleList() {
 }
 
 function makeCycle(
-  overrides: Partial<ListMinistryCycleSummaries200CyclesItem> = {},
-): ListMinistryCycleSummaries200CyclesItem {
+  overrides: Partial<ListScheduleSummaries200CyclesItem> = {},
+): ListScheduleSummaries200CyclesItem {
   return {
     cycleId: 'cycle-1',
     name: 'August',
@@ -64,7 +64,7 @@ function makeCycle(
     endDate: '2026-08-31',
     isPartOf: true,
     eventCount: 1,
-    slotCount: 2,
+    eventTimeBlockCount: 2,
     status: 'in_progress',
     availabilityRequestedForAll: false,
     availabilityRequestedForAny: false,
@@ -74,7 +74,7 @@ function makeCycle(
 
 describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', () => {
   it('redirects straight to the workspace when exactly one cycle the ministry is part of is open', async () => {
-    listMinistryCycleSummaries.mockResolvedValue({
+    listScheduleSummaries.mockResolvedValue({
       cycles: [
         makeCycle({ cycleId: 'cycle-1', name: 'August', isPartOf: true }),
         makeCycle({
@@ -82,13 +82,13 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
           name: 'September',
           isPartOf: false,
           eventCount: 0,
-          slotCount: 0,
+          eventTimeBlockCount: 0,
           status: 'not_started',
         }),
       ],
     });
 
-    const { router } = renderMinistryCycleList();
+    const { router } = renderScheduleList();
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
@@ -98,11 +98,11 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
   });
 
   it('shows a distinct "redirecting" message with a "Browse all cycles instead" escape hatch while the single-cycle redirect is in flight', async () => {
-    listMinistryCycleSummaries.mockResolvedValue({
+    listScheduleSummaries.mockResolvedValue({
       cycles: [makeCycle({ cycleId: 'cycle-1', name: 'August' })],
     });
 
-    const { router } = renderMinistryCycleList();
+    const { router } = renderScheduleList();
 
     expect(
       await screen.findByTestId('prepare-cycle-list-redirecting'),
@@ -116,7 +116,7 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
   });
 
   it('?browse=true skips the auto-redirect and shows the picker even with exactly one isPartOf cycle', async () => {
-    listMinistryCycleSummaries.mockResolvedValue({
+    listScheduleSummaries.mockResolvedValue({
       cycles: [makeCycle({ cycleId: 'cycle-1', name: 'August' })],
     });
 
@@ -131,13 +131,13 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
   });
 
   it("renders the picker normally when 2+ isPartOf cycles are open, using each cycle's own name and real Events/Slots/Status columns", async () => {
-    listMinistryCycleSummaries.mockResolvedValue({
+    listScheduleSummaries.mockResolvedValue({
       cycles: [
         makeCycle({
           cycleId: 'cycle-1',
           name: 'August',
           eventCount: 4,
-          slotCount: 6,
+          eventTimeBlockCount: 6,
           status: 'in_progress',
         }),
         makeCycle({
@@ -146,13 +146,13 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
           startDate: '2026-09-01',
           endDate: '2026-09-30',
           eventCount: 2,
-          slotCount: 2,
+          eventTimeBlockCount: 2,
           status: 'published',
         }),
       ],
     });
 
-    renderMinistryCycleList();
+    renderScheduleList();
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
     expect(table).toHaveTextContent('August');
@@ -163,16 +163,16 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
     expect(screen.getByTestId('prepare-cycle-event-total')).toHaveTextContent(
       '6',
     );
-    expect(screen.getByTestId('prepare-cycle-slot-total')).toHaveTextContent(
-      '8',
-    );
+    expect(
+      screen.getByTestId('prepare-cycle-event-time-block-total'),
+    ).toHaveTextContent('8');
     expect(screen.getByTestId('prepare-cycle-ministry-name')).toHaveTextContent(
       'Greeters',
     );
   });
 
   it('navigates to the selected cycle workspace when its Schedule button is clicked (rows themselves are inert)', async () => {
-    listMinistryCycleSummaries.mockResolvedValue({
+    listScheduleSummaries.mockResolvedValue({
       cycles: [
         makeCycle({ cycleId: 'cycle-1', name: 'August' }),
         makeCycle({ cycleId: 'cycle-2', name: 'September' }),
@@ -180,12 +180,12 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
     });
 
     const user = userEvent.setup();
-    const { router } = renderMinistryCycleList();
+    const { router } = renderScheduleList();
 
     await screen.findByRole('grid', { name: 'Cycles' });
     await user.click(
       screen.getAllByTestId(
-        'ministry-cycle-prepare-button-cycle-2',
+        'schedule-prepare-button-cycle-2',
       )[0] as HTMLElement,
     );
 
@@ -199,7 +199,7 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
 
 describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteration 3)', () => {
   function mockThreeCycles() {
-    listMinistryCycleSummaries.mockResolvedValue({
+    listScheduleSummaries.mockResolvedValue({
       cycles: [
         makeCycle({
           cycleId: 'aug-not-part-of',
@@ -208,7 +208,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
           endDate: '2026-08-31',
           isPartOf: false,
           eventCount: 0,
-          slotCount: 0,
+          eventTimeBlockCount: 0,
           status: 'not_started',
         }),
         makeCycle({
@@ -218,7 +218,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
           endDate: '2026-09-30',
           isPartOf: true,
           eventCount: 2,
-          slotCount: 3,
+          eventTimeBlockCount: 3,
           status: 'in_progress',
         }),
         makeCycle({
@@ -228,7 +228,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
           endDate: '2026-10-31',
           isPartOf: true,
           eventCount: 1,
-          slotCount: 1,
+          eventTimeBlockCount: 1,
           status: 'published',
         }),
       ],
@@ -238,7 +238,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it('narrows by Ministry Involvement, including "Not part of" (post-analyze finding I1), only after Apply is clicked (design-critique follow-up: draft, not live)', async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
     expect(table).toHaveTextContent('August (not part of)');
@@ -271,7 +271,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it('syncs applied filters to the URL so a refresh/shared link restores them (design-critique follow-up)', async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    const { router } = renderMinistryCycleList();
+    const { router } = renderScheduleList();
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
@@ -288,7 +288,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
     );
 
     // Simulate a fresh load at that exact URL (refresh / shared link).
-    listMinistryCycleSummaries.mockClear();
+    listScheduleSummaries.mockClear();
     const fresh = renderRoute({
       initialPath: '/schedules/ministry-1?involvement=not_part_of',
       churchTimezone: 'UTC',
@@ -302,7 +302,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it('narrows by status once applied', async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
 
@@ -319,7 +319,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it('resets an individual date field via its own clear control without touching other draft fields', async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
@@ -338,7 +338,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it("date range filter is mode-driven (Starts/Ends/Within), mirroring the prepare workspace's time-of-day filter (design-critique follow-up)", async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
 
@@ -369,10 +369,10 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
 
   it('the filter toolbar sits inside the same rounded card as the table, not a separate floating block (design-critique follow-up)', async () => {
     mockThreeCycles();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
-    const filtersSlot = screen.getByTestId('ministry-cycle-list-filters-slot');
+    const filtersSlot = screen.getByTestId('schedule-list-filters-slot');
     const card = table.closest('.surface-panel');
 
     expect(card).not.toBeNull();
@@ -382,7 +382,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it('shows a filtered (not blank-slate) empty state and a working "Clear filters" action when a filter combination matches zero cycles', async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
@@ -394,9 +394,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
     await user.click(await screen.findByRole('option', { name: 'Published' }));
     await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
 
-    const emptyState = await screen.findByTestId(
-      'ministry-cycle-list-empty-state',
-    );
+    const emptyState = await screen.findByTestId('schedule-list-empty-state');
     expect(emptyState).toHaveTextContent(
       'No cycles match the current filters.',
     );
@@ -405,7 +403,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
     // filtered result is empty (design-critique follow-up) — it lives in
     // the same card as the empty message, not a separate floating block.
     expect(
-      screen.getByTestId('ministry-cycle-list-filters-slot'),
+      screen.getByTestId('schedule-list-filters-slot'),
     ).toBeInTheDocument();
 
     await user.click(screen.getByTestId('prepare-cycle-filters-clear'));
@@ -418,7 +416,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it('the filter bar\'s own "Clear filters" button resets and immediately re-applies the default (empty) filter set', async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
 
@@ -442,7 +440,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
   it('combines Ministry Involvement and status filters with AND semantics, and keeps header pills filter-aware', async () => {
     mockThreeCycles();
     const user = userEvent.setup();
-    renderMinistryCycleList();
+    renderScheduleList();
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
@@ -458,15 +456,15 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
     expect(screen.getByTestId('prepare-cycle-event-total')).toHaveTextContent(
       '1',
     );
-    expect(screen.getByTestId('prepare-cycle-slot-total')).toHaveTextContent(
-      '1',
-    );
+    expect(
+      screen.getByTestId('prepare-cycle-event-time-block-total'),
+    ).toHaveTextContent('1');
   });
 });
 
 describe('Prepare ministry cycle-list route — batched request (US2/T072a, FR-032/SC-011)', () => {
   it('issues exactly one request for participation-derived cycle data regardless of cycle count', async () => {
-    listMinistryCycleSummaries.mockResolvedValue({
+    listScheduleSummaries.mockResolvedValue({
       cycles: [
         makeCycle({ cycleId: 'cycle-1', name: 'Cycle 1' }),
         makeCycle({ cycleId: 'cycle-2', name: 'Cycle 2' }),
@@ -474,22 +472,22 @@ describe('Prepare ministry cycle-list route — batched request (US2/T072a, FR-0
       ],
     });
 
-    renderMinistryCycleList();
+    renderScheduleList();
 
     await screen.findByRole('grid', { name: 'Cycles' });
-    expect(listMinistryCycleSummaries).toHaveBeenCalledTimes(1);
+    expect(listScheduleSummaries).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('Prepare ministry cycle-list route — permission failure (US2/T015b/T072)', () => {
   it('renders a permission-denied state on a 403, not a crash', async () => {
-    listMinistryCycleSummaries.mockRejectedValue({
+    listScheduleSummaries.mockRejectedValue({
       isAxiosError: true,
       response: { status: 403 },
       message: 'Forbidden',
     });
 
-    renderMinistryCycleList();
+    renderScheduleList();
 
     expect(
       await screen.findByTestId('prepare-forbidden-state'),
@@ -499,12 +497,12 @@ describe('Prepare ministry cycle-list route — permission failure (US2/T015b/T0
 
 describe('Prepare ministry cycle-list route — network failure (US2/T015c/T072)', () => {
   it('renders a retryable error state, not a crash or infinite spinner', async () => {
-    listMinistryCycleSummaries.mockRejectedValue({
+    listScheduleSummaries.mockRejectedValue({
       isAxiosError: true,
       message: 'Network Error',
     });
 
-    renderMinistryCycleList();
+    renderScheduleList();
 
     expect(
       await screen.findByTestId('prepare-retryable-error-state'),

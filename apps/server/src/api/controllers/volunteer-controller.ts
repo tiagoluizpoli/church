@@ -27,7 +27,7 @@ import {
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
   respondToAssignmentBodySchema,
-  setUnavailabilityMarksBodySchema,
+  setUnavailableShiftsBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 
@@ -205,22 +205,22 @@ export class VolunteerController implements FastifyController {
     );
 
     app.put(
-      '/availability-checks/:checkId/marks',
+      '/availability-checks/:checkId/unavailable-shifts',
       {
         schema: {
           tags: ['volunteer'],
-          operationId: 'setUnavailabilityMarks',
+          operationId: 'setUnavailableShifts',
           summary: 'Set unavailability marks on an AvailabilityCheck',
           description:
             "Record the current Volunteer's unavailability marks — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
-          body: setUnavailabilityMarksBodySchema,
+          body: setUnavailableShiftsBodySchema,
           response: { 200: availabilityCheckDetailResponseSchema },
         },
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
         const body = request.body as z.infer<
-          typeof setUnavailabilityMarksBodySchema
+          typeof setUnavailableShiftsBodySchema
         >;
         const detail = await this.volunteerManager.setUnavailability({
           checkId: AvailabilityCheckId.from(checkId),

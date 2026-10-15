@@ -1,19 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AvailabilityId,
   EventId,
-  MinistryServingProfileId,
-  ParticipationSlotInclusionId,
+  ParticipationEventTimeBlockInclusionId,
   TeamId,
+  UnavailableShiftId,
+  UsualSetupId,
   VolunteerNotificationId,
 } from '@/domain/branded-ids';
 
 describe('Branded ID factories', () => {
   it.each([
     ['EventId', EventId],
-    ['AvailabilityId', AvailabilityId],
-    ['MinistryServingProfileId', MinistryServingProfileId],
-    ['ParticipationSlotInclusionId', ParticipationSlotInclusionId],
+    ['UnavailableShiftId', UnavailableShiftId],
+    ['UsualSetupId', UsualSetupId],
+    [
+      'ParticipationEventTimeBlockInclusionId',
+      ParticipationEventTimeBlockInclusionId,
+    ],
     ['TeamId', TeamId],
     ['VolunteerNotificationId', VolunteerNotificationId],
   ])('%s.from() returns the raw string branded as the id type', (_name, brand) => {

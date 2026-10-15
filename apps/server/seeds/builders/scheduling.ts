@@ -3,11 +3,11 @@ import {
   assignmentAudit,
   cycle,
   event,
+  eventTimeBlock,
   ministryParticipation,
-  participationSlotInclusion,
+  participationEventTimeBlockInclusion,
   shift,
-  slotRequirement,
-  timeSlot,
+  shiftRequirement,
 } from '@church/db';
 import {
   type CalendarDay,
@@ -28,11 +28,11 @@ import { requireInsertedRow } from './require-inserted-row';
 
 export type SeededCycle = typeof cycle.$inferSelect;
 export type SeededEvent = typeof event.$inferSelect;
-export type SeededTimeSlot = typeof timeSlot.$inferSelect;
+export type SeededEventTimeBlock = typeof eventTimeBlock.$inferSelect;
 export type SeededMinistryParticipation =
   typeof ministryParticipation.$inferSelect;
 export type SeededShift = typeof shift.$inferSelect;
-export type SeededSlotRequirement = typeof slotRequirement.$inferSelect;
+export type SeededShiftRequirement = typeof shiftRequirement.$inferSelect;
 export type SeededAssignment = typeof assignment.$inferSelect;
 export type CycleState = SeededCycle['state'];
 export type EventStatus = SeededEvent['status'];
@@ -127,7 +127,7 @@ export async function buildEvent({
   });
 }
 
-export interface BuildTimeSlotInput {
+export interface BuildEventTimeBlockInput {
   db: SeedWriter;
   churchId: string;
   eventId: string;
@@ -135,11 +135,11 @@ export interface BuildTimeSlotInput {
   start: Instant;
   end: Instant;
   label?: string;
-  /** The TimeBlock it was generated from; absent for a dynamic Event. */
-  sourceTemplateBlockId?: string;
+  /** The TemplateTimeBlock it was generated from; absent for a dynamic Event. */
+  sourceTemplateTimeBlockId?: string;
 }
 
-export async function buildTimeSlot({
+export async function buildEventTimeBlock({
   db,
   churchId,
   eventId,
@@ -147,11 +147,11 @@ export async function buildTimeSlot({
   start,
   end,
   label,
-  sourceTemplateBlockId,
-}: BuildTimeSlotInput): Promise<SeededTimeSlot> {
+  sourceTemplateTimeBlockId,
+}: BuildEventTimeBlockInput): Promise<SeededEventTimeBlock> {
   return requireInsertedRow({
     rows: await db
-      .insert(timeSlot)
+      .insert(eventTimeBlock)
       .values({
         id,
         churchId,
@@ -159,7 +159,7 @@ export async function buildTimeSlot({
         startTime: toDate({ instant: start }),
         endTime: toDate({ instant: end }),
         label,
-        sourceTemplateBlockId,
+        sourceTemplateTimeBlockId,
       })
       .returning(),
     description: `Time Slot ${id}`,
@@ -174,7 +174,7 @@ export interface BuildMinistryParticipationInput {
   id?: string;
   state: ParticipationState;
   /** The Time Slots the Ministry takes part in. */
-  timeSlotIds: string[];
+  eventTimeBlockIds: string[];
 }
 
 /** A Ministry's Participation in an Event with its Time Slot inclusions. */
@@ -185,7 +185,7 @@ export async function buildMinistryParticipation({
   eventId,
   id,
   state,
-  timeSlotIds,
+  eventTimeBlockIds,
 }: BuildMinistryParticipationInput): Promise<SeededMinistryParticipation> {
   const participation = requireInsertedRow({
     rows: await db
@@ -195,16 +195,16 @@ export async function buildMinistryParticipation({
     description: `Ministry Participation ${id}`,
   });
 
-  if (timeSlotIds.length > 0) {
-    await db.insert(participationSlotInclusion).values(
-      timeSlotIds.map((timeSlotId) => ({
+  if (eventTimeBlockIds.length > 0) {
+    await db.insert(participationEventTimeBlockInclusion).values(
+      eventTimeBlockIds.map((eventTimeBlockId) => ({
         id: deriveSeedId({
-          kind: 'participation-slot-inclusion',
-          parentIds: [participation.id, timeSlotId],
+          kind: 'participation-event-time-block-inclusion',
+          parentIds: [participation.id, eventTimeBlockId],
         }),
         churchId,
         participationId: participation.id,
-        timeSlotId,
+        eventTimeBlockId,
       })),
     );
   }
@@ -216,7 +216,7 @@ export interface BuildShiftInput {
   db: SeedWriter;
   churchId: string;
   participationId: string;
-  timeSlotId: string;
+  eventTimeBlockId: string;
   id?: string;
   start: Instant;
   end: Instant;
@@ -227,7 +227,7 @@ export async function buildShift({
   db,
   churchId,
   participationId,
-  timeSlotId,
+  eventTimeBlockId,
   id,
   start,
   end,
@@ -240,7 +240,7 @@ export async function buildShift({
         id,
         churchId,
         participationId,
-        timeSlotId,
+        eventTimeBlockId,
         startTime: toDate({ instant: start }),
         endTime: toDate({ instant: end }),
         label,
@@ -250,39 +250,39 @@ export async function buildShift({
   });
 }
 
-export interface BuildSlotRequirementInput {
+export interface BuildShiftRequirementInput {
   db: SeedWriter;
   churchId: string;
   participationId: string;
   shiftId: string;
   roleId: string;
   id?: string;
-  requiredCount: number;
+  peopleNeeded: number;
   teamId?: string;
   notes?: string;
 }
 
-export async function buildSlotRequirement({
+export async function buildShiftRequirement({
   db,
   churchId,
   participationId,
   shiftId,
   roleId,
   id,
-  requiredCount,
+  peopleNeeded,
   teamId,
   notes,
-}: BuildSlotRequirementInput): Promise<SeededSlotRequirement> {
+}: BuildShiftRequirementInput): Promise<SeededShiftRequirement> {
   return requireInsertedRow({
     rows: await db
-      .insert(slotRequirement)
+      .insert(shiftRequirement)
       .values({
         id,
         churchId,
         participationId,
         shiftId,
         roleId,
-        requiredCount,
+        peopleNeeded,
         teamId,
         notes,
       })
@@ -400,7 +400,7 @@ export interface BuildAssignedShiftInput {
 }
 
 export interface BuiltAssignedShift {
-  timeSlot: SeededTimeSlot;
+  eventTimeBlock: SeededEventTimeBlock;
   shift: SeededShift;
   assignment: SeededAssignment;
 }
@@ -420,12 +420,12 @@ export async function buildAssignedShift({
   end,
   status,
 }: BuildAssignedShiftInput): Promise<BuiltAssignedShift> {
-  const slot = await buildTimeSlot({ db, churchId, eventId, start, end });
-  const slotShift = await buildShift({
+  const slot = await buildEventTimeBlock({ db, churchId, eventId, start, end });
+  const eventTimeBlockShift = await buildShift({
     db,
     churchId,
     participationId,
-    timeSlotId: slot.id,
+    eventTimeBlockId: slot.id,
     start,
     end,
   });
@@ -433,11 +433,15 @@ export async function buildAssignedShift({
     db,
     churchId,
     participationId,
-    shiftId: slotShift.id,
+    shiftId: eventTimeBlockShift.id,
     volunteerId,
     roleId,
     status,
   });
 
-  return { timeSlot: slot, shift: slotShift, assignment: booked };
+  return {
+    eventTimeBlock: slot,
+    shift: eventTimeBlockShift,
+    assignment: booked,
+  };
 }

@@ -8,7 +8,7 @@ import {
 import type { CellDerived } from '../../../utils/builder/cycle-builder-assignment-index.utils';
 import {
   dateLabel,
-  eventSlotsOnDay,
+  eventTimeBlocksOnDay,
   timeLabel,
 } from '../../../utils/builder/cycle-builder-date.utils';
 import { rankVolunteersForShiftRole } from '../../../utils/builder/cycle-builder-ranking.utils';
@@ -183,18 +183,18 @@ export function CycleBuilderBoardGrid({
                               'shrink-0',
                               staffingStatusClasses({
                                 percent: Math.round(event.fillRatio * 100),
-                                hasRequirement: event.requiredCount > 0,
+                                hasRequirement: event.peopleNeeded > 0,
                               }).text,
                             )}
                           >
                             {Math.round(event.fillRatio * 100)}%
                           </Badge>
                         </div>
-                        {eventSlotsOnDay({ event, day: date, timeZone })
+                        {eventTimeBlocksOnDay({ event, day: date, timeZone })
                           .filter((slot) => slot.included)
                           .map((slot) => (
                             <section
-                              key={slot.slotId}
+                              key={slot.eventTimeBlockId}
                               className="space-y-2 rounded-md border border-dashed p-2"
                             >
                               <h3 className="font-medium text-foreground text-xs">
@@ -247,7 +247,7 @@ export function CycleBuilderBoardGrid({
                                             key: requirementFocusKey,
                                             label: buildFocusLabel({
                                               roleLabel,
-                                              slotLabel:
+                                              eventTimeBlockLabel:
                                                 slot.label ?? 'this shift',
                                               eventTitle: event.title,
                                               dateText: dateLabel({
@@ -257,7 +257,7 @@ export function CycleBuilderBoardGrid({
                                             shiftId: shift.shiftId,
                                             roleId: requirement.roleId,
                                             roleLabel,
-                                            slotLabel:
+                                            eventTimeBlockLabel:
                                               slot.label ?? 'this shift',
                                             ...rankVolunteersForShiftRole({
                                               shift,
@@ -271,8 +271,8 @@ export function CycleBuilderBoardGrid({
                                             shift={shift}
                                             roleId={requirement.roleId}
                                             roleLabel={roleLabel}
-                                            requiredCount={
-                                              requirement.requiredCount
+                                            peopleNeeded={
+                                              requirement.peopleNeeded
                                             }
                                             assignments={assignments}
                                             pickerVolunteers={
@@ -282,7 +282,7 @@ export function CycleBuilderBoardGrid({
                                             needsResponseSuggestions={
                                               suggestionGroups.needsResponse
                                             }
-                                            slotLabel={
+                                            eventTimeBlockLabel={
                                               slot.label ?? 'this shift'
                                             }
                                             selectedVolunteerId={

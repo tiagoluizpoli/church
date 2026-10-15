@@ -42,7 +42,7 @@ export interface VolunteerDashboardAssignmentGroupFixture {
 
 export interface VolunteerDashboardAssignmentFixture {
   assignmentId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   roleId: string;
   roleName: string;
   teamId?: string;
@@ -98,7 +98,7 @@ export function createVolunteerDashboardSnapshotFixture(): VolunteerDashboardSna
         assignments: [
           {
             assignmentId: volunteerDashboardFixtureIds.assignmentId,
-            slotId: 'slot-1',
+            eventTimeBlockId: 'event-time-block-1',
             roleId: 'role-1',
             roleName: 'Usher',
             startTime: '2026-07-06T09:00:00.000Z',

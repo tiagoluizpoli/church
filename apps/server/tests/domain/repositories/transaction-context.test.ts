@@ -4,10 +4,10 @@ import { describe, it } from 'vitest';
 import type { AssignmentId, ChurchId, EventId } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
-import type { AvailabilityRepository } from '@/domain/contracts/infrastructure/availability.repository';
 import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
-import type { TimeSlotRepository } from '@/domain/contracts/infrastructure/time-slot.repository';
+import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 
 describe('User Story 4: Transaction Context Type Safety', () => {
   it('should verify all mutation methods accept an optional TransactionContext', () => {
@@ -17,15 +17,15 @@ describe('User Story 4: Transaction Context Type Safety', () => {
       const churchId = 'church-1' as ChurchId;
       const tx = {} as TransactionContext;
 
-      // 1. AvailabilityRepository (unavailability marks)
-      const availabilityRepo = {} as AvailabilityRepository;
-      availabilityRepo.replaceMarksForCheck({
+      // 1. UnavailableShiftRepository (unavailability marks)
+      const unavailableShiftRepo = {} as UnavailableShiftRepository;
+      unavailableShiftRepo.replaceUnavailableShiftsForCheck({
         churchId,
         availabilityCheckId: 'check-1' as any,
         shiftIds: [],
         tx,
       });
-      availabilityRepo.listMarksByCheck({
+      unavailableShiftRepo.listUnavailableShiftsByCheck({
         churchId,
         availabilityCheckId: 'check-1' as any,
         tx,
@@ -41,10 +41,10 @@ describe('User Story 4: Transaction Context Type Safety', () => {
         tx,
       );
 
-      // 3. TimeSlotRepository
-      const timeSlotRepo = {} as TimeSlotRepository;
-      timeSlotRepo.create(churchId, {} as any, tx);
-      timeSlotRepo.deleteByEvent(churchId, 'event-1' as EventId, tx);
+      // 3. EventTimeBlockRepository
+      const eventTimeBlockRepo = {} as EventTimeBlockRepository;
+      eventTimeBlockRepo.create(churchId, {} as any, tx);
+      eventTimeBlockRepo.deleteByEvent(churchId, 'event-1' as EventId, tx);
 
       // 4. AssignmentRepository
       const assignmentRepo = {} as AssignmentRepository;

@@ -7,17 +7,17 @@ import {
   event,
   eventTemplate,
   ministry,
+  ministryMembership,
+  ministryMembershipRole,
   ministryParticipation,
-  ministryServingProfile,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  participationSlotInclusion,
+  participationEventTimeBlockInclusion,
   role,
   shift,
-  slotRequirement,
+  shiftRequirement,
   team,
-  timeBlock,
+  templateTimeBlock,
   user,
+  usualSetup,
   volunteer,
   volunteerNotification,
 } from '@church/db';
@@ -100,10 +100,10 @@ interface ExpectedGathering {
   title: string;
   day: CalendarDay;
   week: number;
-  slots: ExpectedSlot[];
+  slots: ExpectedEventTimeBlock[];
 }
 
-interface ExpectedSlot {
+interface ExpectedEventTimeBlock {
   blockKey?: string;
   /** `HH:mm` local start. */
   startTime: string;
@@ -179,7 +179,7 @@ interface ChurchScopedInput {
   blueprint: DevelopmentBlueprint;
 }
 
-/** EventTemplates, their TimeBlocks, and every MinistryServingProfile. */
+/** EventTemplates, their TemplateTimeBlocks, and every UsualSetup. */
 async function standingRuleProblems({
   db,
   churchId,
@@ -187,12 +187,12 @@ async function standingRuleProblems({
 }: ChurchScopedInput): Promise<string[]> {
   const { templates, servingRules } = blueprint.gatherings;
   const problems = difference({
-    label: 'EventTemplate TimeBlocks',
+    label: 'EventTemplate TemplateTimeBlocks',
     actual: await keysOf({
       db,
       query: sql`select t.church_id || '|' || t.name || '|' || t.weekday || '|'
           || to_char(b.start_time, 'HH24:MI') || '-' || to_char(b.end_time, 'HH24:MI') as key
-        from ${timeBlock} b join ${eventTemplate} t on t.id = b.template_id`,
+        from ${templateTimeBlock} b join ${eventTemplate} t on t.id = b.template_id`,
     }),
     expected: templates.flatMap((template) =>
       template.blocks.map(
@@ -204,7 +204,7 @@ async function standingRuleProblems({
 
   problems.push(
     ...difference({
-      label: 'MinistryServingProfiles',
+      label: 'UsualSetups',
       actual: await keysOf({
         db,
         query: sql`select m.name || '|' || to_char(b.start_time, 'HH24:MI') || '|' || t.weekday
@@ -213,9 +213,9 @@ async function standingRuleProblems({
               from jsonb_array_elements(p.headcounts) h
               join ${role} r on r.id = (h ->> 'roleId')::uuid
               left join ${team} tm on tm.id = (h ->> 'teamId')::uuid), '') as key
-          from ${ministryServingProfile} p
+          from ${usualSetup} p
           join ${ministry} m on m.id = p.ministry_id
-          join ${timeBlock} b on b.id = p.source_template_block_id
+          join ${templateTimeBlock} b on b.id = p.source_template_time_block_id
           join ${eventTemplate} t on t.id = b.template_id
           where p.church_id = ${churchId}`,
       }),
@@ -288,7 +288,7 @@ async function cycleProblems({
         query: sql`select e.title || '|' || to_char(e.start at time zone ${timeZone}, 'YYYY-MM-DD')
             || '|' || m.name || '|' || p.state || '|'
             || (select string_agg(to_char(s.start_time at time zone ${timeZone}, 'HH24:MI'), ',' order by s.start_time)
-              from ${participationSlotInclusion} i join time_slot s on s.id = i.time_slot_id
+              from ${participationEventTimeBlockInclusion} i join event_time_block s on s.id = i.event_time_block_id
               where i.participation_id = p.id) as key
           from ${ministryParticipation} p
           join ${event} e on e.id = p.event_id
@@ -316,15 +316,16 @@ async function cycleProblems({
       }),
     }),
     ...difference({
-      label: 'SlotRequirements (whole-slot Shifts, Projeção notes included)',
+      label:
+        'ShiftRequirements (whole-event-time-block Shifts, Projeção notes included)',
       actual: await keysOf({
         db,
-        query: sql`select m.name || '|' || r.name || '|' || coalesce(t.name, '') || '|' || sr.required_count
+        query: sql`select m.name || '|' || r.name || '|' || coalesce(t.name, '') || '|' || sr.people_needed
             || '|' || coalesce(sr.notes, '') || '|' || to_char(sh.start_time at time zone ${timeZone}, 'YYYY-MM-DD HH24:MI')
             || '|' || (sh.start_time = ts.start_time and sh.end_time = ts.end_time) as key
-          from ${slotRequirement} sr
+          from ${shiftRequirement} sr
           join ${shift} sh on sh.id = sr.shift_id
-          join time_slot ts on ts.id = sh.time_slot_id
+          join event_time_block ts on ts.id = sh.event_time_block_id
           join ${ministryParticipation} p on p.id = sr.participation_id
           join ${ministry} m on m.id = p.ministry_id
           join ${role} r on r.id = sr.role_id
@@ -357,11 +358,11 @@ async function cycleProblems({
       to_char(sh.start_time at time zone ${timeZone}, 'YYYY-MM-DD') as day,
       extract(dow from sh.start_time at time zone ${timeZone})::int as weekday,
       to_char(sh.start_time at time zone ${timeZone}, 'HH24:MI') as "startTime",
-      sum(sr.required_count)::int as required,
+      sum(sr.people_needed)::int as required,
       (select count(*) from ${assignment} a
         where a.shift_id = sr.shift_id and a.role_id = sr.role_id
           and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
-    from ${slotRequirement} sr
+    from ${shiftRequirement} sr
     join ${shift} sh on sh.id = sr.shift_id
     join ${ministryParticipation} p on p.id = sr.participation_id
     join ${ministry} m on m.id = p.ministry_id
@@ -426,8 +427,8 @@ async function assignmentProblems({
     query: sql`select count(*) as value from ${assignment} a
       join ${ministryParticipation} p on p.id = a.participation_id
       where a.status in ${active}
-        and not exists (select 1 from ${ministryVolunteer} mv
-          join ${ministryVolunteerRole} q on q.ministry_volunteer_id = mv.id
+        and not exists (select 1 from ${ministryMembership} mv
+          join ${ministryMembershipRole} q on q.ministry_membership_id = mv.id
           where mv.volunteer_id = a.volunteer_id and mv.ministry_id = p.ministry_id
             and mv.status = 'active' and mv.left_at is null and q.role_id = a.role_id)`,
   });
@@ -453,8 +454,8 @@ async function assignmentProblems({
   const unavailableServing = await countOf({
     db,
     query: sql`select count(*) as value from ${assignment} a
-      join ${ministryVolunteer} mv on mv.volunteer_id = a.volunteer_id
-      join ${availabilityCheck} c on c.ministry_volunteer_id = mv.id
+      join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
+      join ${availabilityCheck} c on c.ministry_membership_id = mv.id
       join ${availability} u on u.availability_check_id = c.id
       where a.status in ${active} and u.shift_id = a.shift_id`,
   });
@@ -503,7 +504,7 @@ async function assignmentProblems({
             query: sql`with answered as (
                 select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
                 from ${availabilityCheck} c
-                join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+                join ${ministryMembership} mv on mv.id = c.ministry_membership_id
                 join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
                 join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
                 join ${shift} s on s.participation_id = p.id)
@@ -519,7 +520,7 @@ async function assignmentProblems({
           query: sql`with unmarked as (
               select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
               from ${availabilityCheck} c
-              join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+              join ${ministryMembership} mv on mv.id = c.ministry_membership_id
               join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
               join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
               join ${shift} s on s.participation_id = p.id

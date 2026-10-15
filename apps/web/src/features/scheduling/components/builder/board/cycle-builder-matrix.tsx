@@ -350,7 +350,7 @@ export function CycleBuilderMatrix(props: Props) {
       volunteerName: volunteers.find(
         (volunteer) => volunteer.volunteerId === volunteerId,
       )?.volunteerName,
-      slotLabel: focused.slotLabel,
+      eventTimeBlockLabel: focused.eventTimeBlockLabel,
       roleLabel: focused.roleLabel,
       // Whatever this pick has to justify — unavailable or not qualified —
       // comes from the shared predicate, never from this call
@@ -422,7 +422,8 @@ export function CycleBuilderMatrix(props: Props) {
                 return;
               if (props.teamId && target.assignmentId) return;
               if (shiftContext && shift && roleLabel) {
-                const slotLabel = shiftContext.slot.label ?? 'this shift';
+                const eventTimeBlockLabel =
+                  shiftContext.slot.label ?? 'this shift';
                 setFocused({
                   key: focusKey({
                     shiftId: target.shiftId,
@@ -430,7 +431,7 @@ export function CycleBuilderMatrix(props: Props) {
                   }),
                   label: buildFocusLabel({
                     roleLabel,
-                    slotLabel,
+                    eventTimeBlockLabel,
                     eventTitle: shiftContext.event.title,
                     dateText: dateLabel({
                       day: churchDayOf({
@@ -442,7 +443,7 @@ export function CycleBuilderMatrix(props: Props) {
                   shiftId: target.shiftId,
                   roleId: target.roleId,
                   roleLabel,
-                  slotLabel,
+                  eventTimeBlockLabel,
                   ...rankVolunteersForShiftRole({
                     shift,
                     roleId: target.roleId,

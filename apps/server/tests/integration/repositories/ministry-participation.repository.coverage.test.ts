@@ -1,5 +1,8 @@
 import { NotFoundError } from '@church/core';
-import { ministryParticipation, participationSlotInclusion } from '@church/db';
+import {
+  ministryParticipation,
+  participationEventTimeBlockInclusion,
+} from '@church/db';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -128,7 +131,7 @@ async function seedCycleAndEvent({
   return { cycle, ...graph };
 }
 
-describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Iteration 3, T063/T063a)', () => {
+describe('DrizzleMinistryParticipationRepository.listScheduleSummaries (Iteration 3, T063/T063a)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
@@ -147,7 +150,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       db: schedulingTestDb,
     });
 
-    const rows = await repo.listMinistryCycleSummaries({
+    const rows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -157,7 +160,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       name: 'Untouched Cycle',
       isPartOf: false,
       eventCount: 0,
-      slotCount: 0,
+      eventTimeBlockCount: 0,
       status: 'not_started',
       availabilityRequestedForAll: false,
     });
@@ -176,7 +179,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       db: schedulingTestDb,
     });
 
-    const rows = await repo.listMinistryCycleSummaries({
+    const rows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -191,7 +194,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       db: schedulingTestDb,
     });
 
-    const rows = await repo.listMinistryCycleSummaries({
+    const rows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -238,7 +241,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       db: schedulingTestDb,
     });
 
-    const rows = await repo.listMinistryCycleSummaries({
+    const rows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -251,7 +254,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
     });
   });
 
-  it("sums slotCount across every ParticipationSlotInclusion row across every event the ministry participates in for the cycle, not the events' total slot count", async () => {
+  it("sums eventTimeBlockCount across every ParticipationEventTimeBlockInclusion row across every event the ministry participates in for the cycle, not the events' total slot count", async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -277,38 +280,38 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       end: new Date('2026-08-03T15:00:00.000Z'),
     });
     // Event A's participation includes its one slot; Event B's participation
-    // is untouched (no inclusion row) — slotCount must sum only included
+    // is untouched (no inclusion row) — eventTimeBlockCount must sum only included
     // slots across both events (1), not the events' combined slot count (2).
-    await schedulingTestDb.insert(participationSlotInclusion).values({
+    await schedulingTestDb.insert(participationEventTimeBlockInclusion).values({
       churchId: seed.churchAId,
       participationId: graphA.participation.id,
-      timeSlotId: graphA.slot.id,
+      eventTimeBlockId: graphA.slot.id,
     });
     const repo = new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
     });
 
-    const rows = await repo.listMinistryCycleSummaries({
+    const rows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
 
     const row = rows.find((r) => r.cycleId === cycle.id);
-    expect(row).toMatchObject({ eventCount: 2, slotCount: 1 });
+    expect(row).toMatchObject({ eventCount: 2, eventTimeBlockCount: 1 });
 
-    // Now include Event B's slot too — slotCount must sum to 2.
-    await schedulingTestDb.insert(participationSlotInclusion).values({
+    // Now include Event B's slot too — eventTimeBlockCount must sum to 2.
+    await schedulingTestDb.insert(participationEventTimeBlockInclusion).values({
       churchId: seed.churchAId,
       participationId: graphB.participation.id,
-      timeSlotId: graphB.slot.id,
+      eventTimeBlockId: graphB.slot.id,
     });
 
-    const rowsAfter = await repo.listMinistryCycleSummaries({
+    const rowsAfter = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
     const rowAfter = rowsAfter.find((r) => r.cycleId === cycle.id);
-    expect(rowAfter).toMatchObject({ eventCount: 2, slotCount: 2 });
+    expect(rowAfter).toMatchObject({ eventCount: 2, eventTimeBlockCount: 2 });
   });
 
   it('reads published only when every participation in the cycle is published, and availabilityRequestedForAll independently of that boundary', async () => {
@@ -336,7 +339,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       db: schedulingTestDb,
     });
 
-    const rows = await repo.listMinistryCycleSummaries({
+    const rows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -383,7 +386,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       db: schedulingTestDb,
     });
 
-    const rows = await repo.listMinistryCycleSummaries({
+    const rows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -402,7 +405,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       endDate: new Date('2026-11-01T00:00:00.000Z'),
       state: 'sent',
     });
-    const rowsAfter = await repo.listMinistryCycleSummaries({
+    const rowsAfter = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchAId),
       ministryId: MinistryId.from(seed.ministryAId),
     });
@@ -420,7 +423,7 @@ describe('DrizzleMinistryParticipationRepository.listMinistryCycleSummaries (Ite
       db: schedulingTestDb,
     });
 
-    const churchBRows = await repo.listMinistryCycleSummaries({
+    const churchBRows = await repo.listScheduleSummaries({
       churchId: ChurchId.from(seed.churchBId),
       ministryId: MinistryId.from(seed.ministryBId),
     });

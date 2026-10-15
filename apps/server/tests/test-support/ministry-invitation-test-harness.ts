@@ -6,11 +6,11 @@ import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-sc
 import {
   DrizzleChurchRepository,
   DrizzleEventRepository,
+  DrizzleEventTimeBlockRepository,
   DrizzleMinistryInvitationRepository,
   DrizzleMinistryRepository,
   DrizzleOutboxRepository,
   DrizzleRoleRepository,
-  DrizzleTimeSlotRepository,
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
   DrizzleVolunteerTransferRepository,
@@ -45,7 +45,7 @@ export function createMinistryInvitationTestHarness({
     actorRepository: new DrizzleAuthorityActorResolver({ db }),
     scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
     eventRepository: new DrizzleEventRepository({ db }),
-    timeSlotRepository: new DrizzleTimeSlotRepository({ db }),
+    eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
     ministryRepository: ministryRepository,
   });
   const unitOfWork = new DrizzleUnitOfWork({ db });

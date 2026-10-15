@@ -1,15 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type {
   CycleBuilderEventSummary,
+  CycleBuilderEventTimeBlockSummary,
   CycleBuilderShiftSummary,
-  CycleBuilderSlotSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
   deriveEventDates,
   enumerateDates,
   eventMatchesDateSpan,
   eventOccursOnDay,
-  eventSlotsOnDay,
+  eventTimeBlocksOnDay,
 } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
 
 /**
@@ -36,11 +36,11 @@ function makeShift(
 ): CycleBuilderShiftSummary {
   return {
     shiftId: 'shift-1',
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     requirements: [],
     assignments: [],
@@ -50,16 +50,16 @@ function makeShift(
   };
 }
 
-function makeSlot(
-  overrides: Partial<CycleBuilderSlotSummary> = {},
-): CycleBuilderSlotSummary {
+function makeEventTimeBlock(
+  overrides: Partial<CycleBuilderEventTimeBlockSummary> = {},
+): CycleBuilderEventTimeBlockSummary {
   return {
-    slotId: 'slot-1',
+    eventTimeBlockId: 'event-time-block-1',
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
     included: true,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
     shiftCount: 1,
     shifts: [makeShift()],
@@ -83,10 +83,10 @@ function makeEvent(
     end: '2027-01-05T02:59:59.999Z',
     status: 'draft',
     fillRatio: 0,
-    requiredCount: 1,
+    peopleNeeded: 1,
     assignedCount: 0,
-    slotCount: 1,
-    slots: [makeSlot()],
+    eventTimeBlockCount: 1,
+    slots: [makeEventTimeBlock()],
     ...overrides,
   };
 }
@@ -110,8 +110,8 @@ describe('deriveEventDates', () => {
         start: '2027-01-11T03:00:00.000Z',
         end: '2027-01-12T02:59:59.999Z',
         slots: [
-          makeSlot({
-            slotId: 'slot-3',
+          makeEventTimeBlock({
+            eventTimeBlockId: 'event-time-block-3',
             startTime: '2027-01-11T12:00:00.000Z',
             endTime: '2027-01-11T15:00:00.000Z',
             shifts: [
@@ -136,8 +136,14 @@ describe('deriveEventDates', () => {
   it('collapses two slots on one day into a single column', () => {
     const event = makeEvent({
       slots: [
-        makeSlot({ slotId: 'manha', startTime: '2027-01-04T12:00:00.000Z' }),
-        makeSlot({ slotId: 'tarde', startTime: '2027-01-04T19:00:00.000Z' }),
+        makeEventTimeBlock({
+          eventTimeBlockId: 'manha',
+          startTime: '2027-01-04T12:00:00.000Z',
+        }),
+        makeEventTimeBlock({
+          eventTimeBlockId: 'tarde',
+          startTime: '2027-01-04T19:00:00.000Z',
+        }),
       ],
     });
 
@@ -159,8 +165,14 @@ describe('deriveEventDates', () => {
     const event = makeEvent({
       end: '2027-01-06T02:59:59.999Z',
       slots: [
-        makeSlot({ slotId: 'day-1', startTime: '2027-01-04T12:00:00.000Z' }),
-        makeSlot({ slotId: 'day-2', startTime: '2027-01-05T12:00:00.000Z' }),
+        makeEventTimeBlock({
+          eventTimeBlockId: 'day-1',
+          startTime: '2027-01-04T12:00:00.000Z',
+        }),
+        makeEventTimeBlock({
+          eventTimeBlockId: 'day-2',
+          startTime: '2027-01-05T12:00:00.000Z',
+        }),
       ],
     });
 
@@ -175,8 +187,8 @@ describe('a 22:00 Friday → 01:00 Saturday church-local Event', () => {
   // 01:00 Saturday church-local is 04:00Z Saturday. FR-*: the slot renders
   // only under its start CalendarDay, Friday — never also under Saturday's
   // column, which is what US4 (#151) calls "a Friday Event".
-  const lateFridaySlot = makeSlot({
-    slotId: 'late-friday',
+  const lateFridayEventTimeBlock = makeEventTimeBlock({
+    eventTimeBlockId: 'late-friday',
     startTime: '2027-01-09T01:00:00.000Z',
     endTime: '2027-01-09T04:00:00.000Z',
     shifts: [
@@ -191,15 +203,23 @@ describe('a 22:00 Friday → 01:00 Saturday church-local Event', () => {
     eventId: 'late-friday-event',
     start: '2027-01-09T01:00:00.000Z',
     end: '2027-01-09T04:00:00.000Z',
-    slots: [lateFridaySlot],
+    slots: [lateFridayEventTimeBlock],
   });
 
   it('renders the slot under Friday, not the UTC/next-day column', () => {
     expect(
-      eventSlotsOnDay({ event, day: '2027-01-08', timeZone: CHURCH_TIMEZONE }),
-    ).toEqual([lateFridaySlot]);
+      eventTimeBlocksOnDay({
+        event,
+        day: '2027-01-08',
+        timeZone: CHURCH_TIMEZONE,
+      }),
+    ).toEqual([lateFridayEventTimeBlock]);
     expect(
-      eventSlotsOnDay({ event, day: '2027-01-09', timeZone: CHURCH_TIMEZONE }),
+      eventTimeBlocksOnDay({
+        event,
+        day: '2027-01-09',
+        timeZone: CHURCH_TIMEZONE,
+      }),
     ).toEqual([]);
   });
 
@@ -244,8 +264,14 @@ describe('eventOccursOnDay', () => {
     const event = makeEvent({
       end: '2027-01-06T02:59:59.999Z',
       slots: [
-        makeSlot({ slotId: 'day-1', startTime: '2027-01-04T12:00:00.000Z' }),
-        makeSlot({ slotId: 'day-2', startTime: '2027-01-05T12:00:00.000Z' }),
+        makeEventTimeBlock({
+          eventTimeBlockId: 'day-1',
+          startTime: '2027-01-04T12:00:00.000Z',
+        }),
+        makeEventTimeBlock({
+          eventTimeBlockId: 'day-2',
+          startTime: '2027-01-05T12:00:00.000Z',
+        }),
       ],
     });
     expect(
@@ -257,8 +283,8 @@ describe('eventOccursOnDay', () => {
     // Regression for the bug a raw [start, end] bounds check let through: the
     // event's own start/end cross church-local midnight, but it must
     // still resolve to exactly one day — its start day — not both.
-    const lateFridaySlot = makeSlot({
-      slotId: 'late-friday',
+    const lateFridayEventTimeBlock = makeEventTimeBlock({
+      eventTimeBlockId: 'late-friday',
       startTime: '2027-01-09T01:00:00.000Z',
       endTime: '2027-01-09T04:00:00.000Z',
       shifts: [
@@ -273,7 +299,7 @@ describe('eventOccursOnDay', () => {
       eventId: 'late-friday-event',
       start: '2027-01-09T01:00:00.000Z',
       end: '2027-01-09T04:00:00.000Z',
-      slots: [lateFridaySlot],
+      slots: [lateFridayEventTimeBlock],
     });
 
     expect(
@@ -285,32 +311,40 @@ describe('eventOccursOnDay', () => {
   });
 });
 
-describe('eventSlotsOnDay', () => {
+describe('eventTimeBlocksOnDay', () => {
   it('keeps an evening slot on the day it is served, not the next UTC day', () => {
     // 21:00 local Monday = 00:00Z Tuesday — the shape that also breaks the
     // prepare page's day grouping.
-    const eveningSlot = makeSlot({
-      slotId: 'noite',
+    const eveningEventTimeBlock = makeEventTimeBlock({
+      eventTimeBlockId: 'noite',
       startTime: '2027-01-05T00:00:00.000Z',
       endTime: '2027-01-05T02:00:00.000Z',
     });
-    const event = makeEvent({ slots: [eveningSlot] });
+    const event = makeEvent({ slots: [eveningEventTimeBlock] });
 
     expect(
-      eventSlotsOnDay({ event, day: '2027-01-04', timeZone: CHURCH_TIMEZONE }),
-    ).toEqual([eveningSlot]);
+      eventTimeBlocksOnDay({
+        event,
+        day: '2027-01-04',
+        timeZone: CHURCH_TIMEZONE,
+      }),
+    ).toEqual([eveningEventTimeBlock]);
     expect(
-      eventSlotsOnDay({ event, day: '2027-01-05', timeZone: CHURCH_TIMEZONE }),
+      eventTimeBlocksOnDay({
+        event,
+        day: '2027-01-05',
+        timeZone: CHURCH_TIMEZONE,
+      }),
     ).toEqual([]);
   });
 
   it('gives each day of a multi-day event only its own slots', () => {
-    const dayOne = makeSlot({
-      slotId: 'day-1',
+    const dayOne = makeEventTimeBlock({
+      eventTimeBlockId: 'day-1',
       startTime: '2027-01-04T12:00:00.000Z',
     });
-    const dayTwo = makeSlot({
-      slotId: 'day-2',
+    const dayTwo = makeEventTimeBlock({
+      eventTimeBlockId: 'day-2',
       startTime: '2027-01-05T12:00:00.000Z',
     });
     const event = makeEvent({
@@ -321,10 +355,18 @@ describe('eventSlotsOnDay', () => {
     // Rendering the whole slot list per column is what made one assignment
     // look like it had landed on several days.
     expect(
-      eventSlotsOnDay({ event, day: '2027-01-04', timeZone: CHURCH_TIMEZONE }),
+      eventTimeBlocksOnDay({
+        event,
+        day: '2027-01-04',
+        timeZone: CHURCH_TIMEZONE,
+      }),
     ).toEqual([dayOne]);
     expect(
-      eventSlotsOnDay({ event, day: '2027-01-05', timeZone: CHURCH_TIMEZONE }),
+      eventTimeBlocksOnDay({
+        event,
+        day: '2027-01-05',
+        timeZone: CHURCH_TIMEZONE,
+      }),
     ).toEqual([dayTwo]);
   });
 });

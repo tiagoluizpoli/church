@@ -19,7 +19,7 @@ import {
 const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.volunteerAvailability;
 
 /**
- * Two Ministries whose serving profiles only this journey writes, a leader
+ * Two Ministries whose usual setups only this journey writes, a leader
  * who is a Volunteer in both (so a same-time Worship and Care shift overlaps
  * for them), and a TeamLeader in Worship alone (a clean, single-Ministry
  * confirm). The journey creates its own Cycle, template and events

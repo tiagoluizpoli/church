@@ -1,13 +1,13 @@
 import type {
   ChurchId,
+  EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
   TeamId,
-  TimeSlotId,
 } from '../../branded-ids';
 import type { Shift } from '../../entities/shift';
-import type { SlotRequirement } from '../../entities/slot-requirement';
+import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateShiftsInput {
@@ -28,10 +28,10 @@ export interface ListShiftsByParticipationInput {
   tx?: TransactionContext;
 }
 
-export interface ListShiftsBySlotInput {
+export interface ListShiftsByEventTimeBlockInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   tx?: TransactionContext;
 }
 
@@ -50,10 +50,10 @@ export interface DeleteShiftInput {
   tx?: TransactionContext;
 }
 
-export interface DeleteShiftsBySlotInput {
+export interface DeleteShiftsByEventTimeBlockInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   tx?: TransactionContext;
 }
 
@@ -63,7 +63,7 @@ export interface UpsertShiftRequirementInput {
   participationId: MinistryParticipationId;
   roleId: RoleId;
   teamId?: TeamId;
-  requiredCount: number;
+  peopleNeeded: number;
   notes?: string;
   tx?: TransactionContext;
 }
@@ -78,14 +78,18 @@ export interface ShiftRepository {
   createMany(input: CreateShiftsInput): Promise<Shift[]>;
   getById(input: GetShiftInput): Promise<Shift>;
   listByParticipation(input: ListShiftsByParticipationInput): Promise<Shift[]>;
-  listBySlot(input: ListShiftsBySlotInput): Promise<Shift[]>;
+  listByEventTimeBlock(
+    input: ListShiftsByEventTimeBlockInput,
+  ): Promise<Shift[]>;
   update(input: UpdateShiftInput): Promise<Shift>;
   deleteById(input: DeleteShiftInput): Promise<void>;
-  deleteBySlot(input: DeleteShiftsBySlotInput): Promise<void>;
+  deleteByEventTimeBlock(
+    input: DeleteShiftsByEventTimeBlockInput,
+  ): Promise<void>;
   upsertRequirement(
     input: UpsertShiftRequirementInput,
-  ): Promise<SlotRequirement>;
+  ): Promise<ShiftRequirement>;
   listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,
-  ): Promise<SlotRequirement[]>;
+  ): Promise<ShiftRequirement[]>;
 }

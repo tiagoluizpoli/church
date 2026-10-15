@@ -26,7 +26,7 @@ export function buildAuth({
   database,
   repositories: {
     eventRepository,
-    timeSlotRepository,
+    eventTimeBlockRepository,
     ministryRepository,
     teamRepository,
     churchRepository,
@@ -49,7 +49,7 @@ export function buildAuth({
       actorRepository: authorityActorRepository,
       scopeRepository,
       eventRepository,
-      timeSlotRepository,
+      eventTimeBlockRepository,
       ministryRepository,
       teamRepository,
     });

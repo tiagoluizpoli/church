@@ -12,7 +12,7 @@ import {
   createEmptyTemplateForm,
   getErrorMessage,
   getSelectedCycleIdOrThrow,
-  sortTemplateBlocks,
+  sortTemplateTimeBlocks,
 } from './planning-admin.utils';
 import { adminApi } from '@/utils/api-instances';
 
@@ -54,24 +54,24 @@ export interface DeleteEventInput {
   eventId: string;
 }
 
-export interface CreateSlotInput {
+export interface CreateEventTimeBlockInput {
   eventId: string;
   startTime: string;
   endTime: string;
   label?: string;
 }
 
-export interface UpdateSlotInput {
+export interface UpdateEventTimeBlockInput {
   eventId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   startTime?: string;
   endTime?: string;
   label?: string;
 }
 
-export interface DeleteSlotInput {
+export interface DeleteEventTimeBlockInput {
   eventId: string;
-  slotId: string;
+  eventTimeBlockId: string;
 }
 
 type CreateCycleBody = Parameters<typeof adminApi.createCycle>[0];
@@ -148,9 +148,9 @@ export interface UsePlanningAdminMutationsResult {
   sendCyclePending: boolean;
   updateEventPending: boolean;
   deleteEventPending: boolean;
-  createSlotPending: boolean;
-  updateSlotPending: boolean;
-  deleteSlotPending: boolean;
+  createEventTimeBlockPending: boolean;
+  updateEventTimeBlockPending: boolean;
+  deleteEventTimeBlockPending: boolean;
   resetApplyTemplates: () => void;
   handleCreateCycle: () => void;
   handleSaveTemplate: () => void;
@@ -159,9 +159,9 @@ export interface UsePlanningAdminMutationsResult {
   handleSendCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
   handleDeleteEvent: (input: DeleteEventInput) => void;
-  handleCreateSlot: (input: CreateSlotInput) => void;
-  handleUpdateSlot: (input: UpdateSlotInput) => void;
-  handleDeleteSlot: (input: DeleteSlotInput) => void;
+  handleCreateEventTimeBlock: (input: CreateEventTimeBlockInput) => void;
+  handleUpdateEventTimeBlock: (input: UpdateEventTimeBlockInput) => void;
+  handleDeleteEventTimeBlock: (input: DeleteEventTimeBlockInput) => void;
 }
 
 export function usePlanningAdminMutations({
@@ -241,7 +241,7 @@ export function usePlanningAdminMutations({
       }),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: (result) =>
-      `Generated ${result.generatedEventCount} events and ${result.generatedSlotCount} slots`,
+      `Generated ${result.generatedEventCount} events and ${result.generatedEventTimeBlockCount} slots`,
     queryClient,
   });
 
@@ -275,9 +275,9 @@ export function usePlanningAdminMutations({
     queryClient,
   });
 
-  const createSlot = usePlanningMutation({
-    mutationFn: ({ eventId, ...body }: CreateSlotInput) =>
-      adminApi.createPlanningEventSlot(
+  const createEventTimeBlock = usePlanningMutation({
+    mutationFn: ({ eventId, ...body }: CreateEventTimeBlockInput) =>
+      adminApi.createPlanningEventTimeBlock(
         getSelectedCycleIdOrThrow({ selectedCycleId }),
         eventId,
         body,
@@ -287,12 +287,16 @@ export function usePlanningAdminMutations({
     queryClient,
   });
 
-  const updateSlot = usePlanningMutation({
-    mutationFn: ({ eventId, slotId, ...body }: UpdateSlotInput) =>
-      adminApi.updatePlanningEventSlot(
+  const updateEventTimeBlock = usePlanningMutation({
+    mutationFn: ({
+      eventId,
+      eventTimeBlockId,
+      ...body
+    }: UpdateEventTimeBlockInput) =>
+      adminApi.updatePlanningEventTimeBlock(
         getSelectedCycleIdOrThrow({ selectedCycleId }),
         eventId,
-        slotId,
+        eventTimeBlockId,
         body,
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
@@ -300,12 +304,12 @@ export function usePlanningAdminMutations({
     queryClient,
   });
 
-  const deleteSlot = usePlanningMutation({
-    mutationFn: ({ eventId, slotId }: DeleteSlotInput) =>
-      adminApi.deletePlanningEventSlot(
+  const deleteEventTimeBlock = usePlanningMutation({
+    mutationFn: ({ eventId, eventTimeBlockId }: DeleteEventTimeBlockInput) =>
+      adminApi.deletePlanningEventTimeBlock(
         getSelectedCycleIdOrThrow({ selectedCycleId }),
         eventId,
-        slotId,
+        eventTimeBlockId,
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: 'Slot deleted',
@@ -324,7 +328,7 @@ export function usePlanningAdminMutations({
     const body = {
       name: templateForm.name.trim(),
       weekday: Number.parseInt(templateForm.weekday, 10),
-      blocks: sortTemplateBlocks({ blocks: templateForm.blocks }),
+      blocks: sortTemplateTimeBlocks({ blocks: templateForm.blocks }),
     };
 
     if (editingTemplateId) {
@@ -363,16 +367,16 @@ export function usePlanningAdminMutations({
     deleteEvent.mutate(input);
   }
 
-  function handleCreateSlot(input: CreateSlotInput) {
-    createSlot.mutate(input);
+  function handleCreateEventTimeBlock(input: CreateEventTimeBlockInput) {
+    createEventTimeBlock.mutate(input);
   }
 
-  function handleUpdateSlot(input: UpdateSlotInput) {
-    updateSlot.mutate(input);
+  function handleUpdateEventTimeBlock(input: UpdateEventTimeBlockInput) {
+    updateEventTimeBlock.mutate(input);
   }
 
-  function handleDeleteSlot(input: DeleteSlotInput) {
-    deleteSlot.mutate(input);
+  function handleDeleteEventTimeBlock(input: DeleteEventTimeBlockInput) {
+    deleteEventTimeBlock.mutate(input);
   }
 
   const resetApplyTemplates = useCallback(() => {
@@ -392,9 +396,9 @@ export function usePlanningAdminMutations({
     sendCyclePending: sendCycle.isPending,
     updateEventPending: updateEvent.isPending,
     deleteEventPending: deleteEvent.isPending,
-    createSlotPending: createSlot.isPending,
-    updateSlotPending: updateSlot.isPending,
-    deleteSlotPending: deleteSlot.isPending,
+    createEventTimeBlockPending: createEventTimeBlock.isPending,
+    updateEventTimeBlockPending: updateEventTimeBlock.isPending,
+    deleteEventTimeBlockPending: deleteEventTimeBlock.isPending,
     resetApplyTemplates,
     handleCreateCycle,
     handleSaveTemplate,
@@ -403,8 +407,8 @@ export function usePlanningAdminMutations({
     handleSendCycle,
     handleUpdateEvent,
     handleDeleteEvent,
-    handleCreateSlot,
-    handleUpdateSlot,
-    handleDeleteSlot,
+    handleCreateEventTimeBlock,
+    handleUpdateEventTimeBlock,
+    handleDeleteEventTimeBlock,
   };
 }

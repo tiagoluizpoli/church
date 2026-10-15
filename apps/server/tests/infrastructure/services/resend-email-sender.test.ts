@@ -53,7 +53,7 @@ function buildDigestPayload(): TransferMinistryDigestEmail {
     withdrawnAssignments: [
       {
         eventName: 'Sunday Gathering',
-        timeSlotStart: new Date('2026-09-20T10:00:00Z'),
+        eventTimeBlockStart: new Date('2026-09-20T10:00:00Z'),
         roleName: 'Greeter',
       },
     ],

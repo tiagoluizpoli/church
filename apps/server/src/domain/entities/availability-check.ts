@@ -13,8 +13,8 @@ export type AvailabilityCheckState =
 export interface AvailabilityCheckProps {
   churchId: ChurchId;
   cycleId: CycleId;
-  /** Ministry membership (ministry_volunteer row) this check targets. */
-  ministryVolunteerId: string;
+  /** Ministry membership (ministry_membership row) this check targets. */
+  ministryMembershipId: string;
   state: AvailabilityCheckState;
   confirmedAt?: Instant;
 }
@@ -51,8 +51,8 @@ export class AvailabilityCheck extends Entity<
     return this._props.cycleId;
   }
 
-  get ministryVolunteerId(): string {
-    return this._props.ministryVolunteerId;
+  get ministryMembershipId(): string {
+    return this._props.ministryMembershipId;
   }
 
   get state(): AvailabilityCheckState {

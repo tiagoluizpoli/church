@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { GetCycleParticipation200EventsItemSlotsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type { GetCycleParticipation200EventsItemEventTimeBlocksItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import {
@@ -27,15 +27,17 @@ import {
 } from '@/shared/utils/span-description';
 
 export interface ManualSplitEditorProps {
-  slotIndex: number;
-  slotId: string;
-  slotView?: GetCycleParticipation200EventsItemSlotsItem;
+  eventTimeBlockIndex: number;
+  eventTimeBlockId: string;
+  eventTimeBlockView?: GetCycleParticipation200EventsItemEventTimeBlocksItem;
   splitForm: SplitFormState;
   onSplitFormChange: (nextForm: SplitFormState) => void;
 }
 
 interface ManualSplitSchemaParams {
-  slotView: GetCycleParticipation200EventsItemSlotsItem | undefined;
+  eventTimeBlockView:
+    | GetCycleParticipation200EventsItemEventTimeBlocksItem
+    | undefined;
 }
 
 const manualSpanSchema = z.object({
@@ -44,18 +46,23 @@ const manualSpanSchema = z.object({
   label: z.string(),
 });
 
-export function createManualSplitSchema({ slotView }: ManualSplitSchemaParams) {
+export function createManualSplitSchema({
+  eventTimeBlockView,
+}: ManualSplitSchemaParams) {
   const schema = z.object({
     mode: z.enum(['equal', 'manual']),
     equalCount: z.string().regex(/^[1-9]\d*$/, 'Enter at least one shift.'),
     manualSpans: z.array(manualSpanSchema),
   });
 
-  if (!slotView) return schema;
+  if (!eventTimeBlockView) return schema;
 
   return schema.superRefine((value, context) => {
     if (value.mode !== 'manual') return;
-    const error = validateManualSpans({ slotView, spans: value.manualSpans });
+    const error = validateManualSpans({
+      eventTimeBlockView,
+      spans: value.manualSpans,
+    });
     if (error) {
       context.addIssue({
         code: 'custom',
@@ -84,9 +91,9 @@ function toShiftModePreset(splitForm: SplitFormState): ShiftModePreset {
  * logic is unchanged (research.md R2) — only this component's DOM is
  * rewritten to use shadcn `Select` in place of the native `<select>`. */
 export function ManualSplitEditor({
-  slotIndex,
-  slotId,
-  slotView,
+  eventTimeBlockIndex,
+  eventTimeBlockId,
+  eventTimeBlockView,
   splitForm,
   onSplitFormChange,
 }: ManualSplitEditorProps) {
@@ -94,7 +101,7 @@ export function ManualSplitEditor({
   const isMobile = useFormControlSize() === 'touch';
   const form = useForm({
     defaultValues: splitForm,
-    validators: { onChange: createManualSplitSchema({ slotView }) },
+    validators: { onChange: createManualSplitSchema({ eventTimeBlockView }) },
   });
   const modePreset = toShiftModePreset(splitForm);
   const updateSplitForm = (nextForm: SplitFormState) => {
@@ -105,7 +112,9 @@ export function ManualSplitEditor({
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <Label htmlFor={`shift-mode-select-${slotId}`}>Shift split mode</Label>
+        <Label htmlFor={`shift-mode-select-${eventTimeBlockId}`}>
+          Shift split mode
+        </Label>
         <Select
           value={modePreset}
           onValueChange={(value) => {
@@ -130,8 +139,8 @@ export function ManualSplitEditor({
           }}
         >
           <SelectTrigger
-            id={`shift-mode-select-${slotId}`}
-            data-testid={`shift-mode-select-${slotIndex}`}
+            id={`shift-mode-select-${eventTimeBlockId}`}
+            data-testid={`shift-mode-select-${eventTimeBlockIndex}`}
             className={cn(
               'w-full',
               isMobile && 'px-3 text-sm data-[size=default]:h-11',
@@ -155,10 +164,12 @@ export function ManualSplitEditor({
 
       {modePreset === 'equal' ? (
         <div className="space-y-1">
-          <Label htmlFor={`equal-count-${slotId}`}>Number of shifts</Label>
+          <Label htmlFor={`equal-count-${eventTimeBlockId}`}>
+            Number of shifts
+          </Label>
           <Input
-            id={`equal-count-${slotId}`}
-            data-testid={`equal-split-count-${slotIndex}`}
+            id={`equal-count-${eventTimeBlockId}`}
+            data-testid={`equal-split-count-${eventTimeBlockIndex}`}
             type="number"
             min="2"
             value={splitForm.equalCount}
@@ -174,9 +185,9 @@ export function ManualSplitEditor({
         <div className="space-y-3">
           {splitForm.manualSpans.map((span, spanIndex) => (
             <div
-              key={`${slotIndex}-${spanIndex}`}
+              key={`${eventTimeBlockIndex}-${spanIndex}`}
               className="space-y-2"
-              data-testid={`manual-split-row-${slotIndex}-${spanIndex}`}
+              data-testid={`manual-split-row-${eventTimeBlockIndex}-${spanIndex}`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground text-xs">
@@ -188,7 +199,7 @@ export function ManualSplitEditor({
                   size={isMobile ? 'icon-touch' : 'icon-sm'}
                   className="text-muted-foreground hover:text-destructive"
                   aria-label={`Remove span ${spanIndex + 1}`}
-                  data-testid={`remove-manual-split-${slotIndex}-${spanIndex}`}
+                  data-testid={`remove-manual-split-${eventTimeBlockIndex}-${spanIndex}`}
                   onClick={() =>
                     updateSplitForm({
                       ...splitForm,
@@ -204,8 +215,8 @@ export function ManualSplitEditor({
               </div>
               <div className="grid gap-2">
                 <InstantField
-                  idPrefix={`manual-split-start-${slotIndex}-${spanIndex}`}
-                  data-testid={`manual-split-start-${slotIndex}-${spanIndex}`}
+                  idPrefix={`manual-split-start-${eventTimeBlockIndex}-${spanIndex}`}
+                  data-testid={`manual-split-start-${eventTimeBlockIndex}-${spanIndex}`}
                   value={span.startTime}
                   timeZone={churchTimezone}
                   onChange={(startTime) =>
@@ -221,8 +232,8 @@ export function ManualSplitEditor({
                   }
                 />
                 <InstantField
-                  idPrefix={`manual-split-end-${slotIndex}-${spanIndex}`}
-                  data-testid={`manual-split-end-${slotIndex}-${spanIndex}`}
+                  idPrefix={`manual-split-end-${eventTimeBlockIndex}-${spanIndex}`}
+                  data-testid={`manual-split-end-${eventTimeBlockIndex}-${spanIndex}`}
                   value={span.endTime}
                   timeZone={churchTimezone}
                   onChange={(endTime) =>
@@ -243,7 +254,7 @@ export function ManualSplitEditor({
                 }) ? (
                   <p
                     className="text-muted-foreground text-xs"
-                    data-testid={`manual-split-span-${slotIndex}-${spanIndex}`}
+                    data-testid={`manual-split-span-${eventTimeBlockIndex}-${spanIndex}`}
                   >
                     {describeSpan({
                       span: instantSpan({
@@ -255,7 +266,7 @@ export function ManualSplitEditor({
                   </p>
                 ) : null}
                 <Input
-                  data-testid={`manual-split-label-${slotIndex}-${spanIndex}`}
+                  data-testid={`manual-split-label-${eventTimeBlockIndex}-${spanIndex}`}
                   value={span.label}
                   placeholder="Shift label"
                   onChange={(event) =>
@@ -278,18 +289,20 @@ export function ManualSplitEditor({
             type="button"
             variant="outline"
             size={isMobile ? 'touch' : 'sm'}
-            data-testid={`add-manual-split-${slotIndex}`}
+            data-testid={`add-manual-split-${eventTimeBlockIndex}`}
             onClick={() =>
               updateSplitForm({
                 ...splitForm,
                 manualSpans: [
                   ...splitForm.manualSpans,
                   {
-                    startTime: slotView
-                      ? parseInstant({ value: slotView.slot.startTime })
+                    startTime: eventTimeBlockView
+                      ? parseInstant({
+                          value: eventTimeBlockView.slot.startTime,
+                        })
                       : now(),
-                    endTime: slotView
-                      ? parseInstant({ value: slotView.slot.endTime })
+                    endTime: eventTimeBlockView
+                      ? parseInstant({ value: eventTimeBlockView.slot.endTime })
                       : now(),
                     label: '',
                   },

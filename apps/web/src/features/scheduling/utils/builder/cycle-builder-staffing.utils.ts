@@ -31,8 +31,8 @@ export function summarizeCycleStaffing({
       if (!slot.included) continue;
       for (const shift of slot.shifts) {
         filled += shift.assignedCount;
-        required += shift.requiredCount;
-        if (shift.assignedCount < shift.requiredCount) shiftsBelowTarget += 1;
+        required += shift.peopleNeeded;
+        if (shift.assignedCount < shift.peopleNeeded) shiftsBelowTarget += 1;
       }
     }
   }
@@ -47,7 +47,7 @@ export function summarizeCycleStaffing({
 export interface CycleCountsSummary {
   eventCount: number;
   /** Included slots only — the same scope `summarizeCycleStaffing` uses. */
-  slotCount: number;
+  eventTimeBlockCount: number;
   shiftCount: number;
   /** Active assignments across included shifts, i.e. `staffing.filled`. */
   assignedCount: number;
@@ -69,18 +69,18 @@ export function summarizeCycleCounts({
   data,
   assignedCount,
 }: SummarizeCycleCountsInput): CycleCountsSummary {
-  let slotCount = 0;
+  let eventTimeBlockCount = 0;
   let shiftCount = 0;
   for (const event of data.events) {
     for (const slot of event.slots) {
       if (!slot.included) continue;
-      slotCount += 1;
+      eventTimeBlockCount += 1;
       shiftCount += slot.shifts.length;
     }
   }
   return {
     eventCount: data.events.length,
-    slotCount,
+    eventTimeBlockCount,
     shiftCount,
     assignedCount,
   };

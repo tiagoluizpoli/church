@@ -7,10 +7,10 @@ import {
   removeOptimisticAssignment,
   replaceOptimisticAssignmentVolunteer,
 } from '@/features/scheduling/hooks/use-cycle-builder.optimistic';
-import type { GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type { GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem } from '@/infrastructure/api/churchAPI.schemas';
 
 type RawAssignment =
-  GetCycleBuilderData200EventsItemSlotsItemShiftsItemAssignmentsItem;
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem;
 
 interface MakeDataInput {
   assignments: RawAssignment[];
@@ -19,7 +19,7 @@ interface MakeDataInput {
 const EXISTING_ASSIGNMENT: RawAssignment = {
   id: 'assignment-1',
   churchId: 'church-1',
-  slotId: 'slot-1',
+  eventTimeBlockId: 'event-time-block-1',
   participationId: 'participation-1',
   shiftId: 'shift-1',
   volunteerId: 'ana',
@@ -54,7 +54,7 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
         slots: [
           {
             slot: {
-              id: 'slot-1',
+              id: 'event-time-block-1',
               churchId: 'church-1',
               eventId: 'event-1',
               startTime: '2026-07-05T09:00:00.000Z',
@@ -68,7 +68,7 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
                 shift: {
                   id: 'shift-1',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-05T09:00:00.000Z',
                   endTime: '2026-07-05T11:00:00.000Z',
                 },
@@ -80,7 +80,7 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
                 shift: {
                   id: 'shift-2',
                   participationId: 'participation-1',
-                  timeSlotId: 'slot-1',
+                  eventTimeBlockId: 'event-time-block-1',
                   startTime: '2026-07-05T09:00:00.000Z',
                   endTime: '2026-07-05T11:00:00.000Z',
                 },
@@ -114,7 +114,7 @@ describe('addOptimisticAssignment', () => {
       {
         id: 'optimistic:1',
         churchId: 'church-1',
-        slotId: 'slot-1',
+        eventTimeBlockId: 'event-time-block-1',
         participationId: 'participation-1',
         shiftId: 'shift-1',
         volunteerId: 'bruno',

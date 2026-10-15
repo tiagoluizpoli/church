@@ -3,7 +3,7 @@ import {
   ministry,
   ministryInvitation,
   ministryInvitationRole,
-  ministryVolunteer,
+  ministryMembership,
   outboxMessage,
   role,
   volunteer,
@@ -25,8 +25,8 @@ import { CrossChurchVolunteerConflictError } from '../../domain/errors/cross-chu
 import { PendingMinistryInvitationNotFoundError } from '../../domain/errors/pending-ministry-invitation-not-found';
 import { getClient, withChurchIsolation } from './helpers';
 import {
-  grantMinistryVolunteerRoles,
-  insertMinistryVolunteerMembership,
+  grantMinistryMembershipRoles,
+  insertMinistryMembership,
 } from './ministry-grant';
 import type { AnyDrizzleDb } from './types';
 
@@ -39,7 +39,7 @@ interface PendingInvitationRole {
   roleId: string;
 }
 
-interface ExistingMinistryVolunteer {
+interface ExistingMinistryMembership {
   id: string;
   ministryAccessLevel: 'leader' | 'volunteer';
 }
@@ -153,19 +153,19 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       existingVolunteer?.id ??
       (await this.insertVolunteer({ db, churchId, userId }));
 
-    const existingMembership = await this.findExistingMinistryVolunteer({
+    const existingMembership = await this.findExistingMinistryMembership({
       db,
       churchId,
       volunteerId,
       ministryId: invitationGrant.ministryId,
     });
     const membershipId = existingMembership
-      ? await this.topUpMinistryVolunteer({
+      ? await this.topUpMinistryMembership({
           db,
           existingMembership,
           grantedAccessLevel: invitationGrant.ministryAccessLevel,
         })
-      : await this.insertMinistryVolunteer({
+      : await this.insertMinistryMembership({
           db,
           churchId,
           volunteerId,
@@ -173,10 +173,10 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
           ministryAccessLevel: invitationGrant.ministryAccessLevel,
         });
 
-    await grantMinistryVolunteerRoles({
+    await grantMinistryMembershipRoles({
       db,
       churchId,
-      ministryVolunteerId: membershipId,
+      ministryMembershipId: membershipId,
       roleIds,
     });
     const [acceptedInvitation] = await db
@@ -280,24 +280,24 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
    * Scoped to `status = 'active'` — an inactive/left membership is not
    * "existing access" to preserve; acceptance grants a fresh one instead.
    */
-  private async findExistingMinistryVolunteer({
+  private async findExistingMinistryMembership({
     db,
     churchId,
     volunteerId,
     ministryId,
-  }: FindExistingMinistryVolunteerInput): Promise<ExistingMinistryVolunteer | null> {
+  }: FindExistingMinistryMembershipInput): Promise<ExistingMinistryMembership | null> {
     const [row] = await db
       .select({
-        id: ministryVolunteer.id,
-        ministryAccessLevel: ministryVolunteer.ministryAccessLevel,
+        id: ministryMembership.id,
+        ministryAccessLevel: ministryMembership.ministryAccessLevel,
       })
-      .from(ministryVolunteer)
+      .from(ministryMembership)
       .where(
         and(
-          withChurchIsolation(ministryVolunteer, churchId),
-          eq(ministryVolunteer.volunteerId, volunteerId),
-          eq(ministryVolunteer.ministryId, ministryId),
-          eq(ministryVolunteer.status, 'active'),
+          withChurchIsolation(ministryMembership, churchId),
+          eq(ministryMembership.volunteerId, volunteerId),
+          eq(ministryMembership.ministryId, ministryId),
+          eq(ministryMembership.status, 'active'),
         ),
       )
       .limit(1);
@@ -305,11 +305,11 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
   }
 
   /** Existing access is never reduced: 'leader' beats 'volunteer' either way. */
-  private async topUpMinistryVolunteer({
+  private async topUpMinistryMembership({
     db,
     existingMembership,
     grantedAccessLevel,
-  }: TopUpMinistryVolunteerInput): Promise<string> {
+  }: TopUpMinistryMembershipInput): Promise<string> {
     const resolvedAccessLevel =
       existingMembership.ministryAccessLevel === 'leader' ||
       grantedAccessLevel === 'leader'
@@ -317,21 +317,21 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
         : 'volunteer';
     if (resolvedAccessLevel !== existingMembership.ministryAccessLevel) {
       await db
-        .update(ministryVolunteer)
+        .update(ministryMembership)
         .set({ ministryAccessLevel: resolvedAccessLevel })
-        .where(eq(ministryVolunteer.id, existingMembership.id));
+        .where(eq(ministryMembership.id, existingMembership.id));
     }
     return existingMembership.id;
   }
 
-  private async insertMinistryVolunteer({
+  private async insertMinistryMembership({
     db,
     churchId,
     volunteerId,
     ministryId,
     ministryAccessLevel,
-  }: InsertMinistryVolunteerInput): Promise<string> {
-    return insertMinistryVolunteerMembership({
+  }: InsertMinistryMembershipInput): Promise<string> {
+    return insertMinistryMembership({
       db,
       churchId,
       ministryId,
@@ -389,20 +389,20 @@ interface InsertVolunteerInput {
   userId: AcceptMinistryInvitationInput['userId'];
 }
 
-interface FindExistingMinistryVolunteerInput {
+interface FindExistingMinistryMembershipInput {
   db: AnyDrizzleDb;
   churchId: ChurchId;
   volunteerId: string;
   ministryId: MinistryId | string;
 }
 
-interface TopUpMinistryVolunteerInput {
+interface TopUpMinistryMembershipInput {
   db: AnyDrizzleDb;
-  existingMembership: ExistingMinistryVolunteer;
+  existingMembership: ExistingMinistryMembership;
   grantedAccessLevel: 'leader' | 'volunteer';
 }
 
-interface InsertMinistryVolunteerInput {
+interface InsertMinistryMembershipInput {
   db: AnyDrizzleDb;
   churchId: ChurchId;
   volunteerId: string;

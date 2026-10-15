@@ -4,14 +4,14 @@ import { KIDS } from './directory/kids';
 import { PROJECAO } from './directory/projecao';
 import type { MinistryBlueprint } from './directory/types';
 
-/** Every recurring TimeBlock, named by weekday and start. */
+/** Every recurring TemplateTimeBlock, named by weekday and start. */
 export type GatheringBlockKey =
   | 'sunday-08:00'
   | 'sunday-10:30'
   | 'sunday-18:30'
   | 'wednesday-20:00';
 
-export interface TimeBlockBlueprint {
+export interface TemplateTimeBlockBlueprint {
   key: GatheringBlockKey;
   label: string;
   /** TimeOfDay `HH:mm` in the Church Timezone. */
@@ -24,7 +24,7 @@ export interface EventTemplateBlueprint {
   name: string;
   /** 0 (Sunday) … 6 (Saturday). */
   weekday: number;
-  blocks: readonly TimeBlockBlueprint[];
+  blocks: readonly TemplateTimeBlockBlueprint[];
 }
 
 /** One staffed post per Shift: a Role, optionally within a Team. */
@@ -35,12 +35,12 @@ export interface StaffingNeed<
   role: TRole;
   team?: TTeam;
   count: number;
-  /** Lands on the materialized SlotRequirement; a profile has no notes. */
+  /** Lands on the materialized ShiftRequirement; a profile has no notes. */
   notes?: string;
 }
 
 /**
- * A Ministry's MinistryServingProfile: every TimeBlock is declared, `null`
+ * A Ministry's UsualSetup: every TemplateTimeBlock is declared, `null`
  * when the Ministry does not serve it. Each served block is one Shift.
  */
 export interface MinistryServingRule<

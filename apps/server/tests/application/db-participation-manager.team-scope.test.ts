@@ -32,15 +32,15 @@ function createManager() {
     listByParticipation: vi.fn(),
     listByVolunteers: vi.fn(),
   };
-  const availabilityRepository = { listByVolunteers: vi.fn() };
-  const timeSlotRepository = {};
+  const unavailableShiftRepository = { listByVolunteers: vi.fn() };
+  const eventTimeBlockRepository = {};
   const volunteerRepository = {
     listMinistryMemberships: vi.fn(),
     listQualifiedForRole: vi.fn(),
     listByMinistry: vi.fn(),
   };
   const ministryRepository = { getById: vi.fn() };
-  const servingProfileRepository = {};
+  const usualSetupRepository = {};
   const roleRepository = { listByMinistry: vi.fn() };
   const notificationService = {};
   const unitOfWork = {
@@ -53,11 +53,11 @@ function createManager() {
       shiftRepository: shiftRepository as never,
       eventRepository: eventRepository as never,
       assignmentRepository: assignmentRepository as never,
-      availabilityRepository: availabilityRepository as never,
-      timeSlotRepository: timeSlotRepository as never,
+      unavailableShiftRepository: unavailableShiftRepository as never,
+      eventTimeBlockRepository: eventTimeBlockRepository as never,
       volunteerRepository: volunteerRepository as never,
       ministryRepository: ministryRepository as never,
-      servingProfileRepository: servingProfileRepository as never,
+      usualSetupRepository: usualSetupRepository as never,
       roleRepository: roleRepository as never,
       notificationService: notificationService as never,
       unitOfWork: unitOfWork as never,
@@ -66,7 +66,7 @@ function createManager() {
     shiftRepository,
     eventRepository,
     assignmentRepository,
-    availabilityRepository,
+    unavailableShiftRepository,
     volunteerRepository,
     ministryRepository,
     roleRepository,
@@ -107,7 +107,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     const {
       manager,
       assignmentRepository,
-      availabilityRepository,
+      unavailableShiftRepository,
       eventRepository,
       ministryRepository,
       participationRepository,
@@ -123,7 +123,7 @@ describe('DbParticipationManager Team schedule scope', () => {
           status: 'scheduled',
           start: '2027-01-01T09:00:00.000Z',
         },
-        slots: [{ id: 'slot-a' }, { id: 'slot-b' }],
+        slots: [{ id: 'event-time-block-a' }, { id: 'event-time-block-b' }],
       },
     ]);
     participationRepository.findByMinistryEvent.mockResolvedValue({
@@ -133,7 +133,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     });
     participationRepository.listInclusions.mockResolvedValue([]);
     shiftRepository.listByParticipation.mockResolvedValue([
-      { id: 'shift-a', timeSlotId: 'slot-a' },
+      { id: 'shift-a', eventTimeBlockId: 'event-time-block-a' },
     ]);
     shiftRepository.listRequirementsByParticipation.mockResolvedValue([
       { id: 'requirement-a', shiftId: 'shift-a', roleId: 'role-a', teamId },
@@ -159,7 +159,7 @@ describe('DbParticipationManager Team schedule scope', () => {
       },
     ]);
     assignmentRepository.listByVolunteers.mockResolvedValue([]);
-    availabilityRepository.listByVolunteers.mockResolvedValue([]);
+    unavailableShiftRepository.listByVolunteers.mockResolvedValue([]);
     roleRepository.listByMinistry.mockResolvedValue([
       { id: 'role-a', name: 'Greeter' },
     ]);
@@ -209,7 +209,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     const {
       manager,
       assignmentRepository,
-      availabilityRepository,
+      unavailableShiftRepository,
       eventRepository,
       ministryRepository,
       participationRepository,
@@ -225,7 +225,7 @@ describe('DbParticipationManager Team schedule scope', () => {
           status: 'scheduled',
           start: '2027-01-01T09:00:00.000Z',
         },
-        slots: [{ id: 'slot-a' }],
+        slots: [{ id: 'event-time-block-a' }],
       },
     ]);
     participationRepository.findByMinistryEvent.mockResolvedValue({
@@ -235,7 +235,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     });
     participationRepository.listInclusions.mockResolvedValue([]);
     shiftRepository.listByParticipation.mockResolvedValue([
-      { id: 'shift-a', timeSlotId: 'slot-a' },
+      { id: 'shift-a', eventTimeBlockId: 'event-time-block-a' },
     ]);
     shiftRepository.listRequirementsByParticipation.mockResolvedValue([
       { id: 'requirement-a', shiftId: 'shift-a', roleId: 'role-a', teamId },
@@ -248,7 +248,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     ]);
     assignmentRepository.listByParticipation.mockResolvedValue([]);
     assignmentRepository.listByVolunteers.mockResolvedValue([]);
-    availabilityRepository.listByVolunteers.mockResolvedValue([]);
+    unavailableShiftRepository.listByVolunteers.mockResolvedValue([]);
     roleRepository.listByMinistry.mockResolvedValue([
       { id: 'role-a', name: 'Greeter' },
     ]);
@@ -282,7 +282,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     const {
       manager,
       assignmentRepository,
-      availabilityRepository,
+      unavailableShiftRepository,
       eventRepository,
       ministryRepository,
       participationRepository,
@@ -292,7 +292,7 @@ describe('DbParticipationManager Team schedule scope', () => {
     } = createManager();
     ministryRepository.getById.mockResolvedValue({});
     eventRepository.listCycleEvents.mockResolvedValue([
-      { event: { id: 'event-1' }, slots: [{ id: 'slot-a' }] },
+      { event: { id: 'event-1' }, slots: [{ id: 'event-time-block-a' }] },
     ]);
     participationRepository.findByMinistryEvent.mockResolvedValue({
       id: 'participation-1',
@@ -301,14 +301,14 @@ describe('DbParticipationManager Team schedule scope', () => {
     });
     participationRepository.listInclusions.mockResolvedValue([]);
     shiftRepository.listByParticipation.mockResolvedValue([
-      { id: 'shift-a', timeSlotId: 'slot-a' },
+      { id: 'shift-a', eventTimeBlockId: 'event-time-block-a' },
     ]);
     shiftRepository.listRequirementsByParticipation.mockResolvedValue([
       { id: 'requirement-a', shiftId: 'shift-a', roleId: 'role-a' },
     ]);
     assignmentRepository.listByParticipation.mockResolvedValue([]);
     assignmentRepository.listByVolunteers.mockResolvedValue([]);
-    availabilityRepository.listByVolunteers.mockResolvedValue([]);
+    unavailableShiftRepository.listByVolunteers.mockResolvedValue([]);
     roleRepository.listByMinistry.mockResolvedValue([
       { id: 'role-a', name: 'Greeter' },
     ]);

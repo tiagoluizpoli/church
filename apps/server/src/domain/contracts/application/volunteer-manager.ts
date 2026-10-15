@@ -24,7 +24,7 @@ export interface DashboardAvailabilityTask {
 
 export interface DashboardAssignmentItem {
   assignmentId: string;
-  slotId: string;
+  eventTimeBlockId: string;
   shiftId: string;
   participationId: string;
   roleId: string;
@@ -73,8 +73,8 @@ export interface VolunteerDashboard {
 }
 
 export interface MinistryScheduleRow {
-  slotId: string;
-  slotLabel: string;
+  eventTimeBlockId: string;
+  eventTimeBlockLabel: string;
   roleName: string;
   teamName?: string;
   volunteerDisplayName?: string;

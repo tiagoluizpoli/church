@@ -36,12 +36,16 @@ export function VolunteerAvailabilityPage() {
         ) : availability.detail ? (
           <AvailabilityCheckDetail
             check={availability.detail}
-            markDraft={availability.markDraft}
+            unavailableShiftDraft={availability.unavailableShiftDraft}
             onToggleShift={availability.toggleShift}
             onToggleWholeDay={availability.toggleWholeDay}
-            onSaveMarks={() => availability.saveMarks.mutate()}
+            onSaveUnavailableShifts={() =>
+              availability.saveUnavailableShifts.mutate()
+            }
             onConfirm={() => availability.confirmCheck.mutate()}
-            isSavingMarks={availability.saveMarks.isPending}
+            isSavingUnavailableShifts={
+              availability.saveUnavailableShifts.isPending
+            }
             isConfirming={availability.confirmCheck.isPending}
           />
         ) : null

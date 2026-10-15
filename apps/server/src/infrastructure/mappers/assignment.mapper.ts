@@ -4,10 +4,10 @@ import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AssignmentId,
   ChurchId,
+  EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
-  TimeSlotId,
   UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
@@ -18,13 +18,13 @@ type AssignmentRow = InferSelectModel<typeof assignment>;
 
 export function mapAssignment(
   row: AssignmentRow,
-  timeSlotId?: string,
+  eventTimeBlockId?: string,
 ): Assignment {
   const props: AssignmentProps = {
     churchId: row.churchId as ChurchId,
     participationId: row.participationId as MinistryParticipationId,
     shiftId: row.shiftId as ShiftId,
-    slotId: (timeSlotId ?? row.shiftId) as TimeSlotId,
+    eventTimeBlockId: (eventTimeBlockId ?? row.shiftId) as EventTimeBlockId,
     volunteerId: row.volunteerId as VolunteerId,
     roleId: row.roleId as RoleId,
     status: row.status as AssignmentProps['status'],

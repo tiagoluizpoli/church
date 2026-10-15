@@ -39,7 +39,7 @@ const ROUTES: Array<{
   { method: 'GET', url: '/api/v1/volunteer/availability-checks/some-id' },
   {
     method: 'PUT',
-    url: '/api/v1/volunteer/availability-checks/some-id/marks',
+    url: '/api/v1/volunteer/availability-checks/some-id/unavailable-shifts',
   },
   {
     method: 'POST',

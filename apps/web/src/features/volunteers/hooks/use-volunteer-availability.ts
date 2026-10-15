@@ -3,17 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  type AvailabilityMarkDraft,
-  buildMarksBody,
-  createInitialMarkDraft,
-  toggleShiftMark,
-  toggleWholeDayMark,
-} from '../lib/availability-marks';
+  buildUnavailableShiftsBody,
+  createInitialUnavailableShiftDraft,
+  toggleShiftUnavailable,
+  toggleWholeDayUnavailable,
+  type UnavailableShiftDraft,
+} from '../lib/unavailable-shifts';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { volunteerApi } from '@/utils/api-instances';
 
 const AVAILABILITY_CHECKS_QUERY_KEY = ['availability-checks'];
-const EMPTY_MARK_DRAFT: AvailabilityMarkDraft = {
+const EMPTY_UNAVAILABLE_SHIFT_DRAFT: UnavailableShiftDraft = {
   markedShiftIds: new Set(),
   wholeDayDates: new Set(),
 };
@@ -30,8 +30,8 @@ export function useVolunteerAvailability() {
   const { churchTimezone } = useTimezone();
   const queryClient = useQueryClient();
   const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null);
-  const [markDraft, setMarkDraft] =
-    useState<AvailabilityMarkDraft>(EMPTY_MARK_DRAFT);
+  const [unavailableShiftDraft, setUnavailableShiftDraft] =
+    useState<UnavailableShiftDraft>(EMPTY_UNAVAILABLE_SHIFT_DRAFT);
 
   const checksQuery = useQuery({
     queryKey: AVAILABILITY_CHECKS_QUERY_KEY,
@@ -50,8 +50,8 @@ export function useVolunteerAvailability() {
 
   useEffect(() => {
     if (!detail) return;
-    setMarkDraft(
-      createInitialMarkDraft({
+    setUnavailableShiftDraft(
+      createInitialUnavailableShiftDraft({
         shifts: detail.shifts,
         timeZone: churchTimezone,
       }),
@@ -75,8 +75,8 @@ export function useVolunteerAvailability() {
 
   const toggleShift = (shiftId: string) => {
     if (!detail) return;
-    setMarkDraft((current) =>
-      toggleShiftMark({
+    setUnavailableShiftDraft((current) =>
+      toggleShiftUnavailable({
         draft: current,
         shifts: detail.shifts,
         shiftId,
@@ -87,8 +87,8 @@ export function useVolunteerAvailability() {
 
   const toggleWholeDay = (date: CalendarDay) => {
     if (!detail) return;
-    setMarkDraft((current) =>
-      toggleWholeDayMark({
+    setUnavailableShiftDraft((current) =>
+      toggleWholeDayUnavailable({
         draft: current,
         shifts: detail.shifts,
         date,
@@ -97,14 +97,14 @@ export function useVolunteerAvailability() {
     );
   };
 
-  const saveMarks = useMutation({
+  const saveUnavailableShifts = useMutation({
     mutationFn: async () => {
       if (!selectedCheckId) {
         throw new Error('No availability check selected.');
       }
-      return volunteerApi.setUnavailabilityMarks(
+      return volunteerApi.setUnavailableShifts(
         selectedCheckId,
-        buildMarksBody({ draft: markDraft }),
+        buildUnavailableShiftsBody({ draft: unavailableShiftDraft }),
       );
     },
     onSuccess: async () => {
@@ -134,8 +134,8 @@ export function useVolunteerAvailability() {
     confirmCheck,
     detail,
     detailQuery,
-    markDraft,
-    saveMarks,
+    unavailableShiftDraft,
+    saveUnavailableShifts,
     selectCheck,
     selectedCheckId,
     toggleShift,

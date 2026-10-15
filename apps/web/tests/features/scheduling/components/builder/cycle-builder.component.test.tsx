@@ -42,28 +42,28 @@ const builderData: CycleBuilderData = {
       end: '2026-08-02T11:00:00.000Z',
       status: 'scheduled',
       fillRatio: 0,
-      requiredCount: 1,
+      peopleNeeded: 1,
       assignedCount: 0,
-      slotCount: 1,
+      eventTimeBlockCount: 1,
       slots: [
         {
-          slotId: 'slot-1',
+          eventTimeBlockId: 'event-time-block-1',
           label: 'Morning service',
           startTime: '2026-08-02T09:00:00.000Z',
           endTime: '2026-08-02T11:00:00.000Z',
           included: true,
-          requiredCount: 1,
+          peopleNeeded: 1,
           assignedCount: 0,
           shiftCount: 1,
           shifts: [
             {
               shiftId: 'shift-1',
-              slotId: 'slot-1',
+              eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
-              requiredCount: 1,
+              peopleNeeded: 1,
               assignedCount: 0,
-              requirements: [{ roleId: 'role-1', requiredCount: 1 }],
+              requirements: [{ roleId: 'role-1', peopleNeeded: 1 }],
               assignments: [],
               eligibleVolunteerCount: 1,
               eligibleVolunteers: [
@@ -88,7 +88,7 @@ const builderData: CycleBuilderData = {
 const existingAssignment = {
   id: 'assignment-1',
   churchId: 'church-1',
-  slotId: 'slot-1',
+  eventTimeBlockId: 'event-time-block-1',
   participationId: 'participation-1',
   shiftId: 'shift-1',
   volunteerId: 'volunteer-1',
@@ -130,12 +130,12 @@ function teamGuardData({
             shifts: [
               {
                 ...shift,
-                requiredCount: 2,
+                peopleNeeded: 2,
                 assignedCount: 1,
                 requirements: [
                   {
                     ...shift.requirements[0],
-                    requiredCount: 2,
+                    peopleNeeded: 2,
                     teamId: requirementTeamId,
                     canMutateAssignments:
                       canMutateAssignments ?? requirementTeamId === 'team-1',
@@ -241,9 +241,9 @@ describe('CycleBuilder header (B-4)', () => {
     expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
       '1',
     );
-    expect(screen.getByTestId('cycle-builder-slot-count')).toHaveTextContent(
-      '1',
-    );
+    expect(
+      screen.getByTestId('cycle-builder-event-time-block-count'),
+    ).toHaveTextContent('1');
     expect(screen.getByTestId('cycle-builder-shift-count')).toHaveTextContent(
       '1',
     );
@@ -422,7 +422,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
     shift.requirements.push({
       roleId: 'role-2',
       teamId: 'team-1',
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
     shift.eligibleVolunteers.push({
       volunteerId: 'volunteer-2',

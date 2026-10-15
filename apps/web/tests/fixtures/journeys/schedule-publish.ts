@@ -35,7 +35,7 @@ export const SCHEDULE_PUBLISH_JOURNEY_SCHEMA =
       title: z.string().min(1),
       startsAt: z.string().min(1),
     }),
-    worship: PARTICIPATION_SCHEMA.extend({ requiredCount: z.number() }),
+    worship: PARTICIPATION_SCHEMA.extend({ peopleNeeded: z.number() }),
     care: PARTICIPATION_SCHEMA,
   });
 

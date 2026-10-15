@@ -156,7 +156,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/marks`,
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/unavailable-shifts`,
       payload: { shiftIds: [SHIFT_ID] },
     });
 
@@ -177,7 +177,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/marks`,
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/unavailable-shifts`,
       payload: { shiftIds: [SHIFT_ID] },
     });
 
@@ -189,7 +189,7 @@ describe('Volunteer availability-check routes (DL3-HT-08)', () => {
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/marks`,
+      url: `/api/v1/volunteer/availability-checks/${CHECK_ID}/unavailable-shifts`,
       payload: { shiftIds: [], wholeDayDates: ['2026-08-02'] },
     });
 

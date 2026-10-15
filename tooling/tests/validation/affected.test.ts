@@ -119,11 +119,11 @@ describe('classifyChanges', () => {
   it('runs an explicitly declared E2E spec without selecting the complete suite', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/README.md'],
-      e2eSpecPaths: ['tests/scheduling/builder-slot-focus.spec.ts'],
+      e2eSpecPaths: ['tests/scheduling/builder-event-time-block-focus.spec.ts'],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
     ]);
     expect(plan.requiresFullE2e).toBe(false);
   });
@@ -131,12 +131,12 @@ describe('classifyChanges', () => {
   it('never drops an explicitly declared spec when a changed path also selects mapped journeys', () => {
     const plan = classifyChanges({
       changedPaths: ['apps/web/src/shared/utils/active-church-switch.ts'],
-      e2eSpecPaths: ['tests/scheduling/builder-slot-focus.spec.ts'],
+      e2eSpecPaths: ['tests/scheduling/builder-event-time-block-focus.spec.ts'],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/active-church-switching.spec.ts',
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
     ]);
   });
 
@@ -273,7 +273,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/a11y-planning-nav.spec.ts',
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
-      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/overnight-template-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -291,12 +291,12 @@ describe('classifyChanges', () => {
     });
 
     // #289 — previously also pulled in smoke/us3/us4/qualification/
-    // builder-slot-focus via the removed broad `features/scheduling/`
+    // builder-event-time-block-focus via the removed broad `features/scheduling/`
     // prefix (13 specs); none of those navigate a cycles route.
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
-      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/overnight-template-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -316,7 +316,7 @@ describe('classifyChanges', () => {
       expect(plan.e2eSpecPaths).toEqual([
         'tests/scheduling/cross-cutting.spec.ts',
         'tests/scheduling/cycles-table-view.spec.ts',
-        'tests/scheduling/overnight-time-block.spec.ts',
+        'tests/scheduling/overnight-template-time-block.spec.ts',
         'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
         'tests/scheduling/planning-nav-restructure.spec.ts',
         'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -342,7 +342,7 @@ describe('classifyChanges', () => {
   });
 
   it('selects the prepare-component journey for a prepare feature component and its shared util', () => {
-    // #289 — previously also pulled in qualification/us3/builder-slot-focus
+    // #289 — previously also pulled in qualification/us3/builder-event-time-block-focus
     // via the removed broad `features/scheduling/` prefix (7 specs); those
     // never navigate a prepare route.
     for (const changedPath of [
@@ -380,7 +380,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
-      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/overnight-template-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
@@ -543,7 +543,7 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/smoke.spec.ts',
       'tests/scheduling/us4-schedule-publish.spec.ts',
@@ -616,7 +616,7 @@ describe('classifyChanges', () => {
 
       expect(plan.e2eSpecPaths).toEqual([
         'tests/scheduling/a11y-builder.spec.ts',
-        'tests/scheduling/builder-slot-focus.spec.ts',
+        'tests/scheduling/builder-event-time-block-focus.spec.ts',
         'tests/scheduling/planning-role-guard-matrix.spec.ts',
         'tests/scheduling/qualification.spec.ts',
         'tests/scheduling/smoke.spec.ts',
@@ -669,7 +669,7 @@ describe('classifyChanges', () => {
       changedPaths: ['apps/server/src/api/controllers/assign-controller.ts'],
     });
     expect(assignPlan.e2eSpecPaths).toEqual([
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/us5-leader-reassign.spec.ts',
     ]);
@@ -701,11 +701,11 @@ describe('classifyChanges', () => {
       'tests/identity/volunteer-transfer-journey.spec.ts',
       'tests/scheduling/a11y-builder.spec.ts',
       'tests/scheduling/a11y-planning-nav.spec.ts',
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
       'tests/scheduling/capability-index.spec.ts',
       'tests/scheduling/cross-cutting.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
-      'tests/scheduling/overnight-time-block.spec.ts',
+      'tests/scheduling/overnight-template-time-block.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -809,7 +809,9 @@ describe('classifyChanges', () => {
 
   it('does not run E2E merely because a spec is being edited', () => {
     const plan = classifyChanges({
-      changedPaths: ['apps/web/tests/scheduling/builder-slot-focus.spec.ts'],
+      changedPaths: [
+        'apps/web/tests/scheduling/builder-event-time-block-focus.spec.ts',
+      ],
     });
 
     expect(plan.e2eSpecPaths).toEqual([]);
@@ -865,7 +867,7 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/a11y-builder.spec.ts',
-      'tests/scheduling/builder-slot-focus.spec.ts',
+      'tests/scheduling/builder-event-time-block-focus.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/smoke.spec.ts',
@@ -974,14 +976,14 @@ describe('classifyChanges', () => {
   it('records the explicit reason for an --e2e-requested spec', () => {
     const plan = classifyChanges({
       changedPaths: [],
-      e2eSpecPaths: ['tests/scheduling/builder-slot-focus.spec.ts'],
+      e2eSpecPaths: ['tests/scheduling/builder-event-time-block-focus.spec.ts'],
     });
 
     expect(plan.journeySelectionReasons).toEqual([
       {
         changedPath: null,
         detail: 'explicit',
-        specPath: 'tests/scheduling/builder-slot-focus.spec.ts',
+        specPath: 'tests/scheduling/builder-event-time-block-focus.spec.ts',
       },
     ]);
   });

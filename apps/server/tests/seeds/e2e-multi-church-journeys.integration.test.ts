@@ -1,12 +1,12 @@
 import {
   assignment,
   cycle,
+  eventTimeBlock,
   member,
   ministryInvitation,
   ministryInvitationRole,
-  ministryVolunteer,
+  ministryMembership,
   session,
-  timeSlot,
   volunteer,
   volunteerTransfer,
 } from '@church/db';
@@ -188,11 +188,11 @@ describe('volunteer-transfer E2E journey recipe', () => {
     // Invitation is what brings the transferee in.
     expect(
       await testDb
-        .select({ volunteerId: ministryVolunteer.volunteerId })
-        .from(ministryVolunteer)
+        .select({ volunteerId: ministryMembership.volunteerId })
+        .from(ministryMembership)
         .where(
           eq(
-            ministryVolunteer.ministryId,
+            ministryMembership.ministryId,
             journey.churchA.ministries.worship.id,
           ),
         ),
@@ -212,10 +212,13 @@ describe('volunteer-transfer E2E journey recipe', () => {
         roleId: assignment.roleId,
         status: assignment.status,
         shiftId: assignment.shiftId,
-        startsAt: timeSlot.startTime,
+        startsAt: eventTimeBlock.startTime,
       })
       .from(assignment)
-      .innerJoin(timeSlot, eq(timeSlot.id, seat.event.timeSlotId))
+      .innerJoin(
+        eventTimeBlock,
+        eq(eventTimeBlock.id, seat.event.eventTimeBlockId),
+      )
       .where(eq(assignment.id, seat.assignmentId));
     expect(row).toMatchObject({
       volunteerId: journey.churchB.personas.transferee.volunteerId,
@@ -231,7 +234,7 @@ describe('volunteer-transfer E2E journey recipe', () => {
     expect(row?.startsAt.getTime()).toBeGreaterThan(
       new Date(anchorMidnight).getTime(),
     );
-    expect(seat.event.requirements.porter.requiredCount).toBe(1);
+    expect(seat.event.requirements.porter.peopleNeeded).toBe(1);
   });
 
   it('recreates its starting graph over one the transfer already ran on', async () => {

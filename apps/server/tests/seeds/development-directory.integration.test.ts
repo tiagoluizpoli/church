@@ -6,22 +6,22 @@ import {
   cycle,
   event,
   eventTemplate,
+  eventTimeBlock,
   member,
   ministry,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
   ministryParticipation,
-  ministryServingProfile,
-  ministryVolunteer,
-  ministryVolunteerRole,
-  ministryVolunteerTeam,
   organization,
-  participationSlotInclusion,
+  participationEventTimeBlockInclusion,
   role,
   shift,
-  slotRequirement,
+  shiftRequirement,
   team,
-  timeBlock,
-  timeSlot,
+  templateTimeBlock,
   user,
+  usualSetup,
   volunteer,
 } from '@church/db';
 import { parseCalendarDay } from '@church/time';
@@ -81,13 +81,13 @@ async function activeMembershipCounts({
 }: ChurchIdInput): Promise<MinistryMembershipCount[]> {
   return await testDb
     .select({ ministry: ministry.name, memberships: count() })
-    .from(ministryVolunteer)
-    .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
+    .from(ministryMembership)
+    .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
     .where(
       and(
-        eq(ministryVolunteer.churchId, churchId),
-        eq(ministryVolunteer.status, 'active'),
-        isNull(ministryVolunteer.leftAt),
+        eq(ministryMembership.churchId, churchId),
+        eq(ministryMembership.status, 'active'),
+        isNull(ministryMembership.leftAt),
       ),
     )
     .groupBy(ministry.name)
@@ -104,14 +104,14 @@ async function ministryLeaderCount({
 }: LeaderCountInput): Promise<number> {
   const [row] = await testDb
     .select({ value: count() })
-    .from(ministryVolunteer)
-    .innerJoin(ministry, eq(ministry.id, ministryVolunteer.ministryId))
+    .from(ministryMembership)
+    .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
     .where(
       and(
         eq(ministry.churchId, churchId),
         eq(ministry.name, ministryName),
-        eq(ministryVolunteer.ministryAccessLevel, 'leader'),
-        eq(ministryVolunteer.status, 'active'),
+        eq(ministryMembership.ministryAccessLevel, 'leader'),
+        eq(ministryMembership.status, 'active'),
       ),
     );
   return row?.value ?? 0;
@@ -128,15 +128,15 @@ async function teamLeaderCount({
 }: TeamLeaderCountInput): Promise<number> {
   const [row] = await testDb
     .select({ value: count() })
-    .from(ministryVolunteerTeam)
-    .innerJoin(team, eq(team.id, ministryVolunteerTeam.teamId))
+    .from(ministryMembershipTeam)
+    .innerJoin(team, eq(team.id, ministryMembershipTeam.teamId))
     .innerJoin(ministry, eq(ministry.id, team.ministryId))
     .where(
       and(
         eq(ministry.churchId, churchId),
         eq(ministry.name, ministryName),
         eq(team.name, teamName),
-        eq(ministryVolunteerTeam.accessLevel, 'leader'),
+        eq(ministryMembershipTeam.accessLevel, 'leader'),
       ),
     );
   return row?.value ?? 0;
@@ -319,22 +319,22 @@ describe('development seed recipe', () => {
   it("qualifies every Ministry Membership only for its own Ministry's Roles and Teams", async () => {
     expect(
       await queryCount({
-        query: sql`select count(*) as value from ${ministryVolunteer} mv
-          where not exists (select 1 from ${ministryVolunteerRole} q where q.ministry_volunteer_id = mv.id)`,
+        query: sql`select count(*) as value from ${ministryMembership} mv
+          where not exists (select 1 from ${ministryMembershipRole} q where q.ministry_membership_id = mv.id)`,
       }),
     ).toBe(0);
     expect(
       await queryCount({
-        query: sql`select count(*) as value from ${ministryVolunteerRole} q
-          join ${ministryVolunteer} mv on mv.id = q.ministry_volunteer_id
+        query: sql`select count(*) as value from ${ministryMembershipRole} q
+          join ${ministryMembership} mv on mv.id = q.ministry_membership_id
           join ${role} r on r.id = q.role_id
           where r.ministry_id <> mv.ministry_id`,
       }),
     ).toBe(0);
     expect(
       await queryCount({
-        query: sql`select count(*) as value from ${ministryVolunteerTeam} tm
-          join ${ministryVolunteer} mv on mv.id = tm.ministry_volunteer_id
+        query: sql`select count(*) as value from ${ministryMembershipTeam} tm
+          join ${ministryMembership} mv on mv.id = tm.ministry_membership_id
           join ${team} t on t.id = tm.team_id
           where t.ministry_id <> mv.ministry_id`,
       }),
@@ -342,8 +342,8 @@ describe('development seed recipe', () => {
 
     const [kidsLiderPool] = await testDb
       .select({ value: count() })
-      .from(ministryVolunteerRole)
-      .innerJoin(role, eq(role.id, ministryVolunteerRole.roleId))
+      .from(ministryMembershipRole)
+      .innerJoin(role, eq(role.id, ministryMembershipRole.roleId))
       .where(and(eq(role.churchId, seeded.church.id), eq(role.name, 'Líder')));
     expect(kidsLiderPool?.value).toBeGreaterThan(2);
   });
@@ -351,7 +351,7 @@ describe('development seed recipe', () => {
   it('deliberately places 20 to 30 Volunteers in more than one Ministry', async () => {
     const crossMinistry = await queryCount({
       query: sql`select count(*) as value from (
-          select volunteer_id from ${ministryVolunteer}
+          select volunteer_id from ${ministryMembership}
           where status = 'active' and left_at is null
           group by volunteer_id having count(*) > 1
         ) as cross_ministry`,
@@ -427,7 +427,7 @@ describe('development seed recipe', () => {
   it('keeps every Church-scoped row inside its own Church', async () => {
     expect(
       await queryCount({
-        query: sql`select count(*) as value from ${ministryVolunteer} mv
+        query: sql`select count(*) as value from ${ministryMembership} mv
           join ${volunteer} v on v.id = mv.volunteer_id
           join ${ministry} m on m.id = mv.ministry_id
           where mv.church_id <> v.church_id or mv.church_id <> m.church_id`,
@@ -490,12 +490,15 @@ describe('development seed recipe', () => {
         churchId: eventTemplate.churchId,
         template: eventTemplate.name,
         weekday: eventTemplate.weekday,
-        startTime: timeBlock.startTime,
-        endTime: timeBlock.endTime,
+        startTime: templateTimeBlock.startTime,
+        endTime: templateTimeBlock.endTime,
       })
-      .from(timeBlock)
-      .innerJoin(eventTemplate, eq(eventTemplate.id, timeBlock.templateId))
-      .orderBy(eventTemplate.weekday, timeBlock.order);
+      .from(templateTimeBlock)
+      .innerJoin(
+        eventTemplate,
+        eq(eventTemplate.id, templateTimeBlock.templateId),
+      )
+      .orderBy(eventTemplate.weekday, templateTimeBlock.order);
 
     const sunday = {
       churchId: seeded.church.id,
@@ -516,7 +519,7 @@ describe('development seed recipe', () => {
     ]);
   });
 
-  it('declares every Ministry serving rule per TimeBlock, Kids not on Sunday at 08:00', async () => {
+  it('declares every Ministry serving rule per TemplateTimeBlock, Kids not on Sunday at 08:00', async () => {
     const names = new Map<string, string>();
     for (const row of [
       ...(await testDb.select({ id: role.id, name: role.name }).from(role)),
@@ -529,20 +532,23 @@ describe('development seed recipe', () => {
       .select({
         ministry: ministry.name,
         weekday: eventTemplate.weekday,
-        startTime: timeBlock.startTime,
-        serves: ministryServingProfile.serves,
-        shiftSplit: ministryServingProfile.shiftSplit,
-        headcounts: ministryServingProfile.headcounts,
+        startTime: templateTimeBlock.startTime,
+        serves: usualSetup.serves,
+        shiftSplit: usualSetup.shiftSplit,
+        headcounts: usualSetup.headcounts,
       })
-      .from(ministryServingProfile)
-      .innerJoin(ministry, eq(ministry.id, ministryServingProfile.ministryId))
+      .from(usualSetup)
+      .innerJoin(ministry, eq(ministry.id, usualSetup.ministryId))
       .innerJoin(
-        timeBlock,
-        eq(timeBlock.id, ministryServingProfile.sourceTemplateBlockId),
+        templateTimeBlock,
+        eq(templateTimeBlock.id, usualSetup.sourceTemplateTimeBlockId),
       )
-      .innerJoin(eventTemplate, eq(eventTemplate.id, timeBlock.templateId))
-      .where(eq(ministryServingProfile.churchId, seeded.church.id))
-      .orderBy(ministry.name, eventTemplate.weekday, timeBlock.order);
+      .innerJoin(
+        eventTemplate,
+        eq(eventTemplate.id, templateTimeBlock.templateId),
+      )
+      .where(eq(usualSetup.churchId, seeded.church.id))
+      .orderBy(ministry.name, eventTemplate.weekday, templateTimeBlock.order);
 
     const readable = profiles.map((profile) => ({
       ministry: profile.ministry,
@@ -686,9 +692,9 @@ describe('development seed recipe', () => {
     const [slots] = await testDb
       .select({
         total: count(),
-        fromBlocks: sql<number>`count(${timeSlot.sourceTemplateBlockId})::int`,
+        fromBlocks: sql<number>`count(${eventTimeBlock.sourceTemplateTimeBlockId})::int`,
       })
-      .from(timeSlot);
+      .from(eventTimeBlock);
     expect(slots).toEqual({ total: 17, fromBlocks: 16 });
   });
 
@@ -698,14 +704,14 @@ describe('development seed recipe', () => {
         ministry: ministry.name,
         state: ministryParticipation.state,
         participations: countDistinct(ministryParticipation.id),
-        inclusions: count(participationSlotInclusion.id),
+        inclusions: count(participationEventTimeBlockInclusion.id),
       })
       .from(ministryParticipation)
       .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
       .leftJoin(
-        participationSlotInclusion,
+        participationEventTimeBlockInclusion,
         eq(
-          participationSlotInclusion.participationId,
+          participationEventTimeBlockInclusion.participationId,
           ministryParticipation.id,
         ),
       )
@@ -739,10 +745,10 @@ describe('development seed recipe', () => {
     ]);
 
     const kidsAtEight = await queryCount({
-      query: sql`select count(*) as value from ${participationSlotInclusion} i
+      query: sql`select count(*) as value from ${participationEventTimeBlockInclusion} i
         join ${ministryParticipation} p on p.id = i.participation_id
         join ${ministry} m on m.id = p.ministry_id
-        join ${timeSlot} s on s.id = i.time_slot_id
+        join ${eventTimeBlock} s on s.id = i.event_time_block_id
         where m.name = 'Kids'
           and to_char(s.start_time at time zone 'America/Sao_Paulo', 'HH24:MI') = '08:00'`,
     });
@@ -751,11 +757,11 @@ describe('development seed recipe', () => {
     const [shifts] = await testDb
       .select({
         total: count(),
-        wholeSlot: sql<number>`count(*) filter (where ${shift.startTime} = ${timeSlot.startTime} and ${shift.endTime} = ${timeSlot.endTime})::int`,
+        wholeEventTimeBlock: sql<number>`count(*) filter (where ${shift.startTime} = ${eventTimeBlock.startTime} and ${shift.endTime} = ${eventTimeBlock.endTime})::int`,
       })
       .from(shift)
-      .innerJoin(timeSlot, eq(timeSlot.id, shift.timeSlotId));
-    expect(shifts).toEqual({ total: 61, wholeSlot: 61 });
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId));
+    expect(shifts).toEqual({ total: 61, wholeEventTimeBlock: 61 });
   });
 
   it('requires each Ministry headcount per Shift, Projeção as one noted requirement of two', async () => {
@@ -764,30 +770,30 @@ describe('development seed recipe', () => {
         ministry: ministry.name,
         role: role.name,
         team: team.name,
-        requiredCount: slotRequirement.requiredCount,
-        notes: slotRequirement.notes,
+        peopleNeeded: shiftRequirement.peopleNeeded,
+        notes: shiftRequirement.notes,
         shifts: count(),
       })
-      .from(slotRequirement)
+      .from(shiftRequirement)
       .innerJoin(
         ministryParticipation,
-        eq(ministryParticipation.id, slotRequirement.participationId),
+        eq(ministryParticipation.id, shiftRequirement.participationId),
       )
       .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
-      .innerJoin(role, eq(role.id, slotRequirement.roleId))
-      .leftJoin(team, eq(team.id, slotRequirement.teamId))
+      .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+      .leftJoin(team, eq(team.id, shiftRequirement.teamId))
       .groupBy(
         ministry.name,
         role.name,
         team.name,
-        slotRequirement.requiredCount,
-        slotRequirement.notes,
+        shiftRequirement.peopleNeeded,
+        shiftRequirement.notes,
       )
       .orderBy(
         ministry.name,
         team.name,
         role.name,
-        slotRequirement.requiredCount,
+        shiftRequirement.peopleNeeded,
       );
 
     expect(requirements).toEqual([
@@ -795,7 +801,7 @@ describe('development seed recipe', () => {
         ministry: 'Estacionamento',
         role: 'Orientador de Estacionamento',
         team: null,
-        requiredCount: 4,
+        peopleNeeded: 4,
         notes: null,
         shifts: 16,
       },
@@ -803,7 +809,7 @@ describe('development seed recipe', () => {
         ministry: 'Intercessão',
         role: 'Intercessor',
         team: null,
-        requiredCount: 8,
+        peopleNeeded: 8,
         notes: null,
         shifts: 16,
       },
@@ -811,7 +817,7 @@ describe('development seed recipe', () => {
         ministry: 'Kids',
         role: 'Auxiliar',
         team: 'Kids',
-        requiredCount: 7,
+        peopleNeeded: 7,
         notes: null,
         shifts: 12,
       },
@@ -819,7 +825,7 @@ describe('development seed recipe', () => {
         ministry: 'Kids',
         role: 'Líder',
         team: 'Kids',
-        requiredCount: 1,
+        peopleNeeded: 1,
         notes: null,
         shifts: 12,
       },
@@ -827,7 +833,7 @@ describe('development seed recipe', () => {
         ministry: 'Kids',
         role: 'Auxiliar',
         team: 'Maternal',
-        requiredCount: 3,
+        peopleNeeded: 3,
         notes: null,
         shifts: 12,
       },
@@ -835,7 +841,7 @@ describe('development seed recipe', () => {
         ministry: 'Kids',
         role: 'Líder',
         team: 'Maternal',
-        requiredCount: 1,
+        peopleNeeded: 1,
         notes: null,
         shifts: 12,
       },
@@ -843,7 +849,7 @@ describe('development seed recipe', () => {
         ministry: 'Projeção',
         role: 'Operador de Projeção',
         team: null,
-        requiredCount: 1,
+        peopleNeeded: 1,
         notes: null,
         shifts: 5,
       },
@@ -851,7 +857,7 @@ describe('development seed recipe', () => {
         ministry: 'Projeção',
         role: 'Operador de Projeção',
         team: null,
-        requiredCount: 2,
+        peopleNeeded: 2,
         notes: '1 Templo, 1 Kids',
         shifts: 12,
       },
@@ -861,9 +867,9 @@ describe('development seed recipe', () => {
   it('staffs every published requirement in full except the one declared shortfall', async () => {
     const [totals] = await testDb
       .select({
-        required: sql<number>`sum(${slotRequirement.requiredCount})::int`,
+        required: sql<number>`sum(${shiftRequirement.peopleNeeded})::int`,
       })
-      .from(slotRequirement);
+      .from(shiftRequirement);
     expect(totals?.required).toBe(365);
 
     const statuses = await testDb
@@ -881,11 +887,11 @@ describe('development seed recipe', () => {
     const result = await testDb.execute<StaffingRow>(sql`
       select m.name as ministry, r.name as role,
         to_char(sh.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as starts,
-        sum(sr.required_count)::int as required,
+        sum(sr.people_needed)::int as required,
         (select count(*) from ${assignment} a
           where a.shift_id = sr.shift_id and a.role_id = sr.role_id
             and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
-      from ${slotRequirement} sr
+      from ${shiftRequirement} sr
       join ${shift} sh on sh.id = sr.shift_id
       join ${ministryParticipation} p on p.id = sr.participation_id
       join ${ministry} m on m.id = p.ministry_id
@@ -908,8 +914,8 @@ describe('development seed recipe', () => {
         query: sql`select count(*) as value from ${assignment} a
           join ${ministryParticipation} p on p.id = a.participation_id
           where a.status in ('draft', 'pending', 'confirmed')
-            and not exists (select 1 from ${ministryVolunteer} mv
-              join ${ministryVolunteerRole} q on q.ministry_volunteer_id = mv.id
+            and not exists (select 1 from ${ministryMembership} mv
+              join ${ministryMembershipRole} q on q.ministry_membership_id = mv.id
               where mv.volunteer_id = a.volunteer_id and mv.ministry_id = p.ministry_id
                 and mv.status = 'active' and q.role_id = a.role_id)`,
       }),
@@ -928,8 +934,8 @@ describe('development seed recipe', () => {
     expect(
       await queryCount({
         query: sql`select count(*) as value from ${assignment} a
-          join ${ministryVolunteer} mv on mv.volunteer_id = a.volunteer_id
-          join ${availabilityCheck} c on c.ministry_volunteer_id = mv.id
+          join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
+          join ${availabilityCheck} c on c.ministry_membership_id = mv.id
           join availability u on u.availability_check_id = c.id
           where a.status in ('draft', 'pending', 'confirmed')
             and u.shift_id = a.shift_id`,
@@ -954,7 +960,7 @@ describe('development seed recipe', () => {
       join ${ministryParticipation} p on p.id = s.participation_id
       join ${ministry} m on m.id = p.ministry_id
       join ${availabilityCheck} c on c.id = a.availability_check_id
-      join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+      join ${ministryMembership} mv on mv.id = c.ministry_membership_id
       join ${volunteer} v on v.id = mv.volunteer_id
       join ${user} u on u.id = v.user_id
       where u.email in ('rafael.moura@igreja-semente.test', 'bruno.dias@igreja-semente.test')
@@ -1002,7 +1008,7 @@ describe('development seed recipe', () => {
         query: sql`with unmarked as (
             select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
             from ${availabilityCheck} c
-            join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+            join ${ministryMembership} mv on mv.id = c.ministry_membership_id
             join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
             join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
             join ${shift} s on s.participation_id = p.id
@@ -1264,8 +1270,8 @@ describe('development seed recipe', () => {
       label: 'a Kids Ministry leader is demoted',
       problem: 'Kids',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${ministryVolunteer} set ministry_access_level = 'volunteer'
-          where id = (select mv.id from ${ministryVolunteer} mv join ${ministry} m on m.id = mv.ministry_id
+        await tx.execute(sql`update ${ministryMembership} set ministry_access_level = 'volunteer'
+          where id = (select mv.id from ${ministryMembership} mv join ${ministry} m on m.id = mv.ministry_id
             where m.name = 'Kids' and mv.ministry_access_level = 'leader' order by mv.id limit 1)`);
       },
     },
@@ -1281,8 +1287,8 @@ describe('development seed recipe', () => {
       label: 'a Ministry Membership is missing',
       problem: 'Intercessão',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`delete from ${ministryVolunteer}
-          where id = (select mv.id from ${ministryVolunteer} mv join ${ministry} m on m.id = mv.ministry_id
+        await tx.execute(sql`delete from ${ministryMembership}
+          where id = (select mv.id from ${ministryMembership} mv join ${ministry} m on m.id = mv.ministry_id
             where m.name = 'Intercessão' and mv.ministry_access_level = 'volunteer' order by mv.id limit 1)`);
       },
     },
@@ -1290,41 +1296,41 @@ describe('development seed recipe', () => {
       label: 'a Ministry Membership leaks into the other Church',
       problem: 'Church',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${ministryVolunteer} set church_id = ${seeded.secondChurch.id}
-          where id = (select id from ${ministryVolunteer} where church_id = ${seeded.church.id} order by id limit 1)`);
+        await tx.execute(sql`update ${ministryMembership} set church_id = ${seeded.secondChurch.id}
+          where id = (select id from ${ministryMembership} where church_id = ${seeded.church.id} order by id limit 1)`);
       },
     },
     {
       label: 'a Volunteer loses a Role qualification',
       problem: 'Role qualifications',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`delete from ${ministryVolunteerRole}
-          where id = (select id from ${ministryVolunteerRole} order by id limit 1)`);
+        await tx.execute(sql`delete from ${ministryMembershipRole}
+          where id = (select id from ${ministryMembershipRole} order by id limit 1)`);
       },
     },
     {
       label: 'a Team membership leaks into the other Church',
       problem: 'Church',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${ministryVolunteerTeam} set church_id = ${seeded.secondChurch.id}
-          where id = (select id from ${ministryVolunteerTeam} where church_id = ${seeded.church.id} order by id limit 1)`);
+        await tx.execute(sql`update ${ministryMembershipTeam} set church_id = ${seeded.secondChurch.id}
+          where id = (select id from ${ministryMembershipTeam} where church_id = ${seeded.church.id} order by id limit 1)`);
       },
     },
     {
-      label: 'an EventTemplate loses a TimeBlock',
+      label: 'an EventTemplate loses a TemplateTimeBlock',
       problem: 'EventTemplate',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(
-          sql`delete from ${timeBlock} where start_time = '18:30'`,
+          sql`delete from ${templateTimeBlock} where start_time = '18:30'`,
         );
       },
     },
     {
       label: 'Kids serves Sunday at 08:00',
-      problem: 'MinistryServingProfile',
+      problem: 'UsualSetup',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(
-          sql`update ${ministryServingProfile} set serves = true where serves = false`,
+          sql`update ${usualSetup} set serves = true where serves = false`,
         );
       },
     },
@@ -1361,10 +1367,10 @@ describe('development seed recipe', () => {
     },
     {
       label: 'Projeção loses its placement notes',
-      problem: 'SlotRequirement',
+      problem: 'ShiftRequirement',
       break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(sql`update ${slotRequirement} set notes = null
-          where id = (select id from ${slotRequirement} where notes is not null order by id limit 1)`);
+        await tx.execute(sql`update ${shiftRequirement} set notes = null
+          where id = (select id from ${shiftRequirement} where notes is not null order by id limit 1)`);
       },
     },
     {
@@ -1383,11 +1389,11 @@ describe('development seed recipe', () => {
         await tx.execute(sql`update ${assignment} target set volunteer_id = other.volunteer_id
           from ${assignment} other, ${shift} target_shift, ${shift} other_shift
           where target.id = (select a.id from ${assignment} a join ${shift} s on s.id = a.shift_id
-              join ${shift} o on o.time_slot_id = s.time_slot_id and o.id <> s.id
+              join ${shift} o on o.event_time_block_id = s.event_time_block_id and o.id <> s.id
               join ${assignment} b on b.shift_id = o.id and b.status = 'confirmed'
               where a.status = 'confirmed' order by a.id limit 1)
             and target_shift.id = target.shift_id
-            and other_shift.time_slot_id = target_shift.time_slot_id
+            and other_shift.event_time_block_id = target_shift.event_time_block_id
             and other_shift.id <> target_shift.id
             and other.shift_id = other_shift.id and other.status = 'confirmed'
             and other.id = (select b.id from ${assignment} b where b.shift_id = other_shift.id
@@ -1401,8 +1407,8 @@ describe('development seed recipe', () => {
         await tx.execute(sql`insert into availability (church_id, availability_check_id, shift_id)
           select c.church_id, c.id, a.shift_id
           from ${assignment} a
-          join ${ministryVolunteer} mv on mv.volunteer_id = a.volunteer_id
-          join ${availabilityCheck} c on c.ministry_volunteer_id = mv.id
+          join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
+          join ${availabilityCheck} c on c.ministry_membership_id = mv.id
           where a.status = 'confirmed'
           order by a.id, c.id
           limit 1`);
@@ -1432,7 +1438,7 @@ describe('development seed recipe', () => {
         await tx.execute(sql`delete from availability
           where id = (select u.id from availability u
             join ${availabilityCheck} c on c.id = u.availability_check_id
-            join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
+            join ${ministryMembership} mv on mv.id = c.ministry_membership_id
             join ${volunteer} v on v.id = mv.volunteer_id
             join ${user} usr on usr.id = v.user_id
             where usr.email = 'bruno.dias@igreja-semente.test' order by u.id limit 1)`);

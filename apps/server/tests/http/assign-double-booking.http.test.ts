@@ -159,7 +159,7 @@ async function seedCrossMinistryOverlap({
   const targetShift = await seedShift({
     churchId: seed.churchAId,
     participationId: target.participation.id,
-    timeSlotId: target.slot.id,
+    eventTimeBlockId: target.slot.id,
     startTime: new Date('2026-09-07T09:00:00.000Z'),
     endTime: new Date('2026-09-07T10:00:00.000Z'),
     label: 'Target',
@@ -167,7 +167,7 @@ async function seedCrossMinistryOverlap({
   const otherShift = await seedShift({
     churchId: seed.churchAId,
     participationId: other.participation.id,
-    timeSlotId: other.slot.id,
+    eventTimeBlockId: other.slot.id,
     startTime: new Date(otherShiftStart),
     endTime: new Date(otherShiftEnd),
     label: 'Other',
@@ -177,7 +177,7 @@ async function seedCrossMinistryOverlap({
     participationId: target.participation.id,
     shiftId: targetShift.id,
     roleId: targetRole.id,
-    requiredCount: 2,
+    peopleNeeded: 2,
   });
 
   const doubleBooked = await seedVolunteerMembership({

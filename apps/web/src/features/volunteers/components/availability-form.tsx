@@ -32,7 +32,7 @@ export interface AvailabilityEventViewModel {
 }
 
 export interface AvailabilitySlotViewModel {
-  slotId: string;
+  eventTimeBlockId: string;
   label: string;
   startTime: string;
   endTime: string;
@@ -45,7 +45,7 @@ export interface AvailabilitySaveInput {
 }
 
 export interface AvailabilitySlotAnswerInput {
-  slotId: string;
+  eventTimeBlockId: string;
   response: 'available' | 'unavailable';
 }
 
@@ -63,7 +63,7 @@ function buildInitialResponses(
   slots: AvailabilitySlotViewModel[],
 ): SlotResponseMap {
   return Object.fromEntries(
-    slots.map((slot) => [slot.slotId, slot.response]),
+    slots.map((slot) => [slot.eventTimeBlockId, slot.response]),
   ) as SlotResponseMap;
 }
 
@@ -71,7 +71,7 @@ function hasAnsweredEverySlot(
   slots: AvailabilitySlotViewModel[],
   responses: SlotResponseMap,
 ): boolean {
-  return slots.every((slot) => responses[slot.slotId] != null);
+  return slots.every((slot) => responses[slot.eventTimeBlockId] != null);
 }
 
 export function AvailabilityForm({
@@ -105,14 +105,14 @@ export function AvailabilityForm({
 
     onSave({
       answers: slots.flatMap((slot) => {
-        const response = responses[slot.slotId];
+        const response = responses[slot.eventTimeBlockId];
         if (!response) {
           return [];
         }
 
         return [
           {
-            slotId: slot.slotId,
+            eventTimeBlockId: slot.eventTimeBlockId,
             response,
           },
         ];
@@ -150,10 +150,13 @@ export function AvailabilityForm({
         ) : (
           <div className="space-y-3">
             {slots.map((slot) => {
-              const response = responses[slot.slotId];
+              const response = responses[slot.eventTimeBlockId];
 
               return (
-                <div key={slot.slotId} className="rounded-lg border p-4">
+                <div
+                  key={slot.eventTimeBlockId}
+                  className="rounded-lg border p-4"
+                >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
                       <Label className="font-medium text-base">
@@ -188,7 +191,7 @@ export function AvailabilityForm({
                       onClick={() =>
                         setResponses((current) => ({
                           ...current,
-                          [slot.slotId]: 'available',
+                          [slot.eventTimeBlockId]: 'available',
                         }))
                       }
                     >
@@ -203,7 +206,7 @@ export function AvailabilityForm({
                       onClick={() =>
                         setResponses((current) => ({
                           ...current,
-                          [slot.slotId]: 'unavailable',
+                          [slot.eventTimeBlockId]: 'unavailable',
                         }))
                       }
                     >

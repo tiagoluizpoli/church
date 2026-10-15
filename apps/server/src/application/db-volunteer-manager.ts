@@ -38,7 +38,6 @@ import type {
   VolunteerDashboard,
 } from '../domain/contracts/application/volunteer-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type { AvailabilityRepository } from '../domain/contracts/infrastructure/availability.repository';
 import type {
   AvailabilityCheckRepository,
   CheckContext,
@@ -51,6 +50,7 @@ import type { NotificationService } from '../domain/contracts/infrastructure/not
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TeamRepository } from '../domain/contracts/infrastructure/team.repository';
+import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { VolunteerNotificationRepository } from '../domain/contracts/infrastructure/volunteer-notification.repository';
@@ -58,18 +58,18 @@ import type {
   Assignment,
   AssignmentStatus,
 } from '../domain/entities/assignment';
-import type { Availability } from '../domain/entities/availability';
-import type { SlotRequirement } from '../domain/entities/slot-requirement';
-import type { TimeSlot } from '../domain/entities/time-slot';
+import type { EventTimeBlock } from '../domain/entities/event-time-block';
+import type { ShiftRequirement } from '../domain/entities/shift-requirement';
+import type { Availability } from '../domain/entities/unavailable-shift';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 import {
-  assertMarksWithinScope,
+  assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
   resolveShiftAvailability,
-} from '../domain/services/availability-marks';
+} from '../domain/services/unavailable-shifts';
 
 const UPCOMING_DAYS = 30;
 const DEFAULT_NOTIFICATION_LIMIT = 20;
@@ -91,7 +91,7 @@ interface DashboardAssignmentGroupDraft {
 }
 
 interface ClaimShiftCoverageInput {
-  shiftRequirements: SlotRequirement[];
+  shiftRequirements: ShiftRequirement[];
   shiftAssignments: Assignment[];
   coversRequirementTeam: (
     volunteerId: string,
@@ -102,7 +102,7 @@ interface ClaimShiftCoverageInput {
 interface ShiftCoverageClaims {
   /** Assignment id -> the single team its assignment was claimed against (or null for a team-less requirement). */
   assignmentTeamId: Map<string, string | null>;
-  /** Requirement id -> how many of its requiredCount slots this shift's assignments actually filled. */
+  /** Requirement id -> how many of its peopleNeeded slots this shift's assignments actually filled. */
   requirementFilledCount: Map<string, number>;
 }
 
@@ -146,7 +146,7 @@ function claimShiftCoverage(
           requirementTeamId,
         ),
     );
-    const claimed = eligibleAssignments.slice(0, requirement.requiredCount);
+    const claimed = eligibleAssignments.slice(0, requirement.peopleNeeded);
     for (const assignment of claimed) {
       claimedAssignmentIds.add(assignment.id as string);
       assignmentTeamId.set(assignment.id as string, requirementTeamId);
@@ -157,27 +157,35 @@ function claimShiftCoverage(
   return { assignmentTeamId, requirementFilledCount };
 }
 
-interface SlotKeyInput {
+interface EventTimeBlockKeyInput {
   startTime: Instant;
   endTime: Instant;
 }
 
-function slotKey({ startTime, endTime }: SlotKeyInput): string {
+function eventTimeBlockKey({
+  startTime,
+  endTime,
+}: EventTimeBlockKeyInput): string {
   return `${startTime}::${endTime}`;
 }
 
 function availabilityCompletionState(
   entries: Availability[],
-  slots: TimeSlot[],
+  slots: EventTimeBlock[],
 ): 'missing' | 'partial' | 'complete' {
   if (slots.length === 0) return 'missing';
   const matchingKeys = new Set(
     entries.map((e) =>
-      slotKey({ startTime: e.shiftStartTime, endTime: e.shiftEndTime }),
+      eventTimeBlockKey({
+        startTime: e.shiftStartTime,
+        endTime: e.shiftEndTime,
+      }),
     ),
   );
   const answered = slots.filter((s) =>
-    matchingKeys.has(slotKey({ startTime: s.startTime, endTime: s.endTime })),
+    matchingKeys.has(
+      eventTimeBlockKey({ startTime: s.startTime, endTime: s.endTime }),
+    ),
   ).length;
   if (answered === 0) return 'missing';
   return answered >= slots.length ? 'complete' : 'partial';
@@ -228,7 +236,7 @@ function scheduleVolunteerName(name: string | undefined): string | undefined {
 interface DbVolunteerManagerDependencies {
   volunteerRepo: VolunteerRepository;
   assignmentRepo: AssignmentRepository;
-  availabilityRepo: AvailabilityRepository;
+  unavailableShiftRepo: UnavailableShiftRepository;
   notificationRepo: VolunteerNotificationRepository;
   eventRepo: EventRepository;
   shiftRepo: ShiftRepository;
@@ -245,7 +253,7 @@ interface DbVolunteerManagerDependencies {
 export class DbVolunteerManager implements IVolunteerManager {
   private readonly volunteerRepo: VolunteerRepository;
   private readonly assignmentRepo: AssignmentRepository;
-  private readonly availabilityRepo: AvailabilityRepository;
+  private readonly unavailableShiftRepo: UnavailableShiftRepository;
   private readonly notificationRepo: VolunteerNotificationRepository;
   private readonly eventRepo: EventRepository;
   private readonly shiftRepo: ShiftRepository;
@@ -262,7 +270,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   constructor({
     volunteerRepo,
     assignmentRepo,
-    availabilityRepo,
+    unavailableShiftRepo,
     notificationRepo,
     eventRepo,
     shiftRepo,
@@ -277,7 +285,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   }: DbVolunteerManagerDependencies) {
     this.volunteerRepo = volunteerRepo;
     this.assignmentRepo = assignmentRepo;
-    this.availabilityRepo = availabilityRepo;
+    this.unavailableShiftRepo = unavailableShiftRepo;
     this.notificationRepo = notificationRepo;
     this.eventRepo = eventRepo;
     this.shiftRepo = shiftRepo;
@@ -319,20 +327,18 @@ export class DbVolunteerManager implements IVolunteerManager {
             async (event): Promise<DashboardAvailabilityTask | null> => {
               if (compareInstants({ left: event.start, right: now }) <= 0)
                 return null;
-              const eventWithSlots = await this.eventRepo.getWithSlots(
-                churchId,
-                event.id,
-              );
-              if (eventWithSlots.slots.length === 0) return null;
+              const eventWithEventTimeBlocks =
+                await this.eventRepo.getWithEventTimeBlocks(churchId, event.id);
+              if (eventWithEventTimeBlocks.slots.length === 0) return null;
               const entries =
-                await this.availabilityRepo.listByVolunteerForEvent(
+                await this.unavailableShiftRepo.listByVolunteerForEvent(
                   churchId,
                   volunteerId,
                   event.id,
                 );
               const completionState = availabilityCompletionState(
                 entries,
-                eventWithSlots.slots,
+                eventWithEventTimeBlocks.slots,
               );
               if (completionState === 'complete') return null;
               return {
@@ -444,7 +450,7 @@ export class DbVolunteerManager implements IVolunteerManager {
 
       const item: DashboardAssignmentItem = {
         assignmentId: assignment.id as string,
-        slotId: assignment.slotId as string,
+        eventTimeBlockId: assignment.eventTimeBlockId as string,
         shiftId: shift.id as string,
         participationId: participation.id as string,
         roleId: assignment.roleId as string,
@@ -694,8 +700,8 @@ export class DbVolunteerManager implements IVolunteerManager {
               const teamId =
                 assignmentTeamId.get(assignment.id as string) ?? null;
               return {
-                slotId: shift.timeSlotId as string,
-                slotLabel: scheduleShiftLabel(shift),
+                eventTimeBlockId: shift.eventTimeBlockId as string,
+                eventTimeBlockLabel: scheduleShiftLabel(shift),
                 roleName:
                   roleNames.get(assignment.roleId as string) ?? 'Unknown role',
                 teamName: teamId ? teamNames.get(teamId as string) : undefined,
@@ -712,11 +718,11 @@ export class DbVolunteerManager implements IVolunteerManager {
                 requirementFilledCount.get(requirement.id as string) ?? 0;
               return Array.from(
                 {
-                  length: Math.max(0, requirement.requiredCount - filledCount),
+                  length: Math.max(0, requirement.peopleNeeded - filledCount),
                 },
                 () => ({
-                  slotId: shift.timeSlotId as string,
-                  slotLabel: scheduleShiftLabel(shift),
+                  eventTimeBlockId: shift.eventTimeBlockId as string,
+                  eventTimeBlockLabel: scheduleShiftLabel(shift),
                   roleName:
                     roleNames.get(requirement.roleId as string) ??
                     'Unknown role',
@@ -765,7 +771,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         churchId: input.churchId,
         checkId: input.checkId,
       }),
-      this.availabilityRepo.listMarksByCheck({
+      this.unavailableShiftRepo.listUnavailableShiftsByCheck({
         churchId: input.churchId,
         availabilityCheckId: input.checkId,
       }),
@@ -819,7 +825,7 @@ export class DbVolunteerManager implements IVolunteerManager {
             churchId: input.churchId,
             checkId,
           }),
-          this.availabilityRepo.listMarksByCheck({
+          this.unavailableShiftRepo.listUnavailableShiftsByCheck({
             churchId: input.churchId,
             availabilityCheckId: checkId,
           }),
@@ -867,13 +873,13 @@ export class DbVolunteerManager implements IVolunteerManager {
       ...new Set<ShiftId>([...input.shiftIds, ...wholeDayShiftIds]),
     ];
 
-    assertMarksWithinScope({
+    assertUnavailableShiftsWithinScope({
       candidateShiftIds: shifts.map((shift) => shift.shiftId),
       requestedShiftIds,
     });
 
     await this.unitOfWork.run(async (tx) => {
-      await this.availabilityRepo.replaceMarksForCheck({
+      await this.unavailableShiftRepo.replaceUnavailableShiftsForCheck({
         churchId: input.churchId,
         availabilityCheckId: input.checkId,
         shiftIds: requestedShiftIds,

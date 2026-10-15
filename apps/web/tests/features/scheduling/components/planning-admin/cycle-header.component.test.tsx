@@ -91,7 +91,7 @@ describe('CycleHeader (T058)', () => {
     expect(periodChip).not.toHaveTextContent('August 2026');
   });
 
-  it('renders event-count and slot-count chips sourced from the selected cycle', async () => {
+  it('renders event-count and event-time-block-count chips sourced from the selected cycle', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -122,13 +122,13 @@ describe('CycleHeader (T058)', () => {
           },
           slots: [
             {
-              id: 'slot-1',
+              id: 'event-time-block-1',
               label: 'Worship',
               startTime: '2026-08-02T09:00:00Z',
               endTime: '2026-08-02T10:00:00Z',
             },
             {
-              id: 'slot-2',
+              id: 'event-time-block-2',
               label: 'Message',
               startTime: '2026-08-02T10:00:00Z',
               endTime: '2026-08-02T11:00:00Z',
@@ -145,7 +145,7 @@ describe('CycleHeader (T058)', () => {
           },
           slots: [
             {
-              id: 'slot-3',
+              id: 'event-time-block-3',
               label: null,
               startTime: '2026-08-05T19:00:00Z',
               endTime: '2026-08-05T20:00:00Z',
@@ -159,10 +159,12 @@ describe('CycleHeader (T058)', () => {
     await selectTheOnlyCycle();
 
     const eventCountChip = await screen.findByTestId('cycle-event-count-chip');
-    const slotCountChip = screen.getByTestId('cycle-slot-count-chip');
+    const eventTimeBlockCountChip = screen.getByTestId(
+      'cycle-event-time-block-count-chip',
+    );
 
     expect(eventCountChip).toHaveTextContent('2');
-    expect(slotCountChip).toHaveTextContent('3');
+    expect(eventTimeBlockCountChip).toHaveTextContent('3');
   });
 
   it('renders CalendarDay bounds independently of the Church Timezone', async () => {

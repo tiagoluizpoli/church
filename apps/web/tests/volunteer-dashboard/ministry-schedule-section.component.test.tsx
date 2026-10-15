@@ -40,8 +40,8 @@ describe('MinistryScheduleSection', () => {
             assignmentCount: 2,
             rows: [
               {
-                slotId: 'slot-1',
-                slotLabel: '9:00 AM - 11:00 AM',
+                eventTimeBlockId: 'event-time-block-1',
+                eventTimeBlockLabel: '9:00 AM - 11:00 AM',
                 roleName: 'Usher',
                 teamName: 'Welcome Team',
                 volunteerDisplayName: 'Alice T.',
@@ -118,8 +118,8 @@ describe('MinistryScheduleSection', () => {
             assignmentCount: 1,
             rows: [
               {
-                slotId: 'slot-1',
-                slotLabel: '9:00 AM - 11:00 AM',
+                eventTimeBlockId: 'event-time-block-1',
+                eventTimeBlockLabel: '9:00 AM - 11:00 AM',
                 roleName: 'Usher',
                 teamName: 'Welcome Team',
                 volunteerDisplayName: 'Alice T.',

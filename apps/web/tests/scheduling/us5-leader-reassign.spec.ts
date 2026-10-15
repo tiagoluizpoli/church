@@ -38,14 +38,14 @@ interface ShiftSummaryResponse {
   id: string;
 }
 
-interface SlotSummaryResponse {
+interface EventTimeBlockSummaryResponse {
   shifts: ShiftSummaryResponse[];
 }
 
 interface ParticipationEventViewResponse {
   participation: ParticipationSummaryResponse;
   event: EventSummaryResponse;
-  slots: SlotSummaryResponse[];
+  slots: EventTimeBlockSummaryResponse[];
 }
 
 interface CycleParticipationResponse {
@@ -137,12 +137,12 @@ async function setUpLiveChanges({
   }
 
   const profileResponse = await page.request.put(
-    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/serving-profile`,
+    `${SERVER_URL}/api/v1/admin/ministries/${worshipMinistryId}/usual-setup`,
     {
       data: {
         entries: [
           {
-            sourceTemplateBlockId: block.id,
+            sourceTemplateTimeBlockId: block.id,
             serves: true,
             shiftSplit: { kind: 'equal', count: 2 },
             headcounts: [{ roleId: usherRoleId, count: 1 }],

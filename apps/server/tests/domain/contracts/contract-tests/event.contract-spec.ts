@@ -43,7 +43,7 @@ export function runEventRepositoryContractTests(
     });
 
     it('should retrieve event with slots', async () => {
-      const result = await repo.getWithSlots(
+      const result = await repo.getWithEventTimeBlocks(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         '66666666-6666-6666-6666-666666666661' as EventId,
       );

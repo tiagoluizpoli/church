@@ -1,4 +1,4 @@
-import { account, member, ministryVolunteer, volunteer } from '@church/db';
+import { account, member, ministryMembership, volunteer } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -96,9 +96,9 @@ describe('E2E shared personas recipe', () => {
       churchId: church.id,
     });
     const memberships = await testDb
-      .select({ accessLevel: ministryVolunteer.ministryAccessLevel })
-      .from(ministryVolunteer)
-      .where(eq(ministryVolunteer.volunteerId, activeVolunteer?.id ?? ''));
+      .select({ accessLevel: ministryMembership.ministryAccessLevel })
+      .from(ministryMembership)
+      .where(eq(ministryMembership.volunteerId, activeVolunteer?.id ?? ''));
     expect(memberships).toEqual([{ accessLevel: 'volunteer' }]);
     expect(
       await qualifiedRoleIds({ volunteerId: personas.volunteer.volunteerId }),

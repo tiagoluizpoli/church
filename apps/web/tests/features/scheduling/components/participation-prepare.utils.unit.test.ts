@@ -1,37 +1,38 @@
 import { parseInstant, parseTimeOfDay } from '@church/time';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  buildEventTimeBlockDayMarkers,
   buildMinistryPrepareSummary,
-  buildSlotDayMarkers,
   createInitialSplitForms,
-  filterSlotsByName,
-  filterSlotsByTimeOfDay,
+  filterEventTimeBlocksByName,
+  filterEventTimeBlocksByTimeOfDay,
   formatTimeRange,
   isTimeWindowFilterEmpty,
   participationStateLabel,
   toCalendarDateString,
-  toMinistryCycleKey,
+  toScheduleKey,
   validateManualSpans,
 } from '@/features/scheduling/components/participation-prepare.utils';
 import type { GetCycleParticipation200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
 
-const SLOT_VIEW: GetCycleParticipation200EventsItem['slots'][number] = {
-  slot: {
-    id: 'slot-1',
-    churchId: 'church-1',
-    eventId: 'event-1',
-    startTime: '2026-07-12T09:00:00Z',
-    endTime: '2026-07-12T11:00:00Z',
-    label: 'Greeter',
-    status: 'active',
+const EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['slots'][number] =
+  {
+    slot: {
+      id: 'event-time-block-1',
+      churchId: 'church-1',
+      eventId: 'event-1',
+      startTime: '2026-07-12T09:00:00Z',
+      endTime: '2026-07-12T11:00:00Z',
+      label: 'Greeter',
+      status: 'active',
+      requirements: [],
+    },
+    included: true,
+    shifts: [],
     requirements: [],
-  },
-  included: true,
-  shifts: [],
-  requirements: [],
-};
+  };
 
-type SlotViewOverride = {
+type EventTimeBlockViewOverride = {
   slot?: Partial<GetCycleParticipation200EventsItem['slots'][number]['slot']>;
   included?: boolean;
   shifts?: GetCycleParticipation200EventsItem['slots'][number]['shifts'];
@@ -40,10 +41,10 @@ type SlotViewOverride = {
 
 function makeEventView(
   overrides: Partial<GetCycleParticipation200EventsItem> & {
-    slotOverrides?: SlotViewOverride[];
+    eventTimeBlockOverrides?: EventTimeBlockViewOverride[];
   } = {},
 ): GetCycleParticipation200EventsItem {
-  const { slotOverrides, ...eventOverrides } = overrides;
+  const { eventTimeBlockOverrides, ...eventOverrides } = overrides;
 
   return {
     participation: {
@@ -65,10 +66,10 @@ function makeEventView(
       updatedAt: '2026-07-01T00:00:00Z',
     },
     slots: (
-      slotOverrides ?? [
+      eventTimeBlockOverrides ?? [
         {
           slot: {
-            id: 'slot-1',
+            id: 'event-time-block-1',
             churchId: 'church-1',
             eventId: 'event-1',
             startTime: '2026-07-12T09:00:00Z',
@@ -82,9 +83,9 @@ function makeEventView(
           requirements: [],
         },
       ]
-    ).map((slotOverride) => ({
+    ).map((eventTimeBlockOverride) => ({
       slot: {
-        id: 'slot-1',
+        id: 'event-time-block-1',
         churchId: 'church-1',
         eventId: 'event-1',
         startTime: '2026-07-12T09:00:00Z',
@@ -92,20 +93,20 @@ function makeEventView(
         label: 'Greeter',
         status: 'active',
         requirements: [],
-        ...slotOverride.slot,
+        ...eventTimeBlockOverride.slot,
       },
-      included: slotOverride.included ?? true,
-      shifts: slotOverride.shifts ?? [],
-      requirements: slotOverride.requirements ?? [],
+      included: eventTimeBlockOverride.included ?? true,
+      shifts: eventTimeBlockOverride.shifts ?? [],
+      requirements: eventTimeBlockOverride.requirements ?? [],
     })),
     ...eventOverrides,
   };
 }
 
-describe('toMinistryCycleKey', () => {
+describe('toScheduleKey', () => {
   it('joins ministryId and cycleId with a colon', () => {
     expect(
-      toMinistryCycleKey({ ministryId: 'ministry-1', cycleId: 'cycle-1' }),
+      toScheduleKey({ ministryId: 'ministry-1', cycleId: 'cycle-1' }),
     ).toBe('ministry-1:cycle-1');
   });
 });
@@ -119,7 +120,7 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
         eventsByMinistryId: {
           'ministry-1': [{ cycleId: 'cycle-1' }, { cycleId: 'cycle-1' }],
         },
-        slotCountByMinistryAndCycle: {
+        eventTimeBlockCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 5,
         },
       });
@@ -129,7 +130,7 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
           ministryId: 'ministry-1',
           ministryName: 'Greeters',
           eventCount: 2,
-          slotCount: 5,
+          eventTimeBlockCount: 5,
         },
       ]);
     });
@@ -141,13 +142,13 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
         eventsByMinistryId: {
           'ministry-1': [{ cycleId: 'cycle-1' }, { cycleId: 'cycle-2' }],
         },
-        slotCountByMinistryAndCycle: {
+        eventTimeBlockCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 3,
           'ministry-1:cycle-2': 4,
         },
       });
 
-      expect(rows[0]).toMatchObject({ eventCount: 2, slotCount: 7 });
+      expect(rows[0]).toMatchObject({ eventCount: 2, eventTimeBlockCount: 7 });
     });
   });
 
@@ -157,7 +158,7 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
         ministries: [{ id: 'ministry-1', name: 'Greeters' }],
         sentCycleIds: ['cycle-1'],
         eventsByMinistryId: {},
-        slotCountByMinistryAndCycle: {},
+        eventTimeBlockCountByMinistryAndCycle: {},
       });
 
       expect(rows).toEqual([
@@ -165,7 +166,7 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
           ministryId: 'ministry-1',
           ministryName: 'Greeters',
           eventCount: 0,
-          slotCount: 0,
+          eventTimeBlockCount: 0,
         },
       ]);
     });
@@ -177,13 +178,13 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
         eventsByMinistryId: {
           'ministry-1': [{ cycleId: 'cycle-1' }, { cycleId: 'cycle-draft' }],
         },
-        slotCountByMinistryAndCycle: {
+        eventTimeBlockCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 2,
           'ministry-1:cycle-draft': 99,
         },
       });
 
-      expect(rows[0]).toMatchObject({ eventCount: 1, slotCount: 2 });
+      expect(rows[0]).toMatchObject({ eventCount: 1, eventTimeBlockCount: 2 });
     });
 
     it('reflects non-zero pre-seeded counts for all_in ministries (R5) — no forced zero', () => {
@@ -193,12 +194,12 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
         eventsByMinistryId: {
           'ministry-1': [{ cycleId: 'cycle-1' }],
         },
-        slotCountByMinistryAndCycle: {
+        eventTimeBlockCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 12,
         },
       });
 
-      expect(rows[0]?.slotCount).toBe(12);
+      expect(rows[0]?.eventTimeBlockCount).toBe(12);
     });
 
     it('handles zero sent cycles', () => {
@@ -208,10 +209,10 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
         eventsByMinistryId: {
           'ministry-1': [{ cycleId: 'cycle-1' }],
         },
-        slotCountByMinistryAndCycle: { 'ministry-1:cycle-1': 5 },
+        eventTimeBlockCountByMinistryAndCycle: { 'ministry-1:cycle-1': 5 },
       });
 
-      expect(rows[0]).toMatchObject({ eventCount: 0, slotCount: 0 });
+      expect(rows[0]).toMatchObject({ eventCount: 0, eventTimeBlockCount: 0 });
     });
   });
 });
@@ -259,14 +260,19 @@ describe('toCalendarDateString', () => {
   });
 });
 
-describe('buildSlotDayMarkers', () => {
+describe('buildEventTimeBlockDayMarkers', () => {
   describe('Happy Path', () => {
     it('marks the day of a single visible slot', () => {
-      const markers = buildSlotDayMarkers({
+      const markers = buildEventTimeBlockDayMarkers({
         events: [
           makeEventView({
-            slotOverrides: [
-              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00.000Z' } },
+            eventTimeBlockOverrides: [
+              {
+                slot: {
+                  id: 'event-time-block-1',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                },
+              },
             ],
           }),
         ],
@@ -277,12 +283,22 @@ describe('buildSlotDayMarkers', () => {
     });
 
     it('marks only the days that actually have slots', () => {
-      const markers = buildSlotDayMarkers({
+      const markers = buildEventTimeBlockDayMarkers({
         events: [
           makeEventView({
-            slotOverrides: [
-              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00.000Z' } },
-              { slot: { id: 'slot-2', startTime: '2026-07-14T09:00:00.000Z' } },
+            eventTimeBlockOverrides: [
+              {
+                slot: {
+                  id: 'event-time-block-1',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                },
+              },
+              {
+                slot: {
+                  id: 'event-time-block-2',
+                  startTime: '2026-07-14T09:00:00.000Z',
+                },
+              },
             ],
           }),
         ],
@@ -310,11 +326,16 @@ describe('buildSlotDayMarkers', () => {
 
     it('marks an evening slot on the day it is served in the Church Timezone, not the next UTC day', () => {
       // A 21:00 church-local Monday slot is stored as 00:00Z Tuesday.
-      const markers = buildSlotDayMarkers({
+      const markers = buildEventTimeBlockDayMarkers({
         events: [
           makeEventView({
-            slotOverrides: [
-              { slot: { id: 'slot-1', startTime: '2027-01-05T00:00:00.000Z' } },
+            eventTimeBlockOverrides: [
+              {
+                slot: {
+                  id: 'event-time-block-1',
+                  startTime: '2027-01-05T00:00:00.000Z',
+                },
+              },
             ],
           }),
         ],
@@ -325,11 +346,16 @@ describe('buildSlotDayMarkers', () => {
     });
 
     it('marks a morning slot on its own day in the Church Timezone', () => {
-      const markers = buildSlotDayMarkers({
+      const markers = buildEventTimeBlockDayMarkers({
         events: [
           makeEventView({
-            slotOverrides: [
-              { slot: { id: 'slot-1', startTime: '2027-01-04T12:00:00.000Z' } },
+            eventTimeBlockOverrides: [
+              {
+                slot: {
+                  id: 'event-time-block-1',
+                  startTime: '2027-01-04T12:00:00.000Z',
+                },
+              },
             ],
           }),
         ],
@@ -342,16 +368,28 @@ describe('buildSlotDayMarkers', () => {
 
   describe('Edge Cases', () => {
     it('returns an empty set for zero events', () => {
-      expect(buildSlotDayMarkers({ events: [], timeZone: 'UTC' }).size).toBe(0);
+      expect(
+        buildEventTimeBlockDayMarkers({ events: [], timeZone: 'UTC' }).size,
+      ).toBe(0);
     });
 
     it('deduplicates multiple slots on the same day', () => {
-      const markers = buildSlotDayMarkers({
+      const markers = buildEventTimeBlockDayMarkers({
         events: [
           makeEventView({
-            slotOverrides: [
-              { slot: { id: 'slot-1', startTime: '2026-07-12T09:00:00.000Z' } },
-              { slot: { id: 'slot-2', startTime: '2026-07-12T11:00:00.000Z' } },
+            eventTimeBlockOverrides: [
+              {
+                slot: {
+                  id: 'event-time-block-1',
+                  startTime: '2026-07-12T09:00:00.000Z',
+                },
+              },
+              {
+                slot: {
+                  id: 'event-time-block-2',
+                  startTime: '2026-07-12T11:00:00.000Z',
+                },
+              },
             ],
           }),
         ],
@@ -363,19 +401,19 @@ describe('buildSlotDayMarkers', () => {
   });
 });
 
-describe('filterSlotsByName (T008/FR-010)', () => {
+describe('filterEventTimeBlocksByName (T008/FR-010)', () => {
   describe('Happy Path', () => {
     it('keeps slots whose label matches the query', () => {
       const events = [
         makeEventView({
-          slotOverrides: [
+          eventTimeBlockOverrides: [
             { slot: { label: 'Greeter' } },
-            { slot: { id: 'slot-2', label: 'Usher' } },
+            { slot: { id: 'event-time-block-2', label: 'Usher' } },
           ],
         }),
       ];
 
-      const filtered = filterSlotsByName({ events, query: 'greet' });
+      const filtered = filterEventTimeBlocksByName({ events, query: 'greet' });
       expect(filtered).toHaveLength(1);
       expect(filtered[0]?.slots).toHaveLength(1);
       expect(filtered[0]?.slots[0]?.slot.label).toBe('Greeter');
@@ -390,7 +428,7 @@ describe('filterSlotsByName (T008/FR-010)', () => {
         }),
       ];
 
-      const filtered = filterSlotsByName({ events, query: 'youth' });
+      const filtered = filterEventTimeBlocksByName({ events, query: 'youth' });
       expect(filtered).toHaveLength(1);
     });
   });
@@ -398,25 +436,31 @@ describe('filterSlotsByName (T008/FR-010)', () => {
   describe('Edge Cases', () => {
     it('returns events unchanged for an empty/whitespace query', () => {
       const events = [makeEventView()];
-      expect(filterSlotsByName({ events, query: '   ' })).toEqual(events);
+      expect(filterEventTimeBlocksByName({ events, query: '   ' })).toEqual(
+        events,
+      );
     });
 
     it('drops an event entirely once it has zero matching slots', () => {
       const events = [makeEventView()];
-      expect(filterSlotsByName({ events, query: 'no-match' })).toEqual([]);
+      expect(
+        filterEventTimeBlocksByName({ events, query: 'no-match' }),
+      ).toEqual([]);
     });
 
     it('is case-insensitive', () => {
       const events = [makeEventView()];
-      expect(filterSlotsByName({ events, query: 'GREETER' })).toHaveLength(1);
+      expect(
+        filterEventTimeBlocksByName({ events, query: 'GREETER' }),
+      ).toHaveLength(1);
     });
   });
 });
 
-describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pair)', () => {
+describe('filterEventTimeBlocksByTimeOfDay (T008/FR-010, mode select + single start/end pair)', () => {
   const morningAndEvening = () =>
     makeEventView({
-      slotOverrides: [
+      eventTimeBlockOverrides: [
         {
           slot: {
             id: 'morning',
@@ -436,7 +480,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
 
   describe('Happy Path', () => {
     it('mode "starts": keeps only slots whose start time falls in [start, end]', () => {
-      const filtered = filterSlotsByTimeOfDay({
+      const filtered = filterEventTimeBlocksByTimeOfDay({
         events: [morningAndEvening()],
         filter: {
           mode: 'starts',
@@ -452,7 +496,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('mode "ends": keeps only slots whose end time falls in [start, end]', () => {
       const events = [
         makeEventView({
-          slotOverrides: [
+          eventTimeBlockOverrides: [
             {
               slot: {
                 id: 'short',
@@ -471,7 +515,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
         }),
       ];
 
-      const filtered = filterSlotsByTimeOfDay({
+      const filtered = filterEventTimeBlocksByTimeOfDay({
         events,
         filter: {
           mode: 'ends',
@@ -487,7 +531,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('mode "within": keeps only slots whose entire span fits in [start, end]', () => {
       const events = [
         makeEventView({
-          slotOverrides: [
+          eventTimeBlockOverrides: [
             {
               slot: {
                 id: 'fits',
@@ -506,7 +550,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
         }),
       ];
 
-      const filtered = filterSlotsByTimeOfDay({
+      const filtered = filterEventTimeBlocksByTimeOfDay({
         events,
         filter: {
           mode: 'within',
@@ -520,7 +564,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     });
 
     it('supports an open-ended window (only start bound given)', () => {
-      const filtered = filterSlotsByTimeOfDay({
+      const filtered = filterEventTimeBlocksByTimeOfDay({
         events: [morningAndEvening()],
         filter: { mode: 'starts', start: parseTimeOfDay({ value: '12:00' }) },
         timeZone: 'UTC',
@@ -530,7 +574,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     });
 
     it('supports an open-ended window (only end bound given)', () => {
-      const filtered = filterSlotsByTimeOfDay({
+      const filtered = filterEventTimeBlocksByTimeOfDay({
         events: [morningAndEvening()],
         filter: { mode: 'starts', end: parseTimeOfDay({ value: '12:00' }) },
         timeZone: 'UTC',
@@ -544,7 +588,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('returns events unchanged when both start and end are empty, regardless of mode', () => {
       const events = [makeEventView()];
       expect(
-        filterSlotsByTimeOfDay({
+        filterEventTimeBlocksByTimeOfDay({
           events,
           filter: { mode: 'within' },
           timeZone: 'UTC',
@@ -555,7 +599,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('drops an event entirely once it has zero matching slots', () => {
       const events = [morningAndEvening()];
       expect(
-        filterSlotsByTimeOfDay({
+        filterEventTimeBlocksByTimeOfDay({
           events,
           filter: { mode: 'starts', start: parseTimeOfDay({ value: '23:30' }) },
           timeZone: 'UTC',
@@ -566,7 +610,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
     it('treats boundary values as inclusive', () => {
       const events = [
         makeEventView({
-          slotOverrides: [
+          eventTimeBlockOverrides: [
             {
               slot: {
                 id: 'on-the-dot',
@@ -579,7 +623,7 @@ describe('filterSlotsByTimeOfDay (T008/FR-010, mode select + single start/end pa
       ];
 
       expect(
-        filterSlotsByTimeOfDay({
+        filterEventTimeBlocksByTimeOfDay({
           events,
           filter: {
             mode: 'starts',
@@ -613,7 +657,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('accepts spans fully within slot bounds, in order, non-overlapping', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
@@ -633,7 +677,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('accepts spans given out of chronological order', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
@@ -655,7 +699,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('rejects a span with identical start and end (zero duration)', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
@@ -670,7 +714,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('rejects a span that ends before it starts', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
@@ -685,7 +729,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('rejects a span starting before the parent slot bounds', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T08:00:00Z' }),
@@ -700,7 +744,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('rejects a span ending after the parent slot bounds', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
@@ -715,7 +759,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('rejects overlapping spans (including touching-but-crossing bounds)', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
@@ -735,7 +779,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
     it('accepts back-to-back spans that touch at the boundary without overlapping', () => {
       expect(
         validateManualSpans({
-          slotView: SLOT_VIEW,
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
@@ -752,12 +796,12 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
       ).toBeNull();
     });
 
-    it('accepts manual spans within a parent TimeSlot whose own bounds cross midnight', () => {
-      const overnightSlotView: GetCycleParticipation200EventsItem['slots'][number] =
+    it('accepts manual spans within a parent EventTimeBlock whose own bounds cross midnight', () => {
+      const overnightEventTimeBlockView: GetCycleParticipation200EventsItem['slots'][number] =
         {
-          ...SLOT_VIEW,
+          ...EVENT_TIME_BLOCK_VIEW,
           slot: {
-            ...SLOT_VIEW.slot,
+            ...EVENT_TIME_BLOCK_VIEW.slot,
             startTime: '2026-07-12T22:00:00Z',
             endTime: '2026-07-13T02:00:00Z',
           },
@@ -765,7 +809,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
 
       expect(
         validateManualSpans({
-          slotView: overnightSlotView,
+          eventTimeBlockView: overnightEventTimeBlockView,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T22:00:00Z' }),
@@ -782,12 +826,12 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
       ).toBeNull();
     });
 
-    it('rejects a manual span that starts before an overnight parent TimeSlot even though its wall-clock time reads later in the day', () => {
-      const overnightSlotView: GetCycleParticipation200EventsItem['slots'][number] =
+    it('rejects a manual span that starts before an overnight parent EventTimeBlock even though its wall-clock time reads later in the day', () => {
+      const overnightEventTimeBlockView: GetCycleParticipation200EventsItem['slots'][number] =
         {
-          ...SLOT_VIEW,
+          ...EVENT_TIME_BLOCK_VIEW,
           slot: {
-            ...SLOT_VIEW.slot,
+            ...EVENT_TIME_BLOCK_VIEW.slot,
             startTime: '2026-07-12T22:00:00Z',
             endTime: '2026-07-13T02:00:00Z',
           },
@@ -795,7 +839,7 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
 
       expect(
         validateManualSpans({
-          slotView: overnightSlotView,
+          eventTimeBlockView: overnightEventTimeBlockView,
           spans: [
             {
               startTime: parseInstant({ value: '2026-07-12T20:00:00Z' }),
@@ -811,7 +855,10 @@ describe('validateManualSpans (T023 — reused/extended for manual-split-editor)
   describe('Invalid / Empty Input', () => {
     it('accepts zero spans (nothing to validate yet)', () => {
       expect(
-        validateManualSpans({ slotView: SLOT_VIEW, spans: [] }),
+        validateManualSpans({
+          eventTimeBlockView: EVENT_TIME_BLOCK_VIEW,
+          spans: [],
+        }),
       ).toBeNull();
     });
   });
@@ -821,14 +868,14 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
   it('defaults equalCount to 1 (single shift) for a slot with exactly one server-default shift', () => {
     const forms = createInitialSplitForms([
       makeEventView({
-        slotOverrides: [
+        eventTimeBlockOverrides: [
           {
             included: true,
             shifts: [
               {
                 id: 'shift-1',
                 participationId: 'participation-1',
-                timeSlotId: 'slot-1',
+                eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               },
@@ -838,42 +885,50 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
       }),
     ]);
 
-    expect(forms['slot-1']).toMatchObject({ mode: 'equal', equalCount: '1' });
+    expect(forms['event-time-block-1']).toMatchObject({
+      mode: 'equal',
+      equalCount: '1',
+    });
   });
 
   it('defaults equalCount to 1 when a slot has zero shifts yet', () => {
     const forms = createInitialSplitForms([
-      makeEventView({ slotOverrides: [{ included: false, shifts: [] }] }),
+      makeEventView({
+        eventTimeBlockOverrides: [{ included: false, shifts: [] }],
+      }),
     ]);
 
-    expect(forms['slot-1']).toMatchObject({ mode: 'equal', equalCount: '1' });
+    expect(forms['event-time-block-1']).toMatchObject({
+      mode: 'equal',
+      equalCount: '1',
+    });
   });
 
   it('preserves an existing multi-shift count instead of forcing single', () => {
     const forms = createInitialSplitForms([
       makeEventView({
-        slotOverrides: [
+        eventTimeBlockOverrides: [
           {
             included: true,
             shifts: [
               {
                 id: 'shift-1',
                 participationId: 'participation-1',
-                timeSlotId: 'slot-1',
+                eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T09:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
               },
               {
                 id: 'shift-2',
                 participationId: 'participation-1',
-                timeSlotId: 'slot-1',
+                eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T10:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
               },
               {
                 id: 'shift-3',
                 participationId: 'participation-1',
-                timeSlotId: 'slot-1',
+                eventTimeBlockId: 'event-time-block-1',
                 startTime: parseInstant({ value: '2026-07-12T11:00:00Z' }),
                 endTime: parseInstant({ value: '2026-07-12T12:00:00Z' }),
               },
@@ -883,7 +938,10 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
       }),
     ]);
 
-    expect(forms['slot-1']).toMatchObject({ mode: 'equal', equalCount: '3' });
+    expect(forms['event-time-block-1']).toMatchObject({
+      mode: 'equal',
+      equalCount: '3',
+    });
   });
 });
 

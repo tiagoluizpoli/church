@@ -33,7 +33,7 @@ const UNAUTH_ROUTES: Array<{
   { method: 'GET', url: '/api/v1/events' },
 ];
 
-describe('Event and TimeSlot routes authentication (T056)', () => {
+describe('Event and EventTimeBlock routes authentication (T056)', () => {
   for (const { method, url } of UNAUTH_ROUTES) {
     it(`${method} ${url} returns 401 without auth`, async () => {
       const res = await app.inject({ method, url });

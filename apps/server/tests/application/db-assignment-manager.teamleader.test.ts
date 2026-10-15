@@ -5,12 +5,12 @@ import type {
   AssignmentId,
   ChurchId,
   CycleId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
   TeamId,
-  TimeSlotId,
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
@@ -19,14 +19,14 @@ import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
 import { Shift } from '@/domain/entities/shift';
-import { SlotRequirement } from '@/domain/entities/slot-requirement';
+import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { AssignActionNotAvailableError } from '@/domain/errors/assign-action-not-available';
 
 const churchId = 'church-1' as ChurchId;
 const ministryId = 'ministry-1' as MinistryId;
 const participationId = 'participation-1' as MinistryParticipationId;
 const shiftId = 'shift-1' as ShiftId;
-const slotId = 'slot-1' as TimeSlotId;
+const eventTimeBlockId = 'event-time-block-1' as EventTimeBlockId;
 const roleId = 'role-1' as RoleId;
 const teamId = 'team-1' as TeamId;
 const volunteerId = 'volunteer-1' as VolunteerId;
@@ -59,7 +59,7 @@ const volunteerRepository = {
   hasRoleQualification: vi.fn(),
   listMinistryMemberships: vi.fn(),
 };
-const availabilityRepository = { listByVolunteers: vi.fn() };
+const unavailableShiftRepository = { listByVolunteers: vi.fn() };
 const planningEventRepository = { getEvent: vi.fn() };
 const notificationService = { notifyVolunteer: vi.fn() };
 const unitOfWork = {
@@ -75,7 +75,7 @@ function createManager(): DbAssignmentManager {
     shiftRepository: shiftRepository as never,
     participationRepository: participationRepository as never,
     volunteerRepository: volunteerRepository as never,
-    availabilityRepository: availabilityRepository as never,
+    unavailableShiftRepository: unavailableShiftRepository as never,
     planningEventRepository: planningEventRepository as never,
     notificationService: notificationService as never,
     unitOfWork: unitOfWork as never,
@@ -117,24 +117,24 @@ beforeEach(() => {
     props: {
       churchId,
       participationId,
-      timeSlotId: slotId,
+      eventTimeBlockId: eventTimeBlockId,
       startTime: start,
       endTime: end,
     },
   });
-  const requirement = new SlotRequirement({
+  const requirement = new ShiftRequirement({
     churchId,
-    slotId,
+    eventTimeBlockId,
     participationId,
     shiftId,
     roleId,
     teamId,
-    requiredCount: 1,
+    peopleNeeded: 1,
   });
   const assignment = new Assignment(
     {
       churchId,
-      slotId,
+      eventTimeBlockId,
       participationId,
       shiftId,
       volunteerId,
@@ -162,7 +162,7 @@ beforeEach(() => {
       ministryAccessLevel: 'volunteer',
     },
   ]);
-  availabilityRepository.listByVolunteers.mockResolvedValue([]);
+  unavailableShiftRepository.listByVolunteers.mockResolvedValue([]);
   assignmentRepository.listByShift.mockResolvedValue([]);
   assignmentRepository.listByVolunteerInRange.mockResolvedValue([]);
   assignmentRepository.create.mockResolvedValue(assignment);

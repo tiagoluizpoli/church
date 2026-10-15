@@ -11,7 +11,7 @@ import {
 } from '@/components/workspace-page';
 import { classifyPrepareFetchError } from '@/features/scheduling/components/participation-prepare.utils';
 import {
-  buildMinistryCycleSummaries,
+  buildScheduleSummaries,
   filterCycleSummaries,
 } from '@/features/scheduling/components/prepare/cycle-list.utils';
 import {
@@ -19,7 +19,7 @@ import {
   CycleListFiltersBar,
   DEFAULT_FILTERS,
 } from '@/features/scheduling/components/prepare/cycle-list-filters-bar';
-import { MinistryCycleList } from '@/features/scheduling/components/prepare/ministry-cycle-list';
+import { ScheduleList } from '@/features/scheduling/components/prepare/schedule-list';
 import { StatPill } from '@/features/scheduling/components/prepare/stat-pill';
 import { adminApi } from '@/utils/api-instances';
 
@@ -36,10 +36,10 @@ export const Route = createFileRoute(
   '/_authenticated/_active-church/schedules/$ministryId/',
 )({
   validateSearch: (search) => cycleListSearchSchema.parse(search),
-  component: PrepareMinistryCycleListRoute,
+  component: PrepareScheduleListRoute,
 });
 
-function PrepareMinistryCycleListRoute() {
+function PrepareScheduleListRoute() {
   const { ministryId } = Route.useParams();
   const search = Route.useSearch();
   const { browse } = search;
@@ -81,7 +81,7 @@ function PrepareMinistryCycleListRoute() {
 
   const cycleSummariesQuery = useQuery({
     queryKey: ['prepare-cycle-summaries', ministryId],
-    queryFn: () => adminApi.listMinistryCycleSummaries(ministryId),
+    queryFn: () => adminApi.listScheduleSummaries(ministryId),
     retry: false,
   });
   const ministriesQuery = useQuery({
@@ -98,7 +98,7 @@ function PrepareMinistryCycleListRoute() {
 
   const allCycles = useMemo(
     () =>
-      buildMinistryCycleSummaries({
+      buildScheduleSummaries({
         cycles: cycleSummariesQuery.data?.cycles ?? [],
       }),
     [cycleSummariesQuery.data],
@@ -155,8 +155,9 @@ function PrepareMinistryCycleListRoute() {
     () => filteredCycles.reduce((sum, cycle) => sum + cycle.eventCount, 0),
     [filteredCycles],
   );
-  const slotTotal = useMemo(
-    () => filteredCycles.reduce((sum, cycle) => sum + cycle.slotCount, 0),
+  const eventTimeBlockTotal = useMemo(
+    () =>
+      filteredCycles.reduce((sum, cycle) => sum + cycle.eventTimeBlockCount, 0),
     [filteredCycles],
   );
 
@@ -188,8 +189,8 @@ function PrepareMinistryCycleListRoute() {
               />
               <StatPill
                 label="Slots"
-                value={slotTotal}
-                testId="prepare-cycle-slot-total"
+                value={eventTimeBlockTotal}
+                testId="prepare-cycle-event-time-block-total"
               />
             </div>
           ) : null
@@ -243,7 +244,7 @@ function PrepareMinistryCycleListRoute() {
           </Link>
         </p>
       ) : (
-        <MinistryCycleList
+        <ScheduleList
           ministryId={ministryId}
           cycles={filteredCycles}
           filters={

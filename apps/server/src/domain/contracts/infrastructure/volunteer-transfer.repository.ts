@@ -21,7 +21,7 @@ export interface AffectedMinistryMembership {
 
 export interface WithdrawnAssignmentPreview {
   eventName: string;
-  timeSlotStart: Date;
+  eventTimeBlockStart: Date;
   roleName: string;
 }
 

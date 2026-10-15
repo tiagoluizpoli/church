@@ -3,8 +3,8 @@ import {
   invitation as churchInvitation,
   member,
   ministryInvitation,
-  ministryVolunteer,
-  ministryVolunteerRole,
+  ministryMembership,
+  ministryMembershipRole,
   outboxMessage,
   session,
   user,
@@ -482,15 +482,15 @@ describe('Church invitation redemption HTTP boundary', () => {
     if (!createdVolunteer) throw new Error('Expected redeemed volunteer.');
     const [membership] = await testDb
       .select()
-      .from(ministryVolunteer)
-      .where(eq(ministryVolunteer.volunteerId, createdVolunteer.id));
+      .from(ministryMembership)
+      .where(eq(ministryMembership.volunteerId, createdVolunteer.id));
     expect(membership?.ministryId).toBe(fixture.ministryOneA);
     expect(membership?.ministryAccessLevel).toBe('leader');
     if (!membership) throw new Error('Expected redeemed ministry membership.');
     const grants = await testDb
       .select()
-      .from(ministryVolunteerRole)
-      .where(eq(ministryVolunteerRole.ministryVolunteerId, membership.id));
+      .from(ministryMembershipRole)
+      .where(eq(ministryMembershipRole.ministryMembershipId, membership.id));
     expect(grants).toHaveLength(1);
     expect(grants[0]?.roleId).toBe(fixture.roleInMinistryOneA);
     const [acceptedMinistryInvitation] = await testDb

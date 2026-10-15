@@ -2,26 +2,26 @@ import type { Instant } from '@church/time';
 import type {
   ChurchId,
   CycleId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   RoleId,
   ShiftId,
   TeamId,
-  TimeSlotId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
 import type { Event } from '../../entities/event';
+import type { EventTimeBlock } from '../../entities/event-time-block';
+import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { MinistryParticipation } from '../../entities/ministry-participation';
-import type {
-  MinistryServingProfile,
-  ServingProfileEntryInput,
-} from '../../entities/ministry-serving-profile';
-import type { MinistryAccessLevel } from '../../entities/ministry-volunteer';
 import type { Shift } from '../../entities/shift';
-import type { SlotRequirement } from '../../entities/slot-requirement';
-import type { TimeSlot } from '../../entities/time-slot';
+import type { ShiftRequirement } from '../../entities/shift-requirement';
+import type {
+  UsualSetup,
+  UsualSetupEntryInput,
+} from '../../entities/usual-setup';
 import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
 export interface GetCycleParticipationInput {
@@ -30,17 +30,17 @@ export interface GetCycleParticipationInput {
   ministryId: MinistryId;
 }
 
-export interface ParticipationSlotView {
-  slot: TimeSlot;
+export interface ParticipationEventTimeBlockView {
+  slot: EventTimeBlock;
   included: boolean;
   shifts: Shift[];
-  requirements: SlotRequirement[];
+  requirements: ShiftRequirement[];
 }
 
 export interface ParticipationEventView {
   participation: MinistryParticipation;
   event: Event;
-  slots: ParticipationSlotView[];
+  slots: ParticipationEventTimeBlockView[];
 }
 
 export interface CycleParticipationView {
@@ -69,12 +69,12 @@ export interface CycleBuilderShiftView {
  * substitute for mutation-time authorization.
  */
 export interface CycleBuilderRequirementView {
-  requirement: SlotRequirement;
+  requirement: ShiftRequirement;
   canMutateAssignments: boolean;
 }
 
-export interface CycleBuilderSlotView {
-  slot: TimeSlot;
+export interface CycleBuilderEventTimeBlockView {
+  slot: EventTimeBlock;
   included: boolean;
   shifts: CycleBuilderShiftView[];
 }
@@ -82,7 +82,7 @@ export interface CycleBuilderSlotView {
 export interface CycleBuilderEventView {
   participation: MinistryParticipation;
   event: Event;
-  slots: CycleBuilderSlotView[];
+  slots: CycleBuilderEventTimeBlockView[];
 }
 
 export interface CycleBuilderRoleOption {
@@ -106,7 +106,7 @@ export interface PublishCycleInput {
 export interface PublishCycleParticipationOutcome {
   participationId: MinistryParticipationId;
   state: MinistryParticipation['state'];
-  requiredCount: number;
+  peopleNeeded: number;
   assignedCount: number;
 }
 
@@ -119,13 +119,13 @@ export interface PublishCycleView {
 export interface SetInclusionsInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlotIds: TimeSlotId[];
+  eventTimeBlockIds: EventTimeBlockId[];
 }
 
 export interface SplitShiftsManagerInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  timeSlotId: TimeSlotId;
+  eventTimeBlockId: EventTimeBlockId;
   strategy: ShiftSplitStrategy;
 }
 
@@ -147,19 +147,19 @@ export interface UpsertRequirementManagerInput {
   shiftId: ShiftId;
   roleId: RoleId;
   teamId?: TeamId;
-  requiredCount: number;
+  peopleNeeded: number;
   notes?: string;
 }
 
-export interface GetServingProfileInput {
+export interface GetUsualSetupInput {
   churchId: ChurchId;
   ministryId: MinistryId;
 }
 
-export interface UpsertServingProfileInput {
+export interface UpsertUsualSetupInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  entries: ServingProfileEntryInput[];
+  entries: UsualSetupEntryInput[];
 }
 
 export interface EligibleVolunteerView {
@@ -188,7 +188,7 @@ export interface ListEligibleVolunteersInput {
 
 export interface ParticipationCompletionView {
   participationId: MinistryParticipationId;
-  requiredCount: number;
+  peopleNeeded: number;
   assignedCount: number;
   completionPercent: number;
 }
@@ -198,7 +198,7 @@ export interface GetParticipationCompletionInput {
   participationId: MinistryParticipationId;
 }
 
-export interface ListMinistryCycleSummariesInput {
+export interface ListScheduleSummariesInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   /** Limits summaries to cycles with schedule work for this Team. */
@@ -209,14 +209,14 @@ export interface ListMinistryCycleSummariesInput {
  * church-wide, annotated with this ministry's participation data. A cycle
  * the ministry has zero events in still appears, with `isPartOf: false`,
  * `status: 'not_started'`, and `availabilityRequestedForAll: false`. */
-export interface MinistryCycleSummaryView {
+export interface ScheduleSummaryView {
   cycleId: CycleId;
   name: string;
   startDate: Date;
   endDate: Date;
   isPartOf: boolean;
   eventCount: number;
-  slotCount: number;
+  eventTimeBlockCount: number;
   status: 'not_started' | 'in_progress' | 'published';
   availabilityRequestedForAll: boolean;
   availabilityRequestedForAny: boolean;
@@ -235,13 +235,9 @@ export interface IParticipationManager {
   deleteShift(input: DeleteShiftManagerInput): Promise<void>;
   upsertRequirement(
     input: UpsertRequirementManagerInput,
-  ): Promise<SlotRequirement>;
-  getServingProfile(
-    input: GetServingProfileInput,
-  ): Promise<MinistryServingProfile[]>;
-  upsertServingProfile(
-    input: UpsertServingProfileInput,
-  ): Promise<MinistryServingProfile[]>;
+  ): Promise<ShiftRequirement>;
+  getUsualSetup(input: GetUsualSetupInput): Promise<UsualSetup[]>;
+  upsertUsualSetup(input: UpsertUsualSetupInput): Promise<UsualSetup[]>;
   listEligibleVolunteers(
     input: ListEligibleVolunteersInput,
   ): Promise<EligibleVolunteerView[]>;
@@ -249,7 +245,7 @@ export interface IParticipationManager {
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView>;
   publishCycle(input: PublishCycleInput): Promise<PublishCycleView>;
-  listMinistryCycleSummaries(
-    input: ListMinistryCycleSummariesInput,
-  ): Promise<MinistryCycleSummaryView[]>;
+  listScheduleSummaries(
+    input: ListScheduleSummariesInput,
+  ): Promise<ScheduleSummaryView[]>;
 }

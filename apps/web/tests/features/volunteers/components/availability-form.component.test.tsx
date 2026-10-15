@@ -30,7 +30,7 @@ describe('AvailabilityForm (T157)', () => {
         }}
         slots={[
           {
-            slotId: 'slot-1',
+            eventTimeBlockId: 'event-time-block-1',
             label: 'Morning slot',
             startTime: '2027-01-04T12:00:00.000Z',
             endTime: '2027-01-04T14:00:00.000Z',

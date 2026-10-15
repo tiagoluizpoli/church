@@ -3,7 +3,7 @@ import type { ChurchId, UserId } from '../domain/branded-ids';
 import type {
   CanManageChurchInput,
   CanManageEventInput,
-  CanManageEventSlotInput,
+  CanManageEventTimeBlockInput,
   CanManageMinistryInput,
   CanManageParticipationInput,
   CanManageShiftInput,
@@ -15,10 +15,10 @@ import type {
 } from '../domain/contracts/application/authority-manager';
 import type { AuthorityActorRepository } from '../domain/contracts/infrastructure/authority-actor.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SchedulingScopeRepository } from '../domain/contracts/infrastructure/scheduling-scope.repository';
 import type { TeamRepository } from '../domain/contracts/infrastructure/team.repository';
-import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 
 interface ResolveActorInput {
   churchId: ChurchId;
@@ -29,7 +29,7 @@ interface DbAuthorityManagerDependencies {
   actorRepository: AuthorityActorRepository;
   scopeRepository: SchedulingScopeRepository;
   eventRepository: EventRepository;
-  timeSlotRepository: TimeSlotRepository;
+  eventTimeBlockRepository: EventTimeBlockRepository;
   ministryRepository: MinistryRepository;
   teamRepository?: TeamRepository;
 }
@@ -38,7 +38,7 @@ export class DbAuthorityManager implements IAuthorityManager {
   private readonly actorRepository: AuthorityActorRepository;
   private readonly scopeRepository: SchedulingScopeRepository;
   private readonly eventRepository: EventRepository;
-  private readonly timeSlotRepository: TimeSlotRepository;
+  private readonly eventTimeBlockRepository: EventTimeBlockRepository;
   private readonly ministryRepository: MinistryRepository;
   private readonly teamRepository?: TeamRepository;
 
@@ -46,14 +46,14 @@ export class DbAuthorityManager implements IAuthorityManager {
     actorRepository,
     scopeRepository,
     eventRepository,
-    timeSlotRepository,
+    eventTimeBlockRepository,
     ministryRepository,
     teamRepository,
   }: DbAuthorityManagerDependencies) {
     this.actorRepository = actorRepository;
     this.scopeRepository = scopeRepository;
     this.eventRepository = eventRepository;
-    this.timeSlotRepository = timeSlotRepository;
+    this.eventTimeBlockRepository = eventTimeBlockRepository;
     this.ministryRepository = ministryRepository;
     this.teamRepository = teamRepository;
   }
@@ -137,10 +137,12 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.canManageMinistry({ ...input, ministryId });
   }
 
-  async canManageEventSlot(input: CanManageEventSlotInput): Promise<boolean> {
-    const slot = await this.timeSlotRepository.getById(
+  async canManageEventTimeBlock(
+    input: CanManageEventTimeBlockInput,
+  ): Promise<boolean> {
+    const slot = await this.eventTimeBlockRepository.getById(
       input.churchId,
-      input.slotId,
+      input.eventTimeBlockId,
     );
     return this.canManageEvent({ ...input, eventId: slot.eventId });
   }

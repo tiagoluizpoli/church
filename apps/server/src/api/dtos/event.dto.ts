@@ -53,10 +53,10 @@ export const scheduleBuilderDataResponseSchema = z.object({
           requirements: z.array(
             z.object({
               id: z.string(),
-              slotId: z.string(),
+              eventTimeBlockId: z.string(),
               roleId: z.string(),
               teamId: z.string().optional(),
-              requiredCount: z.number(),
+              peopleNeeded: z.number(),
               notes: z.string().optional(),
             }),
           ),
@@ -68,7 +68,7 @@ export const scheduleBuilderDataResponseSchema = z.object({
     z.object({
       id: z.string(),
       churchId: z.string(),
-      slotId: z.string(),
+      eventTimeBlockId: z.string(),
       participationId: z.string().optional(),
       shiftId: z.string().optional(),
       volunteerId: z.string(),
@@ -145,10 +145,10 @@ export const eventMapper = {
           status: s.status,
           requirements: s.requirements.map((r) => ({
             id: r.id as string,
-            slotId: r.slotId as string,
+            eventTimeBlockId: r.eventTimeBlockId as string,
             roleId: r.roleId as string,
             teamId: r.teamId as string | undefined,
-            requiredCount: r.requiredCount,
+            peopleNeeded: r.peopleNeeded,
             notes: r.notes,
           })),
         })),
@@ -156,7 +156,7 @@ export const eventMapper = {
       assignments: data.assignments.map((a) => ({
         id: a.id as string,
         churchId: a.churchId as string,
-        slotId: a.slotId as string,
+        eventTimeBlockId: a.eventTimeBlockId as string,
         participationId: a.participationId as string | undefined,
         shiftId: a.shiftId as string | undefined,
         volunteerId: a.volunteerId as string,

@@ -106,11 +106,11 @@ const BASE_NAV_ITEMS: NavItem[] = [
 
 /** Breadcrumb segments normally auto-capitalize from the URL path (see
  * `toBreadcrumbLabel`) — this overrides the ones where the URL slug and the
- * leader-facing name have diverged. The `prepare` route segment stays as
- * the URL/internal name (routes, e2e tests, testids) while the product now
- * calls this flow "Assign" everywhere a leader actually reads it. */
+ * leader-facing name have diverged. The `tailoring` route segment stays as
+ * the URL until T4 moves it; leaders read "Schedules". */
 const STATIC_BREADCRUMB_OVERRIDES: [segment: string, label: string][] = [
-  ['tailoring', 'Rostering'],
+  ['planning-cycles', 'Cycles'],
+  ['tailoring', 'Schedules'],
 ];
 
 const SCHEDULING_NAV_ITEM: NavItem = {

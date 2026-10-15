@@ -21,7 +21,7 @@ import {
 } from '@/components/workspace-page';
 import {
   buildSlotDayMarkers,
-  classifyTailoringFetchError,
+  classifyPrepareFetchError,
   countIncludedSlots,
   countShifts,
   createInitialHeadcountDrafts,
@@ -32,14 +32,14 @@ import {
   type TimeWindowFilter,
   toHeadcountKey,
   validateManualSpans,
-} from '@/features/scheduling/components/participation-tailoring.utils';
-import { TailoringCalendar } from '@/features/scheduling/components/tailoring/tailoring-calendar';
-import { TailoringFilters } from '@/features/scheduling/components/tailoring/tailoring-filters';
+} from '@/features/scheduling/components/participation-prepare.utils';
+import { PrepareCalendar } from '@/features/scheduling/components/prepare/prepare-calendar';
+import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import {
   type HeadcountSave,
   type HeadcountSavesForShift,
-  TailoringSlotList,
-} from '@/features/scheduling/components/tailoring/tailoring-slot-list';
+  PrepareSlotList,
+} from '@/features/scheduling/components/prepare/prepare-slot-list';
 import type {
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemSlotsItem,
@@ -51,7 +51,7 @@ import { adminApi } from '@/utils/api-instances';
 export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId',
 )({
-  component: TailoringWorkspaceRoute,
+  component: PrepareWorkspaceRoute,
 });
 
 interface StatChipProps {
@@ -276,7 +276,7 @@ function editSessionReducer(
   }
 }
 
-function TailoringWorkspaceRoute() {
+function PrepareWorkspaceRoute() {
   const { ministryId, cycleId } = Route.useParams();
   const queryClient = useQueryClient();
   const { churchTimezone } = useTimezone();
@@ -301,13 +301,13 @@ function TailoringWorkspaceRoute() {
   const initializedWorkspaceKey = useRef<string | null>(null);
 
   const cycleQuery = useQuery({
-    queryKey: ['tailoring-cycle', cycleId],
-    queryFn: () => adminApi.getPlanningCycle(cycleId),
+    queryKey: ['prepare-cycle', cycleId],
+    queryFn: () => adminApi.getCycle(cycleId),
     retry: false,
   });
 
   const ministriesQuery = useQuery({
-    queryKey: ['tailoring-ministries'],
+    queryKey: ['prepare-ministries'],
     queryFn: () => adminApi.listMinistries(),
     retry: false,
   });
@@ -316,7 +316,7 @@ function TailoringWorkspaceRoute() {
   )?.name;
 
   const participationQuery = useQuery({
-    queryKey: ['tailoring-cycle-participation', ministryId, cycleId],
+    queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () => adminApi.getCycleParticipation(cycleId, { ministryId }),
     retry: false,
   });
@@ -356,7 +356,7 @@ function TailoringWorkspaceRoute() {
 
   const refreshParticipation = async () => {
     await queryClient.invalidateQueries({
-      queryKey: ['tailoring-cycle-participation', ministryId, cycleId],
+      queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     });
   };
 
@@ -471,8 +471,8 @@ function TailoringWorkspaceRoute() {
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
-  /** One explicit save/publish action per visit: fires `fireAvailability`
-   * once per touched participation still in `tailoring` state, reusing
+  /** One explicit save/publish action per visit: fires `askAvailability`
+   * once per touched participation still in `prepare` state, reusing
    * `resendAvailabilityReminder` for participations already past it (FR-017)
    * — remains available and re-invocable after schedule release, and never
    * blocks further edits. Server-side `AvailabilityCheck` dedup (R4) means a
@@ -484,8 +484,8 @@ function TailoringWorkspaceRoute() {
           const eventView = events.find(
             (candidate) => candidate.participation.id === participationId,
           );
-          return eventView?.participation.state === 'tailoring'
-            ? adminApi.fireAvailability(participationId)
+          return eventView?.participation.state === 'preparing'
+            ? adminApi.askAvailability(participationId)
             : adminApi.resendAvailabilityReminder(participationId);
         }),
       );
@@ -547,7 +547,7 @@ function TailoringWorkspaceRoute() {
     (query) => query.isError,
   );
   const errorKind = failedQuery
-    ? classifyTailoringFetchError({ error: failedQuery.error })
+    ? classifyPrepareFetchError({ error: failedQuery.error })
     : null;
 
   const retryAll = () => {
@@ -569,12 +569,12 @@ function TailoringWorkspaceRoute() {
     : null;
 
   return (
-    <WorkspacePage data-testid="tailoring-workspace-page">
+    <WorkspacePage data-testid="prepare-workspace-page">
       <WorkspaceIntroPanel
         title={
           ministryName && cycleQuery.data
             ? `${ministryName} · ${cycleQuery.data.cycle.name}`
-            : 'Rostering workspace'
+            : 'Prepare workspace'
         }
         description={
           cycleDateSpan
@@ -589,23 +589,23 @@ function TailoringWorkspaceRoute() {
                 <StatChip
                   label="Events"
                   value={eventCount}
-                  testId="tailoring-event-count"
+                  testId="prepare-event-count"
                 />
                 <StatChip
                   label="Slots"
                   value={includedSlotCount}
-                  testId="tailoring-included-count"
+                  testId="prepare-included-count"
                 />
                 <StatChip
                   label="Shifts"
                   value={shiftCount}
-                  testId="tailoring-shift-count"
+                  testId="prepare-shift-count"
                 />
                 {hasUnsentChanges ? (
                   <StatChip
                     label="Unsent"
                     value={touchedParticipationIds.size}
-                    testId="tailoring-touched-count"
+                    testId="prepare-touched-count"
                   />
                 ) : null}
               </div>
@@ -630,7 +630,7 @@ function TailoringWorkspaceRoute() {
                 <Button
                   type="button"
                   className="disabled:opacity-40 dark:disabled:opacity-30"
-                  data-testid="save-and-fire-availability-button"
+                  data-testid="save-and-ask-availability-button"
                   disabled={
                     !hasUnsentChanges || saveAndFireAvailability.isPending
                   }
@@ -650,7 +650,7 @@ function TailoringWorkspaceRoute() {
       />
 
       {errorKind === 'forbidden' ? (
-        <Alert variant="destructive" data-testid="tailoring-forbidden-state">
+        <Alert variant="destructive" data-testid="prepare-forbidden-state">
           <AlertTitle>You don't have access to this workspace</AlertTitle>
           <AlertDescription>
             Ask a church admin to grant you leader or sub-leader access.
@@ -659,7 +659,7 @@ function TailoringWorkspaceRoute() {
       ) : errorKind === 'retryable' ? (
         <Alert
           variant="destructive"
-          data-testid="tailoring-retryable-error-state"
+          data-testid="prepare-retryable-error-state"
         >
           <AlertTitle>Couldn't load this workspace</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
@@ -680,16 +680,16 @@ function TailoringWorkspaceRoute() {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : (
-        <div data-testid="tailoring-workspace-stack" className="space-y-4">
+        <div data-testid="prepare-workspace-stack" className="space-y-4">
           <div className="sticky top-4 z-10 space-y-4 bg-background pb-4">
-            <TailoringCalendar
+            <PrepareCalendar
               cycleStartDate={cycleQuery.data.cycle.startDate}
               cycleEndDate={cycleQuery.data.cycle.endDate}
               eventDayMarkers={eventDayMarkers}
               selectedDate={selectedDate}
               onSelectedDateChange={setSelectedDate}
             />
-            <TailoringFilters
+            <PrepareFilters
               nameQuery={nameQuery}
               onNameQueryChange={setNameQuery}
               timeWindowFilter={timeWindowFilter}
@@ -697,7 +697,7 @@ function TailoringWorkspaceRoute() {
             />
           </div>
 
-          <TailoringSlotList
+          <PrepareSlotList
             events={filteredEvents}
             ministryId={ministryId}
             splitForms={splitForms}
@@ -781,13 +781,13 @@ function TailoringWorkspaceRoute() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              data-testid="tailoring-leave-cancel"
+              data-testid="prepare-leave-cancel"
               onClick={() => blocker.reset?.()}
             >
               Stay
             </AlertDialogCancel>
             <AlertDialogAction
-              data-testid="tailoring-leave-confirm"
+              data-testid="prepare-leave-confirm"
               variant="destructive"
               onClick={() => blocker.proceed?.()}
             >
@@ -798,7 +798,7 @@ function TailoringWorkspaceRoute() {
       </AlertDialog>
 
       <AlertDialog open={confirmSendOpen}>
-        <AlertDialogContent data-testid="tailoring-send-confirm-dialog">
+        <AlertDialogContent data-testid="prepare-send-confirm-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>
               Send {touchedEventTitles.length}{' '}
@@ -822,13 +822,13 @@ function TailoringWorkspaceRoute() {
           </ul>
           <AlertDialogFooter>
             <AlertDialogCancel
-              data-testid="tailoring-send-cancel"
+              data-testid="prepare-send-cancel"
               onClick={() => setConfirmSendOpen(false)}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              data-testid="tailoring-send-confirm"
+              data-testid="prepare-send-confirm"
               onClick={() => {
                 setConfirmSendOpen(false);
                 saveAndFireAvailability.mutate();

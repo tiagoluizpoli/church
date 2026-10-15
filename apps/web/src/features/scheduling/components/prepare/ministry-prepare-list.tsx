@@ -74,7 +74,7 @@ export function MinistryPrepareList({
         className="text-muted-foreground text-sm"
         data-testid="ministry-prepare-empty-state"
       >
-        No ministries yet. Join or create a ministry before assign.
+        No ministries yet. Join or create a ministry before preparing a cycle.
       </p>
     );
   }

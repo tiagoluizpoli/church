@@ -6,17 +6,17 @@ import { CreateCycleForm } from '@/features/scheduling/components/planning-admin
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import {
   useCreateCycleCard,
-  usePlanningCycleSelection,
+  useCycleSelection,
 } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/planning-cycles/new',
 )({
-  component: NewPlanningCycleRoute,
+  component: NewCycleRoute,
 });
 
-function NewPlanningCycleRoute() {
-  const { selectedCycleId } = usePlanningCycleSelection();
+function NewCycleRoute() {
+  const { selectedCycleId } = useCycleSelection();
   const { canCreateCycle, createCyclePending, handleCreateCycle } =
     useCreateCycleCard();
   const navigate = Route.useNavigate();

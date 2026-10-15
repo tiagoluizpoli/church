@@ -99,7 +99,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
   });
 
-  it('is read-only when the selected cycle is locked: no apply/manual-event controls', async () => {
+  it('is read-only when the selected cycle is sent: no apply/manual-event controls', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -366,7 +366,7 @@ describe('CyclesActions (US4)', () => {
 });
 
 describe('Cycle header visibility (chip-leak fix)', () => {
-  it('shows list-level total/draft/locked chips, not per-cycle chips, on the plain list route', async () => {
+  it('shows list-level total/draft/sent chips, not per-cycle chips, on the plain list route', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -392,6 +392,7 @@ describe('Cycle header visibility (chip-leak fix)', () => {
       '2',
     );
     expect(screen.getByTestId('cycles-draft-chip')).toHaveTextContent('1');
+    expect(screen.getByText('Sent')).toBeInTheDocument();
     expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent('1');
     expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
     expect(

@@ -89,7 +89,7 @@ export function CycleHeader({ showName = true }: CycleHeaderProps) {
  * stay empty outside of a cycle review (see the leak-into-list-view fix).
  */
 export function CycleListStats() {
-  const { totalCount, draftCount, lockedCount } = useCycleListStats();
+  const { totalCount, draftCount, sentCount } = useCycleListStats();
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
@@ -106,7 +106,7 @@ export function CycleListStats() {
       <HeaderStatChip
         testId="cycles-sent-chip"
         label="Sent"
-        value={String(lockedCount)}
+        value={String(sentCount)}
       />
     </div>
   );

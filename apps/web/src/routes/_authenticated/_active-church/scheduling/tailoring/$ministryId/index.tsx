@@ -9,18 +9,18 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
-import { classifyTailoringFetchError } from '@/features/scheduling/components/participation-tailoring.utils';
+import { classifyPrepareFetchError } from '@/features/scheduling/components/participation-prepare.utils';
 import {
   buildMinistryCycleSummaries,
   filterCycleSummaries,
-} from '@/features/scheduling/components/tailoring/cycle-list.utils';
+} from '@/features/scheduling/components/prepare/cycle-list.utils';
 import {
   type CycleListFilters,
   CycleListFiltersBar,
   DEFAULT_FILTERS,
-} from '@/features/scheduling/components/tailoring/cycle-list-filters-bar';
-import { MinistryCycleList } from '@/features/scheduling/components/tailoring/ministry-cycle-list';
-import { StatPill } from '@/features/scheduling/components/tailoring/stat-pill';
+} from '@/features/scheduling/components/prepare/cycle-list-filters-bar';
+import { MinistryCycleList } from '@/features/scheduling/components/prepare/ministry-cycle-list';
+import { StatPill } from '@/features/scheduling/components/prepare/stat-pill';
 import { adminApi } from '@/utils/api-instances';
 
 const cycleListSearchSchema = z.object({
@@ -36,10 +36,10 @@ export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/tailoring/$ministryId/',
 )({
   validateSearch: (search) => cycleListSearchSchema.parse(search),
-  component: TailoringMinistryCycleListRoute,
+  component: PrepareMinistryCycleListRoute,
 });
 
-function TailoringMinistryCycleListRoute() {
+function PrepareMinistryCycleListRoute() {
   const { ministryId } = Route.useParams();
   const search = Route.useSearch();
   const { browse } = search;
@@ -80,12 +80,12 @@ function TailoringMinistryCycleListRoute() {
   };
 
   const cycleSummariesQuery = useQuery({
-    queryKey: ['tailoring-cycle-summaries', ministryId],
+    queryKey: ['prepare-cycle-summaries', ministryId],
     queryFn: () => adminApi.listMinistryCycleSummaries(ministryId),
     retry: false,
   });
   const ministriesQuery = useQuery({
-    queryKey: ['tailoring-ministries'],
+    queryKey: ['prepare-ministries'],
     queryFn: () => adminApi.listMinistries(),
     retry: false,
   });
@@ -140,7 +140,7 @@ function TailoringMinistryCycleListRoute() {
     (query) => query.isError,
   );
   const errorKind = failedQuery
-    ? classifyTailoringFetchError({ error: failedQuery.error })
+    ? classifyPrepareFetchError({ error: failedQuery.error })
     : null;
 
   const retryAll = () => {
@@ -161,10 +161,10 @@ function TailoringMinistryCycleListRoute() {
   );
 
   return (
-    <WorkspacePage data-testid="tailoring-cycle-list-page">
+    <WorkspacePage data-testid="prepare-cycle-list-page">
       <WorkspaceIntroPanel
         title="Cycles"
-        description="Pick a cycle to start rostering for this ministry."
+        description="Pick a cycle to start preparing this ministry."
         autoFocusTitle
         aside={
           showList ? (
@@ -173,23 +173,23 @@ function TailoringMinistryCycleListRoute() {
                 <StatPill
                   label="Ministry"
                   value={ministryName}
-                  testId="tailoring-cycle-ministry-name"
+                  testId="prepare-cycle-ministry-name"
                 />
               ) : null}
               <StatPill
                 label="Cycles"
                 value={filteredCycles.length}
-                testId="tailoring-cycle-count"
+                testId="prepare-cycle-count"
               />
               <StatPill
                 label="Events"
                 value={eventTotal}
-                testId="tailoring-cycle-event-total"
+                testId="prepare-cycle-event-total"
               />
               <StatPill
                 label="Slots"
                 value={slotTotal}
-                testId="tailoring-cycle-slot-total"
+                testId="prepare-cycle-slot-total"
               />
             </div>
           ) : null
@@ -197,7 +197,7 @@ function TailoringMinistryCycleListRoute() {
       />
 
       {errorKind === 'forbidden' ? (
-        <Alert variant="destructive" data-testid="tailoring-forbidden-state">
+        <Alert variant="destructive" data-testid="prepare-forbidden-state">
           <AlertTitle>You don't have access to this ministry</AlertTitle>
           <AlertDescription>
             Ask a church admin to grant you leader or sub-leader access.
@@ -206,7 +206,7 @@ function TailoringMinistryCycleListRoute() {
       ) : errorKind === 'retryable' ? (
         <Alert
           variant="destructive"
-          data-testid="tailoring-retryable-error-state"
+          data-testid="prepare-retryable-error-state"
         >
           <AlertTitle>Couldn't load cycles</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
@@ -222,21 +222,21 @@ function TailoringMinistryCycleListRoute() {
           </AlertDescription>
         </Alert>
       ) : isLoading ? (
-        <div className="grid gap-3" data-testid="tailoring-cycle-list-loading">
+        <div className="grid gap-3" data-testid="prepare-cycle-list-loading">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
       ) : isRedirecting ? (
         <p
           className="text-muted-foreground text-sm"
-          data-testid="tailoring-cycle-list-redirecting"
+          data-testid="prepare-cycle-list-redirecting"
         >
           This is the only open cycle for this ministry — taking you there now.{' '}
           <Link
             to="/scheduling/tailoring/$ministryId"
             params={{ ministryId }}
             search={{ browse: true }}
-            data-testid="tailoring-browse-all-cycles-link"
+            data-testid="prepare-browse-all-cycles-link"
             className="underline underline-offset-2"
           >
             Browse all cycles instead

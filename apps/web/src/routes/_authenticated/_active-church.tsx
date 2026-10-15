@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
+import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
 import { useMinistryBreadcrumb } from '@/features/scheduling/hooks/use-ministry-breadcrumb';
-import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 import {
@@ -139,9 +139,9 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
 
 function ActiveChurchLayout() {
   const { churchTimezone } = Route.useRouteContext();
-  const planningCycleBreadcrumb = usePlanningCycleBreadcrumb();
+  const cycleBreadcrumb = useCycleBreadcrumb();
   const ministryBreadcrumb = useMinistryBreadcrumb();
-  const overrides = [planningCycleBreadcrumb, ministryBreadcrumb].filter(
+  const overrides = [cycleBreadcrumb, ministryBreadcrumb].filter(
     (override) => override !== null,
   );
   const breadcrumbOverrides = overrides.length > 0 ? overrides : undefined;

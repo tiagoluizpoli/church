@@ -54,7 +54,8 @@ export function CycleListCard({
       <CardHeader>
         <CardTitle>Existing cycles</CardTitle>
         <CardDescription>
-          Select a cycle to review, add events, apply templates, or lock it.
+          Select a cycle to review, add events, apply templates, or send it to
+          Ministries.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

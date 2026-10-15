@@ -264,7 +264,7 @@ export function useCycleHeader(): CycleHeaderModel {
 export interface CycleListStatsModel {
   totalCount: number;
   draftCount: number;
-  lockedCount: number;
+  sentCount: number;
 }
 
 /**
@@ -278,7 +278,7 @@ export function useCycleListStats(): CycleListStatsModel {
   return {
     totalCount: cycles.length,
     draftCount: cycles.filter((cycle) => cycle.state === 'draft').length,
-    lockedCount: cycles.filter((cycle) => cycle.state === 'sent').length,
+    sentCount: cycles.filter((cycle) => cycle.state === 'sent').length,
   };
 }
 

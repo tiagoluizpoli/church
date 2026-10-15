@@ -272,7 +272,7 @@ export interface MinistryPrepareSummaryRow {
  * (listMinistries + listCycles({state:'sent'}) + per-ministry
  * listEvents + per-(ministry, sent cycle) getCycleParticipation) lives in
  * the route, per research.md R10. "Cycle set" = union of every cycle
- * currently in `locked` state, not a single "most recent" cycle. */
+ * currently in `sent` state, not a single "most recent" cycle. */
 export function buildMinistryPrepareSummary({
   ministries,
   sentCycleIds,

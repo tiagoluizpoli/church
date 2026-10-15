@@ -68,7 +68,7 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
     page.getByRole('link', { name: 'Open church planning' }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Open church planning' }).click();
-  await expect(page).toHaveURL(/\/scheduling\/cycles/);
+  await expect(page).toHaveURL(/\/scheduling\/planning-cycles/);
 
   // Entry point 2: the cycle itself — the one canonical form.
   await createOpenCycle({

@@ -3,9 +3,9 @@ import { createFileRoute, Outlet } from '@tanstack/react-router';
 export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/tailoring/$ministryId',
 )({
-  component: TailoringMinistryLayout,
+  component: PrepareMinistryLayout,
 });
 
-function TailoringMinistryLayout() {
+function PrepareMinistryLayout() {
   return <Outlet />;
 }

@@ -1,28 +1,28 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { CycleReviewCard } from '@/features/scheduling/components/planning-admin/cycle-review-card';
-import { cycleIsLocked } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
+import { cycleIsSent } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
 import {
   useCycleReviewCard,
-  usePlanningCycleSelection,
+  useCycleSelection,
 } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/planning-cycles/$cycleId',
 )({
-  component: PlanningCycleReviewRoute,
+  component: CycleReviewRoute,
 });
 
-function PlanningCycleReviewRoute() {
+function CycleReviewRoute() {
   const { cycleId } = Route.useParams();
-  const { handleSelectCycle } = usePlanningCycleSelection();
+  const { handleSelectCycle } = useCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
 
   useEffect(() => {
     handleSelectCycle({ cycleId });
   }, [cycleId, handleSelectCycle]);
 
-  const isReadOnly = cycleIsLocked({ cycle: selectedCycle });
+  const isReadOnly = cycleIsSent({ cycle: selectedCycle });
 
   return <CycleReviewCard isReadOnly={isReadOnly} />;
 }

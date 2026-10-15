@@ -74,7 +74,7 @@ function describePlanningIntro({
     return {
       title: selectedCycleName,
       description:
-        'Cycles. Review this cycle, apply templates on demand, add exceptions, and lock the calendar when it is ready for staffing.',
+        'Cycles. Review this cycle, apply templates on demand, add exceptions, and send the cycle to Ministries when it is ready for staffing.',
     };
   }
 

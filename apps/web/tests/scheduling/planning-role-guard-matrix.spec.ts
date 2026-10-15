@@ -44,7 +44,7 @@ test.describe('Volunteer-only denial across all 3 scheduling routes', () => {
     await signInPersonaPage({ page, persona: journey.personas.volunteer });
 
     await page.goto('/scheduling/planning-cycles');
-    await expect(page).not.toHaveURL(/\/scheduling\/cycles/);
+    await expect(page).not.toHaveURL(/\/scheduling\/planning-cycles/);
     await expect(page.getByTestId('planning-admin-page')).toHaveCount(0);
 
     await page.goto('/scheduling/tailoring');

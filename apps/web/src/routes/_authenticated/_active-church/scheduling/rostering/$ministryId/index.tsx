@@ -21,16 +21,16 @@ import { adminApi } from '@/utils/api-instances';
 export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/rostering/$ministryId/',
 )({
-  component: TeamRosterCyclesRoute,
+  component: TeamScheduleCyclesRoute,
   validateSearch: z.object({ teamId: z.string() }),
 });
 
-function TeamRosterCyclesRoute() {
+function TeamScheduleCyclesRoute() {
   const { ministryId } = Route.useParams();
   const { teamId } = Route.useSearch();
   const cyclesQuery = useQuery({
-    queryKey: ['team-roster-cycles', ministryId, teamId],
-    queryFn: () => adminApi.listTeamRosterCycles(teamId, { ministryId }),
+    queryKey: ['team-schedule-cycles', ministryId, teamId],
+    queryFn: () => adminApi.listTeamScheduleCycles(teamId, { ministryId }),
     retry: false,
   });
 
@@ -41,10 +41,10 @@ function TeamRosterCyclesRoute() {
   const cycles = cyclesQuery.data?.cycles ?? [];
 
   return (
-    <WorkspacePage data-testid="team-roster-cycles">
+    <WorkspacePage data-testid="team-schedule-cycles">
       <WorkspaceIntroPanel
-        title="Team roster"
-        description="Choose a locked cycle to review your Team's roster."
+        title="Team schedule"
+        description="Choose a sent cycle to review your Team's schedule."
         autoFocusTitle
       />
 
@@ -52,22 +52,22 @@ function TeamRosterCyclesRoute() {
         <div
           className="flex flex-col gap-4"
           role="status"
-          aria-label="Loading Team rosters"
+          aria-label="Loading Team schedule"
         >
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>
       ) : cycles.length === 0 ? (
         <Alert>
-          <AlertTitle>No locked roster cycles</AlertTitle>
+          <AlertTitle>No sent cycles</AlertTitle>
           <AlertDescription>
-            This Team has no current or future roster work to review.
+            This Team has no current or future schedule work to review.
           </AlertDescription>
         </Alert>
       ) : (
         <section
           className="grid gap-4 md:grid-cols-2"
-          aria-label="Team roster cycles"
+          aria-label="Team schedule cycles"
         >
           {cycles.map((cycle) => (
             <Card key={cycle.cycleId}>
@@ -76,7 +76,7 @@ function TeamRosterCyclesRoute() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-sm">
-                  Read-only Team roster
+                  Read-only Team schedule
                 </p>
               </CardContent>
               <CardFooter>
@@ -86,7 +86,7 @@ function TeamRosterCyclesRoute() {
                   search={{ teamId }}
                   className={buttonVariants({ variant: 'outline', size: 'sm' })}
                 >
-                  Open roster
+                  Open schedule
                 </Link>
               </CardFooter>
             </Card>

@@ -8,6 +8,7 @@ import {
   filterSlotsByTimeOfDay,
   formatTimeRange,
   isTimeWindowFilterEmpty,
+  participationStateLabel,
   toCalendarDateString,
   toMinistryCycleKey,
   validateManualSpans,
@@ -169,7 +170,7 @@ describe('buildMinistryPrepareSummary (T006/R10)', () => {
       ]);
     });
 
-    it('excludes events whose cycle is not in the locked set (draft/archived)', () => {
+    it('excludes events whose cycle is not in the sent set (draft/past)', () => {
       const rows = buildMinistryPrepareSummary({
         ministries: [{ id: 'ministry-1', name: 'Greeters' }],
         sentCycleIds: ['cycle-1'],
@@ -883,5 +884,25 @@ describe('createInitialSplitForms defaults to single-shift (bugfix)', () => {
     ]);
 
     expect(forms['slot-1']).toMatchObject({ mode: 'equal', equalCount: '3' });
+  });
+});
+
+describe('participationStateLabel', () => {
+  it('shows the glossary stage words', () => {
+    expect(
+      (
+        [
+          'preparing',
+          'availability_requested',
+          'assigning',
+          'published',
+        ] as const
+      ).map((state) => participationStateLabel({ state })),
+    ).toEqual([
+      'Preparing',
+      'Availability requested',
+      'Assigning',
+      'Published',
+    ]);
   });
 });

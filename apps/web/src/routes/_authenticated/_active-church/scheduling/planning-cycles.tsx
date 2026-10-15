@@ -7,12 +7,12 @@ import { adminApi } from '@/utils/api-instances';
 export const Route = createFileRoute(
   '/_authenticated/_active-church/scheduling/planning-cycles',
 )({
-  component: PlanningCyclesRoute,
+  component: CyclesRoute,
   beforeLoad: async ({ context }) => {
     try {
       await context.queryClient.ensureQueryData({
-        queryKey: ['planning-cycles'],
-        queryFn: () => adminApi.listPlanningCycles(),
+        queryKey: ['cycles'],
+        queryFn: () => adminApi.listCycles(),
       });
     } catch (error) {
       if (isForbiddenError({ error })) {
@@ -26,6 +26,6 @@ export const Route = createFileRoute(
   },
 });
 
-function PlanningCyclesRoute() {
+function CyclesRoute() {
   return <PlanningAdmin />;
 }

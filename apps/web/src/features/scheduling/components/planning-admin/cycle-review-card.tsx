@@ -415,7 +415,7 @@ export function CycleReviewCard({ isReadOnly }: CycleReviewCardProps) {
                 <div>
                   <div className="font-medium text-sm">Calendar review</div>
                   <div className="text-muted-foreground text-xs">
-                    Confirm dates, slots, and event types before locking the
+                    Confirm dates, slots, and event types before sending the
                     package.
                   </div>
                 </div>

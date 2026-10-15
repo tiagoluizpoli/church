@@ -13,7 +13,7 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
   const cycleName = `Nav restructure check ${startDate}`;
 
   await page.goto('/scheduling/planning-cycles');
-  await expect(page).toHaveURL(/\/scheduling\/cycles\/?$/);
+  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
   await expect(page.getByText('Existing cycles')).toBeVisible();
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
@@ -34,14 +34,14 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
 
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
   await expect(page).toHaveURL(
-    /\/scheduling\/cycles\/(?!new$)(?!templates$)[^/]+$/,
+    /\/scheduling\/planning-cycles\/(?!new$)(?!templates$)[^/]+$/,
   );
   const cycleReviewUrl = page.url();
 
   // Opening the template library from a selected cycle changes the URL too
   // (previously `activeView` component state only).
   await page.getByTestId('open-template-library-button').click();
-  await expect(page).toHaveURL(/\/scheduling\/cycles\/templates\?/);
+  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/templates\?/);
   await expect(page.getByText('Saved templates')).toBeVisible();
 
   // Back/forward retrace: templates -> cycle review -> new -> index.
@@ -53,7 +53,7 @@ test('cycles, new, and $cycleId are distinct addressable URLs with working back/
   await expect(page).toHaveURL('/scheduling/planning-cycles/new');
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/scheduling\/cycles\/?$/);
+  await expect(page).toHaveURL(/\/scheduling\/planning-cycles\/?$/);
 
   await page.goForward();
   await expect(page).toHaveURL('/scheduling/planning-cycles/new');

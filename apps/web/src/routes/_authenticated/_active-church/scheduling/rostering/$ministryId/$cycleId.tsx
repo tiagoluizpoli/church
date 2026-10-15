@@ -28,8 +28,8 @@ function EventBuilderRoute() {
     reassignAssignment,
   } = useCycleBuilder({ cycleId, ministryId, teamId });
   const cycleQuery = useQuery({
-    queryKey: ['rostering-cycle', cycleId],
-    queryFn: () => adminApi.getPlanningCycle(cycleId),
+    queryKey: ['assign-cycle', cycleId],
+    queryFn: () => adminApi.getCycle(cycleId),
     retry: false,
     enabled: !teamId,
   });
@@ -64,7 +64,7 @@ function EventBuilderRoute() {
         cycleId={cycleId}
         ministryId={ministryId}
         teamId={teamId}
-        cycleName={teamId ? 'Team roster' : cycleQuery.data?.cycle.name}
+        cycleName={teamId ? 'Team schedule' : cycleQuery.data?.cycle.name}
         cycleStartDate={teamId ? undefined : cycleQuery.data?.cycle.startDate}
         cycleEndDate={teamId ? undefined : cycleQuery.data?.cycle.endDate}
         isPublishing={publish.isPending}

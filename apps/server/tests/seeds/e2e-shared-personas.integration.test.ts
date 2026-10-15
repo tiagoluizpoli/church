@@ -1,4 +1,10 @@
-import { account, member, ministryMembership, volunteer } from '@church/db';
+import {
+  account,
+  member,
+  ministryMembership,
+  sector,
+  volunteer,
+} from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -103,5 +109,20 @@ describe('E2E shared personas recipe', () => {
     expect(
       await qualifiedRoleIds({ volunteerId: personas.volunteer.volunteerId }),
     ).toHaveLength(1);
+  });
+
+  it('gives its Worship Ministry a Sector, exposed by key', async () => {
+    const { church, ministries } = await loadSharedPersonas();
+
+    const rows = await testDb
+      .select({ id: sector.id, ministryId: sector.ministryId })
+      .from(sector)
+      .where(eq(sector.churchId, church.id));
+    expect(rows).toEqual([
+      {
+        id: ministries.worship.sectors.main.id,
+        ministryId: ministries.worship.id,
+      },
+    ]);
   });
 });

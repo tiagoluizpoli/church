@@ -4,7 +4,6 @@ import {
   event,
   ministryMembership,
   ministryMembershipRole,
-  ministryMembershipTeam,
   ministryParticipation,
   shift,
   shiftRequirement,
@@ -69,22 +68,6 @@ async function qualifiedRoleIds({
   return rows.map((row) => row.roleId).sort();
 }
 
-interface TeamIdInput {
-  teamId: string;
-}
-
-async function teamMembers({ teamId }: TeamIdInput): Promise<string[]> {
-  const rows = await testDb
-    .select({ volunteerId: ministryMembership.volunteerId })
-    .from(ministryMembershipTeam)
-    .innerJoin(
-      ministryMembership,
-      eq(ministryMembership.id, ministryMembershipTeam.ministryMembershipId),
-    )
-    .where(eq(ministryMembershipTeam.teamId, teamId));
-  return rows.map((row) => row.volunteerId).sort();
-}
-
 interface EventIdInput {
   eventId: string;
 }
@@ -143,7 +126,7 @@ describe('assign-board E2E journey recipe', () => {
         shiftId: shiftRequirement.shiftId,
         roleId: shiftRequirement.roleId,
         peopleNeeded: shiftRequirement.peopleNeeded,
-        teamId: shiftRequirement.teamId,
+        sectorId: shiftRequirement.sectorId,
       })
       .from(shiftRequirement)
       .where(eq(shiftRequirement.churchId, journey.church.id));
@@ -153,25 +136,25 @@ describe('assign-board E2E journey recipe', () => {
           shiftId: service.shiftId,
           roleId: worship.roles.usher.id,
           peopleNeeded: 2,
-          teamId: null,
+          sectorId: worship.sectors.main.id,
         },
         {
           shiftId: teamService.shiftId,
           roleId: worship.roles.greeter.id,
           peopleNeeded: 1,
-          teamId: worship.teams.alpha.id,
+          sectorId: worship.sectors.main.id,
         },
         {
           shiftId: teamService.shiftId,
           roleId: worship.roles.usher.id,
           peopleNeeded: 1,
-          teamId: null,
+          sectorId: worship.sectors.main.id,
         },
         {
           shiftId: assignedService.shiftId,
           roleId: worship.roles.host.id,
           peopleNeeded: 3,
-          teamId: null,
+          sectorId: worship.sectors.main.id,
         },
       ]),
     );
@@ -209,9 +192,6 @@ describe('assign-board E2E journey recipe', () => {
         volunteerId: journey.personas.leader.volunteerId,
       }),
     ).toEqual([]);
-    expect(await teamMembers({ teamId: worship.teams.alpha.id })).toEqual(
-      greeters.sort(),
-    );
   });
 
   it('seeds the assigned service with a pending, a confirmed and a declined Host', async () => {
@@ -314,7 +294,7 @@ describe('assign-board E2E journey recipe', () => {
 });
 
 describe('assign-qualification E2E journey recipe', () => {
-  it('makes Grace the only qualified Greeter in the Team Alpha the TeamLeader leads', async () => {
+  it('qualifies Grace and Ada for both Roles, the Volunteer for Usher, and Ursula for nothing', async () => {
     const journey = await loadQualification({ anchor: ANCHOR });
     const { worship } = journey.ministries;
     const { grace, ada, ursula } = journey.pool;
@@ -330,34 +310,9 @@ describe('assign-qualification E2E journey recipe', () => {
     );
     expect(
       await qualifiedRoleIds({
-        volunteerId: journey.personas.teamLeader.volunteerId,
+        volunteerId: journey.personas.volunteer.volunteerId,
       }),
     ).toEqual([worship.roles.usher.id]);
-
-    expect(await teamMembers({ teamId: worship.teams.alpha.id })).toEqual(
-      [
-        grace.volunteerId,
-        ursula.volunteerId,
-        journey.personas.teamLeader.volunteerId,
-      ].sort(),
-    );
-    const [leadership] = await testDb
-      .select({ accessLevel: ministryMembershipTeam.accessLevel })
-      .from(ministryMembershipTeam)
-      .innerJoin(
-        ministryMembership,
-        eq(ministryMembership.id, ministryMembershipTeam.ministryMembershipId),
-      )
-      .where(
-        eq(
-          ministryMembership.volunteerId,
-          journey.personas.teamLeader.volunteerId,
-        ),
-      );
-    expect(leadership?.accessLevel).toBe('leader');
-    expect(
-      await teamMembers({ teamId: journey.ministries.care.teams.care.id }),
-    ).toEqual([]);
   });
 
   it('starts its future Event draft and availability-requested, dated from the anchor', async () => {
@@ -375,9 +330,8 @@ describe('assign-qualification E2E journey recipe', () => {
     expect(shiftRow?.shift.startTime.toISOString()).toBe(
       '2027-03-11T12:00:00.000Z',
     );
-    expect(journey.event.requirements.greeter.teamId).toBe(
-      journey.ministries.worship.teams.alpha.id,
-    );
-    expect(journey.event.requirements.usher.teamId).toBeNull();
+    const { sectors } = journey.ministries.worship;
+    expect(journey.event.requirements.greeter.sectorId).toBe(sectors.main.id);
+    expect(journey.event.requirements.usher.sectorId).toBe(sectors.main.id);
   });
 });

@@ -1,10 +1,4 @@
-import {
-  cycle,
-  event,
-  ministry,
-  ministryMembership,
-  ministryMembershipTeam,
-} from '@church/db';
+import { cycle, event, ministry, ministryMembership } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -118,7 +112,7 @@ describe('usual-setup journey recipes (#329 cluster B)', () => {
     ]);
   });
 
-  it('volunteer-availability puts the leader in both Ministries and the TeamLeader in Worship alone', async () => {
+  it('volunteer-availability puts the leader in both Ministries and the Volunteer in Worship alone', async () => {
     const journey = await loadAvailability({
       journeyKey: 'alpha',
       anchor: ANCHOR,
@@ -141,32 +135,12 @@ describe('usual-setup journey recipes (#329 cluster B)', () => {
     ).toEqual([worship.roles.usher.id, care.roles.careHost.id].sort());
     expect(
       await ministryAccessLevels({
-        volunteerId: journey.personas.teamLeader.volunteerId,
+        volunteerId: journey.personas.volunteer.volunteerId,
       }),
     ).toEqual({ [worship.id]: 'volunteer' });
-
-    const teamLeaderTeams = await testDb
-      .select({
-        teamId: ministryMembershipTeam.teamId,
-        accessLevel: ministryMembershipTeam.accessLevel,
-      })
-      .from(ministryMembershipTeam)
-      .innerJoin(
-        ministryMembership,
-        eq(ministryMembership.id, ministryMembershipTeam.ministryMembershipId),
-      )
-      .where(
-        eq(
-          ministryMembership.volunteerId,
-          journey.personas.teamLeader.volunteerId,
-        ),
-      );
-    expect(teamLeaderTeams).toEqual([
-      { teamId: worship.teams.alpha.id, accessLevel: 'leader' },
-    ]);
   });
 
-  it('live-changes qualifies the owner and the TeamLeader for Usher and keeps the leader unassigned', async () => {
+  it('live-changes qualifies the owner and the Volunteer for Usher and keeps the leader unassigned', async () => {
     const journey = await loadLiveChanges({
       journeyKey: 'alpha',
       anchor: ANCHOR,
@@ -180,7 +154,7 @@ describe('usual-setup journey recipes (#329 cluster B)', () => {
     ).toEqual([usherId]);
     expect(
       await qualifiedRoleIds({
-        volunteerId: journey.personas.teamLeader.volunteerId,
+        volunteerId: journey.personas.volunteer.volunteerId,
       }),
     ).toEqual([usherId]);
     expect(

@@ -18,18 +18,16 @@ export const VOLUNTEER_AVAILABILITY_JOURNEY_SCHEMA =
     ministries: z.object({
       worship: assignMinistrySchema({
         roles: ['usher'],
-        teams: ['alpha'],
         sectors: ['stage'],
       }),
       care: assignMinistrySchema({
         roles: ['careHost'],
-        teams: ['care'],
         sectors: ['lobby'],
       }),
     }),
     personas: z.object({
       leader: ASSIGN_PERSONA_SCHEMA,
-      teamLeader: ASSIGN_PERSONA_SCHEMA,
+      volunteer: ASSIGN_PERSONA_SCHEMA,
     }),
   });
 

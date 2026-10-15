@@ -3,8 +3,8 @@ import {
   invitation,
   member,
   ministryMembership,
-  ministryMembershipTeam,
   organization,
+  sector,
   user,
   volunteer,
 } from '@church/db';
@@ -46,12 +46,12 @@ const PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Usher', greeter: 'Greeter' },
-      teams: { alpha: 'Equipe Alpha' },
+      sectors: { stage: 'Palco' },
     },
     care: {
       name: 'Cuidado',
       roles: { careHost: 'Care Host' },
-      teams: { care: 'Equipe Cuidado' },
+      sectors: { lobby: 'Recepção' },
     },
   },
   personas: {
@@ -63,11 +63,10 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'leader',
           roles: ['usher', 'greeter'],
-          teams: [],
         },
       ],
     },
-    teamLeader: {
+    usher: {
       name: 'Tomas Reis',
       churchAccessLevel: 'member',
       memberships: [
@@ -75,7 +74,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [{ team: 'alpha', accessLevel: 'leader' }],
         },
       ],
     },
@@ -87,13 +85,11 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['greeter'],
-          teams: [],
         },
         {
           ministry: 'care',
           accessLevel: 'volunteer',
           roles: ['careHost'],
-          teams: [{ team: 'care', accessLevel: 'member' }],
         },
       ],
     },
@@ -106,7 +102,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher', 'greeter'],
-          teams: [{ team: 'alpha', accessLevel: 'member' }],
         },
       ],
     },
@@ -117,7 +112,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: [],
-          teams: [{ team: 'alpha', accessLevel: 'member' }],
         },
       ],
     },
@@ -204,7 +198,7 @@ describe('Assign Church base for E2E journey recipes', () => {
     expect(roles).toEqual(
       expect.arrayContaining([
         { userId: graph.personas.leader.userId, role: 'admin' },
-        { userId: graph.personas.teamLeader.userId, role: 'member' },
+        { userId: graph.personas.usher.userId, role: 'member' },
         { userId: graph.personas.volunteer.userId, role: 'member' },
         { userId: graph.pool.grace.userId, role: 'member' },
       ]),
@@ -233,10 +227,10 @@ describe('Assign Church base for E2E journey recipes', () => {
         }),
       ).toBe(true);
     }
-    expect(graph.personas.teamLeader.email).toBe('teamleader@talpha.e2e.test');
+    expect(graph.personas.usher.email).toBe('usher@talpha.e2e.test');
   });
 
-  it('qualifies each Volunteer for exactly its planned Roles and Teams', async () => {
+  it('qualifies each Volunteer for exactly its planned Roles', async () => {
     const graph = await build({ journeyKey: 'alpha', plan: PLAN });
     const { worship, care } = graph.ministries;
 
@@ -262,28 +256,21 @@ describe('Assign Church base for E2E journey recipes', () => {
       );
     expect(leaderMembership?.accessLevel).toBe('leader');
 
-    const alphaTeam = await testDb
+    const sectorRows = await testDb
       .select({
-        volunteerId: ministryMembership.volunteerId,
-        accessLevel: ministryMembershipTeam.accessLevel,
+        id: sector.id,
+        ministryId: sector.ministryId,
+        name: sector.name,
       })
-      .from(ministryMembershipTeam)
-      .innerJoin(
-        ministryMembership,
-        eq(ministryMembership.id, ministryMembershipTeam.ministryMembershipId),
-      )
-      .where(eq(ministryMembershipTeam.teamId, worship.teams.alpha.id));
-    expect(alphaTeam).toEqual(
+      .from(sector)
+      .where(eq(sector.churchId, graph.church.id));
+    expect(sectorRows).toEqual(
       expect.arrayContaining([
-        {
-          volunteerId: graph.personas.teamLeader.volunteerId,
-          accessLevel: 'leader',
-        },
-        { volunteerId: graph.pool.grace.volunteerId, accessLevel: 'member' },
-        { volunteerId: graph.pool.ursula.volunteerId, accessLevel: 'member' },
+        { id: worship.sectors.stage.id, ministryId: worship.id, name: 'Palco' },
+        { id: care.sectors.lobby.id, ministryId: care.id, name: 'Recepção' },
       ]),
     );
-    expect(alphaTeam).toHaveLength(3);
+    expect(sectorRows).toHaveLength(2);
   });
 
   it('declares root kinds that purge the whole graph', async () => {
@@ -340,7 +327,6 @@ describe('Assign Church base for E2E journey recipes', () => {
                   ministry: 'care',
                   accessLevel: 'volunteer',
                   roles: ['usher'],
-                  teams: [],
                 },
               ],
             },
@@ -383,16 +369,14 @@ const CHURCH_B_PLAN = {
     worship: {
       name: 'Louvor B',
       roles: { usher: 'Usher' },
-      teams: {},
+      sectors: { stage: 'Palco' },
     },
   },
   personas: {
     leader: {
       name: 'Bia Souza',
       churchAccessLevel: 'admin',
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
   },
   pool: {
@@ -403,7 +387,6 @@ const CHURCH_B_PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [],
         },
       ],
     },
@@ -448,7 +431,7 @@ function graphIds({ graph }: GraphIdsInput): string[] {
     ...Object.values(graph.ministries).flatMap((ministry) => [
       ministry.id,
       ...Object.values(ministry.roles).map((role) => role.id),
-      ...Object.values(ministry.teams).map((team) => team.id),
+      ...Object.values(ministry.sectors).map((sector) => sector.id),
     ]),
     ...[...Object.values(graph.personas), ...Object.values(graph.pool)].flatMap(
       (row) => [row.userId, row.volunteerId],
@@ -482,7 +465,7 @@ describe('scoped Assign Churches', () => {
       churchKinds: ['church'],
       userKinds: [
         'persona-user:leader',
-        'persona-user:teamLeader',
+        'persona-user:usher',
         'persona-user:volunteer',
         'pool-user:grace',
         'pool-user:ursula',

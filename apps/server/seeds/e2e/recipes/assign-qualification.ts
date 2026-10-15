@@ -23,17 +23,13 @@ import {
 
 /**
  * Qualification governs candidacy (#329: qualification.spec): one Worship
- * cycle with one future, draft Event at `availability_requested`, needing a Team
- * Alpha Greeter and an Usher. Its candidates make the rule separable:
+ * cycle with one future, draft Event at `availability_requested`, needing a
+ * Greeter and an Usher. Its candidates make the rule separable:
  *
- * - Grace: qualified for both Roles, in Team Alpha — the only qualified
- *   Greeter the TeamLeader can schedule.
- * - Ada: qualified for both Roles, outside every Team.
- * - Ursula: in Team Alpha and the Ministry, qualified for nothing.
+ * - Grace and Ada: qualified for both Roles.
+ * - Ursula: in the Ministry, qualified for nothing.
  *
- * The TeamLeader leads Team Alpha and qualifies only as an Usher, so they
- * are no Greeter candidate themselves. A second Ministry's Team (Care) is a
- * Team the TeamLeader does not lead.
+ * The Volunteer qualifies only as an Usher, so they are no Greeter candidate.
  */
 
 const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.assignQualification;
@@ -45,23 +41,21 @@ const PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista', greeter: 'Acolhedor' },
-      teams: { alpha: 'Equipe Alfa' },
+      sectors: { main: 'Principal' },
     },
     care: {
       name: 'Cuidado',
       roles: { careHost: 'Anfitrião' },
-      teams: { care: 'Equipe Cuidado' },
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
     leader: {
       name: 'Lia Prado',
       churchAccessLevel: 'admin',
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
-    teamLeader: {
+    volunteer: {
       name: 'Tomás Reis',
       churchAccessLevel: 'member',
       memberships: [
@@ -69,7 +63,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [{ team: 'alpha', accessLevel: 'leader' }],
         },
       ],
     },
@@ -82,7 +75,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher', 'greeter'],
-          teams: [{ team: 'alpha', accessLevel: 'member' }],
         },
       ],
     },
@@ -93,7 +85,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher', 'greeter'],
-          teams: [],
         },
       ],
     },
@@ -104,7 +95,6 @@ const PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: [],
-          teams: [{ team: 'alpha', accessLevel: 'member' }],
         },
       ],
     },
@@ -161,9 +151,13 @@ export function createAssignQualificationRecipe({
         greeter: {
           roleId: worship.roles.greeter.id,
           peopleNeeded: 1,
-          teamId: worship.teams.alpha.id,
+          sectorId: worship.sectors.main.id,
         },
-        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
+        usher: {
+          roleId: worship.roles.usher.id,
+          peopleNeeded: 1,
+          sectorId: worship.sectors.main.id,
+        },
       },
     });
 

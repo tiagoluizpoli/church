@@ -19,7 +19,7 @@ interface JourneyInput {
   journey: AssignBoardJourney;
 }
 
-/** The team service's Team Alpha Greeter seat. */
+/** The second service's Greeter seat. */
 function teamGreeterCellTestId({ journey }: JourneyInput): string {
   const { teamService } = journey.events;
   return requirementCellTestId({

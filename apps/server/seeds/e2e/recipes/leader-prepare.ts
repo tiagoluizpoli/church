@@ -29,7 +29,6 @@ const PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: {},
       sectors: { stage: 'Palco' },
     },
   },
@@ -37,9 +36,7 @@ const PLAN = {
     leader: {
       name: 'Lia Prado',
       churchAccessLevel: 'admin',
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
   },
   pool: {},

@@ -17,14 +17,13 @@ export const LIVE_CHANGES_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
   ministries: z.object({
     worship: assignMinistrySchema({
       roles: ['usher'],
-      teams: ['alpha'],
       sectors: ['stage'],
     }),
   }),
   personas: z.object({
     leader: ASSIGN_PERSONA_SCHEMA,
     owner: ASSIGN_PERSONA_SCHEMA,
-    teamLeader: ASSIGN_PERSONA_SCHEMA,
+    volunteer: ASSIGN_PERSONA_SCHEMA,
   }),
 });
 

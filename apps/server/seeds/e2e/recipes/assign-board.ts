@@ -35,8 +35,8 @@ import {
  *
  * - `service`: a published Participation needing two Ushers, all open. The
  *   board's first requirement, which smoke and builder-event-time-block-focus fill.
- * - `teamService`: a draft Event at `availability_requested`, needing one Team
- *   Alpha Greeter and one Usher.
+ * - `teamService`: a draft Event at `availability_requested`, needing one
+ *   Greeter and one Usher.
  * - `assignedService`: read-only for every journey — a published Host seat
  *   for three, holding a pending, a confirmed and a declined assignment, so
  *   the accessibility scan covers assignment chips.
@@ -95,7 +95,6 @@ const HOST_MEMBERSHIP = {
   ministry: 'worship',
   accessLevel: 'volunteer',
   roles: ['host'],
-  teams: [],
 } as const satisfies AssignMinistryMembershipPlan;
 
 const PLAN = {
@@ -107,7 +106,7 @@ const PLAN = {
         greeter: 'Acolhedor',
         host: 'Anfitrião',
       },
-      teams: { alpha: 'Equipe Alfa' },
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
@@ -116,9 +115,7 @@ const PLAN = {
       churchAccessLevel: 'admin',
       // Leads the Ministry but qualifies for no Role, so every candidate on
       // the board is a pool Volunteer.
-      memberships: [
-        { ministry: 'worship', accessLevel: 'leader', roles: [], teams: [] },
-      ],
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
     },
   },
   pool: {
@@ -129,7 +126,6 @@ const PLAN = {
         ministry: 'worship',
         accessLevel: 'volunteer',
         roles: ['usher'],
-        teams: [],
       },
     }),
     ...poolPlan({
@@ -139,7 +135,6 @@ const PLAN = {
         ministry: 'worship',
         accessLevel: 'volunteer',
         roles: ['greeter'],
-        teams: [{ team: 'alpha', accessLevel: 'member' }],
       },
     }),
     hostPending: { name: 'Mariana Duarte', memberships: [HOST_MEMBERSHIP] },
@@ -216,7 +211,11 @@ export function createAssignBoardRecipe({
       eventStatus: 'draft',
       participationState: 'published',
       requirements: {
-        usher: { roleId: worship.roles.usher.id, peopleNeeded: 2 },
+        usher: {
+          roleId: worship.roles.usher.id,
+          peopleNeeded: 2,
+          sectorId: worship.sectors.main.id,
+        },
       },
     });
     const teamService = await buildAssignEvent({
@@ -236,9 +235,13 @@ export function createAssignBoardRecipe({
         greeter: {
           roleId: worship.roles.greeter.id,
           peopleNeeded: 1,
-          teamId: worship.teams.alpha.id,
+          sectorId: worship.sectors.main.id,
         },
-        usher: { roleId: worship.roles.usher.id, peopleNeeded: 1 },
+        usher: {
+          roleId: worship.roles.usher.id,
+          peopleNeeded: 1,
+          sectorId: worship.sectors.main.id,
+        },
       },
     });
 
@@ -256,7 +259,11 @@ export function createAssignBoardRecipe({
       eventStatus: 'scheduled',
       participationState: 'published',
       requirements: {
-        host: { roleId: worship.roles.host.id, peopleNeeded: 3 },
+        host: {
+          roleId: worship.roles.host.id,
+          peopleNeeded: 3,
+          sectorId: worship.sectors.main.id,
+        },
       },
     });
     const hostAssignments: HostAssignmentPlan[] = [

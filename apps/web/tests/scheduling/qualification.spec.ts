@@ -6,16 +6,15 @@ import {
 import { loadAssignQualificationJourney } from '@/tests/fixtures/journeys/assign-qualification';
 
 /**
- * 023 qualification + multi-team model.
+ * 023 qualification.
  *
  * These specs assert the *rule*, not the rendering: a volunteer becomes a
  * candidate for a shift because they hold the required role qualification, and
  * for no other reason. The assign-qualification recipe makes that separable:
- * the journey's own cycle has one Event needing a Team Alpha Greeter and an
- * Usher. Grace (Team Alpha) and Ada (no Team) are qualified for both Roles,
- * the TeamLeader only as an Usher, and `Ursula Unqualified` is an active
- * member of the same ministry and the same team as the TeamLeader, but holds
- * no qualification at all. Anything that lets her through is an eligibility
+ * the journey's own cycle has one Event needing a Greeter and an Usher.
+ * Grace and Ada are qualified for both Roles, the plain Volunteer only as an
+ * Usher, and `Ursula Unqualified` is an active member of the same ministry,
+ * but holds no qualification at all. Anything that lets her through is an eligibility
  * bug, not a styling one.
  */
 
@@ -49,7 +48,7 @@ test.describe('qualification governs candidacy', () => {
       rail.getByText(journey.pool.ursula.name, { exact: false }),
     ).toHaveCount(0);
     // The journey owns every candidate, so the rail is exactly the three
-    // qualified members: Grace, Ada and the TeamLeader (an Usher).
+    // qualified members: Grace, Ada and the Volunteer (an Usher).
     await expect(rail.getByTestId('volunteer-card')).toHaveCount(3);
     await expect(
       rail.getByText(QUALIFIED_SHORT_NAME, { exact: false }),
@@ -81,12 +80,10 @@ test.describe('qualification governs candidacy', () => {
   });
 });
 
-test.describe('a TeamLeader is a plain Volunteer', () => {
-  test('sees no Scheduling work and no Team schedule', async ({
-    page,
-  }, testInfo) => {
+test.describe('a plain Volunteer', () => {
+  test('sees no Scheduling work', async ({ page }, testInfo) => {
     const journey = loadAssignQualificationJourney({ testInfo });
-    await signInPersonaPage({ page, persona: journey.personas.teamLeader });
+    await signInPersonaPage({ page, persona: journey.personas.volunteer });
 
     await page.goto('/scheduling');
     await expect(page.getByTestId('scheduling-capability-index')).toBeVisible({

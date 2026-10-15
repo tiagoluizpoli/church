@@ -19,14 +19,17 @@ export const VOLUNTEER_TRANSFER_JOURNEY_SCHEMA = z.object({
   churchA: z.object({
     church: ASSIGN_CHURCH_SCHEMA,
     ministries: z.object({
-      worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
+      worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
     }),
     personas: z.object({ admin: ASSIGN_PERSONA_SCHEMA }),
   }),
   churchB: z.object({
     church: ASSIGN_CHURCH_SCHEMA,
     ministries: z.object({
-      hospitality: assignMinistrySchema({ roles: ['porter'], teams: [] }),
+      hospitality: assignMinistrySchema({
+        roles: ['porter'],
+        sectors: ['main'],
+      }),
     }),
     personas: z.object({
       admin: ASSIGN_PERSONA_SCHEMA,

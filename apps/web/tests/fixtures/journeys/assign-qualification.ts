@@ -20,13 +20,13 @@ export const ASSIGN_QUALIFICATION_JOURNEY_SCHEMA =
     ministries: z.object({
       worship: assignMinistrySchema({
         roles: ['usher', 'greeter'],
-        teams: ['alpha'],
+        sectors: ['main'],
       }),
-      care: assignMinistrySchema({ roles: ['careHost'], teams: ['care'] }),
+      care: assignMinistrySchema({ roles: ['careHost'], sectors: ['main'] }),
     }),
     personas: z.object({
       leader: ASSIGN_PERSONA_SCHEMA,
-      teamLeader: ASSIGN_PERSONA_SCHEMA,
+      volunteer: ASSIGN_PERSONA_SCHEMA,
     }),
     pool: z.object({
       grace: ASSIGN_POOL_VOLUNTEER_SCHEMA,

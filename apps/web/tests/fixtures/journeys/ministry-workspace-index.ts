@@ -14,8 +14,8 @@ const RECIPE_NAME = 'ministry-workspace-index';
 export const MINISTRY_WORKSPACE_INDEX_JOURNEY_SCHEMA =
   ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     ministries: z.object({
-      worship: assignMinistrySchema({ roles: [], teams: [] }),
-      care: assignMinistrySchema({ roles: [], teams: [] }),
+      worship: assignMinistrySchema({ roles: [], sectors: ['main'] }),
+      care: assignMinistrySchema({ roles: [], sectors: ['main'] }),
     }),
     personas: z.object({
       admin: ASSIGN_PERSONA_SCHEMA,

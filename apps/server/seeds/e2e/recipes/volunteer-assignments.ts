@@ -146,7 +146,6 @@ export function createVolunteerAssignmentsRecipe({
       id: idOf({ kind: 'ministry-membership' }),
       ministryAccessLevel: 'volunteer',
       roleIds: [role.id],
-      teams: [],
     });
 
     const eventDay = addCalendarDays({ day: anchor, days: EVENT_OFFSET_DAYS });

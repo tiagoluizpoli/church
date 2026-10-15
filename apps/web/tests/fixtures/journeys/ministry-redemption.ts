@@ -23,8 +23,8 @@ export const MINISTRY_REDEMPTION_JOURNEY_SCHEMA = z.object({
   churchA: z.object({
     church: ASSIGN_CHURCH_SCHEMA,
     ministries: z.object({
-      worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
-      care: assignMinistrySchema({ roles: ['careHost'], teams: [] }),
+      worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
+      care: assignMinistrySchema({ roles: ['careHost'], sectors: ['main'] }),
     }),
     personas: z.object({ admin: ASSIGN_PERSONA_SCHEMA }),
   }),

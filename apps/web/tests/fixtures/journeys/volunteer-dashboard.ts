@@ -15,8 +15,8 @@ const RECIPE_NAME = 'volunteer-dashboard';
 export const VOLUNTEER_DASHBOARD_JOURNEY_SCHEMA =
   ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     ministries: z.object({
-      worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
-      care: assignMinistrySchema({ roles: ['careHost'], teams: ['care'] }),
+      worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
+      care: assignMinistrySchema({ roles: ['careHost'], sectors: ['main'] }),
     }),
     personas: z.object({
       leader: ASSIGN_PERSONA_SCHEMA,

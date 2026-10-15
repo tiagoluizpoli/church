@@ -18,7 +18,7 @@ export const ACTIVE_CHURCH_SWITCHING_JOURNEY_SCHEMA = z.object({
   churchA: z.object({
     church: ASSIGN_CHURCH_SCHEMA,
     ministries: z.object({
-      worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
+      worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
     }),
     personas: z.object({ dualMember: ASSIGN_PERSONA_SCHEMA }),
   }),

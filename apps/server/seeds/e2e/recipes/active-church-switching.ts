@@ -40,7 +40,7 @@ const CHURCH_A_PLAN = {
     worship: {
       name: 'Louvor',
       roles: { usher: 'Recepcionista' },
-      teams: {},
+      sectors: { main: 'Principal' },
     },
   },
   personas: {
@@ -52,7 +52,6 @@ const CHURCH_A_PLAN = {
           ministry: 'worship',
           accessLevel: 'volunteer',
           roles: ['usher'],
-          teams: [],
         },
       ],
     },

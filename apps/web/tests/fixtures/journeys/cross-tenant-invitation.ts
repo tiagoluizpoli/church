@@ -14,7 +14,7 @@ const RECIPE_NAME = 'cross-tenant-invitation';
 const TENANT_SCHEMA = z.object({
   church: ASSIGN_CHURCH_SCHEMA,
   ministries: z.object({
-    worship: assignMinistrySchema({ roles: [], teams: [] }),
+    worship: assignMinistrySchema({ roles: [], sectors: ['main'] }),
   }),
   personas: z.object({ admin: ASSIGN_PERSONA_SCHEMA }),
 });

@@ -95,9 +95,9 @@ describe('stripCrossChurchLinkParam', () => {
   it('drops the church param while keeping the rest of the destination', () => {
     expect(
       stripCrossChurchLinkParam({
-        href: '/scheduling/planning-cycles?church=church-b&view=board#upcoming',
+        href: '/cycles?church=church-b&view=board#upcoming',
       }),
-    ).toBe('/scheduling/planning-cycles?view=board#upcoming');
+    ).toBe('/cycles?view=board#upcoming');
   });
 
   it('leaves a destination with no church param untouched', () => {

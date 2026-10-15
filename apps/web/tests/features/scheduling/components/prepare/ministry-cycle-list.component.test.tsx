@@ -305,7 +305,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       for (const link of links) {
         expect(link).toHaveAttribute(
           'href',
-          expect.stringContaining('/scheduling/rostering/ministry-1/cycle-2'),
+          expect.stringContaining('/schedules/ministry-1/cycle-2/assign'),
         );
       }
 

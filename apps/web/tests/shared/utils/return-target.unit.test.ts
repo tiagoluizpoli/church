@@ -3,9 +3,7 @@ import { validateInternalReturnTarget } from '@/shared/utils/return-target';
 
 describe('validateInternalReturnTarget', () => {
   it('accepts a same-origin absolute path', () => {
-    expect(
-      validateInternalReturnTarget({ target: '/scheduling/planning-cycles' }),
-    ).toBe('/scheduling/planning-cycles');
+    expect(validateInternalReturnTarget({ target: '/cycles' })).toBe('/cycles');
   });
 
   it('preserves path, query and hash exactly', () => {

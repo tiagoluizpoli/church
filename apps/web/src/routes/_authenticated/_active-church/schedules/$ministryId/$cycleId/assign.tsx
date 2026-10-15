@@ -8,7 +8,7 @@ import { useSchedulingAccessFallback } from '@/shared/hooks/use-scheduling-acces
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/rostering/$ministryId/$cycleId',
+  '/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign',
 )({
   component: EventBuilderRoute,
   validateSearch: z.object({ teamId: z.string().optional() }),

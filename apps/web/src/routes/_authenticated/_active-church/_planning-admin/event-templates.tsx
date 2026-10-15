@@ -11,7 +11,7 @@ const templatesSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/planning-cycles/templates',
+  '/_authenticated/_active-church/_planning-admin/event-templates',
 )({
   validateSearch: (search) => templatesSearchSchema.parse(search),
   component: TemplateLibraryRoute,
@@ -44,10 +44,10 @@ function TemplateLibraryRoute() {
 
   const backTo = returnTo
     ? ({
-        to: '/scheduling/planning-cycles/$cycleId',
+        to: '/cycles/$cycleId',
         params: { cycleId: returnTo },
       } as const)
-    : ({ to: '/scheduling/planning-cycles' } as const);
+    : ({ to: '/cycles' } as const);
 
   function handleTemplateEditorOpenChange(open: boolean) {
     setTemplateEditorOpen(open);

@@ -17,7 +17,7 @@ import { StatPill } from '@/features/scheduling/components/prepare/stat-pill';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/tailoring/',
+  '/_authenticated/_active-church/schedules/',
 )({
   component: PrepareMinistryListRoute,
 });
@@ -190,7 +190,7 @@ function PrepareMinistryListRoute() {
           rows={rows}
           onSelectMinistry={({ ministryId }) =>
             navigate({
-              to: '/scheduling/tailoring/$ministryId',
+              to: '/schedules/$ministryId',
               params: { ministryId },
             })
           }

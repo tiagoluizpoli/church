@@ -10,8 +10,8 @@ export interface BreadcrumbSegmentOverride {
 /**
  * Resolves the breadcrumb label for the cycle-id route segment.
  * `useParams({ strict: false })` only yields `cycleId` when the matched
- * route is `/scheduling/planning-cycles/$cycleId` — the sibling `new` and
- * `templates` routes are separate static routes with no such param, so no
+ * route is `/cycles/$cycleId` — the sibling `new` route and
+ * `/event-templates` are separate static routes with no such param, so no
  * manual segment/path exclusion list is needed here.
  */
 export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {

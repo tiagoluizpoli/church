@@ -64,7 +64,7 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 function renderCycles() {
-  return renderRoute({ initialPath: '/scheduling/planning-cycles' });
+  return renderRoute({ initialPath: '/cycles' });
 }
 
 describe('the Active Church guard (_active-church)', () => {
@@ -94,7 +94,7 @@ describe('the Active Church guard (_active-church)', () => {
       // Seeded through the route-render helper: the zone reaches the layout's
       // TimezoneProvider only via the entry gate, as in the real app.
       renderRoute({
-        initialPath: '/scheduling/planning-cycles',
+        initialPath: '/cycles',
         churchTimezone: 'America/Sao_Paulo',
       });
 
@@ -148,9 +148,7 @@ describe('the Active Church guard (_active-church)', () => {
       );
 
       // A link into the other Church asks once, then switches for real.
-      await act(() =>
-        router.history.push('/scheduling/planning-cycles?church=church-2'),
-      );
+      await act(() => router.history.push('/cycles?church=church-2'));
       await user.click(
         await screen.findByRole('button', { name: /switch to tokyo church/i }),
       );
@@ -160,9 +158,7 @@ describe('the Active Church guard (_active-church)', () => {
           '04/01/2027 21:00',
         );
       });
-      expect(router.state.location.pathname).toBe(
-        '/scheduling/planning-cycles',
-      );
+      expect(router.state.location.pathname).toBe('/cycles');
     });
 
     it('fails the route instead of guessing a zone when a resolved status carries none', async () => {
@@ -324,7 +320,7 @@ describe('the Active Church guard (_active-church)', () => {
   describe('cross-Church deep links', () => {
     function renderWithChurchParam(church: string) {
       return renderRoute({
-        initialPath: `/scheduling/planning-cycles?church=${church}`,
+        initialPath: `/cycles?church=${church}`,
       });
     }
 
@@ -343,9 +339,7 @@ describe('the Active Church guard (_active-church)', () => {
       const { router } = renderWithChurchParam('church-1');
 
       expect(await screen.findByText('Existing cycles')).toBeVisible();
-      expect(router.state.location.pathname).toBe(
-        '/scheduling/planning-cycles',
-      );
+      expect(router.state.location.pathname).toBe('/cycles');
       expect(selectActiveChurch).not.toHaveBeenCalled();
     });
 
@@ -373,7 +367,7 @@ describe('the Active Church guard (_active-church)', () => {
       });
       expect(router.state.location.search).toEqual({
         target: 'church-2',
-        redirect: '/scheduling/planning-cycles',
+        redirect: '/cycles',
       });
       expect(listCycles).not.toHaveBeenCalled();
     });
@@ -404,9 +398,7 @@ describe('the Active Church guard (_active-church)', () => {
         });
       });
       expect(await screen.findByText('Existing cycles')).toBeVisible();
-      expect(router.state.location.pathname).toBe(
-        '/scheduling/planning-cycles',
-      );
+      expect(router.state.location.pathname).toBe('/cycles');
     });
 
     it('falls back to the unresolved-status redirect when the auto-select does not resolve the target Church', async () => {

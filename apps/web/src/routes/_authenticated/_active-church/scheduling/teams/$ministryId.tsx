@@ -19,7 +19,7 @@ import { useSchedulingAccessFallback } from '@/shared/hooks/use-scheduling-acces
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/rostering/$ministryId/',
+  '/_authenticated/_active-church/scheduling/teams/$ministryId',
 )({
   component: TeamScheduleCyclesRoute,
   validateSearch: z.object({ teamId: z.string() }),
@@ -81,7 +81,7 @@ function TeamScheduleCyclesRoute() {
               </CardContent>
               <CardFooter>
                 <Link
-                  to="/scheduling/rostering/$ministryId/$cycleId"
+                  to="/schedules/$ministryId/$cycleId/assign"
                   params={{ ministryId, cycleId: cycle.cycleId }}
                   search={{ teamId }}
                   className={buttonVariants({ variant: 'outline', size: 'sm' })}

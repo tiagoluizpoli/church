@@ -133,7 +133,7 @@ function SchedulingEntryCard({
         </CardContent>
         <CardFooter>
           <Link
-            to="/scheduling/planning-cycles"
+            to="/cycles"
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
           >
             Open church planning
@@ -156,7 +156,7 @@ function SchedulingEntryCard({
       </CardContent>
       <CardFooter>
         <Link
-          to="/scheduling/tailoring/$ministryId"
+          to="/schedules/$ministryId"
           params={{ ministryId: entry.ministryId }}
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
@@ -183,7 +183,7 @@ function TeamScheduleEntryCard({
       </CardContent>
       <CardFooter>
         <Link
-          to="/scheduling/rostering/$ministryId"
+          to="/scheduling/teams/$ministryId"
           params={{ ministryId: entry.ministryId }}
           search={{ teamId: entry.teamId }}
           className={buttonVariants({ variant: 'outline', size: 'sm' })}

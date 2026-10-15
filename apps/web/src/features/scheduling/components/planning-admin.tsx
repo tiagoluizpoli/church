@@ -27,7 +27,7 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 
-const CYCLES_PATH = '/scheduling/planning-cycles';
+const CYCLES_PATH = '/cycles';
 
 interface IsReviewingCyclePathInput {
   pathname: string;
@@ -40,7 +40,7 @@ function isReviewingCyclePath({
     pathname !== CYCLES_PATH &&
     pathname !== `${CYCLES_PATH}/` &&
     !pathname.endsWith('/new') &&
-    !pathname.endsWith('/templates')
+    !pathname.endsWith('/event-templates')
   );
 }
 
@@ -58,7 +58,7 @@ function describePlanningIntro({
   pathname,
   selectedCycleName,
 }: DescribePlanningIntroInput): PlanningIntroContent {
-  if (pathname.endsWith('/templates')) {
+  if (pathname.endsWith('/event-templates')) {
     return {
       title: 'Template library',
       description:
@@ -114,7 +114,7 @@ function PlanningAdminLayout() {
   }
 
   const pathname = location.pathname;
-  const isTemplatesView = pathname.endsWith('/templates');
+  const isTemplatesView = pathname.endsWith('/event-templates');
   const isPlainListView =
     pathname === CYCLES_PATH || pathname === `${CYCLES_PATH}/`;
   const { nameAndStatus } = useCycleHeader();
@@ -175,7 +175,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         data-testid="cycles-actions-row"
       >
         <Link
-          to="/scheduling/planning-cycles/templates"
+          to="/event-templates"
           search={
             isReviewingCycle && selectedCycleId
               ? { returnTo: selectedCycleId }
@@ -202,7 +202,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         ) : null}
         {isReviewingCycle ? null : (
           <Link
-            to="/scheduling/planning-cycles/new"
+            to="/cycles/new"
             data-testid="open-create-cycle-dialog-button"
             className={buttonVariants({ variant: 'default' })}
           >

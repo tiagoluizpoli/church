@@ -255,7 +255,7 @@ function CycleRowActions({
       </Button>
       {cycle.availabilityRequestedForAny ? (
         <Link
-          to="/scheduling/rostering/$ministryId/$cycleId"
+          to="/schedules/$ministryId/$cycleId/assign"
           params={{ ministryId, cycleId: cycle.id }}
           data-testid={`ministry-cycle-assign-link-${cycle.id}`}
           className={buttonVariants({ variant: 'outline', size })}

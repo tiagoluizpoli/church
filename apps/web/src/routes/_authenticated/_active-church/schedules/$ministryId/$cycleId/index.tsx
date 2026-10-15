@@ -49,7 +49,7 @@ import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/tailoring/$ministryId/$cycleId',
+  '/_authenticated/_active-church/schedules/$ministryId/$cycleId/',
 )({
   component: PrepareWorkspaceRoute,
 });
@@ -611,7 +611,7 @@ function PrepareWorkspaceRoute() {
               </div>
               <div className="flex items-center gap-2">
                 <Link
-                  to="/scheduling/tailoring/$ministryId"
+                  to="/schedules/$ministryId"
                   params={{ ministryId }}
                   search={{ browse: true }}
                   data-testid="browse-all-cycles-link"
@@ -620,7 +620,7 @@ function PrepareWorkspaceRoute() {
                   Browse cycles
                 </Link>
                 <Link
-                  to="/scheduling/rostering/$ministryId/$cycleId"
+                  to="/schedules/$ministryId/$cycleId/assign"
                   params={{ ministryId, cycleId }}
                   data-testid="open-assign-link"
                   className={buttonVariants({ variant: 'outline' })}

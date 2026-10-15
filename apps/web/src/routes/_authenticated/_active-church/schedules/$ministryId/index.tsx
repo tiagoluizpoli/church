@@ -33,7 +33,7 @@ const cycleListSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/tailoring/$ministryId/',
+  '/_authenticated/_active-church/schedules/$ministryId/',
 )({
   validateSearch: (search) => cycleListSearchSchema.parse(search),
   component: PrepareMinistryCycleListRoute,
@@ -130,7 +130,7 @@ function PrepareMinistryCycleListRoute() {
     if (!onlyCycle) return;
 
     navigate({
-      to: '/scheduling/tailoring/$ministryId/$cycleId',
+      to: '/schedules/$ministryId/$cycleId',
       params: { ministryId, cycleId: onlyCycle.id },
       replace: true,
     });
@@ -233,7 +233,7 @@ function PrepareMinistryCycleListRoute() {
         >
           This is the only open cycle for this ministry — taking you there now.{' '}
           <Link
-            to="/scheduling/tailoring/$ministryId"
+            to="/schedules/$ministryId"
             params={{ ministryId }}
             search={{ browse: true }}
             data-testid="prepare-browse-all-cycles-link"
@@ -254,7 +254,7 @@ function PrepareMinistryCycleListRoute() {
           }
           onSelectCycle={({ cycleId }) =>
             navigate({
-              to: '/scheduling/tailoring/$ministryId/$cycleId',
+              to: '/schedules/$ministryId/$cycleId',
               params: { ministryId, cycleId },
             })
           }

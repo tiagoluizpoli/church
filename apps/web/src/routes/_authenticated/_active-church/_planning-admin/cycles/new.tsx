@@ -10,7 +10,7 @@ import {
 } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/planning-cycles/new',
+  '/_authenticated/_active-church/_planning-admin/cycles/new',
 )({
   component: NewCycleRoute,
 });
@@ -25,7 +25,7 @@ function NewCycleRoute() {
   useEffect(() => {
     if (selectedCycleId && selectedCycleId !== selectionOnEntry.current) {
       navigate({
-        to: '/scheduling/planning-cycles/$cycleId',
+        to: '/cycles/$cycleId',
         params: { cycleId: selectedCycleId },
       });
     }
@@ -33,7 +33,7 @@ function NewCycleRoute() {
 
   function handleOpenChange(open: boolean) {
     if (!open) {
-      navigate({ to: '/scheduling/planning-cycles' });
+      navigate({ to: '/cycles' });
     }
   }
 

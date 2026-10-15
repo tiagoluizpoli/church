@@ -53,7 +53,7 @@ describe('useActiveChurchTabSync', () => {
   });
 
   it('clears cache, navigates per route policy, and dismisses the block on continue', async () => {
-    mockHref = '/scheduling/planning-cycles?view=board';
+    mockHref = '/cycles?view=board';
     const queryClient = new QueryClient();
     queryClient.setQueryData(['cycles'], { church: 'church-a' });
     const { result } = renderTabSync(queryClient);

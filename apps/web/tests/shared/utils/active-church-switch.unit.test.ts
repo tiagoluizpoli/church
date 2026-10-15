@@ -44,12 +44,14 @@ describe('active Church route policy', () => {
     ],
     ['/notifications', '/dashboard'],
     ['/volunteer/availability', '/dashboard'],
-    ['/scheduling/planning-cycles', '/scheduling/planning-cycles'],
-    ['/scheduling/planning-cycles/', '/scheduling/planning-cycles/'],
-    ['/scheduling/tailoring/', '/scheduling/tailoring/'],
-    ['/scheduling/planning-cycles/cycle-1', '/dashboard'],
+    ['/cycles', '/cycles'],
+    ['/cycles/', '/cycles/'],
+    ['/schedules/', '/schedules/'],
+    ['/event-templates', '/event-templates'],
+    ['/schedules/ministry-1/cycle-1/assign', '/dashboard'],
+    ['/cycles/cycle-1', '/dashboard'],
     ['/scheduling/', '/dashboard'],
-    ['/scheduling/tailoring/ministry-1', '/dashboard'],
+    ['/schedules/ministry-1', '/dashboard'],
     ['/unrecognized-route', '/dashboard'],
     ['https://untrusted.example/dashboard', '/dashboard'],
   ])('resolves %s to %s', (destination, expectedDestination) => {
@@ -65,7 +67,7 @@ describe('active Church route policy', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: ['dashboard'],
-        destination: '/scheduling/planning-cycles?view=board#upcoming',
+        destination: '/cycles?view=board#upcoming',
       }),
     ).toBe('/dashboard');
   });
@@ -92,16 +94,16 @@ describe('active Church route policy', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: ['scheduling'],
-        destination: '/scheduling/planning-cycles?view=board#upcoming',
+        destination: '/cycles?view=board#upcoming',
       }),
-    ).toBe('/scheduling/planning-cycles?view=board#upcoming');
+    ).toBe('/cycles?view=board#upcoming');
   });
 
   it('falls back to the dashboard when the target has neither area', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: [],
-        destination: '/scheduling/tailoring/',
+        destination: '/schedules/',
       }),
     ).toBe('/dashboard');
   });
@@ -156,7 +158,7 @@ describe('switchActiveChurch', () => {
       availableAreas: ['dashboard'],
       churchId: 'church-b',
       churchName: 'Igreja Central',
-      destination: '/scheduling/tailoring/ministry-1',
+      destination: '/schedules/ministry-1',
       navigate,
       queryClient,
       selectActiveChurch,

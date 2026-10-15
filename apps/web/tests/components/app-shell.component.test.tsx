@@ -149,6 +149,22 @@ describe('AppShell role-scoped navigation', () => {
     ]);
   });
 
+  it('marks Scheduling as the current section on a child page outside /scheduling', () => {
+    mockedUseCallerRoles.mockReturnValue({
+      canSeeScheduling: true,
+      isResolving: false,
+    });
+    mockPathname = '/cycles';
+
+    renderWithProviders(<AppShell>content</AppShell>);
+
+    expect(
+      within(screen.getByTestId('mobile-bottom-nav')).getByRole('link', {
+        name: 'Scheduling',
+      }),
+    ).toHaveClass('font-semibold');
+  });
+
   it.each([
     false,
     true,
@@ -172,7 +188,7 @@ describe('AppShell role-scoped navigation', () => {
       canSeeScheduling: true,
       isResolving: false,
     });
-    mockPathname = '/scheduling/planning-cycles/cycle-1';
+    mockPathname = '/cycles/cycle-1';
 
     renderWithProviders(
       <AppShell
@@ -192,7 +208,7 @@ describe('AppShell role-scoped navigation', () => {
       canSeeScheduling: true,
       isResolving: false,
     });
-    mockPathname = '/scheduling/planning-cycles/cycle-1';
+    mockPathname = '/cycles/cycle-1';
 
     renderWithProviders(<AppShell>content</AppShell>);
 
@@ -232,7 +248,7 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
       canSeeScheduling: true,
       isResolving: false,
     });
-    mockPathname = '/scheduling/tailoring';
+    mockPathname = '/schedules';
 
     renderWithProviders(<AppShell>content</AppShell>);
     const user = userEvent.setup();
@@ -252,13 +268,13 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
       name: 'Schedules',
     });
     expect(prepareLink).toHaveClass('font-semibold');
-    expect(prepareLink).toHaveAttribute('href', '/scheduling/tailoring');
+    expect(prepareLink).toHaveAttribute('href', '/schedules');
 
     const cyclesLink = within(drawerNav).getByRole('link', {
       name: 'Cycles',
     });
     expect(cyclesLink).not.toHaveClass('font-semibold');
-    expect(cyclesLink).toHaveAttribute('href', '/scheduling/planning-cycles');
+    expect(cyclesLink).toHaveAttribute('href', '/cycles');
   });
 });
 
@@ -441,8 +457,8 @@ describe('AppShell Switch Church control', () => {
       canSeeScheduling: true,
       isResolving: false,
     });
-    mockPathname = '/scheduling/planning-cycles';
-    mockHref = '/scheduling/planning-cycles?view=board#upcoming';
+    mockPathname = '/cycles';
+    mockHref = '/cycles?view=board#upcoming';
 
     renderWithProviders(<AppShell>content</AppShell>);
     const user = userEvent.setup();
@@ -453,7 +469,7 @@ describe('AppShell Switch Church control', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/select-church?redirect=%2Fscheduling%2Fplanning-cycles%3Fview%3Dboard%23upcoming',
+      to: '/select-church?redirect=%2Fcycles%3Fview%3Dboard%23upcoming',
     });
   });
 

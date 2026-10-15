@@ -4,7 +4,7 @@ import { CycleListCard } from '@/features/scheduling/components/planning-admin/c
 import { useCycleSelection } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/planning-cycles/',
+  '/_authenticated/_active-church/_planning-admin/cycles/',
 )({
   component: CyclesIndexRoute,
 });
@@ -21,7 +21,7 @@ function CyclesIndexRoute() {
     <CycleListCard
       onSelectCycle={({ cycleId }) => {
         navigate({
-          to: '/scheduling/planning-cycles/$cycleId',
+          to: '/cycles/$cycleId',
           params: { cycleId },
         });
       }}

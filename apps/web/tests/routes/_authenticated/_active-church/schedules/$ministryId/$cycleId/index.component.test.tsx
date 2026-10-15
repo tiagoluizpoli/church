@@ -65,7 +65,7 @@ interface ShiftRequirementBody {
 
 function renderWorkspace() {
   return renderRoute({
-    initialPath: '/scheduling/tailoring/ministry-1/cycle-1',
+    initialPath: '/schedules/ministry-1/cycle-1',
     churchTimezone: 'UTC',
   });
 }
@@ -287,7 +287,7 @@ describe('Prepare workspace route composition (US3/T028)', () => {
     const browseLink = screen.getByTestId('browse-all-cycles-link');
     expect(browseLink).toHaveAttribute(
       'href',
-      expect.stringContaining('/scheduling/tailoring/ministry-1'),
+      expect.stringContaining('/schedules/ministry-1'),
     );
     expect(browseLink).toHaveAttribute(
       'href',
@@ -749,7 +749,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
     await user.click(screen.getByTestId('shift-mode-select-0'));
     await user.click(await screen.findByText('Equal split'));
 
-    router.navigate({ to: '/scheduling/tailoring' });
+    router.navigate({ to: '/schedules' });
 
     expect(
       await screen.findByTestId('prepare-leave-confirm'),
@@ -776,7 +776,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
     await screen.findByTestId('prepare-touched-count');
 
-    router.navigate({ to: '/scheduling/tailoring' });
+    router.navigate({ to: '/schedules' });
 
     expect(
       await screen.findByTestId('prepare-leave-confirm'),
@@ -804,7 +804,7 @@ describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
     const { router } = renderWorkspace();
 
     await screen.findByTestId('prepare-slot-row-slot-1');
-    router.navigate({ to: '/scheduling/tailoring' });
+    router.navigate({ to: '/schedules' });
 
     expect(
       screen.queryByTestId('prepare-leave-confirm'),
@@ -887,7 +887,7 @@ describe('Prepare workspace mid-flight save unmount (US4/T030c)', () => {
     await user.click(await screen.findByTestId('prepare-send-confirm'));
 
     expect(() => {
-      router.navigate({ to: '/scheduling/tailoring' });
+      router.navigate({ to: '/schedules' });
       unmount();
     }).not.toThrow();
   });

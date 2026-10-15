@@ -598,7 +598,7 @@ function SlotRow({
 
       {eventView.participation.state !== 'preparing' ? (
         <Link
-          to="/scheduling/rostering/$ministryId/$cycleId"
+          to="/schedules/$ministryId/$cycleId/assign"
           params={{
             cycleId: eventView.event.cycleId,
             ministryId: eventView.participation.ministryId,

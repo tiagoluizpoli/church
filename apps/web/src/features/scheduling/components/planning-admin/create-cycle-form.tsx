@@ -8,7 +8,7 @@ interface CreateCycleFormProps {
   submitButtonClassName?: string;
   /** Skip the built-in submit button when a parent (e.g. a dialog/drawer
    * footer) owns Cancel/Submit placement instead — see
-   * `routes/scheduling/planning-cycles/new.tsx`. */
+   * `routes/_authenticated/_active-church/_planning-admin/cycles/new.tsx`. */
   hideSubmitButton?: boolean;
 }
 

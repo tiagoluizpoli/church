@@ -43,7 +43,7 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-function renderCycles(initialPath = '/scheduling/planning-cycles') {
+function renderCycles(initialPath = '/cycles') {
   return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
@@ -429,7 +429,7 @@ describe('Cycle header visibility (chip-leak fix)', () => {
     await user.click(await screen.findByTestId('cycle-option'));
     expect(await screen.findByTestId('cycle-period-chip')).toBeInTheDocument();
 
-    await router.navigate({ to: '/scheduling/planning-cycles' });
+    await router.navigate({ to: '/cycles' });
 
     expect(await screen.findByTestId('cycles-total-chip')).toBeInTheDocument();
     expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();

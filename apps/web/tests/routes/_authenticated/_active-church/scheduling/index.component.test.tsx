@@ -70,10 +70,10 @@ describe('Scheduling capability index route', () => {
     ).toBeVisible();
     expect(
       await screen.findByRole('link', { name: 'Open church planning' }),
-    ).toHaveAttribute('href', '/scheduling/planning-cycles');
+    ).toHaveAttribute('href', '/cycles');
     expect(screen.getByRole('link', { name: 'Open Worship' })).toHaveAttribute(
       'href',
-      '/scheduling/tailoring/11111111-1111-4111-8111-111111111111',
+      '/schedules/11111111-1111-4111-8111-111111111111',
     );
   });
 
@@ -100,7 +100,7 @@ describe('Scheduling capability index route', () => {
       screen.getByRole('link', { name: 'Open Greeting schedule' }),
     ).toHaveAttribute(
       'href',
-      '/scheduling/rostering/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
+      '/scheduling/teams/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
     );
   });
 
@@ -156,7 +156,7 @@ describe('Scheduling capability index route', () => {
 
     const { router } = renderRoute({
       initialPath:
-        '/scheduling/rostering/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
+        '/scheduling/teams/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
       churchTimezone: 'UTC',
     });
 

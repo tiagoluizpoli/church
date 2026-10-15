@@ -1,11 +1,11 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/tailoring',
+  '/_authenticated/_active-church/schedules/$ministryId',
 )({
-  component: SchedulingPrepareLayout,
+  component: PrepareMinistryLayout,
 });
 
-function SchedulingPrepareLayout() {
+function PrepareMinistryLayout() {
   return <Outlet />;
 }

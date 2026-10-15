@@ -8,7 +8,7 @@ import {
 } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/planning-cycles/$cycleId',
+  '/_authenticated/_active-church/_planning-admin/cycles/$cycleId',
 )({
   component: CycleReviewRoute,
 });

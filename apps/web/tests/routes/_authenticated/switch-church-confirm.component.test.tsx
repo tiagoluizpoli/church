@@ -80,9 +80,7 @@ describe('switch-church-confirm route', () => {
   });
 
   it('names the current and target Church before switching', async () => {
-    renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
-    );
+    renderConfirm('/switch-church-confirm?target=church-b&redirect=%2Fcycles');
 
     expect(
       await screen.findByText('This link opens another Church'),
@@ -101,7 +99,7 @@ describe('switch-church-confirm route', () => {
     );
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
     await screen.findByText('This link opens another Church');
@@ -113,9 +111,7 @@ describe('switch-church-confirm route', () => {
       expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-b' });
     });
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe(
-        '/scheduling/planning-cycles',
-      );
+      expect(router.state.location.pathname).toBe('/cycles');
     });
   });
 
@@ -134,7 +130,7 @@ describe('switch-church-confirm route', () => {
     );
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles%2Fcycle-1',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles%2Fcycle-1',
     );
 
     await screen.findByText('This link opens another Church');
@@ -154,7 +150,7 @@ describe('switch-church-confirm route', () => {
     const user = userEvent.setup();
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
     await screen.findByText('This link opens another Church');
@@ -174,7 +170,7 @@ describe('switch-church-confirm route', () => {
     });
 
     const { router } = renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
     );
 
     await waitFor(() => {
@@ -186,9 +182,7 @@ describe('switch-church-confirm route', () => {
   it('shows an error message when the Church list fails to load', async () => {
     listActiveChurchOptions.mockRejectedValue(new Error('network error'));
 
-    renderConfirm(
-      '/switch-church-confirm?target=church-b&redirect=%2Fscheduling%2Fplanning-cycles',
-    );
+    renderConfirm('/switch-church-confirm?target=church-b&redirect=%2Fcycles');
 
     expect(
       await screen.findByText(

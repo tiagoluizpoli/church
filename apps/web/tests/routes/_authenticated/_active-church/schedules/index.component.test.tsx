@@ -42,7 +42,7 @@ vi.mock('@/components/ui/sonner', () => ({
 
 function renderPrepareIndex() {
   return renderRoute({
-    initialPath: '/scheduling/tailoring',
+    initialPath: '/schedules',
     churchTimezone: 'UTC',
   });
 }
@@ -116,9 +116,7 @@ describe('Prepare ministry list route (US1/T013)', () => {
     await user.click(buttons[0]);
 
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe(
-        '/scheduling/tailoring/ministry-1',
-      ),
+      expect(router.state.location.pathname).toBe('/schedules/ministry-1'),
     );
   });
 });

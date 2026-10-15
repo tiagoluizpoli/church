@@ -5,7 +5,7 @@ import { resolveSchedulingAccessFallback } from '@/shared/hooks/use-scheduling-a
 import { adminApi } from '@/utils/api-instances';
 
 export const Route = createFileRoute(
-  '/_authenticated/_active-church/scheduling/planning-cycles',
+  '/_authenticated/_active-church/_planning-admin',
 )({
   component: CyclesRoute,
   beforeLoad: async ({ context }) => {

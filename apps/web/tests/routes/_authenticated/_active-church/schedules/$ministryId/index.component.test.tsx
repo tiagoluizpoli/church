@@ -49,7 +49,7 @@ beforeEach(() => {
 
 function renderMinistryCycleList() {
   return renderRoute({
-    initialPath: '/scheduling/tailoring/ministry-1',
+    initialPath: '/schedules/ministry-1',
     churchTimezone: 'UTC',
   });
 }
@@ -92,7 +92,7 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
-        '/scheduling/tailoring/ministry-1/cycle-1',
+        '/schedules/ministry-1/cycle-1',
       ),
     );
   });
@@ -110,7 +110,7 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
-        '/scheduling/tailoring/ministry-1/cycle-1',
+        '/schedules/ministry-1/cycle-1',
       ),
     );
   });
@@ -121,15 +121,13 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
     });
 
     const { router } = renderRoute({
-      initialPath: '/scheduling/tailoring/ministry-1?browse=true',
+      initialPath: '/schedules/ministry-1?browse=true',
       churchTimezone: 'UTC',
     });
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
     expect(table).toHaveTextContent('August');
-    expect(router.state.location.pathname).toBe(
-      '/scheduling/tailoring/ministry-1',
-    );
+    expect(router.state.location.pathname).toBe('/schedules/ministry-1');
   });
 
   it("renders the picker normally when 2+ isPartOf cycles are open, using each cycle's own name and real Events/Slots/Status columns", async () => {
@@ -193,7 +191,7 @@ describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', (
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
-        '/scheduling/tailoring/ministry-1/cycle-2',
+        '/schedules/ministry-1/cycle-2',
       ),
     );
   });
@@ -292,7 +290,7 @@ describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteratio
     // Simulate a fresh load at that exact URL (refresh / shared link).
     listMinistryCycleSummaries.mockClear();
     const fresh = renderRoute({
-      initialPath: '/scheduling/tailoring/ministry-1?involvement=not_part_of',
+      initialPath: '/schedules/ministry-1?involvement=not_part_of',
       churchTimezone: 'UTC',
     });
     const freshTable = await screen.findAllByRole('grid', { name: 'Cycles' });

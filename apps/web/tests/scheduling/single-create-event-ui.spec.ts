@@ -25,7 +25,7 @@ async function assertCanonicalCreateEventForm(dialog: Locator): Promise<void> {
   await expect(dialog.getByLabel('Title')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
 
-  // A start date and an optional end date; no time fields — slots own the time.
+  // A start date and an optional end date; no time fields — time blocks own the time.
   await expect(dialog.getByLabel('Start date')).toBeVisible();
   await expect(dialog.getByLabel('End date')).toBeVisible();
 }

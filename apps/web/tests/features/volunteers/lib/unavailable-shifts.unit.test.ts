@@ -38,7 +38,7 @@ const EVENING = shift(
 );
 const SHIFTS = [MORNING, EVENING];
 
-describe('availability marks', () => {
+describe('unavailable shifts', () => {
   it('dates a shift by its Church-Timezone day', () => {
     expect(getShiftDate({ shift: EVENING, timeZone: SAO_PAULO })).toBe(
       '2027-01-04',

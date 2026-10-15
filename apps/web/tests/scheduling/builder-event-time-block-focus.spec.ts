@@ -6,7 +6,7 @@ import {
 } from '@/tests/fixtures/journeys/assign-church';
 
 /**
- * 023 phase 3 — slot-aware rail.
+ * 023 phase 3 — time-block-aware rail.
  *
  * A leader must be able to point the rail at one shift×role straight from the
  * board, without opening the assignment popover first, and the rail must
@@ -27,7 +27,7 @@ import {
  * including the collision/override dialogs a real conflict can trigger.
  */
 
-test.describe('slot focus drives the volunteer rail', () => {
+test.describe('time block focus drives the volunteer rail', () => {
   test('assigns a focused candidate straight from their card, no popover', async ({
     page,
   }, testInfo) => {

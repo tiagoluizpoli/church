@@ -2,21 +2,21 @@ import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   assignment,
-  availability,
   availabilityCheck,
   cycle,
   event,
   eventTemplate,
+  eventTimeBlock,
   member,
   ministry,
+  ministryMembership,
   ministryParticipation,
-  ministryVolunteer,
-  participationSlotInclusion,
+  participationEventTimeBlockInclusion,
   role,
   shift,
-  slotRequirement,
-  timeBlock,
-  timeSlot,
+  shiftRequirement,
+  templateTimeBlock,
+  unavailableShift,
   user,
   volunteer,
   volunteerNotification,
@@ -67,7 +67,7 @@ async function seedSchedulingBase(): Promise<SchedulingSeed> {
   }
 
   const [insertedMembership] = await testDb
-    .insert(ministryVolunteer)
+    .insert(ministryMembership)
     .values({
       churchId: churchA.id,
       ministryId: insertedMinistry.id,
@@ -113,7 +113,7 @@ interface PlanningSeed {
   eventId: string;
   participationId: string;
   shiftId: string;
-  slotId: string;
+  eventTimeBlockId: string;
 }
 
 async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
@@ -134,7 +134,7 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
     .returning();
   if (!template) throw new Error('Template seed failed');
   const [block] = await testDb
-    .insert(timeBlock)
+    .insert(templateTimeBlock)
     .values({
       churchId: seed.churchAId,
       templateId: template.id,
@@ -158,12 +158,12 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
     })
     .returning();
   if (!insertedEvent) throw new Error('Event seed failed');
-  const [slot] = await testDb
-    .insert(timeSlot)
+  const [eventTimeBlockRow] = await testDb
+    .insert(eventTimeBlock)
     .values({
       churchId: seed.churchAId,
       eventId: insertedEvent.id,
-      sourceTemplateBlockId: block.id,
+      sourceTemplateTimeBlockId: block.id,
       startTime: insertedEvent.start,
       endTime: insertedEvent.end,
     })
@@ -176,20 +176,21 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
       eventId: insertedEvent.id,
     })
     .returning();
-  if (!slot || !participation) throw new Error('Slot or participation failed');
-  await testDb.insert(participationSlotInclusion).values({
+  if (!eventTimeBlockRow || !participation)
+    throw new Error('Event time block or participation failed');
+  await testDb.insert(participationEventTimeBlockInclusion).values({
     churchId: seed.churchAId,
     participationId: participation.id,
-    timeSlotId: slot.id,
+    eventTimeBlockId: eventTimeBlockRow.id,
   });
   const [insertedShift] = await testDb
     .insert(shift)
     .values({
       churchId: seed.churchAId,
       participationId: participation.id,
-      timeSlotId: slot.id,
-      startTime: slot.startTime,
-      endTime: slot.endTime,
+      eventTimeBlockId: eventTimeBlockRow.id,
+      startTime: eventTimeBlockRow.startTime,
+      endTime: eventTimeBlockRow.endTime,
     })
     .returning();
   if (!insertedShift) throw new Error('Shift seed failed');
@@ -199,7 +200,7 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
     eventId: insertedEvent.id,
     participationId: participation.id,
     shiftId: insertedShift.id,
-    slotId: slot.id,
+    eventTimeBlockId: eventTimeBlockRow.id,
   };
 }
 
@@ -255,7 +256,7 @@ describe('Scheduling reshape schema', () => {
     ).resolves.toBeDefined();
   });
 
-  it('rejects shifts outside parent slot bounds', async () => {
+  it('rejects shifts outside parent event time block bounds', async () => {
     const seed = await seedSchedulingBase();
     const graph = await seedPlanningGraph(seed);
 
@@ -263,14 +264,14 @@ describe('Scheduling reshape schema', () => {
       testDb.insert(shift).values({
         churchId: seed.churchAId,
         participationId: graph.participationId,
-        timeSlotId: graph.slotId,
+        eventTimeBlockId: graph.eventTimeBlockId,
         startTime: new Date('2026-08-09T11:59:00Z'),
         endTime: new Date('2026-08-09T13:00:00Z'),
       }),
     ).rejects.toThrow();
   });
 
-  it('re-keys requirements, assignments, and availability to shifts', async () => {
+  it('re-keys requirements, assignments, and unavailable shifts to shifts', async () => {
     const seed = await seedSchedulingBase();
     const graph = await seedPlanningGraph(seed);
     const [check] = await testDb
@@ -278,17 +279,17 @@ describe('Scheduling reshape schema', () => {
       .values({
         churchId: seed.churchAId,
         cycleId: graph.cycleId,
-        ministryVolunteerId: seed.membershipId,
+        ministryMembershipId: seed.membershipId,
       })
       .returning();
     if (!check) throw new Error('Availability check seed failed');
 
-    await testDb.insert(slotRequirement).values({
+    await testDb.insert(shiftRequirement).values({
       churchId: seed.churchAId,
       participationId: graph.participationId,
       shiftId: graph.shiftId,
       roleId: seed.roleId,
-      requiredCount: 1,
+      peopleNeeded: 1,
     });
     await testDb.insert(assignment).values({
       churchId: seed.churchAId,
@@ -297,7 +298,7 @@ describe('Scheduling reshape schema', () => {
       volunteerId: seed.volunteerId,
       roleId: seed.roleId,
     });
-    await testDb.insert(availability).values({
+    await testDb.insert(unavailableShift).values({
       churchId: seed.churchAId,
       availabilityCheckId: check.id,
       shiftId: graph.shiftId,
@@ -312,11 +313,11 @@ describe('Scheduling reshape schema', () => {
       payload: {},
     });
 
-    const marks = await testDb
+    const unavailableShifts = await testDb
       .select()
-      .from(availability)
-      .where(eq(availability.availabilityCheckId, check.id));
-    expect(marks).toHaveLength(1);
+      .from(unavailableShift)
+      .where(eq(unavailableShift.availabilityCheckId, check.id));
+    expect(unavailableShifts).toHaveLength(1);
   });
 
   it('cascades event deletion through participation scheduling data', async () => {
@@ -325,12 +326,12 @@ describe('Scheduling reshape schema', () => {
 
     await testDb.delete(event).where(eq(event.id, graph.eventId));
 
-    const [slots, participations, shifts] = await Promise.all([
-      testDb.select().from(timeSlot),
+    const [eventTimeBlocks, participations, shifts] = await Promise.all([
+      testDb.select().from(eventTimeBlock),
       testDb.select().from(ministryParticipation),
       testDb.select().from(shift),
     ]);
-    expect(slots).toHaveLength(0);
+    expect(eventTimeBlocks).toHaveLength(0);
     expect(participations).toHaveLength(0);
     expect(shifts).toHaveLength(0);
   });
@@ -339,7 +340,7 @@ describe('Scheduling reshape schema', () => {
     const seed = await seedSchedulingBase();
 
     // Church Membership (`member.role`) and Ministry Membership
-    // (`ministry_volunteer.ministry_access_level`) are separate Scoped
+    // (`ministry_membership.ministry_access_level`) are separate Scoped
     // Memberships in separate tables — holding one says nothing about the
     // other.
     const admins = await testDb
@@ -348,8 +349,8 @@ describe('Scheduling reshape schema', () => {
       .where(eq(member.userId, seed.userId));
     const memberships = await testDb
       .select()
-      .from(ministryVolunteer)
-      .where(eq(ministryVolunteer.volunteerId, seed.volunteerId));
+      .from(ministryMembership)
+      .where(eq(ministryMembership.volunteerId, seed.volunteerId));
 
     expect(admins).toHaveLength(1);
     expect(admins[0]?.role).toBe('admin');

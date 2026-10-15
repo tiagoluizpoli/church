@@ -4,8 +4,8 @@ import {
   invitation as churchInvitation,
   ministry,
   ministryInvitation,
-  ministryVolunteer,
-  ministryVolunteerTeam,
+  ministryMembership,
+  ministryMembershipTeam,
   role,
   team,
   user,
@@ -226,17 +226,17 @@ describe('Core Schema Integration', () => {
         .returning();
       if (!insertedVolunteer) throw new Error('Volunteer insert failed');
 
-      await testDb.insert(ministryVolunteer).values({
+      await testDb.insert(ministryMembership).values({
         churchId,
         ministryId: insertedMinistry.id,
         volunteerId: insertedVolunteer.id,
         ministryAccessLevel: 'leader',
       });
 
-      const leaderLink = await testDb.query.ministryVolunteer.findFirst({
+      const leaderLink = await testDb.query.ministryMembership.findFirst({
         where: and(
-          eq(ministryVolunteer.ministryId, insertedMinistry.id),
-          eq(ministryVolunteer.ministryAccessLevel, 'leader'),
+          eq(ministryMembership.ministryId, insertedMinistry.id),
+          eq(ministryMembership.ministryAccessLevel, 'leader'),
         ),
       });
 
@@ -244,7 +244,7 @@ describe('Core Schema Integration', () => {
       expect(leaderLink?.volunteerId).toBe(insertedVolunteer.id);
     });
 
-    it('should identify a team leader via ministry_volunteer_team.access_level, scoped to that team', async () => {
+    it('should identify a team leader via ministry_membership_team.access_level, scoped to that team', async () => {
       const [insertedMinistry] = await testDb
         .insert(ministry)
         .values({ name: 'Worship', churchId })
@@ -286,7 +286,7 @@ describe('Core Schema Integration', () => {
       // Team leadership does not require ministry-wide leadership — the
       // membership stays at the default ministry access level.
       const [insertedMembership] = await testDb
-        .insert(ministryVolunteer)
+        .insert(ministryMembership)
         .values({
           churchId,
           ministryId: insertedMinistry.id,
@@ -295,34 +295,35 @@ describe('Core Schema Integration', () => {
         .returning();
       if (!insertedMembership) throw new Error('Membership insert failed');
 
-      await testDb.insert(ministryVolunteerTeam).values([
+      await testDb.insert(ministryMembershipTeam).values([
         {
           churchId,
-          ministryVolunteerId: insertedMembership.id,
+          ministryMembershipId: insertedMembership.id,
           teamId: insertedTeam.id,
           accessLevel: 'leader',
         },
         {
           churchId,
-          ministryVolunteerId: insertedMembership.id,
+          ministryMembershipId: insertedMembership.id,
           teamId: otherTeam.id,
         },
       ]);
 
-      const teamLeaderLink = await testDb.query.ministryVolunteerTeam.findFirst(
-        {
+      const teamLeaderLink =
+        await testDb.query.ministryMembershipTeam.findFirst({
           where: and(
-            eq(ministryVolunteerTeam.teamId, insertedTeam.id),
-            eq(ministryVolunteerTeam.accessLevel, 'leader'),
+            eq(ministryMembershipTeam.teamId, insertedTeam.id),
+            eq(ministryMembershipTeam.accessLevel, 'leader'),
           ),
+        });
+      const otherTeamLink = await testDb.query.ministryMembershipTeam.findFirst(
+        {
+          where: eq(ministryMembershipTeam.teamId, otherTeam.id),
         },
       );
-      const otherTeamLink = await testDb.query.ministryVolunteerTeam.findFirst({
-        where: eq(ministryVolunteerTeam.teamId, otherTeam.id),
-      });
 
       expect(teamLeaderLink).toBeDefined();
-      expect(teamLeaderLink?.ministryVolunteerId).toBe(insertedMembership.id);
+      expect(teamLeaderLink?.ministryMembershipId).toBe(insertedMembership.id);
       // Leadership on one team does not leak to another team membership row —
       // TeamLeader is scoped to the specific team, not the ministry.
       expect(otherTeamLink?.accessLevel).toBe('member');

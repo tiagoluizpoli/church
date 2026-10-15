@@ -2,7 +2,7 @@ import { pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { church } from './church';
 import { ministry } from './core';
 import { participationStateEnum } from './enums';
-import { event, timeSlot } from './scheduling';
+import { event, eventTimeBlock } from './scheduling';
 
 export const ministryParticipation = pgTable(
   'ministry_participation',
@@ -35,8 +35,8 @@ export const ministryParticipation = pgTable(
   ],
 );
 
-export const participationSlotInclusion = pgTable(
-  'participation_slot_inclusion',
+export const participationEventTimeBlockInclusion = pgTable(
+  'participation_event_time_block_inclusion',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
@@ -45,14 +45,14 @@ export const participationSlotInclusion = pgTable(
     participationId: uuid('participation_id')
       .notNull()
       .references(() => ministryParticipation.id, { onDelete: 'cascade' }),
-    timeSlotId: uuid('time_slot_id')
+    eventTimeBlockId: uuid('event_time_block_id')
       .notNull()
-      .references(() => timeSlot.id, { onDelete: 'cascade' }),
+      .references(() => eventTimeBlock.id, { onDelete: 'cascade' }),
   },
   (table) => [
-    uniqueIndex('participation_slot_inclusion_idx').on(
+    uniqueIndex('participation_event_time_block_inclusion_idx').on(
       table.participationId,
-      table.timeSlotId,
+      table.eventTimeBlockId,
     ),
   ],
 );

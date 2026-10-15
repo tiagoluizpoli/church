@@ -35,10 +35,10 @@ export interface ManualShiftSplitSpec {
 
 export type ShiftSplitSpec = EqualShiftSplitSpec | ManualShiftSplitSpec;
 
-export interface ServingProfileHeadcount {
+export interface UsualSetupHeadcount {
   roleId: string;
   teamId?: string;
-  count: number;
+  peopleNeeded: number;
 }
 
 export const cycle = pgTable(
@@ -95,8 +95,8 @@ export const eventTemplate = pgTable(
   ],
 );
 
-export const timeBlock = pgTable(
-  'time_block',
+export const templateTimeBlock = pgTable(
+  'template_time_block',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
@@ -112,18 +112,18 @@ export const timeBlock = pgTable(
   },
   (table) => [
     check(
-      'time_block_time_not_empty_check',
+      'template_time_block_time_not_empty_check',
       sql`${table.startTime} != ${table.endTime}`,
     ),
-    uniqueIndex('time_block_template_order_idx').on(
+    uniqueIndex('template_time_block_template_order_idx').on(
       table.templateId,
       table.order,
     ),
   ],
 );
 
-export const ministryServingProfile = pgTable(
-  'ministry_serving_profile',
+export const usualSetup = pgTable(
+  'usual_setup',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
@@ -132,13 +132,13 @@ export const ministryServingProfile = pgTable(
     ministryId: uuid('ministry_id')
       .notNull()
       .references(() => ministry.id, { onDelete: 'cascade' }),
-    sourceTemplateBlockId: uuid('source_template_block_id')
+    sourceTemplateTimeBlockId: uuid('source_template_time_block_id')
       .notNull()
-      .references(() => timeBlock.id, { onDelete: 'cascade' }),
+      .references(() => templateTimeBlock.id, { onDelete: 'cascade' }),
     serves: boolean('serves').default(true).notNull(),
     shiftSplit: jsonb('shift_split').$type<ShiftSplitSpec>().notNull(),
     headcounts: jsonb('headcounts')
-      .$type<ServingProfileHeadcount[]>()
+      .$type<UsualSetupHeadcount[]>()
       .default([])
       .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -150,9 +150,9 @@ export const ministryServingProfile = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex('serving_profile_ministry_block_idx').on(
+    uniqueIndex('usual_setup_ministry_block_idx').on(
       table.ministryId,
-      table.sourceTemplateBlockId,
+      table.sourceTemplateTimeBlockId,
     ),
   ],
 );

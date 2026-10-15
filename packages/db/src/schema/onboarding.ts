@@ -134,7 +134,7 @@ export const invitationVerificationCode = pgTable(
 );
 
 /**
- * Mirrors `ministry_volunteer_role` with real FKs rather than a `uuid[]`
+ * Mirrors `ministry_membership_role` with real FKs rather than a `uuid[]`
  * column, so a Role deleted between mint and acceptance cascades out of
  * the pending invitation instead of needing existence checking at
  * acceptance time. Under-granting is the deliberately lenient default —

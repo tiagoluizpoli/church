@@ -12,7 +12,7 @@ import { church } from './church';
 import { role, team } from './core';
 import { eventStatusEnum } from './enums';
 import { ministryParticipation } from './participation';
-import { cycle, eventTemplate, timeBlock } from './planning';
+import { cycle, eventTemplate, templateTimeBlock } from './planning';
 
 export const event = pgTable(
   'event',
@@ -54,8 +54,8 @@ export const event = pgTable(
   (table) => [check('event_date_check', sql`${table.start} < ${table.end}`)],
 );
 
-export const timeSlot = pgTable(
-  'time_slot',
+export const eventTimeBlock = pgTable(
+  'event_time_block',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
@@ -64,8 +64,8 @@ export const timeSlot = pgTable(
     eventId: uuid('event_id')
       .notNull()
       .references(() => event.id, { onDelete: 'cascade' }),
-    sourceTemplateBlockId: uuid('source_template_block_id').references(
-      () => timeBlock.id,
+    sourceTemplateTimeBlockId: uuid('source_template_time_block_id').references(
+      () => templateTimeBlock.id,
       { onDelete: 'set null' },
     ),
     startTime: timestamp('start_time', {
@@ -86,7 +86,7 @@ export const timeSlot = pgTable(
   },
   (table) => [
     check(
-      'timeslot_duration_check',
+      'event_time_block_duration_check',
       sql`${table.startTime} < ${table.endTime}`,
     ),
   ],
@@ -102,9 +102,9 @@ export const shift = pgTable(
     participationId: uuid('participation_id')
       .notNull()
       .references(() => ministryParticipation.id, { onDelete: 'cascade' }),
-    timeSlotId: uuid('time_slot_id')
+    eventTimeBlockId: uuid('event_time_block_id')
       .notNull()
-      .references(() => timeSlot.id, { onDelete: 'cascade' }),
+      .references(() => eventTimeBlock.id, { onDelete: 'cascade' }),
     startTime: timestamp('start_time', {
       withTimezone: true,
       mode: 'date',
@@ -123,8 +123,8 @@ export const shift = pgTable(
   ],
 );
 
-export const slotRequirement = pgTable(
-  'slot_requirement',
+export const shiftRequirement = pgTable(
+  'shift_requirement',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     churchId: uuid('church_id')
@@ -140,10 +140,13 @@ export const slotRequirement = pgTable(
       .notNull()
       .references(() => role.id, { onDelete: 'cascade' }),
     teamId: uuid('team_id').references(() => team.id, { onDelete: 'set null' }),
-    requiredCount: integer('required_count').default(1).notNull(),
+    peopleNeeded: integer('people_needed').default(1).notNull(),
     notes: text('notes'),
   },
   (table) => [
-    check('slot_requirement_min_count_check', sql`${table.requiredCount} >= 1`),
+    check(
+      'shift_requirement_min_people_needed_check',
+      sql`${table.peopleNeeded} >= 1`,
+    ),
   ],
 );

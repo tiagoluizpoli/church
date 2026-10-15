@@ -99,34 +99,18 @@ describe('AssignmentChip (T100)', () => {
   });
 
   describe('role badge (FR-013)', () => {
-    it('disambiguates two identically-truncating volunteers by role', () => {
-      const { rerender } = render(
+    it('shows a Leader badge for a ministry Leader', () => {
+      render(
         <AssignmentChip
           volunteerName="Local Leader"
           volunteerMembership={{
             ministryAccessLevel: 'leader',
-            leadTeamIds: [],
           }}
           isPublished={false}
         />,
       );
       expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
         'Leader',
-      );
-
-      rerender(
-        <AssignmentChip
-          volunteerName="Local Team Leader"
-          volunteerMembership={{
-            ministryAccessLevel: 'volunteer',
-            leadTeamIds: ['team-a'],
-          }}
-          contextTeamId="team-a"
-          isPublished={false}
-        />,
-      );
-      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
-        'Team Leader',
       );
     });
 
@@ -136,25 +120,7 @@ describe('AssignmentChip (T100)', () => {
           volunteerName="John Doe"
           volunteerMembership={{
             ministryAccessLevel: 'volunteer',
-            leadTeamIds: [],
           }}
-          isPublished={false}
-        />,
-      );
-      expect(
-        screen.queryByTestId('assignee-role-badge'),
-      ).not.toBeInTheDocument();
-    });
-
-    it('shows no Team Leader badge outside the team this volunteer leads (regression guard)', () => {
-      render(
-        <AssignmentChip
-          volunteerName="Local Team Leader"
-          volunteerMembership={{
-            ministryAccessLevel: 'volunteer',
-            leadTeamIds: ['team-a'],
-          }}
-          contextTeamId="team-b"
           isPublished={false}
         />,
       );

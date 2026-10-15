@@ -23,7 +23,6 @@ function membership(
 ): AssigneeMembership {
   return {
     ministryAccessLevel: 'volunteer',
-    leadTeamIds: [],
     ...overrides,
   };
 }
@@ -34,7 +33,7 @@ function noop() {
 }
 
 describe('VolunteerCard (T048)', () => {
-  it('renders a role badge distinguishing a ministry Leader from a Team Leader who truncate identically', () => {
+  it('renders a Leader badge on a ministry Leader and none on a plain volunteer', () => {
     renderWithProviders(
       <div>
         <VolunteerCard
@@ -46,46 +45,20 @@ describe('VolunteerCard (T048)', () => {
         />
         <VolunteerCard
           volunteer={buildVolunteer({
-            volunteerId: 'team-leader-1',
-            volunteerName: 'Local Team Leader',
-            membership: membership({ leadTeamIds: ['team-a'] }),
+            volunteerId: 'volunteer-1',
+            volunteerName: 'Local Volunteer',
+            membership: membership({}),
           })}
-          contextTeamId="team-a"
         />
       </div>,
     );
 
-    expect(screen.getAllByText('Local L.')).toHaveLength(2);
+    expect(screen.getByText('Local L.')).toBeVisible();
+    expect(screen.getByText('Local V.')).toBeVisible();
 
     const badges = screen.getAllByTestId('assignee-role-badge');
-    expect(badges).toHaveLength(2);
+    expect(badges).toHaveLength(1);
     expect(badges[0]).toHaveTextContent('Leader');
-    expect(badges[1]).toHaveTextContent('Team Leader');
-  });
-
-  it('shows no Team Leader badge when the rail has no team context, even though the volunteer leads a team elsewhere (regression guard)', () => {
-    renderWithProviders(
-      <VolunteerCard
-        volunteer={buildVolunteer({
-          membership: membership({ leadTeamIds: ['team-a'] }),
-        })}
-      />,
-    );
-
-    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
-  });
-
-  it('shows no Team Leader badge when the rail is scoped to a different team than the one this volunteer leads', () => {
-    renderWithProviders(
-      <VolunteerCard
-        volunteer={buildVolunteer({
-          membership: membership({ leadTeamIds: ['team-a'] }),
-        })}
-        contextTeamId="team-b"
-      />,
-    );
-
-    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 
   it('renders no role badge for a plain volunteer', () => {
@@ -132,11 +105,10 @@ describe('VolunteerCard (T048)', () => {
         />
         <VolunteerCard
           volunteer={buildVolunteer({
-            volunteerId: 'team-leader-1',
-            volunteerName: 'Local Team Leader',
-            membership: membership({ leadTeamIds: ['team-a'] }),
+            volunteerId: 'volunteer-1',
+            volunteerName: 'Local Volunteer',
+            membership: membership({}),
           })}
-          contextTeamId="team-a"
           onSelect={noop}
         />
       </div>,
@@ -147,7 +119,7 @@ describe('VolunteerCard (T048)', () => {
       'Select Local Leader, Leader to place on a shift',
     );
     expect(actions[1]).toHaveAccessibleName(
-      'Select Local Team Leader, Team Leader to place on a shift',
+      'Select Local Volunteer to place on a shift',
     );
   });
 

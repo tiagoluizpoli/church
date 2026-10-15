@@ -119,53 +119,24 @@ describe('SubstitutionPicker (T109)', () => {
     expect(screen.getByText(/no available volunteers/i)).toBeVisible();
   });
 
-  it('renders a role badge disambiguating the declined volunteer and candidates (FR-013)', () => {
+  it('renders a Leader badge on the declined volunteer and no badge on a plain candidate (FR-013)', () => {
     render(
       <SubstitutionPicker
         {...baseProps}
         declinedVolunteerName="Local Leader"
-        declinedVolunteerMembership={{
-          ministryAccessLevel: 'leader',
-          leadTeamIds: [],
-        }}
+        declinedVolunteerMembership={{ ministryAccessLevel: 'leader' }}
         volunteers={[
           pv({
             id: '1',
-            name: 'Local Team Leader',
+            name: 'Plain Volunteer',
             availabilityStatus: 'available',
-            membership: {
-              ministryAccessLevel: 'volunteer',
-              leadTeamIds: ['team-a'],
-            },
+            membership: { ministryAccessLevel: 'volunteer' },
           }),
         ]}
-        contextTeamId="team-a"
       />,
     );
     const badges = screen.getAllByTestId('assignee-role-badge');
-    expect(badges).toHaveLength(2);
+    expect(badges).toHaveLength(1);
     expect(badges[0]).toHaveTextContent('Leader');
-    expect(badges[1]).toHaveTextContent('Team Leader');
-  });
-
-  it("shows no Team Leader badge for a candidate whose team leadership is outside this picker's team context (regression guard)", () => {
-    render(
-      <SubstitutionPicker
-        {...baseProps}
-        volunteers={[
-          pv({
-            id: '1',
-            name: 'Local Team Leader',
-            availabilityStatus: 'available',
-            membership: {
-              ministryAccessLevel: 'volunteer',
-              leadTeamIds: ['team-a'],
-            },
-          }),
-        ]}
-        contextTeamId="team-b"
-      />,
-    );
-    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 });

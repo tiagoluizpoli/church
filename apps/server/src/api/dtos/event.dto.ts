@@ -101,8 +101,6 @@ export const scheduleBuilderDataResponseSchema = z.object({
       name: z.string(),
       ministryAccessLevel: z.enum(['leader', 'volunteer']),
       qualifiedRoleIds: z.array(z.string()),
-      teamIds: z.array(z.string()),
-      leadTeamIds: z.array(z.string()),
     }),
   ),
   roles: z.array(z.object({ id: z.string(), name: z.string() })),

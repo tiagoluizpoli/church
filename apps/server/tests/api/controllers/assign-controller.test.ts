@@ -131,7 +131,6 @@ describe('Assign routes', () => {
         lastServedAt: parseInstant({ value: '2026-08-01T10:00:00.000Z' }),
         qualifiedRoleIds: ['role-1'],
         ministryAccessLevel: 'volunteer',
-        leadTeamIds: [],
       },
     ]);
 
@@ -151,7 +150,6 @@ describe('Assign routes', () => {
           lastServedAt: '2026-08-01T10:00:00.000Z',
           qualifiedRoleIds: ['role-1'],
           ministryAccessLevel: 'volunteer',
-          leadTeamIds: [],
         },
       ],
     });

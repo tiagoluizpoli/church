@@ -130,7 +130,7 @@ describe('SuggestionList (T118)', () => {
     expect(status).toHaveClass('bg-yellow-500/10');
   });
 
-  it('renders a role badge disambiguating a ministry Leader and a Team Leader suggestion in their own team context (FR-013)', () => {
+  it('renders a Leader badge only on a ministry Leader suggestion (FR-013)', () => {
     render(
       <SuggestionList
         suggestions={[
@@ -138,46 +138,20 @@ describe('SuggestionList (T118)', () => {
             id: '1',
             name: 'Local Leader',
             status: 'available',
-            membership: { ministryAccessLevel: 'leader', leadTeamIds: [] },
+            membership: { ministryAccessLevel: 'leader' },
           }),
           make({
             id: '2',
-            name: 'Local Team Leader',
+            name: 'Plain Volunteer',
             status: 'available',
-            membership: {
-              ministryAccessLevel: 'volunteer',
-              leadTeamIds: ['team-a'],
-            },
+            membership: { ministryAccessLevel: 'volunteer' },
           }),
         ]}
         onAssign={vi.fn()}
-        contextTeamId="team-a"
       />,
     );
     const badges = screen.getAllByTestId('assignee-role-badge');
-    expect(badges).toHaveLength(2);
+    expect(badges).toHaveLength(1);
     expect(badges[0]).toHaveTextContent('Leader');
-    expect(badges[1]).toHaveTextContent('Team Leader');
-  });
-
-  it('does not badge a suggestion as Team Leader outside their own team context (regression guard)', () => {
-    render(
-      <SuggestionList
-        suggestions={[
-          make({
-            id: '1',
-            name: 'Local Team Leader',
-            status: 'available',
-            membership: {
-              ministryAccessLevel: 'volunteer',
-              leadTeamIds: ['team-a'],
-            },
-          }),
-        ]}
-        onAssign={vi.fn()}
-        contextTeamId="team-b"
-      />,
-    );
-    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
   });
 });

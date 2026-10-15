@@ -74,7 +74,6 @@ const builderData: CycleBuilderData = {
                   hasConflict: false,
                   qualifiedRoleIds: ['role-1'],
                   ministryAccessLevel: 'volunteer',
-                  leadTeamIds: [],
                 },
               ],
             },
@@ -98,19 +97,12 @@ const existingAssignment = {
   volunteerName: 'Grace Hopper',
 } as const;
 
-interface TeamGuardDataInput {
-  requirementTeamId: string;
+interface BoardDataInput {
   start?: string;
   state?: string;
-  canMutateAssignments?: boolean;
 }
 
-function teamGuardData({
-  requirementTeamId,
-  start,
-  state,
-  canMutateAssignments,
-}: TeamGuardDataInput): CycleBuilderData {
+function boardData({ start, state }: BoardDataInput): CycleBuilderData {
   const event = builderData.events[0];
   const eventTimeBlock = event.eventTimeBlocks[0];
   const shift = eventTimeBlock.shifts[0];
@@ -136,9 +128,6 @@ function teamGuardData({
                   {
                     ...shift.requirements[0],
                     peopleNeeded: 2,
-                    teamId: requirementTeamId,
-                    canMutateAssignments:
-                      canMutateAssignments ?? requirementTeamId === 'team-1',
                   },
                 ],
                 assignments: [existingAssignment],
@@ -312,13 +301,11 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
     }
   });
 
-  it('preserves the admin board affordances across Team, time, and participation state', () => {
+  it('preserves the admin board affordances across time and participation state', () => {
     renderBuilder({
-      data: teamGuardData({
-        requirementTeamId: 'team-2',
+      data: boardData({
         start: '2026-08-01T12:00:00.000Z',
         state: 'published',
-        canMutateAssignments: true,
       }),
     });
 

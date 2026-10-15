@@ -32,11 +32,6 @@ interface AssignmentChipProps {
   isPublished: boolean;
   syncState?: AssignmentSyncState;
   onClick?: () => void;
-  /**
-   * The team this chip's shift belongs to, if any. The badge only reads "Team
-   * Leader" when the volunteer leads this specific team (FR-013).
-   */
-  contextTeamId?: string;
 }
 
 export function AssignmentChip({
@@ -47,7 +42,6 @@ export function AssignmentChip({
   isPublished,
   syncState = 'saved',
   onClick,
-  contextTeamId,
 }: AssignmentChipProps) {
   const { assignmentResponse } = appConfig.parked;
   const isTouch = useFormControlSize() === 'touch';
@@ -80,7 +74,6 @@ export function AssignmentChip({
         {volunteerName}
         <AssigneeRoleBadge
           membership={volunteerMembership}
-          contextTeamId={contextTeamId}
           fullNameOnExpand={volunteerName}
         />
       </span>

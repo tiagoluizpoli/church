@@ -45,8 +45,6 @@ export interface VolunteerDashboardAssignmentFixture {
   eventTimeBlockId: string;
   roleId: string;
   roleName: string;
-  teamId?: string;
-  teamName?: string;
   startTime: string;
   endTime: string;
   status: 'pending' | 'confirmed' | 'declined';

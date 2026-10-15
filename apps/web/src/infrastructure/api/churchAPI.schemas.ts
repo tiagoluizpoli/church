@@ -820,8 +820,6 @@ export type GetScheduleBuilderData200VolunteersItem = {
   name: string;
   ministryAccessLevel: GetScheduleBuilderData200VolunteersItemMinistryAccessLevel;
   qualifiedRoleIds: string[];
-  teamIds: string[];
-  leadTeamIds: string[];
 };
 
 export type GetScheduleBuilderData200RolesItem = {
@@ -1411,7 +1409,6 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemRequire
   teamId?: string;
   peopleNeeded: number;
   notes?: string;
-  canMutateAssignments: boolean;
 };
 
 export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItemStatus = typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItemStatus[keyof typeof GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItemStatus];
@@ -1457,7 +1454,6 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibl
   lastServedAt?: string;
   qualifiedRoleIds: string[];
   ministryAccessLevel: GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemEligibleVolunteersItemMinistryAccessLevel;
-  leadTeamIds: string[];
 };
 
 export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItem = {
@@ -1582,7 +1578,6 @@ export type ListEligibleVolunteers200VolunteersItem = {
   lastServedAt?: string;
   qualifiedRoleIds: string[];
   ministryAccessLevel: ListEligibleVolunteers200VolunteersItemMinistryAccessLevel;
-  leadTeamIds: string[];
 };
 
 export type ListEligibleVolunteers200 = {
@@ -2075,8 +2070,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem 
   participationId: string;
   roleId: string;
   roleName: string;
-  teamId?: string;
-  teamName?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -2167,7 +2160,6 @@ export type GetMinistrySchedule200EventsItemRowsItem = {
   eventTimeBlockId: string;
   eventTimeBlockLabel: string;
   roleName: string;
-  teamName?: string;
   volunteerDisplayName?: string;
   confirmationState: GetMinistrySchedule200EventsItemRowsItemConfirmationState;
 };

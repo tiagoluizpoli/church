@@ -37,7 +37,6 @@ export const eligibleVolunteerResponseSchema = z.object({
   lastServedAt: instantSchema.optional(),
   qualifiedRoleIds: z.array(z.string()),
   ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
-  leadTeamIds: z.array(z.string()),
 });
 
 export const eligibleVolunteerListResponseSchema = z.object({
@@ -75,7 +74,6 @@ export const assignMapper = {
       lastServedAt: volunteer.lastServedAt,
       qualifiedRoleIds: volunteer.qualifiedRoleIds,
       ministryAccessLevel: volunteer.ministryAccessLevel,
-      leadTeamIds: volunteer.leadTeamIds,
     };
   },
   eligibleVolunteerListToResponse(volunteers: EligibleVolunteerView[]) {

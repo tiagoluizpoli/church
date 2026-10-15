@@ -43,7 +43,6 @@ describe('MinistryScheduleSection', () => {
                 eventTimeBlockId: 'event-time-block-1',
                 eventTimeBlockLabel: '9:00 AM - 11:00 AM',
                 roleName: 'Usher',
-                teamName: 'Welcome Team',
                 volunteerDisplayName: 'Alice T.',
                 confirmationState: 'confirmed',
               },
@@ -64,7 +63,7 @@ describe('MinistryScheduleSection', () => {
     );
 
     expect(screen.getByText('Volunteer: Alice T.')).toBeInTheDocument();
-    expect(screen.getByText('Team: Welcome Team')).toBeInTheDocument();
+    expect(screen.queryByText(/^Team:/)).not.toBeInTheDocument();
     expect(screen.getByText('Confirmed')).toBeInTheDocument();
   });
 
@@ -121,7 +120,6 @@ describe('MinistryScheduleSection', () => {
                 eventTimeBlockId: 'event-time-block-1',
                 eventTimeBlockLabel: '9:00 AM - 11:00 AM',
                 roleName: 'Usher',
-                teamName: 'Welcome Team',
                 volunteerDisplayName: 'Alice T.',
                 confirmationState: 'confirmed',
               },

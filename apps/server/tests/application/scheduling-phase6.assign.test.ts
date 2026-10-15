@@ -665,18 +665,17 @@ describe('Phase 6 assign and publish managers (US4)', () => {
       expect.arrayContaining([
         expect.objectContaining({
           roleName: 'Host',
-          teamName: 'Alpha Team',
           volunteerDisplayName: 'Alice A.',
           confirmationState: 'confirmed',
         }),
         expect.objectContaining({
           roleName: 'Host',
-          teamName: 'Beta Team',
           volunteerDisplayName: 'Bobby B.',
           confirmationState: 'pending',
         }),
       ]),
     );
+    expect(rows.every((row) => !('teamName' in row))).toBe(true);
   });
 
   it('DL2-DS-02 counts a single assignment once when the volunteer belongs to multiple teams sharing a role event time block', async () => {
@@ -803,12 +802,5 @@ describe('Phase 6 assign and publish managers (US4)', () => {
         roleName: 'Host',
       }),
     );
-    // The assignment is attributed to exactly one team, and the still-open
-    // event time block is the *other* team — never the same team twice, never both
-    // filled, never both open.
-    expect([confirmedRow?.teamName, openRow?.teamName].sort()).toEqual([
-      'Alpha Team',
-      'Beta Team',
-    ]);
   });
 });

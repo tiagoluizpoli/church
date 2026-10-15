@@ -99,7 +99,6 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     participationId: 'participation-1',
                     roleId: 'role-1',
                     peopleNeeded: 2,
-                    canMutateAssignments: false,
                   },
                 ],
                 assignments: [ANA_ASSIGNMENT],
@@ -111,7 +110,6 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     hasConflict: false,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
-                    leadTeamIds: [],
                   },
                   {
                     volunteerId: 'bruno',
@@ -120,7 +118,6 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
                     hasConflict: false,
                     qualifiedRoleIds: ['role-1'],
                     ministryAccessLevel: 'volunteer',
-                    leadTeamIds: [],
                   },
                 ],
               },

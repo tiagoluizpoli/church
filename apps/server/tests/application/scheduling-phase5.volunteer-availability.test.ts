@@ -27,7 +27,6 @@ import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -76,7 +75,6 @@ function createPhase5Manager(): Phase5Manager {
       db: schedulingTestDb,
     }),
     roleRepo: new DrizzleRoleRepository({ db: schedulingTestDb }),
-    teamRepo: new DrizzleTeamRepository({ db: schedulingTestDb }),
     availabilityCheckRepo: new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,
     }),

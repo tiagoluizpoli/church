@@ -100,16 +100,11 @@ export class DbEventManager implements IEventManager {
       unavailableShifts: rawUnavailableShifts,
       volunteers: rawVolunteers.map((v) => {
         const membership = membershipByVolunteerId.get(v.id);
-        const teamMemberships = membership?.teamMemberships ?? [];
         return {
           id: v.id,
           name: (v.name ?? v.id) as string,
           ministryAccessLevel: membership?.ministryAccessLevel ?? 'volunteer',
           qualifiedRoleIds: membership?.qualifiedRoleIds ?? [],
-          teamIds: teamMemberships.map((team) => team.teamId),
-          leadTeamIds: teamMemberships
-            .filter((team) => team.accessLevel === 'leader')
-            .map((team) => team.teamId),
         };
       }),
       roles: roles.map((role) => ({ id: role.id, name: role.name })),

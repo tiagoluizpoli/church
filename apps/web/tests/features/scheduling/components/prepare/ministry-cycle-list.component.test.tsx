@@ -249,7 +249,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       for (const button of buttons) {
         expect(button).toHaveAccessibleName(
           expect.stringContaining(
-            'Unlocks once availability has fired for this cycle',
+            'Unlocks once availability is requested for this cycle',
           ),
         );
       }

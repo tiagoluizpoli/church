@@ -233,7 +233,7 @@ interface CycleRowActionsProps {
 
 /** FR-035: Schedule is always enabled and formalizes what row-click already
  * does; Assign links to the cycle-centric builder and stays enabled once
- * any availability has fired for this cycle. */
+ * any availability is requested for this cycle. */
 function CycleRowActions({
   ministryId,
   cycle,
@@ -268,8 +268,8 @@ function CycleRowActions({
           size={size}
           variant="outline"
           disabled
-          title="Unlocks once availability has fired for this cycle"
-          aria-label="Unlocks once availability has fired for this cycle"
+          title="Unlocks once availability is requested for this cycle"
+          aria-label="Unlocks once availability is requested for this cycle"
           data-testid={`ministry-cycle-assign-button-${cycle.id}`}
         >
           Assign

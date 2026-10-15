@@ -136,11 +136,7 @@ interface WrapperProps {
   children: ReactNode;
 }
 
-interface RenderCycleBuilderInput {
-  teamId?: string;
-}
-
-function renderCycleBuilder({ teamId }: RenderCycleBuilderInput = {}) {
+function renderCycleBuilder() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -148,8 +144,7 @@ function renderCycleBuilder({ teamId }: RenderCycleBuilderInput = {}) {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
   return renderHook(
-    () =>
-      useCycleBuilder({ cycleId: 'cycle-1', ministryId: 'ministry-1', teamId }),
+    () => useCycleBuilder({ cycleId: 'cycle-1', ministryId: 'ministry-1' }),
     { wrapper },
   );
 }
@@ -166,35 +161,6 @@ beforeEach(() => {
 });
 
 describe('useCycleBuilder optimistic assignments', () => {
-  it('creates a Team schedule assignment in the route Team context', async () => {
-    adminApiMock.createParticipationAssignment.mockResolvedValue({});
-    const { result } = renderCycleBuilder({ teamId: 'team-1' });
-    await waitFor(() => expect(result.current.data).toBeDefined());
-
-    await result.current.createAssignment.mutateAsync({
-      shiftId: 'shift-1',
-      body: { volunteerId: 'bruno', roleId: 'role-1' },
-    });
-
-    expect(adminApiMock.createParticipationAssignment).toHaveBeenCalledWith(
-      'shift-1',
-      { volunteerId: 'bruno', roleId: 'role-1', teamId: 'team-1' },
-    );
-  });
-
-  it('removes a Team schedule assignment in the route Team context', async () => {
-    adminApiMock.deleteParticipationAssignment.mockResolvedValue({});
-    const { result } = renderCycleBuilder({ teamId: 'team-1' });
-    await waitFor(() => expect(result.current.data).toBeDefined());
-
-    await result.current.deleteAssignment.mutateAsync('assignment-1');
-
-    expect(adminApiMock.deleteParticipationAssignment).toHaveBeenCalledWith(
-      'assignment-1',
-      { teamId: 'team-1' },
-    );
-  });
-
   it('shows a created assignment before the server answers', async () => {
     const pendingCreate = defer<unknown>();
     adminApiMock.createParticipationAssignment.mockReturnValue(

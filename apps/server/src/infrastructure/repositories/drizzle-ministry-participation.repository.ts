@@ -4,7 +4,6 @@ import {
   event,
   ministryParticipation,
   participationEventTimeBlockInclusion,
-  shiftRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, asc, count, eq, inArray, isNull, notInArray } from 'drizzle-orm';
@@ -350,31 +349,7 @@ export class DrizzleMinistryParticipationRepository
       return [];
     }
 
-    const sentCycleIds = sentCycles.map((cycle) => cycle.id);
-    const cycles: typeof sentCycles = input.teamId ? [] : sentCycles;
-
-    if (input.teamId) {
-      const teamCycleRows = await db
-        .select({ cycleId: event.cycleId })
-        .from(shiftRequirement)
-        .innerJoin(
-          ministryParticipation,
-          eq(shiftRequirement.participationId, ministryParticipation.id),
-        )
-        .innerJoin(event, eq(ministryParticipation.eventId, event.id))
-        .where(
-          and(
-            withChurchIsolation(shiftRequirement, input.churchId),
-            withChurchIsolation(ministryParticipation, input.churchId),
-            withChurchIsolation(event, input.churchId),
-            eq(ministryParticipation.ministryId, input.ministryId),
-            eq(shiftRequirement.teamId, input.teamId),
-            inArray(event.cycleId, sentCycleIds),
-          ),
-        );
-      const teamCycleIds = new Set(teamCycleRows.map((row) => row.cycleId));
-      cycles.push(...sentCycles.filter((cycle) => teamCycleIds.has(cycle.id)));
-    }
+    const cycles = sentCycles;
 
     if (cycles.length === 0) {
       return [];

@@ -51,8 +51,6 @@ const authorityGuard = {
   canManageParticipation: vi.fn(),
   canManageShift: vi.fn(),
   canManageMinistry: vi.fn(),
-  canManageTeam: vi.fn(),
-  canManageTeamShift: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -105,8 +103,6 @@ beforeEach(() => {
   authorityGuard.canManageParticipation.mockResolvedValue(true);
   authorityGuard.canManageShift.mockResolvedValue(true);
   authorityGuard.canManageMinistry.mockResolvedValue(true);
-  authorityGuard.canManageTeam.mockResolvedValue(false);
-  authorityGuard.canManageTeamShift.mockResolvedValue(false);
   assignmentManager.getAssignment.mockResolvedValue({
     shiftId: '66666666-6666-6666-8666-666666666666',
   });
@@ -214,53 +210,7 @@ describe('Assign routes', () => {
     });
   });
 
-  it('allows a TeamLeader to assign within the explicitly led Team', async () => {
-    authorityGuard.canManageShift.mockResolvedValue(false);
-    authorityGuard.canManageTeamShift.mockResolvedValue(true);
-    assignmentManager.createParticipationAssignment.mockResolvedValue({
-      assignment: new Assignment(
-        {
-          churchId: '11111111-1111-1111-1111-111111111111',
-          eventTimeBlockId: '77777777-7777-7777-8777-777777777777',
-          participationId: '22222222-2222-2222-8222-222222222222',
-          shiftId: '66666666-6666-6666-8666-666666666666',
-          volunteerId: 'vol-1',
-          roleId: 'role-1',
-          status: 'pending',
-        },
-        'assign-1',
-      ),
-      warnings: [],
-    });
-
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
-      payload: {
-        volunteerId: 'vol-1',
-        roleId: 'role-1',
-        teamId: '33333333-3333-4333-8333-333333333333',
-      },
-    });
-
-    expect(response.statusCode).toBe(201);
-    expect(authorityGuard.canManageTeamShift).toHaveBeenCalledWith({
-      churchId: '11111111-1111-1111-1111-111111111111',
-      shiftId: '66666666-6666-6666-8666-666666666666',
-      teamId: '33333333-3333-4333-8333-333333333333',
-      userId: 'leader-user',
-    });
-    expect(
-      assignmentManager.createParticipationAssignment,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: '33333333-3333-4333-8333-333333333333',
-        teamLeaderScopeId: '33333333-3333-4333-8333-333333333333',
-      }),
-    );
-  });
-
-  it('denies a TeamLeader assignment without an explicitly led Team non-disclosively', async () => {
+  it('denies a TeamLeader assignment as a plain Volunteer non-disclosively', async () => {
     authorityGuard.canManageShift.mockResolvedValue(false);
 
     const response = await app.inject({
@@ -279,24 +229,6 @@ describe('Assign routes', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('allows a TeamLeader to remove an Assignment from the explicitly led Team', async () => {
-    authorityGuard.canManageShift.mockResolvedValue(false);
-    authorityGuard.canManageTeamShift.mockResolvedValue(true);
-
-    const response = await app.inject({
-      method: 'DELETE',
-      url: '/api/v1/assign/assignments/assign-1?teamId=33333333-3333-4333-8333-333333333333',
-    });
-
-    expect(response.statusCode).toBe(204);
-    expect(assignmentManager.deleteAssignment).toHaveBeenCalledWith({
-      assignmentId: 'assign-1',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      actorId: 'leader-user',
-      teamLeaderScopeId: '33333333-3333-4333-8333-333333333333',
-    });
-  });
-
   it('denies a forged Assignment id without disclosing whether it exists', async () => {
     assignmentManager.getAssignment.mockRejectedValueOnce(
       new NotFoundError('Assignment not found'),
@@ -304,7 +236,7 @@ describe('Assign routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/v1/assign/assignments/forged?teamId=33333333-3333-4333-8333-333333333333',
+      url: '/api/v1/assign/assignments/forged',
     });
 
     expect(response.statusCode).toBe(403);
@@ -480,57 +412,25 @@ describe('Assign routes', () => {
     });
   });
 
-  it('GET /api/v1/assign/cycles/:id/builder scopes a TeamLeader to their Team', async () => {
-    participationManager.getCycleBuilderData.mockResolvedValue({
-      events: [],
-      roles: [],
+  it('GET /api/v1/assign/teams/:id/cycles-summary is gone (404)', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/assign/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
     });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it('GET /api/v1/assign/cycles/:id/builder denies a TeamLeader as a plain Volunteer and ignores teamId', async () => {
     authorityGuard.canManageMinistry.mockResolvedValue(false);
-    authorityGuard.canManageTeam.mockResolvedValue(true);
 
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222&teamId=33333333-3333-4333-8333-333333333333',
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(participationManager.getCycleBuilderData).toHaveBeenCalledWith({
-      churchId: '11111111-1111-1111-1111-111111111111',
-      cycleId: '11111111-1111-1111-8111-111111111111',
-      ministryId: '22222222-2222-2222-8222-222222222222',
-      teamId: '33333333-3333-4333-8333-333333333333',
-      userId: 'leader-user',
-    });
-  });
-
-  it('GET /api/v1/assign/teams/:id/cycles-summary denies a different Team', async () => {
-    authorityGuard.canManageTeam.mockResolvedValue(false);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/assign/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
-    });
-
     expect(response.statusCode).toBe(403);
-    expect(participationManager.listScheduleSummaries).not.toHaveBeenCalled();
-  });
-
-  it('GET /api/v1/assign/teams/:id/cycles-summary lists only that Team’s cycles', async () => {
-    authorityGuard.canManageTeam.mockResolvedValue(true);
-    participationManager.listScheduleSummaries.mockResolvedValue([]);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/assign/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ cycles: [] });
-    expect(participationManager.listScheduleSummaries).toHaveBeenCalledWith({
-      churchId: '11111111-1111-1111-1111-111111111111',
-      ministryId: '22222222-2222-2222-8222-222222222222',
-      teamId: '33333333-3333-4333-8333-333333333333',
-    });
+    expect(participationManager.getCycleBuilderData).not.toHaveBeenCalled();
   });
 
   it('GET /api/v1/assign/cycles/:id/audit is 404 while the audit panel is parked', async () => {

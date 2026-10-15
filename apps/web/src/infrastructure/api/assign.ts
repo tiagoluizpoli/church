@@ -8,15 +8,12 @@ import type {
   CreateParticipationAssignment201,
   CreateParticipationAssignmentBody,
   DeleteParticipationAssignment204,
-  DeleteParticipationAssignmentParams,
   GetCycleAuditLog200,
   GetCycleAuditLogParams,
   GetCycleBuilderData200,
   GetCycleBuilderDataParams,
   GetParticipationCompletion200,
   ListEligibleVolunteers200,
-  ListTeamScheduleCycles200,
-  ListTeamScheduleCyclesParams,
   PublishCycle200,
   PublishCycleBody,
   PublishCycleParams,
@@ -31,20 +28,6 @@ import { apiClient } from '../../utils/api-client';
 
   export const getAssign = () => {
 /**
- * List the sent Cycles in a Ministry that a TeamLeader may open as a read-only schedule.
- * @summary List a Team's readable schedule cycles
- */
-const listTeamScheduleCycles = (
-    teamId: string,
-    params: ListTeamScheduleCyclesParams,
- ) => {
-      return apiClient<ListTeamScheduleCycles200>(
-      {url: `/api/v1/assign/teams/${teamId}/cycles-summary`, method: 'GET',
-        params
-    },
-      );
-    }
-  /**
  * Get a Ministry's schedule-building view of a Cycle: its MinistryParticipations, Shifts, ShiftRequirements, and Assignments.
  * @summary Get cycle builder data for a Ministry
  */
@@ -102,7 +85,7 @@ const listEligibleVolunteers = (
       );
     }
   /**
- * Assign a Volunteer to a Role (and optional Team) within a Shift.
+ * Assign a Volunteer to a Role within a Shift.
  * @summary Assign a Volunteer to a Shift
  */
 const createParticipationAssignment = (
@@ -122,11 +105,9 @@ const createParticipationAssignment = (
  */
 const deleteParticipationAssignment = (
     assignmentId: string,
-    params?: DeleteParticipationAssignmentParams,
  ) => {
       return apiClient<DeleteParticipationAssignment204>(
-      {url: `/api/v1/assign/assignments/${assignmentId}`, method: 'DELETE',
-        params
+      {url: `/api/v1/assign/assignments/${assignmentId}`, method: 'DELETE'
     },
       );
     }
@@ -157,8 +138,7 @@ const getParticipationCompletion = (
     },
       );
     }
-  return {listTeamScheduleCycles,getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
-export type ListTeamScheduleCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['listTeamScheduleCycles']>>>
+  return {getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
 export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleBuilderData']>>>
 export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleAuditLog']>>>
 export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['publishCycle']>>>

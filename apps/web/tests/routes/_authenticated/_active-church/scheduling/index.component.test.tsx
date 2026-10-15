@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
@@ -6,7 +6,6 @@ import { renderRoute } from '@/tests/setup/render-route';
 
 const getSchedulingCapability = vi.fn();
 const listCycles = vi.fn();
-const listTeamScheduleCycles = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -16,8 +15,6 @@ vi.mock('@/utils/api-instances', async () => ({
   },
   adminApi: {
     listCycles: (...args: unknown[]) => listCycles(...args),
-    listTeamScheduleCycles: (...args: unknown[]) =>
-      listTeamScheduleCycles(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -45,7 +42,6 @@ beforeEach(() => {
   getSchedulingCapability.mockReset();
   listCycles.mockReset();
   listCycles.mockResolvedValue({ cycles: [] });
-  listTeamScheduleCycles.mockReset();
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
 });
 
@@ -74,33 +70,6 @@ describe('Scheduling capability index route', () => {
     expect(screen.getByRole('link', { name: 'Open Worship' })).toHaveAttribute(
       'href',
       '/schedules/11111111-1111-4111-8111-111111111111',
-    );
-  });
-
-  it('groups Team schedule entries under their Ministry', async () => {
-    getSchedulingCapability.mockResolvedValue({
-      canAccessScheduling: true,
-      entries: [
-        {
-          kind: 'team',
-          ministryId: '11111111-1111-4111-8111-111111111111',
-          ministryName: 'Worship',
-          teamId: '22222222-2222-4222-8222-222222222222',
-          name: 'Greeting',
-        },
-      ],
-    });
-
-    renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
-
-    expect(
-      await screen.findByRole('heading', { name: 'Worship' }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole('link', { name: 'Open Greeting schedule' }),
-    ).toHaveAttribute(
-      'href',
-      '/scheduling/teams/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
     );
   });
 
@@ -147,9 +116,8 @@ describe('Scheduling capability index route', () => {
     ).toBeVisible();
   });
 
-  it('returns a caller whose Scheduling authority was removed to Dashboard after a denied Team link', async () => {
-    listTeamScheduleCycles.mockRejectedValueOnce(new Error('Forbidden'));
-    getSchedulingCapability.mockResolvedValueOnce({
+  it('shows not-found for the retired Team schedule URL, with no redirect', async () => {
+    getSchedulingCapability.mockResolvedValue({
       canAccessScheduling: false,
       entries: [],
     });
@@ -160,9 +128,9 @@ describe('Scheduling capability index route', () => {
       churchTimezone: 'UTC',
     });
 
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/dashboard'),
+    expect(await screen.findByText('Not Found')).toBeVisible();
+    expect(router.state.location.pathname).toBe(
+      '/scheduling/teams/11111111-1111-4111-8111-111111111111',
     );
-    expect(getSchedulingCapability).toHaveBeenCalledTimes(1);
   });
 });

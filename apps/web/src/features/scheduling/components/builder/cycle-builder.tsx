@@ -41,7 +41,6 @@ interface CycleBuilderProps {
   reassignAssignment: CycleBuilderMutations['reassignAssignment'];
   syncedAt?: number;
   isRefreshing?: boolean;
-  teamId?: string;
 }
 
 interface RoleLabelForInput {
@@ -90,7 +89,6 @@ export function CycleBuilder({
   reassignAssignment,
   syncedAt,
   isRefreshing,
-  teamId,
 }: CycleBuilderProps) {
   const { auditPanel } = appConfig.parked;
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -121,7 +119,7 @@ export function CycleBuilder({
   // Rendered on the filter toolbar's own row (B-4 header pass) rather than
   // the header — audit/publish sit with the rest of this screen's controls
   // instead of stretching a panel that otherwise only carries title + stats.
-  const toolbarActions = teamId ? null : (
+  const toolbarActions = (
     <>
       {auditPanel ? (
         <Button
@@ -181,10 +179,9 @@ export function CycleBuilder({
         failedWrites={actions.boardFailedWrites}
         onRetryFailedWrite={actions.retryFailedWrite}
         onDismissFailedWrite={actions.dismissFailedWrite}
-        teamId={teamId}
       />
 
-      {!teamId && auditPanel ? (
+      {auditPanel ? (
         <AuditLogPanel
           open={auditOpen}
           onOpenChange={setAuditOpen}

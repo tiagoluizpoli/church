@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { z } from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
@@ -11,14 +10,12 @@ export const Route = createFileRoute(
   '/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign',
 )({
   component: EventBuilderRoute,
-  validateSearch: z.object({ teamId: z.string().optional() }),
 });
 
 // Shell host for the cycle-centric Event Builder canvas (US1/US2/US3/US6).
 // It loads the batched builder read model and owns assignment mutations.
 function EventBuilderRoute() {
   const { ministryId, cycleId } = Route.useParams();
-  const { teamId } = Route.useSearch();
   const {
     data,
     publish,
@@ -26,12 +23,11 @@ function EventBuilderRoute() {
     createAssignment,
     deleteAssignment,
     reassignAssignment,
-  } = useCycleBuilder({ cycleId, ministryId, teamId });
+  } = useCycleBuilder({ cycleId, ministryId });
   const cycleQuery = useQuery({
     queryKey: ['assign-cycle', cycleId],
     queryFn: () => adminApi.getCycle(cycleId),
     retry: false,
-    enabled: !teamId,
   });
 
   useSchedulingAccessFallback({ shouldRedirect: query.isError });
@@ -40,11 +36,7 @@ function EventBuilderRoute() {
     return null;
   }
 
-  if (
-    query.isLoading ||
-    (!teamId && (cycleQuery.isLoading || !cycleQuery.data)) ||
-    !data
-  ) {
+  if (query.isLoading || cycleQuery.isLoading || !cycleQuery.data || !data) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-20 w-full" />
@@ -63,10 +55,9 @@ function EventBuilderRoute() {
         data={data}
         cycleId={cycleId}
         ministryId={ministryId}
-        teamId={teamId}
-        cycleName={teamId ? 'Team schedule' : cycleQuery.data?.cycle.name}
-        cycleStartDate={teamId ? undefined : cycleQuery.data?.cycle.startDate}
-        cycleEndDate={teamId ? undefined : cycleQuery.data?.cycle.endDate}
+        cycleName={cycleQuery.data.cycle.name}
+        cycleStartDate={cycleQuery.data.cycle.startDate}
+        cycleEndDate={cycleQuery.data.cycle.endDate}
         isPublishing={publish.isPending}
         onPublish={(confirmBelowFull) => publish.mutate(confirmBelowFull)}
         createAssignment={createAssignment}

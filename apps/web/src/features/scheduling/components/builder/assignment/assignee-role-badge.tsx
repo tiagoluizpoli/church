@@ -6,13 +6,6 @@ import {
 
 export interface AssigneeRoleBadgeProps {
   membership?: AssigneeMembership;
-  /**
-   * The team this badge is being rendered in the context of — e.g. the team a
-   * shift's requirement is scoped to. `undefined` when the surrounding UI has
-   * no team of its own, in which case only a ministry-wide "Leader" badge can
-   * ever show (FR-013).
-   */
-  contextTeamId?: string;
   fullNameOnExpand: string;
 }
 
@@ -25,12 +18,11 @@ export interface AssigneeRoleBadgeProps {
  */
 export function AssigneeRoleBadge({
   membership,
-  contextTeamId,
   fullNameOnExpand,
 }: AssigneeRoleBadgeProps) {
   return (
     <AssigneeIdentityBadge
-      roleLabel={formatAssigneeRoleLabel({ membership, contextTeamId })}
+      roleLabel={formatAssigneeRoleLabel({ membership })}
       fullNameOnExpand={fullNameOnExpand}
     />
   );

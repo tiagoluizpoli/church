@@ -237,9 +237,6 @@ export function CycleBuilderBoardGrid({
                                             safe: [],
                                             needsResponse: [],
                                           };
-                                        const isEditable =
-                                          requirement.canMutateAssignments ??
-                                          true;
                                         const focusOnRequirement = () =>
                                           onFocusRequirement({
                                             key: requirementFocusKey,
@@ -295,7 +292,6 @@ export function CycleBuilderBoardGrid({
                                             isPublished={
                                               event.state === 'published'
                                             }
-                                            isEditable={isEditable}
                                             isFocused={
                                               focusedKey === requirementFocusKey
                                             }
@@ -319,7 +315,6 @@ export function CycleBuilderBoardGrid({
                                             onDismissFailedWrite={
                                               onDismissFailedWrite
                                             }
-                                            contextTeamId={requirement.teamId}
                                           />
                                         );
                                       })}

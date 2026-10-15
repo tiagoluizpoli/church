@@ -52,8 +52,6 @@ export interface CycleBuilderRequirementSummary {
   roleId: string;
   teamId?: string;
   peopleNeeded: number;
-  /** Server-authorized assignment mutation capability for this requirement. */
-  canMutateAssignments?: boolean;
 }
 
 export interface CycleBuilderEligibleVolunteerSummary {
@@ -64,7 +62,6 @@ export interface CycleBuilderEligibleVolunteerSummary {
   lastServedAt?: string;
   qualifiedRoleIds: string[];
   ministryAccessLevel: AssigneeMembership['ministryAccessLevel'];
-  leadTeamIds: string[];
 }
 
 interface CycleBuilderAssignmentDetails {
@@ -228,7 +225,6 @@ function mapCycleBuilderData(
           volunteerNames.set(volunteer.volunteerId, volunteer.volunteerName);
           volunteerMemberships.set(volunteer.volunteerId, {
             ministryAccessLevel: volunteer.ministryAccessLevel,
-            leadTeamIds: volunteer.leadTeamIds,
           });
         }
       }

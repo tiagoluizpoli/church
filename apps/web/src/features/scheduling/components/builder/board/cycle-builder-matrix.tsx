@@ -256,11 +256,7 @@ export function CycleBuilderMatrix(props: Props) {
     event.eventTimeBlocks.some(
       (eventTimeBlock) =>
         eventTimeBlock.included &&
-        eventTimeBlock.shifts.some((shift) =>
-          shift.requirements.some(
-            (requirement) => requirement.canMutateAssignments ?? true,
-          ),
-        ),
+        eventTimeBlock.shifts.some((shift) => shift.requirements.length > 0),
     ),
   );
   const activeAssignments = props.data.assignments.filter((assignment) =>
@@ -292,14 +288,7 @@ export function CycleBuilderMatrix(props: Props) {
     focused &&
     findShiftContextById({ data: props.data, shiftId: focused.shiftId });
   const focusedShift = focusedShiftContext?.shift;
-  const focusedRequirementIsEditable = Boolean(
-    focused &&
-      focusedShiftContext &&
-      (focusedShift?.requirements.find(
-        (requirement) => requirement.roleId === focused?.roleId,
-      )?.canMutateAssignments ??
-        true),
-  );
+  const focusedRequirementIsEditable = Boolean(focused && focusedShiftContext);
   // A full role can still be focused, so the rail honours the same headcount
   // ceiling the board enforces cell-side as `canAdd`.
   const focusedRoleHasRoom = Boolean(
@@ -410,14 +399,10 @@ export function CycleBuilderMatrix(props: Props) {
                 shiftId: target.shiftId,
               });
               const shift = shiftContext?.shift;
-              const requirement = shift?.requirements.find(
-                (requirement) => requirement.roleId === target.roleId,
-              );
               const roleLabel = props.data.roles.find(
                 (role) => role.id === target.roleId,
               )?.name;
-              if (!shiftContext || !(requirement?.canMutateAssignments ?? true))
-                return;
+              if (!shiftContext) return;
               if (shiftContext && shift && roleLabel) {
                 const eventTimeBlockLabel =
                   shiftContext.eventTimeBlock.label ?? 'this shift';

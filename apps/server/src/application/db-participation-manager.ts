@@ -103,7 +103,6 @@ interface BuildEligibleVolunteerViewInput {
   lastServedAt?: Instant;
   qualifiedRoleIds: string[];
   ministryAccessLevel: MinistryAccessLevel;
-  leadTeamIds: string[];
 }
 
 interface QualifiedVolunteerRef {
@@ -113,14 +112,11 @@ interface QualifiedVolunteerRef {
 
 /**
  * Per-volunteer membership facts read once per cycle/shift lookup and reused
- * across every shift — qualification, ministry-wide access level, and the
- * teams (within this ministry) the volunteer leads.
+ * across every shift — qualification and ministry-wide access level.
  */
 interface VolunteerMembershipInfo {
   qualifiedRoleIds: string[];
   ministryAccessLevel: MinistryAccessLevel;
-  teamIds: string[];
-  leadTeamIds: string[];
 }
 
 interface BuildEligibleForVolunteerInput {
@@ -1079,10 +1075,6 @@ export class DbParticipationManager implements IParticipationManager {
         {
           qualifiedRoleIds: membership.qualifiedRoleIds,
           ministryAccessLevel: membership.ministryAccessLevel,
-          teamIds: membership.teamMemberships.map((team) => team.teamId),
-          leadTeamIds: membership.teamMemberships
-            .filter((team) => team.accessLevel === 'leader')
-            .map((team) => team.teamId),
         },
       ]),
     );
@@ -1288,7 +1280,6 @@ function buildBuilderEventView({
     const shiftRequirements = requirementsByShift.get(key) ?? [];
     shiftRequirements.push({
       requirement,
-      canMutateAssignments: true,
     });
     requirementsByShift.set(key, shiftRequirements);
   }
@@ -1392,7 +1383,6 @@ function buildEligibleForVolunteer({
     lastServedAt,
     qualifiedRoleIds: membershipInfo?.qualifiedRoleIds ?? [],
     ministryAccessLevel: membershipInfo?.ministryAccessLevel ?? 'volunteer',
-    leadTeamIds: membershipInfo?.leadTeamIds ?? [],
   });
 }
 
@@ -1525,7 +1515,6 @@ function buildEligibleVolunteerView({
   lastServedAt,
   qualifiedRoleIds,
   ministryAccessLevel,
-  leadTeamIds,
 }: BuildEligibleVolunteerViewInput): EligibleVolunteerView {
   return {
     volunteerId: volunteerId as EligibleVolunteerView['volunteerId'],
@@ -1535,6 +1524,5 @@ function buildEligibleVolunteerView({
     lastServedAt,
     qualifiedRoleIds,
     ministryAccessLevel,
-    leadTeamIds,
   };
 }

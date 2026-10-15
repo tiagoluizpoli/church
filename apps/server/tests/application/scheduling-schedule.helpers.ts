@@ -14,7 +14,6 @@ import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/dr
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
@@ -124,7 +123,6 @@ export function createSchedulingManagers({
       ministryRepo,
       participationRepo,
       roleRepo: new DrizzleRoleRepository({ db: schedulingTestDb }),
-      teamRepo: new DrizzleTeamRepository({ db: schedulingTestDb }),
       availabilityCheckRepo,
       notificationService: notificationSpy,
       unitOfWork,

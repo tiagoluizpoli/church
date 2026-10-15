@@ -26,14 +26,10 @@ export interface ScheduleBuilderEventGroup {
 export interface ScheduleBuilderVolunteerOption {
   id: VolunteerId;
   name: string;
-  /** This member's ministry-wide access level. Independent of team leadership. */
+  /** This member's ministry-wide access level. */
   ministryAccessLevel: MinistryAccessLevel;
   /** Roles this member is qualified to fill, including global roles. */
   qualifiedRoleIds: string[];
-  /** Every team this member belongs to within the ministry. Flat, no primary. */
-  teamIds: string[];
-  /** Subset of `teamIds` this member leads (TeamLeader — per-team, not ministry-wide). */
-  leadTeamIds: string[];
 }
 
 export interface ScheduleBuilderRoleOption {

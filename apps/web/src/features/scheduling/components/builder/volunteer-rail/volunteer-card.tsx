@@ -206,13 +206,6 @@ interface VolunteerCardProps {
    */
   assignFit?: AssignableFitTier;
   onAssignToFocused?: (volunteerId: string) => void;
-  /**
-   * The team this rail is scoped to, if any. Only when this names a team the
-   * volunteer actually leads does the badge read "Team Leader" — the rail has
-   * no team of its own today (it lists ministry-wide), so this is normally
-   * left unset and only a ministry-wide "Leader" badge can show.
-   */
-  contextTeamId?: string;
 }
 
 export function VolunteerCard({
@@ -224,7 +217,6 @@ export function VolunteerCard({
   onSelect,
   assignFit,
   onAssignToFocused,
-  contextTeamId,
 }: VolunteerCardProps) {
   const { churchTimezone } = useTimezone();
   const isTouch = useFormControlSize() === 'touch';
@@ -246,7 +238,6 @@ export function VolunteerCard({
 
   const roleLabel = formatAssigneeRoleLabel({
     membership: volunteer.membership,
-    contextTeamId,
   });
   // What the card's actions call this person. The visible name truncates to
   // "First L." and two people can share that, so the accessible name carries
@@ -365,7 +356,6 @@ export function VolunteerCard({
           ) : null}
           <AssigneeRoleBadge
             membership={volunteer.membership}
-            contextTeamId={contextTeamId}
             fullNameOnExpand={volunteer.volunteerName}
           />
         </div>

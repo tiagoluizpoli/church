@@ -167,7 +167,7 @@ export function useCycleBuilderActions({
 
   // Mirrors `volunteerNameFor`'s lookup order — the assignment already on the
   // board first, then the shift's own eligible-volunteer rows — so the
-  // override dialog's "Team Leader"/"Leader" badge reflects the same person
+  // override dialog's "Leader" badge reflects the same person
   // `volunteerNameFor` just named (FR-013).
   const volunteerMembershipFor = (
     input: CycleBuilderCellSelectInput,
@@ -185,7 +185,6 @@ export function useCycleBuilderActions({
           if (eligible) {
             return {
               ministryAccessLevel: eligible.ministryAccessLevel,
-              leadTeamIds: eligible.leadTeamIds,
             };
           }
         }

@@ -49,18 +49,10 @@ interface CycleBuilderCellProps {
   selectedVolunteerName?: string;
   isPublished: boolean;
   isEditable?: boolean;
-  /** Team Leaders may remove their assignments but cannot replace them. */
-  allowReplacement?: boolean;
   /** True while the rail is ranking people for this shift×role. */
   isFocused?: boolean;
   /** Writes for this shift×role that the server rejected, kept on the board. */
   failedWrites?: FailedAssignmentWrite[];
-  /**
-   * The team this cell's requirement is scoped to, if any. Threaded to the
-   * assignment chip and picker so a "Team Leader" badge only shows for the
-   * team the shift actually requires (FR-013).
-   */
-  contextTeamId?: string;
   onFocus: () => void;
   onToggleFocus: () => void;
   onSelect: (input: CycleBuilderCellSelectInput) => void;
@@ -120,10 +112,8 @@ export function CycleBuilderCell({
   selectedVolunteerName,
   isPublished,
   isEditable = true,
-  allowReplacement = true,
   isFocused,
   failedWrites,
-  contextTeamId,
   onFocus,
   onToggleFocus,
   onSelect,
@@ -293,14 +283,12 @@ export function CycleBuilderCell({
             roleId={roleId}
             isPublished={isPublished}
             isEditable={isEditable}
-            allowReplacement={allowReplacement}
             onFocus={onFocus}
             pickerVolunteers={pickerVolunteers}
             onRemove={() => onRemove(assignment.id)}
             onSelect={(input: AssignmentButtonSelectInput) =>
               commit({ ...input, assignmentId: assignment.id })
             }
-            contextTeamId={contextTeamId}
           />
         ))}
 
@@ -351,7 +339,6 @@ export function CycleBuilderCell({
             }}
             onSelectSuggestion={selectSuggestion}
             onSelect={(volunteerId) => commit({ volunteerId })}
-            contextTeamId={contextTeamId}
           />
         ) : null}
       </div>

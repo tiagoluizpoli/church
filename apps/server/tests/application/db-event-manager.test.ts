@@ -401,24 +401,18 @@ describe('DbEventManager', () => {
             name: 'Leader',
             ministryAccessLevel: 'leader',
             qualifiedRoleIds: [],
-            teamIds: ['team-a'],
-            leadTeamIds: [],
           },
           {
             id: teamAVolunteerId,
             name: 'Team A Vol',
             ministryAccessLevel: 'volunteer',
             qualifiedRoleIds: [roleId as string],
-            teamIds: ['team-a'],
-            leadTeamIds: [],
           },
           {
             id: teamBVolunteerId,
             name: 'Team B Vol',
             ministryAccessLevel: 'volunteer',
             qualifiedRoleIds: [],
-            teamIds: ['team-b'],
-            leadTeamIds: [],
           },
         ]),
       );
@@ -478,8 +472,6 @@ describe('DbEventManager', () => {
           name: leaderId,
           ministryAccessLevel: 'leader',
           qualifiedRoleIds: [],
-          teamIds: [],
-          leadTeamIds: [],
         },
       ]);
     });

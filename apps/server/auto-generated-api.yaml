@@ -1994,21 +1994,11 @@ paths:
                           type: array
                           items:
                             type: string
-                        teamIds:
-                          type: array
-                          items:
-                            type: string
-                        leadTeamIds:
-                          type: array
-                          items:
-                            type: string
                       required:
                         - id
                         - name
                         - ministryAccessLevel
                         - qualifiedRoleIds
-                        - teamIds
-                        - leadTeamIds
                       additionalProperties: false
                   roles:
                     type: array
@@ -3394,15 +3384,12 @@ paths:
                                             type: number
                                           notes:
                                             type: string
-                                          canMutateAssignments:
-                                            type: boolean
                                         required:
                                           - id
                                           - shiftId
                                           - participationId
                                           - roleId
                                           - peopleNeeded
-                                          - canMutateAssignments
                                         additionalProperties: false
                                     assignments:
                                       type: array
@@ -3474,10 +3461,6 @@ paths:
                                             enum:
                                               - leader
                                               - volunteer
-                                          leadTeamIds:
-                                            type: array
-                                            items:
-                                              type: string
                                         required:
                                           - volunteerId
                                           - volunteerName
@@ -3485,7 +3468,6 @@ paths:
                                           - hasConflict
                                           - qualifiedRoleIds
                                           - ministryAccessLevel
-                                          - leadTeamIds
                                         additionalProperties: false
                                   required:
                                     - shift
@@ -3744,10 +3726,6 @@ paths:
                           enum:
                             - leader
                             - volunteer
-                        leadTeamIds:
-                          type: array
-                          items:
-                            type: string
                       required:
                         - volunteerId
                         - volunteerName
@@ -3755,7 +3733,6 @@ paths:
                         - hasConflict
                         - qualifiedRoleIds
                         - ministryAccessLevel
-                        - leadTeamIds
                       additionalProperties: false
                 required:
                   - volunteers
@@ -5160,10 +5137,6 @@ paths:
                                 type: string
                               roleName:
                                 type: string
-                              teamId:
-                                type: string
-                              teamName:
-                                type: string
                               startTime:
                                 type: string
                                 format: date-time
@@ -5376,8 +5349,6 @@ paths:
                               eventTimeBlockLabel:
                                 type: string
                               roleName:
-                                type: string
-                              teamName:
                                 type: string
                               volunteerDisplayName:
                                 type: string

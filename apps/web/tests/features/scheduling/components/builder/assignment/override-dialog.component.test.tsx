@@ -62,20 +62,16 @@ describe('OverrideDialog (T104)', () => {
     expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
   });
 
-  it("renders a role badge next to the title when the volunteer is a ministry Leader or a Team Leader of the conflicted shift's team (FR-013)", () => {
+  it('renders a Leader badge next to the title for a ministry Leader', () => {
     render(
       <OverrideDialog
         {...baseProps}
-        volunteerName="Local Team Leader"
-        volunteerMembership={{
-          ministryAccessLevel: 'volunteer',
-          leadTeamIds: ['team-a'],
-        }}
-        contextTeamId="team-a"
+        volunteerName="Local Leader"
+        volunteerMembership={{ ministryAccessLevel: 'leader' }}
       />,
     );
     expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
-      'Team Leader',
+      'Leader',
     );
   });
 
@@ -85,23 +81,7 @@ describe('OverrideDialog (T104)', () => {
         {...baseProps}
         volunteerMembership={{
           ministryAccessLevel: 'volunteer',
-          leadTeamIds: [],
         }}
-      />,
-    );
-    expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();
-  });
-
-  it('renders no Team Leader badge when the conflicted shift is outside the team this volunteer leads (regression guard)', () => {
-    render(
-      <OverrideDialog
-        {...baseProps}
-        volunteerName="Local Team Leader"
-        volunteerMembership={{
-          ministryAccessLevel: 'volunteer',
-          leadTeamIds: ['team-a'],
-        }}
-        contextTeamId="team-b"
       />,
     );
     expect(screen.queryByTestId('assignee-role-badge')).not.toBeInTheDocument();

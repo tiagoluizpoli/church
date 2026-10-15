@@ -183,11 +183,6 @@ export function MinistryScheduleSection({
                               <div className="text-muted-foreground">
                                 {row.eventTimeBlockLabel}
                               </div>
-                              {row.teamName ? (
-                                <div className="text-muted-foreground">
-                                  Team: {row.teamName}
-                                </div>
-                              ) : null}
                               <div className="text-muted-foreground">
                                 Volunteer: {row.volunteerDisplayName ?? 'Open'}
                               </div>

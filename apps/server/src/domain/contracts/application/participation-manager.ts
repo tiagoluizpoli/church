@@ -61,14 +61,9 @@ export interface CycleBuilderShiftView {
   eligibleVolunteers: EligibleVolunteerView[];
 }
 
-/**
- * A requirement plus the actor-scoped authority to mutate its assignments.
- * The capability is computed for the Cycle Builder read; it is never a
- * substitute for mutation-time authorization.
- */
+/** A requirement as the Cycle Builder read returns it. */
 export interface CycleBuilderRequirementView {
   requirement: ShiftRequirement;
-  canMutateAssignments: boolean;
 }
 
 export interface CycleBuilderEventTimeBlockView {
@@ -175,8 +170,6 @@ export interface EligibleVolunteerView {
   qualifiedRoleIds: string[];
   /** This volunteer's ministry-wide Ministry Access Level. */
   ministryAccessLevel: MinistryAccessLevel;
-  /** Teams within the ministry this volunteer leads (Team Membership `leader` access level). */
-  leadTeamIds: string[];
 }
 
 export interface ListEligibleVolunteersInput {

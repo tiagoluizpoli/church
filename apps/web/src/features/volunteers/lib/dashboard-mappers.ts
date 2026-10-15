@@ -22,8 +22,6 @@ export interface DashboardAssignmentItem {
   participationId: string;
   roleId: string;
   roleName: string;
-  teamId?: string;
-  teamName?: string;
   startTime: string;
   endTime: string;
   status: 'pending' | 'confirmed' | 'declined';
@@ -60,7 +58,6 @@ export interface DashboardMinistryScheduleRow {
   eventTimeBlockId: string;
   eventTimeBlockLabel: string;
   roleName: string;
-  teamName?: string;
   volunteerDisplayName?: string;
   confirmationState: 'pending' | 'confirmed' | 'declined' | 'open';
 }

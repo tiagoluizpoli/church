@@ -49,7 +49,5 @@ test('US4: volunteer browses ministry schedule and switches ministries when avai
       `Volunteer: ${shortVolunteerName({ name: journey.personas.volunteer.name })}`,
     ),
   ).toBeVisible();
-  await expect(
-    page.getByText(`Team: ${journey.ministries.care.teams.care.name}`),
-  ).toBeVisible();
+  await expect(page.getByText(/^Team:/)).toHaveCount(0);
 });

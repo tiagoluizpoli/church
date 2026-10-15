@@ -55,7 +55,6 @@ const boardData: CycleBuilderData = {
                   hasConflict: false,
                   qualifiedRoleIds: [],
                   ministryAccessLevel: 'volunteer',
-                  leadTeamIds: [],
                 },
               ],
             },
@@ -98,7 +97,6 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
       hasConflict: false,
       qualifiedRoleIds: ['role-support', 'role-coordinator'],
       ministryAccessLevel: 'volunteer',
-      leadTeamIds: [],
     },
     {
       volunteerId: 'volunteer-2',
@@ -107,7 +105,6 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
       hasConflict: false,
       qualifiedRoleIds: ['role-support', 'role-coordinator'],
       ministryAccessLevel: 'volunteer',
-      leadTeamIds: [],
     },
   ];
 

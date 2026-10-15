@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { fillTimeOfDayField } from './time-field.helpers';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadPlanningAdminJourney } from '@/tests/fixtures/journeys/planning-admin';
-import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 test.use({ viewport: { width: 767, height: 1200 } });
 

@@ -7,12 +7,12 @@ import {
   seedRoleQualification,
   seedShift,
   seedVolunteerMembership,
-} from './scheduling-roster.helpers';
+} from './scheduling-schedule.helpers';
 import {
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   UserId,
@@ -48,7 +48,7 @@ async function seedTeam(input: SeedTeamInput) {
 
 interface SeedAvailabilityMarkInput {
   churchId: string;
-  planningCycleId: string;
+  cycleId: string;
   membershipId: string;
   shiftId: string;
 }
@@ -57,7 +57,7 @@ async function seedAvailabilityMark(input: SeedAvailabilityMarkInput) {
   const check = await buildAvailabilityCheck({
     db: schedulingTestDb,
     churchId: input.churchId,
-    planningCycleId: input.planningCycleId,
+    cycleId: input.cycleId,
     ministryVolunteerId: input.membershipId,
     state: 'pending',
   });
@@ -87,7 +87,7 @@ async function seedAssignment(input: SeedAssignmentInput) {
   });
 }
 
-describe('Phase 6 rostering and publish managers (US4)', () => {
+describe('Phase 6 assign and publish managers (US4)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
@@ -99,13 +99,13 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       name: 'August 2026',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const upcoming = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
       cycleId: cycle.id,
       ministryId: seed.ministryAId,
-      title: 'Roster target',
+      title: 'Schedule target',
       start: new Date('2026-08-10T09:00:00.000Z'),
       end: new Date('2026-08-10T11:00:00.000Z'),
       status: 'scheduled',
@@ -208,7 +208,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
     });
     await seedAvailabilityMark({
       churchId: seed.churchAId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       membershipId: alan.membership.id,
       shiftId: targetShift.id,
     });
@@ -238,7 +238,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       name: 'September 2026',
       startDate: new Date('2026-09-01T00:00:00.000Z'),
       endDate: new Date('2026-10-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const primary = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -314,7 +314,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(primary.participation.id),
-      state: 'availability_fired',
+      state: 'availability_requested',
     });
     await seedAssignment({
       churchId: seed.churchAId,
@@ -381,7 +381,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       name: 'October 2026',
       startDate: new Date('2026-10-01T00:00:00.000Z'),
       endDate: new Date('2026-11-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const sharedEvent = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -403,7 +403,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       churchId: seed.churchAId,
       ministryId: secondMinistry.id,
       eventId: sharedEvent.event.id,
-      state: 'rostering',
+      state: 'assigning',
       timeSlotIds: [],
     });
 
@@ -473,7 +473,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       participationId: MinistryParticipationId.from(
         sharedEvent.participation.id,
       ),
-      state: 'rostering',
+      state: 'assigning',
     });
 
     const publishedCandidate = await seedAssignment({
@@ -503,7 +503,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
 
     const publishInput = {
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     };
@@ -527,7 +527,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       participationId: MinistryParticipationId.from(secondParticipation.id),
     });
     expect(published.state).toBe('published');
-    expect(sibling.state).toBe('rostering');
+    expect(sibling.state).toBe('assigning');
 
     const volunteerSchedule =
       await managers.volunteerManager.getPublishedSchedule({
@@ -560,7 +560,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       name: 'November 2026',
       startDate: new Date('2026-11-01T00:00:00.000Z'),
       endDate: new Date('2026-12-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -686,7 +686,7 @@ describe('Phase 6 rostering and publish managers (US4)', () => {
       name: 'December 2026',
       startDate: new Date('2026-12-01T00:00:00.000Z'),
       endDate: new Date('2027-01-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,

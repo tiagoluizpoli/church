@@ -35,7 +35,7 @@ const builderData: CycleBuilderData = {
   events: [
     {
       participationId: 'participation-1',
-      state: 'rostering',
+      state: 'assigning',
       eventId: 'event-1',
       title: 'Sunday Gathering',
       start: '2026-08-02T09:00:00.000Z',
@@ -237,7 +237,7 @@ describe('CycleBuilder header (B-4)', () => {
     // builder data, so it tracks every write the board applies.
     expect(header).toHaveTextContent('0 of 1 assignments filled');
     expect(header).toHaveTextContent('1 shift is below target');
-    // The plain inventory counters Planning and Tailoring also carry.
+    // The plain inventory counters Planning and Prepare also carry.
     expect(screen.getByTestId('cycle-builder-event-count')).toHaveTextContent(
       '1',
     );
@@ -291,7 +291,7 @@ describe('CycleBuilder assignment announcements (B-3)', () => {
 });
 
 describe('CycleBuilder TeamLeader affordances (#200)', () => {
-  it('allows assignment in a future rostering cell for the led Team, without ministry-wide controls', async () => {
+  it('allows assignment in a future assign cell for the led Team, without ministry-wide controls', async () => {
     const data: CycleBuilderData = {
       ...builderData,
       events: builderData.events.map((event) => ({
@@ -325,7 +325,7 @@ describe('CycleBuilder TeamLeader affordances (#200)', () => {
     });
   });
 
-  it('allows remove and reassign affordances in a future rostering cell for the led Team', async () => {
+  it('allows remove and reassign affordances in a future assign cell for the led Team', async () => {
     const user = userEvent.setup();
     const data = teamGuardData({ requirementTeamId: 'team-1' });
     data.events[0].slots[0].shifts[0].eligibleVolunteers.push({

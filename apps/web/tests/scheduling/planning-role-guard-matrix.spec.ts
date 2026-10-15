@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { loadPlanningCycleAccessJourney } from '@/tests/fixtures/journeys/planning-admin';
 import {
   signInPersonaPage,
   worshipBuilderPath,
-} from '@/tests/fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/assign-church';
+import { loadCycleAccessJourney } from '@/tests/fixtures/journeys/planning-admin';
 
 // P9/T065 (test-master: exhaustive permission-coverage). T057 only proved
 // denial at /scheduling/planning-cycles (route-level redirect). This closes
@@ -25,7 +25,7 @@ test.describe('Leader direct access to the other scheduling routes', () => {
   test('a Leader can load /scheduling/tailoring and the cycle builder directly', async ({
     page,
   }, testInfo) => {
-    const journey = loadPlanningCycleAccessJourney({ testInfo });
+    const journey = loadCycleAccessJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.admin });
 
     await page.goto('/scheduling/tailoring');
@@ -40,11 +40,11 @@ test.describe('Volunteer-only denial across all 3 scheduling routes', () => {
   test('a Volunteer is denied at /scheduling/planning-cycles, /scheduling/tailoring, and the cycle builder', async ({
     page,
   }, testInfo) => {
-    const journey = loadPlanningCycleAccessJourney({ testInfo });
+    const journey = loadCycleAccessJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.volunteer });
 
     await page.goto('/scheduling/planning-cycles');
-    await expect(page).not.toHaveURL(/\/scheduling\/planning-cycles/);
+    await expect(page).not.toHaveURL(/\/scheduling\/cycles/);
     await expect(page.getByTestId('planning-admin-page')).toHaveCount(0);
 
     await page.goto('/scheduling/tailoring');

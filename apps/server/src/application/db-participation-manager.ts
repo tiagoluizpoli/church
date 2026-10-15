@@ -5,7 +5,7 @@ import {
   now,
   toDate,
 } from '@church/time';
-import { TeamRosterMutationPolicy } from '../domain/authority/team-roster-mutation-policy';
+import { TeamScheduleMutationPolicy } from '../domain/authority/team-schedule-mutation-policy';
 import { type ChurchId, TeamId } from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
 import type {
@@ -69,7 +69,7 @@ import {
 } from '../domain/errors';
 import { ShiftSplitter } from '../domain/services/shift-splitter';
 
-interface EnsureTailoringInput {
+interface EnsurePrepareInput {
   participation: MinistryParticipation;
   action: string;
 }
@@ -447,7 +447,7 @@ export class DbParticipationManager implements IParticipationManager {
         participationId: input.participationId,
         tx,
       });
-      ensureTailoring({ participation, action: 'set_inclusions' });
+      ensurePrepare({ participation, action: 'set_inclusions' });
 
       const previousInclusions =
         await this.participationRepository.listInclusions({
@@ -529,7 +529,7 @@ export class DbParticipationManager implements IParticipationManager {
         participationId: input.participationId,
         tx,
       });
-      ensureTailoring({ participation, action: 'split_shifts' });
+      ensurePrepare({ participation, action: 'split_shifts' });
 
       const slot = await this.resolveParticipationSlot({
         churchId: input.churchId,
@@ -590,7 +590,7 @@ export class DbParticipationManager implements IParticipationManager {
         participationId: shift.participationId,
         tx,
       });
-      ensureTailoring({ participation, action: 'update_shift' });
+      ensurePrepare({ participation, action: 'update_shift' });
 
       const slot = await this.timeSlotRepository.getById(
         input.churchId,
@@ -631,7 +631,7 @@ export class DbParticipationManager implements IParticipationManager {
         participationId: shift.participationId,
         tx,
       });
-      ensureTailoring({ participation, action: 'delete_shift' });
+      ensurePrepare({ participation, action: 'delete_shift' });
 
       await this.shiftRepository.deleteById({
         churchId: input.churchId,
@@ -659,7 +659,7 @@ export class DbParticipationManager implements IParticipationManager {
         participationId: shift.participationId,
         tx,
       });
-      ensureTailoring({ participation, action: 'upsert_requirement' });
+      ensurePrepare({ participation, action: 'upsert_requirement' });
 
       const requirement = await this.shiftRepository.upsertRequirement({
         churchId: input.churchId,
@@ -833,8 +833,8 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
 
-      // Only availability-fired / rostering participations are publishable;
-      // tailoring ones are not yet rostered and already-published ones are
+      // Only availability-fired / assign participations are publishable;
+      // prepare ones are not yet assigned and already-published ones are
       // reported unchanged.
       const publishable: PublishCandidate[] = [];
       const alreadyPublished: PublishCandidate[] = [];
@@ -855,8 +855,8 @@ export class DbParticipationManager implements IParticipationManager {
         if (participation.state === 'published') {
           alreadyPublished.push({ participation, completion });
         } else if (
-          participation.state === 'availability_fired' ||
-          participation.state === 'rostering'
+          participation.state === 'availability_requested' ||
+          participation.state === 'assigning'
         ) {
           publishable.push({ participation, completion });
         }
@@ -878,8 +878,8 @@ export class DbParticipationManager implements IParticipationManager {
       }
 
       for (const { participation, completion } of publishable) {
-        if (participation.state === 'availability_fired') {
-          participation.startRostering();
+        if (participation.state === 'availability_requested') {
+          participation.startAssigning();
         }
         participation.publish({
           completionPercent: completion.completionPercent,
@@ -935,7 +935,7 @@ export class DbParticipationManager implements IParticipationManager {
       await this.notificationService.notifyVolunteer({
         churchId: churchId as string,
         volunteerId: volunteerId as string,
-        planningCycleId: planningEvent.planningCycleId,
+        cycleId: planningEvent.cycleId,
         ministryId: participation.ministryId,
         eventId: planningEvent.id,
         type: 'schedule_published',
@@ -970,8 +970,8 @@ export class DbParticipationManager implements IParticipationManager {
       eventCount: row.eventCount,
       slotCount: row.slotCount,
       status: row.status,
-      availabilityFiredForAll: row.availabilityFiredForAll,
-      availabilityFiredForAny: row.availabilityFiredForAny,
+      availabilityRequestedForAll: row.availabilityRequestedForAll,
+      availabilityRequestedForAny: row.availabilityRequestedForAny,
     }));
   }
 
@@ -1375,7 +1375,7 @@ function canMutateCycleBuilderRequirement({
     (membership) => membership.teamIds,
   );
 
-  return TeamRosterMutationPolicy.authorize({
+  return TeamScheduleMutationPolicy.authorize({
     teamId,
     participationState: participation.state,
     eventStatus: eventGroup.event.status,
@@ -1489,11 +1489,8 @@ function sortEligibleVolunteers(
   });
 }
 
-function ensureTailoring({
-  participation,
-  action,
-}: EnsureTailoringInput): void {
-  if (participation.state !== 'tailoring') {
+function ensurePrepare({ participation, action }: EnsurePrepareInput): void {
+  if (participation.state !== 'preparing') {
     throw new IllegalStateTransitionError(participation.state, action);
   }
 }

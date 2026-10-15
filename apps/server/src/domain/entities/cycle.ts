@@ -7,48 +7,44 @@ import {
   toDate,
   today,
 } from '@church/time';
-import type { ChurchId, PlanningCycleId } from '../branded-ids';
+import type { ChurchId, CycleId } from '../branded-ids';
 import { IllegalStateTransitionError } from '../errors/illegal-state-transition';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 
-export const PLANNING_CYCLE_STATE_OPTIONS = [
-  'draft',
-  'locked',
-  'archived',
-] as const;
-export type PlanningCycleState = (typeof PLANNING_CYCLE_STATE_OPTIONS)[number];
+export const CYCLE_STATE_OPTIONS = ['draft', 'sent', 'past'] as const;
+export type CycleState = (typeof CYCLE_STATE_OPTIONS)[number];
 
-export interface PlanningCycleProps {
+export interface CycleProps {
   churchId: ChurchId;
   name: string;
   startDate: CalendarDay;
   endDate: CalendarDay;
-  state: PlanningCycleState;
+  state: CycleState;
 }
 
-export interface PlanningCycleInput {
-  props: Omit<LooseProps<PlanningCycleProps>, 'state'> &
-    Partial<Pick<LooseProps<PlanningCycleProps>, 'state'>>;
+export interface CycleInput {
+  props: Omit<LooseProps<CycleProps>, 'state'> &
+    Partial<Pick<LooseProps<CycleProps>, 'state'>>;
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-export interface PlanningCycleCanReopenEventInput {
+export interface CycleCanReopenEventInput {
   eventState: 'draft' | 'scheduled' | 'cancelled' | 'past';
 }
 
-export interface PlanningCycleContainsDateInput {
+export interface CycleContainsDateInput {
   instant: Instant;
   timeZone: string;
 }
 
-export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
-  constructor({ props, id, createdAt, updatedAt }: PlanningCycleInput) {
+export class Cycle extends Entity<CycleProps, CycleId> {
+  constructor({ props, id, createdAt, updatedAt }: CycleInput) {
     const normalizedProps = {
       ...props,
       state: props.state ?? 'draft',
-    } as PlanningCycleProps;
+    } as CycleProps;
 
     if (
       compareCalendarDays({
@@ -59,7 +55,7 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
       throw new InvalidDateRangeError();
     }
 
-    super(normalizedProps, id as PlanningCycleId, createdAt, updatedAt);
+    super(normalizedProps, id as CycleId, createdAt, updatedAt);
   }
 
   get churchId(): ChurchId {
@@ -78,30 +74,30 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
     return this._props.endDate;
   }
 
-  get state(): PlanningCycleState {
+  get state(): CycleState {
     return this._props.state;
   }
 
-  lock(): void {
+  send(): void {
     if (this.state !== 'draft') {
-      throw new IllegalStateTransitionError(this.state, 'locked');
+      throw new IllegalStateTransitionError(this.state, 'sent');
     }
 
-    this._props.state = 'locked';
+    this._props.state = 'sent';
     this._updatedAt = toDate({ instant: now() });
   }
 
-  archive(): void {
-    if (this.state === 'archived') {
-      throw new IllegalStateTransitionError(this.state, 'archived');
+  markPast(): void {
+    if (this.state === 'past') {
+      throw new IllegalStateTransitionError(this.state, 'past');
     }
 
-    this._props.state = 'archived';
+    this._props.state = 'past';
     this._updatedAt = toDate({ instant: now() });
   }
 
-  assertCanReopenEvent({ eventState }: PlanningCycleCanReopenEventInput): void {
-    if (this.state !== 'locked') {
+  assertCanReopenEvent({ eventState }: CycleCanReopenEventInput): void {
+    if (this.state !== 'sent') {
       throw new IllegalStateTransitionError(this.state, 'reopen_event');
     }
 
@@ -110,7 +106,7 @@ export class PlanningCycle extends Entity<PlanningCycleProps, PlanningCycleId> {
     }
   }
 
-  containsDate({ instant, timeZone }: PlanningCycleContainsDateInput): boolean {
+  containsDate({ instant, timeZone }: CycleContainsDateInput): boolean {
     const day = today({ instant, timeZone });
     return (
       compareCalendarDays({ left: day, right: this.startDate }) >= 0 &&

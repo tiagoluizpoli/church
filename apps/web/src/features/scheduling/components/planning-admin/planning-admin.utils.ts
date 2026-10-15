@@ -12,20 +12,20 @@ import { isAxiosError } from 'axios';
 import type {
   CycleCalendarSlotRow,
   CycleCalendarTableRow,
+  CycleEventGroup,
   CycleFormState,
-  PlanningCycleEventGroup,
-  PlanningCycleSummary,
-  PlanningCyclesTableRow,
+  CycleSummary,
+  CyclesTableRow,
   PlanningTemplateSummary,
-  SelectedPlanningCycle,
+  SelectedCycle,
   TemplateBlockDraft,
   TemplateFormState,
   TemplateLibraryTableRow,
 } from './planning-admin.types';
 import type {
   CreateEventTemplateBody,
-  GetPlanningCycle200EventsItemEventStatus,
-  ListPlanningCycles200CyclesItemState,
+  GetCycle200EventsItemEventStatus,
+  ListCycles200CyclesItemState,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { describeSpan } from '@/shared/utils/span-description';
@@ -71,15 +71,15 @@ interface SortTemplateBlocksInput {
 }
 
 interface CycleStateVariantInput {
-  state: ListPlanningCycles200CyclesItemState;
+  state: ListCycles200CyclesItemState;
 }
 
 interface EventStatusVariantInput {
-  status: GetPlanningCycle200EventsItemEventStatus;
+  status: GetCycle200EventsItemEventStatus;
 }
 
 interface TotalSlotsInput {
-  events: PlanningCycleEventGroup[] | undefined;
+  events: CycleEventGroup[] | undefined;
 }
 
 interface CycleFormValidityInput {
@@ -91,11 +91,11 @@ interface TemplateFormValidityInput {
 }
 
 interface SelectedCycleInput {
-  cycle: SelectedPlanningCycle | null | undefined;
+  cycle: SelectedCycle | null | undefined;
 }
 
-interface PlanningCyclesTableRowInput {
-  cycle: PlanningCycleSummary;
+interface CyclesTableRowInput {
+  cycle: CycleSummary;
 }
 
 interface TemplateLibraryTableRowInput {
@@ -103,7 +103,7 @@ interface TemplateLibraryTableRowInput {
 }
 
 interface CycleCalendarTableRowInput {
-  eventGroup: PlanningCycleEventGroup;
+  eventGroup: CycleEventGroup;
 }
 
 export function createEmptyCycleForm(): CycleFormState {
@@ -238,11 +238,11 @@ export function sortTemplateBlocks({
 export function stateBadgeVariant({
   state,
 }: CycleStateVariantInput): 'default' | 'outline' | 'secondary' {
-  if (state === 'locked') {
+  if (state === 'sent') {
     return 'default';
   }
 
-  if (state === 'archived') {
+  if (state === 'past') {
     return 'outline';
   }
 
@@ -323,8 +323,8 @@ export function canCreateTemplate({
   );
 }
 
-export function cycleIsLocked({ cycle }: SelectedCycleInput): boolean {
-  return cycle?.state === 'locked';
+export function cycleIsSent({ cycle }: SelectedCycleInput): boolean {
+  return cycle?.state === 'sent';
 }
 
 export interface IsMultiDayEventInput {
@@ -367,9 +367,9 @@ export function eventSpanLabel({
   return crossesToNextDay ? 'day_based' : 'hourly';
 }
 
-export function toPlanningCyclesTableRow({
+export function toCyclesTableRow({
   cycle,
-}: PlanningCyclesTableRowInput): PlanningCyclesTableRow {
+}: CyclesTableRowInput): CyclesTableRow {
   return {
     id: cycle.id,
     name: cycle.name,

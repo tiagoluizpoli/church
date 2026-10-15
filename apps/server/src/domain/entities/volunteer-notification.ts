@@ -3,9 +3,9 @@ import type { Instant } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
+  CycleId,
   EventId,
   MinistryId,
-  PlanningCycleId,
   VolunteerId,
   VolunteerNotificationId,
 } from '../branded-ids';
@@ -31,7 +31,7 @@ export type VolunteerNotificationPayload = Record<string, string | null> & {
 export interface VolunteerNotificationProps {
   churchId: ChurchId;
   volunteerId: VolunteerId;
-  planningCycleId?: PlanningCycleId;
+  cycleId?: CycleId;
   ministryId?: MinistryId;
   eventId?: EventId;
   assignmentId?: AssignmentId;
@@ -68,8 +68,8 @@ export class VolunteerNotification extends Entity<
     return this._props.volunteerId;
   }
 
-  get planningCycleId(): PlanningCycleId | undefined {
-    return this._props.planningCycleId;
+  get cycleId(): CycleId | undefined {
+    return this._props.cycleId;
   }
 
   get ministryId(): MinistryId | undefined {

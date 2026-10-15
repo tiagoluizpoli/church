@@ -111,7 +111,7 @@ async function seedShift(input: SeedShiftInput) {
 
 interface SeedCheckInput {
   churchId: string;
-  planningCycleId: string;
+  cycleId: string;
   ministryVolunteerId: string;
   state?: 'pending' | 'confirmed';
 }
@@ -120,7 +120,7 @@ async function seedCheck(input: SeedCheckInput) {
   return await buildAvailabilityCheck({
     db: schedulingTestDb,
     churchId: input.churchId,
-    planningCycleId: input.planningCycleId,
+    cycleId: input.cycleId,
     ministryVolunteerId: input.ministryVolunteerId,
     state: input.state ?? 'pending',
   });
@@ -148,7 +148,7 @@ interface SeededShift {
 const VOLUNTEER_USER_ID = 'phase5-volunteer-user';
 const VOLUNTEER_ID = '55555555-5555-4555-8555-555555555551';
 
-/** Seeds: locked cycle, one event (Aug 2), two shifts on it, one volunteer membership + pending check. */
+/** Seeds: sent cycle, one event (Aug 2), two shifts on it, one volunteer membership + pending check. */
 async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   const seed = await seedSchedulingPhase3Base();
   const cycle = await createSchedulingPhase3Cycle({
@@ -156,7 +156,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
     name: 'August 2026',
     startDate: new Date('2026-08-01T00:00:00.000Z'),
     endDate: new Date('2026-09-01T00:00:00.000Z'),
-    state: 'locked',
+    state: 'sent',
   });
   const graph = await createSchedulingPhase3EventGraph({
     churchId: seed.churchAId,
@@ -196,7 +196,7 @@ async function seedPhase5Fixture(): Promise<Phase5Fixture> {
   });
   const check = await seedCheck({
     churchId: seed.churchAId,
-    planningCycleId: cycle.id,
+    cycleId: cycle.id,
     ministryVolunteerId: membership.id,
   });
 
@@ -255,7 +255,7 @@ async function seedSecondMinistryBranch({
     churchId: fixture.seed.churchAId,
     ministryId: secondMinistry.id,
     eventId: fixture.eventId,
-    state: 'tailoring',
+    state: 'preparing',
     timeSlotIds: [],
   });
 
@@ -285,7 +285,7 @@ async function seedSecondMinistryBranch({
   });
   const check = await seedCheck({
     churchId: fixture.seed.churchAId,
-    planningCycleId: fixture.cycleId,
+    cycleId: fixture.cycleId,
     ministryVolunteerId: membership.id,
   });
 

@@ -1,11 +1,11 @@
 import { getActiveChurch } from '@/infrastructure/api/active-church';
+import { getAssign } from '@/infrastructure/api/assign';
 import { getEvents } from '@/infrastructure/api/events';
 import { getMinistries } from '@/infrastructure/api/ministries';
 import { getPlanning } from '@/infrastructure/api/planning';
+import { getPrepare } from '@/infrastructure/api/prepare';
 import { getRedemption } from '@/infrastructure/api/redemption';
-import { getRostering } from '@/infrastructure/api/rostering';
 import { getSchedulingCapability } from '@/infrastructure/api/scheduling-capability';
-import { getTailoring } from '@/infrastructure/api/tailoring';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
 
 const generatedVolunteerApi = getVolunteer();
@@ -14,8 +14,8 @@ export const adminApi = {
   ...getEvents(),
   ...getMinistries(),
   ...getPlanning(),
-  ...getTailoring(),
-  ...getRostering(),
+  ...getPrepare(),
+  ...getAssign(),
 };
 export const volunteerApi = {
   ...generatedVolunteerApi,

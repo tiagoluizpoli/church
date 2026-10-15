@@ -259,7 +259,7 @@ async function loadChurchDirectory({
     const ministryIds = await buildMinistryStructure({ context, ministry });
     ministryIdsByName.set(ministry.name, ministryIds);
 
-    for (const group of ministry.roster) {
+    for (const group of ministry.schedule) {
       for (const person of group.people) {
         const userId = await buildPersonUser({ context, person });
         await addPlainChurchMembership({ db, churchId: church.id, userId });

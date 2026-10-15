@@ -20,9 +20,9 @@ import { DrizzleVolunteerTransferRepository } from '@/infrastructure/repositorie
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import {
   buildAssignedShift,
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
@@ -138,7 +138,7 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
 
   async function seedWithdrawnAssignment(): Promise<void> {
     const churchId = fixture.churchB.id;
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db: testDb,
       churchId,
       name: 'Transfer Cycle',
@@ -149,7 +149,7 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
     const transferEvent = await buildEvent({
       db: testDb,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       title: 'Transfer Sunday',
       start: fromDate({ date: new Date(COMMIT.getTime() - 3_600_000) }),
       end: fromDate({ date: new Date(COMMIT.getTime() + 24 * 3_600_000) }),
@@ -160,7 +160,7 @@ describe('DbOutboxDrainer — Volunteer Transfer notifications (issue #60, integ
       churchId,
       ministryId: fixture.ministryInB,
       eventId: transferEvent.id,
-      state: 'tailoring',
+      state: 'preparing',
       timeSlotIds: [],
     });
     const start = fromDate({ date: new Date(COMMIT.getTime() + 3_600_000) });

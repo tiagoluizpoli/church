@@ -1,12 +1,12 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { createCycleViaApi } from './cycle-api.helpers';
 import { fillDatePickerField } from './date-picker.helpers';
-import { createPlanningCycleViaApi } from './planning-cycle-api.helpers';
 import { dayOfMonth, planningMonth } from './planning-month.helpers';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import {
   loadPlanningAdminJourney,
   type PlanningAdminJourney,
 } from '@/tests/fixtures/journeys/planning-admin';
-import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 /** Mirrors `formatDayOf` (apps/web/src/shared/utils/church-time.ts), which
  * every event display renders through — assertions against
@@ -44,7 +44,7 @@ async function createOpenCycle({
   name,
 }: CreateOpenCycleParams): Promise<void> {
   const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
-  const cycle = await createPlanningCycleViaApi({
+  const cycle = await createCycleViaApi({
     page,
     name,
     startDate,
@@ -68,9 +68,9 @@ test('exactly one create-event UI is reachable from every entry point (FR-012, S
     page.getByRole('link', { name: 'Open church planning' }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Open church planning' }).click();
-  await expect(page).toHaveURL(/\/scheduling\/planning-cycles/);
+  await expect(page).toHaveURL(/\/scheduling\/cycles/);
 
-  // Entry point 2: the planning cycle itself — the one canonical form.
+  // Entry point 2: the cycle itself — the one canonical form.
   await createOpenCycle({
     page,
     journey,

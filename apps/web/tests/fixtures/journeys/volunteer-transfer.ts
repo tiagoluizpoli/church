@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import {
-  type LoadRosteringJourneyInput,
-  ROSTERING_CHURCH_MEMBERSHIP_SCHEMA,
-  ROSTERING_CHURCH_SCHEMA,
-  ROSTERING_CYCLE_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-  rosteringEventSchema,
-  rosteringMinistrySchema,
-} from './rostering-church';
+  ASSIGN_CHURCH_MEMBERSHIP_SCHEMA,
+  ASSIGN_CHURCH_SCHEMA,
+  ASSIGN_CYCLE_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+  assignEventSchema,
+  assignMinistrySchema,
+  type LoadAssignJourneyInput,
+} from './assign-church';
 import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 
 // Mirrors the server's `E2E_JOURNEY_RECIPE_NAMES`
@@ -17,26 +17,26 @@ const RECIPE_NAME = 'volunteer-transfer';
 export const VOLUNTEER_TRANSFER_JOURNEY_SCHEMA = z.object({
   anchor: z.string().min(1),
   churchA: z.object({
-    church: ROSTERING_CHURCH_SCHEMA,
+    church: ASSIGN_CHURCH_SCHEMA,
     ministries: z.object({
-      worship: rosteringMinistrySchema({ roles: ['usher'], teams: [] }),
+      worship: assignMinistrySchema({ roles: ['usher'], teams: [] }),
     }),
-    personas: z.object({ admin: ROSTERING_PERSONA_SCHEMA }),
+    personas: z.object({ admin: ASSIGN_PERSONA_SCHEMA }),
   }),
   churchB: z.object({
-    church: ROSTERING_CHURCH_SCHEMA,
+    church: ASSIGN_CHURCH_SCHEMA,
     ministries: z.object({
-      hospitality: rosteringMinistrySchema({ roles: ['porter'], teams: [] }),
+      hospitality: assignMinistrySchema({ roles: ['porter'], teams: [] }),
     }),
     personas: z.object({
-      admin: ROSTERING_PERSONA_SCHEMA,
-      transferee: ROSTERING_PERSONA_SCHEMA,
+      admin: ASSIGN_PERSONA_SCHEMA,
+      transferee: ASSIGN_PERSONA_SCHEMA,
     }),
   }),
-  churchAMembership: ROSTERING_CHURCH_MEMBERSHIP_SCHEMA,
+  churchAMembership: ASSIGN_CHURCH_MEMBERSHIP_SCHEMA,
   seat: z.object({
-    cycle: ROSTERING_CYCLE_SCHEMA,
-    event: rosteringEventSchema({ requirements: ['porter'] }),
+    cycle: ASSIGN_CYCLE_SCHEMA,
+    event: assignEventSchema({ requirements: ['porter'] }),
     assignmentId: z.string().min(1),
   }),
 });
@@ -48,7 +48,7 @@ export type VolunteerTransferJourney = z.infer<
 /** Loads this test's own two Churches and transferee; signs nobody in. */
 export function loadVolunteerTransferJourney({
   testInfo,
-}: LoadRosteringJourneyInput): VolunteerTransferJourney {
+}: LoadAssignJourneyInput): VolunteerTransferJourney {
   return loadJourneyRecipe({
     recipeName: RECIPE_NAME,
     schema: VOLUNTEER_TRANSFER_JOURNEY_SCHEMA,

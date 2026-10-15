@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import { loadVolunteerDashboardJourney } from '@/tests/fixtures/journeys/volunteer-dashboard';
 
 test('US5: volunteer keeps cached dashboard data readable across all three tabs after reloading offline', async ({

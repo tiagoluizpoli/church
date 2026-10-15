@@ -11,13 +11,13 @@ import {
   seedRoleQualification,
   seedShift,
   seedVolunteerMembership,
-} from './scheduling-roster.helpers';
+} from './scheduling-schedule.helpers';
 import {
   AssignmentId,
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   UserId,
@@ -68,7 +68,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       name: 'December 2026',
       startDate: new Date('2026-12-01T00:00:00.000Z'),
       endDate: new Date('2027-01-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -176,7 +176,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       name: 'January 2027',
       startDate: new Date('2027-01-01T00:00:00.000Z'),
       endDate: new Date('2027-02-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -259,7 +259,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       name: 'February 2027',
       startDate: new Date('2027-02-01T00:00:00.000Z'),
       endDate: new Date('2027-03-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -322,7 +322,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
     await managers.participationRepo.updateState({
       churchId: ChurchId.from(seed.churchAId),
       participationId: MinistryParticipationId.from(graph.participation.id),
-      state: 'rostering',
+      state: 'assigning',
     });
 
     const reassigned =
@@ -365,7 +365,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
       name: 'Lead time cutoff cycle',
       startDate: new Date(now.getTime() - 24 * 60 * 60 * 1000),
       endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -436,7 +436,7 @@ describe('Phase 7 live execution and late changes (US5)', () => {
 
 interface SeedAvailabilityMarkInput {
   churchId: string;
-  planningCycleId: string;
+  cycleId: string;
   membershipId: string;
   shiftId: string;
 }
@@ -445,7 +445,7 @@ async function seedAvailabilityMark(input: SeedAvailabilityMarkInput) {
   const check = await buildAvailabilityCheck({
     db: schedulingTestDb,
     churchId: input.churchId,
-    planningCycleId: input.planningCycleId,
+    cycleId: input.cycleId,
     ministryVolunteerId: input.membershipId,
     state: 'pending',
   });
@@ -470,7 +470,7 @@ async function listAssignmentAudit(input: ListAssignmentAuditInput) {
   const cycleAudit =
     await input.managers.assignmentManager.listAuditLogForCycle({
       churchId: ChurchId.from(input.churchId),
-      cycleId: PlanningCycleId.from(input.cycleId),
+      cycleId: CycleId.from(input.cycleId),
       ministryId: MinistryId.from(input.ministryId),
     });
   return cycleAudit.filter(
@@ -490,7 +490,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'March 2027',
       startDate: new Date('2027-03-01T00:00:00.000Z'),
       endDate: new Date('2027-04-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -561,7 +561,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'April 2027',
       startDate: new Date('2027-04-01T00:00:00.000Z'),
       endDate: new Date('2027-05-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -619,7 +619,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'April 2027',
       startDate: new Date('2027-04-01T00:00:00.000Z'),
       endDate: new Date('2027-05-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -691,7 +691,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'May 2027',
       startDate: new Date('2027-05-01T00:00:00.000Z'),
       endDate: new Date('2027-06-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -777,7 +777,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'June 2027',
       startDate: new Date('2027-06-01T00:00:00.000Z'),
       endDate: new Date('2027-07-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -833,7 +833,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
       name: 'July 2027',
       startDate: new Date('2027-07-01T00:00:00.000Z'),
       endDate: new Date('2027-08-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -892,7 +892,7 @@ describe('Phase 7 assignment manager surfaces (create/delete/reassign + hard-con
     });
     await seedAvailabilityMark({
       churchId: seed.churchAId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       membershipId: qualifiedMember.membership.id,
       shiftId: shift.id,
     });

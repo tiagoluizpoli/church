@@ -36,9 +36,9 @@ import {
   type AssignmentStatus,
   buildAssignment,
   buildAssignmentAudit,
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
   buildShift,
   buildSlotRequirement,
   buildTimeSlot,
@@ -67,10 +67,10 @@ const MONTH_NAMES = [
   'Dezembro',
 ] as const;
 
-/** When the leaders confirmed availability and rostered, before the month. */
+/** When the leaders confirmed availability and assigned, before the month. */
 const AVAILABILITY_CONFIRMED_DAYS_BEFORE = 10;
-const ROSTERED_DAYS_BEFORE = 5;
-/** When every participation was published, the day after rostering. */
+const ASSIGNED_DAYS_BEFORE = 5;
+/** When every participation was published, the day after assign. */
 const PUBLISHED_DAYS_BEFORE = 4;
 /** When a replacement or reassignment was made, before its gathering. */
 const REPLACED_DAYS_BEFORE_GATHERING = 2;
@@ -298,7 +298,7 @@ async function materializeEvent({
   await buildEvent({
     db,
     churchId,
-    planningCycleId: cycleId,
+    cycleId: cycleId,
     id: eventId,
     title: plannedEvent.title,
     start: firstSlot.start,
@@ -417,7 +417,7 @@ async function materializeEvent({
   return shifts;
 }
 
-/** A person's place in one Ministry, as the roster blueprint seats them. */
+/** A person's place in one Ministry, as the schedule blueprint seats them. */
 interface PoolMember {
   email: string;
   roles: ReadonlySet<string>;
@@ -429,13 +429,13 @@ interface MinistryPoolsInput {
   ministry: MinistryBlueprint;
 }
 
-/** Everyone seated in the Ministry, its own roster before cross-Ministry seats. */
+/** Everyone seated in the Ministry, its own schedule before cross-Ministry seats. */
 function ministryMembers({
   directory,
   ministry,
 }: MinistryPoolsInput): PoolMember[] {
   const members: PoolMember[] = [];
-  for (const group of ministry.roster) {
+  for (const group of ministry.schedule) {
     for (const person of group.people) {
       members.push({
         email: person.email,
@@ -545,7 +545,7 @@ class StaffingLedger {
     }
   }
 
-  /** Who rosters the shift's Ministry. */
+  /** Who schedules the shift's Ministry. */
   leaderOf({ shift }: ShiftMomentInput): string {
     const leaderEmail = this.leaderEmailByMinistry.get(shift.ministryName);
     if (!leaderEmail) {
@@ -735,10 +735,10 @@ interface LeaderOfInput {
 }
 
 function leaderEmailOf({ ministry }: LeaderOfInput): string {
-  const leader = ministry.roster.find((group) => group.seat.ministryLeader)
+  const leader = ministry.schedule.find((group) => group.seat.ministryLeader)
     ?.people[0];
   if (!leader) {
-    throw new Error(`${ministry.name} has no Ministry leader to roster it.`);
+    throw new Error(`${ministry.name} has no Ministry leader to schedule it.`);
   }
   return leader.email;
 }
@@ -820,7 +820,7 @@ function weekOf({ day }: WeekOfInput): number {
   return Math.floor((Number(day.slice(8, 10)) - 1) / 7) + 1;
 }
 
-interface FireAvailabilityRoundInput {
+interface AskAvailabilityRoundInput {
   db: SeedWriter;
   churchId: string;
   cycle: SeededHistoricalCycle;
@@ -837,7 +837,7 @@ interface FireAvailabilityRoundInput {
  * Availability was fired for every Ministry Membership and every check
  * answered; only the blueprint's people left unavailability marks.
  */
-async function fireAvailabilityRound({
+async function askAvailabilityRound({
   db,
   churchId,
   cycle,
@@ -848,7 +848,7 @@ async function fireAvailabilityRound({
   shifts,
   ledger,
   confirmedAt,
-}: FireAvailabilityRoundInput): Promise<void> {
+}: AskAvailabilityRoundInput): Promise<void> {
   const checkIdByMembership = new Map<string, string>();
   for (const ministryBlueprint of directory.ministries) {
     const ministry = requireMinistry({
@@ -874,7 +874,7 @@ async function fireAvailabilityRound({
       await buildConfirmedAvailabilityCheck({
         db,
         churchId,
-        planningCycleId: cycle.id,
+        cycleId: cycle.id,
         ministryVolunteerId: membershipId,
         id: checkId,
         confirmedAt,
@@ -930,8 +930,8 @@ async function fireAvailabilityRound({
   for (const group of directory.crossMinistry) {
     for (const email of group.emails) {
       const primary = directory.ministries.find((ministryBlueprint) =>
-        ministryBlueprint.roster.some((rosterGroup) =>
-          rosterGroup.people.some((person) => person.email === email),
+        ministryBlueprint.schedule.some((scheduleGroup) =>
+          scheduleGroup.people.some((person) => person.email === email),
         ),
       );
       if (!primary) {
@@ -974,7 +974,7 @@ interface ApplyHistoryTrailInput {
   ledger: StaffingLedger;
   shifts: readonly PlannedShift[];
   history: HistoryBlueprint;
-  rosteredAt: Instant;
+  assignedAt: Instant;
   replacedAt: ShiftMoment;
 }
 
@@ -993,7 +993,7 @@ function applyHistoryTrail({
   ledger,
   shifts,
   history,
-  rosteredAt,
+  assignedAt,
   replacedAt,
 }: ApplyHistoryTrailInput): TrailRecords {
   const records: TrailRecords = { audits: [], notifications: [] };
@@ -1002,7 +1002,7 @@ function applyHistoryTrail({
       ledger.place({
         target: findTarget({ shifts, post: servicePost }),
         email: incident.email,
-        assignedAt: rosteredAt,
+        assignedAt: assignedAt,
       });
     }
   }
@@ -1014,14 +1014,14 @@ function applyHistoryTrail({
     ledger.place({
       target: findTarget({ shifts, post: incident.kept }),
       email: incident.email,
-      assignedAt: rosteredAt,
+      assignedAt: assignedAt,
     });
     const target = findTarget({ shifts, post: incident.withdrawn });
     ledger.withdraw({
       target,
       email: incident.email,
       outcome: 'reassigned',
-      assignedAt: rosteredAt,
+      assignedAt: assignedAt,
     });
     const reassignedAt = replacedAt({ shift: target.shift });
     const replacement = ledger.place({
@@ -1068,7 +1068,7 @@ function applyHistoryTrail({
       target,
       email: incident.email,
       outcome: 'declined',
-      assignedAt: rosteredAt,
+      assignedAt: assignedAt,
       reason: incident.reason,
     });
     ledger.place({
@@ -1139,7 +1139,7 @@ function staffByRotation({
 }
 
 /**
- * The previous complete calendar month as a locked historical PlanningCycle:
+ * The previous complete calendar month as a locked historical Cycle:
  * every gathering materialized, every Ministry's slice published, mostly
  * fully staffed by rotation, plus the blueprint's trail of unavailability,
  * declines, replacements and cross-Ministry service. Nothing reaches the
@@ -1161,19 +1161,19 @@ export async function loadDevelopmentHistory({
   const window = historicalCycleWindow({ anchor });
   const cycle: SeededHistoricalCycle = {
     id: deriveSeedId({
-      kind: 'planning-cycle',
+      kind: 'cycle',
       parentIds: [churchId, window.startDate],
     }),
     ...window,
   };
-  await buildPlanningCycle({
+  await buildCycle({
     db,
     churchId,
     id: cycle.id,
     name: cycleNameOf({ startDate: cycle.startDate }),
     startDate: cycle.startDate,
     endDate: cycle.endDate,
-    state: 'locked',
+    state: 'sent',
   });
 
   const ministryOrder = [
@@ -1207,8 +1207,8 @@ export async function loadDevelopmentHistory({
 
   const at = ({ day, time }: DayTimeAtInput): Instant =>
     instantAt({ day, time, timeZone });
-  const rosteredAt = at({
-    day: addCalendarDays({ day: cycle.startDate, days: -ROSTERED_DAYS_BEFORE }),
+  const assignedAt = at({
+    day: addCalendarDays({ day: cycle.startDate, days: -ASSIGNED_DAYS_BEFORE }),
     time: '10:00',
   });
   const publishedAt = at({
@@ -1238,7 +1238,7 @@ export async function loadDevelopmentHistory({
   );
   const ledger = new StaffingLedger({ directory, ministryBlueprints });
 
-  await fireAvailabilityRound({
+  await askAvailabilityRound({
     db,
     churchId,
     cycle,
@@ -1261,10 +1261,10 @@ export async function loadDevelopmentHistory({
     ledger,
     shifts,
     history,
-    rosteredAt,
+    assignedAt,
     replacedAt,
   });
-  staffByRotation({ ledger, shifts, history, assignedAt: rosteredAt });
+  staffByRotation({ ledger, shifts, history, assignedAt: assignedAt });
 
   const assignmentIdOf = ({ target, email }: AssignmentWrite): string =>
     deriveSeedId({
@@ -1326,7 +1326,7 @@ export async function loadDevelopmentHistory({
     });
   }
 
-  // Publishing notified each Volunteer rostered on a participation at that
+  // Publishing notified each Volunteer assigned on a participation at that
   // moment, once per participation; later replacements were not notified.
   const recipientsByParticipation = new Map<string, PublishRecipients>();
   for (const write of ledger.writes) {
@@ -1392,7 +1392,7 @@ export async function loadDevelopmentHistory({
       readAt: unread.has(notification.email)
         ? undefined
         : readAfter({ instant: notification.createdAt }),
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: shift.ministryId,
       eventId: shift.eventId,
       assignmentId,

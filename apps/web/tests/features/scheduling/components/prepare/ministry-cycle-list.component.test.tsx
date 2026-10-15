@@ -8,8 +8,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { TailoringCycleSummary } from '@/features/scheduling/components/tailoring/cycle-list.utils';
-import { MinistryCycleList } from '@/features/scheduling/components/tailoring/ministry-cycle-list';
+import type { PrepareCycleSummary } from '@/features/scheduling/components/prepare/cycle-list.utils';
+import { MinistryCycleList } from '@/features/scheduling/components/prepare/ministry-cycle-list';
 import { routeTree } from '@/routeTree.gen';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 
@@ -32,7 +32,7 @@ function renderCycleList(ui: ReactElement) {
   );
 }
 
-const CYCLES: TailoringCycleSummary[] = [
+const CYCLES: PrepareCycleSummary[] = [
   {
     id: 'cycle-1',
     name: 'August',
@@ -43,8 +43,8 @@ const CYCLES: TailoringCycleSummary[] = [
     slotCount: 6,
     status: 'in_progress',
     isPartOf: true,
-    availabilityFiredForAll: false,
-    availabilityFiredForAny: false,
+    availabilityRequestedForAll: false,
+    availabilityRequestedForAny: false,
   },
   {
     id: 'cycle-2',
@@ -56,8 +56,8 @@ const CYCLES: TailoringCycleSummary[] = [
     slotCount: 2,
     status: 'published',
     isPartOf: true,
-    availabilityFiredForAll: true,
-    availabilityFiredForAny: true,
+    availabilityRequestedForAll: true,
+    availabilityRequestedForAny: true,
   },
 ];
 
@@ -93,7 +93,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
     expect(augustRow).toHaveTextContent('6');
   });
 
-  it('shows the leader-facing tailoring-progress status, never PlanningCycle.state (T066)', () => {
+  it('shows the leader-facing prepare-progress status, never Cycle.state (T066)', () => {
     renderCycleList(
       <MinistryCycleList
         ministryId="ministry-1"
@@ -106,10 +106,10 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
     const rows = within(table).getAllByRole('row');
     expect(rows[1]).toHaveTextContent('In progress');
     expect(rows[2]).toHaveTextContent('Published');
-    expect(table).not.toHaveTextContent('locked');
+    expect(table).not.toHaveTextContent('sent');
   });
 
-  it('rows are inert — clicking a row does nothing; only the explicit Tailoring button navigates (design-critique follow-up)', async () => {
+  it('rows are inert — clicking a row does nothing; only the explicit Prepare button navigates (design-critique follow-up)', async () => {
     const onSelectCycle = vi.fn();
     const user = userEvent.setup();
     renderCycleList(
@@ -126,7 +126,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
 
     await user.click(
       screen.getAllByTestId(
-        'ministry-cycle-tailoring-button-cycle-1',
+        'ministry-cycle-prepare-button-cycle-1',
       )[0] as HTMLElement,
     );
     expect(onSelectCycle).toHaveBeenCalledWith({ cycleId: 'cycle-1' });
@@ -198,7 +198,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
   });
 
   describe('row actions (T071/FR-035)', () => {
-    it("the Tailoring button is always enabled and navigates to that row's cycle", async () => {
+    it("the Prepare button is always enabled and navigates to that row's cycle", async () => {
       const onSelectCycle = vi.fn();
       const user = userEvent.setup();
       renderCycleList(
@@ -213,7 +213,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       // cycle in jsdom (no real viewport layout, per this repo's existing
       // cycle-list-card test convention) — assert against the table's copy.
       const buttons = screen.getAllByTestId(
-        'ministry-cycle-tailoring-button-cycle-1',
+        'ministry-cycle-prepare-button-cycle-1',
       );
       for (const button of buttons) {
         expect(button).toBeEnabled();
@@ -223,7 +223,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       expect(onSelectCycle).toHaveBeenCalledWith({ cycleId: 'cycle-1' });
     });
 
-    it('the Assign control is disabled when availabilityFiredForAny is false', () => {
+    it('the Assign control is disabled when availabilityRequestedForAny is false', () => {
       renderCycleList(
         <MinistryCycleList
           ministryId="ministry-1"
@@ -256,7 +256,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
     });
 
     it('the Assign control is disabled for a cycle the ministry is not part of, never vacuously enabled from a zero-participation check (FR-035)', () => {
-      const notPartOfCycle: TailoringCycleSummary = {
+      const notPartOfCycle: PrepareCycleSummary = {
         id: 'cycle-3',
         name: 'October',
         window: 'Oct 1 - Oct 31',
@@ -266,8 +266,8 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
         slotCount: 0,
         status: 'not_started',
         isPartOf: false,
-        availabilityFiredForAll: false,
-        availabilityFiredForAny: false,
+        availabilityRequestedForAll: false,
+        availabilityRequestedForAny: false,
       };
       renderCycleList(
         <MinistryCycleList
@@ -289,7 +289,7 @@ describe('MinistryCycleList (US2/T014, amended Iteration 3/T066/T067/T071)', () 
       ).not.toBeInTheDocument();
     });
 
-    it('the Assign control is an enabled, cycle-scoped link when availabilityFiredForAny is true, and does not also trigger row selection', async () => {
+    it('the Assign control is an enabled, cycle-scoped link when availabilityRequestedForAny is true, and does not also trigger row selection', async () => {
       const onSelectCycle = vi.fn();
       const user = userEvent.setup();
       renderCycleList(

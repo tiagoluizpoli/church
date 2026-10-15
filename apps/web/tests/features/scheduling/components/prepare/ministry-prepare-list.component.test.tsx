@@ -1,11 +1,11 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { MinistryTailoringSummaryRow } from '@/features/scheduling/components/participation-tailoring.utils';
-import { MinistryTailoringList } from '@/features/scheduling/components/tailoring/ministry-tailoring-list';
+import type { MinistryPrepareSummaryRow } from '@/features/scheduling/components/participation-prepare.utils';
+import { MinistryPrepareList } from '@/features/scheduling/components/prepare/ministry-prepare-list';
 import { renderWithProviders } from '@/tests/setup/render';
 
-const ROWS: MinistryTailoringSummaryRow[] = [
+const ROWS: MinistryPrepareSummaryRow[] = [
   {
     ministryId: 'ministry-1',
     ministryName: 'Greeters',
@@ -20,10 +20,10 @@ const ROWS: MinistryTailoringSummaryRow[] = [
   },
 ];
 
-describe('MinistryTailoringList desktop table (US1/T010)', () => {
+describe('MinistryPrepareList desktop table (US1/T010)', () => {
   it('renders per-ministry event/slot counts as table rows, including 0/0', async () => {
     renderWithProviders(
-      <MinistryTailoringList rows={ROWS} onSelectMinistry={vi.fn()} />,
+      <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
 
     const table = screen.getByRole('grid', { name: 'Ministries' });
@@ -41,18 +41,18 @@ describe('MinistryTailoringList desktop table (US1/T010)', () => {
 
   it('renders inside the same card/panel surface as the cycle list', () => {
     renderWithProviders(
-      <MinistryTailoringList rows={ROWS} onSelectMinistry={vi.fn()} />,
+      <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
 
     expect(
-      screen.getByTestId('ministry-tailoring-list-panel'),
+      screen.getByTestId('ministry-prepare-list-panel'),
     ).toBeInTheDocument();
   });
 
   it('sorts by a column when its header is activated', async () => {
     const user = userEvent.setup();
     renderWithProviders(
-      <MinistryTailoringList rows={ROWS} onSelectMinistry={vi.fn()} />,
+      <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
 
     const table = screen.getByRole('grid', { name: 'Ministries' });
@@ -60,17 +60,17 @@ describe('MinistryTailoringList desktop table (US1/T010)', () => {
       within(table).getByRole('columnheader', { name: 'Events' }),
     );
 
-    const rows = within(table).getAllByTestId(/^ministry-tailoring-row-/);
+    const rows = within(table).getAllByTestId(/^ministry-prepare-row-/);
     // Ascending by events: Untouched Ministry (0) before Greeters (3).
     expect(rows[0]).toHaveTextContent('Untouched Ministry');
     expect(rows[1]).toHaveTextContent('Greeters');
   });
 
-  it('rows are inert — the explicit Tailoring button is the only navigation affordance', async () => {
+  it('rows are inert — the explicit Prepare button is the only navigation affordance', async () => {
     const onSelectMinistry = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <MinistryTailoringList rows={ROWS} onSelectMinistry={onSelectMinistry} />,
+      <MinistryPrepareList rows={ROWS} onSelectMinistry={onSelectMinistry} />,
     );
 
     const table = screen.getByRole('grid', { name: 'Ministries' });
@@ -78,9 +78,7 @@ describe('MinistryTailoringList desktop table (US1/T010)', () => {
     await user.click(greetersRow);
     expect(onSelectMinistry).not.toHaveBeenCalled();
 
-    const buttons = screen.getAllByTestId(
-      'ministry-tailoring-button-ministry-1',
-    );
+    const buttons = screen.getAllByTestId('ministry-prepare-button-ministry-1');
     await user.click(buttons[0]);
     expect(onSelectMinistry).toHaveBeenCalledWith({
       ministryId: 'ministry-1',
@@ -89,24 +87,24 @@ describe('MinistryTailoringList desktop table (US1/T010)', () => {
 
   it('shows an empty-state message instead of an empty table when there are no ministries', () => {
     renderWithProviders(
-      <MinistryTailoringList rows={[]} onSelectMinistry={vi.fn()} />,
+      <MinistryPrepareList rows={[]} onSelectMinistry={vi.fn()} />,
     );
 
     expect(
-      screen.getByTestId('ministry-tailoring-empty-state'),
+      screen.getByTestId('ministry-prepare-empty-state'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
   });
 });
 
-describe('MinistryTailoringList mobile card list (US1/T011)', () => {
+describe('MinistryPrepareList mobile card list (US1/T011)', () => {
   it('renders the same per-ministry data as cards, matching cycle-list-card responsive pattern', () => {
     renderWithProviders(
-      <MinistryTailoringList rows={ROWS} onSelectMinistry={vi.fn()} />,
+      <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
 
     const list = screen.getByRole('listbox');
-    const cards = within(list).getAllByTestId(/^ministry-tailoring-card-/);
+    const cards = within(list).getAllByTestId(/^ministry-prepare-card-/);
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveTextContent('Greeters');
     expect(cards[0]).toHaveTextContent('3 events');
@@ -116,17 +114,17 @@ describe('MinistryTailoringList mobile card list (US1/T011)', () => {
     expect(cards[1]).toHaveTextContent('0 slots');
   });
 
-  it("calls onSelectMinistry when a card's Tailoring button is activated", async () => {
+  it("calls onSelectMinistry when a card's Prepare button is activated", async () => {
     const onSelectMinistry = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <MinistryTailoringList rows={ROWS} onSelectMinistry={onSelectMinistry} />,
+      <MinistryPrepareList rows={ROWS} onSelectMinistry={onSelectMinistry} />,
     );
 
     const list = screen.getByRole('listbox');
-    const row = within(list).getByTestId('ministry-tailoring-row-ministry-2');
+    const row = within(list).getByTestId('ministry-prepare-row-ministry-2');
     await user.click(
-      within(row).getByTestId('ministry-tailoring-button-ministry-2'),
+      within(row).getByTestId('ministry-prepare-button-ministry-2'),
     );
 
     expect(onSelectMinistry).toHaveBeenCalledWith({ ministryId: 'ministry-2' });

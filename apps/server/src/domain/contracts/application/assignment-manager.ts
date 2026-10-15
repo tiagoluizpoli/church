@@ -1,8 +1,8 @@
 import type {
   AssignmentId,
   ChurchId,
+  CycleId,
   MinistryId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   TeamId,
@@ -49,7 +49,7 @@ export interface DeleteAssignmentInput {
 
 export interface ListCycleAuditLogInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryId: MinistryId;
 }
 

@@ -10,7 +10,7 @@ export interface BreadcrumbSegmentOverride {
 /**
  * Resolves the breadcrumb label for the ministry-id route segment (e.g.
  * `/scheduling/tailoring/$ministryId/...`), mirroring
- * `usePlanningCycleBreadcrumb`'s pattern for `$cycleId`.
+ * `useCycleBreadcrumb`'s pattern for `$cycleId`.
  */
 export function useMinistryBreadcrumb(): BreadcrumbSegmentOverride | null {
   const { ministryId } = useParams({ strict: false });

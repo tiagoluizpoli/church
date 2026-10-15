@@ -5,15 +5,15 @@ import { CycleListCard } from '@/features/scheduling/components/planning-admin/c
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { renderWithProviders } from '@/tests/setup/render';
 
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
-const getPlanningCycle = vi.fn();
+const getCycle = vi.fn();
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
-    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+    getCycle: (...args: unknown[]) => getCycle(...args),
   },
 }));
 
@@ -27,18 +27,18 @@ function render(onSelectCycle = vi.fn()) {
 
 describe('CycleListCard table view (US1)', () => {
   it('renders cycles as table rows with name/window/status columns', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
           name: 'August 2026',
           startDate: '2026-08-01',
           endDate: '2026-08-31',
-          state: 'locked',
+          state: 'sent',
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(undefined);
+    getCycle.mockResolvedValue(undefined);
 
     render();
 
@@ -56,11 +56,11 @@ describe('CycleListCard table view (US1)', () => {
     const row = within(table).getByRole('row', { name: /August 2026/ });
     expect(row).toHaveTextContent('01/08/2026');
     expect(row).toHaveTextContent('31/08/2026');
-    expect(row).toHaveTextContent('locked');
+    expect(row).toHaveTextContent('sent');
   });
 
   it('selects the cycle when a table row is clicked', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -71,7 +71,7 @@ describe('CycleListCard table view (US1)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -90,11 +90,11 @@ describe('CycleListCard table view (US1)', () => {
 
     await user.click(row);
 
-    expect(getPlanningCycle).toHaveBeenCalled();
+    expect(getCycle).toHaveBeenCalled();
   });
 
   it('keeps a single selection across clicks and keyboard navigation', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: ['cycle-1', 'cycle-2'].map((id) => ({
         id,
         name: id,
@@ -103,14 +103,14 @@ describe('CycleListCard table view (US1)', () => {
         state: 'draft',
       })),
     });
-    getPlanningCycle.mockResolvedValue(undefined);
+    getCycle.mockResolvedValue(undefined);
     const onSelectCycle = vi.fn();
     const user = userEvent.setup();
     render(onSelectCycle);
 
     const table = await screen.findByRole('grid');
-    const first = within(table).getByTestId('planning-cycle-row-cycle-1');
-    const second = within(table).getByTestId('planning-cycle-row-cycle-2');
+    const first = within(table).getByTestId('cycle-row-cycle-1');
+    const second = within(table).getByTestId('cycle-row-cycle-2');
     expect(first).toHaveAttribute('aria-selected', 'false');
     expect(second).toHaveAttribute('aria-selected', 'false');
 
@@ -119,7 +119,7 @@ describe('CycleListCard table view (US1)', () => {
     expect(first).toHaveAttribute('data-selected', 'true');
     expect(first).not.toHaveClass('bg-accent/45');
     expect(onSelectCycle).toHaveBeenLastCalledWith({ cycleId: 'cycle-1' });
-    expect(getPlanningCycle).toHaveBeenLastCalledWith('cycle-1');
+    expect(getCycle).toHaveBeenLastCalledWith('cycle-1');
 
     await user.click(first);
     expect(first).toHaveAttribute('aria-selected', 'true');
@@ -128,19 +128,19 @@ describe('CycleListCard table view (US1)', () => {
     expect(first).toHaveAttribute('aria-selected', 'false');
     expect(second).toHaveAttribute('aria-selected', 'true');
     expect(onSelectCycle).toHaveBeenLastCalledWith({ cycleId: 'cycle-2' });
-    expect(getPlanningCycle).toHaveBeenLastCalledWith('cycle-2');
+    expect(getCycle).toHaveBeenLastCalledWith('cycle-2');
 
     await user.click(first);
     expect(first).toHaveAttribute('aria-selected', 'true');
     expect(second).toHaveAttribute('aria-selected', 'false');
-    expect(screen.getAllByTestId('planning-cycle-option')[0]).toHaveAttribute(
+    expect(screen.getAllByTestId('cycle-option')[0]).toHaveAttribute(
       'aria-selected',
       'true',
     );
   });
 
   it('reflects selection changes supplied by the master-detail pane', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: ['cycle-1', 'cycle-2'].map((id) => ({
         id,
         name: id,
@@ -155,8 +155,8 @@ describe('CycleListCard table view (US1)', () => {
       </PlanningAdminProvider>,
     );
     const table = await screen.findByRole('grid');
-    const first = within(table).getByTestId('planning-cycle-row-cycle-1');
-    const second = within(table).getByTestId('planning-cycle-row-cycle-2');
+    const first = within(table).getByTestId('cycle-row-cycle-1');
+    const second = within(table).getByTestId('cycle-row-cycle-2');
     expect(first).toHaveAttribute('aria-selected', 'true');
     expect(second).toHaveAttribute('aria-selected', 'false');
 
@@ -170,8 +170,8 @@ describe('CycleListCard table view (US1)', () => {
   });
 
   it('shows the empty-state message instead of an empty table when there are no cycles', async () => {
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
-    getPlanningCycle.mockResolvedValue(undefined);
+    listCycles.mockResolvedValue({ cycles: [] });
+    getCycle.mockResolvedValue(undefined);
 
     render();
 

@@ -1,5 +1,5 @@
 import type { CalendarDay } from '@church/time';
-import { buildPlanningCycle } from '../../builders/scheduling';
+import { buildCycle } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
   type CreateJourneyRecipeInput,
@@ -8,22 +8,22 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  addRosteringChurchMembership,
-  buildRosteringChurch,
+  type AssignChurch,
+  type AssignChurchMembership,
+  type AssignChurchPlan,
+  addAssignChurchMembership,
+  assignChurchRootKinds,
+  buildAssignChurch,
   mergeRootKinds,
-  type RosteringChurch,
-  type RosteringChurchMembership,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
-import type { RosteringCycleSummary } from './rostering-event';
-import { planningCycleWindow } from './scheduling-cycle-window';
+} from './assign-church';
+import type { AssignCycleSummary } from './assign-event';
+import { cycleWindow } from './scheduling-cycle-window';
 
 /**
  * The starting graph of the Active Church switching journey (#67): two
  * Churches and one User who belongs to both. In Church A the User is the
  * ChurchAdmin and an active Volunteer of its Worship Ministry, with two
- * Planning Cycles to see; in Church B the User is a plain member with no
+ * Cycles to see; in Church B the User is a plain member with no
  * Ministry, so Church B grants no scheduling access. Both Churches, their
  * Ministries and cycles belong to this journey alone. Names such as 'Louvor'
  * and the cycle names are shared with other recipes, so the negative checks
@@ -58,7 +58,7 @@ const CHURCH_A_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 /** Church B's own ChurchAdmin; the journey never signs in as them. */
 const CHURCH_B_PLAN = {
@@ -71,28 +71,28 @@ const CHURCH_B_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const ROOT_KINDS = mergeRootKinds({
   rootKinds: [
-    rosteringChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
-    rosteringChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
   ],
 });
 
-/** Church A's two Planning Cycles, back to back from the day after the anchor. */
+/** Church A's two Cycles, back to back from the day after the anchor. */
 export interface ActiveChurchSwitchingCycles {
-  first: RosteringCycleSummary;
-  second: RosteringCycleSummary;
+  first: AssignCycleSummary;
+  second: AssignCycleSummary;
 }
 
 export interface ActiveChurchSwitchingJourney {
   anchor: CalendarDay;
   /** `personas.dualMember` is the journey's User. */
-  churchA: RosteringChurch<typeof CHURCH_A_PLAN>;
-  churchB: RosteringChurch<typeof CHURCH_B_PLAN>;
+  churchA: AssignChurch<typeof CHURCH_A_PLAN>;
+  churchB: AssignChurch<typeof CHURCH_B_PLAN>;
   /** The dual member's plain Church Membership in Church B. */
-  churchBMembership: RosteringChurchMembership;
+  churchBMembership: AssignChurchMembership;
   cycles: ActiveChurchSwitchingCycles;
 }
 
@@ -108,21 +108,21 @@ export function createActiveChurchSwitchingRecipe({
   async function load({
     db,
   }: SeedRecipeLoadInput): Promise<ActiveChurchSwitchingJourney> {
-    const churchA = await buildRosteringChurch({
+    const churchA = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: CHURCH_A_PLAN,
       scope: CHURCH_A_SCOPE,
     });
-    const churchB = await buildRosteringChurch({
+    const churchB = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: CHURCH_B_PLAN,
       scope: CHURCH_B_SCOPE,
     });
-    const churchBMembership = await addRosteringChurchMembership({
+    const churchBMembership = await addAssignChurchMembership({
       db,
       idOf,
       church: churchB.church,
@@ -130,27 +130,27 @@ export function createActiveChurchSwitchingRecipe({
       accessLevel: 'member',
     });
 
-    const firstWindow = planningCycleWindow({ anchor });
-    const first = await buildPlanningCycle({
+    const firstWindow = cycleWindow({ anchor });
+    const first = await buildCycle({
       db,
       churchId: churchA.church.id,
-      id: idOf({ kind: 'planning-cycle:first' }),
+      id: idOf({ kind: 'cycle:first' }),
       name: 'Ciclo Natalino',
       startDate: firstWindow.startDate,
       endDate: firstWindow.endDate,
-      state: 'locked',
+      state: 'sent',
     });
     // Anchored on the first's end, so it starts the day after: cycles of a
     // Church never overlap.
-    const secondWindow = planningCycleWindow({ anchor: firstWindow.endDate });
-    const second = await buildPlanningCycle({
+    const secondWindow = cycleWindow({ anchor: firstWindow.endDate });
+    const second = await buildCycle({
       db,
       churchId: churchA.church.id,
-      id: idOf({ kind: 'planning-cycle:second' }),
+      id: idOf({ kind: 'cycle:second' }),
       name: 'Ciclo de Publicação',
       startDate: secondWindow.startDate,
       endDate: secondWindow.endDate,
-      state: 'locked',
+      state: 'sent',
     });
 
     return {

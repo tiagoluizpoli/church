@@ -1,15 +1,15 @@
 import type {
   ChurchId,
+  CycleId,
   EventId,
   EventTemplateId,
   MinistryId,
-  PlanningCycleId,
 } from '../../branded-ids';
 import type { Event, EventStatus, EventWithSlots } from '../../entities/event';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateEventInput {
-  planningCycleId: PlanningCycleId;
+  cycleId: CycleId;
   sourceTemplateId?: EventTemplateId;
   title: string;
   description?: string;

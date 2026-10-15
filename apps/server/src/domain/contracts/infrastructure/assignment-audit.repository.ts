@@ -1,9 +1,9 @@
 import type {
   AssignmentId,
   ChurchId,
+  CycleId,
   EventId,
   MinistryId,
-  PlanningCycleId,
   UserId,
 } from '../../branded-ids';
 import type { SoftConflictType } from '../../conflict/types';
@@ -40,7 +40,7 @@ export interface AssignmentAuditLogEntry {
 
 export interface ListAuditByCycleInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryId: MinistryId;
 }
 

@@ -18,7 +18,7 @@ export interface JourneyMapping {
 // real browser paint that a jsdom component test cannot reproduce.
 
 // The initial critical smoke set (#210): identity redemption, active-Church
-// isolation, planning builder, Availability, and roster publishing. Runs
+// isolation, planning builder, Availability, and schedule publishing. Runs
 // whenever a production web or server change has no entry in JOURNEY_MAP
 // below, so missing metadata degrades to "run everything critical" instead
 // of silently losing coverage.
@@ -28,7 +28,7 @@ export const CRITICAL_SMOKE_SPEC_PATHS: string[] = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/scheduling/smoke.spec.ts',
   'tests/scheduling/us3-volunteer-availability.spec.ts',
-  'tests/scheduling/us4-roster-publish.spec.ts',
+  'tests/scheduling/us4-schedule-publish.spec.ts',
 ];
 
 const REDEMPTION_SPEC_PATHS = [
@@ -76,16 +76,16 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/cross-cutting.spec.ts',
   'tests/scheduling/overnight-time-block.spec.ts',
   'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
-  'tests/scheduling/planning-cycles-table-view.spec.ts',
+  'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
   'tests/scheduling/qualification.spec.ts',
   'tests/scheduling/single-create-event-ui.spec.ts',
   'tests/scheduling/smoke.spec.ts',
   'tests/scheduling/us1-admin-plan.spec.ts',
-  'tests/scheduling/us2-leader-tailor.spec.ts',
+  'tests/scheduling/us2-leader-prepare.spec.ts',
   'tests/scheduling/us3-volunteer-availability.spec.ts',
-  'tests/scheduling/us4-roster-publish.spec.ts',
+  'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
   'tests/volunteer-dashboard/us1-availability.spec.ts',
@@ -93,39 +93,39 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
 
-// #217 — Church isolation on the planning-cycles list and $cycleId route,
+// #217 — Church isolation on the cycles list and $cycleId route,
 // the two lock edge cases (network failure, double-submit), and the
 // Church-local-time create-event journey all load through the same
-// planning-cycles route, feature components, and generated API client.
-const PLANNING_CYCLE_EDGE_SPEC_PATHS = [
+// cycles route, feature components, and generated API client.
+const CYCLE_EDGE_SPEC_PATHS = [
   'tests/scheduling/cross-cutting.spec.ts',
   'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
   'tests/scheduling/single-create-event-ui.spec.ts',
 ];
 
 // #289 — verified via each spec's page.goto target. smoke.spec.ts navigates
-// both the rostering builder and the tailoring route; qualification.spec.ts
-// and builder-slot-focus.spec.ts navigate only the rostering builder;
-// us4-roster-publish.spec.ts navigates only the tailoring route;
+// both the assign builder and the prepare route; qualification.spec.ts
+// and builder-slot-focus.spec.ts navigate only the assign builder;
+// us4-schedule-publish.spec.ts navigates only the prepare route;
 // planning-role-guard-matrix.spec.ts navigates all three scheduling routes
-// (planning-cycles, tailoring, and the rostering builder — asserting
+// (cycles, prepare, and the assign builder — asserting
 // directly on the builder's `cycle-builder` testid), so it belongs in all
 // three journeys' maps. None of these navigate /volunteer/availability, so
 // that journey stays out.
 const PLANNING_ADMIN_SPEC_PATHS = [
   'tests/scheduling/overnight-time-block.spec.ts',
-  'tests/scheduling/planning-cycles-table-view.spec.ts',
+  'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
   'tests/scheduling/us1-admin-plan.spec.ts',
-  ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
+  ...CYCLE_EDGE_SPEC_PATHS,
 ];
 
-const TAILORING_SPEC_PATHS = [
+const PREPARE_SPEC_PATHS = [
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
   'tests/scheduling/smoke.spec.ts',
-  'tests/scheduling/us2-leader-tailor.spec.ts',
-  'tests/scheduling/us4-roster-publish.spec.ts',
+  'tests/scheduling/us2-leader-prepare.spec.ts',
+  'tests/scheduling/us4-schedule-publish.spec.ts',
 ];
 
 const BUILDER_SPEC_PATHS = [
@@ -172,8 +172,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     // #288 — this prefix used to be the bare `.../scheduling` ancestor,
-    // which (via startsWith) also matched every planning-cycles/tailoring/
-    // rostering path below it, pulling smoke/roster-publish/guard-matrix/
+    // which (via startsWith) also matched every cycles/prepare/
+    // assign path below it, pulling smoke/schedule-publish/guard-matrix/
     // capability-index into unrelated route changes. Narrowed to the exact
     // index route file: capability-index.spec.ts is the only spec that
     // navigates to the bare `/scheduling` landing page it renders.
@@ -187,7 +187,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/scheduling/us3-volunteer-availability.spec.ts'],
   },
   // #289 — narrows to the individual files verified against each spec's
-  // page.goto target; see PLANNING_ADMIN_SPEC_PATHS/TAILORING_SPEC_PATHS/
+  // page.goto target; see PLANNING_ADMIN_SPEC_PATHS/PREPARE_SPEC_PATHS/
   // BUILDER_SPEC_PATHS/AVAILABILITY_STATUS_SPEC_PATHS above. The removed
   // blanket `apps/web/src/features/scheduling/` prefix used to pull
   // smoke/us3/us4/qualification/builder-slot-focus/guard-matrix into every
@@ -215,16 +215,16 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: PLANNING_ADMIN_SPEC_PATHS,
   },
   {
-    // Shared by every tailoring component and route (manual-split-editor,
-    // ministry-tailoring-list, tailoring-slot-list, tailoring-filters,
-    // tailoring-calendar, cycle-list.utils).
+    // Shared by every prepare component and route (manual-split-editor,
+    // ministry-prepare-list, prepare-slot-list, prepare-filters,
+    // prepare-calendar, cycle-list.utils).
     sourcePathPrefix:
-      'apps/web/src/features/scheduling/components/participation-tailoring.utils.ts',
-    specPaths: TAILORING_SPEC_PATHS,
+      'apps/web/src/features/scheduling/components/participation-prepare.utils.ts',
+    specPaths: PREPARE_SPEC_PATHS,
   },
   {
-    // The rostering builder's assignment/staffing logic — used only by
-    // components/builder/ and the rostering route.
+    // The assign builder's assignment/staffing logic — used only by
+    // components/builder/ and the assign route.
     sourcePathPrefix:
       'apps/web/src/features/scheduling/hooks/use-cycle-builder',
     specPaths: BUILDER_SPEC_PATHS,
@@ -252,22 +252,22 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     sourcePathPrefix:
-      'apps/web/src/features/scheduling/hooks/use-planning-cycle-breadcrumb.ts',
+      'apps/web/src/features/scheduling/hooks/use-cycle-breadcrumb.ts',
     specPaths: ['tests/scheduling/a11y-planning-nav.spec.ts'],
   },
   {
-    // PlanningCycle admin journey (#215): create cycle, build/apply the
+    // Cycle admin journey (#215): create cycle, build/apply the
     // template library (including the overnight-block span rule), add
     // manual events, resolve overlap, lock, navigate cycle/template/new
     // URLs, and review the calendar table — proven end to end by these four
-    // specs, the only ones that exercise the planning-cycles routes and
+    // specs, the only ones that exercise the cycles routes and
     // planning-admin feature components. The generic prefixes above only
     // select smoke/us4, which never touch this dialog-driven flow.
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/scheduling/planning-cycles',
     specPaths: [
       'tests/scheduling/overnight-time-block.spec.ts',
-      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       // #217 — right-sized: Church isolation on the list and the $cycleId
@@ -275,7 +275,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       // Church-local-time create-event journey, and the cross-route guard
       // matrix's ChurchAdmin-facing route all load through this route
       // family.
-      ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
+      ...CYCLE_EDGE_SPEC_PATHS,
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       // #219 — this route family renders the breadcrumb a11y-planning-nav
       // scans and exact-match-tests.
@@ -293,58 +293,58 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     // BL-023 (#25): the shared DataTable convention wrapper is consumed by
     // both the planning-admin cycle list/review/template tables (#270,
-    // #272, #274, #275) and the tailoring ministry/cycle tables (#271,
+    // #272, #274, #275) and the prepare ministry/cycle tables (#271,
     // #273), so a change here maps to both journeys' verified spec sets
     // instead of falling back to CRITICAL_SMOKE_SPEC_PATHS.
     sourcePathPrefix: 'apps/web/src/components/ui/data-table.tsx',
     specPaths: [
       'tests/scheduling/overnight-time-block.spec.ts',
-      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
-      ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
-      'tests/scheduling/us2-leader-tailor.spec.ts',
+      ...CYCLE_EDGE_SPEC_PATHS,
+      'tests/scheduling/us2-leader-prepare.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
   },
   {
-    // Leader-tailoring journey (#215): tailoring participation, split
+    // Leader-prepare journey (#215): prepare participation, split
     // shifts, headcounts, and firing Availability — proven end to end by
-    // us2-leader-tailor.spec.ts, the only spec that drives the tailoring
+    // us2-leader-prepare.spec.ts, the only spec that drives the prepare
     // routes, feature components, and its dedicated API client.
     sourcePathPrefix:
       'apps/web/src/routes/_authenticated/_active-church/scheduling/tailoring',
     specPaths: [
-      'tests/scheduling/us2-leader-tailor.spec.ts',
+      'tests/scheduling/us2-leader-prepare.spec.ts',
       // #217 — the matrix's Volunteer-denial case and the merged-in Leader
       // positive control both load this bare index route directly.
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     ],
   },
   {
-    // #289 — added smoke.spec.ts and us4-roster-publish.spec.ts, verified
-    // via their page.goto to a tailoring route, which renders this
-    // directory's components; matches TAILORING_SPEC_PATHS used above.
-    sourcePathPrefix: 'apps/web/src/features/scheduling/components/tailoring/',
-    specPaths: TAILORING_SPEC_PATHS,
+    // #289 — added smoke.spec.ts and us4-schedule-publish.spec.ts, verified
+    // via their page.goto to a prepare route, which renders this
+    // directory's components; matches PREPARE_SPEC_PATHS used above.
+    sourcePathPrefix: 'apps/web/src/features/scheduling/components/prepare/',
+    specPaths: PREPARE_SPEC_PATHS,
   },
   {
-    sourcePathPrefix: 'apps/web/src/infrastructure/api/tailoring.ts',
-    specPaths: ['tests/scheduling/us2-leader-tailor.spec.ts'],
+    sourcePathPrefix: 'apps/web/src/infrastructure/api/prepare.ts',
+    specPaths: ['tests/scheduling/us2-leader-prepare.spec.ts'],
   },
   {
     // Generated client shared by both the planning-admin (cycle/template/
-    // event CRUD) and tailoring (serving-profile, default-direction)
+    // event CRUD) and prepare (serving-profile, default-direction)
     // endpoints — verified by grepping both endpoint families into this one
     // file.
     sourcePathPrefix: 'apps/web/src/infrastructure/api/planning.ts',
     specPaths: [
       'tests/scheduling/overnight-time-block.spec.ts',
-      'tests/scheduling/planning-cycles-table-view.spec.ts',
+      'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
-      'tests/scheduling/us2-leader-tailor.spec.ts',
-      ...PLANNING_CYCLE_EDGE_SPEC_PATHS,
+      'tests/scheduling/us2-leader-prepare.spec.ts',
+      ...CYCLE_EDGE_SPEC_PATHS,
     ],
   },
   // #214 — Church isolation (Ministry Invitation minting/resend) proven by
@@ -488,18 +488,18 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   // #216 — published-schedule visibility: the ministry-schedule dashboard
   // section is exercised directly by us4-ministry-schedule, and reused by
-  // us4-roster-publish to assert a volunteer sees a just-published shift.
+  // us4-schedule-publish to assert a volunteer sees a just-published shift.
   {
     sourcePathPrefix:
       'apps/web/src/features/volunteers/components/ministry-schedule-section.tsx',
     specPaths: [
-      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/scheduling/us4-schedule-publish.spec.ts',
       'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
     ],
   },
   // #216 — the volunteer-facing generated API client backs the dashboard
   // (Availability/Assignment/ministry-schedule), the availability-check
-  // journey (#210's initial smoke set), and roster-publish's volunteer-side
+  // journey (#210's initial smoke set), and schedule-publish's volunteer-side
   // assertion; verified by grepping each endpoint's only caller. #218 — it
   // also serves the /notifications, /notifications/:id, and
   // /notifications/read-all endpoints the bell and inbox call.
@@ -509,7 +509,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       ...VOLUNTEER_DASHBOARD_SPEC_PATHS,
       ...NOTIFICATION_BELL_SPEC_PATHS,
       'tests/scheduling/us3-volunteer-availability.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/scheduling/us4-schedule-publish.spec.ts',
     ],
   },
   // #218 — the notification bell (header, every page) and the /notifications
@@ -540,15 +540,15 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'apps/web/src/features/volunteers/lib/notification-navigation.ts',
     specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
-  // #216 — the rostering (assignment/publish) generated API client backs the
-  // cycle-builder used at the rostering route; already the exact spec pair
+  // #216 — the assign (assignment/publish) generated API client backs the
+  // cycle-builder used at the assign route; already the exact spec pair
   // the critical-smoke fallback would run, made explicit rather than
   // incidental.
   {
-    sourcePathPrefix: 'apps/web/src/infrastructure/api/rostering.ts',
+    sourcePathPrefix: 'apps/web/src/infrastructure/api/assign.ts',
     specPaths: [
       'tests/scheduling/smoke.spec.ts',
-      'tests/scheduling/us4-roster-publish.spec.ts',
+      'tests/scheduling/us4-schedule-publish.spec.ts',
       // #217 — team-scoped assignment/removal (qualification), the focused
       // pick-me commit (builder-slot-focus), and the volunteer-notify/leader-
       // reassign flow (us5-leader-reassign) all call this client's assignment
@@ -560,8 +560,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   // #219 — the schedule builder route and its feature components are what
   // a11y-builder.spec.ts's axe-core scan drives. Scoped narrower than the
-  // broad `.../scheduling` prefix above (which also matches planning-cycles
-  // and tailoring changes this a11y spec never touches) — real browser paint
+  // broad `.../scheduling` prefix above (which also matches cycles
+  // and prepare changes this a11y spec never touches) — real browser paint
   // is needed for a WCAG contrast/semantics scan, which is why this stays at
   // the Playwright layer instead of moving down like #219's other six specs.
   {
@@ -571,12 +571,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     // #289 — added smoke/builder-slot-focus/qualification, verified via
-    // their page.goto to the rostering builder URL this directory renders;
+    // their page.goto to the assign builder URL this directory renders;
     // matches BUILDER_SPEC_PATHS used above for the hooks/utils it owns.
     sourcePathPrefix: 'apps/web/src/features/scheduling/components/builder/',
     specPaths: BUILDER_SPEC_PATHS,
   },
-  // #217 — the church-admin-controller owns every planning-cycle and event
+  // #217 — the church-admin-controller owns every cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge
   // cases (cross-cutting, DL4-X1/X2/X3), the $cycleId isolation route
   // (planning-cross-tenant-isolation), and quick-create's Church-local
@@ -584,13 +584,13 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix:
       'apps/server/src/api/controllers/church-admin-controller.ts',
-    specPaths: PLANNING_CYCLE_EDGE_SPEC_PATHS,
+    specPaths: CYCLE_EDGE_SPEC_PATHS,
   },
-  // #217 — the rostering controller owns shift assignment, unassignment, and
+  // #217 — the assign controller owns shift assignment, unassignment, and
   // reassignment: qualification's team-boundary 403, builder-slot-focus's
   // focused commit, and us5-leader-reassign's mid-cycle reassign.
   {
-    sourcePathPrefix: 'apps/server/src/api/controllers/rostering-controller.ts',
+    sourcePathPrefix: 'apps/server/src/api/controllers/assign-controller.ts',
     specPaths: [
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/builder-slot-focus.spec.ts',

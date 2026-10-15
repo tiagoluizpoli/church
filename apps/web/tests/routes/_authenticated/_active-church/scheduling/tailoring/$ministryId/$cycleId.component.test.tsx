@@ -8,20 +8,20 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-const getPlanningCycle = vi.fn();
+const getCycle = vi.fn();
 const listMinistries = vi.fn();
 const getCycleParticipation = vi.fn();
 const getScheduleBuilderData = vi.fn();
 const setParticipationInclusions = vi.fn();
 const splitParticipationShifts = vi.fn();
 const upsertShiftRequirement = vi.fn();
-const fireAvailability = vi.fn();
+const askAvailability = vi.fn();
 const resendAvailabilityReminder = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
-    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+    getCycle: (...args: unknown[]) => getCycle(...args),
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     getCycleParticipation: (...args: unknown[]) =>
       getCycleParticipation(...args),
@@ -33,7 +33,7 @@ vi.mock('@/utils/api-instances', async () => ({
       splitParticipationShifts(...args),
     upsertShiftRequirement: (...args: unknown[]) =>
       upsertShiftRequirement(...args),
-    fireAvailability: (...args: unknown[]) => fireAvailability(...args),
+    askAvailability: (...args: unknown[]) => askAvailability(...args),
     resendAvailabilityReminder: (...args: unknown[]) =>
       resendAvailabilityReminder(...args),
   },
@@ -77,7 +77,7 @@ const CYCLE_RESPONSE = {
     name: 'August 2026',
     startDate: '2026-07-10T00:00:00',
     endDate: '2026-07-12T00:00:00',
-    state: 'locked',
+    state: 'sent',
     createdAt: '2026-07-01T00:00:00',
     updatedAt: '2026-07-01T00:00:00',
   },
@@ -105,12 +105,12 @@ const PARTICIPATION_RESPONSE = {
         churchId: 'church-1',
         ministryId: 'ministry-1',
         eventId: 'event-1',
-        state: 'tailoring',
+        state: 'preparing',
       },
       event: {
         id: 'event-1',
         churchId: 'church-1',
-        planningCycleId: 'cycle-1',
+        cycleId: 'cycle-1',
         title: 'Sunday Service',
         start: '2026-07-11T09:00:00',
         end: '2026-07-11T11:00:00',
@@ -142,12 +142,12 @@ const PARTICIPATION_RESPONSE = {
         churchId: 'church-1',
         ministryId: 'ministry-1',
         eventId: 'event-2',
-        state: 'tailoring',
+        state: 'preparing',
       },
       event: {
         id: 'event-2',
         churchId: 'church-1',
-        planningCycleId: 'cycle-1',
+        cycleId: 'cycle-1',
         title: 'Saturday Setup',
         start: '2026-07-10T09:00:00',
         end: '2026-07-10T11:00:00',
@@ -176,9 +176,9 @@ const PARTICIPATION_RESPONSE = {
   ],
 };
 
-describe('Tailoring workspace route composition (US3/T028)', () => {
+describe('Prepare workspace route composition (US3/T028)', () => {
   it('enables Save split only after split configuration changes, independent of headcounts (T044)', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -232,7 +232,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
   });
 
   it('stacks day strip, horizontal filters, then slot list in workspace order (T042)', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -245,12 +245,10 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
 
     renderWorkspace();
 
-    const workspaceStack = await screen.findByTestId(
-      'tailoring-workspace-stack',
-    );
-    const dayStrip = screen.getByTestId('tailoring-calendar-strip');
-    const nameFilter = screen.getByTestId('tailoring-name-filter');
-    const slotList = screen.getByTestId('tailoring-slot-list');
+    const workspaceStack = await screen.findByTestId('prepare-workspace-stack');
+    const dayStrip = screen.getByTestId('prepare-calendar-strip');
+    const nameFilter = screen.getByTestId('prepare-name-filter');
+    const slotList = screen.getByTestId('prepare-slot-list');
 
     expect(workspaceStack).toContainElement(dayStrip);
     expect(workspaceStack).toContainElement(nameFilter);
@@ -266,7 +264,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
   });
 
   it('renders the ministry+cycle header, calendar, filters, and slot list together', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -282,9 +280,9 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
     expect(
       await screen.findByText('Greeters · August 2026'),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('tailoring-calendar')).toBeInTheDocument();
-    expect(screen.getByTestId('tailoring-name-filter')).toBeInTheDocument();
-    expect(screen.getByTestId('tailoring-slot-row-slot-1')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-calendar')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-name-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-slot-row-slot-1')).toBeInTheDocument();
 
     const browseLink = screen.getByTestId('browse-all-cycles-link');
     expect(browseLink).toHaveAttribute(
@@ -299,7 +297,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
 
   it('operates fully at a mobile viewport width — calendar, filters, and slot list all reachable (T023a)', async () => {
     window.innerWidth = 375;
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -313,24 +311,20 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
-    expect(screen.getByTestId('tailoring-calendar')).toBeInTheDocument();
+    await screen.findByTestId('prepare-slot-row-slot-1');
+    expect(screen.getByTestId('prepare-calendar')).toBeInTheDocument();
     expect(
-      screen.getByTestId('tailoring-calendar-day-2026-07-10'),
+      screen.getByTestId('prepare-calendar-day-2026-07-10'),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('tailoring-calendar-day-2026-07-11'),
+      screen.getByTestId('prepare-calendar-day-2026-07-11'),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('tailoring-calendar-day-2026-07-12'),
+      screen.getByTestId('prepare-calendar-day-2026-07-12'),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('tailoring-name-filter')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('tailoring-time-mode-filter'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('tailoring-time-start-filter'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-name-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-time-mode-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-time-start-filter')).toBeInTheDocument();
 
     setParticipationInclusions.mockResolvedValue(undefined);
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
@@ -340,7 +334,7 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
   });
 
   it('filters the slot list to a clicked calendar day with no network request', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -354,23 +348,23 @@ describe('Tailoring workspace route composition (US3/T028)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
-    expect(screen.getByTestId('tailoring-slot-row-slot-2')).toBeInTheDocument();
+    await screen.findByTestId('prepare-slot-row-slot-1');
+    expect(screen.getByTestId('prepare-slot-row-slot-2')).toBeInTheDocument();
     const callCountBeforeFilter = getCycleParticipation.mock.calls.length;
 
-    await user.click(screen.getByTestId('tailoring-calendar-day-2026-07-10'));
+    await user.click(screen.getByTestId('prepare-calendar-day-2026-07-10'));
 
     expect(
-      screen.queryByTestId('tailoring-slot-row-slot-1'),
+      screen.queryByTestId('prepare-slot-row-slot-1'),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('tailoring-slot-row-slot-2')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-slot-row-slot-2')).toBeInTheDocument();
     expect(getCycleParticipation.mock.calls.length).toBe(callCountBeforeFilter);
   });
 });
 
-describe('Tailoring workspace headcount save partial-failure isolation (Iteration 2/T045b/FR-022b)', () => {
+describe('Prepare workspace headcount save partial-failure isolation (Iteration 2/T045b/FR-022b)', () => {
   it('lets a succeeded role headcount stay saved when a sibling role in the same batch fails, and only retries the failed one', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -457,9 +451,9 @@ describe('Tailoring workspace headcount save partial-failure isolation (Iteratio
   });
 });
 
-describe('Tailoring workspace re-serving retains prior edits (Iteration 2/T046/FR-025)', () => {
+describe('Prepare workspace re-serving retains prior edits (Iteration 2/T046/FR-025)', () => {
   it('keeps a pending headcount draft in memory across a Serving -> Not serving -> Serving round trip within the same visit', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
       roles: [{ id: 'role-1', name: 'Greeter' }],
@@ -530,9 +524,9 @@ describe('Tailoring workspace re-serving retains prior edits (Iteration 2/T046/F
   });
 });
 
-describe('Tailoring workspace route — permission failure (US3/T023c)', () => {
+describe('Prepare workspace route — permission failure (US3/T023c)', () => {
   it('renders a permission-denied state on a 403, not a crash', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockRejectedValue({
       isAxiosError: true,
@@ -543,14 +537,14 @@ describe('Tailoring workspace route — permission failure (US3/T023c)', () => {
     renderWorkspace();
 
     expect(
-      await screen.findByTestId('tailoring-forbidden-state'),
+      await screen.findByTestId('prepare-forbidden-state'),
     ).toBeInTheDocument();
   });
 });
 
-describe('Tailoring workspace route — network failure (US3/T023d)', () => {
+describe('Prepare workspace route — network failure (US3/T023d)', () => {
   it('renders a retryable error state, not a crash or infinite spinner', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockRejectedValue({
       isAxiosError: true,
@@ -560,14 +554,14 @@ describe('Tailoring workspace route — network failure (US3/T023d)', () => {
     renderWorkspace();
 
     expect(
-      await screen.findByTestId('tailoring-retryable-error-state'),
+      await screen.findByTestId('prepare-retryable-error-state'),
     ).toBeInTheDocument();
   });
 });
 
-describe('Tailoring workspace batched save (US4/T029)', () => {
-  it('fires exactly one fireAvailability call per touched participation, not per slot/shift', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+describe('Prepare workspace batched save (US4/T029)', () => {
+  it('fires exactly one askAvailability call per touched participation, not per slot/shift', async () => {
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -578,7 +572,7 @@ describe('Tailoring workspace batched save (US4/T029)', () => {
       callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
-    fireAvailability.mockResolvedValue({
+    askAvailability.mockResolvedValue({
       createdCheckCount: 1,
       notifiedVolunteerCount: 1,
     });
@@ -586,25 +580,25 @@ describe('Tailoring workspace batched save (US4/T029)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
-    await screen.findByTestId('tailoring-touched-count');
+    await screen.findByTestId('prepare-touched-count');
     await user.click(screen.getByTestId('serving-toggle-slot-2'));
 
-    const saveButton = screen.getByTestId('save-and-fire-availability-button');
+    const saveButton = screen.getByTestId('save-and-ask-availability-button');
     await user.click(saveButton);
-    await user.click(await screen.findByTestId('tailoring-send-confirm'));
+    await user.click(await screen.findByTestId('prepare-send-confirm'));
 
-    expect(fireAvailability).toHaveBeenCalledTimes(2);
-    expect(fireAvailability).toHaveBeenCalledWith('participation-1');
-    expect(fireAvailability).toHaveBeenCalledWith('participation-2');
+    expect(askAvailability).toHaveBeenCalledTimes(2);
+    expect(askAvailability).toHaveBeenCalledWith('participation-1');
+    expect(askAvailability).toHaveBeenCalledWith('participation-2');
     expect(resendAvailabilityReminder).not.toHaveBeenCalled();
   });
 });
 
-describe('Tailoring workspace send-availability confirmation (P0 hardening)', () => {
+describe('Prepare workspace send-availability confirmation (P0 hardening)', () => {
   it('does not send anything until the confirmation dialog is accepted', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -619,25 +613,25 @@ describe('Tailoring workspace send-availability confirmation (P0 hardening)', ()
 
     renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
-    await screen.findByTestId('tailoring-touched-count');
-    await user.click(screen.getByTestId('save-and-fire-availability-button'));
+    await screen.findByTestId('prepare-touched-count');
+    await user.click(screen.getByTestId('save-and-ask-availability-button'));
 
-    const dialog = await screen.findByTestId('tailoring-send-confirm-dialog');
+    const dialog = await screen.findByTestId('prepare-send-confirm-dialog');
     expect(dialog).toHaveTextContent('Sunday Service');
-    expect(fireAvailability).not.toHaveBeenCalled();
+    expect(askAvailability).not.toHaveBeenCalled();
 
-    await user.click(screen.getByTestId('tailoring-send-cancel'));
+    await user.click(screen.getByTestId('prepare-send-cancel'));
 
     expect(
-      screen.queryByTestId('tailoring-send-confirm-dialog'),
+      screen.queryByTestId('prepare-send-confirm-dialog'),
     ).not.toBeInTheDocument();
-    expect(fireAvailability).not.toHaveBeenCalled();
+    expect(askAvailability).not.toHaveBeenCalled();
   });
 
   it('sends only the touched events named in the confirmation dialog', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -648,7 +642,7 @@ describe('Tailoring workspace send-availability confirmation (P0 hardening)', ()
       callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
-    fireAvailability.mockResolvedValue({
+    askAvailability.mockResolvedValue({
       createdCheckCount: 1,
       notifiedVolunteerCount: 1,
     });
@@ -656,25 +650,25 @@ describe('Tailoring workspace send-availability confirmation (P0 hardening)', ()
 
     renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
-    await screen.findByTestId('tailoring-touched-count');
-    await user.click(screen.getByTestId('save-and-fire-availability-button'));
+    await screen.findByTestId('prepare-touched-count');
+    await user.click(screen.getByTestId('save-and-ask-availability-button'));
 
-    const dialog = await screen.findByTestId('tailoring-send-confirm-dialog');
+    const dialog = await screen.findByTestId('prepare-send-confirm-dialog');
     expect(dialog).toHaveTextContent('Sunday Service');
     expect(dialog).not.toHaveTextContent('Saturday Setup');
 
-    await user.click(screen.getByTestId('tailoring-send-confirm'));
+    await user.click(screen.getByTestId('prepare-send-confirm'));
 
-    expect(fireAvailability).toHaveBeenCalledTimes(1);
-    expect(fireAvailability).toHaveBeenCalledWith('participation-1');
+    expect(askAvailability).toHaveBeenCalledTimes(1);
+    expect(askAvailability).toHaveBeenCalledWith('participation-1');
   });
 });
 
-describe('Tailoring workspace remains editable post-release (US4/T030/FR-017)', () => {
-  it('uses resendAvailabilityReminder (not fireAvailability) for a participation already past tailoring', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+describe('Prepare workspace remains editable post-release (US4/T030/FR-017)', () => {
+  it('uses resendAvailabilityReminder (not askAvailability) for a participation already past prepare', async () => {
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -682,7 +676,7 @@ describe('Tailoring workspace remains editable post-release (US4/T030/FR-017)', 
           ...PARTICIPATION_RESPONSE.events[0],
           participation: {
             ...PARTICIPATION_RESPONSE.events[0]?.participation,
-            state: 'rostering',
+            state: 'assigning',
           },
         },
       ],
@@ -700,23 +694,23 @@ describe('Tailoring workspace remains editable post-release (US4/T030/FR-017)', 
 
     renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
-    await screen.findByTestId('tailoring-touched-count');
+    await screen.findByTestId('prepare-touched-count');
 
-    const saveButton = screen.getByTestId('save-and-fire-availability-button');
+    const saveButton = screen.getByTestId('save-and-ask-availability-button');
     expect(saveButton).toBeEnabled();
     await user.click(saveButton);
-    await user.click(await screen.findByTestId('tailoring-send-confirm'));
+    await user.click(await screen.findByTestId('prepare-send-confirm'));
 
     expect(resendAvailabilityReminder).toHaveBeenCalledWith('participation-1');
-    expect(fireAvailability).not.toHaveBeenCalled();
+    expect(askAvailability).not.toHaveBeenCalled();
   });
 });
 
-describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
+describe('Prepare workspace unsaved-changes guard (US4/T030a)', () => {
   it('blocks navigation for a never-saved split change even with no touched participation (T048)', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue({
       events: [
@@ -758,12 +752,12 @@ describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
     router.navigate({ to: '/scheduling/tailoring' });
 
     expect(
-      await screen.findByTestId('tailoring-leave-confirm'),
+      await screen.findByTestId('prepare-leave-confirm'),
     ).toBeInTheDocument();
   });
 
   it('blocks navigation away when there are touched, unsaved edits', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -778,25 +772,25 @@ describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
 
     const { router } = renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
-    await screen.findByTestId('tailoring-touched-count');
+    await screen.findByTestId('prepare-touched-count');
 
     router.navigate({ to: '/scheduling/tailoring' });
 
     expect(
-      await screen.findByTestId('tailoring-leave-confirm'),
+      await screen.findByTestId('prepare-leave-confirm'),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByTestId('tailoring-leave-cancel'));
+    await user.click(screen.getByTestId('prepare-leave-cancel'));
     expect(
-      screen.queryByTestId('tailoring-leave-confirm'),
+      screen.queryByTestId('prepare-leave-confirm'),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('tailoring-workspace-page')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-workspace-page')).toBeInTheDocument();
   });
 
   it('does not block navigation when there are no unsaved edits', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -809,18 +803,18 @@ describe('Tailoring workspace unsaved-changes guard (US4/T030a)', () => {
 
     const { router } = renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     router.navigate({ to: '/scheduling/tailoring' });
 
     expect(
-      screen.queryByTestId('tailoring-leave-confirm'),
+      screen.queryByTestId('prepare-leave-confirm'),
     ).not.toBeInTheDocument();
   });
 });
 
-describe('Tailoring workspace double-submit guard (US4/T030b)', () => {
+describe('Prepare workspace double-submit guard (US4/T030b)', () => {
   it('disables the save action after the first click, sending exactly one batch', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -832,7 +826,7 @@ describe('Tailoring workspace double-submit guard (US4/T030b)', () => {
     });
     setParticipationInclusions.mockResolvedValue(undefined);
     let resolveFire: (() => void) | undefined;
-    fireAvailability.mockImplementation(
+    askAvailability.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveFire = () =>
@@ -843,26 +837,26 @@ describe('Tailoring workspace double-submit guard (US4/T030b)', () => {
 
     renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
-    await screen.findByTestId('tailoring-touched-count');
+    await screen.findByTestId('prepare-touched-count');
 
-    const saveButton = screen.getByTestId('save-and-fire-availability-button');
+    const saveButton = screen.getByTestId('save-and-ask-availability-button');
     await user.click(saveButton);
-    await user.click(await screen.findByTestId('tailoring-send-confirm'));
+    await user.click(await screen.findByTestId('prepare-send-confirm'));
     expect(saveButton).toBeDisabled();
     await user.click(saveButton);
 
     resolveFire?.();
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
 
-    expect(fireAvailability).toHaveBeenCalledTimes(1);
+    expect(askAvailability).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('Tailoring workspace mid-flight save unmount (US4/T030c)', () => {
+describe('Prepare workspace mid-flight save unmount (US4/T030c)', () => {
   it('does not throw when navigating away while the batch is still in flight', async () => {
-    getPlanningCycle.mockResolvedValue(CYCLE_RESPONSE);
+    getCycle.mockResolvedValue(CYCLE_RESPONSE);
     listMinistries.mockResolvedValue(MINISTRIES_RESPONSE);
     getCycleParticipation.mockResolvedValue(PARTICIPATION_RESPONSE);
     getScheduleBuilderData.mockResolvedValue({
@@ -873,7 +867,7 @@ describe('Tailoring workspace mid-flight save unmount (US4/T030c)', () => {
       callerTeamIds: null,
     });
     setParticipationInclusions.mockResolvedValue(undefined);
-    fireAvailability.mockImplementation(
+    askAvailability.mockImplementation(
       () =>
         new Promise((resolve) => {
           setTimeout(
@@ -886,11 +880,11 @@ describe('Tailoring workspace mid-flight save unmount (US4/T030c)', () => {
 
     const { router, unmount } = renderWorkspace();
 
-    await screen.findByTestId('tailoring-slot-row-slot-1');
+    await screen.findByTestId('prepare-slot-row-slot-1');
     await user.click(screen.getByTestId('serving-toggle-slot-1'));
-    await screen.findByTestId('tailoring-touched-count');
-    await user.click(screen.getByTestId('save-and-fire-availability-button'));
-    await user.click(await screen.findByTestId('tailoring-send-confirm'));
+    await screen.findByTestId('prepare-touched-count');
+    await user.click(screen.getByTestId('save-and-ask-availability-button'));
+    await user.click(await screen.findByTestId('prepare-send-confirm'));
 
     expect(() => {
       router.navigate({ to: '/scheduling/tailoring' });

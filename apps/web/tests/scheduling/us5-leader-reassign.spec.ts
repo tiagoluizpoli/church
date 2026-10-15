@@ -1,10 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
 import {
   type LiveChangesJourney,
   loadLiveChangesJourney,
 } from '@/tests/fixtures/journeys/live-changes';
-import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
 
 // DL4-US5 (P4, test-plan.md): a leader reassigns a still-open assignment to a
 // different volunteer mid-cycle (FR-029).
@@ -12,7 +12,7 @@ const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 const CYCLE_NAME = 'US5 Live Changes';
 
-interface PlanningCycleResponse {
+interface CycleResponse {
   id: string;
 }
 
@@ -100,7 +100,7 @@ async function setUpLiveChanges({
   expect(directionResponse.ok()).toBeTruthy();
 
   const cycleResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles`,
+    `${SERVER_URL}/api/v1/admin/cycles`,
     {
       data: {
         name: CYCLE_NAME,
@@ -110,7 +110,7 @@ async function setUpLiveChanges({
     },
   );
   expect(cycleResponse.ok()).toBeTruthy();
-  const cycle = (await cycleResponse.json()) as PlanningCycleResponse;
+  const cycle = (await cycleResponse.json()) as CycleResponse;
 
   const templateResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/event-templates`,
@@ -154,18 +154,18 @@ async function setUpLiveChanges({
   expect(profileResponse.ok()).toBeTruthy();
 
   const applyResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles/${cycle.id}/apply-templates`,
+    `${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/apply-templates`,
     { data: { templateIds: [template.id] } },
   );
   expect(applyResponse.ok()).toBeTruthy();
 
   const lockResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles/${cycle.id}/lock`,
+    `${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/send`,
   );
   expect(lockResponse.ok()).toBeTruthy();
 
   const participationResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/tailoring/cycles/${cycle.id}/participation`,
+    `${SERVER_URL}/api/v1/prepare/cycles/${cycle.id}/participation`,
     { params: { ministryId: worshipMinistryId } },
   );
   expect(participationResponse.ok()).toBeTruthy();
@@ -177,7 +177,7 @@ async function setUpLiveChanges({
   }
 
   const fireResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/tailoring/participations/${eventView.participation.id}/fire-availability`,
+    `${SERVER_URL}/api/v1/prepare/participations/${eventView.participation.id}/ask-availability`,
   );
   expect(fireResponse.ok()).toBeTruthy();
 
@@ -206,7 +206,7 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   const fixture = await setUpLiveChanges({ page, journey });
 
   const eligibleResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/eligible-volunteers`,
+    `${SERVER_URL}/api/v1/assign/shifts/${fixture.firstShiftId}/eligible-volunteers`,
   );
   expect(eligibleResponse.ok()).toBeTruthy();
   const eligible =
@@ -220,13 +220,13 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
 
   // Both shifts are staffed so the publish is a full one.
   const firstResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/rostering/shifts/${fixture.firstShiftId}/assignments`,
+    `${SERVER_URL}/api/v1/assign/shifts/${fixture.firstShiftId}/assignments`,
     { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
   );
   expect(firstResponse.ok()).toBeTruthy();
 
   const secondResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/rostering/shifts/${fixture.secondShiftId}/assignments`,
+    `${SERVER_URL}/api/v1/assign/shifts/${fixture.secondShiftId}/assignments`,
     { data: { volunteerId: owner.volunteerId, roleId: usherRoleId } },
   );
   expect(secondResponse.ok()).toBeTruthy();
@@ -234,7 +234,7 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
     .assignment;
 
   const publishResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/rostering/cycles/${fixture.cycleId}/publish`,
+    `${SERVER_URL}/api/v1/assign/cycles/${fixture.cycleId}/publish`,
     {
       params: { ministryId: journey.ministries.worship.id },
       data: {},
@@ -247,7 +247,7 @@ test('the leader reassigns a still-open assignment mid-cycle', async ({
   // The leader reassigns the still-open second Usher assignment mid-cycle
   // (DL2-RS-08, FR-029).
   const reassignResponse = await page.request.patch(
-    `${SERVER_URL}/api/v1/rostering/assignments/${secondAssignment.id}/reassign`,
+    `${SERVER_URL}/api/v1/assign/assignments/${secondAssignment.id}/reassign`,
     {
       data: { volunteerId: teamLeader.volunteerId },
     },

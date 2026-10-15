@@ -66,13 +66,13 @@ function makeCycle(
     eventCount: 1,
     slotCount: 2,
     status: 'in_progress',
-    availabilityFiredForAll: false,
-    availabilityFiredForAny: false,
+    availabilityRequestedForAll: false,
+    availabilityRequestedForAny: false,
     ...overrides,
   };
 }
 
-describe('Tailoring ministry cycle-list route (US2/T015a, amended Iteration 3)', () => {
+describe('Prepare ministry cycle-list route (US2/T015a, amended Iteration 3)', () => {
   it('redirects straight to the workspace when exactly one cycle the ministry is part of is open', async () => {
     listMinistryCycleSummaries.mockResolvedValue({
       cycles: [
@@ -105,7 +105,7 @@ describe('Tailoring ministry cycle-list route (US2/T015a, amended Iteration 3)',
     const { router } = renderMinistryCycleList();
 
     expect(
-      await screen.findByTestId('tailoring-cycle-list-redirecting'),
+      await screen.findByTestId('prepare-cycle-list-redirecting'),
     ).toHaveTextContent('Browse all cycles instead');
 
     await waitFor(() =>
@@ -161,19 +161,19 @@ describe('Tailoring ministry cycle-list route (US2/T015a, amended Iteration 3)',
     expect(table).toHaveTextContent('September');
     expect(table).toHaveTextContent('In progress');
     expect(table).toHaveTextContent('Published');
-    expect(screen.getByTestId('tailoring-cycle-count')).toHaveTextContent('2');
-    expect(screen.getByTestId('tailoring-cycle-event-total')).toHaveTextContent(
+    expect(screen.getByTestId('prepare-cycle-count')).toHaveTextContent('2');
+    expect(screen.getByTestId('prepare-cycle-event-total')).toHaveTextContent(
       '6',
     );
-    expect(screen.getByTestId('tailoring-cycle-slot-total')).toHaveTextContent(
+    expect(screen.getByTestId('prepare-cycle-slot-total')).toHaveTextContent(
       '8',
     );
-    expect(
-      screen.getByTestId('tailoring-cycle-ministry-name'),
-    ).toHaveTextContent('Greeters');
+    expect(screen.getByTestId('prepare-cycle-ministry-name')).toHaveTextContent(
+      'Greeters',
+    );
   });
 
-  it('navigates to the selected cycle workspace when its Roster button is clicked (rows themselves are inert)', async () => {
+  it('navigates to the selected cycle workspace when its Schedule button is clicked (rows themselves are inert)', async () => {
     listMinistryCycleSummaries.mockResolvedValue({
       cycles: [
         makeCycle({ cycleId: 'cycle-1', name: 'August' }),
@@ -187,7 +187,7 @@ describe('Tailoring ministry cycle-list route (US2/T015a, amended Iteration 3)',
     await screen.findByRole('grid', { name: 'Cycles' });
     await user.click(
       screen.getAllByTestId(
-        'ministry-cycle-tailoring-button-cycle-2',
+        'ministry-cycle-prepare-button-cycle-2',
       )[0] as HTMLElement,
     );
 
@@ -199,7 +199,7 @@ describe('Tailoring ministry cycle-list route (US2/T015a, amended Iteration 3)',
   });
 });
 
-describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iteration 3)', () => {
+describe('Prepare ministry cycle-list route — filters (US2/T068/T069, Iteration 3)', () => {
   function mockThreeCycles() {
     listMinistryCycleSummaries.mockResolvedValue({
       cycles: [
@@ -247,10 +247,10 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
     expect(table).toHaveTextContent('September (in progress)');
     expect(table).toHaveTextContent('October (published)');
 
-    const applyButton = screen.getByTestId('tailoring-cycle-filters-apply');
+    const applyButton = screen.getByTestId('prepare-cycle-filters-apply');
     expect(applyButton).toBeDisabled();
 
-    await user.click(screen.getByTestId('tailoring-cycle-involvement-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-involvement-filter'));
     await user.click(
       await screen.findByRole('option', { name: 'Not part of' }),
     );
@@ -266,7 +266,7 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
       expect(table).not.toHaveTextContent('September (in progress)');
       expect(table).not.toHaveTextContent('October (published)');
     });
-    expect(screen.getByTestId('tailoring-cycle-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('prepare-cycle-count')).toHaveTextContent('1');
     expect(applyButton).toBeDisabled();
   });
 
@@ -277,11 +277,11 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
-    await user.click(screen.getByTestId('tailoring-cycle-involvement-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-involvement-filter'));
     await user.click(
       await screen.findByRole('option', { name: 'Not part of' }),
     );
-    await user.click(screen.getByTestId('tailoring-cycle-filters-apply'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
 
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({
@@ -308,9 +308,9 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
 
-    await user.click(screen.getByTestId('tailoring-cycle-status-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-status-filter'));
     await user.click(await screen.findByRole('option', { name: 'Published' }));
-    await user.click(screen.getByTestId('tailoring-cycle-filters-apply'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
 
     await waitFor(() => {
       expect(table).toHaveTextContent('October (published)');
@@ -325,19 +325,19 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
-    const dateStart = screen.getByTestId('tailoring-cycle-date-start-filter');
+    const dateStart = screen.getByTestId('prepare-cycle-date-start-filter');
     await pickCalendarDate({ user, trigger: dateStart, date: '2026-08-15' });
     expect(dateStart).not.toHaveTextContent('Pick a date');
 
     await user.click(
-      screen.getByTestId('tailoring-cycle-date-start-filter-clear'),
+      screen.getByTestId('prepare-cycle-date-start-filter-clear'),
     );
     expect(dateStart).toHaveTextContent('Pick a date');
     // Clearing a single field is still just a draft edit — Apply reflects it.
-    expect(screen.getByTestId('tailoring-cycle-filters-apply')).toBeDisabled();
+    expect(screen.getByTestId('prepare-cycle-filters-apply')).toBeDisabled();
   });
 
-  it("date range filter is mode-driven (Starts/Ends/Within), mirroring the tailoring workspace's time-of-day filter (design-critique follow-up)", async () => {
+  it("date range filter is mode-driven (Starts/Ends/Within), mirroring the prepare workspace's time-of-day filter (design-critique follow-up)", async () => {
     mockThreeCycles();
     const user = userEvent.setup();
     renderMinistryCycleList();
@@ -346,11 +346,11 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     // September starts 09-01; a "starts" filter for [09-15, 12-31] must
     // exclude it even though September's own END date (09-30) would match.
-    const dateStart = screen.getByTestId('tailoring-cycle-date-start-filter');
-    const dateEnd = screen.getByTestId('tailoring-cycle-date-end-filter');
+    const dateStart = screen.getByTestId('prepare-cycle-date-start-filter');
+    const dateEnd = screen.getByTestId('prepare-cycle-date-end-filter');
     await pickCalendarDate({ user, trigger: dateStart, date: '2026-09-15' });
     await pickCalendarDate({ user, trigger: dateEnd, date: '2026-12-31' });
-    await user.click(screen.getByTestId('tailoring-cycle-filters-apply'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
 
     await waitFor(() => {
       expect(table).not.toHaveTextContent('September (in progress)');
@@ -359,9 +359,9 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     // Switching to "ends" (still with the same [09-15, 12-31] bounds) picks
     // September back up, since its end date (09-30) is inside that range.
-    await user.click(screen.getByTestId('tailoring-cycle-date-mode-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-date-mode-filter'));
     await user.click(await screen.findByRole('option', { name: 'Ends' }));
-    await user.click(screen.getByTestId('tailoring-cycle-filters-apply'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
 
     await waitFor(() => {
       expect(table).toHaveTextContent('September (in progress)');
@@ -388,13 +388,13 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
-    await user.click(screen.getByTestId('tailoring-cycle-involvement-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-involvement-filter'));
     await user.click(
       await screen.findByRole('option', { name: 'Not part of' }),
     );
-    await user.click(screen.getByTestId('tailoring-cycle-status-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-status-filter'));
     await user.click(await screen.findByRole('option', { name: 'Published' }));
-    await user.click(screen.getByTestId('tailoring-cycle-filters-apply'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
 
     const emptyState = await screen.findByTestId(
       'ministry-cycle-list-empty-state',
@@ -410,7 +410,7 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
       screen.getByTestId('ministry-cycle-list-filters-slot'),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByTestId('tailoring-cycle-filters-clear'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-clear'));
 
     expect(
       await screen.findByRole('grid', { name: 'Cycles' }),
@@ -424,12 +424,12 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     const table = await screen.findByRole('grid', { name: 'Cycles' });
 
-    await user.click(screen.getByTestId('tailoring-cycle-status-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-status-filter'));
     await user.click(await screen.findByRole('option', { name: 'Published' }));
-    await user.click(screen.getByTestId('tailoring-cycle-filters-apply'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
     await waitFor(() => expect(table).not.toHaveTextContent('August'));
 
-    const clearButton = screen.getByTestId('tailoring-cycle-filters-clear');
+    const clearButton = screen.getByTestId('prepare-cycle-filters-clear');
     expect(clearButton).toBeEnabled();
     await user.click(clearButton);
 
@@ -448,27 +448,25 @@ describe('Tailoring ministry cycle-list route — filters (US2/T068/T069, Iterat
 
     await screen.findByRole('grid', { name: 'Cycles' });
 
-    await user.click(screen.getByTestId('tailoring-cycle-involvement-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-involvement-filter'));
     await user.click(await screen.findByRole('option', { name: 'Part of' }));
-    await user.click(screen.getByTestId('tailoring-cycle-status-filter'));
+    await user.click(screen.getByTestId('prepare-cycle-status-filter'));
     await user.click(await screen.findByRole('option', { name: 'Published' }));
-    await user.click(screen.getByTestId('tailoring-cycle-filters-apply'));
+    await user.click(screen.getByTestId('prepare-cycle-filters-apply'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('tailoring-cycle-count')).toHaveTextContent(
-        '1',
-      ),
+      expect(screen.getByTestId('prepare-cycle-count')).toHaveTextContent('1'),
     );
-    expect(screen.getByTestId('tailoring-cycle-event-total')).toHaveTextContent(
+    expect(screen.getByTestId('prepare-cycle-event-total')).toHaveTextContent(
       '1',
     );
-    expect(screen.getByTestId('tailoring-cycle-slot-total')).toHaveTextContent(
+    expect(screen.getByTestId('prepare-cycle-slot-total')).toHaveTextContent(
       '1',
     );
   });
 });
 
-describe('Tailoring ministry cycle-list route — batched request (US2/T072a, FR-032/SC-011)', () => {
+describe('Prepare ministry cycle-list route — batched request (US2/T072a, FR-032/SC-011)', () => {
   it('issues exactly one request for participation-derived cycle data regardless of cycle count', async () => {
     listMinistryCycleSummaries.mockResolvedValue({
       cycles: [
@@ -485,7 +483,7 @@ describe('Tailoring ministry cycle-list route — batched request (US2/T072a, FR
   });
 });
 
-describe('Tailoring ministry cycle-list route — permission failure (US2/T015b/T072)', () => {
+describe('Prepare ministry cycle-list route — permission failure (US2/T015b/T072)', () => {
   it('renders a permission-denied state on a 403, not a crash', async () => {
     listMinistryCycleSummaries.mockRejectedValue({
       isAxiosError: true,
@@ -496,12 +494,12 @@ describe('Tailoring ministry cycle-list route — permission failure (US2/T015b/
     renderMinistryCycleList();
 
     expect(
-      await screen.findByTestId('tailoring-forbidden-state'),
+      await screen.findByTestId('prepare-forbidden-state'),
     ).toBeInTheDocument();
   });
 });
 
-describe('Tailoring ministry cycle-list route — network failure (US2/T015c/T072)', () => {
+describe('Prepare ministry cycle-list route — network failure (US2/T015c/T072)', () => {
   it('renders a retryable error state, not a crash or infinite spinner', async () => {
     listMinistryCycleSummaries.mockRejectedValue({
       isAxiosError: true,
@@ -511,7 +509,7 @@ describe('Tailoring ministry cycle-list route — network failure (US2/T015c/T07
     renderMinistryCycleList();
 
     expect(
-      await screen.findByTestId('tailoring-retryable-error-state'),
+      await screen.findByTestId('prepare-retryable-error-state'),
     ).toBeInTheDocument();
   });
 });

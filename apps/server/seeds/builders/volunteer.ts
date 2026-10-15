@@ -151,7 +151,7 @@ export interface SeededVolunteerWithMembership {
 
 /**
  * A fresh User, its Volunteer profile in `churchId` and a Ministry Membership
- * in `ministryId`: the chain every roster fixture needs. Ids default to random
+ * in `ministryId`: the chain every schedule fixture needs. Ids default to random
  * UUIDs, the access level to `volunteer`, qualifications and teams to none.
  */
 export async function buildVolunteerWithMembership({

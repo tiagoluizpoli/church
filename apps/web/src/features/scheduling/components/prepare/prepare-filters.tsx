@@ -2,7 +2,7 @@ import { XIcon } from 'lucide-react';
 import type {
   TimeWindowFilter,
   TimeWindowMode,
-} from '../participation-tailoring.utils';
+} from '../participation-prepare.utils';
 import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Button } from '@/components/ui/button';
 import { FormControlSizeProvider } from '@/components/ui/form-control-size';
@@ -18,7 +18,7 @@ import {
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 
-export interface TailoringFiltersProps {
+export interface PrepareFiltersProps {
   nameQuery: string;
   onNameQueryChange: (query: string) => void;
   timeWindowFilter: TimeWindowFilter;
@@ -30,26 +30,26 @@ export interface TailoringFiltersProps {
  * one mode selector ("Starts" / "Ends" / "Between") paired with a single
  * shared start+end time range, applied per the selected mode. Promotes its
  * own controls to touch sizing below `md` (self-contained, matching
- * `TailoringSlotList`'s own responsiveness, since this bar isn't wrapped by
+ * `PrepareSlotList`'s own responsiveness, since this bar isn't wrapped by
  * that component's `FormControlSizeProvider`); the time-range pair wraps to
  * its own line under the mode select instead of overflowing on narrow
  * phones, where three inline controls plus a fixed-width select don't fit. */
-export function TailoringFilters({
+export function PrepareFilters({
   nameQuery,
   onNameQueryChange,
   timeWindowFilter,
   onTimeWindowFilterChange,
-}: TailoringFiltersProps) {
+}: PrepareFiltersProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   return (
     <FormControlSizeProvider size={isMobile ? 'touch' : 'default'}>
       <div className="flex flex-col gap-3 md:flex-row md:items-end">
         <div className="min-w-0 flex-1 space-y-1">
-          <Label htmlFor="tailoring-name-filter">Filter by name</Label>
+          <Label htmlFor="prepare-name-filter">Filter by name</Label>
           <Input
-            id="tailoring-name-filter"
-            data-testid="tailoring-name-filter"
+            id="prepare-name-filter"
+            data-testid="prepare-name-filter"
             placeholder="Slot or event name"
             value={nameQuery}
             onChange={(event) => onNameQueryChange(event.target.value)}
@@ -57,7 +57,7 @@ export function TailoringFilters({
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="tailoring-time-mode-filter">Filter by time</Label>
+          <Label htmlFor="prepare-time-mode-filter">Filter by time</Label>
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={timeWindowFilter.mode}
@@ -69,8 +69,8 @@ export function TailoringFilters({
               }
             >
               <SelectTrigger
-                id="tailoring-time-mode-filter"
-                data-testid="tailoring-time-mode-filter"
+                id="prepare-time-mode-filter"
+                data-testid="prepare-time-mode-filter"
                 className={cn(
                   'w-32 shrink-0',
                   isMobile && 'px-3 text-sm data-[size=default]:h-11',
@@ -88,7 +88,7 @@ export function TailoringFilters({
               <div className="min-w-0 flex-1">
                 <TimeOfDayField
                   aria-label="From"
-                  data-testid="tailoring-time-start-filter"
+                  data-testid="prepare-time-start-filter"
                   value={timeWindowFilter.start ?? null}
                   onChange={(value) =>
                     onTimeWindowFilterChange({
@@ -104,7 +104,7 @@ export function TailoringFilters({
                   variant="ghost"
                   size="icon-xs"
                   aria-label="Clear from time"
-                  data-testid="tailoring-time-start-filter-clear"
+                  data-testid="prepare-time-start-filter-clear"
                   onClick={() =>
                     onTimeWindowFilterChange({
                       ...timeWindowFilter,
@@ -121,7 +121,7 @@ export function TailoringFilters({
               <div className="min-w-0 flex-1">
                 <TimeOfDayField
                   aria-label="To"
-                  data-testid="tailoring-time-end-filter"
+                  data-testid="prepare-time-end-filter"
                   value={timeWindowFilter.end ?? null}
                   onChange={(value) =>
                     onTimeWindowFilterChange({
@@ -137,7 +137,7 @@ export function TailoringFilters({
                   variant="ghost"
                   size="icon-xs"
                   aria-label="Clear to time"
-                  data-testid="tailoring-time-end-filter-clear"
+                  data-testid="prepare-time-end-filter-clear"
                   onClick={() =>
                     onTimeWindowFilterChange({
                       ...timeWindowFilter,

@@ -1,11 +1,11 @@
 import {
   assignment,
+  cycle,
   event,
   ministryParticipation,
   ministryVolunteer,
   ministryVolunteerRole,
   ministryVolunteerTeam,
-  planningCycle,
   shift,
   slotRequirement,
 } from '@church/db';
@@ -16,13 +16,13 @@ import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
 import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
 import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
-  createRosterQualificationRecipe,
-  type RosterQualificationJourney,
-} from '@/seeds/e2e/recipes/roster-qualification';
+  type AssignBoardJourney,
+  createAssignBoardRecipe,
+} from '@/seeds/e2e/recipes/assign-board';
 import {
-  createRosteringBoardRecipe,
-  type RosteringBoardJourney,
-} from '@/seeds/e2e/recipes/rostering-board';
+  type AssignQualificationJourney,
+  createAssignQualificationRecipe,
+} from '@/seeds/e2e/recipes/assign-qualification';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
@@ -35,21 +35,19 @@ interface AnchorInput {
   anchor: CalendarDay;
 }
 
-async function loadBoard({
-  anchor,
-}: AnchorInput): Promise<RosteringBoardJourney> {
+async function loadBoard({ anchor }: AnchorInput): Promise<AssignBoardJourney> {
   return await runE2eJourneyRecipe({
     db: testDb,
-    recipe: createRosteringBoardRecipe({ journeyKey: 'alpha', anchor }),
+    recipe: createAssignBoardRecipe({ journeyKey: 'alpha', anchor }),
   });
 }
 
 async function loadQualification({
   anchor,
-}: AnchorInput): Promise<RosterQualificationJourney> {
+}: AnchorInput): Promise<AssignQualificationJourney> {
   return await runE2eJourneyRecipe({
     db: testDb,
-    recipe: createRosterQualificationRecipe({ journeyKey: 'alpha', anchor }),
+    recipe: createAssignQualificationRecipe({ journeyKey: 'alpha', anchor }),
   });
 }
 
@@ -112,10 +110,10 @@ beforeEach(async () => {
   await ensurePlatformOperator({ db: testDb, id: SEED_PLATFORM_OPERATOR_ID });
 });
 
-describe('rostering-board E2E journey recipe', () => {
+describe('assign-board E2E journey recipe', () => {
   it('builds a published two-Usher service, an availability-fired team service and a published Host service', async () => {
     const journey = await loadBoard({ anchor: ANCHOR });
-    const { service, teamService, rosteredService } = journey.events;
+    const { service, teamService, assignedService } = journey.events;
     const { worship } = journey.ministries;
 
     expect(service.day).toBe('2026-03-22');
@@ -134,8 +132,8 @@ describe('rostering-board E2E journey recipe', () => {
     expect(participations).toEqual(
       expect.arrayContaining([
         { id: service.participationId, state: 'published' },
-        { id: teamService.participationId, state: 'availability_fired' },
-        { id: rosteredService.participationId, state: 'published' },
+        { id: teamService.participationId, state: 'availability_requested' },
+        { id: assignedService.participationId, state: 'published' },
       ]),
     );
     expect(participations).toHaveLength(3);
@@ -170,7 +168,7 @@ describe('rostering-board E2E journey recipe', () => {
           teamId: null,
         },
         {
-          shiftId: rosteredService.shiftId,
+          shiftId: assignedService.shiftId,
           roleId: worship.roles.host.id,
           requiredCount: 3,
           teamId: null,
@@ -216,13 +214,13 @@ describe('rostering-board E2E journey recipe', () => {
     );
   });
 
-  it('seeds the rostered service with a pending, a confirmed and a declined Host', async () => {
+  it('seeds the assigned service with a pending, a confirmed and a declined Host', async () => {
     const journey = await loadBoard({ anchor: ANCHOR });
-    const { rosteredService } = journey.events;
+    const { assignedService } = journey.events;
     const { pool } = journey;
 
-    expect(rosteredService.day).toBe('2026-03-28');
-    expect(rosteredService.requirements.host).toMatchObject({
+    expect(assignedService.day).toBe('2026-03-28');
+    expect(assignedService.requirements.host).toMatchObject({
       roleId: journey.ministries.worship.roles.host.id,
       requiredCount: 3,
     });
@@ -238,22 +236,22 @@ describe('rostering-board E2E journey recipe', () => {
     expect(rows).toEqual(
       expect.arrayContaining([
         {
-          id: rosteredService.assignments[0]?.id,
+          id: assignedService.assignments[0]?.id,
           volunteerId: pool.hostPending.volunteerId,
           status: 'pending',
-          shiftId: rosteredService.shiftId,
+          shiftId: assignedService.shiftId,
         },
         {
-          id: rosteredService.assignments[1]?.id,
+          id: assignedService.assignments[1]?.id,
           volunteerId: pool.hostConfirmed.volunteerId,
           status: 'confirmed',
-          shiftId: rosteredService.shiftId,
+          shiftId: assignedService.shiftId,
         },
         {
-          id: rosteredService.assignments[2]?.id,
+          id: assignedService.assignments[2]?.id,
           volunteerId: pool.hostDeclined.volunteerId,
           status: 'declined',
-          shiftId: rosteredService.shiftId,
+          shiftId: assignedService.shiftId,
         },
       ]),
     );
@@ -267,12 +265,12 @@ describe('rostering-board E2E journey recipe', () => {
 
     expect(service.day).toBe('2027-01-04');
     expect(teamService.day).toBe('2027-01-07');
-    const [cycle] = await testDb
+    const [cycleRow] = await testDb
       .select()
-      .from(planningCycle)
-      .where(eq(planningCycle.id, journey.cycle.id));
-    expect(cycle?.startDate.toISOString()).toBe('2026-12-28T00:00:00.000Z');
-    expect(cycle?.endDate.toISOString()).toBe('2027-01-25T00:00:00.000Z');
+      .from(cycle)
+      .where(eq(cycle.id, journey.cycle.id));
+    expect(cycleRow?.startDate.toISOString()).toBe('2026-12-28T00:00:00.000Z');
+    expect(cycleRow?.endDate.toISOString()).toBe('2027-01-25T00:00:00.000Z');
     for (const { id, day } of [service, teamService]) {
       const { eventRow, shiftRow } = await eventRows({ eventId: id });
       expect(eventRow?.start.toISOString()).toBe(`${day}T12:00:00.000Z`);
@@ -288,20 +286,20 @@ describe('rostering-board E2E journey recipe', () => {
 
   it('hangs every cycle, event and shift date from a late anchor', async () => {
     const journey = await loadBoard({ anchor: LATE_ANCHOR });
-    const { service, teamService, rosteredService } = journey.events;
+    const { service, teamService, assignedService } = journey.events;
 
     expect(service.day).toBe('2027-03-08');
     expect(teamService.day).toBe('2027-03-11');
-    expect(rosteredService.day).toBe('2027-03-14');
+    expect(assignedService.day).toBe('2027-03-14');
 
-    const [cycle] = await testDb
+    const [cycleRow] = await testDb
       .select()
-      .from(planningCycle)
-      .where(eq(planningCycle.id, journey.cycle.id));
-    expect(cycle?.startDate.toISOString()).toBe('2027-03-01T00:00:00.000Z');
-    expect(cycle?.endDate.toISOString()).toBe('2027-03-29T00:00:00.000Z');
+      .from(cycle)
+      .where(eq(cycle.id, journey.cycle.id));
+    expect(cycleRow?.startDate.toISOString()).toBe('2027-03-01T00:00:00.000Z');
+    expect(cycleRow?.endDate.toISOString()).toBe('2027-03-29T00:00:00.000Z');
 
-    for (const { id, day } of [service, teamService, rosteredService]) {
+    for (const { id, day } of [service, teamService, assignedService]) {
       const { eventRow, shiftRow } = await eventRows({ eventId: id });
       expect(eventRow?.start.toISOString()).toBe(`${day}T12:00:00.000Z`);
       expect(eventRow?.end.toISOString()).toBe(`${day}T14:00:00.000Z`);
@@ -315,7 +313,7 @@ describe('rostering-board E2E journey recipe', () => {
   });
 });
 
-describe('roster-qualification E2E journey recipe', () => {
+describe('assign-qualification E2E journey recipe', () => {
   it('makes Grace the only qualified Greeter in the Team Alpha the TeamLeader leads', async () => {
     const journey = await loadQualification({ anchor: ANCHOR });
     const { worship } = journey.ministries;
@@ -371,7 +369,9 @@ describe('roster-qualification E2E journey recipe', () => {
     expect(journey.event.day).toBe('2027-03-11');
     expect(eventRow?.status).toBe('draft');
     expect(eventRow?.start.toISOString()).toBe('2027-03-11T12:00:00.000Z');
-    expect(shiftRow?.ministry_participation.state).toBe('availability_fired');
+    expect(shiftRow?.ministry_participation.state).toBe(
+      'availability_requested',
+    );
     expect(shiftRow?.shift.startTime.toISOString()).toBe(
       '2027-03-11T12:00:00.000Z',
     );

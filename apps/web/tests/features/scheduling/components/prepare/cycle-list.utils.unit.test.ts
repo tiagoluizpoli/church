@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMinistryCycleSummaries,
   filterCycleSummaries,
-} from '@/features/scheduling/components/tailoring/cycle-list.utils';
+} from '@/features/scheduling/components/prepare/cycle-list.utils';
 import type { ListMinistryCycleSummaries200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
 
 function makeCycleSummary(
@@ -17,8 +17,8 @@ function makeCycleSummary(
     eventCount: 1,
     slotCount: 2,
     status: 'in_progress',
-    availabilityFiredForAll: false,
-    availabilityFiredForAny: false,
+    availabilityRequestedForAll: false,
+    availabilityRequestedForAny: false,
     ...overrides,
   };
 }
@@ -40,8 +40,8 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
         slotCount: 2,
         status: 'in_progress',
         isPartOf: true,
-        availabilityFiredForAll: false,
-        availabilityFiredForAny: false,
+        availabilityRequestedForAll: false,
+        availabilityRequestedForAny: false,
       },
     ]);
   });
@@ -56,7 +56,7 @@ describe('buildMinistryCycleSummaries (US2/Iteration 3 — real columns, sole da
           eventCount: 0,
           slotCount: 0,
           status: 'not_started',
-          availabilityFiredForAll: false,
+          availabilityRequestedForAll: false,
         }),
       ],
     });

@@ -5,7 +5,7 @@ export const KIDS = defineMinistry({
   name: 'Kids',
   roles: ['Líder', 'Auxiliar'],
   teams: ['Kids', 'Maternal'],
-  roster: [
+  schedule: [
     // Ministry leaders (2)
     {
       seat: {

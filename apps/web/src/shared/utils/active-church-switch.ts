@@ -56,32 +56,32 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
   { pattern: /^\/volunteer\/availability$/, policy: 'fallback' },
   { pattern: /^\/scheduling\/?$/, policy: 'fallback' },
   {
-    pattern: /^\/scheduling\/planning-cycles\/?$/,
+    pattern: /^\/scheduling\/cycles\/?$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
-  { pattern: /^\/scheduling\/planning-cycles\/new$/, policy: 'fallback' },
+  { pattern: /^\/scheduling\/cycles\/new$/, policy: 'fallback' },
   {
-    pattern: /^\/scheduling\/planning-cycles\/templates$/,
+    pattern: /^\/scheduling\/cycles\/templates$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
   {
-    pattern: /^\/scheduling\/planning-cycles\/[^/]+$/,
+    pattern: /^\/scheduling\/cycles\/[^/]+$/,
     policy: 'fallback',
   },
   {
-    pattern: /^\/scheduling\/tailoring\/?$/,
+    pattern: /^\/scheduling\/prepare\/?$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
-  { pattern: /^\/scheduling\/tailoring\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/scheduling\/prepare\/[^/]+$/, policy: 'fallback' },
   {
-    pattern: /^\/scheduling\/tailoring\/[^/]+\/[^/]+$/,
+    pattern: /^\/scheduling\/prepare\/[^/]+\/[^/]+$/,
     policy: 'fallback',
   },
   {
-    pattern: /^\/scheduling\/rostering\/[^/]+\/[^/]+$/,
+    pattern: /^\/scheduling\/assign\/[^/]+\/[^/]+$/,
     policy: 'fallback',
   },
 ];

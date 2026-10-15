@@ -2,9 +2,9 @@ import { NotFoundError } from '@church/core';
 import { compareInstants, fromDate, parseInstant } from '@church/time';
 import type {
   ChurchId,
+  CycleId,
   EventId,
   MinistryId,
-  PlanningCycleId,
   RoleId,
   TimeSlotId,
 } from '@/domain/branded-ids';
@@ -135,7 +135,7 @@ class MockEventRepository implements EventRepository {
     const e = new Event(
       {
         churchId,
-        planningCycleId: input.planningCycleId,
+        cycleId: input.cycleId,
         sourceTemplateId: input.sourceTemplateId,
         title: input.title,
         description: input.description,
@@ -179,7 +179,7 @@ class MockEventRepository implements EventRepository {
     const updated = new Event(
       {
         churchId: e.churchId,
-        planningCycleId: e.planningCycleId as PlanningCycleId,
+        cycleId: e.cycleId as CycleId,
         title: input.title ?? e.title,
         description: e.description,
         location: e.location,

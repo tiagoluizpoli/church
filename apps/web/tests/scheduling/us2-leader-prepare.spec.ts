@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
-import { loadLeaderTailoringJourney } from '@/tests/fixtures/journeys/leader-tailoring';
 import {
-  rosteringTailoringPath,
+  assignPreparePath,
   signInPersonaPage,
-} from '@/tests/fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/assign-church';
+import { loadLeaderPrepareJourney } from '@/tests/fixtures/journeys/leader-prepare';
 
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
-const CYCLE_NAME = 'US2 Tailoring';
+const CYCLE_NAME = 'US2 Prepare';
 
 interface IdResponse {
   id: string;
@@ -44,12 +44,12 @@ interface ParticipationResponse {
   events: ParticipationEventResponse[];
 }
 
-test('leader tailors participation, splits shifts, sets headcounts, and fires availability', async ({
+test('leader prepares participation, splits shifts, sets headcounts, and fires availability', async ({
   page,
 }, testInfo) => {
   // The journey owns its Church, Ministry and serving profile: no other
   // spec can replace the profile between the PUT and apply-templates.
-  const journey = loadLeaderTailoringJourney({ testInfo });
+  const journey = loadLeaderPrepareJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.leader });
   const ministryId = journey.ministries.worship.id;
   const roleId = journey.ministries.worship.roles.usher.id;
@@ -63,7 +63,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   expect(defaultDirectionResponse.ok()).toBeTruthy();
 
   const cycleResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles`,
+    `${SERVER_URL}/api/v1/admin/cycles`,
     {
       data: {
         name: CYCLE_NAME,
@@ -122,7 +122,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   expect(servingProfileResponse.ok()).toBeTruthy();
 
   const applyResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles/${cycleBody.id}/apply-templates`,
+    `${SERVER_URL}/api/v1/admin/cycles/${cycleBody.id}/apply-templates`,
     {
       data: { templateIds: [templateBody.id] },
     },
@@ -130,20 +130,18 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   expect(applyResponse.ok()).toBeTruthy();
 
   const lockResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles/${cycleBody.id}/lock`,
+    `${SERVER_URL}/api/v1/admin/cycles/${cycleBody.id}/send`,
   );
   expect(lockResponse.ok()).toBeTruthy();
 
-  await page.goto(
-    rosteringTailoringPath({ ministryId, cycleId: cycleBody.id }),
-  );
+  await page.goto(assignPreparePath({ ministryId, cycleId: cycleBody.id }));
 
   // The workspace groups slots by day and keys every control off real
   // slot/participation ids, not event/shift array positions — fetch the
   // same data the page renders from so locators match real ids instead of
   // guessing at row order or display text.
   const participationResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/tailoring/cycles/${cycleBody.id}/participation`,
+    `${SERVER_URL}/api/v1/prepare/cycles/${cycleBody.id}/participation`,
     { params: { ministryId } },
   );
   expect(participationResponse.ok()).toBeTruthy();
@@ -159,14 +157,12 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
   }
 
   const welcomeRow = page.getByTestId(
-    `tailoring-slot-row-${welcomeSlot.slot.id}`,
+    `prepare-slot-row-${welcomeSlot.slot.id}`,
   );
   const messageRow = page.getByTestId(
-    `tailoring-slot-row-${messageSlot.slot.id}`,
+    `prepare-slot-row-${messageSlot.slot.id}`,
   );
-  const prayerRow = page.getByTestId(
-    `tailoring-slot-row-${prayerSlot.slot.id}`,
-  );
+  const prayerRow = page.getByTestId(`prepare-slot-row-${prayerSlot.slot.id}`);
 
   await expect(
     welcomeRow.getByTestId(`serving-toggle-${welcomeSlot.slot.id}`),
@@ -182,7 +178,7 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
     .getByTestId(`toggle-slot-expand-${welcomeSlot.slot.id}`)
     .click();
   const welcomeEditor = welcomeRow.getByTestId(
-    `tailoring-slot-editor-${welcomeSlot.slot.id}`,
+    `prepare-slot-editor-${welcomeSlot.slot.id}`,
   );
   // `equal-split-count`/`shift-mode-select` are keyed by a constant local
   // index (one editor per row, always index 0), not the slot id — scoping
@@ -223,8 +219,8 @@ test('leader tailors participation, splits shifts, sets headcounts, and fires av
     .getByTestId(`save-headcounts-button-${welcomeSlot.slot.id}`)
     .click();
 
-  await page.getByTestId('save-and-fire-availability-button').click();
-  await page.getByTestId('tailoring-send-confirm').click();
+  await page.getByTestId('save-and-ask-availability-button').click();
+  await page.getByTestId('prepare-send-confirm').click();
 
   await expect(welcomeRow.getByTestId('participation-state-badge')).toHaveText(
     'Availability requested',

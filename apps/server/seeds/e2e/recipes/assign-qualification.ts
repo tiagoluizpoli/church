@@ -1,5 +1,5 @@
 import { addCalendarDays, type CalendarDay } from '@church/time';
-import { buildPlanningCycle } from '../../builders/scheduling';
+import { buildCycle } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
   type CreateJourneyRecipeInput,
@@ -8,26 +8,26 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
   EVENT_END_TIME,
   EVENT_START_TIME,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+} from './assign-church';
 import {
-  buildRosteringEvent,
-  type RosteringCycleSummary,
-  type RosteringEvent,
-} from './rostering-event';
+  type AssignCycleSummary,
+  type AssignEvent,
+  buildAssignEvent,
+} from './assign-event';
 
 /**
  * Qualification governs candidacy (#329: qualification.spec): one Worship
- * cycle with one future, draft Event at `availability_fired`, needing a Team
+ * cycle with one future, draft Event at `availability_requested`, needing a Team
  * Alpha Greeter and an Usher. Its candidates make the rule separable:
  *
  * - Grace: qualified for both Roles, in Team Alpha — the only qualified
- *   Greeter the TeamLeader can roster.
+ *   Greeter the TeamLeader can schedule.
  * - Ada: qualified for both Roles, outside every Team.
  * - Ursula: in Team Alpha and the Ministry, qualified for nothing.
  *
@@ -36,7 +36,7 @@ import {
  * Team the TeamLeader does not lead.
  */
 
-const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.rosterQualification;
+const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.assignQualification;
 const CYCLE_LENGTH_DAYS = 28;
 const EVENT_OFFSET_DAYS = 10;
 
@@ -109,19 +109,18 @@ const PLAN = {
       ],
     },
   },
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
-export interface RosterQualificationJourney
-  extends RosteringChurch<typeof PLAN> {
+export interface AssignQualificationJourney extends AssignChurch<typeof PLAN> {
   anchor: CalendarDay;
-  cycle: RosteringCycleSummary;
-  event: RosteringEvent<'greeter' | 'usher'>;
+  cycle: AssignCycleSummary;
+  event: AssignEvent<'greeter' | 'usher'>;
 }
 
-export function createRosterQualificationRecipe({
+export function createAssignQualificationRecipe({
   journeyKey,
   anchor,
-}: CreateJourneyRecipeInput): E2eJourneyRecipe<RosterQualificationJourney> {
+}: CreateJourneyRecipeInput): E2eJourneyRecipe<AssignQualificationJourney> {
   const { idOf, tag, rootsOf } = journeyIdentity({
     recipeName: RECIPE_NAME,
     journeyKey,
@@ -129,27 +128,27 @@ export function createRosterQualificationRecipe({
 
   async function load({
     db,
-  }: SeedRecipeLoadInput): Promise<RosterQualificationJourney> {
-    const base = await buildRosteringChurch({ db, idOf, tag, plan: PLAN });
+  }: SeedRecipeLoadInput): Promise<AssignQualificationJourney> {
+    const base = await buildAssignChurch({ db, idOf, tag, plan: PLAN });
     const churchId = base.church.id;
     const { worship } = base.ministries;
 
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db,
       churchId,
-      id: idOf({ kind: 'planning-cycle' }),
+      id: idOf({ kind: 'cycle' }),
       name: 'Ciclo da Equipe',
       startDate: anchor,
       endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS }),
-      state: 'locked',
+      state: 'sent',
     });
-    // Draft and `availability_fired`: the journey schedules the Event and
-    // stages the first assignment itself, which moves it into rostering.
-    const event = await buildRosteringEvent({
+    // Draft and `availability_requested`: the journey schedules the Event and
+    // stages the first assignment itself, which moves it into assign.
+    const event = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: worship.id,
       key: 'team-service',
       title: 'Culto da Equipe',
@@ -157,7 +156,7 @@ export function createRosterQualificationRecipe({
       startTime: EVENT_START_TIME,
       endTime: EVENT_END_TIME,
       eventStatus: 'draft',
-      participationState: 'availability_fired',
+      participationState: 'availability_requested',
       requirements: {
         greeter: {
           roleId: worship.roles.greeter.id,
@@ -178,7 +177,7 @@ export function createRosterQualificationRecipe({
 
   return {
     name: RECIPE_NAME,
-    roots: rootsOf({ rootKinds: rosteringChurchRootKinds({ plan: PLAN }) }),
+    roots: rootsOf({ rootKinds: assignChurchRootKinds({ plan: PLAN }) }),
     load,
   };
 }

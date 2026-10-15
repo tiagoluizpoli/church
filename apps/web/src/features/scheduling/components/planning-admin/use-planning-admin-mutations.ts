@@ -4,7 +4,7 @@ import { type Dispatch, type SetStateAction, useCallback } from 'react';
 import { toast } from 'sonner';
 import type {
   CycleFormState,
-  SelectedPlanningCycle,
+  SelectedCycle,
   TemplateFormState,
 } from './planning-admin.types';
 import {
@@ -19,7 +19,7 @@ import { adminApi } from '@/utils/api-instances';
 export interface UsePlanningAdminMutationsProps {
   queryClient: QueryClient;
   selectedCycleId: string | null;
-  selectedCycle: SelectedPlanningCycle | null;
+  selectedCycle: SelectedCycle | null;
   selectedTemplateIds: string[];
   editingTemplateId: string | null;
   cycleForm: CycleFormState;
@@ -74,9 +74,7 @@ export interface DeleteSlotInput {
   slotId: string;
 }
 
-type CreatePlanningCycleBody = Parameters<
-  typeof adminApi.createPlanningCycle
->[0];
+type CreateCycleBody = Parameters<typeof adminApi.createCycle>[0];
 
 type CreateEventTemplateBody = Parameters<
   typeof adminApi.createEventTemplate
@@ -147,7 +145,7 @@ export interface UsePlanningAdminMutationsResult {
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
-  lockCyclePending: boolean;
+  sendCyclePending: boolean;
   updateEventPending: boolean;
   deleteEventPending: boolean;
   createSlotPending: boolean;
@@ -158,7 +156,7 @@ export interface UsePlanningAdminMutationsResult {
   handleSaveTemplate: () => void;
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
-  handleLockCycle: () => void;
+  handleSendCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
   handleDeleteEvent: (input: DeleteEventInput) => void;
   handleCreateSlot: (input: CreateSlotInput) => void;
@@ -183,12 +181,8 @@ export function usePlanningAdminMutations({
   setTemplateSaveSuccessCount,
 }: UsePlanningAdminMutationsProps): UsePlanningAdminMutationsResult {
   const createCycle = usePlanningMutation({
-    mutationFn: (body: CreatePlanningCycleBody) =>
-      adminApi.createPlanningCycle(body),
-    invalidateQueryKeys: (cycle) => [
-      ['planning-cycles'],
-      ['planning-cycle-details', cycle.id],
-    ],
+    mutationFn: (body: CreateCycleBody) => adminApi.createCycle(body),
+    invalidateQueryKeys: (cycle) => [['cycles'], ['cycle-details', cycle.id]],
     successMessage: 'Cycle created',
     onSuccess: async (cycle) => {
       setCycleErrorMessage(null);
@@ -245,19 +239,16 @@ export function usePlanningAdminMutations({
       adminApi.applyPlanningTemplates(cycleId, {
         templateIds: selectedTemplateIds,
       }),
-    invalidateQueryKeys: [['planning-cycle-details', selectedCycleId]],
+    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: (result) =>
       `Generated ${result.generatedEventCount} events and ${result.generatedSlotCount} slots`,
     queryClient,
   });
 
-  const lockCycle = usePlanningMutation({
-    mutationFn: (cycleId: string) => adminApi.lockPlanningCycle(cycleId),
-    invalidateQueryKeys: [
-      ['planning-cycles'],
-      ['planning-cycle-details', selectedCycleId],
-    ],
-    successMessage: 'Cycle locked',
+  const sendCycle = usePlanningMutation({
+    mutationFn: (cycleId: string) => adminApi.sendCycle(cycleId),
+    invalidateQueryKeys: [['cycles'], ['cycle-details', selectedCycleId]],
+    successMessage: 'Cycle sent',
     queryClient,
   });
 
@@ -268,7 +259,7 @@ export function usePlanningAdminMutations({
         eventId,
         body,
       ),
-    invalidateQueryKeys: [['planning-cycle-details', selectedCycleId]],
+    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: 'Event updated',
     queryClient,
   });
@@ -279,7 +270,7 @@ export function usePlanningAdminMutations({
         getSelectedCycleIdOrThrow({ selectedCycleId }),
         eventId,
       ),
-    invalidateQueryKeys: [['planning-cycle-details', selectedCycleId]],
+    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: 'Event deleted',
     queryClient,
   });
@@ -291,7 +282,7 @@ export function usePlanningAdminMutations({
         eventId,
         body,
       ),
-    invalidateQueryKeys: [['planning-cycle-details', selectedCycleId]],
+    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: 'Slot added',
     queryClient,
   });
@@ -304,7 +295,7 @@ export function usePlanningAdminMutations({
         slotId,
         body,
       ),
-    invalidateQueryKeys: [['planning-cycle-details', selectedCycleId]],
+    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: 'Slot updated',
     queryClient,
   });
@@ -316,7 +307,7 @@ export function usePlanningAdminMutations({
         eventId,
         slotId,
       ),
-    invalidateQueryKeys: [['planning-cycle-details', selectedCycleId]],
+    invalidateQueryKeys: [['cycle-details', selectedCycleId]],
     successMessage: 'Slot deleted',
     queryClient,
   });
@@ -358,9 +349,9 @@ export function usePlanningAdminMutations({
     }
   }
 
-  function handleLockCycle() {
+  function handleSendCycle() {
     if (selectedCycle) {
-      lockCycle.mutate(selectedCycle.id);
+      sendCycle.mutate(selectedCycle.id);
     }
   }
 
@@ -398,7 +389,7 @@ export function usePlanningAdminMutations({
     applyTemplatesError: applyTemplates.error
       ? getErrorMessage({ error: applyTemplates.error })
       : null,
-    lockCyclePending: lockCycle.isPending,
+    sendCyclePending: sendCycle.isPending,
     updateEventPending: updateEvent.isPending,
     deleteEventPending: deleteEvent.isPending,
     createSlotPending: createSlot.isPending,
@@ -409,7 +400,7 @@ export function usePlanningAdminMutations({
     handleSaveTemplate,
     handleDeleteTemplate,
     handleApplyTemplates,
-    handleLockCycle,
+    handleSendCycle,
     handleUpdateEvent,
     handleDeleteEvent,
     handleCreateSlot,

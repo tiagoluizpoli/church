@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { TailoringSlotList } from '@/features/scheduling/components/tailoring/tailoring-slot-list';
+import { PrepareSlotList } from '@/features/scheduling/components/prepare/prepare-slot-list';
 import type {
   GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemSlotsItem,
@@ -48,12 +48,12 @@ function makeEventView(
       churchId: 'church-1',
       ministryId: 'ministry-1',
       eventId: 'event-1',
-      state: 'tailoring',
+      state: 'preparing',
     },
     event: {
       id: 'event-1',
       churchId: 'church-1',
-      planningCycleId: 'cycle-1',
+      cycleId: 'cycle-1',
       title: 'Sunday Service',
       start: '2026-07-12T09:00:00',
       end: '2026-07-12T11:00:00',
@@ -83,7 +83,7 @@ const NO_OP_PROPS = {
   onSaveHeadcounts: vi.fn(),
 };
 
-describe('TailoringSlotList day-grouping (US3/T026)', () => {
+describe('PrepareSlotList day-grouping (US3/T026)', () => {
   it('groups slots under a day header, flat — no card-in-card', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [],
@@ -94,28 +94,28 @@ describe('TailoringSlotList day-grouping (US3/T026)', () => {
     });
 
     renderWithProviders(
-      <TailoringSlotList {...NO_OP_PROPS} events={[makeEventView()]} />,
+      <PrepareSlotList {...NO_OP_PROPS} events={[makeEventView()]} />,
     );
 
     expect(
-      await screen.findByTestId('tailoring-day-header-2026-07-12'),
+      await screen.findByTestId('prepare-day-header-2026-07-12'),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('tailoring-slot-row-slot-1')).toBeInTheDocument();
+    expect(screen.getByTestId('prepare-slot-row-slot-1')).toBeInTheDocument();
   });
 
   it('renders an empty-state message when there are zero slots', () => {
-    renderWithProviders(<TailoringSlotList {...NO_OP_PROPS} events={[]} />);
+    renderWithProviders(<PrepareSlotList {...NO_OP_PROPS} events={[]} />);
 
     expect(
-      screen.getByTestId('tailoring-slot-list-empty-state'),
+      screen.getByTestId('prepare-slot-list-empty-state'),
     ).toBeInTheDocument();
   });
 });
 
-describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
+describe('PrepareSlotList inclusion toggle (US3/T021)', () => {
   it('hides shift/headcount controls for an unincluded slot', () => {
     renderWithProviders(
-      <TailoringSlotList {...NO_OP_PROPS} events={[makeEventView()]} />,
+      <PrepareSlotList {...NO_OP_PROPS} events={[makeEventView()]} />,
     );
 
     expect(screen.queryByText('Headcount')).not.toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
     const onToggleInclusion = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         onToggleInclusion={onToggleInclusion}
         events={[makeEventView()]}
@@ -154,7 +154,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         onSplitShifts={onSplitShifts}
         onSaveHeadcounts={onSaveHeadcounts}
@@ -203,7 +203,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitForms={{
           'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
@@ -234,7 +234,7 @@ describe('TailoringSlotList inclusion toggle (US3/T021)', () => {
   });
 });
 
-describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)', () => {
+describe('PrepareSlotList default single shift on inclusion (US3/T021a/FR-013)', () => {
   it('renders exactly one shift row spanning the slot full duration when just-included with 0 prior splits', async () => {
     getScheduleBuilderData.mockResolvedValue({
       roles: [{ id: 'role-1', name: 'Greeter' }],
@@ -246,7 +246,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitForms={{
           'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
@@ -290,7 +290,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         onSaveHeadcounts={onSaveHeadcounts}
         splitForms={{
@@ -348,7 +348,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         onSaveHeadcounts={onSaveHeadcounts}
         splitForms={{
@@ -414,7 +414,7 @@ describe('TailoringSlotList default single shift on inclusion (US3/T021a/FR-013)
   });
 });
 
-describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
+describe('PrepareSlotList invalid headcount rejection (US3/T023b)', () => {
   const baseEvents = [
     makeEventView({}, [
       {
@@ -450,7 +450,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         onSaveHeadcounts={onSaveHeadcounts}
         splitForms={{
@@ -486,7 +486,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         onSaveHeadcounts={onSaveHeadcounts}
         splitForms={{
@@ -508,7 +508,7 @@ describe('TailoringSlotList invalid headcount rejection (US3/T023b)', () => {
   });
 });
 
-describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (bugfix)', () => {
+describe('PrepareSlotList role-catalog fetch failure surfaces to the leader (bugfix)', () => {
   const includedEvents = [
     makeEventView({}, [
       {
@@ -544,7 +544,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitForms={{
           'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
@@ -569,7 +569,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitForms={{
           'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
@@ -600,7 +600,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitForms={{
           'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
@@ -627,7 +627,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitForms={{
           'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
@@ -643,7 +643,7 @@ describe('TailoringSlotList role-catalog fetch failure surfaces to the leader (b
   });
 });
 
-describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2/T047/FR-023)', () => {
+describe('PrepareSlotList independent per-slot unsaved indicators (Iteration 2/T047/FR-023)', () => {
   const includedEvents = [
     makeEventView({}, [
       {
@@ -672,7 +672,7 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitDirtySlotIds={new Set(['slot-1'])}
         headcountDirtySlotIds={new Set<string>()}
@@ -700,7 +700,7 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitDirtySlotIds={new Set(['slot-1'])}
         headcountDirtySlotIds={new Set(['slot-1'])}
@@ -732,7 +732,7 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
 
   it('shows neither indicator when neither is dirty', () => {
     renderWithProviders(
-      <TailoringSlotList {...NO_OP_PROPS} events={includedEvents} />,
+      <PrepareSlotList {...NO_OP_PROPS} events={includedEvents} />,
     );
 
     expect(
@@ -744,7 +744,7 @@ describe('TailoringSlotList independent per-slot unsaved indicators (Iteration 2
   });
 });
 
-describe('TailoringSlotList exact-string display under a non-UTC ambient TZ (#159)', () => {
+describe('PrepareSlotList exact-string display under a non-UTC ambient TZ (#159)', () => {
   const ORIGINAL_TZ = process.env.TZ;
 
   beforeAll(() => {
@@ -766,7 +766,7 @@ describe('TailoringSlotList exact-string display under a non-UTC ambient TZ (#15
     const user = userEvent.setup();
 
     renderWithProviders(
-      <TailoringSlotList
+      <PrepareSlotList
         {...NO_OP_PROPS}
         splitForms={{
           'slot-1': { mode: 'equal', equalCount: '1', manualSpans: [] },
@@ -794,7 +794,7 @@ describe('TailoringSlotList exact-string display under a non-UTC ambient TZ (#15
     );
 
     expect(
-      await screen.findByTestId('tailoring-day-header-2026-07-12'),
+      await screen.findByTestId('prepare-day-header-2026-07-12'),
     ).toHaveTextContent('12/07/2026');
 
     await user.click(screen.getByTestId('toggle-slot-expand-slot-1'));

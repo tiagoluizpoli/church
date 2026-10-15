@@ -2,10 +2,10 @@ import { parseTimeOfDay } from '@church/time';
 import type { z } from 'zod';
 import {
   ChurchId,
+  CycleId,
   EventId,
   EventTemplateId,
   MinistryId,
-  PlanningCycleId,
   RoleId,
   TeamId,
   TimeBlockId,
@@ -13,15 +13,23 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { ICycleManager } from '../../domain/contracts/application/cycle-manager';
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
-import type { IPlanningCycleManager } from '../../domain/contracts/application/planning-cycle-manager';
 import type { IPlanningEventManager } from '../../domain/contracts/application/planning-event-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  createCycleBodySchema,
+  cycleDetailsResponseSchema,
+  cycleListResponseSchema,
+  cycleMapper,
+  cycleResponseSchema,
+  listCyclesQuerySchema,
+} from '../dtos/cycle.dto';
 import {
   createEventBodySchema,
   eventMapper,
@@ -36,14 +44,6 @@ import {
   generatedPlanningCountsResponseSchema,
 } from '../dtos/event-template.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
-import {
-  createPlanningCycleBodySchema,
-  listPlanningCyclesQuerySchema,
-  planningCycleDetailsResponseSchema,
-  planningCycleListResponseSchema,
-  planningCycleMapper,
-  planningCycleResponseSchema,
-} from '../dtos/planning-cycle.dto';
 import {
   type SetDefaultDirectionBody,
   servingProfileMapper,
@@ -64,7 +64,7 @@ import {
   optionalDateFromInstantString,
 } from '../utils/request-time';
 
-interface PlanningCycleRouteParams {
+interface CycleRouteParams {
   cycleId: string;
 }
 
@@ -97,7 +97,7 @@ type ManualPlanningEventBody = z.infer<typeof manualPlanningEventBodySchema>;
 type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
 
 interface ChurchAdminControllerDependencies {
-  planningCycleManager: IPlanningCycleManager;
+  cycleManager: ICycleManager;
   eventTemplateManager: IEventTemplateManager;
   planningEventManager: IPlanningEventManager;
   activeChurchResolver: IActiveChurchResolver;
@@ -109,7 +109,7 @@ interface ChurchAdminControllerDependencies {
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
 
-  private readonly planningCycleManager: IPlanningCycleManager;
+  private readonly cycleManager: ICycleManager;
   private readonly eventTemplateManager: IEventTemplateManager;
   private readonly planningEventManager: IPlanningEventManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
@@ -118,7 +118,7 @@ export class ChurchAdminController implements FastifyController {
   private readonly authorityGuard: AuthorityGuard;
 
   constructor({
-    planningCycleManager,
+    cycleManager,
     eventTemplateManager,
     planningEventManager,
     activeChurchResolver,
@@ -126,7 +126,7 @@ export class ChurchAdminController implements FastifyController {
     ministryManager,
     authorityGuard,
   }: ChurchAdminControllerDependencies) {
-    this.planningCycleManager = planningCycleManager;
+    this.cycleManager = cycleManager;
     this.eventTemplateManager = eventTemplateManager;
     this.planningEventManager = planningEventManager;
     this.activeChurchResolver = activeChurchResolver;
@@ -158,115 +158,110 @@ export class ChurchAdminController implements FastifyController {
     });
 
     app.post(
-      '/planning-cycles',
+      '/cycles',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'createPlanningCycle',
-          summary: 'Create a PlanningCycle',
+          operationId: 'createCycle',
+          summary: 'Create a Cycle',
           description:
-            'Create a new PlanningCycle spanning a CalendarDay range for the Church.',
-          body: createPlanningCycleBodySchema,
-          response: { 201: planningCycleResponseSchema },
+            'Create a new Cycle spanning a CalendarDay range for the Church.',
+          body: createCycleBodySchema,
+          response: { 201: cycleResponseSchema },
         },
       },
       async (request, reply) => {
-        const body = request.body as z.infer<
-          typeof createPlanningCycleBodySchema
-        >;
-        const cycle = await this.planningCycleManager.createCycle({
+        const body = request.body as z.infer<typeof createCycleBodySchema>;
+        const cycle = await this.cycleManager.createCycle({
           churchId: ChurchId.from(request.churchId),
           name: body.name,
           startDate: dateFromCalendarDayString({ value: body.startDate }),
           endDate: dateFromCalendarDayString({ value: body.endDate }),
         });
-        return reply.status(201).send(planningCycleMapper.toResponse(cycle));
+        return reply.status(201).send(cycleMapper.toResponse(cycle));
       },
     );
 
     app.get(
-      '/planning-cycles',
+      '/cycles',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'listPlanningCycles',
-          summary: 'List PlanningCycles',
-          description:
-            'List the Church PlanningCycles, optionally filtered by state.',
-          query: listPlanningCyclesQuerySchema,
-          response: { 200: planningCycleListResponseSchema },
+          operationId: 'listCycles',
+          summary: 'List Cycles',
+          description: 'List the Church Cycles, optionally filtered by state.',
+          query: listCyclesQuerySchema,
+          response: { 200: cycleListResponseSchema },
         },
       },
       async (request, reply) => {
-        const query = request.query as z.infer<
-          typeof listPlanningCyclesQuerySchema
-        >;
-        const cycles = await this.planningCycleManager.listCycles({
+        const query = request.query as z.infer<typeof listCyclesQuerySchema>;
+        const cycles = await this.cycleManager.listCycles({
           churchId: ChurchId.from(request.churchId),
           state: query.state,
         });
-        return reply.send(planningCycleMapper.listToResponse(cycles));
+        return reply.send(cycleMapper.listToResponse(cycles));
       },
     );
 
     app.get(
-      '/planning-cycles/:cycleId',
+      '/cycles/:cycleId',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'getPlanningCycle',
-          summary: 'Get a PlanningCycle',
-          description: 'Get the details of a single PlanningCycle.',
-          response: { 200: planningCycleDetailsResponseSchema },
+          operationId: 'getCycle',
+          summary: 'Get a Cycle',
+          description: 'Get the details of a single Cycle.',
+          response: { 200: cycleDetailsResponseSchema },
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as PlanningCycleRouteParams;
-        const details = await this.planningCycleManager.getCycle({
+        const { cycleId } = request.params as CycleRouteParams;
+        const details = await this.cycleManager.getCycle({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
         });
-        return reply.send(planningCycleMapper.detailsToResponse(details));
+        return reply.send(cycleMapper.detailsToResponse(details));
       },
     );
 
     app.post(
-      '/planning-cycles/:cycleId/lock',
+      '/cycles/:cycleId/send',
       {
         schema: {
           tags: ['planning'],
-          operationId: 'lockPlanningCycle',
-          summary: 'Lock a PlanningCycle',
+          operationId: 'sendCycle',
+          summary: 'Send a Cycle',
           description:
-            'Lock a PlanningCycle, transitioning its Events from draft to scheduled.',
+            'Send a Cycle, transitioning its Events from draft to scheduled.',
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as PlanningCycleRouteParams;
-        await this.planningCycleManager.lockCycle({
+        const { cycleId } = request.params as CycleRouteParams;
+        await this.cycleManager.sendCycle({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
         });
         return reply.status(204).send();
       },
     );
 
     app.post(
-      '/planning-cycles/:cycleId/events/:eventId/reopen',
+      '/cycles/:cycleId/events/:eventId/reopen',
       {
         schema: {
           tags: ['planning'],
           operationId: 'reopenPlanningEvent',
           summary: 'Reopen an Event for editing',
           description:
-            'Move a scheduled Event in a locked PlanningCycle back to draft so it can be edited.',
+            'Move a scheduled Event in a sent Cycle back to draft so it can be edited.',
         },
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
-        await this.planningCycleManager.reopenEvent({
+        await this.cycleManager.reopenEvent({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
         });
         return reply.status(204).send();
@@ -369,24 +364,24 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
-      '/planning-cycles/:cycleId/apply-templates',
+      '/cycles/:cycleId/apply-templates',
       {
         schema: {
           tags: ['planning'],
           operationId: 'applyPlanningTemplates',
-          summary: 'Apply EventTemplates to a PlanningCycle',
+          summary: 'Apply EventTemplates to a Cycle',
           description:
-            'Generate one Event per matching CalendarDay in the PlanningCycle for each selected EventTemplate, with one TimeSlot per TimeBlock.',
+            'Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one TimeSlot per TimeBlock.',
           body: applyTemplatesBodySchema,
           response: { 201: generatedPlanningCountsResponseSchema },
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as PlanningCycleRouteParams;
+        const { cycleId } = request.params as CycleRouteParams;
         const body = request.body as z.infer<typeof applyTemplatesBodySchema>;
         const result = await this.planningEventManager.generateFromTemplates({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           templateIds: body.templateIds.map(EventTemplateId.from),
         });
         return reply.status(201).send(result);
@@ -394,24 +389,24 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
-      '/planning-cycles/:cycleId/events',
+      '/cycles/:cycleId/events',
       {
         schema: {
           tags: ['planning'],
           operationId: 'createPlanningEvent',
           summary: 'Create a manual Event',
           description:
-            'Create a one-off Event within a PlanningCycle without using an EventTemplate.',
+            'Create a one-off Event within a Cycle without using an EventTemplate.',
           body: manualPlanningEventBodySchema,
           response: { 201: eventResponseSchema },
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as PlanningCycleRouteParams;
+        const { cycleId } = request.params as CycleRouteParams;
         const body = request.body as ManualPlanningEventBody;
         const event = await this.planningEventManager.createEvent({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           title: body.title,
           description: body.description,
           location: body.location,
@@ -423,7 +418,7 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.patch(
-      '/planning-cycles/:cycleId/events/:eventId',
+      '/cycles/:cycleId/events/:eventId',
       {
         schema: {
           tags: ['planning'],
@@ -440,7 +435,7 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body as UpdatePlanningEventBody;
         const event = await this.planningEventManager.updateEvent({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           title: body.title,
           description: body.description,
@@ -453,20 +448,20 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
-      '/planning-cycles/:cycleId/events/:eventId/cancel',
+      '/cycles/:cycleId/events/:eventId/cancel',
       {
         schema: {
           tags: ['planning'],
           operationId: 'cancelPlanningEvent',
           summary: 'Cancel an Event',
-          description: 'Cancel an Event within its PlanningCycle.',
+          description: 'Cancel an Event within its Cycle.',
         },
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
         await this.planningEventManager.cancelEvent({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
         });
         return reply.status(204).send();
@@ -474,7 +469,7 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
-      '/planning-cycles/:cycleId/events/:eventId/slots',
+      '/cycles/:cycleId/events/:eventId/slots',
       {
         schema: {
           tags: ['planning'],
@@ -490,7 +485,7 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body as z.infer<typeof createSlotBodySchema>;
         const slot = await this.planningEventManager.createSlot({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           startTime: dateFromInstantString({ value: body.startTime }),
           endTime: dateFromInstantString({ value: body.endTime }),
@@ -501,7 +496,7 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.patch(
-      '/planning-cycles/:cycleId/events/:eventId/slots/:slotId',
+      '/cycles/:cycleId/events/:eventId/slots/:slotId',
       {
         schema: {
           tags: ['planning'],
@@ -518,7 +513,7 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body as z.infer<typeof updateSlotBodySchema>;
         const slot = await this.planningEventManager.updateSlot({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           slotId: TimeSlotId.from(slotId),
           startTime: optionalDateFromInstantString({ value: body.startTime }),
@@ -530,7 +525,7 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.delete(
-      '/planning-cycles/:cycleId/events/:eventId/slots/:slotId',
+      '/cycles/:cycleId/events/:eventId/slots/:slotId',
       {
         schema: {
           tags: ['planning'],
@@ -544,7 +539,7 @@ export class ChurchAdminController implements FastifyController {
           request.params as PlanningEventSlotRouteParams;
         await this.planningEventManager.deleteSlot({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           slotId: TimeSlotId.from(slotId),
         });

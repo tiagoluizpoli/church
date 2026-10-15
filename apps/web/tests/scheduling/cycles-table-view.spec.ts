@@ -1,10 +1,10 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test';
-import { fillDatePickerField } from './date-picker.helpers';
 import {
   applyTemplatesViaApi,
+  createCycleViaApi,
   createEventTemplateViaApi,
-  createPlanningCycleViaApi,
-} from './planning-cycle-api.helpers';
+} from './cycle-api.helpers';
+import { fillDatePickerField } from './date-picker.helpers';
 import {
   dayOfMonth,
   nonSundayDay,
@@ -12,13 +12,13 @@ import {
 } from './planning-month.helpers';
 import { fillTimeOfDayField } from './time-field.helpers';
 import {
+  newPersonaContext,
+  signInPersonaPage,
+} from '@/tests/fixtures/journeys/assign-church';
+import {
   loadPlanningAdminJourney,
   type PlanningAdminJourney,
 } from '@/tests/fixtures/journeys/planning-admin';
-import {
-  newPersonaContext,
-  signInPersonaPage,
-} from '@/tests/fixtures/journeys/rostering-church';
 
 interface SeededCycle {
   journey: PlanningAdminJourney;
@@ -46,7 +46,7 @@ async function createCycleWithSundayTemplateApplied({
   const templateName = 'Sunday Service';
   const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
 
-  const cycle = await createPlanningCycleViaApi({
+  const cycle = await createCycleViaApi({
     page,
     name: cycleName,
     startDate,
@@ -73,7 +73,7 @@ async function createCycleWithSundayTemplateApplied({
   return { journey, cycleName, templateName, monthStart: startDate };
 }
 
-test.describe('Planning cycles table view — desktop (US1/US2)', () => {
+test.describe('Cycles table view — desktop (US1/US2)', () => {
   test('cycles index renders as a table on desktop', async ({
     page,
   }, testInfo) => {
@@ -186,24 +186,24 @@ test.describe('Planning cycles table view — desktop (US1/US2)', () => {
     await expect(calendarTable.getByText('Worship')).toHaveCount(0);
   });
 
-  test('locked cycle calendar review table stays read-only', async ({
+  test('sent cycle calendar review table stays read-only', async ({
     page,
   }, testInfo) => {
     await createCycleWithSundayTemplateApplied({ page, testInfo });
 
-    await page.getByTestId('lock-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
+    await page.getByTestId('send-cycle-button').click();
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
 
     const calendarTable = page.getByRole('grid', { name: 'Calendar review' });
     await expect(calendarTable).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Add event' }),
     ).not.toBeAttached();
-    await expect(page.getByTestId('lock-cycle-button')).not.toBeAttached();
+    await expect(page.getByTestId('send-cycle-button')).not.toBeAttached();
   });
 });
 
-test.describe('Planning cycles table view — mobile no-regression (US3)', () => {
+test.describe('Cycles table view — mobile no-regression (US3)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
   test('all three screens keep their card/list layout below the desktop breakpoint', async ({
@@ -224,14 +224,12 @@ test.describe('Planning cycles table view — mobile no-regression (US3)', () =>
 
     await page.goto('/scheduling/planning-cycles');
     await expect(page.getByRole('grid')).toHaveCount(0);
-    await expect(
-      page.getByTestId('planning-cycle-option').first(),
-    ).toBeVisible();
+    await expect(page.getByTestId('cycle-option').first()).toBeVisible();
   });
 });
 
-test.describe('Planning cycles day/slot edit and delete (US3)', () => {
-  test('draft cycle supports day/slot edit and delete with slot cascade; locked cycle shows no controls', async ({
+test.describe('Cycles day/slot edit and delete (US3)', () => {
+  test('draft cycle supports day/slot edit and delete with slot cascade; sent cycle shows no controls', async ({
     page,
   }, testInfo) => {
     const journey = loadPlanningAdminJourney({ testInfo });
@@ -384,7 +382,7 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
     // layer, but per FR-006 the row and its slots must disappear from the
     // table and the header's event/slot counts must decrease.
     const eventCountChipBefore = await page
-      .getByTestId('planning-cycle-event-count-chip')
+      .getByTestId('cycle-event-count-chip')
       .textContent();
 
     await dayRow.getByRole('button', { name: /^Delete day/ }).click();
@@ -392,14 +390,12 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
 
     await expect(dayRow).not.toBeAttached();
     await expect
-      .poll(() =>
-        page.getByTestId('planning-cycle-event-count-chip').textContent(),
-      )
+      .poll(() => page.getByTestId('cycle-event-count-chip').textContent())
       .not.toBe(eventCountChipBefore);
 
     // Lock the cycle: no edit/delete controls should render anywhere.
-    await page.getByTestId('lock-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
+    await page.getByTestId('send-cycle-button').click();
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
     await expect(
       table.getByRole('button', { name: /^Delete day/ }),
     ).toHaveCount(0);
@@ -409,10 +405,10 @@ test.describe('Planning cycles day/slot edit and delete (US3)', () => {
   });
 });
 
-test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
+test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test('draft cycle supports mobile add/edit/delete for day-events and slots; locked cycle shows no controls', async ({
+  test('draft cycle supports mobile add/edit/delete for day-events and slots; sent cycle shows no controls', async ({
     page,
   }, testInfo) => {
     const { templateName, monthStart } =
@@ -505,8 +501,8 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     ).toBeDisabled();
 
     // Lock the cycle: no mobile add/edit/delete affordance may remain.
-    await page.getByTestId('lock-cycle-button').click();
-    await expect(page.getByTestId('selected-cycle-state')).toHaveText('locked');
+    await page.getByTestId('send-cycle-button').click();
+    await expect(page.getByTestId('selected-cycle-state')).toHaveText('sent');
     await expect(
       mobileList.getByRole('button', { name: 'Add day-event' }),
     ).not.toBeAttached();
@@ -553,9 +549,9 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
     });
     const secondPage = await secondContext.newPage();
     await secondPage.goto(cycleUrl);
-    await secondPage.getByTestId('lock-cycle-button').click();
+    await secondPage.getByTestId('send-cycle-button').click();
     await expect(secondPage.getByTestId('selected-cycle-state')).toHaveText(
-      'locked',
+      'sent',
     );
     await secondContext.close();
 
@@ -582,7 +578,7 @@ test.describe('Planning cycles mobile add/edit/delete (US1, 021)', () => {
   });
 });
 
-test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
+test.describe('Cycles mobile timezone formatting (US2, 021)', () => {
   test.use({ viewport: { width: 375, height: 812 } });
   // The journey Church's timezone is America/Sao_Paulo (UTC-3, no DST), and
   // the template block is entered as Church-local 09:00. Europe/London is
@@ -608,7 +604,7 @@ test.describe('Planning cycles mobile timezone formatting (US2, 021)', () => {
   });
 });
 
-test.describe('Planning cycles table view — breakpoint crossing (US3)', () => {
+test.describe('Cycles table view — breakpoint crossing (US3)', () => {
   test('crossing the desktop breakpoint switches layout without losing the selected cycle', async ({
     page,
   }, testInfo) => {

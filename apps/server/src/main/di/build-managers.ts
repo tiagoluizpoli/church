@@ -4,13 +4,13 @@ import {
   DbActiveChurchSelectionManager,
   DbAssignmentManager,
   DbAvailabilityCheckManager,
+  DbCycleManager,
   DbEventManager,
   DbEventTemplateManager,
   DbMinistryInvitationManager,
   DbMinistryManager,
   DbOutboxDrainer,
   DbParticipationManager,
-  DbPlanningCycleManager,
   DbPlanningEventManager,
   DbRedemptionManager,
   DbVolunteerManager,
@@ -33,7 +33,7 @@ export type Managers = Pick<
   | 'redemptionManager'
   | 'volunteerTransferManager'
   | 'outboxDrainer'
-  | 'planningCycleManager'
+  | 'cycleManager'
   | 'planningEventManager'
   | 'volunteerManager'
   | 'participationManager'
@@ -55,7 +55,7 @@ export function buildManagers({
   repositories: {
     eventRepository,
     eventTemplateRepository,
-    planningCycleRepository,
+    cycleRepository,
     planningEventRepository,
     volunteerRepository,
     assignmentRepository,
@@ -177,10 +177,10 @@ export function buildManagers({
       unitOfWork,
       config,
     });
-  const planningCycleManager =
-    overrides.planningCycleManager ??
-    new DbPlanningCycleManager({
-      cycleRepository: planningCycleRepository,
+  const cycleManager =
+    overrides.cycleManager ??
+    new DbCycleManager({
+      cycleRepository: cycleRepository,
       eventRepository: planningEventRepository,
       churchRepository,
       unitOfWork,
@@ -188,7 +188,7 @@ export function buildManagers({
   const planningEventManager =
     overrides.planningEventManager ??
     new DbPlanningEventManager({
-      cycleRepository: planningCycleRepository,
+      cycleRepository: cycleRepository,
       eventRepository: planningEventRepository,
       templateRepository: eventTemplateRepository,
       churchRepository,
@@ -261,7 +261,7 @@ export function buildManagers({
     redemptionManager,
     volunteerTransferManager,
     outboxDrainer,
-    planningCycleManager,
+    cycleManager,
     planningEventManager,
     volunteerManager,
     participationManager,

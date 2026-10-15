@@ -66,7 +66,7 @@ async function seedCheckWithShift(
   const checkRow = await buildAvailabilityCheck({
     db: schedulingTestDb,
     churchId,
-    planningCycleId: cycle.id,
+    cycleId: cycle.id,
     ministryVolunteerId: membership.id,
   });
 

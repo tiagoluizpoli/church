@@ -11,7 +11,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getSession = vi.fn();
 const { getActiveChurchStatus, listActiveChurchOptions, selectActiveChurch } =
   activeChurchApiMock;
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -24,7 +24,7 @@ vi.mock('@/utils/api-instances', async () => ({
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
   },
 }));
 
@@ -76,7 +76,7 @@ describe('switch-church-confirm route', () => {
     getActiveChurchStatus.mockResolvedValue(
       resolvedActiveChurchStatus({ churchId: 'church-a' }),
     );
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
   });
 
   it('names the current and target Church before switching', async () => {
@@ -122,7 +122,7 @@ describe('switch-church-confirm route', () => {
   it('falls back to the dashboard, not the resource route, when the exact destination carries a Church-owned resource id', async () => {
     // Deliberate: switchActiveChurch reuses the shared preserve-or-fallback
     // route policy from #78 (active-church-switch.ts), same as the manual
-    // switcher. A resource-scoped path (e.g. a specific PlanningCycle id)
+    // switcher. A resource-scoped path (e.g. a specific Cycle id)
     // always falls back — the id belonged to the *former* Church's data,
     // so it isn't safe to replay verbatim under the new one.
     const user = userEvent.setup();

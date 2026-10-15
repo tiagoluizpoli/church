@@ -3,24 +3,24 @@ import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
   newPersonaContext,
   signInPersonaPage,
-} from '@/tests/fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/assign-church';
 import {
   loadVolunteerAvailabilityJourney,
   type VolunteerAvailabilityJourney,
 } from '@/tests/fixtures/journeys/volunteer-availability';
 
 // DL4-US3 (P2, test-plan.md): a volunteer who belongs to two ministries opens
-// their availability checks (one per ministry for the locked cycle), marks a
+// their availability checks (one per ministry for the sent cycle), marks a
 // shift unavailable on one check, then confirms a check that has a
 // cross-ministry, same-date shift overlap: the confirm succeeds, since the
 // overlap is refused at assign time (DOUBLE_BOOKED). This used to
 // also cover the leader seeing per-volunteer acknowledgement state on the
-// tailoring page — see the KNOWN GAP note in the first test below.
+// prepare page — see the KNOWN GAP note in the first test below.
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
 const CYCLE_NAME = 'US3 Overlap';
 
-interface PlanningCycleResponse {
+interface CycleResponse {
   id: string;
 }
 
@@ -45,19 +45,19 @@ interface CycleParticipationResponse {
   events: ParticipationEventViewResponse[];
 }
 
-interface FireAvailabilityForMinistryParams {
+interface AskAvailabilityForMinistryParams {
   page: Page;
   cycleId: string;
   ministryId: string;
 }
 
-async function fireAvailabilityForMinistry({
+async function askAvailabilityForMinistry({
   page,
   cycleId,
   ministryId,
-}: FireAvailabilityForMinistryParams): Promise<void> {
+}: AskAvailabilityForMinistryParams): Promise<void> {
   const participationResponse = await page.request.get(
-    `${SERVER_URL}/api/v1/tailoring/cycles/${cycleId}/participation`,
+    `${SERVER_URL}/api/v1/prepare/cycles/${cycleId}/participation`,
     { params: { ministryId } },
   );
   expect(participationResponse.ok()).toBeTruthy();
@@ -70,7 +70,7 @@ async function fireAvailabilityForMinistry({
 
   for (const eventView of participation.events) {
     const fireResponse = await page.request.post(
-      `${SERVER_URL}/api/v1/tailoring/participations/${eventView.participation.id}/fire-availability`,
+      `${SERVER_URL}/api/v1/prepare/participations/${eventView.participation.id}/ask-availability`,
     );
     expect(fireResponse.ok()).toBeTruthy();
   }
@@ -81,7 +81,7 @@ interface SetUpTwoMinistryOverlapCycleParams {
   journey: VolunteerAvailabilityJourney;
 }
 
-// Builds one locked planning cycle, applies a single Sunday template block to
+// Builds one sent cycle, applies a single Sunday template block to
 // both Worship and Care, and fires availability for every generated event in
 // both ministries. Because both ministries split the shared template block
 // with an equal-1 shift, every Sunday produces a same-date, same-time shift
@@ -107,7 +107,7 @@ async function setUpTwoMinistryOverlapCycle({
   expect(careDirectionResponse.ok()).toBeTruthy();
 
   const cycleResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles`,
+    `${SERVER_URL}/api/v1/admin/cycles`,
     {
       data: {
         name: CYCLE_NAME,
@@ -117,7 +117,7 @@ async function setUpTwoMinistryOverlapCycle({
     },
   );
   expect(cycleResponse.ok()).toBeTruthy();
-  const cycle = (await cycleResponse.json()) as PlanningCycleResponse;
+  const cycle = (await cycleResponse.json()) as CycleResponse;
 
   const templateResponse = await page.request.post(
     `${SERVER_URL}/api/v1/admin/event-templates`,
@@ -182,22 +182,22 @@ async function setUpTwoMinistryOverlapCycle({
   expect(careProfileResponse.ok()).toBeTruthy();
 
   const applyResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles/${cycle.id}/apply-templates`,
+    `${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/apply-templates`,
     { data: { templateIds: [template.id] } },
   );
   expect(applyResponse.ok()).toBeTruthy();
 
   const lockResponse = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles/${cycle.id}/lock`,
+    `${SERVER_URL}/api/v1/admin/cycles/${cycle.id}/send`,
   );
   expect(lockResponse.ok()).toBeTruthy();
 
-  await fireAvailabilityForMinistry({
+  await askAvailabilityForMinistry({
     page,
     cycleId: cycle.id,
     ministryId: worshipMinistryId,
   });
-  await fireAvailabilityForMinistry({
+  await askAvailabilityForMinistry({
     page,
     cycleId: cycle.id,
     ministryId: careMinistryId,
@@ -216,7 +216,7 @@ async function openWorshipCheckAndMarkOneShiftUnavailable({
   await page.goto('/volunteer/availability');
 
   await expect(page.getByTestId('availability-check-list')).toBeVisible();
-  // One check per ministry membership for the locked cycle: Worship (leader
+  // One check per ministry membership for the sent cycle: Worship (leader
   // membership) and Care (volunteer membership). The journey's own Church
   // holds no other cycle, so the ministry name alone selects one card.
   const worshipCard = page
@@ -309,10 +309,10 @@ test('volunteer in two ministries confirms despite a cross-ministry overlap', as
   await singleMinistryActorContext.close();
 
   // KNOWN GAP: this test used to finish with the leader opening the
-  // tailoring workspace to check a per-volunteer Acknowledged/Not-looked
+  // prepare workspace to check a per-volunteer Acknowledged/Not-looked
   // status list (`AvailabilityStatusSection`) showing this confirm next to
   // Grace Hopper's untouched check. That view was dropped when the old
-  // event-card tailoring UI (`participation-tailoring.tsx`) was replaced
+  // event-card prepare UI (`participation-prepare.tsx`) was replaced
   // by the day-grouped workspace in commit a04911d and was never rebuilt
   // into the new UI — `availability-status-section.tsx` still exists but
   // is unused by any route. Restore this assertion once that leader-facing

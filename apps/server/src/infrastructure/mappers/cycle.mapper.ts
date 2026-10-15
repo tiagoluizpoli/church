@@ -1,24 +1,24 @@
-import type { planningCycle } from '@church/db';
+import type { cycle } from '@church/db';
 import { fromDateColumn } from '@church/time';
 import type { InferSelectModel } from 'drizzle-orm';
-import type { ChurchId, PlanningCycleId } from '../../domain/branded-ids';
-import type { PlanningCycleProps } from '../../domain/entities/planning-cycle';
-import { PlanningCycle } from '../../domain/entities/planning-cycle';
+import type { ChurchId, CycleId } from '../../domain/branded-ids';
+import type { CycleProps } from '../../domain/entities/cycle';
+import { Cycle } from '../../domain/entities/cycle';
 
-type PlanningCycleRow = InferSelectModel<typeof planningCycle>;
+type CycleRow = InferSelectModel<typeof cycle>;
 
-export function mapPlanningCycle(row: PlanningCycleRow): PlanningCycle {
-  const props: PlanningCycleProps = {
+export function mapCycle(row: CycleRow): Cycle {
+  const props: CycleProps = {
     churchId: row.churchId as ChurchId,
     name: row.name,
     startDate: fromDateColumn({ date: row.startDate }),
     endDate: fromDateColumn({ date: row.endDate }),
-    state: row.state as PlanningCycleProps['state'],
+    state: row.state as CycleProps['state'],
   };
 
-  return new PlanningCycle({
+  return new Cycle({
     props,
-    id: row.id as PlanningCycleId,
+    id: row.id as CycleId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });

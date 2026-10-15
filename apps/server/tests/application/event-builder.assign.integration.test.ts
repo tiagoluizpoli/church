@@ -10,9 +10,9 @@ import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   UserId,
@@ -223,21 +223,21 @@ const CYCLE_START = new Date('2026-08-01T00:00:00.000Z');
 const CYCLE_END = new Date('2026-09-01T00:00:00.000Z');
 const EVENT_START = new Date('2026-08-02T12:00:00.000Z');
 const EVENT_END = new Date('2026-08-02T15:00:00.000Z');
-const ROSTER_LOCK_WAIT_TIMEOUT_MS = 10_000;
+const SCHEDULE_LOCK_WAIT_TIMEOUT_MS = 10_000;
 const LOCK_WAIT_POLL_INTERVAL_MS = 10;
 
-interface LockedRosterQueryRow {
+interface LockedScheduleQueryRow {
   isBlocked: boolean;
 }
 
-interface RosterLockObserverInput {
-  rosterBackendPid: number;
+interface ScheduleLockObserverInput {
+  scheduleBackendPid: number;
   sweepBackendPid: number;
 }
 
-class RosterTrackingVolunteerRepository extends DrizzleVolunteerRepository {
+class ScheduleTrackingVolunteerRepository extends DrizzleVolunteerRepository {
   constructor(
-    private readonly onRosterBackendPid: (backendPid: number) => void,
+    private readonly onScheduleBackendPid: (backendPid: number) => void,
   ) {
     super({ db: schedulingTestDb });
   }
@@ -249,12 +249,14 @@ class RosterTrackingVolunteerRepository extends DrizzleVolunteerRepository {
     tx?: TransactionContext,
   ): Promise<boolean> {
     if (!(tx instanceof DrizzleTransactionContext)) {
-      throw new Error('Roster membership check did not receive a transaction');
+      throw new Error(
+        'Schedule membership check did not receive a transaction',
+      );
     }
     const result = await tx.tx.execute(
       sql`SELECT pg_backend_pid() AS "backendPid"`,
     );
-    this.onRosterBackendPid(readBackendPid(result));
+    this.onScheduleBackendPid(readBackendPid(result));
     return super.hasMembershipInMinistry(churchId, volunteerId, ministryId, tx);
   }
 }
@@ -267,12 +269,12 @@ function readBackendPid(result: { rows: Record<string, unknown>[] }): number {
   return backendPid;
 }
 
-async function waitForRosteringMembershipLock(
-  input: RosterLockObserverInput,
+async function waitForAssignMembershipLock(
+  input: ScheduleLockObserverInput,
 ): Promise<void> {
-  const deadline = Date.now() + ROSTER_LOCK_WAIT_TIMEOUT_MS;
+  const deadline = Date.now() + SCHEDULE_LOCK_WAIT_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const { rows } = await schedulingTestPool.query<LockedRosterQueryRow>(
+    const { rows } = await schedulingTestPool.query<LockedScheduleQueryRow>(
       `
       SELECT EXISTS (
         SELECT 1
@@ -283,7 +285,7 @@ async function waitForRosteringMembershipLock(
           AND $2 = ANY(pg_blocking_pids(activity.pid))
       ) AS "isBlocked"
     `,
-      [input.rosterBackendPid, input.sweepBackendPid],
+      [input.scheduleBackendPid, input.sweepBackendPid],
     );
     if (rows[0]?.isBlocked) {
       return;
@@ -293,7 +295,7 @@ async function waitForRosteringMembershipLock(
     });
   }
   throw new Error(
-    'Roster membership query did not block on the transfer sweep within 10 seconds',
+    'Schedule membership query did not block on the transfer sweep within 10 seconds',
   );
 }
 
@@ -309,7 +311,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       name: 'Builder Cycle',
       startDate: CYCLE_START,
       endDate: CYCLE_END,
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -336,7 +338,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const manager = createParticipationManager();
     const view = await manager.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     });
@@ -363,7 +365,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       name: 'Qualification Cycle',
       startDate: CYCLE_START,
       endDate: CYCLE_END,
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -396,7 +398,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const manager = createParticipationManager();
     const view = await manager.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     });
@@ -429,7 +431,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       name: 'Published Cycle',
       startDate: CYCLE_START,
       endDate: CYCLE_END,
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -457,7 +459,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const manager = createParticipationManager();
     const view = await manager.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     });
@@ -476,7 +478,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       name: 'Isolated Cycle',
       startDate: CYCLE_START,
       endDate: CYCLE_END,
-      state: 'locked',
+      state: 'sent',
     });
     await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -490,7 +492,7 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
     const manager = createParticipationManager();
     const view = await manager.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchBId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryBId),
       userId: UserId.from(seed.adminUserId),
     });
@@ -511,7 +513,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       name: 'Qualification Gate Cycle',
       startDate: CYCLE_START,
       endDate: CYCLE_END,
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -547,7 +549,7 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
     const participationManager = createParticipationManager();
     const view = await participationManager.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     });
@@ -596,7 +598,7 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
       name: 'Membership Lock Cycle',
       startDate: CYCLE_START,
       endDate: CYCLE_END,
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -667,18 +669,18 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
     );
 
     await updateIssued;
-    let signalRosterBackendPid: (backendPid: number) => void = () => {
-      throw new Error('Roster backend observer was not initialized');
+    let signalScheduleBackendPid: (backendPid: number) => void = () => {
+      throw new Error('Schedule backend observer was not initialized');
     };
-    const rosterBackendPid = new Promise<number>((resolve) => {
-      signalRosterBackendPid = resolve;
+    const scheduleBackendPid = new Promise<number>((resolve) => {
+      signalScheduleBackendPid = resolve;
     });
     const assignmentManager = createAssignmentManager({
-      volunteerRepository: new RosterTrackingVolunteerRepository(
-        signalRosterBackendPid,
+      volunteerRepository: new ScheduleTrackingVolunteerRepository(
+        signalScheduleBackendPid,
       ),
     });
-    const rosterPromise = assignmentManager
+    const schedulePromise = assignmentManager
       .createParticipationAssignment({
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shiftId),
@@ -691,14 +693,14 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
         (error: unknown) => ({ ok: false as const, error }),
       );
 
-    const [sweepPid, rosterPid] = await Promise.all([
+    const [sweepPid, schedulePid] = await Promise.all([
       sweepBackendPid,
-      rosterBackendPid,
+      scheduleBackendPid,
     ]);
     let lockWaitError: unknown;
     try {
-      await waitForRosteringMembershipLock({
-        rosterBackendPid: rosterPid,
+      await waitForAssignMembershipLock({
+        scheduleBackendPid: schedulePid,
         sweepBackendPid: sweepPid,
       });
     } catch (error) {
@@ -709,17 +711,17 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
     }
     releaseSweep();
     await sweepPromise;
-    const rosterOutcome = await rosterPromise;
+    const scheduleOutcome = await schedulePromise;
 
     if (lockWaitError) {
       throw lockWaitError;
     }
-    expect(rosterOutcome.ok).toBe(false);
-    if (rosterOutcome.ok) {
+    expect(scheduleOutcome.ok).toBe(false);
+    if (scheduleOutcome.ok) {
       return;
     }
-    expect(rosterOutcome.error).toBeInstanceOf(HardConstraintError);
-    expect((rosterOutcome.error as HardConstraintError).reason).toBe(
+    expect(scheduleOutcome.error).toBeInstanceOf(HardConstraintError);
+    expect((scheduleOutcome.error as HardConstraintError).reason).toBe(
       'NOT_IN_MINISTRY',
     );
     const assignments = await schedulingTestDb
@@ -736,13 +738,13 @@ interface SeedPublishableInput {
   cycleName: string;
 }
 
-async function seedRosteringCycleBelowFull(input: SeedPublishableInput) {
+async function seedAssignCycleBelowFull(input: SeedPublishableInput) {
   const cycle = await createSchedulingPhase3Cycle({
     churchId: input.churchId,
     name: input.cycleName,
     startDate: CYCLE_START,
     endDate: CYCLE_END,
-    state: 'locked',
+    state: 'sent',
   });
   const graph = await createSchedulingPhase3EventGraph({
     churchId: input.churchId,
@@ -769,7 +771,7 @@ async function seedRosteringCycleBelowFull(input: SeedPublishableInput) {
   // Move the participation into a publishable state.
   await schedulingTestDb
     .update(ministryParticipation)
-    .set({ state: 'rostering' })
+    .set({ state: 'assigning' })
     .where(eq(ministryParticipation.id, graph.participation.id));
 
   return { cycle, participationId: graph.participation.id };
@@ -792,7 +794,7 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
 
   it('below-full without confirmation returns belowFull:true and makes no state change', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { cycle, participationId } = await seedRosteringCycleBelowFull({
+    const { cycle, participationId } = await seedAssignCycleBelowFull({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       cycleName: 'Below Full Cycle',
@@ -801,19 +803,19 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
     const manager = createParticipationManager();
     const result = await manager.publishCycle({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
     });
 
     expect(result.published).toBe(false);
     expect(result.belowFull).toBe(true);
-    expect(await readParticipationState(participationId)).toBe('rostering');
+    expect(await readParticipationState(participationId)).toBe('assigning');
   });
 
   it('below-full with confirmation publishes every participation atomically', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { cycle, participationId } = await seedRosteringCycleBelowFull({
+    const { cycle, participationId } = await seedAssignCycleBelowFull({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       cycleName: 'Confirmed Cycle',
@@ -822,7 +824,7 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
     const manager = createParticipationManager();
     const result = await manager.publishCycle({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
       userId: UserId.from(seed.adminUserId),
       confirmBelowFull: true,
@@ -837,7 +839,7 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
 
   it('church isolation: church B cannot publish church A participations (R8)', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const { cycle, participationId } = await seedRosteringCycleBelowFull({
+    const { cycle, participationId } = await seedAssignCycleBelowFull({
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       cycleName: 'Isolated Publish Cycle',
@@ -846,14 +848,14 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
     const manager = createParticipationManager();
     const result = await manager.publishCycle({
       churchId: ChurchId.from(seed.churchBId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryBId),
       userId: UserId.from(seed.adminUserId),
       confirmBelowFull: true,
     });
 
     expect(result.participations).toEqual([]);
-    expect(await readParticipationState(participationId)).toBe('rostering');
+    expect(await readParticipationState(participationId)).toBe('assigning');
   });
 });
 
@@ -869,7 +871,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       name: 'Audit Cycle',
       startDate: CYCLE_START,
       endDate: CYCLE_END,
-      state: 'locked',
+      state: 'sent',
     });
     const graph = await createSchedulingPhase3EventGraph({
       churchId: seed.churchAId,
@@ -917,7 +919,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
     const repo = new DrizzleAssignmentAuditRepository({ db: schedulingTestDb });
     const items = await repo.listByCycle({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
     });
     expect(items).toHaveLength(1);
@@ -925,7 +927,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
 
     const churchBItems = await repo.listByCycle({
       churchId: ChurchId.from(seed.churchBId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryBId),
     });
     expect(churchBItems).toEqual([]);

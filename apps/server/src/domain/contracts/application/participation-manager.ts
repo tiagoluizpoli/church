@@ -1,9 +1,9 @@
 import type { Instant } from '@church/time';
 import type {
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   TeamId,
@@ -26,7 +26,7 @@ import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
 export interface GetCycleParticipationInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryId: MinistryId;
 }
 
@@ -49,7 +49,7 @@ export interface CycleParticipationView {
 
 export interface GetCycleBuilderDataInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryId: MinistryId;
   /** Limits the read model to one led Team; absent for Ministry leaders. */
   teamId?: TeamId;
@@ -97,7 +97,7 @@ export interface CycleBuilderView {
 
 export interface PublishCycleInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   ministryId: MinistryId;
   userId: UserId;
   confirmBelowFull?: boolean;
@@ -201,16 +201,16 @@ export interface GetParticipationCompletionInput {
 export interface ListMinistryCycleSummariesInput {
   churchId: ChurchId;
   ministryId: MinistryId;
-  /** Limits summaries to cycles with roster work for this Team. */
+  /** Limits summaries to cycles with schedule work for this Team. */
   teamId?: TeamId;
 }
 
-/** Iteration 3 (research.md R15/R16): one row per locked `PlanningCycle`
+/** Iteration 3 (research.md R15/R16): one row per locked `Cycle`
  * church-wide, annotated with this ministry's participation data. A cycle
  * the ministry has zero events in still appears, with `isPartOf: false`,
- * `status: 'not_started'`, and `availabilityFiredForAll: false`. */
+ * `status: 'not_started'`, and `availabilityRequestedForAll: false`. */
 export interface MinistryCycleSummaryView {
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   name: string;
   startDate: Date;
   endDate: Date;
@@ -218,8 +218,8 @@ export interface MinistryCycleSummaryView {
   eventCount: number;
   slotCount: number;
   status: 'not_started' | 'in_progress' | 'published';
-  availabilityFiredForAll: boolean;
-  availabilityFiredForAny: boolean;
+  availabilityRequestedForAll: boolean;
+  availabilityRequestedForAny: boolean;
 }
 
 export interface IParticipationManager {

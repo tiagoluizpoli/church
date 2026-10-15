@@ -168,7 +168,7 @@ describe('switchActiveChurch', () => {
   it('removes Church-scoped data without removing selector data', async () => {
     const { queryClient, selectActiveChurch, navigate } =
       createSwitchTestDependencies();
-    queryClient.setQueryData(['planning-cycles'], { church: 'church-a' });
+    queryClient.setQueryData(['cycles'], { church: 'church-a' });
     queryClient.setQueryData(['active-church', 'options'], {
       churches: ['church-a', 'church-b'],
     });
@@ -183,7 +183,7 @@ describe('switchActiveChurch', () => {
       selectActiveChurch,
     });
 
-    expect(queryClient.getQueryData(['planning-cycles'])).toBeUndefined();
+    expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
     expect(queryClient.getQueryData(['active-church', 'options'])).toEqual({
       churches: ['church-a', 'church-b'],
     });

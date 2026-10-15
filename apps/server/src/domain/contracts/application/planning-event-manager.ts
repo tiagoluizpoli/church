@@ -1,8 +1,8 @@
 import type {
   ChurchId,
+  CycleId,
   EventId,
   EventTemplateId,
-  PlanningCycleId,
   TimeSlotId,
 } from '../../branded-ids';
 import type { Event } from '../../entities/event';
@@ -10,7 +10,7 @@ import type { TimeSlot } from '../../entities/time-slot';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   templateIds: EventTemplateId[];
 }
 
@@ -21,7 +21,7 @@ export interface GeneratedPlanningCounts {
 
 export interface CreatePlanningEventManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   title: string;
   description?: string;
   location?: string;
@@ -31,7 +31,7 @@ export interface CreatePlanningEventManagerInput {
 
 export interface UpdatePlanningEventManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   eventId: EventId;
   title?: string;
   description?: string;
@@ -42,13 +42,13 @@ export interface UpdatePlanningEventManagerInput {
 
 export interface CancelPlanningEventManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   eventId: EventId;
 }
 
 export interface CreatePlanningEventSlotManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   eventId: EventId;
   startTime: Date;
   endTime: Date;
@@ -57,7 +57,7 @@ export interface CreatePlanningEventSlotManagerInput {
 
 export interface UpdatePlanningEventSlotManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   eventId: EventId;
   slotId: TimeSlotId;
   startTime?: Date;
@@ -67,7 +67,7 @@ export interface UpdatePlanningEventSlotManagerInput {
 
 export interface DeletePlanningEventSlotManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   eventId: EventId;
   slotId: TimeSlotId;
 }

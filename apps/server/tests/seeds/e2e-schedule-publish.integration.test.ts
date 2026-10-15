@@ -1,7 +1,7 @@
 import {
   assignment,
+  cycle,
   ministryParticipation,
-  planningCycle,
   slotRequirement,
 } from '@church/db';
 import {
@@ -13,9 +13,9 @@ import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
-  createRosterPublishRecipe,
-  type RosterPublishJourney,
-} from '@/seeds/e2e/recipes/roster-publish';
+  createSchedulePublishRecipe,
+  type SchedulePublishJourney,
+} from '@/seeds/e2e/recipes/schedule-publish';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
@@ -26,26 +26,26 @@ interface LoadInput {
   anchor: CalendarDay;
 }
 
-async function load({ anchor }: LoadInput): Promise<RosterPublishJourney> {
+async function load({ anchor }: LoadInput): Promise<SchedulePublishJourney> {
   return await runE2eJourneyRecipe({
     db: testDb,
-    recipe: createRosterPublishRecipe({ journeyKey: 'alpha', anchor }),
+    recipe: createSchedulePublishRecipe({ journeyKey: 'alpha', anchor }),
   });
 }
 
-describe('roster-publish E2E journey recipe', () => {
+describe('schedule-publish E2E journey recipe', () => {
   beforeEach(async () => {
     await truncateAll();
   });
 
-  it('starts both Ministries unpublished on one locked cycle, with nobody assigned', async () => {
+  it('starts both Ministries unpublished on one sent cycle, with nobody assigned', async () => {
     const journey = await load({ anchor: ANCHOR });
 
-    const [cycle] = await testDb
-      .select({ state: planningCycle.state })
-      .from(planningCycle)
-      .where(eq(planningCycle.id, journey.cycle.id));
-    expect(cycle?.state).toBe('locked');
+    const [cycleRow] = await testDb
+      .select({ state: cycle.state })
+      .from(cycle)
+      .where(eq(cycle.id, journey.cycle.id));
+    expect(cycleRow?.state).toBe('sent');
 
     const participations = await testDb
       .select({
@@ -56,8 +56,8 @@ describe('roster-publish E2E journey recipe', () => {
       .where(eq(ministryParticipation.churchId, journey.church.id));
     expect(participations).toHaveLength(2);
     expect(participations.map(({ state }) => state)).toEqual([
-      'availability_fired',
-      'availability_fired',
+      'availability_requested',
+      'availability_requested',
     ]);
     expect(participations.map(({ id }) => id).sort()).toEqual(
       [journey.worship.id, journey.care.id].sort(),
@@ -96,15 +96,15 @@ describe('roster-publish E2E journey recipe', () => {
     const eventDay = addCalendarDays({ day: LATE_ANCHOR, days: 14 });
     expect(journey.event.startsAt).toBe(`${eventDay}T12:00:00.000Z`);
 
-    const [cycle] = await testDb
+    const [cycleRow] = await testDb
       .select({
-        startDate: planningCycle.startDate,
-        endDate: planningCycle.endDate,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
       })
-      .from(planningCycle)
-      .where(eq(planningCycle.id, journey.cycle.id));
-    expect(cycle?.startDate.toISOString().slice(0, 10)).toBe(LATE_ANCHOR);
-    expect(cycle?.endDate.toISOString().slice(0, 10)).toBe(
+      .from(cycle)
+      .where(eq(cycle.id, journey.cycle.id));
+    expect(cycleRow?.startDate.toISOString().slice(0, 10)).toBe(LATE_ANCHOR);
+    expect(cycleRow?.endDate.toISOString().slice(0, 10)).toBe(
       addCalendarDays({ day: LATE_ANCHOR, days: 28 }),
     );
     expect(eventDay > LATE_ANCHOR).toBe(true);
@@ -125,8 +125,8 @@ describe('roster-publish E2E journey recipe', () => {
       .from(ministryParticipation)
       .where(eq(ministryParticipation.churchId, journey.church.id));
     expect(states.map(({ state }) => state)).toEqual([
-      'availability_fired',
-      'availability_fired',
+      'availability_requested',
+      'availability_requested',
     ]);
   });
 });

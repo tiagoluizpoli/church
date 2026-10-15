@@ -10,30 +10,30 @@ import {
 } from '../../builders/scheduling';
 import type { SeedWriter } from '../../recipe';
 import type { JourneySeedIdOf } from '../journey-keys';
-import { anchoredInstant } from './rostering-church';
+import { anchoredInstant } from './assign-church';
 
 /**
- * One Event a single Ministry rosters: a Time Slot, the Ministry's
+ * One Event a single Ministry schedules: a Time Slot, the Ministry's
  * Participation in it, one Shift over the whole slot, and that Shift's Role
- * requirements. The shape every rostering-board style journey starts from;
+ * requirements. The shape every assign-board style journey starts from;
  * ids derive from `key`, so one recipe can build several.
  */
 
-/** The Planning Cycle a rostering journey's Events belong to. */
-export interface RosteringCycleSummary {
+/** The Cycle a assign journey's Events belong to. */
+export interface AssignCycleSummary {
   id: string;
   name: string;
 }
 
-export interface RosteringRequirementPlan {
+export interface AssignRequirementPlan {
   roleId: string;
   requiredCount: number;
-  /** Scopes the requirement to one Team (a TeamLeader's roster seat). */
+  /** Scopes the requirement to one Team (a TeamLeader's schedule seat). */
   teamId?: string;
 }
 
-export type RosteringRequirementPlans = Readonly<
-  Record<string, RosteringRequirementPlan>
+export type AssignRequirementPlans = Readonly<
+  Record<string, AssignRequirementPlan>
 >;
 
 export type RequirementKeyOf<TRequirements> = Extract<
@@ -41,13 +41,13 @@ export type RequirementKeyOf<TRequirements> = Extract<
   string
 >;
 
-export interface BuildRosteringEventInput<
-  TRequirements extends RosteringRequirementPlans,
+export interface BuildAssignEventInput<
+  TRequirements extends AssignRequirementPlans,
 > {
   db: SeedWriter;
   idOf: JourneySeedIdOf;
   churchId: string;
-  planningCycleId: string;
+  cycleId: string;
   ministryId: string;
   /** Distinguishes this Event's rows from the recipe's other Events. */
   key: string;
@@ -63,14 +63,14 @@ export interface BuildRosteringEventInput<
   requirements: TRequirements;
 }
 
-export interface RosteringRequirement {
+export interface AssignRequirement {
   id: string;
   roleId: string;
   requiredCount: number;
   teamId: string | null;
 }
 
-export interface RosteringEvent<TRequirementKey extends string> {
+export interface AssignEvent<TRequirementKey extends string> {
   id: string;
   title: string;
   /** Church-local day, `yyyy-MM-dd`: the builder's date column. */
@@ -80,16 +80,16 @@ export interface RosteringEvent<TRequirementKey extends string> {
   participationId: string;
   timeSlotId: string;
   shiftId: string;
-  requirements: Record<TRequirementKey, RosteringRequirement>;
+  requirements: Record<TRequirementKey, AssignRequirement>;
 }
 
-export async function buildRosteringEvent<
-  const TRequirements extends RosteringRequirementPlans,
+export async function buildAssignEvent<
+  const TRequirements extends AssignRequirementPlans,
 >({
   db,
   idOf,
   churchId,
-  planningCycleId,
+  cycleId,
   ministryId,
   key,
   title,
@@ -99,8 +99,8 @@ export async function buildRosteringEvent<
   eventStatus,
   participationState,
   requirements,
-}: BuildRosteringEventInput<TRequirements>): Promise<
-  RosteringEvent<RequirementKeyOf<TRequirements>>
+}: BuildAssignEventInput<TRequirements>): Promise<
+  AssignEvent<RequirementKeyOf<TRequirements>>
 > {
   const startsAt = anchoredInstant({
     anchor: day,
@@ -112,7 +112,7 @@ export async function buildRosteringEvent<
   const event = await buildEvent({
     db,
     churchId,
-    planningCycleId,
+    cycleId,
     id: idOf({ kind: `event:${key}` }),
     title,
     start: startsAt,
@@ -146,7 +146,7 @@ export async function buildRosteringEvent<
     end: endsAt,
   });
 
-  const built: Record<string, RosteringRequirement> = {};
+  const built: Record<string, AssignRequirement> = {};
   for (const [requirementKey, requirement] of Object.entries(requirements)) {
     const row = await buildSlotRequirement({
       db,
@@ -178,7 +178,7 @@ export async function buildRosteringEvent<
     // Built by iterating the plan's own keys, so the record is complete.
     requirements: built as Record<
       RequirementKeyOf<TRequirements>,
-      RosteringRequirement
+      AssignRequirement
     >,
   };
 }

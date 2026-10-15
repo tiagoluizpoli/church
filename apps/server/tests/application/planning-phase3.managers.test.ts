@@ -17,27 +17,22 @@ import {
 } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
-import { DbPlanningCycleManager } from '@/application/db-planning-cycle-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { ChurchId, CycleId, EventId, TimeSlotId } from '@/domain/branded-ids';
 import {
-  ChurchId,
-  EventId,
-  PlanningCycleId,
-  TimeSlotId,
-} from '@/domain/branded-ids';
-import {
-  EventOutsidePlanningCycleError,
+  EventOutsideCycleError,
   IllegalStateTransitionError,
   LastRemainingSlotError,
   OverlappingCycleError,
 } from '@/domain/errors';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleMinistryServingProfileRepository } from '@/infrastructure/repositories/drizzle-ministry-serving-profile.repository';
-import { DrizzlePlanningCycleRepository } from '@/infrastructure/repositories/drizzle-planning-cycle.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTimeSlotRepository } from '@/infrastructure/repositories/drizzle-time-slot.repository';
@@ -52,7 +47,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 
 function createManagers() {
-  const cycleRepository = new DrizzlePlanningCycleRepository({
+  const cycleRepository = new DrizzleCycleRepository({
     db: schedulingTestDb,
   });
   const eventRepository = new DrizzlePlanningEventRepository({
@@ -80,7 +75,7 @@ function createManagers() {
   });
 
   return {
-    cycleManager: new DbPlanningCycleManager({
+    cycleManager: new DbCycleManager({
       cycleRepository,
       eventRepository,
       churchRepository,
@@ -123,9 +118,9 @@ async function seedEventSlot(input: SeedEventSlotInput) {
 }
 
 /**
- * Flip an event straight to `scheduled` — the state a per-event roster
+ * Flip an event straight to `scheduled` — the state a per-event schedule
  * publish (`assignment-manager-service.markScheduled`) leaves it in — without
- * standing up the whole rostering flow. Lets tests exercise `cancelEvent`'s
+ * standing up the whole assign flow. Lets tests exercise `cancelEvent`'s
  * soft-cancel branch, which keys only on `event.status`.
  */
 async function markEventScheduled(eventId: string): Promise<void> {
@@ -235,7 +230,7 @@ describe('Phase 3 planning managers', () => {
       end: new Date('2026-08-02T14:00:00.000Z'),
     });
 
-    await cycleManager.lockCycle({
+    await cycleManager.sendCycle({
       churchId: churchAId,
       cycleId: activeCycle.id,
     });
@@ -255,15 +250,15 @@ describe('Phase 3 planning managers', () => {
     });
     const expiredDetails = await cycleManager.getCycle({
       churchId: churchAId,
-      cycleId: PlanningCycleId.from(expiredCycle.id),
+      cycleId: CycleId.from(expiredCycle.id),
     });
 
-    expect(expiredDetails.cycle.state).toBe('archived');
+    expect(expiredDetails.cycle.state).toBe('past');
 
     await expect(
       eventManager.createEvent({
         churchId: churchAId,
-        cycleId: PlanningCycleId.from(expiredCycle.id),
+        cycleId: CycleId.from(expiredCycle.id),
         title: 'Too Late',
         start: new Date('2000-01-10T12:00:00.000Z'),
         end: new Date('2000-01-10T14:00:00.000Z'),
@@ -273,14 +268,14 @@ describe('Phase 3 planning managers', () => {
     expect(createdEvent.title).toBe('Sunday Service');
 
     await expect(
-      cycleManager.lockCycle({
+      cycleManager.sendCycle({
         churchId: churchAId,
-        cycleId: PlanningCycleId.from(expiredCycle.id),
+        cycleId: CycleId.from(expiredCycle.id),
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('rejects a manual event whose start date falls outside the planning cycle', async () => {
+  it('rejects a manual event whose start date falls outside the cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -299,7 +294,7 @@ describe('Phase 3 planning managers', () => {
         start: new Date('2027-10-05T12:00:00.000Z'),
         end: new Date('2027-10-05T14:00:00.000Z'),
       }),
-    ).rejects.toThrow(EventOutsidePlanningCycleError);
+    ).rejects.toThrow(EventOutsideCycleError);
   });
 
   it('creates a manual event on the selected church calendar date', async () => {
@@ -400,7 +395,7 @@ describe('Phase 3 planning managers', () => {
     expect(secondRun.generatedEventCount).toBe(0);
     expect(secondRun.generatedSlotCount).toBe(0);
 
-    await cycleManager.lockCycle({
+    await cycleManager.sendCycle({
       churchId: churchAId,
       cycleId: cycle.id,
     });
@@ -485,7 +480,7 @@ describe('Phase 3 planning managers', () => {
     expect(postLockEvent?.status).toBe('scheduled');
   });
 
-  it('cancelEvent hard-deletes a draft event, is blocked on a locked cycle unless the event is still draft, and hard-deletes again after reopen', async () => {
+  it('cancelEvent hard-deletes a draft event, is blocked on a sent cycle unless the event is still draft, and hard-deletes again after reopen', async () => {
     // BL-020 / issue #12: delete and cancel are split on the event's lifecycle
     // status. `draft` (never reached `scheduled`) → hard delete; any later
     // status → soft cancel.
@@ -520,35 +515,35 @@ describe('Phase 3 planning managers', () => {
     });
     expect(afterCancel.events).toHaveLength(0);
 
-    const lockedCycle = await cycleManager.createCycle({
+    const sentCycle = await cycleManager.createCycle({
       churchId: churchAId,
-      name: 'Cancel in locked cycle',
+      name: 'Cancel in sent cycle',
       startDate: new Date('2027-02-01T00:00:00.000Z'),
       endDate: new Date('2027-03-01T00:00:00.000Z'),
     });
     const lockedEvent = await eventManager.createEvent({
       churchId: churchAId,
-      cycleId: lockedCycle.id,
+      cycleId: sentCycle.id,
       title: 'Scheduled once locked',
       start: new Date('2027-02-05T09:00:00.000Z'),
       end: new Date('2027-02-05T10:00:00.000Z'),
     });
-    await cycleManager.lockCycle({
+    await cycleManager.sendCycle({
       churchId: churchAId,
-      cycleId: lockedCycle.id,
+      cycleId: sentCycle.id,
     });
 
     await expect(
       eventManager.cancelEvent({
         churchId: churchAId,
-        cycleId: lockedCycle.id,
+        cycleId: sentCycle.id,
         eventId: lockedEvent.id,
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
 
     await cycleManager.reopenEvent({
       churchId: churchAId,
-      cycleId: lockedCycle.id,
+      cycleId: sentCycle.id,
       eventId: lockedEvent.id,
     });
 
@@ -556,19 +551,19 @@ describe('Phase 3 planning managers', () => {
     // the same case `reopenEvent` already treats as legitimately mutable.
     await eventManager.cancelEvent({
       churchId: churchAId,
-      cycleId: lockedCycle.id,
+      cycleId: sentCycle.id,
       eventId: lockedEvent.id,
     });
 
     const finalDetails = await cycleManager.getCycle({
       churchId: churchAId,
-      cycleId: lockedCycle.id,
+      cycleId: sentCycle.id,
     });
     expect(finalDetails.events).toHaveLength(0);
   });
 
   it('cancelEvent soft-cancels a scheduled event and leaves its row in place', async () => {
-    // The soft-cancel branch: an event already rostered to `scheduled` while
+    // The soft-cancel branch: an event already assigned to `scheduled` while
     // its cycle is still draft. Behaviour is byte-for-byte today's — a silent
     // status flip, no hard delete.
     const seed = await seedSchedulingPhase3Base();
@@ -712,7 +707,7 @@ describe('Phase 3 planning managers', () => {
     expect(fullRegen.generatedEventCount).toBe(firstRun.generatedEventCount);
     expect(fullRegen.generatedSlotCount).toBe(firstRun.generatedSlotCount);
 
-    // Non-resurrection: soft-cancel one regenerated event (already rostered to
+    // Non-resurrection: soft-cancel one regenerated event (already assigned to
     // `scheduled`), then re-apply the template. That date must stay empty.
     const regenerated = await cycleManager.getCycle({
       churchId: churchAId,
@@ -748,7 +743,7 @@ describe('Phase 3 planning managers', () => {
     ).toHaveLength(1);
   });
 
-  it('updateEvent rejects moving a startDate outside its planning cycle', async () => {
+  it('updateEvent rejects moving a startDate outside its cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -773,7 +768,7 @@ describe('Phase 3 planning managers', () => {
         eventId: event.id,
         start: new Date('2027-04-15T09:00:00.000Z'),
       }),
-    ).rejects.toThrow(EventOutsidePlanningCycleError);
+    ).rejects.toThrow(EventOutsideCycleError);
   });
 
   it('generateFromTemplates seeds via the three-tier default: explicit profile > ministry direction > (all_out default), including split shifts and headcounts', async () => {
@@ -936,7 +931,7 @@ describe('Phase 3 planning managers', () => {
     expect(excludedInclusions).toHaveLength(0);
   });
 
-  it('createSlot: happy path on a draft cycle, rejected on a locked cycle', async () => {
+  it('createSlot: happy path on a draft cycle, rejected on a sent cycle', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -967,28 +962,28 @@ describe('Phase 3 planning managers', () => {
     expect(created.label).toBe('Worship');
     expect(created.eventId).toBe(event.id);
 
-    const lockedCycle = await cycleManager.createCycle({
+    const sentCycle = await cycleManager.createCycle({
       churchId: churchAId,
-      name: 'Create slot locked cycle',
+      name: 'Create slot sent cycle',
       startDate: new Date('2027-09-01T00:00:00.000Z'),
       endDate: new Date('2027-10-01T00:00:00.000Z'),
     });
     const lockedEvent = await eventManager.createEvent({
       churchId: churchAId,
-      cycleId: lockedCycle.id,
+      cycleId: sentCycle.id,
       title: 'Locked day',
       start: new Date('2027-09-02T00:00:00.000Z'),
       end: new Date('2027-09-02T23:59:59.999Z'),
     });
-    await cycleManager.lockCycle({
+    await cycleManager.sendCycle({
       churchId: churchAId,
-      cycleId: lockedCycle.id,
+      cycleId: sentCycle.id,
     });
 
     await expect(
       eventManager.createSlot({
         churchId: churchAId,
-        cycleId: lockedCycle.id,
+        cycleId: sentCycle.id,
         eventId: lockedEvent.id,
         startTime: new Date('2027-09-02T09:00:00.000Z'),
         endTime: new Date('2027-09-02T10:00:00.000Z'),
@@ -996,7 +991,7 @@ describe('Phase 3 planning managers', () => {
     ).rejects.toThrow(IllegalStateTransitionError);
   });
 
-  it('updateSlot/deleteSlot: happy paths, ownership/lock guards, and last-remaining-slot rejection', async () => {
+  it('updateSlot/deleteSlot: happy paths, ownership/sent-cycle guards, and last-remaining-slot rejection', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -1085,7 +1080,7 @@ describe('Phase 3 planning managers', () => {
     ).rejects.toThrow('TimeSlot not found');
 
     // Reject on archived cycle.
-    const archivedCycle = await createSchedulingPhase3Cycle({
+    const pastCycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
       name: 'Archived slot cycle',
       startDate: new Date('2000-01-01T00:00:00.000Z'),
@@ -1094,10 +1089,10 @@ describe('Phase 3 planning managers', () => {
     await expect(
       eventManager.updateSlot({
         churchId: churchAId,
-        cycleId: PlanningCycleId.from(archivedCycle.id),
+        cycleId: CycleId.from(pastCycle.id),
         eventId: twoSlotEvent.id,
         slotId: TimeSlotId.from(slotA.id),
-        label: 'Archived',
+        label: 'Past',
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
 
@@ -1117,7 +1112,7 @@ describe('Phase 3 planning managers', () => {
       startTime: new Date('2027-05-04T09:00:00.000Z'),
       endTime: new Date('2027-05-04T10:00:00.000Z'),
     });
-    await cycleManager.lockCycle({
+    await cycleManager.sendCycle({
       churchId: churchAId,
       cycleId: draftCycle.id,
     });

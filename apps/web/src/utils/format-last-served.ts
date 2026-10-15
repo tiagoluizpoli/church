@@ -19,7 +19,7 @@ const DAYS_PER_MONTH = 30;
 const MAX_DAYS_AS_WEEKS = 8 * DAYS_PER_WEEK;
 
 /**
- * How long ago a volunteer last served, phrased for the rostering rail:
+ * How long ago a volunteer last served, phrased for the assign rail:
  * "last served 5 weeks ago", "last served today", "never served".
  *
  * Deliberately not a generic relative formatter: those jump straight from

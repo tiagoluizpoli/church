@@ -6,11 +6,11 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
+} from './assign-church';
 
 /**
  * The E2E suite's shared read-only identities (#320 decision 19): one
@@ -53,11 +53,11 @@ const SHARED_PERSONAS_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
-const ROOT_KINDS = rosteringChurchRootKinds({ plan: SHARED_PERSONAS_PLAN });
+const ROOT_KINDS = assignChurchRootKinds({ plan: SHARED_PERSONAS_PLAN });
 
-export type SharedPersonas = RosteringChurch<typeof SHARED_PERSONAS_PLAN>;
+export type SharedPersonas = AssignChurch<typeof SHARED_PERSONAS_PLAN>;
 
 export function createSharedPersonasRecipe({
   journeyKey,
@@ -68,7 +68,7 @@ export function createSharedPersonasRecipe({
   });
 
   async function load({ db }: SeedRecipeLoadInput): Promise<SharedPersonas> {
-    return await buildRosteringChurch({
+    return await buildAssignChurch({
       db,
       idOf,
       tag,

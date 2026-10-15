@@ -1,40 +1,39 @@
 import { z } from 'zod';
 import {
-  type LoadRosteringJourneyInput,
-  PLANNING_CYCLE_WINDOW_SCHEMA,
-  ROSTERING_JOURNEY_BASE_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-  rosteringMinistrySchema,
-} from './rostering-church';
+  ASSIGN_JOURNEY_BASE_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+  assignMinistrySchema,
+  CYCLE_WINDOW_SCHEMA,
+  type LoadAssignJourneyInput,
+} from './assign-church';
 import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 
 // Mirrors the server's `E2E_JOURNEY_RECIPE_NAMES`
 // (apps/server/seeds/e2e/journey-keys.ts); web cannot import server code.
-const RECIPE_NAME = 'leader-tailoring';
+const RECIPE_NAME = 'leader-prepare';
 
-export const LEADER_TAILORING_JOURNEY_SCHEMA =
-  ROSTERING_JOURNEY_BASE_SCHEMA.extend({
-    cycleWindow: PLANNING_CYCLE_WINDOW_SCHEMA,
-    ministries: z.object({
-      worship: rosteringMinistrySchema({
-        roles: ['usher'],
-        teams: [],
-      }),
+export const LEADER_PREPARE_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
+  cycleWindow: CYCLE_WINDOW_SCHEMA,
+  ministries: z.object({
+    worship: assignMinistrySchema({
+      roles: ['usher'],
+      teams: [],
     }),
-    personas: z.object({ leader: ROSTERING_PERSONA_SCHEMA }),
-  });
+  }),
+  personas: z.object({ leader: ASSIGN_PERSONA_SCHEMA }),
+});
 
-export type LeaderTailoringJourney = z.infer<
-  typeof LEADER_TAILORING_JOURNEY_SCHEMA
+export type LeaderPrepareJourney = z.infer<
+  typeof LEADER_PREPARE_JOURNEY_SCHEMA
 >;
 
 /** Loads this test's own graph; signs nobody in. */
-export function loadLeaderTailoringJourney({
+export function loadLeaderPrepareJourney({
   testInfo,
-}: LoadRosteringJourneyInput): LeaderTailoringJourney {
+}: LoadAssignJourneyInput): LeaderPrepareJourney {
   return loadJourneyRecipe({
     recipeName: RECIPE_NAME,
-    schema: LEADER_TAILORING_JOURNEY_SCHEMA,
+    schema: LEADER_PREPARE_JOURNEY_SCHEMA,
     testInfo,
   });
 }

@@ -4,7 +4,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AvailabilityCheckId,
   ChurchId,
-  PlanningCycleId,
+  CycleId,
 } from '../../domain/branded-ids';
 import type { AvailabilityCheckProps } from '../../domain/entities/availability-check';
 import { AvailabilityCheck } from '../../domain/entities/availability-check';
@@ -16,7 +16,7 @@ export function mapAvailabilityCheck(
 ): AvailabilityCheck {
   const props: AvailabilityCheckProps = {
     churchId: row.churchId as ChurchId,
-    planningCycleId: row.planningCycleId as PlanningCycleId,
+    cycleId: row.cycleId as CycleId,
     ministryVolunteerId: row.ministryVolunteerId,
     state: row.state as AvailabilityCheckProps['state'],
     confirmedAt: row.confirmedAt

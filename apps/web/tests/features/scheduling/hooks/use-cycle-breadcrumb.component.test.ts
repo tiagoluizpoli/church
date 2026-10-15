@@ -2,12 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { usePlanningCycleBreadcrumb } from '@/features/scheduling/hooks/use-planning-cycle-breadcrumb';
+import { useCycleBreadcrumb } from '@/features/scheduling/hooks/use-cycle-breadcrumb';
 import { adminApi } from '@/utils/api-instances';
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
-    getPlanningCycle: vi.fn(),
+    getCycle: vi.fn(),
   },
 }));
 
@@ -23,26 +23,26 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-const mockedGetPlanningCycle = vi.mocked(adminApi.getPlanningCycle);
+const mockedGetCycle = vi.mocked(adminApi.getCycle);
 
-function renderPlanningCycleBreadcrumb() {
+function renderCycleBreadcrumb() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return renderHook(() => usePlanningCycleBreadcrumb(), {
+  return renderHook(() => useCycleBreadcrumb(), {
     wrapper: ({ children }) =>
       createElement(QueryClientProvider, { client: queryClient }, children),
   });
 }
 
-describe('usePlanningCycleBreadcrumb', () => {
+describe('useCycleBreadcrumb', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('resolves the cycle name when the route matches with a cycleId param', async () => {
     mockedUseParams.mockReturnValue({ cycleId: 'cycle-1' });
-    mockedGetPlanningCycle.mockResolvedValue({
+    mockedGetCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         churchId: 'church-1',
@@ -56,7 +56,7 @@ describe('usePlanningCycleBreadcrumb', () => {
       events: [],
     });
 
-    const { result } = renderPlanningCycleBreadcrumb();
+    const { result } = renderCycleBreadcrumb();
 
     await waitFor(() =>
       expect(result.current).toEqual({
@@ -64,15 +64,15 @@ describe('usePlanningCycleBreadcrumb', () => {
         label: 'August 2026',
       }),
     );
-    expect(mockedGetPlanningCycle).toHaveBeenCalledWith('cycle-1');
+    expect(mockedGetCycle).toHaveBeenCalledWith('cycle-1');
   });
 
   it('returns null when the matched route has no cycleId param', () => {
     mockedUseParams.mockReturnValue({});
 
-    const { result } = renderPlanningCycleBreadcrumb();
+    const { result } = renderCycleBreadcrumb();
 
     expect(result.current).toBeNull();
-    expect(mockedGetPlanningCycle).not.toHaveBeenCalled();
+    expect(mockedGetCycle).not.toHaveBeenCalled();
   });
 });

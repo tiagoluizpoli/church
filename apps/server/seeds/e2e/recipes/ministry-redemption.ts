@@ -10,12 +10,12 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
   mergeRootKinds,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+} from './assign-church';
 
 const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.ministryRedemption;
 const CHURCH_A_SCOPE = 'a';
@@ -50,7 +50,7 @@ const CHURCH_A_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const CHURCH_B_PLAN = {
   ministries: {},
@@ -62,7 +62,7 @@ const CHURCH_B_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 /** Id kinds of the member-only User; outside the base's reserved kinds. */
 const MEMBER_ONLY_USER_KIND = 'member-only:user';
@@ -71,8 +71,8 @@ const MEMBER_ONLY_NAME = 'Marta Membro';
 
 const ROOT_KINDS = mergeRootKinds({
   rootKinds: [
-    rosteringChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
-    rosteringChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
     { churchKinds: [], userKinds: [MEMBER_ONLY_USER_KIND] },
   ],
 });
@@ -85,8 +85,8 @@ export interface ChurchMemberWithoutVolunteerProfile {
 }
 
 export interface MinistryRedemptionJourney {
-  churchA: RosteringChurch<typeof CHURCH_A_PLAN>;
-  churchB: RosteringChurch<typeof CHURCH_B_PLAN>;
+  churchA: AssignChurch<typeof CHURCH_A_PLAN>;
+  churchB: AssignChurch<typeof CHURCH_B_PLAN>;
   /** A plain Church Member of Church A: no Ministry Membership, no Volunteer
    * profile. Built by hand rather than from a plan persona, because plan
    * personas always get a Volunteer profile. */
@@ -104,14 +104,14 @@ export function createMinistryRedemptionRecipe({
   async function load({
     db,
   }: SeedRecipeLoadInput): Promise<MinistryRedemptionJourney> {
-    const churchA = await buildRosteringChurch({
+    const churchA = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: CHURCH_A_PLAN,
       scope: CHURCH_A_SCOPE,
     });
-    const churchB = await buildRosteringChurch({
+    const churchB = await buildAssignChurch({
       db,
       idOf,
       tag,

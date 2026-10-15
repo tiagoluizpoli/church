@@ -114,7 +114,7 @@ export function AvailabilityCheckDetail({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>{check.ministryName}</CardTitle>
-            <CardDescription>{check.planningCycleName}</CardDescription>
+            <CardDescription>{check.cycleName}</CardDescription>
           </div>
           <Badge variant={check.state === 'confirmed' ? 'default' : 'outline'}>
             {check.state === 'confirmed' ? 'Confirmed' : 'Pending'}

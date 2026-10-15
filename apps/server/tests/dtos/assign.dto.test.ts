@@ -1,18 +1,18 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
+  assignMapper,
   createParticipationAssignmentResponseSchema,
-  rosteringMapper,
-} from '@/api/dtos/rostering.dto';
+} from '@/api/dtos/assign.dto';
 import { MinistryParticipationId, VolunteerId } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
 
-describe('rosteringMapper', () => {
+describe('assignMapper', () => {
   describe('eligibleVolunteerToResponse', () => {
     it('maps a volunteer with lastServedAt present', () => {
       const lastServedAt = parseInstant({ value: '2026-01-01T00:00:00.000Z' });
 
-      const response = rosteringMapper.eligibleVolunteerToResponse({
+      const response = assignMapper.eligibleVolunteerToResponse({
         volunteerId: VolunteerId.from('v1'),
         volunteerName: 'Jane',
         isAvailable: true,
@@ -36,7 +36,7 @@ describe('rosteringMapper', () => {
     });
 
     it('maps a volunteer with lastServedAt absent', () => {
-      const response = rosteringMapper.eligibleVolunteerToResponse({
+      const response = assignMapper.eligibleVolunteerToResponse({
         volunteerId: VolunteerId.from('v2'),
         volunteerName: 'John',
         isAvailable: false,
@@ -55,7 +55,7 @@ describe('rosteringMapper', () => {
 
   describe('eligibleVolunteerListToResponse', () => {
     it('maps a list of volunteers', () => {
-      const response = rosteringMapper.eligibleVolunteerListToResponse([
+      const response = assignMapper.eligibleVolunteerListToResponse([
         {
           volunteerId: VolunteerId.from('v1'),
           volunteerName: 'Jane',
@@ -85,7 +85,7 @@ describe('rosteringMapper', () => {
     });
 
     it('maps an empty list', () => {
-      const response = rosteringMapper.eligibleVolunteerListToResponse([]);
+      const response = assignMapper.eligibleVolunteerListToResponse([]);
 
       expect(response.volunteers).toEqual([]);
     });
@@ -106,7 +106,7 @@ describe('rosteringMapper', () => {
     it('maps a result with empty warnings', () => {
       const assignment = buildAssignment();
 
-      const response = rosteringMapper.assignmentResultToResponse({
+      const response = assignMapper.assignmentResultToResponse({
         assignment,
         warnings: [],
       });
@@ -118,7 +118,7 @@ describe('rosteringMapper', () => {
     it('maps a result with warnings including conflictingId present and absent', () => {
       const assignment = buildAssignment();
 
-      const response = rosteringMapper.assignmentResultToResponse({
+      const response = assignMapper.assignmentResultToResponse({
         assignment,
         warnings: [
           {
@@ -152,7 +152,7 @@ describe('rosteringMapper', () => {
 
   describe('completionToResponse', () => {
     it('maps a completion view', () => {
-      const response = rosteringMapper.completionToResponse({
+      const response = assignMapper.completionToResponse({
         participationId: MinistryParticipationId.from('p1'),
         requiredCount: 5,
         assignedCount: 3,

@@ -1,36 +1,36 @@
 import { NotFoundError } from '@church/core';
-import { planningCycle } from '@church/db';
+import { cycle } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, eq, gt, lt, sql } from 'drizzle-orm';
 import type {
-  AcquirePlanningCycleChurchLockInput,
-  CreatePlanningCycleInput,
-  FindOverlappingPlanningCyclesInput,
-  GetPlanningCycleInput,
-  ListPlanningCyclesInput,
-  PlanningCycleRepository,
-  UpdatePlanningCycleStateInput,
-} from '../../domain/contracts/infrastructure/planning-cycle.repository';
-import type { PlanningCycle } from '../../domain/entities/planning-cycle';
-import { mapPlanningCycle } from '../mappers/planning-cycle.mapper';
+  AcquireCycleChurchLockInput,
+  CreateCycleInput,
+  CycleRepository,
+  FindOverlappingCyclesInput,
+  GetCycleInput,
+  ListCyclesInput,
+  UpdateCycleStateInput,
+} from '../../domain/contracts/infrastructure/cycle.repository';
+import type { Cycle } from '../../domain/entities/cycle';
+import { mapCycle } from '../mappers/cycle.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
-interface DrizzlePlanningCycleRepositoryInput {
+interface DrizzleCycleRepositoryInput {
   db: AnyDrizzleDb;
 }
 
-export class DrizzlePlanningCycleRepository implements PlanningCycleRepository {
-  constructor({ db }: DrizzlePlanningCycleRepositoryInput) {
+export class DrizzleCycleRepository implements CycleRepository {
+  constructor({ db }: DrizzleCycleRepositoryInput) {
     this.db = db;
   }
 
   private readonly db: AnyDrizzleDb;
 
-  async create(input: CreatePlanningCycleInput): Promise<PlanningCycle> {
+  async create(input: CreateCycleInput): Promise<Cycle> {
     const db = getClient(this.db, input.tx);
     const [row] = await db
-      .insert(planningCycle)
+      .insert(cycle)
       .values({
         churchId: input.churchId,
         name: input.name,
@@ -41,98 +41,92 @@ export class DrizzlePlanningCycleRepository implements PlanningCycleRepository {
       .returning();
 
     if (!row) {
-      throw new Error('Planning cycle insert failed');
+      throw new Error('Cycle insert failed');
     }
 
-    return mapPlanningCycle(row);
+    return mapCycle(row);
   }
 
-  async list(input: ListPlanningCyclesInput): Promise<PlanningCycle[]> {
+  async list(input: ListCyclesInput): Promise<Cycle[]> {
     const db = getClient(this.db, input.tx);
-    const conditions = [withChurchIsolation(planningCycle, input.churchId)];
+    const conditions = [withChurchIsolation(cycle, input.churchId)];
 
     if (input.state) {
-      conditions.push(eq(planningCycle.state, input.state));
+      conditions.push(eq(cycle.state, input.state));
     }
 
     const rows = await db
       .select()
-      .from(planningCycle)
+      .from(cycle)
       .where(and(...conditions))
-      .orderBy(planningCycle.startDate);
+      .orderBy(cycle.startDate);
 
-    return rows.map(mapPlanningCycle);
+    return rows.map(mapCycle);
   }
 
-  async getById(input: GetPlanningCycleInput): Promise<PlanningCycle> {
+  async getById(input: GetCycleInput): Promise<Cycle> {
     if (!isValidUuid(input.cycleId)) {
-      throw new NotFoundError(`Planning cycle not found: ${input.cycleId}`);
+      throw new NotFoundError(`Cycle not found: ${input.cycleId}`);
     }
 
     const db = getClient(this.db, input.tx);
     const [row] = await db
       .select()
-      .from(planningCycle)
+      .from(cycle)
       .where(
         and(
-          eq(planningCycle.id, input.cycleId),
-          withChurchIsolation(planningCycle, input.churchId),
+          eq(cycle.id, input.cycleId),
+          withChurchIsolation(cycle, input.churchId),
         ),
       );
 
     if (!row) {
-      throw new NotFoundError(`Planning cycle not found: ${input.cycleId}`);
+      throw new NotFoundError(`Cycle not found: ${input.cycleId}`);
     }
 
-    return mapPlanningCycle(row);
+    return mapCycle(row);
   }
 
-  async findOverlapping(
-    input: FindOverlappingPlanningCyclesInput,
-  ): Promise<PlanningCycle[]> {
+  async findOverlapping(input: FindOverlappingCyclesInput): Promise<Cycle[]> {
     const db = getClient(this.db, input.tx);
     const rows = await db
       .select()
-      .from(planningCycle)
+      .from(cycle)
       .where(
         and(
-          withChurchIsolation(planningCycle, input.churchId),
-          lt(planningCycle.startDate, input.endDate),
-          gt(planningCycle.endDate, input.startDate),
+          withChurchIsolation(cycle, input.churchId),
+          lt(cycle.startDate, input.endDate),
+          gt(cycle.endDate, input.startDate),
         ),
       );
 
-    return rows.map(mapPlanningCycle);
+    return rows.map(mapCycle);
   }
 
-  async updateState(
-    input: UpdatePlanningCycleStateInput,
-  ): Promise<PlanningCycle> {
+  async updateState(input: UpdateCycleStateInput): Promise<Cycle> {
     const db = getClient(this.db, input.tx);
     const [row] = await db
-      .update(planningCycle)
+      .update(cycle)
       .set({
         state: input.state,
         updatedAt: nowAsDate(),
       })
       .where(
         and(
-          eq(planningCycle.id, input.cycleId),
-          withChurchIsolation(planningCycle, input.churchId),
+          eq(cycle.id, input.cycleId),
+          withChurchIsolation(cycle, input.churchId),
         ),
       )
       .returning();
 
     if (!row) {
-      throw new NotFoundError(`Planning cycle not found: ${input.cycleId}`);
+      throw new NotFoundError(`Cycle not found: ${input.cycleId}`);
     }
 
-    return mapPlanningCycle(row);
+    return mapCycle(row);
   }
 
-  async acquireChurchLock(
-    input: AcquirePlanningCycleChurchLockInput,
-  ): Promise<void> {
+  async acquireChurchLock(input: AcquireCycleChurchLockInput): Promise<void> {
     const db = getClient(this.db, input.tx);
 
     await db.execute(

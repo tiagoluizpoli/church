@@ -5,8 +5,8 @@ import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const getSchedulingCapability = vi.fn();
-const listPlanningCycles = vi.fn();
-const listTeamRosterCycles = vi.fn();
+const listCycles = vi.fn();
+const listTeamScheduleCycles = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -15,8 +15,9 @@ vi.mock('@/utils/api-instances', async () => ({
       getSchedulingCapability(...args),
   },
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
-    listTeamRosterCycles: (...args: unknown[]) => listTeamRosterCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
+    listTeamScheduleCycles: (...args: unknown[]) =>
+      listTeamScheduleCycles(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -42,9 +43,9 @@ vi.mock('@/components/ui/sonner', () => ({
 
 beforeEach(() => {
   getSchedulingCapability.mockReset();
-  listPlanningCycles.mockReset();
-  listPlanningCycles.mockResolvedValue({ cycles: [] });
-  listTeamRosterCycles.mockReset();
+  listCycles.mockReset();
+  listCycles.mockResolvedValue({ cycles: [] });
+  listTeamScheduleCycles.mockReset();
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
 });
 
@@ -76,7 +77,7 @@ describe('Scheduling capability index route', () => {
     );
   });
 
-  it('groups Team roster entries under their Ministry', async () => {
+  it('groups Team schedule entries under their Ministry', async () => {
     getSchedulingCapability.mockResolvedValue({
       canAccessScheduling: true,
       entries: [
@@ -96,7 +97,7 @@ describe('Scheduling capability index route', () => {
       await screen.findByRole('heading', { name: 'Worship' }),
     ).toBeVisible();
     expect(
-      screen.getByRole('link', { name: 'Open Greeting roster' }),
+      screen.getByRole('link', { name: 'Open Greeting schedule' }),
     ).toHaveAttribute(
       'href',
       '/scheduling/rostering/11111111-1111-4111-8111-111111111111?teamId=22222222-2222-4222-8222-222222222222',
@@ -147,7 +148,7 @@ describe('Scheduling capability index route', () => {
   });
 
   it('returns a caller whose Scheduling authority was removed to Dashboard after a denied Team link', async () => {
-    listTeamRosterCycles.mockRejectedValueOnce(new Error('Forbidden'));
+    listTeamScheduleCycles.mockRejectedValueOnce(new Error('Forbidden'));
     getSchedulingCapability.mockResolvedValueOnce({
       canAccessScheduling: false,
       entries: [],

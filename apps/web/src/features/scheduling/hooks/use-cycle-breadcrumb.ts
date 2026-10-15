@@ -8,17 +8,17 @@ export interface BreadcrumbSegmentOverride {
 }
 
 /**
- * Resolves the breadcrumb label for the planning-cycle-id route segment.
+ * Resolves the breadcrumb label for the cycle-id route segment.
  * `useParams({ strict: false })` only yields `cycleId` when the matched
  * route is `/scheduling/planning-cycles/$cycleId` — the sibling `new` and
  * `templates` routes are separate static routes with no such param, so no
  * manual segment/path exclusion list is needed here.
  */
-export function usePlanningCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
+export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
   const { cycleId } = useParams({ strict: false });
   const cycleDetailsQuery = useQuery({
-    queryKey: ['planning-cycle-details', cycleId],
-    queryFn: () => adminApi.getPlanningCycle(cycleId ?? ''),
+    queryKey: ['cycle-details', cycleId],
+    queryFn: () => adminApi.getCycle(cycleId ?? ''),
     enabled: cycleId !== undefined,
     retry: false,
   });

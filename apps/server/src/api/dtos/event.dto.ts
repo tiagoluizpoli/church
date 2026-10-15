@@ -20,7 +20,7 @@ export const listEventsQuerySchema = z.object({
 export const eventResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
-  planningCycleId: z.string(),
+  cycleId: z.string(),
   sourceTemplateId: z.string().optional(),
   title: z.string(),
   description: z.string().optional(),
@@ -113,7 +113,7 @@ function eventToResponse(ev: Event): EventResponse {
   return {
     id: ev.id as string,
     churchId: ev.churchId as string,
-    planningCycleId: ev.planningCycleId as string,
+    cycleId: ev.cycleId as string,
     sourceTemplateId: ev.sourceTemplateId as string | undefined,
     title: ev.title,
     description: ev.description,

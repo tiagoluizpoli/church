@@ -3,7 +3,7 @@ import type { TeamId } from '../branded-ids';
 import type { EventStatus } from '../entities/event';
 import type { ParticipationState } from '../entities/ministry-participation';
 
-export interface AuthorizeTeamRosterMutationInput {
+export interface AuthorizeTeamScheduleMutationInput {
   teamId: TeamId;
   participationState: ParticipationState;
   eventStatus: EventStatus;
@@ -13,9 +13,9 @@ export interface AuthorizeTeamRosterMutationInput {
   volunteerTeamIds: TeamId[];
 }
 
-export const TeamRosterMutationPolicy = {
-  authorize(input: AuthorizeTeamRosterMutationInput): boolean {
-    if (input.participationState !== 'rostering') return false;
+export const TeamScheduleMutationPolicy = {
+  authorize(input: AuthorizeTeamScheduleMutationInput): boolean {
+    if (input.participationState !== 'assigning') return false;
     if (input.eventStatus !== 'scheduled') return false;
     if (compareInstants({ left: input.eventStart, right: input.now }) <= 0) {
       return false;

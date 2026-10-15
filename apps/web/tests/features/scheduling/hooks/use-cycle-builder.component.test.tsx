@@ -58,12 +58,12 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
           churchId: 'church-1',
           eventId: 'event-1',
           ministryId: 'ministry-1',
-          state: 'rostering',
+          state: 'assigning',
         },
         event: {
           id: 'event-1',
           churchId: 'church-1',
-          planningCycleId: 'cycle-1',
+          cycleId: 'cycle-1',
           title: 'Sunday service',
           start: '2026-07-05T09:00:00.000Z',
           end: '2026-07-05T11:00:00.000Z',
@@ -166,7 +166,7 @@ beforeEach(() => {
 });
 
 describe('useCycleBuilder optimistic assignments', () => {
-  it('creates a Team roster assignment in the route Team context', async () => {
+  it('creates a Team schedule assignment in the route Team context', async () => {
     adminApiMock.createParticipationAssignment.mockResolvedValue({});
     const { result } = renderCycleBuilder({ teamId: 'team-1' });
     await waitFor(() => expect(result.current.data).toBeDefined());
@@ -182,7 +182,7 @@ describe('useCycleBuilder optimistic assignments', () => {
     );
   });
 
-  it('removes a Team roster assignment in the route Team context', async () => {
+  it('removes a Team schedule assignment in the route Team context', async () => {
     adminApiMock.deleteParticipationAssignment.mockResolvedValue({});
     const { result } = renderCycleBuilder({ teamId: 'team-1' });
     await waitFor(() => expect(result.current.data).toBeDefined());

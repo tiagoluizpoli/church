@@ -52,7 +52,7 @@ export interface CalendarDateOnlyInput {
 
 /**
  * `04/01/2027` for a value that *names a day* rather than a moment — a
- * planning-cycle bound, anchored at UTC midnight, never converted through
+ * cycle bound, anchored at UTC midnight, never converted through
  * the Church Timezone. Accepts either a bare `yyyy-MM-dd` or a full
  * ISO date-time whose calendar-date prefix is the day it names.
  */

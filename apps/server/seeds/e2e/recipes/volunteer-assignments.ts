@@ -13,9 +13,9 @@ import { buildAuthenticatableUser } from '../../builders/identity';
 import { buildMinistry, buildRole } from '../../builders/ministry';
 import {
   buildAssignment,
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
   buildShift,
   buildSlotRequirement,
   buildTimeSlot,
@@ -161,19 +161,19 @@ export function createVolunteerAssignmentsRecipe({
       timeZone: E2E_JOURNEY_TIMEZONE,
     });
 
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db,
       churchId: church.id,
-      id: idOf({ kind: 'planning-cycle' }),
+      id: idOf({ kind: 'cycle' }),
       name: 'Ciclo E2E',
       startDate: anchor,
       endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS }),
-      state: 'locked',
+      state: 'sent',
     });
     const event = await buildEvent({
       db,
       churchId: church.id,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       id: idOf({ kind: 'event' }),
       title: EVENT_TITLE,
       start: startsAt,

@@ -1,15 +1,14 @@
 import { compareCalendarDays, parseCalendarDay } from '@church/time';
-import { toCalendarDateString } from '@/features/scheduling/components/participation-tailoring.utils';
+import { toCalendarDateString } from '@/features/scheduling/components/participation-prepare.utils';
 import type {
   ListMinistryCycleSummaries200CyclesItem,
   ListMinistryCycleSummaries200CyclesItemStatus,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
-export type CycleTailoringStatus =
-  ListMinistryCycleSummaries200CyclesItemStatus;
+export type CyclePrepareStatus = ListMinistryCycleSummaries200CyclesItemStatus;
 
-export interface TailoringCycleSummary {
+export interface PrepareCycleSummary {
   id: string;
   name: string;
   window: string;
@@ -17,17 +16,17 @@ export interface TailoringCycleSummary {
   endDate: string;
   eventCount: number;
   slotCount: number;
-  status: CycleTailoringStatus;
+  status: CyclePrepareStatus;
   isPartOf: boolean;
-  availabilityFiredForAll: boolean;
-  availabilityFiredForAny: boolean;
+  availabilityRequestedForAll: boolean;
+  availabilityRequestedForAny: boolean;
 }
 
 export type MinistryInvolvementFilter = 'all' | 'part_of' | 'not_part_of';
 
 export type CycleDateRangeMode = 'starts' | 'ends' | 'within';
 
-/** Mirrors `TimeWindowFilter` (the tailoring workspace's time-of-day
+/** Mirrors `TimeWindowFilter` (the prepare workspace's time-of-day
  * filter): `'starts'` keeps cycles whose start date falls in
  * `[start, end]`, `'ends'` keeps cycles whose end date falls in the range,
  * `'within'` keeps cycles whose entire span (start AND end) falls inside
@@ -42,7 +41,7 @@ export interface CycleDateRangeFilter {
 export interface CycleFilterSpec {
   dateRange?: CycleDateRangeFilter;
   involvement?: MinistryInvolvementFilter;
-  status?: CycleTailoringStatus | 'all';
+  status?: CyclePrepareStatus | 'all';
 }
 
 export function isCycleDateRangeFilterEmpty(
@@ -66,8 +65,8 @@ function isDateWithinRange({ date, filter }: IsDateWithinRangeInput): boolean {
  * screen — sorts the batch endpoint's rows chronologically by start date
  * (not alphabetically by formatted label, per the earlier T060a fix) and
  * derives the display-ready window string. Replaces the old client-side
- * join across `listEvents`/`listPlanningCycles` outright (post-analyze
- * findings I1/I2) — every locked cycle church-wide is included here,
+ * join across `listEvents`/`listCycles` outright (post-analyze
+ * findings I1/I2) — every sent cycle church-wide is included here,
  * including ones this ministry has zero events in (`isPartOf: false`). */
 export interface BuildMinistryCycleSummariesInput {
   cycles: ListMinistryCycleSummaries200CyclesItem[];
@@ -75,7 +74,7 @@ export interface BuildMinistryCycleSummariesInput {
 
 export function buildMinistryCycleSummaries({
   cycles,
-}: BuildMinistryCycleSummariesInput): TailoringCycleSummary[] {
+}: BuildMinistryCycleSummariesInput): PrepareCycleSummary[] {
   return [...cycles]
     .sort((left, right) =>
       compareCalendarDays({
@@ -95,27 +94,27 @@ export function buildMinistryCycleSummaries({
       slotCount: cycle.slotCount,
       status: cycle.status,
       isPartOf: cycle.isPartOf,
-      availabilityFiredForAll: cycle.availabilityFiredForAll,
-      availabilityFiredForAny: cycle.availabilityFiredForAny,
+      availabilityRequestedForAll: cycle.availabilityRequestedForAll,
+      availabilityRequestedForAny: cycle.availabilityRequestedForAny,
     }));
 }
 
 /** FR-033: date-range/involvement/status filters combine with AND
- * semantics. Date range is mode-driven, mirroring the tailoring
+ * semantics. Date range is mode-driven, mirroring the prepare
  * workspace's `TimeWindowFilter` (`starts`/`ends`/`within`) rather than a
  * fixed overlap rule — a leader can ask for "cycles starting in this
  * range," "ending in this range," or "entirely within this range." All
  * filters operate on already-fetched data — zero network requests
  * (FR-032's batched endpoint already returned everything up front). */
 export interface FilterCycleSummariesInput {
-  cycles: TailoringCycleSummary[];
+  cycles: PrepareCycleSummary[];
   filter: CycleFilterSpec;
 }
 
 export function filterCycleSummaries({
   cycles,
   filter,
-}: FilterCycleSummariesInput): TailoringCycleSummary[] {
+}: FilterCycleSummariesInput): PrepareCycleSummary[] {
   return cycles.filter((cycle) => {
     if (filter.dateRange && !isCycleDateRangeFilterEmpty(filter.dateRange)) {
       const { mode } = filter.dateRange;
@@ -161,7 +160,7 @@ export function filterCycleSummaries({
   });
 }
 
-const CYCLE_TAILORING_STATUS_LABELS: Record<CycleTailoringStatus, string> = {
+const CYCLE_PREPARE_STATUS_LABELS: Record<CyclePrepareStatus, string> = {
   // biome-ignore lint/style/useNamingConvention: matches the API's status enum value verbatim
   not_started: 'Not started',
   // biome-ignore lint/style/useNamingConvention: matches the API's status enum value verbatim
@@ -169,21 +168,21 @@ const CYCLE_TAILORING_STATUS_LABELS: Record<CycleTailoringStatus, string> = {
   published: 'Published',
 };
 
-export interface CycleTailoringStatusLabelInput {
-  status: CycleTailoringStatus;
+export interface CyclePrepareStatusLabelInput {
+  status: CyclePrepareStatus;
 }
 
-/** Humanizes FR-030's leader-facing tailoring-progress status (research.md
- * R15/R16) — never `PlanningCycle.state` (the P0 mistake this iteration
+/** Humanizes FR-030's leader-facing prepare-progress status (research.md
+ * R15/R16) — never `Cycle.state` (the P0 mistake this iteration
  * corrects, see research.md R15). */
-export function cycleTailoringStatusLabel({
+export function cyclePrepareStatusLabel({
   status,
-}: CycleTailoringStatusLabelInput): string {
-  return CYCLE_TAILORING_STATUS_LABELS[status];
+}: CyclePrepareStatusLabelInput): string {
+  return CYCLE_PREPARE_STATUS_LABELS[status];
 }
 
-export interface CycleTailoringStatusBadgeVariantInput {
-  status: CycleTailoringStatus;
+export interface CyclePrepareStatusBadgeVariantInput {
+  status: CyclePrepareStatus;
 }
 
 /** DESIGN.md's "One Voice Rule" (primary reserved for the rare, meaningful
@@ -192,9 +191,9 @@ export interface CycleTailoringStatusBadgeVariantInput {
  * least attention-worthy); `in_progress` — the common, wide middle bucket
  * per R15 — is `secondary`, matching how `participationStateLabel`'s badge
  * already avoids `default` for anything that isn't rare/terminal. */
-export function cycleTailoringStatusBadgeVariant({
+export function cyclePrepareStatusBadgeVariant({
   status,
-}: CycleTailoringStatusBadgeVariantInput): 'default' | 'outline' | 'secondary' {
+}: CyclePrepareStatusBadgeVariantInput): 'default' | 'outline' | 'secondary' {
   if (status === 'published') return 'default';
   if (status === 'not_started') return 'outline';
   return 'secondary';

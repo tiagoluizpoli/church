@@ -29,7 +29,7 @@ import { schedulingTestDb } from '@/tests/scheduling-reshape/setup';
 import { createNotificationServiceSpy } from '@/tests/test-support/notification-service-spy';
 
 /**
- * The managers and seed steps the rostering (phase 6) and live-change
+ * The managers and seed steps the assign (phase 6) and live-change
  * (phase 7) suites share. Each suite keeps its own values and defaults.
  */
 

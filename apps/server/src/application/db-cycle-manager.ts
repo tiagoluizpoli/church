@@ -1,37 +1,37 @@
 import { compareCalendarDays, now, today } from '@church/time';
 import type {
-  CreatePlanningCycleManagerInput,
-  GetPlanningCycleManagerInput,
-  IPlanningCycleManager,
-  ListPlanningCyclesManagerInput,
-  LockPlanningCycleManagerInput,
-  PlanningCycleDetails,
+  CreateCycleManagerInput,
+  CycleDetails,
+  GetCycleManagerInput,
+  ICycleManager,
+  ListCyclesManagerInput,
   ReopenPlanningEventManagerInput,
-} from '../domain/contracts/application/planning-cycle-manager';
+  SendCycleManagerInput,
+} from '../domain/contracts/application/cycle-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
-import type { PlanningCycleRepository } from '../domain/contracts/infrastructure/planning-cycle.repository';
+import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { PlanningCycle } from '../domain/entities/planning-cycle';
+import type { Cycle } from '../domain/entities/cycle';
 import {
   IllegalStateTransitionError,
   OverlappingCycleError,
 } from '../domain/errors';
 
 interface EnsureResolvedCycleInput {
-  cycle: PlanningCycle;
+  cycle: Cycle;
   churchTimeZone: string;
 }
 
-interface DbPlanningCycleManagerDependencies {
-  cycleRepository: PlanningCycleRepository;
+interface DbCycleManagerDependencies {
+  cycleRepository: CycleRepository;
   eventRepository: PlanningEventRepository;
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
 }
 
-export class DbPlanningCycleManager implements IPlanningCycleManager {
-  private readonly cycleRepository: PlanningCycleRepository;
+export class DbCycleManager implements ICycleManager {
+  private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
@@ -41,16 +41,14 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
     eventRepository,
     churchRepository,
     unitOfWork,
-  }: DbPlanningCycleManagerDependencies) {
+  }: DbCycleManagerDependencies) {
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
   }
 
-  async createCycle(
-    input: CreatePlanningCycleManagerInput,
-  ): Promise<PlanningCycle> {
+  async createCycle(input: CreateCycleManagerInput): Promise<Cycle> {
     return this.unitOfWork.run(async (tx) => {
       await this.cycleRepository.acquireChurchLock({
         churchId: input.churchId,
@@ -75,9 +73,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
     });
   }
 
-  async listCycles(
-    input: ListPlanningCyclesManagerInput,
-  ): Promise<PlanningCycle[]> {
+  async listCycles(input: ListCyclesManagerInput): Promise<Cycle[]> {
     const church = await this.churchRepository.getById({ id: input.churchId });
     const cycles = await this.cycleRepository.list(input);
     const resolvedCycles = await Promise.all(
@@ -94,9 +90,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
       : resolvedCycles;
   }
 
-  async getCycle(
-    input: GetPlanningCycleManagerInput,
-  ): Promise<PlanningCycleDetails> {
+  async getCycle(input: GetCycleManagerInput): Promise<CycleDetails> {
     const church = await this.churchRepository.getById({ id: input.churchId });
     const cycle = await this.ensureResolvedCycle({
       cycle: await this.cycleRepository.getById(input),
@@ -110,7 +104,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
     return { cycle, events };
   }
 
-  async lockCycle(input: LockPlanningCycleManagerInput): Promise<void> {
+  async sendCycle(input: SendCycleManagerInput): Promise<void> {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
@@ -128,11 +122,11 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
         churchTimeZone: church.timezone,
       });
 
-      if (cycle.state === 'archived') {
-        throw new IllegalStateTransitionError(cycle.state, 'locked');
+      if (cycle.state === 'past') {
+        throw new IllegalStateTransitionError(cycle.state, 'sent');
       }
 
-      cycle.lock();
+      cycle.send();
       await this.cycleRepository.updateState({
         churchId: input.churchId,
         cycleId: input.cycleId,
@@ -188,8 +182,8 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
   private async ensureResolvedCycle({
     cycle,
     churchTimeZone,
-  }: EnsureResolvedCycleInput): Promise<PlanningCycle> {
-    if (cycle.state === 'archived') {
+  }: EnsureResolvedCycleInput): Promise<Cycle> {
+    if (cycle.state === 'past') {
       return cycle;
     }
 
@@ -202,7 +196,7 @@ export class DbPlanningCycleManager implements IPlanningCycleManager {
     return this.cycleRepository.updateState({
       churchId: cycle.churchId,
       cycleId: cycle.id,
-      state: 'archived',
+      state: 'past',
     });
   }
 }

@@ -6,6 +6,7 @@ import {
   availability,
   availabilityCheck,
   createChurch,
+  cycle,
   event,
   eventTemplate,
   identityAudit,
@@ -21,7 +22,6 @@ import {
   ministryVolunteerTeam,
   outboxMessage,
   participationSlotInclusion,
-  planningCycle,
   role,
   securityLog,
   session,
@@ -62,7 +62,7 @@ const IDS = {
   role: 'aaaaaaa1-0000-4000-8000-000000000004',
   volunteer: 'aaaaaaa1-0000-4000-8000-000000000005',
   membership: 'aaaaaaa1-0000-4000-8000-000000000006',
-  planningCycle: 'aaaaaaa1-0000-4000-8000-000000000007',
+  cycle: 'aaaaaaa1-0000-4000-8000-000000000007',
   eventTemplate: 'aaaaaaa1-0000-4000-8000-000000000008',
   timeBlock: 'aaaaaaa1-0000-4000-8000-000000000009',
   event: 'aaaaaaa1-0000-4000-8000-00000000000a',
@@ -246,8 +246,8 @@ async function seedEveryTenantedTable(): Promise<void> {
     correlationId: 'truncation-root-correlation',
   });
 
-  await testDb.insert(planningCycle).values({
-    id: IDS.planningCycle,
+  await testDb.insert(cycle).values({
+    id: IDS.cycle,
     churchId: IDS.church,
     name: 'Truncation cycle',
     startDate: new Date('2026-06-01T00:00:00Z'),
@@ -281,7 +281,7 @@ async function seedEveryTenantedTable(): Promise<void> {
   await testDb.insert(event).values({
     id: IDS.event,
     churchId: IDS.church,
-    planningCycleId: IDS.planningCycle,
+    cycleId: IDS.cycle,
     title: 'Truncation event',
     start: new Date('2026-06-07T09:00:00Z'),
     end: new Date('2026-06-07T11:00:00Z'),
@@ -346,7 +346,7 @@ async function seedEveryTenantedTable(): Promise<void> {
   await testDb.insert(availabilityCheck).values({
     id: IDS.availabilityCheck,
     churchId: IDS.church,
-    planningCycleId: IDS.planningCycle,
+    cycleId: IDS.cycle,
     ministryVolunteerId: IDS.membership,
   });
 
@@ -359,7 +359,7 @@ async function seedEveryTenantedTable(): Promise<void> {
   await testDb.insert(volunteerNotification).values({
     churchId: IDS.church,
     volunteerId: IDS.volunteer,
-    planningCycleId: IDS.planningCycle,
+    cycleId: IDS.cycle,
     ministryId: IDS.ministry,
     eventId: IDS.event,
     assignmentId: IDS.assignment,

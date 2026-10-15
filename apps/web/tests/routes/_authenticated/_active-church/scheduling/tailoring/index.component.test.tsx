@@ -5,7 +5,7 @@ import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const listMinistries = vi.fn();
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 const listEvents = vi.fn();
 const getCycleParticipation = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
@@ -13,7 +13,7 @@ const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listMinistries: (...args: unknown[]) => listMinistries(...args),
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
     listEvents: (...args: unknown[]) => listEvents(...args),
     getCycleParticipation: (...args: unknown[]) =>
       getCycleParticipation(...args),
@@ -40,31 +40,31 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-function renderTailoringIndex() {
+function renderPrepareIndex() {
   return renderRoute({
     initialPath: '/scheduling/tailoring',
     churchTimezone: 'UTC',
   });
 }
 
-describe('Tailoring ministry list route (US1/T013)', () => {
-  it('fetches ministries + locked-cycle scoping and renders aggregated counts', async () => {
+describe('Prepare ministry list route (US1/T013)', () => {
+  it('fetches ministries + sent-cycle scoping and renders aggregated counts', async () => {
     listMinistries.mockResolvedValue({
       ministries: [
         { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
       ],
     });
-    listPlanningCycles.mockResolvedValue({
-      cycles: [{ id: 'cycle-1', name: 'August', state: 'locked' }],
+    listCycles.mockResolvedValue({
+      cycles: [{ id: 'cycle-1', name: 'August', state: 'sent' }],
     });
     listEvents.mockResolvedValue({
-      events: [{ id: 'event-1', planningCycleId: 'cycle-1' }],
+      events: [{ id: 'event-1', cycleId: 'cycle-1' }],
     });
     getCycleParticipation.mockResolvedValue({
       events: [{ slots: [{}, {}] }],
     });
 
-    renderTailoringIndex();
+    renderPrepareIndex();
 
     const table = await screen.findByRole('grid', { name: 'Ministries' });
     expect(table).toHaveTextContent('Greeters');
@@ -77,46 +77,42 @@ describe('Tailoring ministry list route (US1/T013)', () => {
         { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
       ],
     });
-    listPlanningCycles.mockResolvedValue({
-      cycles: [{ id: 'cycle-1', name: 'August', state: 'locked' }],
+    listCycles.mockResolvedValue({
+      cycles: [{ id: 'cycle-1', name: 'August', state: 'sent' }],
     });
     listEvents.mockResolvedValue({
-      events: [{ id: 'event-1', planningCycleId: 'cycle-1' }],
+      events: [{ id: 'event-1', cycleId: 'cycle-1' }],
     });
     getCycleParticipation.mockResolvedValue({
       events: [{ slots: [{}, {}] }],
     });
 
-    renderTailoringIndex();
+    renderPrepareIndex();
 
     await screen.findByRole('grid', { name: 'Ministries' });
-    expect(screen.getByTestId('tailoring-ministry-count')).toHaveTextContent(
-      '1',
-    );
+    expect(screen.getByTestId('prepare-ministry-count')).toHaveTextContent('1');
     expect(
-      screen.getByTestId('tailoring-ministry-event-total'),
+      screen.getByTestId('prepare-ministry-event-total'),
     ).toHaveTextContent('1');
-    expect(
-      screen.getByTestId('tailoring-ministry-slot-total'),
-    ).toHaveTextContent('2');
+    expect(screen.getByTestId('prepare-ministry-slot-total')).toHaveTextContent(
+      '2',
+    );
   });
 
-  it('navigates to the ministry route when the Tailoring button is activated', async () => {
+  it('navigates to the ministry route when the Prepare button is activated', async () => {
     listMinistries.mockResolvedValue({
       ministries: [
         { id: 'ministry-1', name: 'Greeters', defaultDirection: 'all_out' },
       ],
     });
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
     listEvents.mockResolvedValue({ events: [] });
 
     const user = userEvent.setup();
-    const { router } = renderTailoringIndex();
+    const { router } = renderPrepareIndex();
 
     await screen.findByRole('grid', { name: 'Ministries' });
-    const buttons = screen.getAllByTestId(
-      'ministry-tailoring-button-ministry-1',
-    );
+    const buttons = screen.getAllByTestId('ministry-prepare-button-ministry-1');
     await user.click(buttons[0]);
 
     await waitFor(() =>
@@ -127,36 +123,36 @@ describe('Tailoring ministry list route (US1/T013)', () => {
   });
 });
 
-describe('Tailoring ministry list route — permission failure (US1/T013a)', () => {
+describe('Prepare ministry list route — permission failure (US1/T013a)', () => {
   it('renders a permission-denied state instead of crashing on a 403', async () => {
     listMinistries.mockRejectedValue({
       isAxiosError: true,
       response: { status: 403 },
       message: 'Forbidden',
     });
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
-    renderTailoringIndex();
+    renderPrepareIndex();
 
     expect(
-      await screen.findByTestId('tailoring-forbidden-state'),
+      await screen.findByTestId('prepare-forbidden-state'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
   });
 });
 
-describe('Tailoring ministry list route — network/server failure (US1/T013b)', () => {
+describe('Prepare ministry list route — network/server failure (US1/T013b)', () => {
   it('renders a retryable error state, not an infinite spinner, on a network error', async () => {
     listMinistries.mockRejectedValue({
       isAxiosError: true,
       message: 'Network Error',
     });
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
-    renderTailoringIndex();
+    renderPrepareIndex();
 
     expect(
-      await screen.findByTestId('tailoring-retryable-error-state'),
+      await screen.findByTestId('prepare-retryable-error-state'),
     ).toBeInTheDocument();
   });
 
@@ -164,21 +160,21 @@ describe('Tailoring ministry list route — network/server failure (US1/T013b)',
     listMinistries
       .mockRejectedValueOnce({ isAxiosError: true, message: 'Network Error' })
       .mockResolvedValue({ ministries: [] });
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-    renderTailoringIndex();
+    renderPrepareIndex();
 
-    await screen.findByTestId('tailoring-retryable-error-state');
+    await screen.findByTestId('prepare-retryable-error-state');
     await user.click(screen.getByRole('button', { name: 'Retry' }));
 
     await waitFor(() =>
       expect(
-        screen.queryByTestId('tailoring-retryable-error-state'),
+        screen.queryByTestId('prepare-retryable-error-state'),
       ).not.toBeInTheDocument(),
     );
     expect(
-      await screen.findByTestId('ministry-tailoring-empty-state'),
+      await screen.findByTestId('ministry-prepare-empty-state'),
     ).toBeInTheDocument();
   });
 });

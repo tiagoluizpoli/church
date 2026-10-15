@@ -1,42 +1,40 @@
 import { z } from 'zod';
 import {
-  type LoadRosteringJourneyInput,
-  PLANNING_CYCLE_WINDOW_SCHEMA,
-  ROSTERING_CYCLE_SCHEMA,
-  ROSTERING_JOURNEY_BASE_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-} from './rostering-church';
+  ASSIGN_CYCLE_SCHEMA,
+  ASSIGN_JOURNEY_BASE_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+  CYCLE_WINDOW_SCHEMA,
+  type LoadAssignJourneyInput,
+} from './assign-church';
 import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 
 // Mirrors the server's `E2E_JOURNEY_RECIPE_NAMES`
 // (apps/server/seeds/e2e/journey-keys.ts); web cannot import server code.
-const RECIPE_NAME = 'planning-cycle-tenants';
+const RECIPE_NAME = 'cycle-tenants';
 
-const TENANT_SCHEMA = ROSTERING_JOURNEY_BASE_SCHEMA.pick({
+const TENANT_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.pick({
   church: true,
 }).extend({
-  personas: z.object({ admin: ROSTERING_PERSONA_SCHEMA }),
-  cycle: ROSTERING_CYCLE_SCHEMA,
+  personas: z.object({ admin: ASSIGN_PERSONA_SCHEMA }),
+  cycle: ASSIGN_CYCLE_SCHEMA,
 });
 
-export const PLANNING_CYCLE_TENANTS_JOURNEY_SCHEMA = z.object({
+export const CYCLE_TENANTS_JOURNEY_SCHEMA = z.object({
   anchor: z.string().min(1),
-  cycleWindow: PLANNING_CYCLE_WINDOW_SCHEMA,
+  cycleWindow: CYCLE_WINDOW_SCHEMA,
   churchA: TENANT_SCHEMA,
   churchB: TENANT_SCHEMA,
 });
 
-export type PlanningCycleTenantsJourney = z.infer<
-  typeof PLANNING_CYCLE_TENANTS_JOURNEY_SCHEMA
->;
+export type CycleTenantsJourney = z.infer<typeof CYCLE_TENANTS_JOURNEY_SCHEMA>;
 
 /** Loads this test's two Churches, each with its admin and a draft cycle. */
-export function loadPlanningCycleTenantsJourney({
+export function loadCycleTenantsJourney({
   testInfo,
-}: LoadRosteringJourneyInput): PlanningCycleTenantsJourney {
+}: LoadAssignJourneyInput): CycleTenantsJourney {
   return loadJourneyRecipe({
     recipeName: RECIPE_NAME,
-    schema: PLANNING_CYCLE_TENANTS_JOURNEY_SCHEMA,
+    schema: CYCLE_TENANTS_JOURNEY_SCHEMA,
     testInfo,
   });
 }

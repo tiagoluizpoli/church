@@ -1,16 +1,16 @@
 import { expect, test } from '@playwright/test';
 import {
+  assignBuilderPath,
+  newPersonaContext,
+  requirementCellTestId,
+} from '@/tests/fixtures/journeys/assign-church';
+import {
   type AcceptMinistryInvitationOutcome,
   fetchActiveChurchStatus,
   fetchVolunteerMinistryOptions,
   mintMinistryInvitationAs,
   signIn,
 } from '@/tests/fixtures/journeys/identity-actions';
-import {
-  newPersonaContext,
-  requirementCellTestId,
-  rosteringBuilderPath,
-} from '@/tests/fixtures/journeys/rostering-church';
 import { loadVolunteerTransferJourney } from '@/tests/fixtures/journeys/volunteer-transfer';
 
 // #65 — proves the hardest identity journey end to end: a User who is a
@@ -19,7 +19,7 @@ import { loadVolunteerTransferJourney } from '@/tests/fixtures/journeys/voluntee
 // cross-Church split, walks all three Volunteer Transfer confirmation layers
 // (spec §8.7 — move, review the real impact, re-authenticate + type the
 // destination Church name), and ends up an active Volunteer of Church A with
-// Church B's roster showing the vacated seat.
+// Church B's schedule showing the vacated seat.
 //
 // The journey owns both Churches (the `volunteer-transfer` recipe): the
 // transferee is an active Volunteer of Church B only, holding a future
@@ -44,7 +44,7 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
     const churchBRole = churchBMinistry.roles.porter;
     const { seat } = journey;
 
-    // Before anything moves, Church B's roster shows the transferee filling
+    // Before anything moves, Church B's schedule shows the transferee filling
     // the seat: 1/1 with exactly one chip — so the 0/1 at the end is the
     // transfer's doing, not the starting state.
     const churchBAdminContext = await newPersonaContext({
@@ -53,7 +53,7 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
     });
     try {
       const churchBAdminPage = await churchBAdminContext.newPage();
-      const seatBuilderPath = rosteringBuilderPath({
+      const seatBuilderPath = assignBuilderPath({
         ministryId: churchBMinistry.id,
         cycleId: seat.cycle.id,
       });
@@ -192,7 +192,7 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
         churchAMinistry.id,
       );
 
-      // AC — Church B's roster visibly shows the hole where the transferred
+      // AC — Church B's schedule visibly shows the hole where the transferred
       // Volunteer used to be: no assignment chip, the requirement back to 0/1.
       await churchBAdminPage.goto(seatBuilderPath);
       await expect(churchBAdminPage.getByTestId('cycle-builder')).toBeVisible({

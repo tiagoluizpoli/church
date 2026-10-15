@@ -10,7 +10,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import { RosteringController } from '@/api/controllers/rostering-controller';
+import { AssignController } from '@/api/controllers/assign-controller';
 import { Assignment } from '@/domain/entities/assignment';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -59,7 +59,7 @@ let app: FastifyTypedInstance;
 
 async function buildApp(config: typeof appConfig) {
   const instanceApp = await createFastify();
-  const controller = new RosteringController({
+  const controller = new AssignController({
     participationManager: participationManager as never,
     assignmentManager: assignmentManager as never,
     activeChurchResolver: activeChurchResolver as never,
@@ -112,20 +112,20 @@ beforeEach(() => {
   });
 });
 
-describe('Rostering routes', () => {
+describe('Assign routes', () => {
   it('returns 401 for any route when there is no session', async () => {
     mockGetSession.mockResolvedValueOnce(null as never);
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
     });
 
     expect(response.statusCode).toBe(401);
     expect(participationManager.listEligibleVolunteers).not.toHaveBeenCalled();
   });
 
-  it('GET /api/v1/rostering/shifts/:id/eligible-volunteers returns ranked volunteers', async () => {
+  it('GET /api/v1/assign/shifts/:id/eligible-volunteers returns ranked volunteers', async () => {
     participationManager.listEligibleVolunteers.mockResolvedValue([
       {
         volunteerId: 'vol-1',
@@ -141,7 +141,7 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/eligible-volunteers',
     });
 
     expect(response.statusCode).toBe(200);
@@ -161,7 +161,7 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('POST /api/v1/rostering/shifts/:id/assignments returns 201 with warnings', async () => {
+  it('POST /api/v1/assign/shifts/:id/assignments returns 201 with warnings', async () => {
     assignmentManager.createParticipationAssignment.mockResolvedValue({
       assignment: new Assignment(
         {
@@ -185,7 +185,7 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: {
         volunteerId: 'vol-1',
         roleId: 'role-1',
@@ -235,7 +235,7 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: {
         volunteerId: 'vol-1',
         roleId: 'role-1',
@@ -265,14 +265,14 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: { volunteerId: 'vol-1', roleId: 'role-1' },
     });
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'ROSTER_ACTION_NOT_AVAILABLE',
-      message: 'Roster action is not available',
+      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
+      message: 'Schedule action is not available',
     });
     expect(
       assignmentManager.createParticipationAssignment,
@@ -285,7 +285,7 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/v1/rostering/assignments/assign-1?teamId=33333333-3333-4333-8333-333333333333',
+      url: '/api/v1/assign/assignments/assign-1?teamId=33333333-3333-4333-8333-333333333333',
     });
 
     expect(response.statusCode).toBe(204);
@@ -304,20 +304,20 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/v1/rostering/assignments/forged?teamId=33333333-3333-4333-8333-333333333333',
+      url: '/api/v1/assign/assignments/forged?teamId=33333333-3333-4333-8333-333333333333',
     });
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'ROSTER_ACTION_NOT_AVAILABLE',
-      message: 'Roster action is not available',
+      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
+      message: 'Schedule action is not available',
     });
     expect(assignmentManager.deleteAssignment).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/rostering/cycles/:id/publish returns 200 and reports below-full without confirm', async () => {
+  it('POST /api/v1/assign/cycles/:id/publish returns 200 and reports below-full without confirm', async () => {
     const url =
-      '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/publish?ministryId=22222222-2222-2222-8222-222222222222';
+      '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/publish?ministryId=22222222-2222-2222-8222-222222222222';
     participationManager.publishCycle.mockResolvedValueOnce({
       published: true,
       belowFull: false,
@@ -357,7 +357,7 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('PATCH /api/v1/rostering/assignments/:id/reassign returns 200 with the new assignment', async () => {
+  it('PATCH /api/v1/assign/assignments/:id/reassign returns 200 with the new assignment', async () => {
     assignmentManager.reassignParticipationAssignment.mockResolvedValue(
       new Assignment(
         {
@@ -375,7 +375,7 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/rostering/assignments/assign-1/reassign',
+      url: '/api/v1/assign/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
       },
@@ -395,12 +395,12 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('PATCH /api/v1/rostering/assignments/:id/reassign returns 403 for another ministry scope', async () => {
+  it('PATCH /api/v1/assign/assignments/:id/reassign returns 403 for another ministry scope', async () => {
     authorityGuard.canManageShift.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/rostering/assignments/assign-1/reassign',
+      url: '/api/v1/assign/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
       },
@@ -408,20 +408,20 @@ describe('Rostering routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'ROSTER_ACTION_NOT_AVAILABLE',
-      message: 'Roster action is not available',
+      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
+      message: 'Schedule action is not available',
     });
     expect(
       assignmentManager.reassignParticipationAssignment,
     ).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/rostering/shifts/:id/assignments returns 403 for another ministry scope', async () => {
+  it('POST /api/v1/assign/shifts/:id/assignments returns 403 for another ministry scope', async () => {
     authorityGuard.canManageShift.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/shifts/66666666-6666-6666-8666-666666666666/assignments',
+      url: '/api/v1/assign/shifts/66666666-6666-6666-8666-666666666666/assignments',
       payload: {
         volunteerId: 'vol-1',
         roleId: 'role-1',
@@ -430,20 +430,20 @@ describe('Rostering routes', () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
-      error: 'ROSTER_ACTION_NOT_AVAILABLE',
-      message: 'Roster action is not available',
+      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
+      message: 'Schedule action is not available',
     });
     expect(
       assignmentManager.createParticipationAssignment,
     ).not.toHaveBeenCalled();
   });
 
-  it('PATCH /api/v1/rostering/assignments/:id/reassign denies when the Assignment has no Shift scope', async () => {
+  it('PATCH /api/v1/assign/assignments/:id/reassign denies when the Assignment has no Shift scope', async () => {
     assignmentManager.getAssignment.mockResolvedValue({ shiftId: undefined });
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/rostering/assignments/assign-1/reassign',
+      url: '/api/v1/assign/assignments/assign-1/reassign',
       payload: {
         volunteerId: 'vol-2',
       },
@@ -456,7 +456,7 @@ describe('Rostering routes', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('GET /api/v1/rostering/cycles/:id/builder allows a Ministry leader and denies a non-leader', async () => {
+  it('GET /api/v1/assign/cycles/:id/builder allows a Ministry leader and denies a non-leader', async () => {
     participationManager.getCycleBuilderData.mockResolvedValue({
       events: [],
       roles: [],
@@ -464,14 +464,14 @@ describe('Rostering routes', () => {
 
     const allowed = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
     });
     expect(allowed.statusCode).toBe(200);
 
     authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
     const denied = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222',
     });
     expect(denied.statusCode).toBe(403);
     expect(denied.json()).toEqual({
@@ -480,7 +480,7 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('GET /api/v1/rostering/cycles/:id/builder scopes a TeamLeader to their Team', async () => {
+  it('GET /api/v1/assign/cycles/:id/builder scopes a TeamLeader to their Team', async () => {
     participationManager.getCycleBuilderData.mockResolvedValue({
       events: [],
       roles: [],
@@ -490,7 +490,7 @@ describe('Rostering routes', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222&teamId=33333333-3333-4333-8333-333333333333',
+      url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/builder?ministryId=22222222-2222-2222-8222-222222222222&teamId=33333333-3333-4333-8333-333333333333',
     });
 
     expect(response.statusCode).toBe(200);
@@ -503,12 +503,12 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('GET /api/v1/rostering/teams/:id/cycles-summary denies a different Team', async () => {
+  it('GET /api/v1/assign/teams/:id/cycles-summary denies a different Team', async () => {
     authorityGuard.canManageTeam.mockResolvedValue(false);
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
     });
 
     expect(response.statusCode).toBe(403);
@@ -517,13 +517,13 @@ describe('Rostering routes', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('GET /api/v1/rostering/teams/:id/cycles-summary lists only that Team’s cycles', async () => {
+  it('GET /api/v1/assign/teams/:id/cycles-summary lists only that Team’s cycles', async () => {
     authorityGuard.canManageTeam.mockResolvedValue(true);
     participationManager.listMinistryCycleSummaries.mockResolvedValue([]);
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/teams/33333333-3333-4333-8333-333333333333/cycles-summary?ministryId=22222222-2222-2222-8222-222222222222',
     });
 
     expect(response.statusCode).toBe(200);
@@ -537,21 +537,21 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('GET /api/v1/rostering/cycles/:id/audit is 404 while the audit panel is parked', async () => {
+  it('GET /api/v1/assign/cycles/:id/audit is 404 while the audit panel is parked', async () => {
     const response = await app.inject({
       method: 'GET',
-      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
     });
     expect(response.statusCode).toBe(404);
     expect(assignmentManager.listAuditLogForCycle).not.toHaveBeenCalled();
   });
 
-  it('GET /api/v1/rostering/cycles/:id/audit (auditPanel on) allows a Ministry leader and denies a non-leader', async () => {
+  it('GET /api/v1/assign/cycles/:id/audit (auditPanel on) allows a Ministry leader and denies a non-leader', async () => {
     assignmentManager.listAuditLogForCycle.mockResolvedValue([]);
 
     const allowed = await parkedOnApp.inject({
       method: 'GET',
-      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
     });
     expect(allowed.statusCode).toBe(200);
     expect(assignmentManager.listAuditLogForCycle).toHaveBeenCalledWith({
@@ -563,7 +563,7 @@ describe('Rostering routes', () => {
     authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
     const denied = await parkedOnApp.inject({
       method: 'GET',
-      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/audit?ministryId=22222222-2222-2222-8222-222222222222',
     });
     expect(denied.statusCode).toBe(403);
     expect(denied.json()).toEqual({
@@ -572,12 +572,12 @@ describe('Rostering routes', () => {
     });
   });
 
-  it('POST /api/v1/rostering/cycles/:id/publish denies a non-leader of the ministry', async () => {
+  it('POST /api/v1/assign/cycles/:id/publish denies a non-leader of the ministry', async () => {
     authorityGuard.canManageMinistry.mockResolvedValueOnce(false);
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/cycles/11111111-1111-1111-8111-111111111111/publish?ministryId=22222222-2222-2222-8222-222222222222',
+      url: '/api/v1/assign/cycles/11111111-1111-1111-8111-111111111111/publish?ministryId=22222222-2222-2222-8222-222222222222',
       payload: {},
     });
 
@@ -589,10 +589,10 @@ describe('Rostering routes', () => {
     expect(participationManager.publishCycle).not.toHaveBeenCalled();
   });
 
-  it('POST /api/v1/rostering/participations/:id/publish is gone (404)', async () => {
+  it('POST /api/v1/assign/participations/:id/publish is gone (404)', async () => {
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/rostering/participations/11111111-1111-1111-8111-111111111111/publish',
+      url: '/api/v1/assign/participations/11111111-1111-1111-8111-111111111111/publish',
       payload: {},
     });
 

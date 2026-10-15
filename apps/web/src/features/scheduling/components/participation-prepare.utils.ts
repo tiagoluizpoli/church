@@ -19,18 +19,18 @@ import {
 import { toCycleDayKey } from '@/shared/utils/date';
 import { isInvalidInstantRange } from '@/shared/utils/span-description';
 
-export type TailoringFetchErrorKind = 'forbidden' | 'retryable';
+export type PrepareFetchErrorKind = 'forbidden' | 'retryable';
 
-export interface ClassifyTailoringFetchErrorInput {
+export interface ClassifyPrepareFetchErrorInput {
   error: unknown;
 }
 
-/** Classifies a tailoring-route data-fetch failure into the two UI states
+/** Classifies a prepare-route data-fetch failure into the two UI states
  * the routes render (test-master Class 4/5): a 403 is a permission-denied
  * state, everything else (network error, 5xx, unknown) is retryable. */
-export function classifyTailoringFetchError({
+export function classifyPrepareFetchError({
   error,
-}: ClassifyTailoringFetchErrorInput): TailoringFetchErrorKind {
+}: ClassifyPrepareFetchErrorInput): PrepareFetchErrorKind {
   if (isAxiosError(error) && error.response?.status === 403) {
     return 'forbidden';
   }
@@ -49,7 +49,7 @@ export interface ManualSpanDraft {
   label: string;
 }
 
-/** Calendar day of a date-only value, such as a planning-cycle bound.
+/** Calendar day of a date-only value, such as a cycle bound.
  *
  * Only for values that name a day rather than a moment. Slot and shift
  * timestamps are real church-local wall-clock instants (a 9am slot is stored as
@@ -217,10 +217,10 @@ const PARTICIPATION_STATE_LABELS: Record<
   GetCycleParticipation200EventsItem['participation']['state'],
   string
 > = {
-  tailoring: 'Tailoring',
+  preparing: 'Preparing',
   // biome-ignore lint/style/useNamingConvention: matches the API's MinistryParticipation.state enum value verbatim
-  availability_fired: 'Availability requested',
-  rostering: 'Rostering',
+  availability_requested: 'Availability requested',
+  assigning: 'Assigning',
   published: 'Published',
 };
 
@@ -260,7 +260,7 @@ export function toMinistryCycleKey({
   return `${ministryId}:${cycleId}`;
 }
 
-export interface MinistryTailoringSummaryRow {
+export interface MinistryPrepareSummaryRow {
   ministryId: string;
   ministryName: string;
   eventCount: number;
@@ -269,29 +269,29 @@ export interface MinistryTailoringSummaryRow {
 
 /** Aggregates per-ministry event/slot counts for the ministry-list landing
  * page. Pure function over already-fetched data — the fetch orchestration
- * (listMinistries + listPlanningCycles({state:'locked'}) + per-ministry
- * listEvents + per-(ministry, locked cycle) getCycleParticipation) lives in
+ * (listMinistries + listCycles({state:'sent'}) + per-ministry
+ * listEvents + per-(ministry, sent cycle) getCycleParticipation) lives in
  * the route, per research.md R10. "Cycle set" = union of every cycle
  * currently in `locked` state, not a single "most recent" cycle. */
-export function buildMinistryTailoringSummary({
+export function buildMinistryPrepareSummary({
   ministries,
-  lockedCycleIds,
+  sentCycleIds,
   eventsByMinistryId,
   slotCountByMinistryAndCycle,
 }: {
   ministries: { id: string; name: string }[];
-  lockedCycleIds: string[];
-  eventsByMinistryId: Record<string, { planningCycleId: string }[] | undefined>;
+  sentCycleIds: string[];
+  eventsByMinistryId: Record<string, { cycleId: string }[] | undefined>;
   slotCountByMinistryAndCycle: Record<string, number>;
-}): MinistryTailoringSummaryRow[] {
-  const lockedCycleIdSet = new Set(lockedCycleIds);
+}): MinistryPrepareSummaryRow[] {
+  const sentCycleIdSet = new Set(sentCycleIds);
 
   return ministries.map((ministry) => {
     const relevantEvents = (eventsByMinistryId[ministry.id] ?? []).filter(
-      (event) => lockedCycleIdSet.has(event.planningCycleId),
+      (event) => sentCycleIdSet.has(event.cycleId),
     );
     const relevantCycleIds = new Set(
-      relevantEvents.map((event) => event.planningCycleId),
+      relevantEvents.map((event) => event.cycleId),
     );
 
     const slotCount = [...relevantCycleIds].reduce(
@@ -314,7 +314,7 @@ export function buildMinistryTailoringSummary({
 
 export type IsoDateString = string;
 
-/** Derives the set of calendar days with at least one visible tailoring slot.
+/** Derives the set of calendar days with at least one visible prepare slot.
  * The strip dot is a "there is something to work on this day" marker, so it
  * should come from actual slot timestamps, not a parent event's full span. */
 export interface BuildSlotDayMarkersInput {

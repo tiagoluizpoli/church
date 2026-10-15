@@ -19,8 +19,8 @@ import {
 import { type HistoryBlueprint, IGREJA_SEMENTE_HISTORY } from './history';
 
 /**
- * The fictional Igreja Semente in full: every Ministry roster, its
- * cross-Ministry service and its ChurchAdmin. The rosters under `directory/`
+ * The fictional Igreja Semente in full: every Ministry schedule, its
+ * cross-Ministry service and its ChurchAdmin. The schedules under `directory/`
  * are the readable source of truth for every seeded sign-in; all of them use
  * `SEED_PERSONA_PASSWORD`.
  */
@@ -47,7 +47,7 @@ export interface DevelopmentBlueprint {
   keyPersonas: readonly KeyPersona[];
   /** The primary Church's gatherings; the second Church plans nothing. */
   gatherings: GatheringsBlueprint;
-  /** The trail its locked historical PlanningCycle carries. */
+  /** The trail its locked historical Cycle carries. */
   history: HistoryBlueprint;
 }
 

@@ -1,57 +1,52 @@
-import type { ChurchId, PlanningCycleId } from '../../branded-ids';
-import type {
-  PlanningCycle,
-  PlanningCycleState,
-} from '../../entities/planning-cycle';
+import type { ChurchId, CycleId } from '../../branded-ids';
+import type { Cycle, CycleState } from '../../entities/cycle';
 import type { TransactionContext } from './transaction-context';
 
-export interface CreatePlanningCycleInput {
+export interface CreateCycleInput {
   churchId: ChurchId;
   name: string;
   startDate: Date;
   endDate: Date;
-  state?: PlanningCycleState;
+  state?: CycleState;
   tx?: TransactionContext;
 }
 
-export interface ListPlanningCyclesInput {
+export interface ListCyclesInput {
   churchId: ChurchId;
-  state?: PlanningCycleState;
+  state?: CycleState;
   tx?: TransactionContext;
 }
 
-export interface GetPlanningCycleInput {
+export interface GetCycleInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   tx?: TransactionContext;
 }
 
-export interface FindOverlappingPlanningCyclesInput {
+export interface FindOverlappingCyclesInput {
   churchId: ChurchId;
   startDate: Date;
   endDate: Date;
   tx?: TransactionContext;
 }
 
-export interface UpdatePlanningCycleStateInput {
+export interface UpdateCycleStateInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
-  state: PlanningCycleState;
+  cycleId: CycleId;
+  state: CycleState;
   tx?: TransactionContext;
 }
 
-export interface AcquirePlanningCycleChurchLockInput {
+export interface AcquireCycleChurchLockInput {
   churchId: ChurchId;
   tx: TransactionContext;
 }
 
-export interface PlanningCycleRepository {
-  create(input: CreatePlanningCycleInput): Promise<PlanningCycle>;
-  list(input: ListPlanningCyclesInput): Promise<PlanningCycle[]>;
-  getById(input: GetPlanningCycleInput): Promise<PlanningCycle>;
-  findOverlapping(
-    input: FindOverlappingPlanningCyclesInput,
-  ): Promise<PlanningCycle[]>;
-  updateState(input: UpdatePlanningCycleStateInput): Promise<PlanningCycle>;
-  acquireChurchLock(input: AcquirePlanningCycleChurchLockInput): Promise<void>;
+export interface CycleRepository {
+  create(input: CreateCycleInput): Promise<Cycle>;
+  list(input: ListCyclesInput): Promise<Cycle[]>;
+  getById(input: GetCycleInput): Promise<Cycle>;
+  findOverlapping(input: FindOverlappingCyclesInput): Promise<Cycle[]>;
+  updateState(input: UpdateCycleStateInput): Promise<Cycle>;
+  acquireChurchLock(input: AcquireCycleChurchLockInput): Promise<void>;
 }

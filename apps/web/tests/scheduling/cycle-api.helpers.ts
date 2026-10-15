@@ -4,7 +4,7 @@ import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 /**
  * Seeds planning state through the admin API, for specs whose assertions
  * start after the cycle exists: the create/template/apply UI flow itself is
- * asserted by us1-admin-plan and the planning-cycles-table-view US3 edit
+ * asserted by us1-admin-plan and the cycles-table-view US3 edit
  * test, and costs ~8 s of UI per test where these calls take well under 1 s.
  * Requests ride the page's storage state, so they act as its persona.
  */
@@ -23,29 +23,29 @@ async function expectOk({ response, step }: ExpectOkParams): Promise<void> {
   ).toBeTruthy();
 }
 
-interface CreatePlanningCycleViaApiParams {
+interface CreateCycleViaApiParams {
   page: Page;
   name: string;
   startDate: string;
   endDate: string;
 }
 
-interface CreatedPlanningCycle {
+interface CreatedCycle {
   id: string;
 }
 
-export async function createPlanningCycleViaApi({
+export async function createCycleViaApi({
   page,
   name,
   startDate,
   endDate,
-}: CreatePlanningCycleViaApiParams): Promise<CreatedPlanningCycle> {
+}: CreateCycleViaApiParams): Promise<CreatedCycle> {
   const response = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles`,
+    `${SERVER_URL}/api/v1/admin/cycles`,
     { data: { name, startDate, endDate } },
   );
   await expectOk({ response, step: `create cycle ${startDate}` });
-  return (await response.json()) as CreatedPlanningCycle;
+  return (await response.json()) as CreatedCycle;
 }
 
 export interface EventTemplateBlockInput {
@@ -92,7 +92,7 @@ export async function applyTemplatesViaApi({
   templateIds,
 }: ApplyTemplatesViaApiParams): Promise<void> {
   const response = await page.request.post(
-    `${SERVER_URL}/api/v1/admin/planning-cycles/${cycleId}/apply-templates`,
+    `${SERVER_URL}/api/v1/admin/cycles/${cycleId}/apply-templates`,
     { data: { templateIds } },
   );
   await expectOk({ response, step: `apply templates to cycle ${cycleId}` });

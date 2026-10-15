@@ -66,7 +66,7 @@ export const reassignAssignmentBodySchema = z.object({
   volunteerId: z.string(),
 });
 
-export const rosteringMapper = {
+export const assignMapper = {
   eligibleVolunteerToResponse(volunteer: EligibleVolunteerView) {
     return {
       volunteerId: volunteer.volunteerId as string,

@@ -5,9 +5,9 @@ import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ChurchId,
+  CycleId,
   EventId,
   EventTemplateId,
-  PlanningCycleId,
 } from '@/domain/branded-ids';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { buildShift } from '@/seeds/builders/scheduling';
@@ -44,7 +44,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
 
     const created = await repo.createEvent({
       churchId,
-      planningCycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       sourceTemplateId: EventTemplateId.from(template.id),
       title: 'Prayer Night',
       description: 'A night of prayer',
@@ -72,7 +72,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
 
     const created = await repo.createEvent({
       churchId,
-      planningCycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       title: 'Original title',
       start: new Date('2026-08-05T22:00:00.000Z'),
       end: new Date('2026-08-06T00:00:00.000Z'),
@@ -156,7 +156,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
     ).rejects.toThrow(NotFoundError);
     const remaining = await repo.listCycleEvents({
       churchId,
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
     });
     expect(remaining).toHaveLength(0);
     const orphanShifts = await schedulingTestDb
@@ -213,7 +213,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
 
     const createdEvent = await repo.createEvent({
       churchId,
-      planningCycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       title: 'Prayer Night',
       start: new Date('2026-08-05T22:00:00.000Z'),
       end: new Date('2026-08-06T00:00:00.000Z'),

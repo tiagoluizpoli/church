@@ -11,7 +11,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import { RosteringController } from '@/api/controllers/rostering-controller';
+import { AssignController } from '@/api/controllers/assign-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildMinistry } from '@/seeds/builders/ministry';
@@ -24,7 +24,7 @@ import {
   seedRoleQualification,
   seedShift,
   seedVolunteerMembership,
-} from '@/tests/application/scheduling-roster.helpers';
+} from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -60,7 +60,7 @@ let app: FastifyTypedInstance;
 beforeAll(async () => {
   const managers = createSchedulingManagers();
   app = await createFastify();
-  const controller = new RosteringController({
+  const controller = new AssignController({
     participationManager: managers.participationManager,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,
@@ -126,7 +126,7 @@ async function seedCrossMinistryOverlap({
     name: 'September 2026',
     startDate: new Date('2026-09-01T00:00:00.000Z'),
     endDate: new Date('2026-10-01T00:00:00.000Z'),
-    state: 'locked',
+    state: 'sent',
   });
   const target = await createSchedulingPhase3EventGraph({
     churchId: seed.churchAId,
@@ -250,12 +250,12 @@ async function seedTargetAssignment(input: SeedTargetAssignmentInput) {
 }
 
 describe('DOUBLE_BOOKED refusal across Ministries', () => {
-  it('POST /rostering/shifts/:id/assignments refuses a Volunteer with an overlapping Assignment in another Ministry', async () => {
+  it('POST /assign/shifts/:id/assignments refuses a Volunteer with an overlapping Assignment in another Ministry', async () => {
     const seed = await seedCrossMinistryOverlap();
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/v1/rostering/shifts/${seed.targetShiftId}/assignments`,
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
         roleId: seed.targetRoleId,
@@ -266,7 +266,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
     expect(response.json()).toEqual(DOUBLE_BOOKED_REFUSAL);
   });
 
-  it('POST /rostering/shifts/:id/assignments refuses an overlapping Assignment that started earlier', async () => {
+  it('POST /assign/shifts/:id/assignments refuses an overlapping Assignment that started earlier', async () => {
     const seed = await seedCrossMinistryOverlap({
       otherShiftStart: '2026-09-07T08:30:00.000Z',
       otherShiftEnd: '2026-09-07T09:30:00.000Z',
@@ -274,7 +274,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/v1/rostering/shifts/${seed.targetShiftId}/assignments`,
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
         roleId: seed.targetRoleId,
@@ -285,7 +285,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
     expect(response.json()).toEqual(DOUBLE_BOOKED_REFUSAL);
   });
 
-  it('POST /rostering/shifts/:id/assignments accepts a back-to-back Shift in another Ministry', async () => {
+  it('POST /assign/shifts/:id/assignments accepts a back-to-back Shift in another Ministry', async () => {
     const seed = await seedCrossMinistryOverlap({
       otherShiftStart: '2026-09-07T10:00:00.000Z',
       otherShiftEnd: '2026-09-07T11:00:00.000Z',
@@ -293,7 +293,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/v1/rostering/shifts/${seed.targetShiftId}/assignments`,
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
         roleId: seed.targetRoleId,
@@ -303,12 +303,12 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
     expect(response.statusCode).toBe(201);
   });
 
-  it('POST /rostering/shifts/:id/assignments still refuses when the old override reason is sent', async () => {
+  it('POST /assign/shifts/:id/assignments still refuses when the old override reason is sent', async () => {
     const seed = await seedCrossMinistryOverlap();
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/v1/rostering/shifts/${seed.targetShiftId}/assignments`,
+      url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
       payload: {
         volunteerId: seed.doubleBookedVolunteerId,
         roleId: seed.targetRoleId,
@@ -320,7 +320,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
     expect(response.json()).toEqual(DOUBLE_BOOKED_REFUSAL);
   });
 
-  it('PATCH /rostering/assignments/:id/reassign refuses moving to a Volunteer with an overlapping Assignment in another Ministry', async () => {
+  it('PATCH /assign/assignments/:id/reassign refuses moving to a Volunteer with an overlapping Assignment in another Ministry', async () => {
     const seed = await seedCrossMinistryOverlap();
     const current = await seedTargetAssignment({
       churchId: seed.churchId,
@@ -332,7 +332,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
 
     const response = await app.inject({
       method: 'PATCH',
-      url: `/api/v1/rostering/assignments/${current.id}/reassign`,
+      url: `/api/v1/assign/assignments/${current.id}/reassign`,
       payload: { volunteerId: seed.doubleBookedVolunteerId },
     });
 
@@ -342,7 +342,7 @@ describe('DOUBLE_BOOKED refusal across Ministries', () => {
 });
 
 describe('reassign without a reason input', () => {
-  it('PATCH /rostering/assignments/:id/reassign ignores a reason in the body and stores none', async () => {
+  it('PATCH /assign/assignments/:id/reassign ignores a reason in the body and stores none', async () => {
     const seed = await seedCrossMinistryOverlap();
     const outgoing = await seedVolunteerMembership({
       churchId: seed.churchId,
@@ -360,7 +360,7 @@ describe('reassign without a reason input', () => {
 
     const response = await app.inject({
       method: 'PATCH',
-      url: `/api/v1/rostering/assignments/${current.id}/reassign`,
+      url: `/api/v1/assign/assignments/${current.id}/reassign`,
       payload: {
         volunteerId: seed.freeVolunteerId,
         reason: 'Swapping because of a schedule clash',

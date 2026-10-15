@@ -9,8 +9,8 @@ import {
   weekdayIndex,
 } from '@church/time';
 import type { EventId, EventTemplateId, TimeBlockId } from '../branded-ids';
+import type { Cycle } from '../entities/cycle';
 import type { EventTemplate } from '../entities/event-template';
-import type { PlanningCycle } from '../entities/planning-cycle';
 
 export interface ExistingGeneratedSlotFingerprint {
   eventDate: CalendarDay;
@@ -24,7 +24,7 @@ export interface ExistingGeneratedEvent {
 }
 
 export interface GenerateCycleEventsInput {
-  cycle: PlanningCycle;
+  cycle: Cycle;
   templates: EventTemplate[];
   existingEvents: ExistingGeneratedEvent[];
   existingFingerprints: ExistingGeneratedSlotFingerprint[];
@@ -70,7 +70,7 @@ interface SlotBounds {
 }
 
 interface ListMatchingCycleDatesInput {
-  cycle: PlanningCycle;
+  cycle: Cycle;
   weekday: number;
 }
 

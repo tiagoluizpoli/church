@@ -17,7 +17,7 @@ import {
   participationStateLabel,
   type SplitFormState,
   toHeadcountKey,
-} from '../participation-tailoring.utils';
+} from '../participation-prepare.utils';
 import { ManualSplitEditor } from './manual-split-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -61,7 +61,7 @@ const headcountValueSchema = z
   .string()
   .regex(/^[1-9]\d*$/, 'Enter a whole-number headcount of at least 1.');
 
-export interface TailoringSlotListProps {
+export interface PrepareSlotListProps {
   events: GetCycleParticipation200EventsItem[];
   ministryId: string;
   splitForms: Record<string, SplitFormState>;
@@ -244,7 +244,7 @@ function summarizeSlot(
  * immediately via `setParticipationInclusions` (T026); shift-split and
  * headcount editing wire the existing `splitParticipationShifts` and
  * headcount-upsert mutations unchanged (T027). */
-export function TailoringSlotList({
+export function PrepareSlotList({
   events,
   ministryId,
   splitForms,
@@ -260,7 +260,7 @@ export function TailoringSlotList({
   onSplitShifts,
   onHeadcountChange,
   onSaveHeadcounts,
-}: TailoringSlotListProps) {
+}: PrepareSlotListProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const { churchTimezone } = useTimezone();
   const uniqueEventIds = [...new Set(events.map((e) => e.event.id))];
@@ -285,7 +285,7 @@ export function TailoringSlotList({
 
   const roleQueries = useQueries({
     queries: uniqueEventIds.map((eventId) => ({
-      queryKey: ['tailoring-role-catalog', eventId, ministryId],
+      queryKey: ['prepare-role-catalog', eventId, ministryId],
       queryFn: () => adminApi.getScheduleBuilderData({ eventId, ministryId }),
       retry: false,
     })),
@@ -315,7 +315,7 @@ export function TailoringSlotList({
     return (
       <p
         className="text-muted-foreground text-sm"
-        data-testid="tailoring-slot-list-empty-state"
+        data-testid="prepare-slot-list-empty-state"
       >
         No slots match your filters. Try a different day, name, or time range.
       </p>
@@ -324,10 +324,10 @@ export function TailoringSlotList({
 
   return (
     <FormControlSizeProvider size={isMobile ? 'touch' : 'default'}>
-      <div className="space-y-4" data-testid="tailoring-slot-list">
+      <div className="space-y-4" data-testid="prepare-slot-list">
         <div
           className="hidden border-border/60 border-b pb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide lg:grid lg:grid-cols-[24px_minmax(0,1fr)_170px_130px_28px] lg:gap-4"
-          data-testid="tailoring-slot-list-column-header"
+          data-testid="prepare-slot-list-column-header"
         >
           <span aria-hidden="true" />
           <span>Slot</span>
@@ -341,7 +341,7 @@ export function TailoringSlotList({
             <div key={dayKey} className="space-y-2">
               <div
                 className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
-                data-testid={`tailoring-day-header-${dayKey}`}
+                data-testid={`prepare-day-header-${dayKey}`}
               >
                 {formatCalendarDay({ day: dayKey })}
               </div>
@@ -418,11 +418,11 @@ interface SlotRowProps {
   pendingInclusionSlotId: string | null;
   expanded: boolean;
   onToggleExpanded: () => void;
-  onToggleInclusion: TailoringSlotListProps['onToggleInclusion'];
-  onSplitFormChange: TailoringSlotListProps['onSplitFormChange'];
-  onSplitShifts: TailoringSlotListProps['onSplitShifts'];
-  onHeadcountChange: TailoringSlotListProps['onHeadcountChange'];
-  onSaveHeadcounts: TailoringSlotListProps['onSaveHeadcounts'];
+  onToggleInclusion: PrepareSlotListProps['onToggleInclusion'];
+  onSplitFormChange: PrepareSlotListProps['onSplitFormChange'];
+  onSplitShifts: PrepareSlotListProps['onSplitShifts'];
+  onHeadcountChange: PrepareSlotListProps['onHeadcountChange'];
+  onSaveHeadcounts: PrepareSlotListProps['onSaveHeadcounts'];
 }
 
 function SlotRow({
@@ -463,7 +463,7 @@ function SlotRow({
   return (
     <div
       className="surface-subtle workspace-panel space-y-3"
-      data-testid={`tailoring-slot-row-${slotView.slot.id}`}
+      data-testid={`prepare-slot-row-${slotView.slot.id}`}
     >
       <Collapsible open={included && expanded} onOpenChange={onToggleExpanded}>
         <div className="flex items-start gap-3 lg:grid lg:grid-cols-[24px_minmax(0,1fr)_170px_130px_28px] lg:items-center lg:gap-4">
@@ -537,7 +537,7 @@ function SlotRow({
               {hasUnsavedDraft && !expanded ? (
                 <span
                   aria-hidden="true"
-                  data-testid={`tailoring-slot-unsaved-dot-${slotView.slot.id}`}
+                  data-testid={`prepare-slot-unsaved-dot-${slotView.slot.id}`}
                   className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
                 />
               ) : null}
@@ -553,7 +553,7 @@ function SlotRow({
                 ? 'font-medium text-foreground'
                 : 'text-muted-foreground',
             )}
-            data-testid={`tailoring-slot-summary-${slotView.slot.id}`}
+            data-testid={`prepare-slot-summary-${slotView.slot.id}`}
           >
             {hasUnsavedDraft
               ? 'Unsaved changes — expand to save.'
@@ -563,7 +563,7 @@ function SlotRow({
 
         {included ? (
           <CollapsibleContent
-            data-testid={`tailoring-slot-editor-${slotView.slot.id}`}
+            data-testid={`prepare-slot-editor-${slotView.slot.id}`}
             className="overflow-hidden [transition:height_200ms_cubic-bezier(0.22,1,0.36,1)] data-ending-style:h-0 data-starting-style:h-0 motion-reduce:transition-none"
             style={{ height: 'var(--collapsible-panel-height)' }}
           >
@@ -596,20 +596,20 @@ function SlotRow({
         ) : null}
       </Collapsible>
 
-      {eventView.participation.state !== 'tailoring' ? (
+      {eventView.participation.state !== 'preparing' ? (
         <Link
           to="/scheduling/rostering/$ministryId/$cycleId"
           params={{
-            cycleId: eventView.event.planningCycleId,
+            cycleId: eventView.event.cycleId,
             ministryId: eventView.participation.ministryId,
           }}
           className={buttonVariants({
             variant: 'outline',
             size: isMobile ? 'touch' : 'default',
           })}
-          data-testid={`open-roster-link-${eventView.participation.id}`}
+          data-testid={`open-schedule-link-${eventView.participation.id}`}
         >
-          Open roster
+          Open schedule
         </Link>
       ) : null}
     </div>
@@ -622,8 +622,8 @@ interface SplitPanelProps {
   splitForm: SplitFormState | undefined;
   isSplitDirty: boolean;
   isSavingSplit: boolean;
-  onSplitFormChange: TailoringSlotListProps['onSplitFormChange'];
-  onSplitShifts: TailoringSlotListProps['onSplitShifts'];
+  onSplitFormChange: PrepareSlotListProps['onSplitFormChange'];
+  onSplitShifts: PrepareSlotListProps['onSplitShifts'];
 }
 
 /** Left column of an expanded slot row: the shift-split editor and its own
@@ -675,8 +675,8 @@ interface HeadcountPanelProps {
   isSplitDirty: boolean;
   isHeadcountDirty: boolean;
   isSavingHeadcounts: boolean;
-  onHeadcountChange: TailoringSlotListProps['onHeadcountChange'];
-  onSaveHeadcounts: TailoringSlotListProps['onSaveHeadcounts'];
+  onHeadcountChange: PrepareSlotListProps['onHeadcountChange'];
+  onSaveHeadcounts: PrepareSlotListProps['onSaveHeadcounts'];
 }
 
 /** Right column of an expanded slot row: per-shift role/headcount inputs and

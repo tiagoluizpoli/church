@@ -4,6 +4,7 @@ import {
   DrizzleAvailabilityCheckRepository,
   DrizzleAvailabilityRepository,
   DrizzleChurchRepository,
+  DrizzleCycleRepository,
   DrizzleEventRepository,
   DrizzleEventTemplateRepository,
   DrizzleInvitationVerificationCodeRepository,
@@ -12,7 +13,6 @@ import {
   DrizzleMinistryRepository,
   DrizzleMinistryServingProfileRepository,
   DrizzleOutboxRepository,
-  DrizzlePlanningCycleRepository,
   DrizzlePlanningEventRepository,
   DrizzleRedemptionRepository,
   DrizzleRoleRepository,
@@ -31,7 +31,7 @@ export type Repositories = Pick<
   CompositionRootDependencies,
   | 'eventRepository'
   | 'eventTemplateRepository'
-  | 'planningCycleRepository'
+  | 'cycleRepository'
   | 'planningEventRepository'
   | 'volunteerRepository'
   | 'assignmentRepository'
@@ -72,9 +72,8 @@ export function buildRepositories({
   const eventTemplateRepository =
     overrides.eventTemplateRepository ??
     new DrizzleEventTemplateRepository({ db: database });
-  const planningCycleRepository =
-    overrides.planningCycleRepository ??
-    new DrizzlePlanningCycleRepository({ db: database });
+  const cycleRepository =
+    overrides.cycleRepository ?? new DrizzleCycleRepository({ db: database });
   const planningEventRepository =
     overrides.planningEventRepository ??
     new DrizzlePlanningEventRepository({ db: database });
@@ -139,7 +138,7 @@ export function buildRepositories({
   return {
     eventRepository,
     eventTemplateRepository,
-    planningCycleRepository,
+    cycleRepository,
     planningEventRepository,
     volunteerRepository,
     assignmentRepository,

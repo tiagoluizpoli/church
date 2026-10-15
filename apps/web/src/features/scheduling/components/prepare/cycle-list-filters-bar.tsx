@@ -12,9 +12,9 @@ import {
 } from '@/components/ui/select';
 import type {
   CycleDateRangeMode,
-  CycleTailoringStatus,
+  CyclePrepareStatus,
   MinistryInvolvementFilter,
-} from '@/features/scheduling/components/tailoring/cycle-list.utils';
+} from '@/features/scheduling/components/prepare/cycle-list.utils';
 import { cn } from '@/lib/utils';
 
 export interface CycleListFilters {
@@ -22,7 +22,7 @@ export interface CycleListFilters {
   dateStart: string;
   dateEnd: string;
   involvement: MinistryInvolvementFilter;
-  status: CycleTailoringStatus | 'all';
+  status: CyclePrepareStatus | 'all';
 }
 
 export const DEFAULT_FILTERS: CycleListFilters = {
@@ -93,7 +93,7 @@ export function CycleListFiltersBar({
   return (
     <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
       <div className="space-y-1">
-        <Label htmlFor="tailoring-cycle-date-mode-filter">Date range</Label>
+        <Label htmlFor="prepare-cycle-date-mode-filter">Date range</Label>
         {/* base-ui's Select renders a visually-hidden native `<input>`
          * (form/autofill semantics) as a direct sibling of the trigger —
          * clipped, not `display:none`, so it still occupies normal-flow
@@ -110,8 +110,8 @@ export function CycleListFiltersBar({
             }
           >
             <SelectTrigger
-              id="tailoring-cycle-date-mode-filter"
-              data-testid="tailoring-cycle-date-mode-filter"
+              id="prepare-cycle-date-mode-filter"
+              data-testid="prepare-cycle-date-mode-filter"
               className={cn(
                 'w-32',
                 isMobile && 'px-3 text-sm data-[size=default]:h-11',
@@ -128,27 +128,27 @@ export function CycleListFiltersBar({
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tailoring-cycle-date-start-filter">From</Label>
+        <Label htmlFor="prepare-cycle-date-start-filter">From</Label>
         <DatePickerField
-          id="tailoring-cycle-date-start-filter"
-          data-testid="tailoring-cycle-date-start-filter"
+          id="prepare-cycle-date-start-filter"
+          data-testid="prepare-cycle-date-start-filter"
           value={draft.dateStart}
           onChange={(value) => setDraft({ ...draft, dateStart: value })}
           onClear={() => setDraft({ ...draft, dateStart: '' })}
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tailoring-cycle-date-end-filter">To</Label>
+        <Label htmlFor="prepare-cycle-date-end-filter">To</Label>
         <DatePickerField
-          id="tailoring-cycle-date-end-filter"
-          data-testid="tailoring-cycle-date-end-filter"
+          id="prepare-cycle-date-end-filter"
+          data-testid="prepare-cycle-date-end-filter"
           value={draft.dateEnd}
           onChange={(value) => setDraft({ ...draft, dateEnd: value })}
           onClear={() => setDraft({ ...draft, dateEnd: '' })}
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tailoring-cycle-involvement-filter">Involvement</Label>
+        <Label htmlFor="prepare-cycle-involvement-filter">Involvement</Label>
         <div className={isMobile ? 'h-11' : 'h-8'}>
           <Select
             value={draft.involvement}
@@ -160,8 +160,8 @@ export function CycleListFiltersBar({
             }
           >
             <SelectTrigger
-              id="tailoring-cycle-involvement-filter"
-              data-testid="tailoring-cycle-involvement-filter"
+              id="prepare-cycle-involvement-filter"
+              data-testid="prepare-cycle-involvement-filter"
               className={cn(
                 'w-36',
                 isMobile && 'px-3 text-sm data-[size=default]:h-11',
@@ -178,20 +178,20 @@ export function CycleListFiltersBar({
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tailoring-cycle-status-filter">Status</Label>
+        <Label htmlFor="prepare-cycle-status-filter">Status</Label>
         <div className={isMobile ? 'h-11' : 'h-8'}>
           <Select
             value={draft.status}
             onValueChange={(value) =>
               setDraft({
                 ...draft,
-                status: value as CycleTailoringStatus | 'all',
+                status: value as CyclePrepareStatus | 'all',
               })
             }
           >
             <SelectTrigger
-              id="tailoring-cycle-status-filter"
-              data-testid="tailoring-cycle-status-filter"
+              id="prepare-cycle-status-filter"
+              data-testid="prepare-cycle-status-filter"
               className={cn(
                 'w-36',
                 isMobile && 'px-3 text-sm data-[size=default]:h-11',
@@ -213,7 +213,7 @@ export function CycleListFiltersBar({
           type="button"
           size={buttonSize}
           disabled={!isDirty}
-          data-testid="tailoring-cycle-filters-apply"
+          data-testid="prepare-cycle-filters-apply"
           onClick={() => onApply(draft)}
         >
           Apply filters
@@ -223,7 +223,7 @@ export function CycleListFiltersBar({
           variant="ghost"
           size={buttonSize}
           disabled={!canClear}
-          data-testid="tailoring-cycle-filters-clear"
+          data-testid="prepare-cycle-filters-clear"
           onClick={handleClear}
         >
           Clear filters

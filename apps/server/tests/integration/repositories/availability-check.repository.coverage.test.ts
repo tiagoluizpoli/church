@@ -87,7 +87,7 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
     const checkRow = await buildAvailabilityCheck({
       db: schedulingTestDb,
       churchId: seed.churchAId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryVolunteerId: membership.id,
     });
 

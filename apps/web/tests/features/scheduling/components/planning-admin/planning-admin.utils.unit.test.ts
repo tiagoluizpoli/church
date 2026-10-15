@@ -1,9 +1,9 @@
 import { fromTimeColumn, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type {
+  CycleEventGroup,
   CycleFormState,
-  PlanningCycleEventGroup,
-  SelectedPlanningCycle,
+  SelectedCycle,
   TemplateBlockDraft,
   TemplateFormState,
 } from '@/features/scheduling/components/planning-admin/planning-admin.types';
@@ -11,7 +11,7 @@ import {
   calculateTotalSlots,
   canCreateCycle,
   canCreateTemplate,
-  cycleIsLocked,
+  cycleIsSent,
   describeTimeBlockSpan,
   eventSpanLabel,
   eventStatusBadgeVariant,
@@ -20,9 +20,7 @@ import {
   stateBadgeVariant,
 } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
 
-function makeCycle(
-  overrides: Partial<SelectedPlanningCycle> = {},
-): SelectedPlanningCycle {
+function makeCycle(overrides: Partial<SelectedCycle> = {}): SelectedCycle {
   return {
     id: 'cycle-1',
     churchId: 'church-1',
@@ -36,12 +34,12 @@ function makeCycle(
   };
 }
 
-function makeEventGroup(slotCount: number): PlanningCycleEventGroup {
+function makeEventGroup(slotCount: number): CycleEventGroup {
   return {
     event: {
       id: 'event-1',
       churchId: 'church-1',
-      planningCycleId: 'cycle-1',
+      cycleId: 'cycle-1',
       title: 'Sunday Service',
       start: '2027-01-03T09:00:00.000Z',
       end: '2027-01-03T11:00:00.000Z',
@@ -303,19 +301,19 @@ describe('calculateTotalSlots', () => {
   });
 });
 
-describe('cycleIsLocked', () => {
-  it('is true only for a locked cycle', () => {
-    expect(cycleIsLocked({ cycle: makeCycle({ state: 'locked' }) })).toBe(true);
-    expect(cycleIsLocked({ cycle: makeCycle({ state: 'draft' }) })).toBe(false);
-    expect(cycleIsLocked({ cycle: null })).toBe(false);
-    expect(cycleIsLocked({ cycle: undefined })).toBe(false);
+describe('cycleIsSent', () => {
+  it('is true only for a sent cycle', () => {
+    expect(cycleIsSent({ cycle: makeCycle({ state: 'sent' }) })).toBe(true);
+    expect(cycleIsSent({ cycle: makeCycle({ state: 'draft' }) })).toBe(false);
+    expect(cycleIsSent({ cycle: null })).toBe(false);
+    expect(cycleIsSent({ cycle: undefined })).toBe(false);
   });
 });
 
 describe('stateBadgeVariant', () => {
   it('maps each cycle state to its badge variant', () => {
-    expect(stateBadgeVariant({ state: 'locked' })).toBe('default');
-    expect(stateBadgeVariant({ state: 'archived' })).toBe('outline');
+    expect(stateBadgeVariant({ state: 'sent' })).toBe('default');
+    expect(stateBadgeVariant({ state: 'past' })).toBe('outline');
     expect(stateBadgeVariant({ state: 'draft' })).toBe('secondary');
   });
 });

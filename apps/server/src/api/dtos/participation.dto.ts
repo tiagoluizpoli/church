@@ -22,7 +22,12 @@ export const participationResponseSchema = z.object({
   churchId: z.string(),
   ministryId: z.string(),
   eventId: z.string(),
-  state: z.enum(['tailoring', 'availability_fired', 'rostering', 'published']),
+  state: z.enum([
+    'preparing',
+    'availability_requested',
+    'assigning',
+    'published',
+  ]),
 });
 export type ParticipationResponse = z.infer<typeof participationResponseSchema>;
 
@@ -112,7 +117,7 @@ export const shiftListResponseSchema = z.object({
   shifts: z.array(shiftResponseSchema),
 });
 
-export const fireAvailabilityResponseSchema = z.object({
+export const askAvailabilityResponseSchema = z.object({
   createdCheckCount: z.number(),
   notifiedVolunteerCount: z.number(),
 });
@@ -126,8 +131,8 @@ export const ministryCycleSummaryResponseSchema = z.object({
   eventCount: z.number(),
   slotCount: z.number(),
   status: z.enum(['not_started', 'in_progress', 'published']),
-  availabilityFiredForAll: z.boolean(),
-  availabilityFiredForAny: z.boolean(),
+  availabilityRequestedForAll: z.boolean(),
+  availabilityRequestedForAny: z.boolean(),
 });
 export type MinistryCycleSummaryResponse = z.infer<
   typeof ministryCycleSummaryResponseSchema
@@ -199,7 +204,7 @@ function toSlotView(view: ParticipationSlotView) {
 
 /**
  * `MinistryCycleSummaryView.startDate/endDate` are still raw `Date` (a
- * pre-seam application-layer gap this DTO can't close — the PlanningCycle
+ * pre-seam application-layer gap this DTO can't close — the Cycle
  * entity they originate from is already `CalendarDay`). `timeZone: 'UTC'`
  * only recovers the label as-stored; it is not a Church Timezone read and
  * would be wrong if this ever carried a wall-clock-sensitive value.
@@ -224,8 +229,8 @@ function toMinistryCycleSummaryResponse(
     eventCount: view.eventCount,
     slotCount: view.slotCount,
     status: view.status,
-    availabilityFiredForAll: view.availabilityFiredForAll,
-    availabilityFiredForAny: view.availabilityFiredForAny,
+    availabilityRequestedForAll: view.availabilityRequestedForAll,
+    availabilityRequestedForAny: view.availabilityRequestedForAny,
   };
 }
 

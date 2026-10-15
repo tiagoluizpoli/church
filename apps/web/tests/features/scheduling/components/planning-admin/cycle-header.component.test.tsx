@@ -1,31 +1,31 @@
 import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { CycleHeader } from '@/features/scheduling/components/planning-admin/cycle-header';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
-import { PlanningCycleHeader } from '@/features/scheduling/components/planning-admin/planning-cycle-header';
 import { renderWithProviders } from '@/tests/setup/render';
 
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
-const getPlanningCycle = vi.fn();
+const getCycle = vi.fn();
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
-    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+    getCycle: (...args: unknown[]) => getCycle(...args),
   },
 }));
 
-interface RenderPlanningCycleHeaderInput {
+interface RenderCycleHeaderInput {
   churchTimezone?: string;
 }
 
-function render({ churchTimezone }: RenderPlanningCycleHeaderInput = {}) {
+function render({ churchTimezone }: RenderCycleHeaderInput = {}) {
   return renderWithProviders(
     <PlanningAdminProvider>
-      <PlanningCycleHeader />
+      <CycleHeader />
       <CycleListCard />
     </PlanningAdminProvider>,
     { churchTimezone },
@@ -34,43 +34,41 @@ function render({ churchTimezone }: RenderPlanningCycleHeaderInput = {}) {
 
 async function selectTheOnlyCycle() {
   const user = userEvent.setup();
-  await user.click(await screen.findByTestId('planning-cycle-option'));
+  await user.click(await screen.findByTestId('cycle-option'));
   return user;
 }
 
-describe('PlanningCycleHeader (T058)', () => {
+describe('CycleHeader (T058)', () => {
   it('renders nothing when no cycle is selected', () => {
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
     render();
 
     expect(
-      screen.queryByTestId('planning-cycle-name-status-chip'),
+      screen.queryByTestId('cycle-name-status-chip'),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('planning-cycle-period-chip'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
   });
 
   it('renders the name+status chip and the period chip as two separate elements', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
           name: 'August 2026',
           startDate: '2026-08-01',
           endDate: '2026-08-31',
-          state: 'locked',
+          state: 'sent',
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
         startDate: '2026-08-01',
         endDate: '2026-08-31',
-        state: 'locked',
+        state: 'sent',
       },
       events: [],
     });
@@ -78,17 +76,15 @@ describe('PlanningCycleHeader (T058)', () => {
     const user = userEvent.setup();
     render();
 
-    await user.click(await screen.findByTestId('planning-cycle-option'));
+    await user.click(await screen.findByTestId('cycle-option'));
 
-    const nameStatusChip = await screen.findByTestId(
-      'planning-cycle-name-status-chip',
-    );
-    const periodChip = screen.getByTestId('planning-cycle-period-chip');
+    const nameStatusChip = await screen.findByTestId('cycle-name-status-chip');
+    const periodChip = screen.getByTestId('cycle-period-chip');
 
     expect(nameStatusChip).not.toBe(periodChip);
     expect(nameStatusChip).toHaveTextContent('August 2026');
     expect(screen.getByTestId('selected-cycle-state')).toHaveTextContent(
-      'locked',
+      'sent',
     );
     expect(periodChip).toHaveTextContent('01/08/2026');
     expect(periodChip).toHaveTextContent('31/08/2026');
@@ -96,7 +92,7 @@ describe('PlanningCycleHeader (T058)', () => {
   });
 
   it('renders event-count and slot-count chips sourced from the selected cycle', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -107,7 +103,7 @@ describe('PlanningCycleHeader (T058)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -162,10 +158,8 @@ describe('PlanningCycleHeader (T058)', () => {
     render();
     await selectTheOnlyCycle();
 
-    const eventCountChip = await screen.findByTestId(
-      'planning-cycle-event-count-chip',
-    );
-    const slotCountChip = screen.getByTestId('planning-cycle-slot-count-chip');
+    const eventCountChip = await screen.findByTestId('cycle-event-count-chip');
+    const slotCountChip = screen.getByTestId('cycle-slot-count-chip');
 
     expect(eventCountChip).toHaveTextContent('2');
     expect(slotCountChip).toHaveTextContent('3');
@@ -179,22 +173,20 @@ describe('PlanningCycleHeader (T058)', () => {
       endDate: '2026-08-31',
       state: 'draft' as const,
     };
-    listPlanningCycles.mockResolvedValue({ cycles: [cycle] });
-    getPlanningCycle.mockResolvedValue({ cycle, events: [] });
+    listCycles.mockResolvedValue({ cycles: [cycle] });
+    getCycle.mockResolvedValue({ cycle, events: [] });
 
     render({ churchTimezone: 'UTC' });
     await selectTheOnlyCycle();
-    const utcPeriodText = (
-      await screen.findByTestId('planning-cycle-period-chip')
-    ).textContent;
+    const utcPeriodText = (await screen.findByTestId('cycle-period-chip'))
+      .textContent;
 
     cleanup();
 
     render({ churchTimezone: 'Pacific/Niue' });
     await selectTheOnlyCycle();
-    const niuePeriodText = (
-      await screen.findByTestId('planning-cycle-period-chip')
-    ).textContent;
+    const niuePeriodText = (await screen.findByTestId('cycle-period-chip'))
+      .textContent;
 
     expect(niuePeriodText).toBe(utcPeriodText);
   });

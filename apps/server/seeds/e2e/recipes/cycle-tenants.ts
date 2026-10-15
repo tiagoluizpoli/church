@@ -1,4 +1,4 @@
-import { buildPlanningCycle } from '../../builders/scheduling';
+import { buildCycle } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
   type CreateJourneyRecipeInput,
@@ -7,27 +7,27 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
   mergeRootKinds,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
-import type { RosteringCycleSummary } from './rostering-event';
+} from './assign-church';
+import type { AssignCycleSummary } from './assign-event';
 import {
-  planningCycleWindow,
+  cycleWindow,
   type SchedulingJourneyDates,
 } from './scheduling-cycle-window';
 
-const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.planningCycleTenants;
+const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.cycleTenants;
 const CHURCH_A_SCOPE = 'a';
 const CHURCH_B_SCOPE = 'b';
 const CHURCH_A_CYCLE_NAME = 'Ciclo Isolado Alfa';
 const CHURCH_B_CYCLE_NAME = 'Ciclo Isolado Beta';
 
 /**
- * Two tenants that each own a draft PlanningCycle (#329: church isolation on
- * the planning-cycles list and `$cycleId` route). Each Church has only its
+ * Two tenants that each own a draft Cycle (#329: church isolation on
+ * the cycles list and `$cycleId` route). Each Church has only its
  * ChurchAdmin; the names of the two cycles share no text, so a negative
  * assertion on one never matches the other.
  */
@@ -41,7 +41,7 @@ const CHURCH_A_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const CHURCH_B_PLAN = {
   ministries: {},
@@ -53,29 +53,29 @@ const CHURCH_B_PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const ROOT_KINDS = mergeRootKinds({
   rootKinds: [
-    rosteringChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
-    rosteringChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
+    assignChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
   ],
 });
 
-export interface PlanningCycleTenant<TPlan extends RosteringChurchPlan>
-  extends RosteringChurch<TPlan> {
-  cycle: RosteringCycleSummary;
+export interface CycleTenant<TPlan extends AssignChurchPlan>
+  extends AssignChurch<TPlan> {
+  cycle: AssignCycleSummary;
 }
 
-export interface PlanningCycleTenantsJourney extends SchedulingJourneyDates {
-  churchA: PlanningCycleTenant<typeof CHURCH_A_PLAN>;
-  churchB: PlanningCycleTenant<typeof CHURCH_B_PLAN>;
+export interface CycleTenantsJourney extends SchedulingJourneyDates {
+  churchA: CycleTenant<typeof CHURCH_A_PLAN>;
+  churchB: CycleTenant<typeof CHURCH_B_PLAN>;
 }
 
-export function createPlanningCycleTenantsRecipe({
+export function createCycleTenantsRecipe({
   journeyKey,
   anchor,
-}: CreateJourneyRecipeInput): E2eJourneyRecipe<PlanningCycleTenantsJourney> {
+}: CreateJourneyRecipeInput): E2eJourneyRecipe<CycleTenantsJourney> {
   const { idOf, tag, rootsOf } = journeyIdentity({
     recipeName: RECIPE_NAME,
     journeyKey,
@@ -83,38 +83,38 @@ export function createPlanningCycleTenantsRecipe({
 
   async function load({
     db,
-  }: SeedRecipeLoadInput): Promise<PlanningCycleTenantsJourney> {
-    const cycleWindow = planningCycleWindow({ anchor });
-    const churchA = await buildRosteringChurch({
+  }: SeedRecipeLoadInput): Promise<CycleTenantsJourney> {
+    const window = cycleWindow({ anchor });
+    const churchA = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: CHURCH_A_PLAN,
       scope: CHURCH_A_SCOPE,
     });
-    const cycleA = await buildPlanningCycle({
+    const cycleA = await buildCycle({
       db,
       churchId: churchA.church.id,
-      id: idOf({ kind: 'planning-cycle:a' }),
+      id: idOf({ kind: 'cycle:a' }),
       name: CHURCH_A_CYCLE_NAME,
-      startDate: cycleWindow.startDate,
-      endDate: cycleWindow.endDate,
+      startDate: window.startDate,
+      endDate: window.endDate,
       state: 'draft',
     });
-    const churchB = await buildRosteringChurch({
+    const churchB = await buildAssignChurch({
       db,
       idOf,
       tag,
       plan: CHURCH_B_PLAN,
       scope: CHURCH_B_SCOPE,
     });
-    const cycleB = await buildPlanningCycle({
+    const cycleB = await buildCycle({
       db,
       churchId: churchB.church.id,
-      id: idOf({ kind: 'planning-cycle:b' }),
+      id: idOf({ kind: 'cycle:b' }),
       name: CHURCH_B_CYCLE_NAME,
-      startDate: cycleWindow.startDate,
-      endDate: cycleWindow.endDate,
+      startDate: window.startDate,
+      endDate: window.endDate,
       state: 'draft',
     });
     return {

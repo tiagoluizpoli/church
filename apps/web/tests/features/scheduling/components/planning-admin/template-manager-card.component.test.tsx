@@ -5,16 +5,16 @@ import { PlanningAdminProvider } from '@/features/scheduling/components/planning
 import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';
 import { renderWithProviders } from '@/tests/setup/render';
 
-const listPlanningCycles = vi.fn().mockResolvedValue({ cycles: [] });
+const listCycles = vi.fn().mockResolvedValue({ cycles: [] });
 const listEventTemplates = vi.fn();
-const getPlanningCycle = vi.fn();
+const getCycle = vi.fn();
 const deleteEventTemplate = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
-    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+    getCycle: (...args: unknown[]) => getCycle(...args),
     deleteEventTemplate: (...args: unknown[]) => deleteEventTemplate(...args),
   },
 }));

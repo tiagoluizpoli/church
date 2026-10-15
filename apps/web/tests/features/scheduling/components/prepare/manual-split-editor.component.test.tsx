@@ -2,11 +2,11 @@ import { parseInstant } from '@church/time';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { SplitFormState } from '@/features/scheduling/components/participation-tailoring.utils';
+import type { SplitFormState } from '@/features/scheduling/components/participation-prepare.utils';
 import {
   createManualSplitSchema,
   ManualSplitEditor,
-} from '@/features/scheduling/components/tailoring/manual-split-editor';
+} from '@/features/scheduling/components/prepare/manual-split-editor';
 import type { GetCycleParticipation200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { renderWithProviders } from '@/tests/setup/render';
 

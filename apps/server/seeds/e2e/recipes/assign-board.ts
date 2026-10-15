@@ -2,7 +2,7 @@ import { addCalendarDays, type CalendarDay } from '@church/time';
 import {
   type AssignmentStatus,
   buildAssignment,
-  buildPlanningCycle,
+  buildCycle,
 } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
@@ -12,32 +12,32 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
+  type AssignChurch,
+  type AssignChurchPlan,
+  type AssignMinistryMembershipPlan,
+  type AssignPoolVolunteer,
+  type AssignVolunteerPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
   EVENT_END_TIME,
   EVENT_START_TIME,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  type RosteringMinistryMembershipPlan,
-  type RosteringPoolVolunteer,
-  type RosteringVolunteerPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+} from './assign-church';
 import {
-  buildRosteringEvent,
-  type RosteringCycleSummary,
-  type RosteringEvent,
-} from './rostering-event';
+  type AssignCycleSummary,
+  type AssignEvent,
+  buildAssignEvent,
+} from './assign-event';
 
 /**
- * The cycle board a ChurchAdmin leader rosters (#329: smoke,
+ * The cycle board a ChurchAdmin leader schedules (#329: smoke,
  * builder-slot-focus, a11y-builder): one Worship cycle with three Events on
  * different days.
  *
  * - `service`: a published Participation needing two Ushers, all open. The
  *   board's first requirement, which smoke and builder-slot-focus fill.
- * - `teamService`: a draft Event at `availability_fired`, needing one Team
+ * - `teamService`: a draft Event at `availability_requested`, needing one Team
  *   Alpha Greeter and one Usher.
- * - `rosteredService`: read-only for every journey — a published Host seat
+ * - `assignedService`: read-only for every journey — a published Host seat
  *   for three, holding a pending, a confirmed and a declined assignment, so
  *   the accessibility scan covers assignment chips.
  *
@@ -48,11 +48,11 @@ import {
  * another.
  */
 
-const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.rosteringBoard;
+const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.assignBoard;
 const CYCLE_LENGTH_DAYS = 28;
 const SERVICE_OFFSET_DAYS = 7;
 const TEAM_SERVICE_OFFSET_DAYS = 10;
-const ROSTERED_SERVICE_OFFSET_DAYS = 13;
+const ASSIGNED_SERVICE_OFFSET_DAYS = 13;
 
 const USHER_NAMES = [
   'André Souza',
@@ -74,7 +74,7 @@ const GREETER_NAMES = [
 interface PoolPlanInput {
   keyPrefix: string;
   names: readonly string[];
-  membership: RosteringMinistryMembershipPlan;
+  membership: AssignMinistryMembershipPlan;
 }
 
 /** One pool Volunteer per name, keyed `<keyPrefix><n>`, all alike. */
@@ -82,7 +82,7 @@ function poolPlan({
   keyPrefix,
   names,
   membership,
-}: PoolPlanInput): Record<string, RosteringVolunteerPlan> {
+}: PoolPlanInput): Record<string, AssignVolunteerPlan> {
   return Object.fromEntries(
     names.map((name, index) => [
       `${keyPrefix}${index + 1}`,
@@ -96,7 +96,7 @@ const HOST_MEMBERSHIP = {
   accessLevel: 'volunteer',
   roles: ['host'],
   teams: [],
-} as const satisfies RosteringMinistryMembershipPlan;
+} as const satisfies AssignMinistryMembershipPlan;
 
 const PLAN = {
   ministries: {
@@ -146,40 +146,40 @@ const PLAN = {
     hostConfirmed: { name: 'Nicolas Ramos', memberships: [HOST_MEMBERSHIP] },
     hostDeclined: { name: 'Olívia Prates', memberships: [HOST_MEMBERSHIP] },
   },
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 interface HostAssignmentPlan {
-  volunteer: RosteringPoolVolunteer;
+  volunteer: AssignPoolVolunteer;
   status: AssignmentStatus;
 }
 
-export interface RosteringBoardAssignment {
+export interface AssignBoardAssignment {
   id: string;
   volunteerId: string;
   status: AssignmentStatus;
 }
 
-export interface RosteredServiceEvent extends RosteringEvent<'host'> {
+export interface AssignedServiceEvent extends AssignEvent<'host'> {
   /** Pending, confirmed and declined, in that order. */
-  assignments: RosteringBoardAssignment[];
+  assignments: AssignBoardAssignment[];
 }
 
-export interface RosteringBoardEvents {
-  service: RosteringEvent<'usher'>;
-  teamService: RosteringEvent<'greeter' | 'usher'>;
-  rosteredService: RosteredServiceEvent;
+export interface AssignBoardEvents {
+  service: AssignEvent<'usher'>;
+  teamService: AssignEvent<'greeter' | 'usher'>;
+  assignedService: AssignedServiceEvent;
 }
 
-export interface RosteringBoardJourney extends RosteringChurch<typeof PLAN> {
+export interface AssignBoardJourney extends AssignChurch<typeof PLAN> {
   anchor: CalendarDay;
-  cycle: RosteringCycleSummary;
-  events: RosteringBoardEvents;
+  cycle: AssignCycleSummary;
+  events: AssignBoardEvents;
 }
 
-export function createRosteringBoardRecipe({
+export function createAssignBoardRecipe({
   journeyKey,
   anchor,
-}: CreateJourneyRecipeInput): E2eJourneyRecipe<RosteringBoardJourney> {
+}: CreateJourneyRecipeInput): E2eJourneyRecipe<AssignBoardJourney> {
   const { idOf, tag, rootsOf } = journeyIdentity({
     recipeName: RECIPE_NAME,
     journeyKey,
@@ -187,26 +187,26 @@ export function createRosteringBoardRecipe({
 
   async function load({
     db,
-  }: SeedRecipeLoadInput): Promise<RosteringBoardJourney> {
-    const base = await buildRosteringChurch({ db, idOf, tag, plan: PLAN });
+  }: SeedRecipeLoadInput): Promise<AssignBoardJourney> {
+    const base = await buildAssignChurch({ db, idOf, tag, plan: PLAN });
     const churchId = base.church.id;
     const { worship } = base.ministries;
 
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db,
       churchId,
-      id: idOf({ kind: 'planning-cycle' }),
+      id: idOf({ kind: 'cycle' }),
       name: 'Ciclo do Quadro',
       startDate: anchor,
       endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS }),
-      state: 'locked',
+      state: 'sent',
     });
 
-    const service = await buildRosteringEvent({
+    const service = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: worship.id,
       key: 'service',
       title: 'Culto de Domingo',
@@ -219,11 +219,11 @@ export function createRosteringBoardRecipe({
         usher: { roleId: worship.roles.usher.id, requiredCount: 2 },
       },
     });
-    const teamService = await buildRosteringEvent({
+    const teamService = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: worship.id,
       key: 'team-service',
       title: 'Culto da Equipe',
@@ -231,7 +231,7 @@ export function createRosteringBoardRecipe({
       startTime: EVENT_START_TIME,
       endTime: EVENT_END_TIME,
       eventStatus: 'draft',
-      participationState: 'availability_fired',
+      participationState: 'availability_requested',
       requirements: {
         greeter: {
           roleId: worship.roles.greeter.id,
@@ -242,15 +242,15 @@ export function createRosteringBoardRecipe({
       },
     });
 
-    const rosteredEvent = await buildRosteringEvent({
+    const assignedEvent = await buildAssignEvent({
       db,
       idOf,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       ministryId: worship.id,
-      key: 'rostered-service',
+      key: 'assigned-service',
       title: 'Culto Escalado',
-      day: addCalendarDays({ day: anchor, days: ROSTERED_SERVICE_OFFSET_DAYS }),
+      day: addCalendarDays({ day: anchor, days: ASSIGNED_SERVICE_OFFSET_DAYS }),
       startTime: EVENT_START_TIME,
       endTime: EVENT_END_TIME,
       eventStatus: 'scheduled',
@@ -264,16 +264,16 @@ export function createRosteringBoardRecipe({
       { volunteer: base.pool.hostConfirmed, status: 'confirmed' },
       { volunteer: base.pool.hostDeclined, status: 'declined' },
     ];
-    const assignments: RosteringBoardAssignment[] = [];
+    const assignments: AssignBoardAssignment[] = [];
     for (const { volunteer, status } of hostAssignments) {
       const row = await buildAssignment({
         db,
         churchId,
-        participationId: rosteredEvent.participationId,
-        shiftId: rosteredEvent.shiftId,
+        participationId: assignedEvent.participationId,
+        shiftId: assignedEvent.shiftId,
         volunteerId: volunteer.volunteerId,
         roleId: worship.roles.host.id,
-        id: idOf({ kind: `assignment:rostered-service:${status}` }),
+        id: idOf({ kind: `assignment:assigned-service:${status}` }),
         status,
       });
       assignments.push({
@@ -290,14 +290,14 @@ export function createRosteringBoardRecipe({
       events: {
         service,
         teamService,
-        rosteredService: { ...rosteredEvent, assignments },
+        assignedService: { ...assignedEvent, assignments },
       },
     };
   }
 
   return {
     name: RECIPE_NAME,
-    roots: rootsOf({ rootKinds: rosteringChurchRootKinds({ plan: PLAN }) }),
+    roots: rootsOf({ rootKinds: assignChurchRootKinds({ plan: PLAN }) }),
     load,
   };
 }

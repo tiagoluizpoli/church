@@ -1,6 +1,6 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import { TeamRosterMutationPolicy } from '@/domain/authority/team-roster-mutation-policy';
+import { TeamScheduleMutationPolicy } from '@/domain/authority/team-schedule-mutation-policy';
 import type { TeamId } from '@/domain/branded-ids';
 
 const ledTeamId = 'team-led' as TeamId;
@@ -10,9 +10,9 @@ const now = parseInstant({ value: '2026-09-20T00:00:00.000Z' });
 
 interface AuthorizeOverrides {
   participationState?:
-    | 'tailoring'
-    | 'availability_fired'
-    | 'rostering'
+    | 'preparing'
+    | 'availability_requested'
+    | 'assigning'
     | 'published';
   eventStatus?: 'draft' | 'scheduled' | 'cancelled' | 'past';
   eventStart?: typeof futureStart;
@@ -21,9 +21,9 @@ interface AuthorizeOverrides {
 }
 
 function authorize(overrides: AuthorizeOverrides = {}): boolean {
-  return TeamRosterMutationPolicy.authorize({
+  return TeamScheduleMutationPolicy.authorize({
     teamId: ledTeamId,
-    participationState: 'rostering',
+    participationState: 'assigning',
     eventStatus: 'scheduled',
     eventStart: futureStart,
     now,
@@ -33,8 +33,8 @@ function authorize(overrides: AuthorizeOverrides = {}): boolean {
   });
 }
 
-describe('TeamRosterMutationPolicy', () => {
-  it('allows an unambiguous led-Team assignment in a future rostering participation', () => {
+describe('TeamScheduleMutationPolicy', () => {
+  it('allows an unambiguous led-Team assignment in a future assign participation', () => {
     expect(authorize()).toBe(true);
   });
 

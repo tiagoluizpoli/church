@@ -2,11 +2,11 @@ import type { TimeOfDay } from '@church/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
+  CycleEventGroup,
   CycleFormState,
-  PlanningCycleEventGroup,
-  PlanningCycleSummary,
+  CycleSummary,
   PlanningTemplateSummary,
-  SelectedPlanningCycle,
+  SelectedCycle,
   TemplateFormState,
 } from './planning-admin.types';
 import {
@@ -86,12 +86,12 @@ interface StartEditTemplateInput {
 
 export interface UsePlanningAdminResult {
   isAccessDenied: boolean;
-  cycles: PlanningCycleSummary[];
+  cycles: CycleSummary[];
   templates: PlanningTemplateSummary[];
   selectedCycleId: string | null;
-  selectedCycle: SelectedPlanningCycle | null;
+  selectedCycle: SelectedCycle | null;
   editingTemplateId: string | null;
-  cycleEvents: PlanningCycleEventGroup[];
+  cycleEvents: CycleEventGroup[];
   totalSlots: number;
   cycleForm: CycleFormState;
   templateForm: TemplateFormState;
@@ -108,7 +108,7 @@ export interface UsePlanningAdminResult {
   deleteTemplatePending: boolean;
   applyTemplatesPending: boolean;
   applyTemplatesError: string | null;
-  lockCyclePending: boolean;
+  sendCyclePending: boolean;
   updateEventPending: boolean;
   deleteEventPending: boolean;
   createSlotPending: boolean;
@@ -134,7 +134,7 @@ export interface UsePlanningAdminResult {
   handleSaveTemplate: () => void;
   handleDeleteTemplate: (input: DeleteTemplateInput) => void;
   handleApplyTemplates: (options?: ApplyTemplatesOptions) => void;
-  handleLockCycle: () => void;
+  handleSendCycle: () => void;
   handleClearSelectedCycle: () => void;
   handleUpdateEvent: (input: UpdateEventInput) => void;
   handleDeleteEvent: (input: DeleteEventInput) => void;
@@ -162,8 +162,8 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     useState<number>(0);
 
   const cyclesQuery = useQuery({
-    queryKey: ['planning-cycles'],
-    queryFn: () => adminApi.listPlanningCycles(),
+    queryKey: ['cycles'],
+    queryFn: () => adminApi.listCycles(),
     retry: false,
   });
   const templatesQuery = useQuery({
@@ -172,9 +172,9 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     retry: false,
   });
   const cycleDetailsQuery = useQuery({
-    queryKey: ['planning-cycle-details', selectedCycleId],
+    queryKey: ['cycle-details', selectedCycleId],
     queryFn: () =>
-      adminApi.getPlanningCycle(getSelectedCycleIdOrThrow({ selectedCycleId })),
+      adminApi.getCycle(getSelectedCycleIdOrThrow({ selectedCycleId })),
     enabled: Boolean(selectedCycleId),
     retry: false,
   });
@@ -258,7 +258,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     deleteTemplatePending: mutationHandlers.deleteTemplatePending,
     applyTemplatesPending: mutationHandlers.applyTemplatesPending,
     applyTemplatesError: mutationHandlers.applyTemplatesError,
-    lockCyclePending: mutationHandlers.lockCyclePending,
+    sendCyclePending: mutationHandlers.sendCyclePending,
     updateEventPending: mutationHandlers.updateEventPending,
     deleteEventPending: mutationHandlers.deleteEventPending,
     createSlotPending: mutationHandlers.createSlotPending,
@@ -339,7 +339,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     handleSaveTemplate: mutationHandlers.handleSaveTemplate,
     handleDeleteTemplate: mutationHandlers.handleDeleteTemplate,
     handleApplyTemplates: mutationHandlers.handleApplyTemplates,
-    handleLockCycle: mutationHandlers.handleLockCycle,
+    handleSendCycle: mutationHandlers.handleSendCycle,
     handleUpdateEvent: mutationHandlers.handleUpdateEvent,
     handleDeleteEvent: mutationHandlers.handleDeleteEvent,
     handleCreateSlot: mutationHandlers.handleCreateSlot,

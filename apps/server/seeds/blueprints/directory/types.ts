@@ -19,8 +19,8 @@ export interface MinistrySeat<TRole extends string, TTeam extends string> {
   teams?: readonly TeamSeat<TTeam>[];
 }
 
-/** People who share one seat, declared once so a roster reads as a list of names. */
-export interface RosterGroup<TRole extends string, TTeam extends string> {
+/** People who share one seat, declared once so a schedule reads as a list of names. */
+export interface ScheduleGroup<TRole extends string, TTeam extends string> {
   seat: MinistrySeat<TRole, TTeam>;
   people: readonly Person[];
 }
@@ -33,10 +33,10 @@ export interface MinistryBlueprint<
   roles: readonly TRole[];
   teams: readonly TTeam[];
   /** The people whose first Ministry this is; each person is declared once. */
-  roster: readonly RosterGroup<TRole, TTeam>[];
+  schedule: readonly ScheduleGroup<TRole, TTeam>[];
 }
 
-/** A Ministry's structure and roster, type-checked against its own Roles and Teams. */
+/** A Ministry's structure and schedule, type-checked against its own Roles and Teams. */
 export function defineMinistry<
   const TRole extends string,
   const TTeam extends string = never,
@@ -44,7 +44,7 @@ export function defineMinistry<
   return ministry;
 }
 
-/** People declared in another roster who also serve in `ministry`. */
+/** People declared in another schedule who also serve in `ministry`. */
 export interface CrossMinistryGroup<
   TRole extends string = string,
   TTeam extends string = string,
@@ -76,7 +76,7 @@ export interface ChurchDirectoryBlueprint {
 
 /**
  * People who hold a plain Church Membership in `churchSlug` while serving as a
- * Volunteer (or ChurchAdmin) in the Church their roster belongs to.
+ * Volunteer (or ChurchAdmin) in the Church their schedule belongs to.
  */
 export interface MultiChurchMembershipGroup {
   churchSlug: string;

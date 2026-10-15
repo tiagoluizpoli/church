@@ -2,16 +2,16 @@ import { parseTimeOfDay } from '@church/time';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { TailoringFilters } from '@/features/scheduling/components/tailoring/tailoring-filters';
+import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
-describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () => {
+describe('PrepareFilters (US3/T020, mode select + single start/end pair)', () => {
   it('calls onNameQueryChange as the leader types, with zero network requests', async () => {
     const onNameQueryChange = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <TailoringFilters
+      <PrepareFilters
         nameQuery=""
         onNameQueryChange={onNameQueryChange}
         timeWindowFilter={{ mode: 'starts' }}
@@ -19,7 +19,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
       />,
     );
 
-    await user.type(screen.getByTestId('tailoring-name-filter'), 'greet');
+    await user.type(screen.getByTestId('prepare-name-filter'), 'greet');
 
     expect(onNameQueryChange).toHaveBeenCalledTimes(5);
     expect(onNameQueryChange).toHaveBeenLastCalledWith('t');
@@ -29,7 +29,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
     const onTimeWindowFilterChange = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <TailoringFilters
+      <PrepareFilters
         nameQuery=""
         onNameQueryChange={vi.fn()}
         timeWindowFilter={{
@@ -40,7 +40,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
       />,
     );
 
-    await user.click(screen.getByTestId('tailoring-time-mode-filter'));
+    await user.click(screen.getByTestId('prepare-time-mode-filter'));
     await user.click(await screen.findByText('Between'));
 
     expect(onTimeWindowFilterChange).toHaveBeenCalledWith({
@@ -53,7 +53,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
     const onTimeWindowFilterChange = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <TailoringFilters
+      <PrepareFilters
         nameQuery=""
         onNameQueryChange={vi.fn()}
         timeWindowFilter={{
@@ -66,7 +66,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
 
     await fillTimeOfDayField({
       user,
-      field: screen.getByTestId('tailoring-time-start-filter'),
+      field: screen.getByTestId('prepare-time-start-filter'),
       time: '09:00',
     });
 
@@ -82,7 +82,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
     const onTimeWindowFilterChange = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <TailoringFilters
+      <PrepareFilters
         nameQuery=""
         onNameQueryChange={vi.fn()}
         timeWindowFilter={{
@@ -95,7 +95,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
 
     await fillTimeOfDayField({
       user,
-      field: screen.getByTestId('tailoring-time-end-filter'),
+      field: screen.getByTestId('prepare-time-end-filter'),
       time: '17:00',
     });
 
@@ -111,7 +111,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
     const onTimeWindowFilterChange = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
-      <TailoringFilters
+      <PrepareFilters
         nameQuery=""
         onNameQueryChange={vi.fn()}
         timeWindowFilter={{
@@ -123,13 +123,13 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
     );
 
     expect(
-      screen.getByTestId('tailoring-time-start-filter-clear'),
+      screen.getByTestId('prepare-time-start-filter-clear'),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId('tailoring-time-end-filter-clear'),
+      screen.queryByTestId('prepare-time-end-filter-clear'),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByTestId('tailoring-time-start-filter-clear'));
+    await user.click(screen.getByTestId('prepare-time-start-filter-clear'));
 
     expect(onTimeWindowFilterChange).toHaveBeenLastCalledWith({
       mode: 'within',
@@ -139,7 +139,7 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
 
   it('renders exactly one mode select and one start/end pair, not two independent ranges', () => {
     renderWithProviders(
-      <TailoringFilters
+      <PrepareFilters
         nameQuery=""
         onNameQueryChange={vi.fn()}
         timeWindowFilter={{ mode: 'starts' }}
@@ -149,12 +149,12 @@ describe('TailoringFilters (US3/T020, mode select + single start/end pair)', () 
 
     expect(screen.getAllByRole('combobox')).toHaveLength(1);
     expect(
-      within(screen.getByTestId('tailoring-time-start-filter')).getAllByRole(
+      within(screen.getByTestId('prepare-time-start-filter')).getAllByRole(
         'spinbutton',
       ),
     ).toHaveLength(2);
     expect(
-      within(screen.getByTestId('tailoring-time-end-filter')).getAllByRole(
+      within(screen.getByTestId('prepare-time-end-filter')).getAllByRole(
         'spinbutton',
       ),
     ).toHaveLength(2);

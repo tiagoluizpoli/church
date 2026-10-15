@@ -1,14 +1,14 @@
-import { member, planningCycle } from '@church/db';
+import { cycle, member } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
 import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
 import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
+import { createCycleAccessRecipe } from '@/seeds/e2e/recipes/cycle-access';
+import { createCycleTenantsRecipe } from '@/seeds/e2e/recipes/cycle-tenants';
 import { createMinistryWorkspaceIndexRecipe } from '@/seeds/e2e/recipes/ministry-workspace-index';
 import { createPlanningAdminRecipe } from '@/seeds/e2e/recipes/planning-admin';
-import { createPlanningCycleAccessRecipe } from '@/seeds/e2e/recipes/planning-cycle-access';
-import { createPlanningCycleTenantsRecipe } from '@/seeds/e2e/recipes/planning-cycle-tenants';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-12-28' });
@@ -20,11 +20,11 @@ interface ChurchIdInput {
 async function cyclesOf({ churchId }: ChurchIdInput) {
   return await testDb
     .select({
-      name: planningCycle.name,
-      state: planningCycle.state,
+      name: cycle.name,
+      state: cycle.state,
     })
-    .from(planningCycle)
-    .where(eq(planningCycle.churchId, churchId));
+    .from(cycle)
+    .where(eq(cycle.churchId, churchId));
 }
 
 async function accessLevelsOf({ churchId }: ChurchIdInput) {
@@ -64,24 +64,24 @@ describe('planning journey recipes (#329 planning cluster)', () => {
     });
   });
 
-  it('planning-cycle-access adds one locked cycle inside the window', async () => {
+  it('cycle-access adds one sent cycle inside the window', async () => {
     const journey = await runE2eJourneyRecipe({
       db: testDb,
-      recipe: createPlanningCycleAccessRecipe({
+      recipe: createCycleAccessRecipe({
         journeyKey: 'alpha',
         anchor: ANCHOR,
       }),
     });
 
     expect(await cyclesOf({ churchId: journey.church.id })).toEqual([
-      { name: journey.cycle.name, state: 'locked' },
+      { name: journey.cycle.name, state: 'sent' },
     ]);
   });
 
-  it('planning-cycle-tenants gives each Church only its own draft cycle', async () => {
+  it('cycle-tenants gives each Church only its own draft cycle', async () => {
     const journey = await runE2eJourneyRecipe({
       db: testDb,
-      recipe: createPlanningCycleTenantsRecipe({
+      recipe: createCycleTenantsRecipe({
         journeyKey: 'alpha',
         anchor: ANCHOR,
       }),

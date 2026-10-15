@@ -7,12 +7,12 @@ import {
 } from '@church/time';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { type PointerEvent, useRef, useState } from 'react';
-import { toCalendarDateString } from '../participation-tailoring.utils';
+import { toCalendarDateString } from '../participation-prepare.utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-export interface TailoringCalendarProps {
+export interface PrepareCalendarProps {
   /** Cycle bounds, `yyyy-MM-dd` or full ISO date-time — only the calendar
    * date portion is used. Every rendered cell is inside these bounds; the
    * leader can never drag or edit the bounds themselves (research.md R3). */
@@ -67,13 +67,13 @@ interface ClearDragStateParams {
  * existing shadcn/carousel primitive fit this interaction (R11's resolved
  * shape decision); chevron buttons still reuse the existing `Button` +
  * lucide chevron-icon pattern this file already used for month navigation. */
-export function TailoringCalendar({
+export function PrepareCalendar({
   cycleStartDate,
   cycleEndDate,
   eventDayMarkers,
   selectedDate,
   onSelectedDateChange,
-}: TailoringCalendarProps) {
+}: PrepareCalendarProps) {
   const cycleStart = parseCalendarDay({
     value: toCalendarDateString(cycleStartDate),
   });
@@ -166,12 +166,12 @@ export function TailoringCalendar({
   };
 
   return (
-    <div data-testid="tailoring-calendar" className="flex items-center gap-1">
+    <div data-testid="prepare-calendar" className="flex items-center gap-1">
       <Button
         type="button"
         variant="ghost"
         size="icon-touch"
-        data-testid="tailoring-calendar-scroll-left"
+        data-testid="prepare-calendar-scroll-left"
         aria-label="Scroll to earlier days"
         onClick={() => scrollByStep(-1)}
       >
@@ -182,13 +182,13 @@ export function TailoringCalendar({
         data-scroll-area="true"
         className="min-w-0 flex-1"
         viewportRef={stripRef}
-        viewportTestId="tailoring-calendar-strip"
+        viewportTestId="prepare-calendar-strip"
         viewportClassName="pb-3"
         scrollbarOrientation="horizontal"
         scrollbarClassName="mt-2"
       >
         <div
-          data-testid="tailoring-calendar-drag-surface"
+          data-testid="prepare-calendar-drag-surface"
           className="flex touch-pan-y gap-2 px-0.5 py-1"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -212,7 +212,7 @@ export function TailoringCalendar({
                   else dayButtonRefs.current.delete(iso);
                 }}
                 type="button"
-                data-testid={`tailoring-calendar-day-${iso}`}
+                data-testid={`prepare-calendar-day-${iso}`}
                 data-cycle-band="true"
                 data-calendar-day={iso}
                 data-has-event={hasEvent || undefined}
@@ -264,7 +264,7 @@ export function TailoringCalendar({
         type="button"
         variant="ghost"
         size="icon-touch"
-        data-testid="tailoring-calendar-scroll-right"
+        data-testid="prepare-calendar-scroll-right"
         aria-label="Scroll to later days"
         onClick={() => scrollByStep(1)}
       >

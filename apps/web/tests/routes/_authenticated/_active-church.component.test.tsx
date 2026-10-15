@@ -18,7 +18,7 @@ const PROBE_INSTANT = '2027-01-04T12:00:00.000Z';
 const getSession = vi.fn();
 const { getActiveChurchStatus, listActiveChurchOptions, selectActiveChurch } =
   activeChurchApiMock;
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -29,7 +29,7 @@ vi.mock('@/lib/auth-client', () => ({
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -63,7 +63,7 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-function renderPlanningCycles() {
+function renderCycles() {
   return renderRoute({ initialPath: '/scheduling/planning-cycles' });
 }
 
@@ -81,7 +81,7 @@ describe('the Active Church guard (_active-church)', () => {
           session: { activeOrganizationId: 'church-1' },
         },
       });
-      listPlanningCycles.mockResolvedValue({ cycles: [] });
+      listCycles.mockResolvedValue({ cycles: [] });
     });
 
     it("renders times in the Active Church's zone, not the ambient one", async () => {
@@ -142,7 +142,7 @@ describe('the Active Church guard (_active-church)', () => {
         return tokyoStatus;
       });
 
-      const { router } = renderPlanningCycles();
+      const { router } = renderCycles();
       expect(await screen.findByTestId('church-time')).toHaveTextContent(
         '04/01/2027 09:00',
       );
@@ -174,7 +174,7 @@ describe('the Active Church guard (_active-church)', () => {
         churchId: 'church-1',
       });
 
-      const { router } = renderPlanningCycles();
+      const { router } = renderCycles();
 
       await waitFor(() => {
         const failed = router.state.matches.find(
@@ -186,7 +186,7 @@ describe('the Active Church guard (_active-church)', () => {
         );
       });
       expect(screen.queryByTestId('church-time')).not.toBeInTheDocument();
-      expect(listPlanningCycles).not.toHaveBeenCalled();
+      expect(listCycles).not.toHaveBeenCalled();
       consoleError.mockRestore();
     });
   });
@@ -201,9 +201,9 @@ describe('the Active Church guard (_active-church)', () => {
     getActiveChurchStatus.mockResolvedValue(
       resolvedActiveChurchStatus({ churchId: 'church-1' }),
     );
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
-    renderPlanningCycles();
+    renderCycles();
 
     expect(await screen.findByText('Existing cycles')).toBeVisible();
   });
@@ -217,12 +217,12 @@ describe('the Active Church guard (_active-church)', () => {
     });
     getActiveChurchStatus.mockResolvedValue({ status: 'no_membership' });
 
-    const { router } = renderPlanningCycles();
+    const { router } = renderCycles();
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/no-access');
     });
-    expect(listPlanningCycles).not.toHaveBeenCalled();
+    expect(listCycles).not.toHaveBeenCalled();
   });
 
   it('sends the visitor to /select-church when several Memberships exist and none is active', async () => {
@@ -231,12 +231,12 @@ describe('the Active Church guard (_active-church)', () => {
     });
     getActiveChurchStatus.mockResolvedValue({ status: 'selection_required' });
 
-    const { router } = renderPlanningCycles();
+    const { router } = renderCycles();
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/select-church');
     });
-    expect(listPlanningCycles).not.toHaveBeenCalled();
+    expect(listCycles).not.toHaveBeenCalled();
   });
 
   it('forwards the former Church name to /select-church when the active Membership was removed and several remain', async () => {
@@ -251,7 +251,7 @@ describe('the Active Church guard (_active-church)', () => {
       membershipRemovedFrom: 'Old Church',
     });
 
-    const { router } = renderPlanningCycles();
+    const { router } = renderCycles();
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/select-church');
@@ -271,7 +271,7 @@ describe('the Active Church guard (_active-church)', () => {
       membershipRemovedFrom: 'Old Church',
     });
 
-    const { router } = renderPlanningCycles();
+    const { router } = renderCycles();
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/no-access');
@@ -298,13 +298,13 @@ describe('the Active Church guard (_active-church)', () => {
       // Church, so the real endpoint would no longer report a removal.
       .mockResolvedValue(resolvedActiveChurchStatus({ churchId: 'church-2' }));
 
-    const { router } = renderPlanningCycles();
+    const { router } = renderCycles();
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/dashboard');
     });
     expect(router.state.location.search).toEqual({ removedFrom: 'Old Church' });
-    expect(listPlanningCycles).not.toHaveBeenCalled();
+    expect(listCycles).not.toHaveBeenCalled();
   });
 
   it('mounts the shell when the session has no active organization yet but auto-selects silently', async () => {
@@ -314,9 +314,9 @@ describe('the Active Church guard (_active-church)', () => {
     getActiveChurchStatus.mockResolvedValue(
       resolvedActiveChurchStatus({ churchId: 'church-1' }),
     );
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
-    renderPlanningCycles();
+    renderCycles();
 
     expect(await screen.findByText('Existing cycles')).toBeVisible();
   });
@@ -338,7 +338,7 @@ describe('the Active Church guard (_active-church)', () => {
       getActiveChurchStatus.mockResolvedValue(
         resolvedActiveChurchStatus({ churchId: 'church-1' }),
       );
-      listPlanningCycles.mockResolvedValue({ cycles: [] });
+      listCycles.mockResolvedValue({ cycles: [] });
 
       const { router } = renderWithChurchParam('church-1');
 
@@ -375,7 +375,7 @@ describe('the Active Church guard (_active-church)', () => {
         target: 'church-2',
         redirect: '/scheduling/planning-cycles',
       });
-      expect(listPlanningCycles).not.toHaveBeenCalled();
+      expect(listCycles).not.toHaveBeenCalled();
     });
 
     it('auto-selects the target Church when no Active Church exists yet and the link is verified', async () => {
@@ -394,7 +394,7 @@ describe('the Active Church guard (_active-church)', () => {
       selectActiveChurch.mockResolvedValue(
         resolvedActiveChurchStatus({ churchId: 'church-2' }),
       );
-      listPlanningCycles.mockResolvedValue({ cycles: [] });
+      listCycles.mockResolvedValue({ cycles: [] });
 
       const { router } = renderWithChurchParam('church-2');
 
@@ -430,7 +430,7 @@ describe('the Active Church guard (_active-church)', () => {
         expect(router.state.location.pathname).toBe('/select-church');
       });
       expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-2' });
-      expect(listPlanningCycles).not.toHaveBeenCalled();
+      expect(listCycles).not.toHaveBeenCalled();
     });
 
     it('keeps the current Active Church and shows a generic access-denied when the caller has no Membership in the target Church', async () => {
@@ -454,7 +454,7 @@ describe('the Active Church guard (_active-church)', () => {
       });
       expect(router.state.location.search).toEqual({ accessDenied: true });
       expect(selectActiveChurch).not.toHaveBeenCalled();
-      expect(listPlanningCycles).not.toHaveBeenCalled();
+      expect(listCycles).not.toHaveBeenCalled();
     });
   });
 });

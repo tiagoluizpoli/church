@@ -31,13 +31,13 @@ describe('VolunteerNotification', () => {
     expect(notification.createdAt).toBeInstanceOf(Date);
   });
 
-  it('exposes an optional planningCycleId when supplied', () => {
+  it('exposes an optional cycleId when supplied', () => {
     const notification = new VolunteerNotification({
       ...props,
-      planningCycleId: 'cycle-1',
+      cycleId: 'cycle-1',
     });
 
-    expect(notification.planningCycleId).toBe('cycle-1');
+    expect(notification.cycleId).toBe('cycle-1');
   });
 
   it('preserves supplied creation and read times', () => {

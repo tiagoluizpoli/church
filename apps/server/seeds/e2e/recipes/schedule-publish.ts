@@ -1,8 +1,8 @@
 import { addCalendarDays, type CalendarDay, type Instant } from '@church/time';
 import {
+  buildCycle,
   buildEvent,
   buildMinistryParticipation,
-  buildPlanningCycle,
   buildShift,
   buildSlotRequirement,
   buildTimeSlot,
@@ -15,30 +15,30 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
+  type AssignChurch,
+  type AssignChurchPlan,
   anchoredInstant,
-  buildRosteringChurch,
+  assignChurchRootKinds,
+  buildAssignChurch,
   EVENT_END_TIME,
   EVENT_START_TIME,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
-import type { RosteringCycleSummary } from './rostering-event';
+} from './assign-church';
+import type { AssignCycleSummary } from './assign-event';
 
 /**
- * The starting graph of the roster-and-publish journey (#329): a locked
- * Planning Cycle with one event both Ministries take part in, each at
- * `availability_fired`. Publishing is cycle-wide, so the cycle (and both
+ * The starting graph of the schedule-and-publish journey (#329): a locked
+ * Cycle with one event both Ministries take part in, each at
+ * `availability_requested`. Publishing is cycle-wide, so the cycle (and both
  * Participations) belong to this journey alone. The worship Ministry needs
  * two Ushers; one qualified Volunteer persona and one pool Volunteer are
  * candidates, so assigning "by name" is a real choice.
  */
 
-/* Own Event/TimeSlot builder, not `buildRosteringEvent`: both Ministries take
+/* Own Event/TimeSlot builder, not `buildAssignEvent`: both Ministries take
  * part in ONE Event and TimeSlot (publish is cycle-wide, so the sibling must
  * share the cycle and event), which that builder's one-Participation-per-Event
  * shape cannot express without a signature change. */
-const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.rosterPublish;
+const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.schedulePublish;
 const CYCLE_LENGTH_DAYS = 28;
 const EVENT_OFFSET_DAYS = 14;
 const USHERS_REQUIRED = 2;
@@ -91,36 +91,36 @@ const PLAN = {
       ],
     },
   },
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
-type RosterPublishChurch = RosteringChurch<typeof PLAN>;
+type SchedulePublishChurch = AssignChurch<typeof PLAN>;
 
-export interface RosterPublishParticipation {
+export interface SchedulePublishParticipation {
   id: string;
   shiftId: string;
 }
 
-export interface RosterPublishEvent {
+export interface SchedulePublishEvent {
   id: string;
   title: string;
   startsAt: Instant;
 }
 
-export interface RosterPublishWorshipParticipation
-  extends RosterPublishParticipation {
+export interface SchedulePublishWorshipParticipation
+  extends SchedulePublishParticipation {
   requiredCount: number;
 }
 
-export interface RosterPublishJourney extends RosterPublishChurch {
+export interface SchedulePublishJourney extends SchedulePublishChurch {
   anchor: CalendarDay;
-  cycle: RosteringCycleSummary;
-  event: RosterPublishEvent;
+  cycle: AssignCycleSummary;
+  event: SchedulePublishEvent;
   /** Worship starts with `requiredCount` Ushers open; care stays unpublished. */
-  worship: RosterPublishWorshipParticipation;
-  care: RosterPublishParticipation;
+  worship: SchedulePublishWorshipParticipation;
+  care: SchedulePublishParticipation;
 }
 
-interface MinistryRosterInput {
+interface MinistryScheduleInput {
   key: string;
   ministryId: string;
   roleId: string;
@@ -128,10 +128,10 @@ interface MinistryRosterInput {
   teamId?: string;
 }
 
-export function createRosterPublishRecipe({
+export function createSchedulePublishRecipe({
   journeyKey,
   anchor,
-}: CreateJourneyRecipeInput): E2eJourneyRecipe<RosterPublishJourney> {
+}: CreateJourneyRecipeInput): E2eJourneyRecipe<SchedulePublishJourney> {
   const { idOf, tag, rootsOf } = journeyIdentity({
     recipeName: RECIPE_NAME,
     journeyKey,
@@ -139,8 +139,8 @@ export function createRosterPublishRecipe({
 
   async function load({
     db,
-  }: SeedRecipeLoadInput): Promise<RosterPublishJourney> {
-    const base = await buildRosteringChurch({ db, idOf, tag, plan: PLAN });
+  }: SeedRecipeLoadInput): Promise<SchedulePublishJourney> {
+    const base = await buildAssignChurch({ db, idOf, tag, plan: PLAN });
     const churchId = base.church.id;
     const { worship, care } = base.ministries;
 
@@ -154,19 +154,19 @@ export function createRosterPublishRecipe({
       dayOffset: EVENT_OFFSET_DAYS,
       time: EVENT_END_TIME,
     });
-    const cycle = await buildPlanningCycle({
+    const cycle = await buildCycle({
       db,
       churchId,
-      id: idOf({ kind: 'planning-cycle' }),
+      id: idOf({ kind: 'cycle' }),
       name: 'Ciclo de Publicação',
       startDate: anchor,
       endDate: addCalendarDays({ day: anchor, days: CYCLE_LENGTH_DAYS }),
-      state: 'locked',
+      state: 'sent',
     });
     const event = await buildEvent({
       db,
       churchId,
-      planningCycleId: cycle.id,
+      cycleId: cycle.id,
       id: idOf({ kind: 'event' }),
       title: 'Culto de Publicação',
       start: startsAt,
@@ -182,20 +182,20 @@ export function createRosterPublishRecipe({
       end: endsAt,
     });
 
-    async function buildMinistryRoster({
+    async function buildMinistrySchedule({
       key,
       ministryId,
       roleId,
       requiredCount,
       teamId,
-    }: MinistryRosterInput): Promise<RosterPublishParticipation> {
+    }: MinistryScheduleInput): Promise<SchedulePublishParticipation> {
       const participation = await buildMinistryParticipation({
         db,
         churchId,
         ministryId,
         eventId: event.id,
         id: idOf({ kind: `participation:${key}` }),
-        state: 'availability_fired',
+        state: 'availability_requested',
         timeSlotIds: [timeSlot.id],
       });
       const shift = await buildShift({
@@ -226,7 +226,7 @@ export function createRosterPublishRecipe({
       cycle: { id: cycle.id, name: cycle.name },
       event: { id: event.id, title: event.title, startsAt },
       worship: {
-        ...(await buildMinistryRoster({
+        ...(await buildMinistrySchedule({
           key: 'worship',
           ministryId: worship.id,
           roleId: worship.roles.usher.id,
@@ -234,7 +234,7 @@ export function createRosterPublishRecipe({
         })),
         requiredCount: USHERS_REQUIRED,
       },
-      care: await buildMinistryRoster({
+      care: await buildMinistrySchedule({
         key: 'care',
         ministryId: care.id,
         roleId: care.roles.careHost.id,
@@ -246,7 +246,7 @@ export function createRosterPublishRecipe({
 
   return {
     name: RECIPE_NAME,
-    roots: rootsOf({ rootKinds: rosteringChurchRootKinds({ plan: PLAN }) }),
+    roots: rootsOf({ rootKinds: assignChurchRootKinds({ plan: PLAN }) }),
     load,
   };
 }

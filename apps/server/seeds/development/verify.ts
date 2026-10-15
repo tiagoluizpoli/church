@@ -72,7 +72,7 @@ function expectMinistry({
     teamLeaders: new Map(ministryBlueprint.teams.map((name) => [name, 0])),
   };
   const seats = [
-    ...ministryBlueprint.roster.map((group) => ({
+    ...ministryBlueprint.schedule.map((group) => ({
       seat: group.seat,
       size: group.people.length,
     })),
@@ -301,7 +301,7 @@ function expectedPeople(): number {
   for (const blueprint of DEVELOPMENT_BLUEPRINT.churches) {
     emails.add(blueprint.churchAdmin.email);
     for (const ministryBlueprint of blueprint.ministries) {
-      for (const group of ministryBlueprint.roster) {
+      for (const group of ministryBlueprint.schedule) {
         for (const person of group.people) emails.add(person.email);
       }
     }

@@ -15,7 +15,7 @@ import {
 //
 // The journey owns both Churches (the `active-church-switching` recipe):
 // the dual member is Church A's ChurchAdmin and an active Volunteer of its
-// Worship Ministry, with two Planning Cycles of Church A to see, and a plain
+// Worship Ministry, with two Cycles of Church A to see, and a plain
 // member of Church B with no Ministry there — an active Volunteer in only
 // one Church.
 interface ChurchOptionRowInput {
@@ -27,7 +27,7 @@ interface ChurchOptionRowInput {
  * Selector C renders every Church twice — a mobile card list (`md:hidden`)
  * and a desktop table (`hidden md:block`) — both physically present, one
  * hidden by viewport. `select-church.tsx` keys each row's `data-testid` by
- * `church.churchId` (matching the `planning-cycle-row-${id}` convention
+ * `church.churchId` (matching the `cycle-row-${id}` convention
  * elsewhere in this app), so `:visible` is still needed to pick the one
  * layout actually on screen at the default desktop viewport.
  */
@@ -37,15 +37,15 @@ function churchOptionRow({ page, churchId }: ChurchOptionRowInput) {
   );
 }
 
-interface PlanningCycleRowInput {
+interface CycleRowInput {
   page: Page;
   cycleId: string;
 }
 
 /** Same DataTable dual-render (mobile card + desktop table row) as
  * `churchOptionRow` above — `:visible` picks the one on screen. */
-function planningCycleRow({ page, cycleId }: PlanningCycleRowInput) {
-  return page.locator(`[data-testid="planning-cycle-row-${cycleId}"]:visible`);
+function cycleRow({ page, cycleId }: CycleRowInput) {
+  return page.locator(`[data-testid="cycle-row-${cycleId}"]:visible`);
 }
 
 test.describe('#67 — Active Church selection and switching', () => {
@@ -84,12 +84,12 @@ test.describe('#67 — Active Church selection and switching', () => {
     // switch — otherwise their later absence would prove nothing.
     await page.goto('/scheduling/planning-cycles');
     await expect(page.getByTestId('planning-admin-page')).toBeVisible();
-    await expect(
-      planningCycleRow({ page, cycleId: firstCycle.id }),
-    ).toContainText(firstCycle.name);
-    await expect(
-      planningCycleRow({ page, cycleId: secondCycle.id }),
-    ).toContainText(secondCycle.name);
+    await expect(cycleRow({ page, cycleId: firstCycle.id })).toContainText(
+      firstCycle.name,
+    );
+    await expect(cycleRow({ page, cycleId: secondCycle.id })).toContainText(
+      secondCycle.name,
+    );
 
     // The sidebar switcher (#54) — spec 024 §1.5 places it above the
     // Church-scoped nav, not inside `UserMenu` (the User-identity menu).
@@ -121,7 +121,7 @@ test.describe('#67 — Active Church selection and switching', () => {
     // Scheduling nav branch (`Cycles` included) rather than rendering a link
     // that would 403 through the route guard. A `Cycles` link that survived
     // the switch would itself be the leak this AC guards against — the
-    // in-app control from which Church A's Planning Cycle data was ever
+    // in-app control from which Church A's Cycle data was ever
     // reachable, so its absence here is exactly what "no remnant" requires.
     await expect(
       page.getByTestId('sidebar').getByRole('link', { name: 'Cycles' }),

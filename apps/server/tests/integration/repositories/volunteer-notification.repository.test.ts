@@ -32,7 +32,7 @@ describe('DrizzleVolunteerNotificationRepository', () => {
       payload: {},
     });
 
-    expect(created.planningCycleId).toBeUndefined();
+    expect(created.cycleId).toBeUndefined();
     expect(created.ministryId).toBeUndefined();
     expect(created.eventId).toBeUndefined();
     expect(created.assignmentId).toBeUndefined();

@@ -5,7 +5,7 @@ import z from 'zod';
 import {
   type SplitFormState,
   validateManualSpans,
-} from '../participation-tailoring.utils';
+} from '../participation-prepare.utils';
 import { InstantField } from '@/components/instant-field';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
@@ -80,7 +80,7 @@ function toShiftModePreset(splitForm: SplitFormState): ShiftModePreset {
 
 /** Self-contained shift-split form: mode toggle (single/equal/manual),
  * equal-count input, and manual span rows. Extracted from the old inline
- * definition in `participation-tailoring.tsx`; `validateManualSpans`/payload
+ * definition in `participation-prepare.tsx`; `validateManualSpans`/payload
  * logic is unchanged (research.md R2) — only this component's DOM is
  * rewritten to use shadcn `Select` in place of the native `<select>`. */
 export function ManualSplitEditor({

@@ -15,7 +15,7 @@ import type {
   CreatePlanningTimeSlotInput,
   DeletePlanningEventInput,
   GetPlanningEventInput,
-  ListPlanningCycleEventsInput,
+  ListCycleEventsInput,
   PlanningEventRepository,
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
@@ -43,7 +43,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .insert(event)
       .values({
         churchId: input.churchId,
-        planningCycleId: input.planningCycleId,
+        cycleId: input.cycleId,
         sourceTemplateId: input.sourceTemplateId ?? null,
         title: input.title,
         description: input.description ?? null,
@@ -138,7 +138,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   }
 
   async listCycleEvents(
-    input: ListPlanningCycleEventsInput,
+    input: ListCycleEventsInput,
   ): Promise<EventWithSlots[]> {
     const db = getClient(this.db, input.tx);
     const eventRows = await db
@@ -146,7 +146,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .from(event)
       .where(
         and(
-          eq(event.planningCycleId, input.cycleId),
+          eq(event.cycleId, input.cycleId),
           withChurchIsolation(event, input.churchId),
         ),
       )

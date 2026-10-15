@@ -122,7 +122,7 @@ describe('AppShell role-scoped navigation', () => {
       'Availability',
       'Scheduling',
       'Cycles',
-      'Rostering',
+      'Schedules',
     ]);
     expect(navLabels(screen.getByTestId('mobile-bottom-nav'))).toEqual([
       'Dashboard',
@@ -145,7 +145,7 @@ describe('AppShell role-scoped navigation', () => {
       'Availability',
       'Scheduling',
       'Cycles',
-      'Rostering',
+      'Schedules',
     ]);
   });
 
@@ -183,7 +183,7 @@ describe('AppShell role-scoped navigation', () => {
     );
 
     const breadcrumbs = screen.getByTestId('breadcrumbs');
-    expect(within(breadcrumbs).getByText('Planning cycles')).toBeVisible();
+    expect(within(breadcrumbs).getByText('Cycles')).toBeVisible();
     expect(within(breadcrumbs).getByText('August 2026')).toBeVisible();
   });
 
@@ -197,7 +197,7 @@ describe('AppShell role-scoped navigation', () => {
     renderWithProviders(<AppShell>content</AppShell>);
 
     const breadcrumbs = screen.getByTestId('breadcrumbs');
-    expect(within(breadcrumbs).getByText('Planning cycles')).toBeVisible();
+    expect(within(breadcrumbs).getByText('Cycles')).toBeVisible();
     expect(within(breadcrumbs).queryByText('cycle-1')).not.toBeInTheDocument();
   });
 });
@@ -245,14 +245,14 @@ describe('AppShell mobile nav drawer hierarchy (US4, 021)', () => {
       'Availability',
       'Scheduling',
       'Cycles',
-      'Rostering',
+      'Schedules',
     ]);
 
-    const tailoringLink = within(drawerNav).getByRole('link', {
-      name: 'Rostering',
+    const prepareLink = within(drawerNav).getByRole('link', {
+      name: 'Schedules',
     });
-    expect(tailoringLink).toHaveClass('font-semibold');
-    expect(tailoringLink).toHaveAttribute('href', '/scheduling/tailoring');
+    expect(prepareLink).toHaveClass('font-semibold');
+    expect(prepareLink).toHaveAttribute('href', '/scheduling/tailoring');
 
     const cyclesLink = within(drawerNav).getByRole('link', {
       name: 'Cycles',

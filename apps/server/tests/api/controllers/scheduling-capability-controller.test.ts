@@ -140,7 +140,7 @@ describe('Scheduling capability controller', () => {
     });
   });
 
-  it('returns a Team roster entry without granting Ministry management', async () => {
+  it('returns a Team schedule entry without granting Ministry management', async () => {
     authorityGuard.resolveSchedulingCapability.mockResolvedValue({
       canAccessScheduling: true,
       entries: [

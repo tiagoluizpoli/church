@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
-import { loadRosterPublishJourney } from '@/tests/fixtures/journeys/roster-publish';
 import {
+  assignPreparePath,
   newPersonaContext,
   requirementCellTestId,
-  rosteringTailoringPath,
   shortVolunteerName,
   signInPersonaPage,
-} from '@/tests/fixtures/journeys/rostering-church';
+} from '@/tests/fixtures/journeys/assign-church';
+import { loadSchedulePublishJourney } from '@/tests/fixtures/journeys/schedule-publish';
 
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
@@ -28,12 +28,12 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   browser,
   page,
 }, testInfo) => {
-  // The journey owns its Planning Cycle and both Participations: publish is
+  // The journey owns its Cycle and both Participations: publish is
   // cycle-wide, and the sibling Ministry must start (and stay) unpublished.
-  const journey = loadRosterPublishJourney({ testInfo });
+  const journey = loadSchedulePublishJourney({ testInfo });
   const worshipMinistryId = journey.ministries.worship.id;
   const careMinistryId = journey.ministries.care.id;
-  const planningCycleId = journey.cycle.id;
+  const cycleId = journey.cycle.id;
   const worshipParticipationId = journey.worship.id;
   const careParticipationId = journey.care.id;
   const eventTitle = journey.event.title;
@@ -42,14 +42,14 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   await signInPersonaPage({ page, persona: journey.personas.leader });
 
   await page.goto(
-    rosteringTailoringPath({
+    assignPreparePath({
       ministryId: worshipMinistryId,
-      cycleId: planningCycleId,
+      cycleId: cycleId,
     }),
   );
 
   const eventRow = page
-    .locator('[data-testid^="tailoring-slot-row-"]')
+    .locator('[data-testid^="prepare-slot-row-"]')
     .filter({ hasText: eventTitle })
     .first();
   await expect(eventRow).toBeVisible();
@@ -58,7 +58,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
 
   await eventRow
-    .getByTestId(`open-roster-link-${worshipParticipationId}`)
+    .getByTestId(`open-schedule-link-${worshipParticipationId}`)
     .click();
 
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
@@ -100,11 +100,11 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(
-      `${SERVER_URL}/api/v1/tailoring/cycles/${planningCycleId}/participation`,
+      `${SERVER_URL}/api/v1/prepare/cycles/${cycleId}/participation`,
       { params: { ministryId: worshipMinistryId } },
     ),
     page.request.get(
-      `${SERVER_URL}/api/v1/tailoring/cycles/${planningCycleId}/participation`,
+      `${SERVER_URL}/api/v1/prepare/cycles/${cycleId}/participation`,
       { params: { ministryId: careMinistryId } },
     ),
   ]);
@@ -125,7 +125,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
     careStateBody.events.find(
       (event) => event.participation.id === careParticipationId,
     )?.participation.state,
-  ).toBe('availability_fired');
+  ).toBe('availability_requested');
 
   const volunteerContext = await newPersonaContext({
     browser,

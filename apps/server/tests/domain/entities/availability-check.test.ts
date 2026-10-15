@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { ChurchId, PlanningCycleId } from '@/domain/branded-ids';
+import type { ChurchId, CycleId } from '@/domain/branded-ids';
 import { AvailabilityCheck } from '@/domain/entities/availability-check';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 
 const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
-const planningCycleId =
-  '22222222-2222-4222-8222-222222222222' as PlanningCycleId;
+const cycleId = '22222222-2222-4222-8222-222222222222' as CycleId;
 const ministryVolunteerId = '33333333-3333-4333-8333-333333333333';
 
 function buildCheck(): AvailabilityCheck {
   return new AvailabilityCheck({
-    props: { churchId, planningCycleId, ministryVolunteerId },
+    props: { churchId, cycleId, ministryVolunteerId },
   });
 }
 
@@ -21,7 +20,7 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
     expect(check.state).toBe('pending');
     expect(check.confirmedAt).toBeUndefined();
     expect(check.churchId).toBe(churchId);
-    expect(check.planningCycleId).toBe(planningCycleId);
+    expect(check.cycleId).toBe(cycleId);
     expect(check.ministryVolunteerId).toBe(ministryVolunteerId);
   });
 
@@ -29,7 +28,7 @@ describe('AvailabilityCheck entity (DL1-AC)', () => {
     const check = new AvailabilityCheck({
       props: {
         churchId,
-        planningCycleId,
+        cycleId,
         ministryVolunteerId,
         state: 'confirmed',
       },

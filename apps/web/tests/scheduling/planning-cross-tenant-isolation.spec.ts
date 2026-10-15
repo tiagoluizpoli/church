@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
-import { loadPlanningCycleTenantsJourney } from '@/tests/fixtures/journeys/planning-cycle-tenants';
-import { signInPersonaPage } from '@/tests/fixtures/journeys/rostering-church';
+import { signInPersonaPage } from '@/tests/fixtures/journeys/assign-church';
+import { loadCycleTenantsJourney } from '@/tests/fixtures/journeys/cycle-tenants';
 
 // P9/T064 (test-master, catastrophic-failure coverage): a ChurchAdmin from
 // Church A must never see Church B's cycle data through the
@@ -13,11 +13,11 @@ test.describe('DL4-X1 cross-tenant isolation on the $cycleId route', () => {
   test('a churchA admin visiting /scheduling/planning-cycles/:cycleId with a churchB id sees no churchB data', async ({
     page,
   }, testInfo) => {
-    const { churchA, churchB } = loadPlanningCycleTenantsJourney({ testInfo });
+    const { churchA, churchB } = loadCycleTenantsJourney({ testInfo });
     await signInPersonaPage({ page, persona: churchA.personas.admin });
 
     const detailResponse = await page.request.get(
-      `${SERVER_URL}/api/v1/admin/planning-cycles/${churchB.cycle.id}`,
+      `${SERVER_URL}/api/v1/admin/cycles/${churchB.cycle.id}`,
     );
     expect(detailResponse.status()).toBe(404);
 

@@ -8,9 +8,9 @@ import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
-const getPlanningCycle = vi.fn();
+const getCycle = vi.fn();
 const createPlanningEvent = vi.fn().mockResolvedValue({ id: 'event-new' });
 const updatePlanningEvent = vi.fn().mockResolvedValue({});
 const cancelPlanningEvent = vi.fn().mockResolvedValue(undefined);
@@ -20,9 +20,9 @@ const deletePlanningEventSlot = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
-    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+    getCycle: (...args: unknown[]) => getCycle(...args),
     createPlanningEvent: (...args: unknown[]) => createPlanningEvent(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
     cancelPlanningEvent: (...args: unknown[]) => cancelPlanningEvent(...args),
@@ -55,7 +55,7 @@ function render({
 
 async function selectTheOnlyCycle() {
   const user = userEvent.setup();
-  await user.click(await screen.findByTestId('planning-cycle-option'));
+  await user.click(await screen.findByTestId('cycle-option'));
   return user;
 }
 
@@ -72,7 +72,7 @@ function isTimeRangeText(content: string): boolean {
 }
 
 interface TwoEventCycleResponseInput {
-  state: 'draft' | 'locked';
+  state: 'draft' | 'sent';
 }
 
 function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
@@ -131,7 +131,7 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
 
 describe('CycleReviewCard header consolidation (US1)', () => {
   it('does not duplicate the cycle summary or the outer card title in the review body', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -142,9 +142,7 @@ describe('CycleReviewCard header consolidation (US1)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -170,7 +168,7 @@ describe('CycleReviewCard header consolidation (US1)', () => {
 
 describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
   it('renders a day row date-only and an expanded slot row as a dated instant range, with no raw ISO or arrow', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -181,9 +179,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render({ churchTimezone: 'UTC' });
     await selectTheOnlyCycle();
@@ -207,7 +203,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
   });
 
   it('changes every displayed date/time with the Church Timezone', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -218,9 +214,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render({ churchTimezone: 'UTC' });
     await selectTheOnlyCycle();
@@ -250,7 +244,7 @@ describe('CycleReviewCard timezone-aware date/time split (US2)', () => {
 
 describe('CycleReviewCard table view (US2)', () => {
   it('renders each weekday entry as a collapsed row and expands to reveal its slots', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -261,9 +255,7 @@ describe('CycleReviewCard table view (US2)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -293,21 +285,19 @@ describe('CycleReviewCard table view (US2)', () => {
     expect(within(table).getByText('Slot')).toBeInTheDocument();
   });
 
-  it('keeps the locked cycle table read-only with no new editing affordance', async () => {
-    listPlanningCycles.mockResolvedValue({
+  it('keeps the sent cycle table read-only with no new editing affordance', async () => {
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
           name: 'August 2026',
           startDate: '2026-08-01',
           endDate: '2026-08-31',
-          state: 'locked',
+          state: 'sent',
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'locked' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'sent' }));
 
     render({ isReadOnly: true });
     await selectTheOnlyCycle();
@@ -317,11 +307,11 @@ describe('CycleReviewCard table view (US2)', () => {
     expect(
       screen.queryByRole('button', { name: 'Add event' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('lock-cycle-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
   });
 
   it('shows the empty-state message instead of an empty table when the cycle has no events', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -332,7 +322,7 @@ describe('CycleReviewCard table view (US2)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -359,7 +349,7 @@ describe('CycleReviewCard table view (US2)', () => {
 
 describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   it("draft cycle shows day and slot edit/delete controls, disabling delete for a day's only slot", async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -370,9 +360,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -405,7 +393,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('deleting a day, after confirming, calls the cancel-event handler', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -416,9 +404,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -438,7 +424,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('deleting a non-last slot, after confirming, calls the delete-slot handler', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -449,9 +435,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -478,7 +462,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('keeps the desktop delete-day confirm dialog open with a "Deleting…" label until the mutation settles', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -489,9 +473,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
     let resolveDelete: () => void = () => undefined;
     cancelPlanningEvent.mockImplementation(
       () =>
@@ -527,7 +509,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('keeps the desktop delete-slot confirm dialog open with a "Deleting…" label until the mutation settles', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -538,9 +520,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
     let resolveDelete: () => void = () => undefined;
     deletePlanningEventSlot.mockImplementation(
       () =>
@@ -579,7 +559,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('renders Delete day/slot actions and the confirm-delete action with destructive styling, distinct from Edit', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -590,9 +570,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -622,7 +600,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('adding a slot to a day, after filling the dialog, calls the create-slot handler', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -633,9 +611,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -660,7 +636,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('editing a day, after changing title/description/location, calls the update-event handler', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -671,9 +647,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -714,7 +688,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
   });
 
   it('editing a slot, after changing start/end time, calls the update-slot handler', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -725,9 +699,7 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -768,21 +740,19 @@ describe('CycleReviewCard day/slot edit and delete (US3)', () => {
     );
   });
 
-  it('locked cycle shows no edit/delete controls anywhere in the table', async () => {
-    listPlanningCycles.mockResolvedValue({
+  it('sent cycle shows no edit/delete controls anywhere in the table', async () => {
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
           name: 'August 2026',
           startDate: '2026-08-01',
           endDate: '2026-08-31',
-          state: 'locked',
+          state: 'sent',
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'locked' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'sent' }));
 
     render({ isReadOnly: true });
     await selectTheOnlyCycle();
@@ -860,7 +830,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
   }
 
   function mockSingleAndMultiDayCycle() {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -871,7 +841,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
+    getCycle.mockResolvedValue(
       singleAndMultiDayEventCycleResponse({ state: 'draft' }),
     );
   }
@@ -989,7 +959,7 @@ describe('CycleReviewCard slot dialog date/time fields (post-spec fix)', () => {
 
 describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
   it('opens QuickCreateEventModal, through its ResponsiveFormSurface shell, from the mobile list', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -1000,9 +970,7 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -1031,20 +999,18 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
   });
 
   it('does not render the mobile add day-event trigger when read-only', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
           name: 'August 2026',
           startDate: '2026-08-01',
           endDate: '2026-08-31',
-          state: 'locked',
+          state: 'sent',
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'locked' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'sent' }));
 
     render({ isReadOnly: true });
     await selectTheOnlyCycle();
@@ -1058,7 +1024,7 @@ describe('CycleReviewCard mobile add day-event trigger (US1)', () => {
 
 describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
   it('"Expand all" reveals every day row\'s slots; "Collapse all" hides them all', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -1069,9 +1035,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -1091,7 +1055,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
   });
 
   it('does not leak expanded slot rows into the mobile card list', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -1102,9 +1066,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();
@@ -1127,7 +1089,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
   });
 
   it('is one-shot, not a synced toggle: re-collapsing one row after "Expand all" still lets "Collapse all" collapse everything', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -1138,9 +1100,7 @@ describe('CycleReviewCard desktop bulk expand/collapse (US5)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue(
-      twoEventCycleResponse({ state: 'draft' }),
-    );
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
 
     render();
     await selectTheOnlyCycle();

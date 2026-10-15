@@ -5,7 +5,7 @@ export const ESTACIONAMENTO = defineMinistry({
   name: 'Estacionamento',
   roles: ['Orientador de Estacionamento'],
   teams: [],
-  roster: [
+  schedule: [
     // Ministry leader (1)
     {
       seat: { ministryLeader: true, roles: ['Orientador de Estacionamento'] },

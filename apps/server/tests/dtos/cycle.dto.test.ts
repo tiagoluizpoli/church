@@ -5,16 +5,13 @@ import {
   parseInstant,
 } from '@church/time';
 import { describe, expect, it } from 'vitest';
-import {
-  planningCycleMapper,
-  planningCycleResponseSchema,
-} from '@/api/dtos/planning-cycle.dto';
+import { cycleMapper, cycleResponseSchema } from '@/api/dtos/cycle.dto';
+import { Cycle } from '@/domain/entities/cycle';
 import { Event } from '@/domain/entities/event';
-import { PlanningCycle } from '@/domain/entities/planning-cycle';
 import { TimeSlot } from '@/domain/entities/time-slot';
 
-function createPlanningCycle() {
-  return new PlanningCycle({
+function createCycle() {
+  return new Cycle({
     props: {
       churchId: '11111111-1111-1111-1111-111111111111',
       name: 'July 2026',
@@ -29,7 +26,7 @@ function createEvent() {
   return new Event(
     {
       churchId: '11111111-1111-1111-1111-111111111111',
-      planningCycleId: '22222222-2222-2222-2222-222222222222',
+      cycleId: '22222222-2222-2222-2222-222222222222',
       title: 'Sunday Service',
       start: parseInstant({ value: '2026-07-05T13:00:00.000Z' }),
       end: parseInstant({ value: '2026-07-05T15:00:00.000Z' }),
@@ -51,11 +48,11 @@ function createTimeSlot() {
   );
 }
 
-describe('planningCycleMapper', () => {
-  it('maps a planning cycle to its response shape with date-only fields', () => {
-    const cycle = createPlanningCycle();
+describe('cycleMapper', () => {
+  it('maps a cycle to its response shape with date-only fields', () => {
+    const cycle = createCycle();
 
-    const response = planningCycleMapper.toResponse(cycle);
+    const response = cycleMapper.toResponse(cycle);
 
     expect(response.id).toBe('22222222-2222-2222-2222-222222222222');
     expect(response.churchId).toBe('11111111-1111-1111-1111-111111111111');
@@ -65,30 +62,28 @@ describe('planningCycleMapper', () => {
     expect(response.state).toBe('draft');
     expect(response.createdAt).toBe(cycle.createdAt.toISOString());
     expect(response.updatedAt).toBe(cycle.updatedAt.toISOString());
-    expect(() => planningCycleResponseSchema.parse(response)).not.toThrow();
+    expect(() => cycleResponseSchema.parse(response)).not.toThrow();
     expect(isCalendarDay({ value: response.startDate })).toBe(true);
     expect(isCalendarDay({ value: response.endDate })).toBe(true);
     expect(isInstant({ value: response.createdAt })).toBe(true);
     expect(isInstant({ value: response.updatedAt })).toBe(true);
   });
 
-  it('maps a non-empty list of planning cycles', () => {
-    const response = planningCycleMapper.listToResponse([
-      createPlanningCycle(),
-    ]);
+  it('maps a non-empty list of cycles', () => {
+    const response = cycleMapper.listToResponse([createCycle()]);
 
     expect(response.cycles).toHaveLength(1);
     expect(response.cycles[0]?.id).toBe('22222222-2222-2222-2222-222222222222');
   });
 
-  it('maps an empty list of planning cycles', () => {
-    const response = planningCycleMapper.listToResponse([]);
+  it('maps an empty list of cycles', () => {
+    const response = cycleMapper.listToResponse([]);
 
     expect(response.cycles).toEqual([]);
   });
 
-  it('maps planning cycle details with an event that has multiple slots', () => {
-    const cycle = createPlanningCycle();
+  it('maps cycle details with an event that has multiple slots', () => {
+    const cycle = createCycle();
     const event = createEvent();
     const slotOne = createTimeSlot();
     const slotTwo = new TimeSlot(
@@ -102,7 +97,7 @@ describe('planningCycleMapper', () => {
       '55555555-5555-5555-5555-555555555555',
     );
 
-    const response = planningCycleMapper.detailsToResponse({
+    const response = cycleMapper.detailsToResponse({
       cycle,
       events: [{ event, slots: [slotOne, slotTwo] }],
     });
@@ -119,10 +114,10 @@ describe('planningCycleMapper', () => {
     ]);
   });
 
-  it('maps planning cycle details with an empty events array', () => {
-    const cycle = createPlanningCycle();
+  it('maps cycle details with an empty events array', () => {
+    const cycle = createCycle();
 
-    const response = planningCycleMapper.detailsToResponse({
+    const response = cycleMapper.detailsToResponse({
       cycle,
       events: [],
     });
@@ -130,11 +125,11 @@ describe('planningCycleMapper', () => {
     expect(response.events).toEqual([]);
   });
 
-  it('maps planning cycle details with an event that has an empty slots array', () => {
-    const cycle = createPlanningCycle();
+  it('maps cycle details with an event that has an empty slots array', () => {
+    const cycle = createCycle();
     const event = createEvent();
 
-    const response = planningCycleMapper.detailsToResponse({
+    const response = cycleMapper.detailsToResponse({
       cycle,
       events: [{ event, slots: [] }],
     });

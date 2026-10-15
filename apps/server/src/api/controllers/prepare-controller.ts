@@ -3,9 +3,9 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   TeamId,
@@ -21,9 +21,9 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  askAvailabilityResponseSchema,
   availabilityStatusResponseSchema,
   cycleParticipationResponseSchema,
-  fireAvailabilityResponseSchema,
   ministryCycleSummaryListResponseSchema,
   participationMapper,
   setInclusionsBodySchema,
@@ -87,15 +87,15 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
-interface TailoringControllerDependencies {
+interface PrepareControllerDependencies {
   participationManager: IParticipationManager;
   availabilityCheckManager: IAvailabilityCheckManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
 }
 
-export class TailoringController implements FastifyController {
-  readonly prefix = '/tailoring';
+export class PrepareController implements FastifyController {
+  readonly prefix = '/prepare';
 
   private readonly participationManager: IParticipationManager;
   private readonly availabilityCheckManager: IAvailabilityCheckManager;
@@ -107,7 +107,7 @@ export class TailoringController implements FastifyController {
     availabilityCheckManager,
     activeChurchResolver,
     authorityGuard,
-  }: TailoringControllerDependencies) {
+  }: PrepareControllerDependencies) {
     this.participationManager = participationManager;
     this.availabilityCheckManager = availabilityCheckManager;
     this.activeChurchResolver = activeChurchResolver;
@@ -127,11 +127,11 @@ export class TailoringController implements FastifyController {
       '/cycles/:cycleId/participation',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'getCycleParticipation',
-          summary: "Get a Ministry's tailoring view of a cycle",
+          summary: "Get a Ministry's prepare view of a cycle",
           description:
-            "Get a Ministry's MinistryParticipation tailoring state across every Event in a PlanningCycle.",
+            "Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle.",
           querystring: cycleParticipationQuerySchema,
           response: {
             200: cycleParticipationResponseSchema,
@@ -157,7 +157,7 @@ export class TailoringController implements FastifyController {
 
         const view = await this.participationManager.getCycleParticipation({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
         });
         return reply.send(participationMapper.cycleViewToResponse(view));
@@ -168,11 +168,11 @@ export class TailoringController implements FastifyController {
       '/ministries/:ministryId/cycles-summary',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'listMinistryCycleSummaries',
-          summary: "List a Ministry's cycle tailoring summaries",
+          summary: "List a Ministry's cycle prepare summaries",
           description:
-            "List summaries of a Ministry's MinistryParticipation tailoring progress across its PlanningCycles.",
+            "List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.",
           response: {
             200: ministryCycleSummaryListResponseSchema,
             403: errorResponseSchema,
@@ -210,7 +210,7 @@ export class TailoringController implements FastifyController {
       '/participations/:participationId/inclusions',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'setParticipationInclusions',
           summary: "Set a MinistryParticipation's included TimeSlots",
           description:
@@ -241,7 +241,7 @@ export class TailoringController implements FastifyController {
       '/participations/:participationId/slots/:timeSlotId/shifts',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'splitParticipationShifts',
           summary: 'Split a TimeSlot into Shifts',
           description:
@@ -277,7 +277,7 @@ export class TailoringController implements FastifyController {
       '/shifts/:shiftId',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'updateShift',
           summary: 'Update a Shift',
           description: "Update a Shift's bounds or label.",
@@ -306,7 +306,7 @@ export class TailoringController implements FastifyController {
       '/shifts/:shiftId',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'deleteShift',
           summary: 'Delete a Shift',
           description: 'Delete a Shift from its MinistryParticipation.',
@@ -329,7 +329,7 @@ export class TailoringController implements FastifyController {
       '/shifts/:shiftId/requirements',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'upsertShiftRequirement',
           summary: 'Set a Shift staffing requirement',
           description:
@@ -359,15 +359,15 @@ export class TailoringController implements FastifyController {
     );
 
     app.post(
-      '/participations/:participationId/fire-availability',
+      '/participations/:participationId/ask-availability',
       {
         schema: {
-          tags: ['tailoring'],
-          operationId: 'fireAvailability',
+          tags: ['prepare'],
+          operationId: 'askAvailability',
           summary: 'Fire availability for a MinistryParticipation',
           description:
-            "Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_fired.",
-          response: { 202: fireAvailabilityResponseSchema },
+            "Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.",
+          response: { 202: askAvailabilityResponseSchema },
         },
       },
       async (request, reply) => {
@@ -379,7 +379,7 @@ export class TailoringController implements FastifyController {
         });
         if (denied) return;
 
-        const result = await this.availabilityCheckManager.fireAvailability({
+        const result = await this.availabilityCheckManager.askAvailability({
           churchId: ChurchId.from(request.churchId),
           participationId: MinistryParticipationId.from(participationId),
         });
@@ -391,11 +391,11 @@ export class TailoringController implements FastifyController {
       '/cycles/:cycleId/availability-status',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'getCycleAvailabilityStatus',
           summary: "Get a Ministry's AvailabilityCheck status for a cycle",
           description:
-            "List a Ministry's Volunteers' AvailabilityCheck states across a PlanningCycle.",
+            "List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.",
           querystring: cycleParticipationQuerySchema,
           response: {
             200: availabilityStatusResponseSchema,
@@ -422,7 +422,7 @@ export class TailoringController implements FastifyController {
         const statuses =
           await this.availabilityCheckManager.listCycleCheckStatuses({
             churchId: ChurchId.from(request.churchId),
-            cycleId: PlanningCycleId.from(cycleId),
+            cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
           });
         return reply.send({
@@ -440,7 +440,7 @@ export class TailoringController implements FastifyController {
       '/participations/:participationId/availability-status',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'getAvailabilityStatus',
           summary: "Get a MinistryParticipation's AvailabilityCheck status",
           description:
@@ -476,7 +476,7 @@ export class TailoringController implements FastifyController {
       '/participations/:participationId/resend-availability',
       {
         schema: {
-          tags: ['tailoring'],
+          tags: ['prepare'],
           operationId: 'resendAvailabilityReminder',
           summary: 'Resend an availability reminder',
           description:

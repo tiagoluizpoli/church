@@ -5,9 +5,9 @@ import { z } from 'zod';
 import {
   AssignmentId,
   ChurchId,
+  CycleId,
   MinistryId,
   MinistryParticipationId,
-  PlanningCycleId,
   RoleId,
   ShiftId,
   TeamId,
@@ -23,6 +23,14 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  assignMapper,
+  createParticipationAssignmentBodySchema,
+  createParticipationAssignmentResponseSchema,
+  eligibleVolunteerListResponseSchema,
+  participationCompletionResponseSchema,
+  reassignAssignmentBodySchema,
+} from '../dtos/assign.dto';
+import {
   assignmentMapper,
   assignmentResponseSchema,
   auditListResponseSchema,
@@ -34,14 +42,6 @@ import {
   publishCycleMapper,
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
-import {
-  createParticipationAssignmentBodySchema,
-  createParticipationAssignmentResponseSchema,
-  eligibleVolunteerListResponseSchema,
-  participationCompletionResponseSchema,
-  reassignAssignmentBodySchema,
-  rosteringMapper,
-} from '../dtos/rostering.dto';
 
 interface ParticipationRouteParams {
   participationId: string;
@@ -86,7 +86,7 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
-const teamRosterCycleListResponseSchema = z.object({
+const teamScheduleCycleListResponseSchema = z.object({
   cycles: z.array(
     z.object({
       cycleId: z.string(),
@@ -112,27 +112,27 @@ interface ResolveOwnedAssignmentResult {
   denied: boolean;
 }
 
-interface ResolveRosterAssignmentInput extends ResolveOwnedAssignmentInput {
+interface ResolveScheduleAssignmentInput extends ResolveOwnedAssignmentInput {
   teamId?: string;
 }
 
-interface ResolveRosterAssignmentResult extends ResolveOwnedAssignmentResult {
+interface ResolveScheduleAssignmentResult extends ResolveOwnedAssignmentResult {
   teamLeaderScopeId?: TeamId;
 }
 
-interface ResolveRosterShiftInput {
+interface ResolveScheduleShiftInput {
   request: FastifyRequest;
   reply: FastifyReply;
   shiftId: string;
   teamId?: string;
 }
 
-interface ResolveRosterShiftResult {
+interface ResolveScheduleShiftResult {
   denied: boolean;
   teamLeaderScopeId?: TeamId;
 }
 
-interface DenyRosterActionInput {
+interface DenyAssignActionInput {
   reply: FastifyReply;
 }
 
@@ -155,7 +155,7 @@ interface CanReadCycleBuilderInput {
   userId: UserId;
 }
 
-interface RosteringControllerDependencies {
+interface AssignControllerDependencies {
   participationManager: IParticipationManager;
   assignmentManager: IAssignmentManager;
   activeChurchResolver: IActiveChurchResolver;
@@ -163,8 +163,8 @@ interface RosteringControllerDependencies {
   config: AppConfig;
 }
 
-export class RosteringController implements FastifyController {
-  readonly prefix = '/rostering';
+export class AssignController implements FastifyController {
+  readonly prefix = '/assign';
 
   private readonly participationManager: IParticipationManager;
   private readonly assignmentManager: IAssignmentManager;
@@ -179,7 +179,7 @@ export class RosteringController implements FastifyController {
     activeChurchResolver,
     authorityGuard,
     config,
-  }: RosteringControllerDependencies) {
+  }: AssignControllerDependencies) {
     this.participationManager = participationManager;
     this.assignmentManager = assignmentManager;
     this.activeChurchResolver = activeChurchResolver;
@@ -201,14 +201,14 @@ export class RosteringController implements FastifyController {
       '/teams/:teamId/cycles-summary',
       {
         schema: {
-          tags: ['rostering'],
-          operationId: 'listTeamRosterCycles',
-          summary: "List a Team's readable roster cycles",
+          tags: ['assign'],
+          operationId: 'listTeamScheduleCycles',
+          summary: "List a Team's readable schedule cycles",
           description:
-            'List the locked PlanningCycles in a Ministry that a TeamLeader may open as a read-only roster.',
+            'List the sent Cycles in a Ministry that a TeamLeader may open as a read-only schedule.',
           querystring: cycleMinistryQuerySchema,
           response: {
-            200: teamRosterCycleListResponseSchema,
+            200: teamScheduleCycleListResponseSchema,
             403: errorResponseSchema,
           },
         },
@@ -247,11 +247,11 @@ export class RosteringController implements FastifyController {
       '/cycles/:cycleId/builder',
       {
         schema: {
-          tags: ['rostering'],
+          tags: ['assign'],
           operationId: 'getCycleBuilderData',
           summary: 'Get cycle builder data for a Ministry',
           description:
-            "Get a Ministry's roster-building view of a PlanningCycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.",
+            "Get a Ministry's schedule-building view of a Cycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.",
           querystring: cycleMinistryQuerySchema,
           response: {
             200: cycleBuilderResponseSchema,
@@ -278,7 +278,7 @@ export class RosteringController implements FastifyController {
 
         const view = await this.participationManager.getCycleBuilderData({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
           teamId: teamId ? TeamId.from(teamId) : undefined,
           userId: UserId.from(request.userId),
@@ -292,11 +292,11 @@ export class RosteringController implements FastifyController {
         '/cycles/:cycleId/audit',
         {
           schema: {
-            tags: ['rostering'],
+            tags: ['assign'],
             operationId: 'getCycleAuditLog',
             summary: "Get a Ministry's Assignment audit log for a cycle",
             description:
-              "List a Ministry's Assignment audit entries across an entire PlanningCycle.",
+              "List a Ministry's Assignment audit entries across an entire Cycle.",
             querystring: cycleMinistryQuerySchema,
             response: {
               200: auditListResponseSchema,
@@ -322,7 +322,7 @@ export class RosteringController implements FastifyController {
 
           const items = await this.assignmentManager.listAuditLogForCycle({
             churchId: ChurchId.from(request.churchId),
-            cycleId: PlanningCycleId.from(cycleId),
+            cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
           });
           return reply.send(assignmentMapper.auditListToResponse(items));
@@ -334,11 +334,11 @@ export class RosteringController implements FastifyController {
       '/cycles/:cycleId/publish',
       {
         schema: {
-          tags: ['rostering'],
+          tags: ['assign'],
           operationId: 'publishCycle',
-          summary: "Publish a Ministry's roster for a cycle",
+          summary: "Publish a Ministry's schedule for a cycle",
           description:
-            'Publish every eligible MinistryParticipation in a PlanningCycle for a Ministry in one batch, making its rosters visible to Volunteers.',
+            'Publish every eligible MinistryParticipation in a Cycle for a Ministry in one batch, making its schedules visible to Volunteers.',
           querystring: cycleMinistryQuerySchema,
           body: publishCycleBodySchema,
           response: {
@@ -366,7 +366,7 @@ export class RosteringController implements FastifyController {
         const body = request.body as PublishCycleBody;
         const view = await this.participationManager.publishCycle({
           churchId: ChurchId.from(request.churchId),
-          cycleId: PlanningCycleId.from(cycleId),
+          cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
           confirmBelowFull: body.confirmBelowFull,
@@ -379,11 +379,11 @@ export class RosteringController implements FastifyController {
       '/shifts/:shiftId/eligible-volunteers',
       {
         schema: {
-          tags: ['rostering'],
+          tags: ['assign'],
           operationId: 'listEligibleVolunteers',
           summary: 'List eligible Volunteers for a Shift',
           description:
-            'List the Volunteers eligible to be assigned to a Shift, for the roster builder.',
+            'List the Volunteers eligible to be assigned to a Shift, for the schedule builder.',
           response: {
             200: eligibleVolunteerListResponseSchema,
             403: errorResponseSchema,
@@ -401,7 +401,7 @@ export class RosteringController implements FastifyController {
             shiftId: ShiftId.from(shiftId),
           });
         return reply.send(
-          rosteringMapper.eligibleVolunteerListToResponse(volunteers),
+          assignMapper.eligibleVolunteerListToResponse(volunteers),
         );
       },
     );
@@ -410,7 +410,7 @@ export class RosteringController implements FastifyController {
       '/shifts/:shiftId/assignments',
       {
         schema: {
-          tags: ['rostering'],
+          tags: ['assign'],
           operationId: 'createParticipationAssignment',
           summary: 'Assign a Volunteer to a Shift',
           description:
@@ -425,7 +425,7 @@ export class RosteringController implements FastifyController {
       async (request, reply) => {
         const { shiftId } = request.params as ShiftRouteParams;
         const body = request.body as CreateParticipationAssignmentBody;
-        const scope = await this.resolveRosterShift({
+        const scope = await this.resolveScheduleShift({
           request,
           reply,
           shiftId,
@@ -445,7 +445,7 @@ export class RosteringController implements FastifyController {
           });
         return reply
           .status(201)
-          .send(rosteringMapper.assignmentResultToResponse(result));
+          .send(assignMapper.assignmentResultToResponse(result));
       },
     );
 
@@ -453,7 +453,7 @@ export class RosteringController implements FastifyController {
       '/assignments/:assignmentId',
       {
         schema: {
-          tags: ['rostering'],
+          tags: ['assign'],
           operationId: 'deleteParticipationAssignment',
           summary: 'Delete an Assignment',
           description: 'Remove a Volunteer Assignment from its Shift.',
@@ -464,7 +464,7 @@ export class RosteringController implements FastifyController {
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
         const { teamId } = request.query as AssignmentMutationQuery;
-        const resolved = await this.resolveRosterAssignment({
+        const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
           assignmentId,
@@ -486,7 +486,7 @@ export class RosteringController implements FastifyController {
       '/assignments/:assignmentId/reassign',
       {
         schema: {
-          tags: ['rostering'],
+          tags: ['assign'],
           operationId: 'reassignParticipationAssignment',
           summary: 'Reassign an Assignment to another Volunteer',
           description:
@@ -500,7 +500,7 @@ export class RosteringController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
-        const resolved = await this.resolveRosterAssignment({
+        const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
           assignmentId,
@@ -523,7 +523,7 @@ export class RosteringController implements FastifyController {
       '/participations/:participationId/completion',
       {
         schema: {
-          tags: ['rostering'],
+          tags: ['assign'],
           operationId: 'getParticipationCompletion',
           summary: "Get a MinistryParticipation's staffing completion",
           description:
@@ -547,7 +547,7 @@ export class RosteringController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           participationId: MinistryParticipationId.from(participationId),
         });
-        return reply.send(rosteringMapper.completionToResponse(completion));
+        return reply.send(assignMapper.completionToResponse(completion));
       },
     );
   }
@@ -581,12 +581,12 @@ export class RosteringController implements FastifyController {
     return true;
   }
 
-  private async resolveRosterAssignment({
+  private async resolveScheduleAssignment({
     request,
     reply,
     assignmentId,
     teamId,
-  }: ResolveRosterAssignmentInput): Promise<ResolveRosterAssignmentResult> {
+  }: ResolveScheduleAssignmentInput): Promise<ResolveScheduleAssignmentResult> {
     let assignment: Assignment;
     try {
       assignment = await this.assignmentManager.getAssignment({
@@ -595,17 +595,17 @@ export class RosteringController implements FastifyController {
       });
     } catch (error) {
       if (error instanceof NotFoundError) {
-        this.denyRosterAction({ reply });
+        this.denyAssignAction({ reply });
         return { denied: true };
       }
       throw error;
     }
     if (!assignment.shiftId) {
-      this.denyRosterAction({ reply });
+      this.denyAssignAction({ reply });
       return { denied: true };
     }
 
-    const scope = await this.resolveRosterShift({
+    const scope = await this.resolveScheduleShift({
       request,
       reply,
       shiftId: assignment.shiftId,
@@ -620,12 +620,12 @@ export class RosteringController implements FastifyController {
         };
   }
 
-  private async resolveRosterShift({
+  private async resolveScheduleShift({
     request,
     reply,
     shiftId,
     teamId,
-  }: ResolveRosterShiftInput): Promise<ResolveRosterShiftResult> {
+  }: ResolveScheduleShiftInput): Promise<ResolveScheduleShiftResult> {
     const churchId = ChurchId.from(request.churchId);
     const userId = UserId.from(request.userId);
     const brandedShiftId = ShiftId.from(shiftId);
@@ -653,14 +653,14 @@ export class RosteringController implements FastifyController {
       }
     }
 
-    this.denyRosterAction({ reply });
+    this.denyAssignAction({ reply });
     return { denied: true };
   }
 
-  private denyRosterAction({ reply }: DenyRosterActionInput): void {
+  private denyAssignAction({ reply }: DenyAssignActionInput): void {
     reply.status(403).send({
-      error: 'ROSTER_ACTION_NOT_AVAILABLE',
-      message: 'Roster action is not available',
+      error: 'ASSIGN_ACTION_NOT_AVAILABLE',
+      message: 'Schedule action is not available',
     });
   }
 

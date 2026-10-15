@@ -1,13 +1,13 @@
 import { stateBadgeVariant } from './planning-admin.utils';
 import {
-  usePlanningCycleHeader,
-  usePlanningCycleListStats,
+  useCycleHeader,
+  useCycleListStats,
   usePlanningTemplateLibraryStats,
 } from './planning-admin-context';
 import { Badge } from '@/components/ui/badge';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
-interface PlanningCycleHeaderProps {
+interface CycleHeaderProps {
   showName?: boolean;
 }
 
@@ -31,14 +31,12 @@ function HeaderStatChip({ testId, label, value }: HeaderStatChipProps) {
 
 /**
  * The only place the selected cycle's status renders (FR-018, FR-019,
- * `data-model.md`'s `PlanningCycleHeaderModel`). It can render either the
+ * `data-model.md`'s `CycleHeaderModel`). It can render either the
  * full cycle name + status pairing or a compact status-only version when the
  * page title already carries the cycle name.
  */
-export function PlanningCycleHeader({
-  showName = true,
-}: PlanningCycleHeaderProps) {
-  const { nameAndStatus, period, counts } = usePlanningCycleHeader();
+export function CycleHeader({ showName = true }: CycleHeaderProps) {
+  const { nameAndStatus, period, counts } = useCycleHeader();
   if (!nameAndStatus || !period || !counts) {
     return null;
   }
@@ -47,7 +45,7 @@ export function PlanningCycleHeader({
     <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
       <div
         className="radius-surface flex min-w-0 items-center gap-2 border border-border/70 bg-background/70 px-3 py-1.5 text-sm"
-        data-testid="planning-cycle-name-status-chip"
+        data-testid="cycle-name-status-chip"
       >
         {showName ? (
           <span
@@ -67,17 +65,17 @@ export function PlanningCycleHeader({
         </Badge>
       </div>
       <HeaderStatChip
-        testId="planning-cycle-period-chip"
+        testId="cycle-period-chip"
         label="Window"
         value={`${formatCalendarDateOnly({ value: period.startDate })} → ${formatCalendarDateOnly({ value: period.endDate })}`}
       />
       <HeaderStatChip
-        testId="planning-cycle-event-count-chip"
+        testId="cycle-event-count-chip"
         label="Events"
         value={String(counts.eventCount)}
       />
       <HeaderStatChip
-        testId="planning-cycle-slot-count-chip"
+        testId="cycle-slot-count-chip"
         label="Slots"
         value={String(counts.slotCount)}
       />
@@ -86,28 +84,28 @@ export function PlanningCycleHeader({
 }
 
 /**
- * The plain "Planning cycles" list view's own summary — rendered instead of
- * `PlanningCycleHeader` when no cycle is selected, since that header must
+ * The plain "Cycles" list view's own summary — rendered instead of
+ * `CycleHeader` when no cycle is selected, since that header must
  * stay empty outside of a cycle review (see the leak-into-list-view fix).
  */
-export function PlanningCycleListStats() {
-  const { totalCount, draftCount, lockedCount } = usePlanningCycleListStats();
+export function CycleListStats() {
+  const { totalCount, draftCount, lockedCount } = useCycleListStats();
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
       <HeaderStatChip
-        testId="planning-cycles-total-chip"
+        testId="cycles-total-chip"
         label="Cycles"
         value={String(totalCount)}
       />
       <HeaderStatChip
-        testId="planning-cycles-draft-chip"
+        testId="cycles-draft-chip"
         label="Draft"
         value={String(draftCount)}
       />
       <HeaderStatChip
-        testId="planning-cycles-locked-chip"
-        label="Locked"
+        testId="cycles-sent-chip"
+        label="Sent"
         value={String(lockedCount)}
       />
     </div>
@@ -115,7 +113,7 @@ export function PlanningCycleListStats() {
 }
 
 /**
- * The template library view's own summary — mirrors `PlanningCycleListStats`
+ * The template library view's own summary — mirrors `CycleListStats`
  * but with a single chip, since a per-template block count isn't meaningful
  * at the library level.
  */

@@ -31,14 +31,14 @@ import {
   resolveJourneyRoots,
 } from '@/seeds/e2e/journey-keys';
 import {
-  addRosteringChurchMembership,
+  type AssignChurch,
+  type AssignChurchPlan,
+  addAssignChurchMembership,
   anchoredInstant,
-  buildRosteringChurch,
+  assignChurchRootKinds,
+  buildAssignChurch,
   mergeRootKinds,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from '@/seeds/e2e/recipes/rostering-church';
+} from '@/seeds/e2e/recipes/assign-church';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 
 const PLAN = {
@@ -122,7 +122,7 @@ const PLAN = {
       ],
     },
   },
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 interface JourneyKeyInput {
   journeyKey: string;
@@ -130,21 +130,20 @@ interface JourneyKeyInput {
 
 function idOfKey({ journeyKey }: JourneyKeyInput): JourneySeedIdOf {
   return ({ kind }) =>
-    deriveSeedId({ kind: `rostering-test:${kind}`, parentIds: [journeyKey] });
+    deriveSeedId({ kind: `assign-test:${kind}`, parentIds: [journeyKey] });
 }
 
-interface BuildInput<TPlan extends RosteringChurchPlan>
-  extends JourneyKeyInput {
+interface BuildInput<TPlan extends AssignChurchPlan> extends JourneyKeyInput {
   plan: TPlan;
   scope?: string;
 }
 
-async function build<const TPlan extends RosteringChurchPlan>({
+async function build<const TPlan extends AssignChurchPlan>({
   journeyKey,
   plan,
   scope,
-}: BuildInput<TPlan>): Promise<RosteringChurch<TPlan>> {
-  return await buildRosteringChurch({
+}: BuildInput<TPlan>): Promise<AssignChurch<TPlan>> {
+  return await buildAssignChurch({
     db: testDb,
     idOf: idOfKey({ journeyKey }),
     tag: `t${journeyKey}`,
@@ -161,7 +160,7 @@ interface PurgeRootsInput extends JourneyKeyInput {
 /** What `runE2eJourneyRecipe` purges: the roots the plan's kinds name. */
 async function purgeRoots({
   journeyKey,
-  kinds = rosteringChurchRootKinds({ plan: PLAN }),
+  kinds = assignChurchRootKinds({ plan: PLAN }),
 }: PurgeRootsInput): Promise<void> {
   const idOf = idOfKey({ journeyKey });
   await testDb.delete(organization).where(
@@ -178,7 +177,7 @@ async function purgeRoots({
   );
 }
 
-describe('rostering Church base for E2E journey recipes', () => {
+describe('assign Church base for E2E journey recipes', () => {
   beforeEach(async () => {
     await truncateAll();
     await ensurePlatformOperator({
@@ -409,18 +408,18 @@ const CHURCH_B_PLAN = {
       ],
     },
   },
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 const TWO_CHURCH_ROOT_KINDS = mergeRootKinds({
   rootKinds: [
-    rosteringChurchRootKinds({ plan: PLAN, scope: 'a' }),
-    rosteringChurchRootKinds({ plan: CHURCH_B_PLAN, scope: 'b' }),
+    assignChurchRootKinds({ plan: PLAN, scope: 'a' }),
+    assignChurchRootKinds({ plan: CHURCH_B_PLAN, scope: 'b' }),
   ],
 });
 
 interface TwoChurchGraph {
-  churchA: RosteringChurch<typeof PLAN>;
-  churchB: RosteringChurch<typeof CHURCH_B_PLAN>;
+  churchA: AssignChurch<typeof PLAN>;
+  churchB: AssignChurch<typeof CHURCH_B_PLAN>;
 }
 
 async function buildTwoChurches({
@@ -428,7 +427,7 @@ async function buildTwoChurches({
 }: JourneyKeyInput): Promise<TwoChurchGraph> {
   const churchA = await build({ journeyKey, plan: PLAN, scope: 'a' });
   const churchB = await build({ journeyKey, plan: CHURCH_B_PLAN, scope: 'b' });
-  await addRosteringChurchMembership({
+  await addAssignChurchMembership({
     db: testDb,
     idOf: idOfKey({ journeyKey }),
     church: churchB.church,
@@ -439,7 +438,7 @@ async function buildTwoChurches({
 }
 
 interface GraphIdsInput {
-  graph: RosteringChurch<RosteringChurchPlan>;
+  graph: AssignChurch<AssignChurchPlan>;
 }
 
 /** Every id a graph's result names. */
@@ -457,7 +456,7 @@ function graphIds({ graph }: GraphIdsInput): string[] {
   ];
 }
 
-describe('scoped rostering Churches', () => {
+describe('scoped assign Churches', () => {
   beforeEach(async () => {
     await truncateAll();
     await ensurePlatformOperator({
@@ -479,7 +478,7 @@ describe('scoped rostering Churches', () => {
       idOf({ kind: 'persona-user:leader' }),
     );
     expect(graph.personas.leader.email).toBe('leader@talpha.e2e.test');
-    expect(rosteringChurchRootKinds({ plan: PLAN })).toEqual({
+    expect(assignChurchRootKinds({ plan: PLAN })).toEqual({
       churchKinds: ['church'],
       userKinds: [
         'persona-user:leader',
@@ -564,7 +563,7 @@ describe('scoped rostering Churches', () => {
     const idOf = idOfKey({ journeyKey: 'alpha' });
 
     await expect(
-      addRosteringChurchMembership({
+      addAssignChurchMembership({
         db: testDb,
         idOf,
         church: churchB.church,
@@ -573,7 +572,7 @@ describe('scoped rostering Churches', () => {
       }),
     ).rejects.toThrow('already a member');
     await expect(
-      addRosteringChurchMembership({
+      addAssignChurchMembership({
         db: testDb,
         idOf,
         church: churchA.church,
@@ -610,7 +609,7 @@ describe('scoped rostering Churches', () => {
       await expect(
         build({ journeyKey: 'alpha', plan: PLAN, scope }),
       ).rejects.toThrow('not lower-case slug-safe');
-      expect(() => rosteringChurchRootKinds({ plan: PLAN, scope })).toThrow(
+      expect(() => assignChurchRootKinds({ plan: PLAN, scope })).toThrow(
         'not lower-case slug-safe',
       );
     }

@@ -27,24 +27,24 @@ import type {
   UpdatePlanningEventSlotManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
+import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { MinistryServingProfileRepository } from '../domain/contracts/infrastructure/ministry-serving-profile.repository';
-import type { PlanningCycleRepository } from '../domain/contracts/infrastructure/planning-cycle.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TimeSlotRepository } from '../domain/contracts/infrastructure/time-slot.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Church } from '../domain/entities/church';
+import type { Cycle } from '../domain/entities/cycle';
 import type { Event } from '../domain/entities/event';
 import type { DefaultDirection } from '../domain/entities/ministry';
-import type { PlanningCycle } from '../domain/entities/planning-cycle';
 import { Shift } from '../domain/entities/shift';
 import type { TimeSlot } from '../domain/entities/time-slot';
 import {
-  EventOutsidePlanningCycleError,
+  EventOutsideCycleError,
   IllegalStateTransitionError,
   LastRemainingSlotError,
 } from '../domain/errors';
@@ -57,14 +57,14 @@ import {
   type ProfileSeederEntry,
 } from '../domain/services/profile-seeder';
 
-interface EnsurePlanningCycleWritableInput {
-  cycle: PlanningCycle;
+interface EnsureCycleWritableInput {
+  cycle: Cycle;
   churchTimeZone: string;
 }
 
 /**
  * Actions that can be attempted against an event/slot while checking
- * whether the owning planning cycle still allows writes. Local to
+ * whether the owning cycle still allows writes. Local to
  * `DbPlanningEventManager` — the shared `IPlanningEventManager` contract has
  * no concept of this distinction.
  */
@@ -118,7 +118,7 @@ interface BuildSeedContextInput {
 }
 
 interface DbPlanningEventManagerDependencies {
-  cycleRepository: PlanningCycleRepository;
+  cycleRepository: CycleRepository;
   eventRepository: PlanningEventRepository;
   templateRepository: EventTemplateRepository;
   churchRepository: ChurchRepository;
@@ -134,7 +134,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly generator = new CycleEventGenerator();
   private readonly profileSeeder = new ProfileSeeder();
 
-  private readonly cycleRepository: PlanningCycleRepository;
+  private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly templateRepository: EventTemplateRepository;
   private readonly churchRepository: ChurchRepository;
@@ -175,7 +175,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
-      const cycle = await this.ensurePlanningCycleWritable({
+      const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
@@ -237,12 +237,12 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             ? (
                 await this.eventRepository.createEvent({
                   churchId: input.churchId,
-                  planningCycleId: input.cycleId,
+                  cycleId: input.cycleId,
                   sourceTemplateId: plan.sourceTemplateId,
                   title: plan.title,
                   start: toDate({ instant: plan.start }),
                   end: toDate({ instant: plan.end }),
-                  status: cycle.state === 'locked' ? 'scheduled' : 'draft',
+                  status: cycle.state === 'sent' ? 'scheduled' : 'draft',
                   tx,
                 })
               ).id
@@ -432,7 +432,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
-      const cycle = await this.ensurePlanningCycleWritable({
+      const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
@@ -445,13 +445,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
       const event = await this.eventRepository.createEvent({
         churchId: input.churchId,
-        planningCycleId: input.cycleId,
+        cycleId: input.cycleId,
         title: input.title,
         description: input.description,
         location: input.location,
         start: input.start,
         end: input.end,
-        status: cycle.state === 'locked' ? 'scheduled' : 'draft',
+        status: cycle.state === 'sent' ? 'scheduled' : 'draft',
         tx,
       });
 
@@ -469,7 +469,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     return this.unitOfWork.run(async (tx) => {
-      const cycle = await this.ensurePlanningCycleWritable({
+      const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
@@ -479,7 +479,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
-      if (cycle.state === 'locked' && currentEvent.status !== 'draft') {
+      if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
         throw new IllegalStateTransitionError(currentEvent.status, 'update');
       }
 
@@ -499,7 +499,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         location: input.location,
         start: input.start,
         end: input.end,
-        status: cycle.state === 'locked' ? 'scheduled' : currentEvent.status,
+        status: cycle.state === 'sent' ? 'scheduled' : currentEvent.status,
         tx,
       });
 
@@ -622,7 +622,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     action,
     tx,
   }: EnsureWritableEventInput): Promise<Event> {
-    const cycle = await this.ensurePlanningCycleWritable({
+    const cycle = await this.ensureCycleWritable({
       cycle: await this.cycleRepository.getById({ ...input, tx }),
       churchTimeZone: church.timezone,
     });
@@ -632,7 +632,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       tx,
     });
 
-    if (cycle.state === 'locked' && event.status !== 'draft') {
+    if (cycle.state === 'sent' && event.status !== 'draft') {
       throw new IllegalStateTransitionError(event.status, action);
     }
 
@@ -664,7 +664,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     await this.unitOfWork.run(async (tx) => {
-      const cycle = await this.ensurePlanningCycleWritable({
+      const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
       });
@@ -674,7 +674,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
 
-      if (cycle.state === 'locked' && currentEvent.status !== 'draft') {
+      if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
         throw new IllegalStateTransitionError(currentEvent.status, 'cancel');
       }
 
@@ -703,11 +703,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
-  private async ensurePlanningCycleWritable({
+  private async ensureCycleWritable({
     cycle,
     churchTimeZone,
-  }: EnsurePlanningCycleWritableInput): Promise<PlanningCycle> {
-    if (cycle.state === 'archived') {
+  }: EnsureCycleWritableInput): Promise<Cycle> {
+    if (cycle.state === 'past') {
       throw new IllegalStateTransitionError(cycle.state, 'mutate');
     }
 
@@ -717,9 +717,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       await this.cycleRepository.updateState({
         churchId: cycle.churchId,
         cycleId: cycle.id,
-        state: 'archived',
+        state: 'past',
       });
-      throw new IllegalStateTransitionError('archived', 'mutate');
+      throw new IllegalStateTransitionError('past', 'mutate');
     }
 
     return cycle;
@@ -727,7 +727,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 }
 
 interface AssertEventStartsWithinCycleInput {
-  cycle: PlanningCycle;
+  cycle: Cycle;
   eventStart: Date;
   churchTimeZone: string;
 }
@@ -743,6 +743,6 @@ function assertEventStartsWithinCycle({
       timeZone: churchTimeZone,
     })
   ) {
-    throw new EventOutsidePlanningCycleError();
+    throw new EventOutsideCycleError();
   }
 }

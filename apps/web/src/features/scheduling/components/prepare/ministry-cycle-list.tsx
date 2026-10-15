@@ -2,9 +2,9 @@ import { Link } from '@tanstack/react-router';
 import { type ReactNode, useMemo, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import {
-  cycleTailoringStatusBadgeVariant,
-  cycleTailoringStatusLabel,
-  type TailoringCycleSummary,
+  cyclePrepareStatusBadgeVariant,
+  cyclePrepareStatusLabel,
+  type PrepareCycleSummary,
 } from './cycle-list.utils';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -22,7 +22,7 @@ export interface OnSelectCycleInput {
 
 export interface MinistryCycleListProps {
   ministryId: string;
-  cycles: TailoringCycleSummary[];
+  cycles: PrepareCycleSummary[];
   onSelectCycle: (input: OnSelectCycleInput) => void;
   emptyMessage?: ReactNode;
   /** Rendered as a toolbar strip inside this component's own card, above
@@ -51,8 +51,8 @@ const DEFAULT_SORT_DESCRIPTOR: SortDescriptor = {
 };
 
 interface CompareCyclesInput {
-  left: TailoringCycleSummary;
-  right: TailoringCycleSummary;
+  left: PrepareCycleSummary;
+  right: PrepareCycleSummary;
   sortDescriptor: SortDescriptor;
 }
 
@@ -79,15 +79,15 @@ function compareCycles({
 
 /** Story 2 (amended, Iteration 3): cycle picker scoped to one ministry,
  * reusing `cycle-list-card.tsx`'s responsive `Card`/`surface-panel`
- * containment. Status is FR-030's leader-facing tailoring-progress status
+ * containment. Status is FR-030's leader-facing prepare-progress status
  * (aggregated from `MinistryParticipation`, research.md R15/R16) — never
- * `PlanningCycle.state`. The parent route auto-advances past this component
+ * `Cycle.state`. The parent route auto-advances past this component
  * entirely when exactly one cycle the ministry is part of is open
  * (research.md R7, recomputed in Iteration 3 against `isPartOf`) — it only
  * renders for the 0/2+ case. FR-036: `Card` padding uses the same
  * `workspace-panel-lg` token as the page header instead of shadcn's default
  * `px-4 py-4`. Rows are inert (no click-to-navigate) — the explicit
- * Tailoring/Assign buttons in the Actions column are the sole
+ * Prepare/Assign buttons in the Actions column are the sole
  * navigation affordance, per design-critique follow-up: a redundant
  * row-click doing the same thing as the button added a spurious decision
  * point and gave screen readers a run-on accessible name per row. */
@@ -95,7 +95,7 @@ export function MinistryCycleList({
   ministryId,
   cycles,
   onSelectCycle,
-  emptyMessage = 'No locked cycles are available for this ministry to tailor right now.',
+  emptyMessage = 'No sent cycles are available for this ministry to prepare right now.',
   filters,
 }: MinistryCycleListProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -155,7 +155,7 @@ export function MinistryCycleList({
             className="workspace-panel-lg"
             data-testid="ministry-cycle-list-panel"
           >
-            <DataTable<TailoringCycleSummary>
+            <DataTable<PrepareCycleSummary>
               aria-label="Cycles"
               columns={CYCLE_TABLE_COLUMNS}
               items={sortedCycles}
@@ -171,11 +171,11 @@ export function MinistryCycleList({
                   {column.id === 'slots' ? item.slotCount : null}
                   {column.id === 'status' ? (
                     <Badge
-                      variant={cycleTailoringStatusBadgeVariant({
+                      variant={cyclePrepareStatusBadgeVariant({
                         status: item.status,
                       })}
                     >
-                      {cycleTailoringStatusLabel({ status: item.status })}
+                      {cyclePrepareStatusLabel({ status: item.status })}
                     </Badge>
                   ) : null}
                   {column.id === 'actions' ? (
@@ -203,11 +203,11 @@ export function MinistryCycleList({
                       </div>
                     </div>
                     <Badge
-                      variant={cycleTailoringStatusBadgeVariant({
+                      variant={cyclePrepareStatusBadgeVariant({
                         status: item.status,
                       })}
                     >
-                      {cycleTailoringStatusLabel({ status: item.status })}
+                      {cyclePrepareStatusLabel({ status: item.status })}
                     </Badge>
                   </div>
                   <CycleRowActions
@@ -227,11 +227,11 @@ export function MinistryCycleList({
 
 interface CycleRowActionsProps {
   ministryId: string;
-  cycle: TailoringCycleSummary;
+  cycle: PrepareCycleSummary;
   onSelectCycle: (input: OnSelectCycleInput) => void;
 }
 
-/** FR-035: Roster is always enabled and formalizes what row-click already
+/** FR-035: Schedule is always enabled and formalizes what row-click already
  * does; Assign links to the cycle-centric builder and stays enabled once
  * any availability has fired for this cycle. */
 function CycleRowActions({
@@ -248,12 +248,12 @@ function CycleRowActions({
         type="button"
         size={size}
         variant="outline"
-        data-testid={`ministry-cycle-tailoring-button-${cycle.id}`}
+        data-testid={`ministry-cycle-prepare-button-${cycle.id}`}
         onClick={() => onSelectCycle({ cycleId: cycle.id })}
       >
-        Roster
+        Schedule
       </Button>
-      {cycle.availabilityFiredForAny ? (
+      {cycle.availabilityRequestedForAny ? (
         <Link
           to="/scheduling/rostering/$ministryId/$cycleId"
           params={{ ministryId, cycleId: cycle.id }}

@@ -2,9 +2,9 @@ import { NotFoundError } from '@church/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type {
   ChurchId,
+  CycleId,
   EventId,
   MinistryId,
-  PlanningCycleId,
 } from '@/domain/branded-ids';
 import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
 
@@ -78,8 +78,7 @@ export function runEventRepositoryContractTests(
       const created = await repo.create(
         '11111111-1111-1111-1111-111111111111' as ChurchId,
         {
-          planningCycleId:
-            '22222222-2222-2222-2222-222222222231' as PlanningCycleId,
+          cycleId: '22222222-2222-2222-2222-222222222231' as CycleId,
           title: 'New Event',
           start: new Date('2024-06-10T10:00:00Z'),
           end: new Date('2024-06-10T12:00:00Z'),

@@ -1,19 +1,19 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApplyTemplatesDialog } from './planning-admin/apply-templates-dialog';
-import { cycleIsLocked } from './planning-admin/planning-admin.utils';
+import {
+  CycleHeader,
+  CycleListStats,
+  PlanningTemplateLibraryStats,
+} from './planning-admin/cycle-header';
+import { cycleIsSent } from './planning-admin/planning-admin.utils';
 import {
   PlanningAdminProvider,
+  useCycleHeader,
   useCycleReviewCard,
+  useCycleSelection,
   useIsPlanningAccessDenied,
-  usePlanningCycleHeader,
-  usePlanningCycleSelection,
 } from './planning-admin/planning-admin-context';
-import {
-  PlanningCycleHeader,
-  PlanningCycleListStats,
-  PlanningTemplateLibraryStats,
-} from './planning-admin/planning-cycle-header';
 import { QuickCreateEventModal } from './quick-create-event-modal';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -117,7 +117,7 @@ function PlanningAdminLayout() {
   const isTemplatesView = pathname.endsWith('/templates');
   const isPlainListView =
     pathname === CYCLES_PATH || pathname === `${CYCLES_PATH}/`;
-  const { nameAndStatus } = usePlanningCycleHeader();
+  const { nameAndStatus } = useCycleHeader();
   const intro = describePlanningIntro({
     pathname,
     selectedCycleName: nameAndStatus?.name ?? null,
@@ -137,28 +137,28 @@ function PlanningAdminLayout() {
         autoFocusTitle
         aside={
           isReviewingCyclePath({ pathname }) ? (
-            <PlanningCycleHeader showName={false} />
+            <CycleHeader showName={false} />
           ) : isTemplatesView ? (
             <PlanningTemplateLibraryStats />
           ) : isPlainListView ? (
-            <PlanningCycleListStats />
+            <CycleListStats />
           ) : null
         }
       />
 
-      {isTemplatesView ? null : <PlanningCyclesActions pathname={pathname} />}
+      {isTemplatesView ? null : <CyclesActions pathname={pathname} />}
 
       <Outlet />
     </WorkspacePage>
   );
 }
 
-interface PlanningCyclesActionsProps {
+interface CyclesActionsProps {
   pathname: string;
 }
 
-function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
-  const { selectedCycleId } = usePlanningCycleSelection();
+function CyclesActions({ pathname }: CyclesActionsProps) {
+  const { selectedCycleId } = useCycleSelection();
   const { selectedCycle } = useCycleReviewCard();
   const [applyTemplatesOpen, setApplyTemplatesOpen] = useState(false);
   const [createEventOpen, setCreateEventOpen] = useState(false);
@@ -166,13 +166,13 @@ function PlanningCyclesActions({ pathname }: PlanningCyclesActionsProps) {
   const canMutateCalendar =
     isReviewingCycle &&
     Boolean(selectedCycle) &&
-    !cycleIsLocked({ cycle: selectedCycle });
+    !cycleIsSent({ cycle: selectedCycle });
 
   return (
     <>
       <div
         className="flex flex-wrap items-center justify-end gap-2"
-        data-testid="planning-cycles-actions-row"
+        data-testid="cycles-actions-row"
       >
         <Link
           to="/scheduling/planning-cycles/templates"

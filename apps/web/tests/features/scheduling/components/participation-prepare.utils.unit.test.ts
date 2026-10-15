@@ -1,7 +1,7 @@
 import { parseInstant, parseTimeOfDay } from '@church/time';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  buildMinistryTailoringSummary,
+  buildMinistryPrepareSummary,
   buildSlotDayMarkers,
   createInitialSplitForms,
   filterSlotsByName,
@@ -11,7 +11,7 @@ import {
   toCalendarDateString,
   toMinistryCycleKey,
   validateManualSpans,
-} from '@/features/scheduling/components/participation-tailoring.utils';
+} from '@/features/scheduling/components/participation-prepare.utils';
 import type { GetCycleParticipation200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
 
 const SLOT_VIEW: GetCycleParticipation200EventsItem['slots'][number] = {
@@ -50,12 +50,12 @@ function makeEventView(
       churchId: 'church-1',
       ministryId: 'ministry-1',
       eventId: 'event-1',
-      state: 'tailoring',
+      state: 'preparing',
     },
     event: {
       id: 'event-1',
       churchId: 'church-1',
-      planningCycleId: 'cycle-1',
+      cycleId: 'cycle-1',
       title: 'Sunday Service',
       start: '2026-07-12T09:00:00Z',
       end: '2026-07-12T11:00:00Z',
@@ -109,17 +109,14 @@ describe('toMinistryCycleKey', () => {
   });
 });
 
-describe('buildMinistryTailoringSummary (T006/R10)', () => {
+describe('buildMinistryPrepareSummary (T006/R10)', () => {
   describe('Happy Path', () => {
-    it('sums event/slot counts intersected with the locked-cycle set', () => {
-      const rows = buildMinistryTailoringSummary({
+    it('sums event/slot counts intersected with the sent-cycle set', () => {
+      const rows = buildMinistryPrepareSummary({
         ministries: [{ id: 'ministry-1', name: 'Greeters' }],
-        lockedCycleIds: ['cycle-1'],
+        sentCycleIds: ['cycle-1'],
         eventsByMinistryId: {
-          'ministry-1': [
-            { planningCycleId: 'cycle-1' },
-            { planningCycleId: 'cycle-1' },
-          ],
+          'ministry-1': [{ cycleId: 'cycle-1' }, { cycleId: 'cycle-1' }],
         },
         slotCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 5,
@@ -136,15 +133,12 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
       ]);
     });
 
-    it('sums slot counts across 2+ concurrently locked cycles', () => {
-      const rows = buildMinistryTailoringSummary({
+    it('sums slot counts across 2+ concurrently sent cycles', () => {
+      const rows = buildMinistryPrepareSummary({
         ministries: [{ id: 'ministry-1', name: 'Greeters' }],
-        lockedCycleIds: ['cycle-1', 'cycle-2'],
+        sentCycleIds: ['cycle-1', 'cycle-2'],
         eventsByMinistryId: {
-          'ministry-1': [
-            { planningCycleId: 'cycle-1' },
-            { planningCycleId: 'cycle-2' },
-          ],
+          'ministry-1': [{ cycleId: 'cycle-1' }, { cycleId: 'cycle-2' }],
         },
         slotCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 3,
@@ -158,9 +152,9 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
 
   describe('Edge Cases', () => {
     it('returns 0/0 for an untouched ministry with no events', () => {
-      const rows = buildMinistryTailoringSummary({
+      const rows = buildMinistryPrepareSummary({
         ministries: [{ id: 'ministry-1', name: 'Greeters' }],
-        lockedCycleIds: ['cycle-1'],
+        sentCycleIds: ['cycle-1'],
         eventsByMinistryId: {},
         slotCountByMinistryAndCycle: {},
       });
@@ -176,14 +170,11 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
     });
 
     it('excludes events whose cycle is not in the locked set (draft/archived)', () => {
-      const rows = buildMinistryTailoringSummary({
+      const rows = buildMinistryPrepareSummary({
         ministries: [{ id: 'ministry-1', name: 'Greeters' }],
-        lockedCycleIds: ['cycle-1'],
+        sentCycleIds: ['cycle-1'],
         eventsByMinistryId: {
-          'ministry-1': [
-            { planningCycleId: 'cycle-1' },
-            { planningCycleId: 'cycle-draft' },
-          ],
+          'ministry-1': [{ cycleId: 'cycle-1' }, { cycleId: 'cycle-draft' }],
         },
         slotCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 2,
@@ -195,11 +186,11 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
     });
 
     it('reflects non-zero pre-seeded counts for all_in ministries (R5) — no forced zero', () => {
-      const rows = buildMinistryTailoringSummary({
+      const rows = buildMinistryPrepareSummary({
         ministries: [{ id: 'ministry-1', name: 'All-In Ministry' }],
-        lockedCycleIds: ['cycle-1'],
+        sentCycleIds: ['cycle-1'],
         eventsByMinistryId: {
-          'ministry-1': [{ planningCycleId: 'cycle-1' }],
+          'ministry-1': [{ cycleId: 'cycle-1' }],
         },
         slotCountByMinistryAndCycle: {
           'ministry-1:cycle-1': 12,
@@ -209,12 +200,12 @@ describe('buildMinistryTailoringSummary (T006/R10)', () => {
       expect(rows[0]?.slotCount).toBe(12);
     });
 
-    it('handles zero locked cycles', () => {
-      const rows = buildMinistryTailoringSummary({
+    it('handles zero sent cycles', () => {
+      const rows = buildMinistryPrepareSummary({
         ministries: [{ id: 'ministry-1', name: 'Greeters' }],
-        lockedCycleIds: [],
+        sentCycleIds: [],
         eventsByMinistryId: {
-          'ministry-1': [{ planningCycleId: 'cycle-1' }],
+          'ministry-1': [{ cycleId: 'cycle-1' }],
         },
         slotCountByMinistryAndCycle: { 'ministry-1:cycle-1': 5 },
       });

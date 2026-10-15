@@ -1,47 +1,44 @@
-import type { ChurchId, EventId, PlanningCycleId } from '../../branded-ids';
+import type { ChurchId, CycleId, EventId } from '../../branded-ids';
+import type { Cycle, CycleState } from '../../entities/cycle';
 import type { EventWithSlots } from '../../entities/event';
-import type {
-  PlanningCycle,
-  PlanningCycleState,
-} from '../../entities/planning-cycle';
 
-export interface CreatePlanningCycleManagerInput {
+export interface CreateCycleManagerInput {
   churchId: ChurchId;
   name: string;
   startDate: Date;
   endDate: Date;
 }
 
-export interface ListPlanningCyclesManagerInput {
+export interface ListCyclesManagerInput {
   churchId: ChurchId;
-  state?: PlanningCycleState;
+  state?: CycleState;
 }
 
-export interface GetPlanningCycleManagerInput {
+export interface GetCycleManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
 }
 
-export interface LockPlanningCycleManagerInput {
+export interface SendCycleManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
 }
 
 export interface ReopenPlanningEventManagerInput {
   churchId: ChurchId;
-  cycleId: PlanningCycleId;
+  cycleId: CycleId;
   eventId: EventId;
 }
 
-export interface PlanningCycleDetails {
-  cycle: PlanningCycle;
+export interface CycleDetails {
+  cycle: Cycle;
   events: EventWithSlots[];
 }
 
-export interface IPlanningCycleManager {
-  createCycle(input: CreatePlanningCycleManagerInput): Promise<PlanningCycle>;
-  listCycles(input: ListPlanningCyclesManagerInput): Promise<PlanningCycle[]>;
-  getCycle(input: GetPlanningCycleManagerInput): Promise<PlanningCycleDetails>;
-  lockCycle(input: LockPlanningCycleManagerInput): Promise<void>;
+export interface ICycleManager {
+  createCycle(input: CreateCycleManagerInput): Promise<Cycle>;
+  listCycles(input: ListCyclesManagerInput): Promise<Cycle[]>;
+  getCycle(input: GetCycleManagerInput): Promise<CycleDetails>;
+  sendCycle(input: SendCycleManagerInput): Promise<void>;
   reopenEvent(input: ReopenPlanningEventManagerInput): Promise<void>;
 }

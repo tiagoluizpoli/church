@@ -37,7 +37,7 @@ function reportSeededGraph({ seeded }: ReportSeededGraphInput): void {
   console.log(`  Every other sign-in: ${BLUEPRINT_LOCATION}`);
   const { startDate, endDate } = seeded.historicalCycle;
   console.log(
-    `  History: locked PlanningCycle ${startDate} to ${addCalendarDays({ day: endDate, days: -1 })}; from ${endDate} on, nothing is planned.`,
+    `  History: sent Cycle ${startDate} to ${addCalendarDays({ day: endDate, days: -1 })}; from ${endDate} on, nothing is planned.`,
   );
 }
 

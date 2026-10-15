@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayFilterName } from './rostering-church';
+import { dayFilterName } from './assign-church';
 import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
 
 interface ShowOnlyLabelInput {

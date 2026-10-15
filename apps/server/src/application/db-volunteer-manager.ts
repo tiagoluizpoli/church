@@ -793,8 +793,8 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     return {
       id: context.check.id as string,
-      planningCycleId: context.check.planningCycleId as string,
-      planningCycleName: context.planningCycleName,
+      cycleId: context.check.cycleId as string,
+      cycleName: context.cycleName,
       ministryId: context.ministryId as string,
       ministryName: context.ministryName,
       state: context.check.state,
@@ -827,8 +827,8 @@ export class DbVolunteerManager implements IVolunteerManager {
 
         return {
           id: checkId as string,
-          planningCycleId: context.check.planningCycleId as string,
-          planningCycleName: context.planningCycleName,
+          cycleId: context.check.cycleId as string,
+          cycleName: context.cycleName,
           ministryId: context.ministryId as string,
           ministryName: context.ministryName,
           state: context.check.state,
@@ -967,7 +967,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         this.notificationService.notifyVolunteer({
           churchId: churchId as string,
           volunteerId: leader.volunteerId as string,
-          planningCycleId: event.planningCycleId,
+          cycleId: event.cycleId,
           ministryId: participation.ministryId,
           eventId: event.id,
           assignmentId: assignment.id,

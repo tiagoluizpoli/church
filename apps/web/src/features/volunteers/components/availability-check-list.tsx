@@ -54,7 +54,7 @@ export function AvailabilityCheckList({
             <div className="space-y-1">
               <div className="font-medium">{check.ministryName}</div>
               <div className="text-muted-foreground text-sm">
-                {check.planningCycleName}
+                {check.cycleName}
               </div>
               <div className="text-muted-foreground text-xs">
                 {check.unavailableShiftCount} of {check.totalShiftCount} shifts

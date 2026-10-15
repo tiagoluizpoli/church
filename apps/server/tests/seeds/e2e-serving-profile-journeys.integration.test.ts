@@ -1,9 +1,9 @@
 import {
+  cycle,
   event,
   ministry,
   ministryVolunteer,
   ministryVolunteerTeam,
-  planningCycle,
 } from '@church/db';
 import { type CalendarDay, parseCalendarDay } from '@church/time';
 import { eq } from 'drizzle-orm';
@@ -12,7 +12,7 @@ import { qualifiedRoleIds, type VolunteerIdInput } from './qualified-role-ids';
 import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
 import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
 import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
-import { createLeaderTailoringRecipe } from '@/seeds/e2e/recipes/leader-tailoring';
+import { createLeaderPrepareRecipe } from '@/seeds/e2e/recipes/leader-prepare';
 import { createLiveChangesRecipe } from '@/seeds/e2e/recipes/live-changes';
 import { createVolunteerAvailabilityRecipe } from '@/seeds/e2e/recipes/volunteer-availability';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
@@ -43,9 +43,9 @@ async function ministryNames({ churchId }: ChurchIdInput): Promise<string[]> {
 
 async function datedRowCounts({ churchId }: ChurchIdInput): Promise<number[]> {
   const cycles = await testDb
-    .select({ id: planningCycle.id })
-    .from(planningCycle)
-    .where(eq(planningCycle.churchId, churchId));
+    .select({ id: cycle.id })
+    .from(cycle)
+    .where(eq(cycle.churchId, churchId));
   const events = await testDb
     .select({ id: event.id })
     .from(event)
@@ -75,10 +75,10 @@ async function loadAvailability({ journeyKey, anchor }: JourneyKeyInput) {
   });
 }
 
-async function loadLeaderTailoring({ journeyKey, anchor }: JourneyKeyInput) {
+async function loadLeaderPrepare({ journeyKey, anchor }: JourneyKeyInput) {
   return await runE2eJourneyRecipe({
     db: testDb,
-    recipe: createLeaderTailoringRecipe({ journeyKey, anchor }),
+    recipe: createLeaderPrepareRecipe({ journeyKey, anchor }),
   });
 }
 
@@ -98,8 +98,8 @@ describe('serving-profile journey recipes (#329 cluster B)', () => {
     });
   });
 
-  it('leader-tailoring gives the leader its own Ministry and roles, nothing dated', async () => {
-    const journey = await loadLeaderTailoring({
+  it('leader-prepare gives the leader its own Ministry and roles, nothing dated', async () => {
+    const journey = await loadLeaderPrepare({
       journeyKey: 'alpha',
       anchor: ANCHOR,
     });
@@ -166,7 +166,7 @@ describe('serving-profile journey recipes (#329 cluster B)', () => {
     ]);
   });
 
-  it('live-changes qualifies the owner and the TeamLeader for Usher and keeps the leader unrostered', async () => {
+  it('live-changes qualifies the owner and the TeamLeader for Usher and keeps the leader unassigned', async () => {
     const journey = await loadLiveChanges({
       journeyKey: 'alpha',
       anchor: ANCHOR,
@@ -206,7 +206,7 @@ describe('serving-profile journey recipes (#329 cluster B)', () => {
   });
 
   it.each([
-    ['leader-tailoring', loadLeaderTailoring],
+    ['leader-prepare', loadLeaderPrepare],
     ['volunteer-availability', loadAvailability],
     ['live-changes', loadLiveChanges],
   ] as const)('%s: every date follows the anchor, also after the legacy seed dates', async (_name, load) => {

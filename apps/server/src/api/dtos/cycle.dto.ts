@@ -1,37 +1,37 @@
 import { calendarDaySchema, fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
-import type { PlanningCycleDetails } from '../../domain/contracts/application/planning-cycle-manager';
-import type { PlanningCycle } from '../../domain/entities/planning-cycle';
+import type { CycleDetails } from '../../domain/contracts/application/cycle-manager';
+import type { Cycle } from '../../domain/entities/cycle';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import { timeSlotMapper, timeSlotResponseSchema } from './time-slot.dto';
 
-export const createPlanningCycleBodySchema = z.object({
+export const createCycleBodySchema = z.object({
   name: z.string().min(1),
   startDate: z.string().date(),
   endDate: z.string().date(),
 });
 
-export const listPlanningCyclesQuerySchema = z.object({
-  state: z.enum(['draft', 'locked', 'archived']).optional(),
+export const listCyclesQuerySchema = z.object({
+  state: z.enum(['draft', 'sent', 'past']).optional(),
 });
 
-export const planningCycleResponseSchema = z.object({
+export const cycleResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
   name: z.string(),
   startDate: calendarDaySchema,
   endDate: calendarDaySchema,
-  state: z.enum(['draft', 'locked', 'archived']),
+  state: z.enum(['draft', 'sent', 'past']),
   createdAt: instantSchema,
   updatedAt: instantSchema,
 });
 
-export const planningCycleListResponseSchema = z.object({
-  cycles: z.array(planningCycleResponseSchema),
+export const cycleListResponseSchema = z.object({
+  cycles: z.array(cycleResponseSchema),
 });
 
-export const planningCycleDetailsResponseSchema = z.object({
-  cycle: planningCycleResponseSchema,
+export const cycleDetailsResponseSchema = z.object({
+  cycle: cycleResponseSchema,
   events: z.array(
     z.object({
       event: eventResponseSchema,
@@ -40,9 +40,9 @@ export const planningCycleDetailsResponseSchema = z.object({
   ),
 });
 
-export type PlanningCycleResponse = z.infer<typeof planningCycleResponseSchema>;
+export type CycleResponse = z.infer<typeof cycleResponseSchema>;
 
-function toPlanningCycleResponse(cycle: PlanningCycle): PlanningCycleResponse {
+function toCycleResponse(cycle: Cycle): CycleResponse {
   return {
     id: cycle.id as string,
     churchId: cycle.churchId as string,
@@ -55,14 +55,14 @@ function toPlanningCycleResponse(cycle: PlanningCycle): PlanningCycleResponse {
   };
 }
 
-export const planningCycleMapper = {
-  toResponse: toPlanningCycleResponse,
-  listToResponse(cycles: PlanningCycle[]) {
-    return { cycles: cycles.map(toPlanningCycleResponse) };
+export const cycleMapper = {
+  toResponse: toCycleResponse,
+  listToResponse(cycles: Cycle[]) {
+    return { cycles: cycles.map(toCycleResponse) };
   },
-  detailsToResponse(details: PlanningCycleDetails) {
+  detailsToResponse(details: CycleDetails) {
     return {
-      cycle: toPlanningCycleResponse(details.cycle),
+      cycle: toCycleResponse(details.cycle),
       events: details.events.map((eventGroup) => ({
         event: eventMapper.toResponse(eventGroup.event),
         slots: eventGroup.slots.map(timeSlotMapper.toResponse),

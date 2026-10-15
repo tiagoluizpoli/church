@@ -14,45 +14,45 @@ import {
 } from '@/tests/fixtures/persona-session';
 
 /**
- * The web half of the rostering Church base
- * (apps/server/seeds/e2e/recipes/rostering-church.ts): schemas for the
+ * The web half of the assign Church base
+ * (apps/server/seeds/e2e/recipes/assign-church.ts): schemas for the
  * pieces every #329 scheduling recipe returns, and sign-in helpers for
  * journeys that act as several of its personas. Each journey's own schema
- * extends `ROSTERING_JOURNEY_BASE_SCHEMA` with its personas, Ministries and
+ * extends `ASSIGN_JOURNEY_BASE_SCHEMA` with its personas, Ministries and
  * pool, keyed as its server plan keys them.
  */
 
-export const ROSTERING_CHURCH_SCHEMA = z.object({
+export const ASSIGN_CHURCH_SCHEMA = z.object({
   id: z.string().min(1),
   slug: z.string().min(1),
   name: z.string().min(1),
 });
 
-export const ROSTERING_NAMED_ROW_SCHEMA = z.object({
+export const ASSIGN_NAMED_ROW_SCHEMA = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
 });
 
-export const ROSTERING_POOL_VOLUNTEER_SCHEMA = z.object({
+export const ASSIGN_POOL_VOLUNTEER_SCHEMA = z.object({
   userId: z.string().min(1),
   name: z.string().min(1),
   volunteerId: z.string().min(1),
 });
 
-export const ROSTERING_PERSONA_SCHEMA = ROSTERING_POOL_VOLUNTEER_SCHEMA.extend({
+export const ASSIGN_PERSONA_SCHEMA = ASSIGN_POOL_VOLUNTEER_SCHEMA.extend({
   email: z.string().min(1),
   password: z.string().min(1),
 });
 
-export type RosteringPersona = z.infer<typeof ROSTERING_PERSONA_SCHEMA>;
+export type AssignPersona = z.infer<typeof ASSIGN_PERSONA_SCHEMA>;
 
 /**
- * A User of one rostering Church who also joined another of the same graph
- * (server `addRosteringChurchMembership`): a Church Membership only, never a
+ * A User of one assign Church who also joined another of the same graph
+ * (server `addAssignChurchMembership`): a Church Membership only, never a
  * second Volunteer profile. A journey with several Churches validates each
  * Church's part with the same schemas as a single-Church journey.
  */
-export const ROSTERING_CHURCH_MEMBERSHIP_SCHEMA = z.object({
+export const ASSIGN_CHURCH_MEMBERSHIP_SCHEMA = z.object({
   id: z.string().min(1),
   churchId: z.string().min(1),
   userId: z.string().min(1),
@@ -62,22 +62,22 @@ export const ROSTERING_CHURCH_MEMBERSHIP_SCHEMA = z.object({
 });
 
 /** `anchor` is the Church-local day the recipe's dates hang from. */
-export const ROSTERING_JOURNEY_BASE_SCHEMA = z.object({
+export const ASSIGN_JOURNEY_BASE_SCHEMA = z.object({
   anchor: z.string().min(1),
-  church: ROSTERING_CHURCH_SCHEMA,
+  church: ASSIGN_CHURCH_SCHEMA,
 });
 
-/** A Planning Cycle a journey created: its id and name. */
-export const ROSTERING_CYCLE_SCHEMA = z.object({
+/** A Cycle a journey created: its id and name. */
+export const ASSIGN_CYCLE_SCHEMA = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
 });
 
 const CALENDAR_DAY_SCHEMA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-/** The days a journey's own Planning Cycle spans (server
- * `planningCycleWindow`). */
-export const PLANNING_CYCLE_WINDOW_SCHEMA = z.object({
+/** The days a journey's own Cycle spans (server
+ * `cycleWindow`). */
+export const CYCLE_WINDOW_SCHEMA = z.object({
   startDate: CALENDAR_DAY_SCHEMA,
   endDate: CALENDAR_DAY_SCHEMA,
 });
@@ -118,10 +118,10 @@ interface NamedRowsSchemaInput<TKey extends string> {
 function namedRowsSchema<const TKey extends string>({
   keys,
 }: NamedRowsSchemaInput<TKey>) {
-  return keyedObjectSchema({ keys, value: ROSTERING_NAMED_ROW_SCHEMA });
+  return keyedObjectSchema({ keys, value: ASSIGN_NAMED_ROW_SCHEMA });
 }
 
-export interface RosteringMinistrySchemaInput<
+export interface AssignMinistrySchemaInput<
   TRoleKey extends string,
   TTeamKey extends string,
 > {
@@ -130,34 +130,34 @@ export interface RosteringMinistrySchemaInput<
 }
 
 /** A Ministry with the Role and Team keys its server plan gives it. */
-export function rosteringMinistrySchema<
+export function assignMinistrySchema<
   const TRoleKey extends string,
   const TTeamKey extends string,
->({ roles, teams }: RosteringMinistrySchemaInput<TRoleKey, TTeamKey>) {
-  return ROSTERING_NAMED_ROW_SCHEMA.extend({
+>({ roles, teams }: AssignMinistrySchemaInput<TRoleKey, TTeamKey>) {
+  return ASSIGN_NAMED_ROW_SCHEMA.extend({
     roles: namedRowsSchema({ keys: roles }),
     teams: namedRowsSchema({ keys: teams }),
   });
 }
 
-export const ROSTERING_REQUIREMENT_SCHEMA = z.object({
+export const ASSIGN_REQUIREMENT_SCHEMA = z.object({
   id: z.string().min(1),
   roleId: z.string().min(1),
   requiredCount: z.number().int().positive(),
   teamId: z.string().min(1).nullable(),
 });
 
-export interface RosteringEventSchemaInput<TRequirementKey extends string> {
+export interface AssignEventSchemaInput<TRequirementKey extends string> {
   requirements: readonly TRequirementKey[];
 }
 
 /**
- * One Event a Ministry rosters (server `buildRosteringEvent`), with the
+ * One Event a Ministry schedules (server `buildAssignEvent`), with the
  * requirement keys its recipe gave it.
  */
-export function rosteringEventSchema<const TRequirementKey extends string>({
+export function assignEventSchema<const TRequirementKey extends string>({
   requirements,
-}: RosteringEventSchemaInput<TRequirementKey>) {
+}: AssignEventSchemaInput<TRequirementKey>) {
   return z.object({
     id: z.string().min(1),
     title: z.string().min(1),
@@ -169,12 +169,12 @@ export function rosteringEventSchema<const TRequirementKey extends string>({
     shiftId: z.string().min(1),
     requirements: keyedObjectSchema({
       keys: requirements,
-      value: ROSTERING_REQUIREMENT_SCHEMA,
+      value: ASSIGN_REQUIREMENT_SCHEMA,
     }),
   });
 }
 
-export interface LoadRosteringJourneyInput {
+export interface LoadAssignJourneyInput {
   testInfo: Pick<TestInfo, 'testId' | 'repeatEachIndex'>;
 }
 
@@ -183,20 +183,20 @@ export interface MinistryCyclePathInput {
   cycleId: string;
 }
 
-export interface RosteringBuilderPathInput {
+export interface AssignBuilderPathInput {
   ministryId: string;
-  /** Omitted for the Ministry's roster link without a cycle. */
+  /** Omitted for the Ministry's schedule link without a cycle. */
   cycleId?: string;
-  /** Scopes the board to one Team (a TeamLeader's roster link). */
+  /** Scopes the board to one Team (a TeamLeader's schedule link). */
   teamId?: string;
 }
 
-/** The cycle builder (roster board) for one Ministry's cycle. */
-export function rosteringBuilderPath({
+/** The cycle builder (schedule board) for one Ministry's cycle. */
+export function assignBuilderPath({
   ministryId,
   cycleId,
   teamId,
-}: RosteringBuilderPathInput): string {
+}: AssignBuilderPathInput): string {
   const path = [`/scheduling/rostering/${ministryId}`, cycleId]
     .filter((segment) => segment !== undefined)
     .join('/');
@@ -227,15 +227,15 @@ export function worshipBuilderPath({
   journey,
   teamId,
 }: WorshipCycleJourneyInput): string {
-  return rosteringBuilderPath({
+  return assignBuilderPath({
     ministryId: journey.ministries.worship.id,
     cycleId: journey.cycle.id,
     teamId,
   });
 }
 
-/** The tailoring page for one Ministry's cycle. */
-export function rosteringTailoringPath({
+/** The prepare page for one Ministry's cycle. */
+export function assignPreparePath({
   ministryId,
   cycleId,
 }: MinistryCyclePathInput): string {
@@ -271,7 +271,7 @@ export function dayFilterName({ day }: DayFilterNameInput): RegExp {
 
 export interface SignInPersonaPageInput {
   page: Page;
-  persona: RosteringPersona;
+  persona: AssignPersona;
 }
 
 /** Signs the persona into the test's own `page` context. */
@@ -286,7 +286,7 @@ export async function signInPersonaPage({
 
 export interface NewPersonaContextInput {
   browser: Browser;
-  persona: RosteringPersona;
+  persona: AssignPersona;
 }
 
 /**
@@ -314,7 +314,7 @@ export async function newPersonaContext({
 }
 
 export interface NewPersonaRequestInput {
-  persona: RosteringPersona;
+  persona: AssignPersona;
 }
 
 /**

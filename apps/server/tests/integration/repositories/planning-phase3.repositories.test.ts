@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchId, PlanningCycleId } from '@/domain/branded-ids';
+import { ChurchId, CycleId } from '@/domain/branded-ids';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
-import { DrizzlePlanningCycleRepository } from '@/infrastructure/repositories/drizzle-planning-cycle.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import {
   createSchedulingPhase3Cycle,
@@ -15,9 +15,9 @@ describe('Phase 3 planning repositories', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('round-trips planning cycles and filters them by church and state', async () => {
+  it('round-trips cycles and filters them by church and state', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repository = new DrizzlePlanningCycleRepository({
+    const repository = new DrizzleCycleRepository({
       db: schedulingTestDb,
     });
 
@@ -33,13 +33,13 @@ describe('Phase 3 planning repositories', () => {
       name: 'Other Church',
       startDate: new Date('2026-08-01T00:00:00.000Z'),
       endDate: new Date('2026-09-01T00:00:00.000Z'),
-      state: 'locked',
+      state: 'sent',
     });
 
     await repository.updateState({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: created.id,
-      state: 'locked',
+      state: 'sent',
     });
 
     const found = await repository.getById({
@@ -48,18 +48,18 @@ describe('Phase 3 planning repositories', () => {
     });
     const listed = await repository.list({
       churchId: ChurchId.from(seed.churchAId),
-      state: 'locked',
+      state: 'sent',
     });
 
     expect(found.name).toBe('August 2026');
-    expect(found.state).toBe('locked');
+    expect(found.state).toBe('sent');
     expect(listed).toHaveLength(1);
     expect(listed[0]?.churchId).toBe(seed.churchAId);
   });
 
-  it('detects overlapping planning cycles per church only', async () => {
+  it('detects overlapping cycles per church only', async () => {
     const seed = await seedSchedulingPhase3Base();
-    const repository = new DrizzlePlanningCycleRepository({
+    const repository = new DrizzleCycleRepository({
       db: schedulingTestDb,
     });
 
@@ -160,7 +160,7 @@ describe('Phase 3 planning repositories', () => {
 
     const createdEvent = await repository.createEvent({
       churchId: ChurchId.from(seed.churchAId),
-      planningCycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
       title: 'Prayer Night',
       start: new Date('2026-08-05T22:00:00.000Z'),
       end: new Date('2026-08-06T00:00:00.000Z'),
@@ -182,7 +182,7 @@ describe('Phase 3 planning repositories', () => {
 
     const events = await repository.listCycleEvents({
       churchId: ChurchId.from(seed.churchAId),
-      cycleId: PlanningCycleId.from(cycle.id),
+      cycleId: CycleId.from(cycle.id),
     });
 
     expect(events).toHaveLength(1);

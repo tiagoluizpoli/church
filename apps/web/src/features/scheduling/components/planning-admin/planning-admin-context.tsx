@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext } from 'react';
-import type { SelectedPlanningCycle } from './planning-admin.types';
+import type { SelectedCycle } from './planning-admin.types';
 import {
   type SelectCycleInput,
   type UsePlanningAdminResult,
@@ -45,7 +45,7 @@ export function useIsPlanningAccessDenied(): boolean {
 export type PlanningStep =
   | 'create-cycle'
   | 'template-and-review'
-  | 'locked-review';
+  | 'sent-review';
 
 /**
  * Derives the active guided step from existing query state (`research.md`
@@ -59,8 +59,8 @@ export function usePlanningStep(): PlanningStep {
     return 'create-cycle';
   }
 
-  if (selectedCycle?.state === 'locked') {
-    return 'locked-review';
+  if (selectedCycle?.state === 'sent') {
+    return 'sent-review';
   }
 
   return 'template-and-review';
@@ -196,19 +196,19 @@ export function useTemplateApplyDialog(): TemplateApplyDialogModel {
   };
 }
 
-export interface PlanningCycleSelectionModel {
+export interface CycleSelectionModel {
   selectedCycleId: string | null;
   handleSelectCycle: (input: SelectCycleInput) => void;
   handleClearSelectedCycle: () => void;
 }
 
 /**
- * Route-boundary sync point: `planning-cycles` route files call this to keep
+ * Route-boundary sync point: `cycles` route files call this to keep
  * `usePlanningAdmin`'s internal `selectedCycleId` state aligned with the
  * `$cycleId` URL segment (source of truth is the URL; this hook's state is a
  * cache/derived-data key, per `research.md` R6).
  */
-export function usePlanningCycleSelection(): PlanningCycleSelectionModel {
+export function useCycleSelection(): CycleSelectionModel {
   const context = usePlanningAdminContext();
 
   return {
@@ -218,33 +218,33 @@ export function usePlanningCycleSelection(): PlanningCycleSelectionModel {
   };
 }
 
-export interface PlanningCycleHeaderCounts {
+export interface CycleHeaderCounts {
   eventCount: number;
   slotCount: number;
 }
 
-export interface PlanningCycleHeaderNameAndStatus {
+export interface CycleHeaderNameAndStatus {
   name: string;
-  status: SelectedPlanningCycle['state'];
+  status: SelectedCycle['state'];
 }
 
-export interface PlanningCycleHeaderPeriod {
+export interface CycleHeaderPeriod {
   startDate: string;
   endDate: string;
 }
 
-export interface PlanningCycleHeaderModel {
-  nameAndStatus: PlanningCycleHeaderNameAndStatus | null;
-  period: PlanningCycleHeaderPeriod | null;
-  counts: PlanningCycleHeaderCounts | null;
+export interface CycleHeaderModel {
+  nameAndStatus: CycleHeaderNameAndStatus | null;
+  period: CycleHeaderPeriod | null;
+  counts: CycleHeaderCounts | null;
 }
 
 /**
  * Single source of truth for the selected cycle's status display (`research.md`
- * Q-status-chip-dedup, `data-model.md`'s `PlanningCycleHeaderModel`) — no
+ * Q-status-chip-dedup, `data-model.md`'s `CycleHeaderModel`) — no
  * other component should render `selectedCycle.state` as a badge.
  */
-export function usePlanningCycleHeader(): PlanningCycleHeaderModel {
+export function useCycleHeader(): CycleHeaderModel {
   const { selectedCycle, cycleEvents, totalSlots } = usePlanningAdminContext();
 
   if (!selectedCycle) {
@@ -261,24 +261,24 @@ export function usePlanningCycleHeader(): PlanningCycleHeaderModel {
   };
 }
 
-export interface PlanningCycleListStatsModel {
+export interface CycleListStatsModel {
   totalCount: number;
   draftCount: number;
   lockedCount: number;
 }
 
 /**
- * Counts for the plain "Planning cycles" list view's own stat chips —
- * distinct from `usePlanningCycleHeader`, which only ever reflects the
+ * Counts for the plain "Cycles" list view's own stat chips —
+ * distinct from `useCycleHeader`, which only ever reflects the
  * single selected cycle.
  */
-export function usePlanningCycleListStats(): PlanningCycleListStatsModel {
+export function useCycleListStats(): CycleListStatsModel {
   const { cycles } = usePlanningAdminContext();
 
   return {
     totalCount: cycles.length,
     draftCount: cycles.filter((cycle) => cycle.state === 'draft').length,
-    lockedCount: cycles.filter((cycle) => cycle.state === 'locked').length,
+    lockedCount: cycles.filter((cycle) => cycle.state === 'sent').length,
   };
 }
 
@@ -289,7 +289,7 @@ export interface PlanningTemplateLibraryStatsModel {
 /**
  * The template library's own stat chip (saved-template count) — the block
  * count per template isn't meaningful at the library level, so this stays a
- * single chip rather than mirroring `PlanningCycleListStats`'s three.
+ * single chip rather than mirroring `CycleListStats`'s three.
  */
 export function usePlanningTemplateLibraryStats(): PlanningTemplateLibraryStatsModel {
   const { templates } = usePlanningAdminContext();
@@ -303,8 +303,8 @@ export type CycleReviewCardModel = Pick<
   | 'selectedCycle'
   | 'cycleDetailsLoading'
   | 'cycleEvents'
-  | 'lockCyclePending'
-  | 'handleLockCycle'
+  | 'sendCyclePending'
+  | 'handleSendCycle'
   | 'updateEventPending'
   | 'deleteEventPending'
   | 'createSlotPending'
@@ -335,7 +335,7 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     handleCreateSlot: context.handleCreateSlot,
     handleUpdateSlot: context.handleUpdateSlot,
     handleDeleteSlot: context.handleDeleteSlot,
-    lockCyclePending: context.lockCyclePending,
-    handleLockCycle: context.handleLockCycle,
+    sendCyclePending: context.sendCyclePending,
+    handleSendCycle: context.handleSendCycle,
   };
 }

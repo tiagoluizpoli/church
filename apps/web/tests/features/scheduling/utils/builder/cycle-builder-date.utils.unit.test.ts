@@ -76,7 +76,7 @@ function makeEvent(
 ): CycleBuilderEventSummary {
   return {
     participationId: 'participation-1',
-    state: 'rostering',
+    state: 'assigning',
     eventId: 'event-1',
     title: 'teste',
     start: '2027-01-04T03:00:00.000Z',
@@ -288,7 +288,7 @@ describe('eventOccursOnDay', () => {
 describe('eventSlotsOnDay', () => {
   it('keeps an evening slot on the day it is served, not the next UTC day', () => {
     // 21:00 local Monday = 00:00Z Tuesday — the shape that also breaks the
-    // tailoring page's day grouping.
+    // prepare page's day grouping.
     const eveningSlot = makeSlot({
       slotId: 'noite',
       startTime: '2027-01-05T00:00:00.000Z',

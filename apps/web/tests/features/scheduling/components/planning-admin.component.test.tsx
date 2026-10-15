@@ -7,17 +7,17 @@ import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderWithProviders } from '@/tests/setup/render';
 import { renderRoute } from '@/tests/setup/render-route';
 
-const listPlanningCycles = vi.fn();
+const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
-const getPlanningCycle = vi.fn();
+const getCycle = vi.fn();
 const applyPlanningTemplates = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
-    listPlanningCycles: (...args: unknown[]) => listPlanningCycles(...args),
+    listCycles: (...args: unknown[]) => listCycles(...args),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
-    getPlanningCycle: (...args: unknown[]) => getPlanningCycle(...args),
+    getCycle: (...args: unknown[]) => getCycle(...args),
     applyPlanningTemplates: (...args: unknown[]) =>
       applyPlanningTemplates(...args),
   },
@@ -43,15 +43,15 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-function renderPlanningCycles(initialPath = '/scheduling/planning-cycles') {
+function renderCycles(initialPath = '/scheduling/planning-cycles') {
   return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
-describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
+describe('Cycles routes step-sequence gating (T038, T056)', () => {
   it('defaults to the cycle list view when there are no cycles yet', async () => {
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
-    renderPlanningCycles();
+    renderCycles();
 
     expect(await screen.findByText('Existing cycles')).toBeVisible();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   });
 
   it('navigates to the cycle review URL once a cycle is selected', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -71,7 +71,7 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -83,12 +83,12 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
     });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
     expect(await screen.findByText('Existing cycles')).toBeVisible();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
 
-    const cycleOption = await screen.findByTestId('planning-cycle-option');
+    const cycleOption = await screen.findByTestId('cycle-option');
     expect(cycleOption).toHaveAttribute('aria-selected', 'false');
     await user.click(cycleOption);
 
@@ -100,35 +100,35 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   });
 
   it('is read-only when the selected cycle is locked: no apply/manual-event controls', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
           name: 'August 2026',
           startDate: '2026-08-01T00:00:00.000Z',
           endDate: '2026-08-31T00:00:00.000Z',
-          state: 'locked',
+          state: 'sent',
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
         startDate: '2026-08-01T00:00:00.000Z',
         endDate: '2026-08-31T00:00:00.000Z',
-        state: 'locked',
+        state: 'sent',
       },
       events: [],
     });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
-    await user.click(await screen.findByTestId('planning-cycle-option'));
+    await user.click(await screen.findByTestId('cycle-option'));
 
     expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
-      'locked',
+      'sent',
     );
     expect(
       screen.queryByTestId('open-apply-templates-dialog-button'),
@@ -139,10 +139,10 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   });
 
   it('keeps the "Cycles" page title behind the create-cycle dialog instead of swapping it to "Create cycle"', async () => {
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-create-cycle-dialog-button'));
@@ -157,10 +157,10 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   });
 
   it('keeps the template library as a saved-list view and opens creation in a dialog', async () => {
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-template-library-button'));
@@ -177,7 +177,7 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   });
 
   it('opens a saved template in edit mode from the library list', async () => {
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
     listEventTemplates.mockResolvedValue({
       templates: [
         {
@@ -198,7 +198,7 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
     });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-template-library-button'));
@@ -215,7 +215,7 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   });
 
   it('keeps the apply-templates dialog open and displays an inline error when template application fails', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -226,7 +226,7 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -259,9 +259,9 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
     );
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
-    await user.click(await screen.findByTestId('planning-cycle-option'));
+    await user.click(await screen.findByTestId('cycle-option'));
     await user.click(screen.getByTestId('open-apply-templates-dialog-button'));
 
     expect(
@@ -286,9 +286,9 @@ describe('Planning cycles routes step-sequence gating (T038, T056)', () => {
   });
 });
 
-describe('PlanningCyclesActions (US4)', () => {
+describe('CyclesActions (US4)', () => {
   it('renders "Add event" beside "Apply template" in the top action row for a draft cycle, and opens the create-event modal', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -299,7 +299,7 @@ describe('PlanningCyclesActions (US4)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -311,11 +311,11 @@ describe('PlanningCyclesActions (US4)', () => {
     });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
-    await user.click(await screen.findByTestId('planning-cycle-option'));
+    await user.click(await screen.findByTestId('cycle-option'));
 
-    const actionsRow = await screen.findByTestId('planning-cycles-actions-row');
+    const actionsRow = await screen.findByTestId('cycles-actions-row');
     const applyTemplateButton = within(actionsRow).getByTestId(
       'open-apply-templates-dialog-button',
     );
@@ -333,7 +333,7 @@ describe('PlanningCyclesActions (US4)', () => {
   });
 
   it('does not render a "Manual exceptions" panel in the review body', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -344,7 +344,7 @@ describe('PlanningCyclesActions (US4)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -356,18 +356,18 @@ describe('PlanningCyclesActions (US4)', () => {
     });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
-    await user.click(await screen.findByTestId('planning-cycle-option'));
+    await user.click(await screen.findByTestId('cycle-option'));
     await screen.findByText('Calendar review');
 
     expect(screen.queryByText('Manual exceptions')).not.toBeInTheDocument();
   });
 });
 
-describe('Planning cycle header visibility (chip-leak fix)', () => {
+describe('Cycle header visibility (chip-leak fix)', () => {
   it('shows list-level total/draft/locked chips, not per-cycle chips, on the plain list route', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -381,32 +381,26 @@ describe('Planning cycle header visibility (chip-leak fix)', () => {
           name: 'September 2026',
           startDate: '2026-09-01T00:00:00.000Z',
           endDate: '2026-09-30T00:00:00.000Z',
-          state: 'locked',
+          state: 'sent',
         },
       ],
     });
 
-    renderPlanningCycles();
+    renderCycles();
 
-    expect(
-      await screen.findByTestId('planning-cycles-total-chip'),
-    ).toHaveTextContent('2');
-    expect(screen.getByTestId('planning-cycles-draft-chip')).toHaveTextContent(
-      '1',
+    expect(await screen.findByTestId('cycles-total-chip')).toHaveTextContent(
+      '2',
     );
-    expect(screen.getByTestId('planning-cycles-locked-chip')).toHaveTextContent(
-      '1',
-    );
+    expect(screen.getByTestId('cycles-draft-chip')).toHaveTextContent('1');
+    expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent('1');
+    expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('planning-cycle-period-chip'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('planning-cycle-event-count-chip'),
+      screen.queryByTestId('cycle-event-count-chip'),
     ).not.toBeInTheDocument();
   });
 
   it('clears the selected-cycle stat chips after navigating back to the plain list route', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -417,7 +411,7 @@ describe('Planning cycle header visibility (chip-leak fix)', () => {
         },
       ],
     });
-    getPlanningCycle.mockResolvedValue({
+    getCycle.mockResolvedValue({
       cycle: {
         id: 'cycle-1',
         name: 'August 2026',
@@ -429,31 +423,25 @@ describe('Planning cycle header visibility (chip-leak fix)', () => {
     });
 
     const user = userEvent.setup();
-    const { router } = renderPlanningCycles();
+    const { router } = renderCycles();
 
-    await user.click(await screen.findByTestId('planning-cycle-option'));
-    expect(
-      await screen.findByTestId('planning-cycle-period-chip'),
-    ).toBeInTheDocument();
+    await user.click(await screen.findByTestId('cycle-option'));
+    expect(await screen.findByTestId('cycle-period-chip')).toBeInTheDocument();
 
     await router.navigate({ to: '/scheduling/planning-cycles' });
 
+    expect(await screen.findByTestId('cycles-total-chip')).toBeInTheDocument();
+    expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
     expect(
-      await screen.findByTestId('planning-cycles-total-chip'),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('planning-cycle-period-chip'),
+      screen.queryByTestId('cycle-event-count-chip'),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('planning-cycle-event-count-chip'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('planning-cycle-slot-count-chip'),
+      screen.queryByTestId('cycle-slot-count-chip'),
     ).not.toBeInTheDocument();
   });
 
   it('shows a saved-template-count chip on the template library route', async () => {
-    listPlanningCycles.mockResolvedValue({ cycles: [] });
+    listCycles.mockResolvedValue({ cycles: [] });
     listEventTemplates.mockResolvedValue({
       templates: [
         { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
@@ -462,7 +450,7 @@ describe('Planning cycle header visibility (chip-leak fix)', () => {
     });
 
     const user = userEvent.setup();
-    renderPlanningCycles();
+    renderCycles();
 
     await screen.findByText('Existing cycles');
     await user.click(screen.getByTestId('open-template-library-button'));
@@ -470,15 +458,13 @@ describe('Planning cycle header visibility (chip-leak fix)', () => {
     expect(
       await screen.findByTestId('planning-templates-total-chip'),
     ).toHaveTextContent('2');
-    expect(
-      screen.queryByTestId('planning-cycles-total-chip'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cycles-total-chip')).not.toBeInTheDocument();
   });
 });
 
 describe('CycleListCard selection state', () => {
   it('renders cycles with correct aria-selected attribute based on selection', async () => {
-    listPlanningCycles.mockResolvedValue({
+    listCycles.mockResolvedValue({
       cycles: [
         {
           id: 'cycle-1',
@@ -503,7 +489,7 @@ describe('CycleListCard selection state', () => {
       </PlanningAdminProvider>,
     );
 
-    const options = await screen.findAllByTestId('planning-cycle-option');
+    const options = await screen.findAllByTestId('cycle-option');
     expect(options[0]).toHaveAttribute('aria-selected', 'true');
     expect(options[1]).toHaveAttribute('aria-selected', 'false');
   });

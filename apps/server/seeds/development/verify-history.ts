@@ -3,6 +3,7 @@ import {
   assignmentAudit,
   availability,
   availabilityCheck,
+  cycle,
   event,
   eventTemplate,
   ministry,
@@ -11,7 +12,6 @@ import {
   ministryVolunteer,
   ministryVolunteerRole,
   participationSlotInclusion,
-  planningCycle,
   role,
   shift,
   slotRequirement,
@@ -244,7 +244,7 @@ interface CycleProblemsInput extends ChurchScopedInput {
   anchor: CalendarDay;
 }
 
-/** The one locked cycle, its Events, Participations, Shifts and requirements. */
+/** The one sent cycle, its Events, Participations, Shifts and requirements. */
 async function cycleProblems({
   db,
   churchId,
@@ -255,11 +255,11 @@ async function cycleProblems({
   const timeZone = blueprint.primary.church.timezone;
   const problems = difference({
     label:
-      'PlanningCycles (only the previous complete month, locked; none from the anchor month on)',
+      'Cycles (only the previous complete month, locked; none from the anchor month on)',
     actual: await keysOf({
       db,
       query: sql`select church_id || '|' || start_date || '|' || end_date || '|' || state as key
-        from ${planningCycle}`,
+        from ${cycle}`,
     }),
     expected: [`${churchId}|${window.startDate}|${window.endDate}|locked`],
   });
@@ -272,8 +272,8 @@ async function cycleProblems({
         db,
         query: sql`select e.title || '|' || to_char(e.start at time zone ${timeZone}, 'YYYY-MM-DD HH24:MI')
             || '|' || e.status || '|' || (e.source_template_id is not null)
-            || '|' || (e.planning_cycle_id = c.id and c.church_id = ${churchId}) as key
-          from ${event} e join ${planningCycle} c on c.id = e.planning_cycle_id`,
+            || '|' || (e.cycle_id = c.id and c.church_id = ${churchId}) as key
+          from ${event} e join ${cycle} c on c.id = e.cycle_id`,
       }),
       expected: gatherings.map(
         (gathering) =>
@@ -468,7 +468,7 @@ async function assignmentProblems({
     directory.ministries.reduce(
       (total, ministryBlueprint) =>
         total +
-        ministryBlueprint.roster.reduce(
+        ministryBlueprint.schedule.reduce(
           (sum, group) => sum + group.people.length,
           0,
         ),
@@ -505,7 +505,7 @@ async function assignmentProblems({
                 from ${availabilityCheck} c
                 join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
                 join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
-                join ${event} e on e.id = p.event_id and e.planning_cycle_id = c.planning_cycle_id
+                join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
                 join ${shift} s on s.participation_id = p.id)
               select count(*) as value from answered a join answered b
                 on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id
@@ -521,7 +521,7 @@ async function assignmentProblems({
               from ${availabilityCheck} c
               join ${ministryVolunteer} mv on mv.id = c.ministry_volunteer_id
               join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
-              join ${event} e on e.id = p.event_id and e.planning_cycle_id = c.planning_cycle_id
+              join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
               join ${shift} s on s.participation_id = p.id
               where c.state = 'confirmed'
                 and not exists (select 1 from ${availability} u
@@ -613,7 +613,7 @@ interface NotificationProblemsInput {
 
 /**
  * What publishing and the reassignments wrote: one `schedule_published` per
- * Volunteer rostered on a participation when it was published, the pair a
+ * Volunteer assigned on a participation when it was published, the pair a
  * reassignment sends, each in the product's shape, read unless the
  * blueprint says otherwise.
  */
@@ -629,27 +629,27 @@ async function notificationProblems({
     sql`, `,
   );
   const checks = {
-    'rostered Volunteers without their publish notification': {
+    'assigned Volunteers without their publish notification': {
       actual: await countOf({
         db,
         query: sql`select count(*) as value from (
             select distinct a.participation_id, a.volunteer_id from ${assignment} a
-            where a.assigned_at <= ${published}) as rostered
+            where a.assigned_at <= ${published}) as assigned
           where not exists (select 1 from ${volunteerNotification} n
             join ${ministryParticipation} p on p.event_id = n.event_id and p.ministry_id = n.ministry_id
-            where p.id = rostered.participation_id and n.volunteer_id = rostered.volunteer_id
+            where p.id = assigned.participation_id and n.volunteer_id = assigned.volunteer_id
               and n.type = 'schedule_published')`,
       }),
       expected: 0,
     },
-    'publish notifications beyond the rostered Volunteers': {
+    'publish notifications beyond the assigned Volunteers': {
       actual: await countOf({
         db,
         query: sql`select (select count(*) from ${volunteerNotification} where type = 'schedule_published')
           - (select count(*) from (select distinct a.participation_id, a.volunteer_id
-              from ${assignment} a where a.assigned_at <= ${published}) as rostered) as value`,
+              from ${assignment} a where a.assigned_at <= ${published}) as assigned) as value`,
       }),
-      // A reassignment deleted a rostered row its publish notification outlived.
+      // A reassignment deleted a assigned row its publish notification outlived.
       expected: history.resolvedOverlaps.length,
     },
     'publish notifications not in the shape publishing writes': {
@@ -660,7 +660,7 @@ async function notificationProblems({
           where n.type = 'schedule_published'
             and (n.title <> 'Schedule published'
               or n.body <> e.title || ' is now published for your ministry.'
-              or n.planning_cycle_id is distinct from e.planning_cycle_id
+              or n.cycle_id is distinct from e.cycle_id
               or n.assignment_id is not null
               or n.payload <> jsonb_build_object('eventId', n.event_id::text,
                 'ministryId', n.ministry_id::text, 'section', 'assignments'))`,
@@ -710,7 +710,7 @@ async function notificationProblems({
 
 /**
  * The gatherings and locked historical cycle against the blueprint and the
- * anchor: standing rules, the one locked cycle and nothing from the anchor's
+ * anchor: standing rules, the one sent cycle and nothing from the anchor's
  * month on, published participation staffing, no unresolved overlap, and
  * the history trail.
  */

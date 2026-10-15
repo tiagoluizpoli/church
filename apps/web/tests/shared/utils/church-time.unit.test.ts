@@ -25,7 +25,7 @@ describe('church-time', () => {
     );
   });
 
-  it('formats a date-only value (a planning-cycle bound) as dd/MM/yyyy, ignoring any ambient TZ', () => {
+  it('formats a date-only value (a cycle bound) as dd/MM/yyyy, ignoring any ambient TZ', () => {
     expect(formatCalendarDateOnly({ value: '2027-01-04' })).toBe('04/01/2027');
     expect(formatCalendarDateOnly({ value: '2027-01-04T00:00:00.000Z' })).toBe(
       '04/01/2027',

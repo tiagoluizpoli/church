@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import {
-  type LoadRosteringJourneyInput,
-  ROSTERING_CHURCH_SCHEMA,
-  ROSTERING_PERSONA_SCHEMA,
-  rosteringMinistrySchema,
-} from './rostering-church';
+  ASSIGN_CHURCH_SCHEMA,
+  ASSIGN_PERSONA_SCHEMA,
+  assignMinistrySchema,
+  type LoadAssignJourneyInput,
+} from './assign-church';
 import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 
 // Mirrors the server's `E2E_JOURNEY_RECIPE_NAMES`
@@ -12,11 +12,11 @@ import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
 const RECIPE_NAME = 'cross-tenant-invitation';
 
 const TENANT_SCHEMA = z.object({
-  church: ROSTERING_CHURCH_SCHEMA,
+  church: ASSIGN_CHURCH_SCHEMA,
   ministries: z.object({
-    worship: rosteringMinistrySchema({ roles: [], teams: [] }),
+    worship: assignMinistrySchema({ roles: [], teams: [] }),
   }),
-  personas: z.object({ admin: ROSTERING_PERSONA_SCHEMA }),
+  personas: z.object({ admin: ASSIGN_PERSONA_SCHEMA }),
 });
 
 export const CROSS_TENANT_INVITATION_JOURNEY_SCHEMA = z.object({
@@ -35,7 +35,7 @@ export type CrossTenantInvitationJourney = z.infer<
 /** Loads this test's own graph; signs nobody in. */
 export function loadCrossTenantInvitationJourney({
   testInfo,
-}: LoadRosteringJourneyInput): CrossTenantInvitationJourney {
+}: LoadAssignJourneyInput): CrossTenantInvitationJourney {
   return loadJourneyRecipe({
     recipeName: RECIPE_NAME,
     schema: CROSS_TENANT_INVITATION_JOURNEY_SCHEMA,

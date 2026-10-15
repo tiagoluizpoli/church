@@ -6,13 +6,13 @@ import {
 } from '../journey-keys';
 import type { E2eJourneyRecipe } from '../journey-recipe';
 import {
-  buildRosteringChurch,
-  type RosteringChurch,
-  type RosteringChurchPlan,
-  rosteringChurchRootKinds,
-} from './rostering-church';
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
+} from './assign-church';
 import {
-  planningCycleWindow,
+  cycleWindow,
   type SchedulingJourneyDates,
 } from './scheduling-cycle-window';
 
@@ -22,7 +22,7 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.volunteerAvailability;
  * Two Ministries whose serving profiles only this journey writes, a leader
  * who is a Volunteer in both (so a same-time Worship and Care shift overlaps
  * for them), and a TeamLeader in Worship alone (a clean, single-Ministry
- * confirm). The journey creates its own PlanningCycle, template and events
+ * confirm). The journey creates its own Cycle, template and events
  * through the API; the graph holds only what it starts from.
  */
 const PLAN = {
@@ -71,10 +71,10 @@ const PLAN = {
     },
   },
   pool: {},
-} as const satisfies RosteringChurchPlan;
+} as const satisfies AssignChurchPlan;
 
 export interface VolunteerAvailabilityJourney
-  extends RosteringChurch<typeof PLAN>,
+  extends AssignChurch<typeof PLAN>,
     SchedulingJourneyDates {}
 
 export function createVolunteerAvailabilityRecipe({
@@ -89,17 +89,17 @@ export function createVolunteerAvailabilityRecipe({
   async function load({
     db,
   }: SeedRecipeLoadInput): Promise<VolunteerAvailabilityJourney> {
-    const graph = await buildRosteringChurch({ db, idOf, tag, plan: PLAN });
+    const graph = await buildAssignChurch({ db, idOf, tag, plan: PLAN });
     return {
       anchor,
       ...graph,
-      cycleWindow: planningCycleWindow({ anchor }),
+      cycleWindow: cycleWindow({ anchor }),
     };
   }
 
   return {
     name: RECIPE_NAME,
-    roots: rootsOf({ rootKinds: rosteringChurchRootKinds({ plan: PLAN }) }),
+    roots: rootsOf({ rootKinds: assignChurchRootKinds({ plan: PLAN }) }),
     load,
   };
 }

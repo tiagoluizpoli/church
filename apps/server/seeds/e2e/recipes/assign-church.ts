@@ -48,63 +48,63 @@ import {
  * names the slug, Church name and email domain, so two scoped Churches of
  * one journey never collide. Without a scope, ids, names and emails are
  * those of the single-Church base. A User of one Church joins another
- * through `addRosteringChurchMembership`.
+ * through `addAssignChurchMembership`.
  */
 
 /** Key → display name. */
-export type RosteringNames = Readonly<Record<string, string>>;
+export type AssignNames = Readonly<Record<string, string>>;
 
-export interface RosteringMinistryPlan {
+export interface AssignMinistryPlan {
   name: string;
   /** Role key → Role name. */
-  roles: RosteringNames;
+  roles: AssignNames;
   /** Team key → Team name. */
-  teams: RosteringNames;
+  teams: AssignNames;
 }
 
-export interface RosteringTeamMembershipPlan {
+export interface AssignTeamMembershipPlan {
   /** A Team key of the membership's Ministry. */
   team: string;
   accessLevel: TeamAccessLevel;
 }
 
-export interface RosteringMinistryMembershipPlan {
+export interface AssignMinistryMembershipPlan {
   /** A Ministry key of the plan. */
   ministry: string;
   accessLevel: MinistryAccessLevel;
   /** Role keys of that Ministry the Volunteer is qualified for. Membership
    * alone qualifies for nothing; `[]` makes an unqualified member. */
   roles: readonly string[];
-  teams: readonly RosteringTeamMembershipPlan[];
+  teams: readonly AssignTeamMembershipPlan[];
 }
 
-export interface RosteringVolunteerPlan {
+export interface AssignVolunteerPlan {
   name: string;
-  memberships: readonly RosteringMinistryMembershipPlan[];
+  memberships: readonly AssignMinistryMembershipPlan[];
 }
 
-export interface RosteringPersonaPlan extends RosteringVolunteerPlan {
+export interface AssignPersonaPlan extends AssignVolunteerPlan {
   /** `admin` is the ChurchAdmin: exactly one persona, who redeems the
    * Church Invitation provisioning minted. Every other persona is a
    * `member`. */
   churchAccessLevel: ChurchAccessLevel;
 }
 
-export interface RosteringChurchPlan {
-  ministries: Readonly<Record<string, RosteringMinistryPlan>>;
+export interface AssignChurchPlan {
+  ministries: Readonly<Record<string, AssignMinistryPlan>>;
   /** Users a journey signs in as; each also has a Volunteer profile. */
-  personas: Readonly<Record<string, RosteringPersonaPlan>>;
-  /** Volunteers a journey rosters but never signs in as. */
-  pool: Readonly<Record<string, RosteringVolunteerPlan>>;
+  personas: Readonly<Record<string, AssignPersonaPlan>>;
+  /** Volunteers a journey schedules but never signs in as. */
+  pool: Readonly<Record<string, AssignVolunteerPlan>>;
 }
 
-export interface RosteringChurchSummary {
+export interface AssignChurchSummary {
   id: string;
   slug: string;
   name: string;
 }
 
-export interface RosteringNamedRow {
+export interface AssignNamedRow {
   id: string;
   name: string;
 }
@@ -113,35 +113,35 @@ export type KeyedBy<TRecord, TValue> = {
   [TKey in keyof TRecord]: TValue;
 };
 
-export interface RosteringMinistry<TMinistry extends RosteringMinistryPlan> {
+export interface AssignMinistry<TMinistry extends AssignMinistryPlan> {
   id: string;
   name: string;
-  roles: KeyedBy<TMinistry['roles'], RosteringNamedRow>;
-  teams: KeyedBy<TMinistry['teams'], RosteringNamedRow>;
+  roles: KeyedBy<TMinistry['roles'], AssignNamedRow>;
+  teams: KeyedBy<TMinistry['teams'], AssignNamedRow>;
 }
 
-export type RosteringMinistries<TPlan extends RosteringChurchPlan> = {
-  [TKey in keyof TPlan['ministries']]: RosteringMinistry<
+export type AssignMinistries<TPlan extends AssignChurchPlan> = {
+  [TKey in keyof TPlan['ministries']]: AssignMinistry<
     TPlan['ministries'][TKey]
   >;
 };
 
-export interface RosteringPoolVolunteer {
+export interface AssignPoolVolunteer {
   userId: string;
   name: string;
   volunteerId: string;
 }
 
-export interface RosteringPersona extends RosteringPoolVolunteer {
+export interface AssignPersona extends AssignPoolVolunteer {
   email: string;
   password: string;
 }
 
-export interface RosteringChurch<TPlan extends RosteringChurchPlan> {
-  church: RosteringChurchSummary;
-  ministries: RosteringMinistries<TPlan>;
-  personas: KeyedBy<TPlan['personas'], RosteringPersona>;
-  pool: KeyedBy<TPlan['pool'], RosteringPoolVolunteer>;
+export interface AssignChurch<TPlan extends AssignChurchPlan> {
+  church: AssignChurchSummary;
+  ministries: AssignMinistries<TPlan>;
+  personas: KeyedBy<TPlan['personas'], AssignPersona>;
+  pool: KeyedBy<TPlan['pool'], AssignPoolVolunteer>;
 }
 
 const CHURCH_KIND = 'church';
@@ -149,22 +149,22 @@ const PLAN_KEY_PATTERN = /^[A-Za-z0-9-]+$/;
 /** Lower case: a scope names a slug and an email domain. */
 const SCOPE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export interface RosteringChurchScopeInput {
-  /** Names one of several rostering Churches of a journey graph, e.g. `a`
+export interface AssignChurchScopeInput {
+  /** Names one of several assign Churches of a journey graph, e.g. `a`
    * or `b`; omitted for a journey's only Church. Lower-case letters, digits
    * and inner hyphens. */
   scope?: string;
 }
 
-function requireValidScope({ scope }: RosteringChurchScopeInput): void {
+function requireValidScope({ scope }: AssignChurchScopeInput): void {
   if (scope !== undefined && !SCOPE_PATTERN.test(scope)) {
     throw new Error(
-      `Rostering Church scope "${scope}" is not lower-case slug-safe.`,
+      `Assign Church scope "${scope}" is not lower-case slug-safe.`,
     );
   }
 }
 
-interface ScopedKindInput extends RosteringChurchScopeInput {
+interface ScopedKindInput extends AssignChurchScopeInput {
   kind: string;
 }
 
@@ -173,7 +173,7 @@ function scopedKind({ scope, kind }: ScopedKindInput): string {
   return scope === undefined ? kind : `scope:${scope}/${kind}`;
 }
 
-interface ScopedIdOfInput extends RosteringChurchScopeInput {
+interface ScopedIdOfInput extends AssignChurchScopeInput {
   idOf: JourneySeedIdOf;
 }
 
@@ -183,7 +183,7 @@ function scopedIdOf({ idOf, scope }: ScopedIdOfInput): JourneySeedIdOf {
     : ({ kind }) => idOf({ kind: scopedKind({ scope, kind }) });
 }
 
-interface ChurchNamingInput extends RosteringChurchScopeInput {
+interface ChurchNamingInput extends AssignChurchScopeInput {
   tag: string;
 }
 
@@ -230,23 +230,23 @@ function poolEmailLocalPart({ key }: PlanKeyInput): string {
   return `pool-${key}`.toLowerCase();
 }
 
-export interface RosteringChurchPlanInput {
-  plan: RosteringChurchPlan;
+export interface AssignChurchPlanInput {
+  plan: AssignChurchPlan;
 }
 
-export interface RosteringChurchRootKindsInput
-  extends RosteringChurchPlanInput,
-    RosteringChurchScopeInput {}
+export interface AssignChurchRootKindsInput
+  extends AssignChurchPlanInput,
+    AssignChurchScopeInput {}
 
 /**
- * The root kinds of a rostering Church: its Church and every User, under
+ * The root kinds of a assign Church: its Church and every User, under
  * the same `scope` it was built with. A journey with several Churches joins
  * theirs with `mergeRootKinds`.
  */
-export function rosteringChurchRootKinds({
+export function assignChurchRootKinds({
   plan,
   scope,
-}: RosteringChurchRootKindsInput): E2eJourneyRootKinds {
+}: AssignChurchRootKindsInput): E2eJourneyRootKinds {
   requireValidScope({ scope });
   const kinds = [
     ...Object.keys(plan.personas).map((key) => personaUserKind({ key })),
@@ -276,7 +276,7 @@ export function mergeRootKinds({
  * Validates the plan — slug-safe keys, one email per User, exactly one
  * ChurchAdmin — and returns that ChurchAdmin persona's key.
  */
-function resolveAdminKey({ plan }: RosteringChurchPlanInput): string {
+function resolveAdminKey({ plan }: AssignChurchPlanInput): string {
   const keys = [
     ...Object.keys(plan.ministries),
     ...Object.keys(plan.personas),
@@ -284,7 +284,7 @@ function resolveAdminKey({ plan }: RosteringChurchPlanInput): string {
   ];
   for (const key of keys) {
     if (!PLAN_KEY_PATTERN.test(key)) {
-      throw new Error(`Rostering plan key "${key}" is not slug-safe.`);
+      throw new Error(`Assign plan key "${key}" is not slug-safe.`);
     }
   }
   const localParts = [
@@ -296,7 +296,7 @@ function resolveAdminKey({ plan }: RosteringChurchPlanInput): string {
   );
   if (duplicate !== undefined) {
     throw new Error(
-      `Two rostering plan Users would share the email "${duplicate}@…"; keys must differ beyond letter case.`,
+      `Two assign plan Users would share the email "${duplicate}@…"; keys must differ beyond letter case.`,
     );
   }
   const adminKeys = Object.entries(plan.personas)
@@ -305,7 +305,7 @@ function resolveAdminKey({ plan }: RosteringChurchPlanInput): string {
   const [adminKey] = adminKeys;
   if (adminKey === undefined || adminKeys.length !== 1) {
     throw new Error(
-      `A rostering Church needs exactly one ChurchAdmin persona; the plan has ${adminKeys.length}.`,
+      `A assign Church needs exactly one ChurchAdmin persona; the plan has ${adminKeys.length}.`,
     );
   }
   return adminKey;
@@ -332,8 +332,8 @@ function requirePlanEntry<TValue>({
 interface BuiltMinistry {
   id: string;
   name: string;
-  roles: Record<string, RosteringNamedRow>;
-  teams: Record<string, RosteringNamedRow>;
+  roles: Record<string, AssignNamedRow>;
+  teams: Record<string, AssignNamedRow>;
 }
 
 interface BuildPlanMinistryInput {
@@ -341,7 +341,7 @@ interface BuildPlanMinistryInput {
   idOf: JourneySeedIdOf;
   churchId: string;
   key: string;
-  plan: RosteringMinistryPlan;
+  plan: AssignMinistryPlan;
 }
 
 async function buildPlanMinistry({
@@ -357,7 +357,7 @@ async function buildPlanMinistry({
     id: idOf({ kind: `ministry:${key}` }),
     name: plan.name,
   });
-  const roles: Record<string, RosteringNamedRow> = {};
+  const roles: Record<string, AssignNamedRow> = {};
   for (const [roleKey, name] of Object.entries(plan.roles)) {
     const role = await buildRole({
       db,
@@ -368,7 +368,7 @@ async function buildPlanMinistry({
     });
     roles[roleKey] = { id: role.id, name: role.name };
   }
-  const teams: Record<string, RosteringNamedRow> = {};
+  const teams: Record<string, AssignNamedRow> = {};
   for (const [teamKey, name] of Object.entries(plan.teams)) {
     const team = await buildTeam({
       db,
@@ -390,7 +390,7 @@ interface BuildPlanMembershipsInput {
   /** The Volunteer's user kind, which keys its membership ids. */
   userKind: string;
   volunteerId: string;
-  memberships: readonly RosteringMinistryMembershipPlan[];
+  memberships: readonly AssignMinistryMembershipPlan[];
 }
 
 async function buildPlanMemberships({
@@ -440,12 +440,12 @@ interface BuildPlanVolunteerInput {
   /** The email's local part, unique per plan (`resolveAdminKey` checks). */
   emailLocalPart: string;
   userKind: string;
-  volunteerPlan: RosteringVolunteerPlan;
+  volunteerPlan: AssignVolunteerPlan;
   churchAccessLevel: ChurchAccessLevel;
 }
 
-export interface BuildRosteringChurchInput<TPlan extends RosteringChurchPlan>
-  extends RosteringChurchScopeInput {
+export interface BuildAssignChurchInput<TPlan extends AssignChurchPlan>
+  extends AssignChurchScopeInput {
   db: SeedWriter;
   /** The recipe's id function; every id of the graph derives from it. */
   idOf: JourneySeedIdOf;
@@ -459,15 +459,13 @@ export interface BuildRosteringChurchInput<TPlan extends RosteringChurchPlan>
  * persona redeeming its invitation, then Ministries, personas and the pool.
  * Every persona signs in with `SEED_PERSONA_PASSWORD`.
  */
-export async function buildRosteringChurch<
-  const TPlan extends RosteringChurchPlan,
->({
+export async function buildAssignChurch<const TPlan extends AssignChurchPlan>({
   db,
   idOf: journeyIdOf,
   tag,
   plan,
   scope,
-}: BuildRosteringChurchInput<TPlan>): Promise<RosteringChurch<TPlan>> {
+}: BuildAssignChurchInput<TPlan>): Promise<AssignChurch<TPlan>> {
   requireValidScope({ scope });
   const adminKey = resolveAdminKey({ plan });
   const idOf = scopedIdOf({ idOf: journeyIdOf, scope });
@@ -506,7 +504,7 @@ export async function buildRosteringChurch<
     userKind,
     volunteerPlan,
     churchAccessLevel,
-  }: BuildPlanVolunteerInput): Promise<RosteringPersona> {
+  }: BuildPlanVolunteerInput): Promise<AssignPersona> {
     const user = await buildAuthenticatableUser({
       db,
       id: idOf({ kind: userKind }),
@@ -557,7 +555,7 @@ export async function buildRosteringChurch<
     };
   }
 
-  const personas: Record<string, RosteringPersona> = {};
+  const personas: Record<string, AssignPersona> = {};
   for (const [key, personaPlan] of Object.entries(plan.personas)) {
     personas[key] = await buildPlanVolunteer({
       emailLocalPart: personaEmailLocalPart({ key }),
@@ -567,7 +565,7 @@ export async function buildRosteringChurch<
     });
   }
 
-  const pool: Record<string, RosteringPoolVolunteer> = {};
+  const pool: Record<string, AssignPoolVolunteer> = {};
   for (const [key, volunteerPlan] of Object.entries(plan.pool)) {
     const { userId, name, volunteerId } = await buildPlanVolunteer({
       emailLocalPart: poolEmailLocalPart({ key }),
@@ -581,26 +579,26 @@ export async function buildRosteringChurch<
   return {
     church: { id: church.id, slug: church.slug, name: church.name },
     // Built by iterating the plan's own keys, so each record is complete.
-    ministries: ministries as RosteringMinistries<TPlan>,
-    personas: personas as KeyedBy<TPlan['personas'], RosteringPersona>,
-    pool: pool as KeyedBy<TPlan['pool'], RosteringPoolVolunteer>,
+    ministries: ministries as AssignMinistries<TPlan>,
+    personas: personas as KeyedBy<TPlan['personas'], AssignPersona>,
+    pool: pool as KeyedBy<TPlan['pool'], AssignPoolVolunteer>,
   };
 }
 
-export interface AddRosteringChurchMembershipInput {
+export interface AddAssignChurchMembershipInput {
   db: SeedWriter;
   /** The recipe's id function (unscoped). */
   idOf: JourneySeedIdOf;
-  /** The Church the User joins: another rostering Church of the graph than
+  /** The Church the User joins: another assign Church of the graph than
    * the one that built the User. */
-  church: RosteringChurchSummary;
-  /** A persona or pool User of another rostering Church of the same graph,
+  church: AssignChurchSummary;
+  /** A persona or pool User of another assign Church of the same graph,
    * so purging that Church's roots removes the User. */
   userId: string;
   accessLevel: ChurchAccessLevel;
 }
 
-export interface RosteringChurchMembership {
+export interface AssignChurchMembership {
   id: string;
   churchId: string;
   userId: string;
@@ -608,7 +606,7 @@ export interface RosteringChurchMembership {
 }
 
 /**
- * Makes a User of one rostering Church a member of another: one User row,
+ * Makes a User of one assign Church a member of another: one User row,
  * a Church Membership in each Church. Never a Volunteer profile: a User is
  * an active Volunteer in only one Church (`volunteer_user_id_active_idx`),
  * and the base already made this User one in the Church that built them.
@@ -616,13 +614,13 @@ export interface RosteringChurchMembership {
  * through the product (a Volunteer Transfer). Refuses a User who is already
  * a member of `church`, whose access level it would otherwise overwrite.
  */
-export async function addRosteringChurchMembership({
+export async function addAssignChurchMembership({
   db,
   idOf,
   church,
   userId,
   accessLevel,
-}: AddRosteringChurchMembershipInput): Promise<RosteringChurchMembership> {
+}: AddAssignChurchMembershipInput): Promise<AssignChurchMembership> {
   const [existing] = await db
     .select({ id: member.id })
     .from(member)

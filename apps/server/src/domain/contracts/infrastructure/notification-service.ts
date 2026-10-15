@@ -1,8 +1,8 @@
 import type {
   AssignmentId,
+  CycleId,
   EventId,
   MinistryId,
-  PlanningCycleId,
 } from '../../branded-ids';
 import type {
   VolunteerNotificationPayload,
@@ -30,7 +30,7 @@ export interface DeclineNotification {
 export interface VolunteerScheduleNotification {
   churchId: string;
   volunteerId: string;
-  planningCycleId?: PlanningCycleId;
+  cycleId?: CycleId;
   ministryId?: MinistryId;
   eventId?: EventId;
   assignmentId?: AssignmentId;

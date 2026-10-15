@@ -5,7 +5,7 @@ export const INTERCESSAO = defineMinistry({
   name: 'Intercessão',
   roles: ['Intercessor'],
   teams: [],
-  roster: [
+  schedule: [
     // Ministry leader (1)
     {
       seat: { ministryLeader: true, roles: ['Intercessor'] },

@@ -1,10 +1,10 @@
 import {
   assignment,
   assignmentAudit,
+  cycle,
   event,
   ministryParticipation,
   participationSlotInclusion,
-  planningCycle,
   shift,
   slotRequirement,
   timeSlot,
@@ -26,7 +26,7 @@ import { requireInsertedRow } from './require-inserted-row';
  * themselves are exercised by the journeys, not seeded through here.
  */
 
-export type SeededPlanningCycle = typeof planningCycle.$inferSelect;
+export type SeededCycle = typeof cycle.$inferSelect;
 export type SeededEvent = typeof event.$inferSelect;
 export type SeededTimeSlot = typeof timeSlot.$inferSelect;
 export type SeededMinistryParticipation =
@@ -34,12 +34,12 @@ export type SeededMinistryParticipation =
 export type SeededShift = typeof shift.$inferSelect;
 export type SeededSlotRequirement = typeof slotRequirement.$inferSelect;
 export type SeededAssignment = typeof assignment.$inferSelect;
-export type PlanningCycleState = SeededPlanningCycle['state'];
+export type CycleState = SeededCycle['state'];
 export type EventStatus = SeededEvent['status'];
 export type ParticipationState = SeededMinistryParticipation['state'];
 export type AssignmentStatus = SeededAssignment['status'];
 
-export interface BuildPlanningCycleInput {
+export interface BuildCycleInput {
   db: SeedWriter;
   churchId: string;
   /** Left to the database when a test reads the identifier from the result. */
@@ -48,7 +48,7 @@ export interface BuildPlanningCycleInput {
   /** First day of the cycle; stored as a date, so no timezone is involved. */
   startDate: CalendarDay;
   endDate: CalendarDay;
-  state: PlanningCycleState;
+  state: CycleState;
 }
 
 interface CalendarDayDateInput {
@@ -60,7 +60,7 @@ function calendarDayDate({ day }: CalendarDayDateInput): Date {
   return toDate({ instant: parseInstant({ value: `${day}T00:00:00Z` }) });
 }
 
-export async function buildPlanningCycle({
+export async function buildCycle({
   db,
   churchId,
   id,
@@ -68,10 +68,10 @@ export async function buildPlanningCycle({
   startDate,
   endDate,
   state,
-}: BuildPlanningCycleInput): Promise<SeededPlanningCycle> {
+}: BuildCycleInput): Promise<SeededCycle> {
   return requireInsertedRow({
     rows: await db
-      .insert(planningCycle)
+      .insert(cycle)
       .values({
         id,
         churchId,
@@ -81,14 +81,14 @@ export async function buildPlanningCycle({
         state,
       })
       .returning(),
-    description: `Planning Cycle ${name}`,
+    description: `Cycle ${name}`,
   });
 }
 
 export interface BuildEventInput {
   db: SeedWriter;
   churchId: string;
-  planningCycleId: string;
+  cycleId: string;
   id?: string;
   title: string;
   start: Instant;
@@ -101,7 +101,7 @@ export interface BuildEventInput {
 export async function buildEvent({
   db,
   churchId,
-  planningCycleId,
+  cycleId,
   id,
   title,
   start,
@@ -115,7 +115,7 @@ export async function buildEvent({
       .values({
         id,
         churchId,
-        planningCycleId,
+        cycleId,
         title,
         start: toDate({ instant: start }),
         end: toDate({ instant: end }),

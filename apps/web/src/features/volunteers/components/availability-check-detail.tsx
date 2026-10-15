@@ -148,7 +148,9 @@ export function AvailabilityCheckDetail({
               disabled={isSavingUnavailableShifts}
               onClick={onSaveUnavailableShifts}
             >
-              {isSavingUnavailableShifts ? 'Saving…' : 'Save marks'}
+              {isSavingUnavailableShifts
+                ? 'Saving…'
+                : 'Save unavailable shifts'}
             </Button>
             <Button
               type="button"

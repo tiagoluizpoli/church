@@ -108,7 +108,7 @@ export function useVolunteerAvailability() {
       );
     },
     onSuccess: async () => {
-      toast.success('Availability marks saved.');
+      toast.success('Unavailable shifts saved.');
       await invalidateChecks();
     },
     onError: (error) => toast.error(getErrorMessage(error)),

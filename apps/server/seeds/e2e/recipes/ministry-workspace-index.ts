@@ -19,7 +19,7 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.ministryWorkspaceIndex;
  * The scheduling capability index of a Ministry leader (#329): a Church with
  * two Ministries, of which the leader persona leads only Worship, so the
  * index must list Worship and neither Care nor church-wide planning. The
- * ChurchAdmin is a separate persona, as every assign Church needs one.
+ * ChurchAdmin is a separate persona, as every Assign Church needs one.
  */
 const PLAN = {
   ministries: {

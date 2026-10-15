@@ -1002,7 +1002,7 @@ function applyHistoryTrail({
       ledger.place({
         target: findTarget({ shifts, post: servicePost }),
         email: incident.email,
-        assignedAt: assignedAt,
+        assignedAt,
       });
     }
   }
@@ -1014,14 +1014,14 @@ function applyHistoryTrail({
     ledger.place({
       target: findTarget({ shifts, post: incident.kept }),
       email: incident.email,
-      assignedAt: assignedAt,
+      assignedAt,
     });
     const target = findTarget({ shifts, post: incident.withdrawn });
     ledger.withdraw({
       target,
       email: incident.email,
       outcome: 'reassigned',
-      assignedAt: assignedAt,
+      assignedAt,
     });
     const reassignedAt = replacedAt({ shift: target.shift });
     const replacement = ledger.place({
@@ -1068,7 +1068,7 @@ function applyHistoryTrail({
       target,
       email: incident.email,
       outcome: 'declined',
-      assignedAt: assignedAt,
+      assignedAt,
       reason: incident.reason,
     });
     ledger.place({
@@ -1264,7 +1264,7 @@ export async function loadDevelopmentHistory({
     assignedAt,
     replacedAt,
   });
-  staffByRotation({ ledger, shifts, history, assignedAt: assignedAt });
+  staffByRotation({ ledger, shifts, history, assignedAt });
 
   const assignmentIdOf = ({ target, email }: AssignmentWrite): string =>
     deriveSeedId({

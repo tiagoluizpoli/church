@@ -833,7 +833,7 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
 
-      // Only availability-fired / assign participations are publishable;
+      // Only availability-requested / assign participations are publishable;
       // prepare ones are not yet assigned and already-published ones are
       // reported unchanged.
       const publishable: PublishCandidate[] = [];

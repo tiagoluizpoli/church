@@ -14,7 +14,7 @@ import {
 } from '@/tests/fixtures/persona-session';
 
 /**
- * The web half of the assign Church base
+ * The web half of the Assign Church base
  * (apps/server/seeds/e2e/recipes/assign-church.ts): schemas for the
  * pieces every #329 scheduling recipe returns, and sign-in helpers for
  * journeys that act as several of its personas. Each journey's own schema
@@ -47,7 +47,7 @@ export const ASSIGN_PERSONA_SCHEMA = ASSIGN_POOL_VOLUNTEER_SCHEMA.extend({
 export type AssignPersona = z.infer<typeof ASSIGN_PERSONA_SCHEMA>;
 
 /**
- * A User of one assign Church who also joined another of the same graph
+ * A User of one Assign Church who also joined another of the same graph
  * (server `addAssignChurchMembership`): a Church Membership only, never a
  * second Volunteer profile. A journey with several Churches validates each
  * Church's part with the same schemas as a single-Church journey.

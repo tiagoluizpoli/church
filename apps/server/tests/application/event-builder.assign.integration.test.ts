@@ -223,21 +223,21 @@ const CYCLE_START = new Date('2026-08-01T00:00:00.000Z');
 const CYCLE_END = new Date('2026-09-01T00:00:00.000Z');
 const EVENT_START = new Date('2026-08-02T12:00:00.000Z');
 const EVENT_END = new Date('2026-08-02T15:00:00.000Z');
-const SCHEDULE_LOCK_WAIT_TIMEOUT_MS = 10_000;
+const ASSIGN_LOCK_WAIT_TIMEOUT_MS = 10_000;
 const LOCK_WAIT_POLL_INTERVAL_MS = 10;
 
-interface LockedScheduleQueryRow {
+interface LockedAssignQueryRow {
   isBlocked: boolean;
 }
 
-interface ScheduleLockObserverInput {
-  scheduleBackendPid: number;
+interface AssignLockObserverInput {
+  assignBackendPid: number;
   sweepBackendPid: number;
 }
 
-class ScheduleTrackingVolunteerRepository extends DrizzleVolunteerRepository {
+class AssignTrackingVolunteerRepository extends DrizzleVolunteerRepository {
   constructor(
-    private readonly onScheduleBackendPid: (backendPid: number) => void,
+    private readonly onAssignBackendPid: (backendPid: number) => void,
   ) {
     super({ db: schedulingTestDb });
   }
@@ -249,14 +249,12 @@ class ScheduleTrackingVolunteerRepository extends DrizzleVolunteerRepository {
     tx?: TransactionContext,
   ): Promise<boolean> {
     if (!(tx instanceof DrizzleTransactionContext)) {
-      throw new Error(
-        'Schedule membership check did not receive a transaction',
-      );
+      throw new Error('Assign membership check did not receive a transaction');
     }
     const result = await tx.tx.execute(
       sql`SELECT pg_backend_pid() AS "backendPid"`,
     );
-    this.onScheduleBackendPid(readBackendPid(result));
+    this.onAssignBackendPid(readBackendPid(result));
     return super.hasMembershipInMinistry(churchId, volunteerId, ministryId, tx);
   }
 }
@@ -270,11 +268,11 @@ function readBackendPid(result: { rows: Record<string, unknown>[] }): number {
 }
 
 async function waitForAssignMembershipLock(
-  input: ScheduleLockObserverInput,
+  input: AssignLockObserverInput,
 ): Promise<void> {
-  const deadline = Date.now() + SCHEDULE_LOCK_WAIT_TIMEOUT_MS;
+  const deadline = Date.now() + ASSIGN_LOCK_WAIT_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const { rows } = await schedulingTestPool.query<LockedScheduleQueryRow>(
+    const { rows } = await schedulingTestPool.query<LockedAssignQueryRow>(
       `
       SELECT EXISTS (
         SELECT 1
@@ -285,7 +283,7 @@ async function waitForAssignMembershipLock(
           AND $2 = ANY(pg_blocking_pids(activity.pid))
       ) AS "isBlocked"
     `,
-      [input.scheduleBackendPid, input.sweepBackendPid],
+      [input.assignBackendPid, input.sweepBackendPid],
     );
     if (rows[0]?.isBlocked) {
       return;
@@ -295,7 +293,7 @@ async function waitForAssignMembershipLock(
     });
   }
   throw new Error(
-    'Schedule membership query did not block on the transfer sweep within 10 seconds',
+    'Assign membership query did not block on the transfer sweep within 10 seconds',
   );
 }
 
@@ -669,18 +667,18 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
     );
 
     await updateIssued;
-    let signalScheduleBackendPid: (backendPid: number) => void = () => {
-      throw new Error('Schedule backend observer was not initialized');
+    let signalAssignBackendPid: (backendPid: number) => void = () => {
+      throw new Error('Assign backend observer was not initialized');
     };
-    const scheduleBackendPid = new Promise<number>((resolve) => {
-      signalScheduleBackendPid = resolve;
+    const assignBackendPid = new Promise<number>((resolve) => {
+      signalAssignBackendPid = resolve;
     });
     const assignmentManager = createAssignmentManager({
-      volunteerRepository: new ScheduleTrackingVolunteerRepository(
-        signalScheduleBackendPid,
+      volunteerRepository: new AssignTrackingVolunteerRepository(
+        signalAssignBackendPid,
       ),
     });
-    const schedulePromise = assignmentManager
+    const assignPromise = assignmentManager
       .createParticipationAssignment({
         churchId: ChurchId.from(seed.churchAId),
         shiftId: ShiftId.from(shiftId),
@@ -693,14 +691,14 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
         (error: unknown) => ({ ok: false as const, error }),
       );
 
-    const [sweepPid, schedulePid] = await Promise.all([
+    const [sweepPid, assignPid] = await Promise.all([
       sweepBackendPid,
-      scheduleBackendPid,
+      assignBackendPid,
     ]);
     let lockWaitError: unknown;
     try {
       await waitForAssignMembershipLock({
-        scheduleBackendPid: schedulePid,
+        assignBackendPid: assignPid,
         sweepBackendPid: sweepPid,
       });
     } catch (error) {
@@ -711,17 +709,17 @@ describe('DbAssignmentManager.createParticipationAssignment membership race (iss
     }
     releaseSweep();
     await sweepPromise;
-    const scheduleOutcome = await schedulePromise;
+    const assignOutcome = await assignPromise;
 
     if (lockWaitError) {
       throw lockWaitError;
     }
-    expect(scheduleOutcome.ok).toBe(false);
-    if (scheduleOutcome.ok) {
+    expect(assignOutcome.ok).toBe(false);
+    if (assignOutcome.ok) {
       return;
     }
-    expect(scheduleOutcome.error).toBeInstanceOf(HardConstraintError);
-    expect((scheduleOutcome.error as HardConstraintError).reason).toBe(
+    expect(assignOutcome.error).toBeInstanceOf(HardConstraintError);
+    expect((assignOutcome.error as HardConstraintError).reason).toBe(
       'NOT_IN_MINISTRY',
     );
     const assignments = await schedulingTestDb

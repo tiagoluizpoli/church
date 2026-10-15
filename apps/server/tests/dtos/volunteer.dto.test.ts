@@ -160,7 +160,7 @@ describe('volunteerMapper', () => {
           roleId: 'r1',
           status: 'confirmed',
           reason: 'because',
-          assignedAt: assignedAt,
+          assignedAt,
           assignedBy: 'u1',
         },
       ]);

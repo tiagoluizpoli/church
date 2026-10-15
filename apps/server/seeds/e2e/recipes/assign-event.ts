@@ -19,7 +19,7 @@ import { anchoredInstant } from './assign-church';
  * ids derive from `key`, so one recipe can build several.
  */
 
-/** The Cycle a assign journey's Events belong to. */
+/** The Cycle an assign journey's Events belong to. */
 export interface AssignCycleSummary {
   id: string;
   name: string;

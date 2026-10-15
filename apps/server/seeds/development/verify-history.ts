@@ -649,7 +649,7 @@ async function notificationProblems({
           - (select count(*) from (select distinct a.participation_id, a.volunteer_id
               from ${assignment} a where a.assigned_at <= ${published}) as assigned) as value`,
       }),
-      // A reassignment deleted a assigned row its publish notification outlived.
+      // A reassignment deleted an assigned row its publish notification outlived.
       expected: history.resolvedOverlaps.length,
     },
     'publish notifications not in the shape publishing writes': {

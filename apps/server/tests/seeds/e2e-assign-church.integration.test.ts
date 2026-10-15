@@ -177,7 +177,7 @@ async function purgeRoots({
   );
 }
 
-describe('assign Church base for E2E journey recipes', () => {
+describe('Assign Church base for E2E journey recipes', () => {
   beforeEach(async () => {
     await truncateAll();
     await ensurePlatformOperator({
@@ -456,7 +456,7 @@ function graphIds({ graph }: GraphIdsInput): string[] {
   ];
 }
 
-describe('scoped assign Churches', () => {
+describe('scoped Assign Churches', () => {
   beforeEach(async () => {
     await truncateAll();
     await ensurePlatformOperator({

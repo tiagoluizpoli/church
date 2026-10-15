@@ -92,7 +92,7 @@ export interface ListMinistryCycleSummariesInput {
   tx?: TransactionContext;
 }
 
-/** Iteration 3 (research.md R15/R16): one row per locked `Cycle`
+/** Iteration 3 (research.md R15/R16): one row per sent `Cycle`
  * church-wide, annotated with this ministry's participation data. A cycle
  * the ministry has zero events in still appears, with `isPartOf: false`. */
 export interface MinistryCycleSummaryRow {

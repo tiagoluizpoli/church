@@ -552,7 +552,7 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the Church-isolation and lock-edge-case journeys for the cycles route', () => {
+  it('selects the Church-isolation and send-edge-case journeys for the cycles route', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/_active-church/_planning-admin.tsx',
@@ -873,7 +873,7 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects only the a11y-builder journey for a assign route change', () => {
+  it('selects only the a11y-builder journey for an assign route change', () => {
     const plan = classifyChanges({
       changedPaths: [
         'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign.tsx',
@@ -882,7 +882,7 @@ describe('classifyChanges', () => {
 
     // #288 — previously also picked up capability-index/guard-matrix/smoke/
     // schedule-publish solely via the removed broad `.../scheduling` prefix;
-    // none of those specs navigate to a assign-only URL.
+    // none of those specs navigate to an assign-only URL.
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/a11y-builder.spec.ts',
     ]);

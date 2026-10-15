@@ -111,16 +111,16 @@ describe('Cycle', () => {
   });
 
   it('rejects reopening events that are cancelled or past even while sent', () => {
-    const lockedForCancelled = createCycle();
-    lockedForCancelled.send();
+    const sentForCancelled = createCycle();
+    sentForCancelled.send();
     expect(() =>
-      lockedForCancelled.assertCanReopenEvent({ eventState: 'cancelled' }),
+      sentForCancelled.assertCanReopenEvent({ eventState: 'cancelled' }),
     ).toThrow(IllegalStateTransitionError);
 
-    const lockedForPast = createCycle();
-    lockedForPast.send();
+    const sentForPast = createCycle();
+    sentForPast.send();
     expect(() =>
-      lockedForPast.assertCanReopenEvent({ eventState: 'past' }),
+      sentForPast.assertCanReopenEvent({ eventState: 'past' }),
     ).toThrow(IllegalStateTransitionError);
   });
 

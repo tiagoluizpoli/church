@@ -1329,7 +1329,7 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'the historical Cycle is unlocked',
+      label: 'the historical Cycle is not sent',
       problem: 'Cycle',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`update ${cycle} set state = 'draft'`);
@@ -1417,7 +1417,7 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'a assigned Volunteer misses the publish notification',
+      label: 'an assigned Volunteer misses the publish notification',
       problem: 'notification',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from volunteer_notification

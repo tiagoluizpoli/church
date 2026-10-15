@@ -477,7 +477,7 @@ function PrepareWorkspaceRoute() {
    * — remains available and re-invocable after schedule release, and never
    * blocks further edits. Server-side `AvailabilityCheck` dedup (R4) means a
    * duplicate call from resaving after a mid-flight navigation is harmless. */
-  const saveAndFireAvailability = useMutation({
+  const saveAndAskAvailability = useMutation({
     mutationFn: async () => {
       const results = await Promise.all(
         [...touchedParticipationIds].map((participationId) => {
@@ -632,14 +632,14 @@ function PrepareWorkspaceRoute() {
                   className="disabled:opacity-40 dark:disabled:opacity-30"
                   data-testid="save-and-ask-availability-button"
                   disabled={
-                    !hasUnsentChanges || saveAndFireAvailability.isPending
+                    !hasUnsentChanges || saveAndAskAvailability.isPending
                   }
                   onClick={() => {
-                    if (saveAndFireAvailability.isPending) return;
+                    if (saveAndAskAvailability.isPending) return;
                     setConfirmSendOpen(true);
                   }}
                 >
-                  {saveAndFireAvailability.isPending
+                  {saveAndAskAvailability.isPending
                     ? 'Sending…'
                     : 'Request availability'}
                 </Button>
@@ -831,7 +831,7 @@ function PrepareWorkspaceRoute() {
               data-testid="prepare-send-confirm"
               onClick={() => {
                 setConfirmSendOpen(false);
-                saveAndFireAvailability.mutate();
+                saveAndAskAvailability.mutate();
               }}
             >
               Send {touchedEventTitles.length}{' '}

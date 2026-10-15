@@ -16,7 +16,7 @@ function VolunteerAvailabilityRoute() {
     <WorkspacePage>
       <WorkspaceIntroPanel
         title="Availability checks"
-        description="Mark the shifts you cannot serve, then confirm each check before your leader sends the cycle."
+        description="Mark the shifts you cannot serve, then confirm each check before your leader starts assigning."
       />
       <VolunteerAvailabilityPage />
     </WorkspacePage>

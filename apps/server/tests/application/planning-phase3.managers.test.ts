@@ -235,12 +235,12 @@ describe('Phase 3 planning managers', () => {
       cycleId: activeCycle.id,
     });
 
-    const lockedDetails = await cycleManager.getCycle({
+    const sentDetails = await cycleManager.getCycle({
       churchId: churchAId,
       cycleId: activeCycle.id,
     });
 
-    expect(lockedDetails.events[0]?.event.status).toBe('scheduled');
+    expect(sentDetails.events[0]?.event.status).toBe('scheduled');
 
     const expiredCycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -400,12 +400,12 @@ describe('Phase 3 planning managers', () => {
       cycleId: cycle.id,
     });
 
-    const lockedDetails = await cycleManager.getCycle({
+    const sentDetails = await cycleManager.getCycle({
       churchId: churchAId,
       cycleId: cycle.id,
     });
-    const lockedEvent = lockedDetails.events[0]?.event;
-    if (!lockedEvent) {
+    const sentEvent = sentDetails.events[0]?.event;
+    if (!sentEvent) {
       throw new Error('Expected generated locked event');
     }
 
@@ -413,7 +413,7 @@ describe('Phase 3 planning managers', () => {
       eventManager.updateEvent({
         churchId: churchAId,
         cycleId: cycle.id,
-        eventId: lockedEvent.id,
+        eventId: sentEvent.id,
         title: 'Retitled without reopen',
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
@@ -421,13 +421,13 @@ describe('Phase 3 planning managers', () => {
     await cycleManager.reopenEvent({
       churchId: churchAId,
       cycleId: cycle.id,
-      eventId: lockedEvent.id,
+      eventId: sentEvent.id,
     });
 
     const updated = await eventManager.updateEvent({
       churchId: churchAId,
       cycleId: cycle.id,
-      eventId: lockedEvent.id,
+      eventId: sentEvent.id,
       title: 'Retitled with reopen',
     });
 
@@ -521,7 +521,7 @@ describe('Phase 3 planning managers', () => {
       startDate: new Date('2027-02-01T00:00:00.000Z'),
       endDate: new Date('2027-03-01T00:00:00.000Z'),
     });
-    const lockedEvent = await eventManager.createEvent({
+    const sentEvent = await eventManager.createEvent({
       churchId: churchAId,
       cycleId: sentCycle.id,
       title: 'Scheduled once locked',
@@ -537,14 +537,14 @@ describe('Phase 3 planning managers', () => {
       eventManager.cancelEvent({
         churchId: churchAId,
         cycleId: sentCycle.id,
-        eventId: lockedEvent.id,
+        eventId: sentEvent.id,
       }),
     ).rejects.toThrow(IllegalStateTransitionError);
 
     await cycleManager.reopenEvent({
       churchId: churchAId,
       cycleId: sentCycle.id,
-      eventId: lockedEvent.id,
+      eventId: sentEvent.id,
     });
 
     // Reopen flips the event back to `draft`; cancelling it now hard-deletes,
@@ -552,7 +552,7 @@ describe('Phase 3 planning managers', () => {
     await eventManager.cancelEvent({
       churchId: churchAId,
       cycleId: sentCycle.id,
-      eventId: lockedEvent.id,
+      eventId: sentEvent.id,
     });
 
     const finalDetails = await cycleManager.getCycle({
@@ -968,7 +968,7 @@ describe('Phase 3 planning managers', () => {
       startDate: new Date('2027-09-01T00:00:00.000Z'),
       endDate: new Date('2027-10-01T00:00:00.000Z'),
     });
-    const lockedEvent = await eventManager.createEvent({
+    const sentEvent = await eventManager.createEvent({
       churchId: churchAId,
       cycleId: sentCycle.id,
       title: 'Locked day',
@@ -984,7 +984,7 @@ describe('Phase 3 planning managers', () => {
       eventManager.createSlot({
         churchId: churchAId,
         cycleId: sentCycle.id,
-        eventId: lockedEvent.id,
+        eventId: sentEvent.id,
         startTime: new Date('2027-09-02T09:00:00.000Z'),
         endTime: new Date('2027-09-02T10:00:00.000Z'),
       }),

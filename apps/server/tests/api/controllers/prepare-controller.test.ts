@@ -231,7 +231,7 @@ describe('Prepare participation routes', () => {
 
   it('POST /api/v1/prepare/participations/:id/ask-availability returns 409 for wrong state', async () => {
     availabilityCheckManager.askAvailability.mockRejectedValue(
-      new IllegalStateTransitionError('availability_requested', 'fire'),
+      new IllegalStateTransitionError('availability_requested', 'ask'),
     );
 
     const response = await app.inject({
@@ -242,7 +242,7 @@ describe('Prepare participation routes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: 'ILLEGAL_STATE_TRANSITION',
-      message: 'Cannot transition from availability_requested to fire',
+      message: 'Cannot transition from availability_requested to ask',
     });
   });
 

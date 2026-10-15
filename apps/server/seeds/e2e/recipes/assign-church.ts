@@ -150,7 +150,7 @@ const PLAN_KEY_PATTERN = /^[A-Za-z0-9-]+$/;
 const SCOPE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export interface AssignChurchScopeInput {
-  /** Names one of several assign Churches of a journey graph, e.g. `a`
+  /** Names one of several Assign Churches of a journey graph, e.g. `a`
    * or `b`; omitted for a journey's only Church. Lower-case letters, digits
    * and inner hyphens. */
   scope?: string;
@@ -239,7 +239,7 @@ export interface AssignChurchRootKindsInput
     AssignChurchScopeInput {}
 
 /**
- * The root kinds of a assign Church: its Church and every User, under
+ * The root kinds of an Assign Church: its Church and every User, under
  * the same `scope` it was built with. A journey with several Churches joins
  * theirs with `mergeRootKinds`.
  */
@@ -296,7 +296,7 @@ function resolveAdminKey({ plan }: AssignChurchPlanInput): string {
   );
   if (duplicate !== undefined) {
     throw new Error(
-      `Two assign plan Users would share the email "${duplicate}@…"; keys must differ beyond letter case.`,
+      `Two Users of an Assign plan would share the email "${duplicate}@…"; keys must differ beyond letter case.`,
     );
   }
   const adminKeys = Object.entries(plan.personas)
@@ -305,7 +305,7 @@ function resolveAdminKey({ plan }: AssignChurchPlanInput): string {
   const [adminKey] = adminKeys;
   if (adminKey === undefined || adminKeys.length !== 1) {
     throw new Error(
-      `A assign Church needs exactly one ChurchAdmin persona; the plan has ${adminKeys.length}.`,
+      `An Assign Church needs exactly one ChurchAdmin persona; the plan has ${adminKeys.length}.`,
     );
   }
   return adminKey;
@@ -589,10 +589,10 @@ export interface AddAssignChurchMembershipInput {
   db: SeedWriter;
   /** The recipe's id function (unscoped). */
   idOf: JourneySeedIdOf;
-  /** The Church the User joins: another assign Church of the graph than
+  /** The Church the User joins: another Assign Church of the graph than
    * the one that built the User. */
   church: AssignChurchSummary;
-  /** A persona or pool User of another assign Church of the same graph,
+  /** A persona or pool User of another Assign Church of the same graph,
    * so purging that Church's roots removes the User. */
   userId: string;
   accessLevel: ChurchAccessLevel;
@@ -606,7 +606,7 @@ export interface AssignChurchMembership {
 }
 
 /**
- * Makes a User of one assign Church a member of another: one User row,
+ * Makes a User of one Assign Church a member of another: one User row,
  * a Church Membership in each Church. Never a Volunteer profile: a User is
  * an active Volunteer in only one Church (`volunteer_user_id_active_idx`),
  * and the base already made this User one in the Church that built them.

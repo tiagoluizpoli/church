@@ -101,7 +101,7 @@ export const assignmentAudit = pgTable('assignment_audit', {
   /**
    * Correlation id of the wider act that produced this row, when it had one —
    * e.g. a Volunteer Transfer's cancellations (spec §4.4/§8.4) are reached
-   * through this table by `correlationId`. Null for ordinary assign edits.
+   * through this table by `correlationId`. Null for ordinary assignment edits.
    */
   correlationId: text('correlation_id'),
   timestamp: timestamp('timestamp', {

@@ -111,7 +111,7 @@ beforeEach(async () => {
 });
 
 describe('assign-board E2E journey recipe', () => {
-  it('builds a published two-Usher service, an availability-fired team service and a published Host service', async () => {
+  it('builds a published two-Usher service, an availability-requested team service and a published Host service', async () => {
     const journey = await loadBoard({ anchor: ANCHOR });
     const { service, teamService, assignedService } = journey.events;
     const { worship } = journey.ministries;
@@ -360,7 +360,7 @@ describe('assign-qualification E2E journey recipe', () => {
     ).toEqual([]);
   });
 
-  it('starts its future Event draft and availability-fired, dated from the anchor', async () => {
+  it('starts its future Event draft and availability-requested, dated from the anchor', async () => {
     const journey = await loadQualification({ anchor: LATE_ANCHOR });
     const { eventRow, shiftRow } = await eventRows({
       eventId: journey.event.id,

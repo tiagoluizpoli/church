@@ -1,5 +1,5 @@
 import { NotFoundError } from '@church/core';
-import { shift, shiftRequirement } from '@church/db';
+import { sector, shift, shiftRequirement } from '@church/db';
 import { toDate } from '@church/time';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type {
@@ -173,9 +173,15 @@ export class DrizzleShiftRepository implements ShiftRepository {
     input: UpsertShiftRequirementInput,
   ): Promise<ShiftRequirement> {
     const db = getClient(this.db, input.tx);
-    const teamCondition = input.teamId
-      ? eq(shiftRequirement.teamId, input.teamId)
-      : isNull(shiftRequirement.teamId);
+    // shortcut: a Sector-less write still matches on Team, for seeds not yet on Sectors; #498 drops it.
+    const sectorCondition = input.sectorId
+      ? eq(shiftRequirement.sectorId, input.sectorId)
+      : and(
+          isNull(shiftRequirement.sectorId),
+          input.teamId
+            ? eq(shiftRequirement.teamId, input.teamId)
+            : isNull(shiftRequirement.teamId),
+        );
     const [existing] = await db
       .select()
       .from(shiftRequirement)
@@ -183,47 +189,47 @@ export class DrizzleShiftRepository implements ShiftRepository {
         and(
           eq(shiftRequirement.shiftId, input.shiftId),
           eq(shiftRequirement.roleId, input.roleId),
-          teamCondition,
+          sectorCondition,
           withChurchIsolation(shiftRequirement, input.churchId),
         ),
       )
       .limit(1);
 
-    if (existing) {
-      const [updated] = await db
-        .update(shiftRequirement)
-        .set({
-          peopleNeeded: input.peopleNeeded,
-          notes: input.notes ?? null,
-        })
-        .where(eq(shiftRequirement.id, existing.id))
-        .returning();
+    const [row] = existing
+      ? await db
+          .update(shiftRequirement)
+          .set({
+            peopleNeeded: input.peopleNeeded,
+            notes: input.notes ?? null,
+          })
+          .where(eq(shiftRequirement.id, existing.id))
+          .returning()
+      : await db
+          .insert(shiftRequirement)
+          .values({
+            churchId: input.churchId,
+            participationId: input.participationId,
+            shiftId: input.shiftId,
+            roleId: input.roleId,
+            teamId: input.teamId ?? null,
+            sectorId: input.sectorId ?? null,
+            peopleNeeded: input.peopleNeeded,
+            notes: input.notes ?? null,
+          })
+          .returning();
 
-      if (!updated) {
-        throw new Error('Shift requirement update failed');
-      }
-
-      return mapShiftRequirement(updated);
+    if (!row) {
+      throw new Error('Shift requirement upsert failed');
     }
 
-    const [inserted] = await db
-      .insert(shiftRequirement)
-      .values({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        shiftId: input.shiftId,
-        roleId: input.roleId,
-        teamId: input.teamId ?? null,
-        peopleNeeded: input.peopleNeeded,
-        notes: input.notes ?? null,
-      })
-      .returning();
+    const [named] = row.sectorId
+      ? await db
+          .select({ name: sector.name })
+          .from(sector)
+          .where(eq(sector.id, row.sectorId))
+      : [];
 
-    if (!inserted) {
-      throw new Error('Shift requirement insert failed');
-    }
-
-    return mapShiftRequirement(inserted);
+    return mapShiftRequirement({ row, sectorName: named?.name });
   }
 
   async listRequirementsByParticipation(
@@ -231,8 +237,9 @@ export class DrizzleShiftRepository implements ShiftRepository {
   ): Promise<ShiftRequirement[]> {
     const db = getClient(this.db, input.tx);
     const rows = await db
-      .select()
+      .select({ requirement: shiftRequirement, sectorName: sector.name })
       .from(shiftRequirement)
+      .leftJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .where(
         and(
           eq(shiftRequirement.participationId, input.participationId),
@@ -240,6 +247,11 @@ export class DrizzleShiftRepository implements ShiftRepository {
         ),
       );
 
-    return rows.map((row) => mapShiftRequirement(row));
+    return rows.map(({ requirement, sectorName }) =>
+      mapShiftRequirement({
+        row: requirement,
+        sectorName: sectorName ?? undefined,
+      }),
+    );
   }
 }

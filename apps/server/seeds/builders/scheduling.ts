@@ -259,6 +259,8 @@ export interface BuildShiftRequirementInput {
   id?: string;
   peopleNeeded: number;
   teamId?: string;
+  /** Optional only during the Sector expand step (#494); #498 requires it. */
+  sectorId?: string;
   notes?: string;
 }
 
@@ -271,6 +273,7 @@ export async function buildShiftRequirement({
   id,
   peopleNeeded,
   teamId,
+  sectorId,
   notes,
 }: BuildShiftRequirementInput): Promise<SeededShiftRequirement> {
   return requireInsertedRow({
@@ -284,6 +287,7 @@ export async function buildShiftRequirement({
         roleId,
         peopleNeeded,
         teamId,
+        sectorId,
         notes,
       })
       .returning(),

@@ -14,6 +14,7 @@ export { DrizzleOutboxRepository } from './drizzle-outbox.repository';
 export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
 export { DrizzleRedemptionRepository } from './drizzle-redemption.repository';
 export { DrizzleRoleRepository } from './drizzle-role.repository';
+export { DrizzleSectorRepository } from './drizzle-sector.repository';
 export { DrizzleSecurityLogRepository } from './drizzle-security-log.repository';
 export { DrizzleShiftRepository } from './drizzle-shift.repository';
 export { DrizzleTeamRepository } from './drizzle-team.repository';

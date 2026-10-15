@@ -12,6 +12,7 @@ export * from './ministry-membership';
 export * from './ministry-participation';
 export * from './participation-event-time-block-inclusion';
 export * from './role';
+export * from './sector';
 export * from './shift';
 export * from './shift-requirement';
 export * from './team';

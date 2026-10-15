@@ -50,7 +50,10 @@ export class DrizzleEventTimeBlockRepository
     return mapEventTimeBlock(
       eventTimeBlockRow,
       reqRows.map(({ requirement }) =>
-        mapShiftRequirement(requirement, eventTimeBlockRow.id),
+        mapShiftRequirement({
+          row: requirement,
+          eventTimeBlockId: eventTimeBlockRow.id,
+        }),
       ),
     );
   }

@@ -180,7 +180,10 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
             return mapEventTimeBlock(
               eventTimeBlockRow,
               requirementRows.map(({ requirement }) =>
-                mapShiftRequirement(requirement, eventTimeBlockRow.id),
+                mapShiftRequirement({
+                  row: requirement,
+                  eventTimeBlockId: eventTimeBlockRow.id,
+                }),
               ),
             );
           }),

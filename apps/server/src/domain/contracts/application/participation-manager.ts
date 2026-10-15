@@ -6,6 +6,7 @@ import type {
   MinistryId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
   TeamId,
   UserId,
@@ -145,8 +146,8 @@ export interface DeleteShiftManagerInput {
 export interface UpsertRequirementManagerInput {
   churchId: ChurchId;
   shiftId: ShiftId;
+  sectorId: SectorId;
   roleId: RoleId;
-  teamId?: TeamId;
   peopleNeeded: number;
   notes?: string;
 }

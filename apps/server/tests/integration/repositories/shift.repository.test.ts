@@ -6,12 +6,13 @@ import {
   EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
   TeamId,
 } from '@/domain/branded-ids';
 import { Shift } from '@/domain/entities/shift';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { buildRole, buildTeam } from '@/seeds/builders/ministry';
+import { buildRole, buildSector, buildTeam } from '@/seeds/builders/ministry';
 import {
   createSchedulingPhase3Cycle,
   createSchedulingPhase3EventGraph,
@@ -399,5 +400,90 @@ describe('DrizzleShiftRepository', () => {
       participationId,
     });
     expect(requirements).toHaveLength(2);
+  });
+
+  it('upsertRequirement matches on (shift, sector, role) and lists each with its Sector', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(
+      graph.participation.id,
+    );
+    const [shift] = await repo.createMany({
+      churchId,
+      shifts: [
+        new Shift({
+          props: {
+            churchId,
+            participationId,
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+          },
+        }),
+      ],
+    });
+    if (!shift) throw new Error('setup failed');
+    const roleId = RoleId.from(
+      (
+        await buildRole({
+          db: schedulingTestDb,
+          churchId: seed.churchAId,
+          ministryId: seed.ministryAId,
+          name: 'Teacher',
+        })
+      ).id,
+    );
+    const [babiesRoom, kidsRoom] = await Promise.all(
+      ['Babies Room', 'Kids Room'].map((name) =>
+        buildSector({
+          db: schedulingTestDb,
+          churchId: seed.churchAId,
+          ministryId: seed.ministryAId,
+          name,
+        }),
+      ),
+    );
+    if (!babiesRoom || !kidsRoom) throw new Error('setup failed');
+    const place = { churchId, shiftId: shift.id, participationId, roleId };
+
+    const created = await repo.upsertRequirement({
+      ...place,
+      sectorId: SectorId.from(babiesRoom.id),
+      peopleNeeded: 1,
+    });
+    const updated = await repo.upsertRequirement({
+      ...place,
+      sectorId: SectorId.from(babiesRoom.id),
+      peopleNeeded: 3,
+    });
+    const otherSector = await repo.upsertRequirement({
+      ...place,
+      sectorId: SectorId.from(kidsRoom.id),
+      peopleNeeded: 2,
+    });
+
+    expect(updated.id).toBe(created.id);
+    expect(otherSector.id).not.toBe(created.id);
+    const listed = await repo.listRequirementsByParticipation({
+      churchId,
+      participationId,
+    });
+    expect(
+      listed
+        .map(({ sectorId, sectorName, peopleNeeded }) => ({
+          sectorId,
+          sectorName,
+          peopleNeeded,
+        }))
+        .sort((a, b) => a.peopleNeeded - b.peopleNeeded),
+    ).toEqual([
+      { sectorId: kidsRoom.id, sectorName: 'Kids Room', peopleNeeded: 2 },
+      { sectorId: babiesRoom.id, sectorName: 'Babies Room', peopleNeeded: 3 },
+    ]);
   });
 });

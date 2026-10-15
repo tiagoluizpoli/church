@@ -5,7 +5,7 @@ import {
   eventResponseSchema,
   scheduleBuilderDataResponseSchema,
 } from '@/api/dtos/event.dto';
-import { RoleId, VolunteerId } from '@/domain/branded-ids';
+import { RoleId, SectorId, VolunteerId } from '@/domain/branded-ids';
 import type { ScheduleBuilderData } from '@/domain/contracts/application/event-manager';
 import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
@@ -209,6 +209,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
         { id: RoleId.from('role-1'), name: 'Vocalist' },
         { id: RoleId.from('role-2'), name: 'Sound Tech' },
       ],
+      sectors: [{ id: SectorId.from('sector-1'), name: 'Stage' }],
       callerTeamIds: ['team-1'],
     };
 
@@ -323,6 +324,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       { id: 'role-2', name: 'Sound Tech' },
     ]);
 
+    expect(response.sectors).toEqual([{ id: 'sector-1', name: 'Stage' }]);
     expect(response.callerTeamIds).toEqual(['team-1']);
   });
 
@@ -333,6 +335,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       unavailableShifts: [],
       volunteers: [],
       roles: [],
+      sectors: [],
       callerTeamIds: null,
     };
 
@@ -344,6 +347,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       unavailableShifts: [],
       volunteers: [],
       roles: [],
+      sectors: [],
       callerTeamIds: null,
     });
   });
@@ -366,6 +370,7 @@ describe('eventMapper.scheduleBuilderToResponse', () => {
       unavailableShifts: [],
       volunteers: [],
       roles: [],
+      sectors: [],
       callerTeamIds: null,
     };
 

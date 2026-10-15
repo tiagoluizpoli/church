@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import {
   compareInstants,
   fromDate,
@@ -6,7 +7,13 @@ import {
   toDate,
 } from '@church/time';
 import { TeamScheduleMutationPolicy } from '../domain/authority/team-schedule-mutation-policy';
-import { type ChurchId, TeamId } from '../domain/branded-ids';
+import {
+  type ChurchId,
+  type MinistryId,
+  type RoleId,
+  type SectorId,
+  TeamId,
+} from '../domain/branded-ids';
 import type { ConflictIssue } from '../domain/conflict/types';
 import type {
   CycleBuilderEventTimeBlockView,
@@ -45,6 +52,7 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { NotificationService } from '../domain/contracts/infrastructure/notification-service';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
+import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
@@ -185,8 +193,21 @@ interface DbParticipationManagerDependencies {
   ministryRepository: MinistryRepository;
   usualSetupRepository: UsualSetupRepository;
   roleRepository: RoleRepository;
+  sectorRepository: SectorRepository;
   notificationService: NotificationService;
   unitOfWork: UnitOfWork;
+}
+
+interface HeadcountPlace {
+  sectorId: SectorId;
+  roleId: RoleId;
+}
+
+interface AssertMinistryHeadcountsInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  headcounts: HeadcountPlace[];
+  tx?: TransactionContext;
 }
 
 export class DbParticipationManager implements IParticipationManager {
@@ -202,6 +223,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly ministryRepository: MinistryRepository;
   private readonly usualSetupRepository: UsualSetupRepository;
   private readonly roleRepository: RoleRepository;
+  private readonly sectorRepository: SectorRepository;
   private readonly notificationService: NotificationService;
   private readonly unitOfWork: UnitOfWork;
 
@@ -216,6 +238,7 @@ export class DbParticipationManager implements IParticipationManager {
     ministryRepository,
     usualSetupRepository,
     roleRepository,
+    sectorRepository,
     notificationService,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
@@ -229,6 +252,7 @@ export class DbParticipationManager implements IParticipationManager {
     this.ministryRepository = ministryRepository;
     this.usualSetupRepository = usualSetupRepository;
     this.roleRepository = roleRepository;
+    this.sectorRepository = sectorRepository;
     this.notificationService = notificationService;
     this.unitOfWork = unitOfWork;
   }
@@ -654,6 +678,30 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
+  /** A Sector or Role outside the Ministry (or Church) is not found (#385). */
+  private async assertMinistryHeadcounts({
+    churchId,
+    ministryId,
+    headcounts,
+    tx,
+  }: AssertMinistryHeadcountsInput): Promise<void> {
+    if (headcounts.length === 0) return;
+    const [sectors, roles] = await Promise.all([
+      this.sectorRepository.listByMinistry({ churchId, ministryId, tx }),
+      this.roleRepository.listByMinistry(churchId, ministryId, tx),
+    ]);
+    const sectorIds = new Set<string>(sectors.map((sector) => sector.id));
+    const roleIds = new Set<string>(roles.map((role) => role.id));
+    for (const { sectorId, roleId } of headcounts) {
+      if (!sectorIds.has(sectorId)) {
+        throw new NotFoundError(`Sector not found: ${sectorId}`);
+      }
+      if (!roleIds.has(roleId)) {
+        throw new NotFoundError(`Role not found: ${roleId}`);
+      }
+    }
+  }
+
   async upsertRequirement(
     input: UpsertRequirementManagerInput,
   ): Promise<ShiftRequirement> {
@@ -673,13 +721,19 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       ensurePrepare({ participation, action: 'upsert_requirement' });
+      await this.assertMinistryHeadcounts({
+        churchId: input.churchId,
+        ministryId: participation.ministryId,
+        headcounts: [{ sectorId: input.sectorId, roleId: input.roleId }],
+        tx,
+      });
 
       const requirement = await this.shiftRepository.upsertRequirement({
         churchId: input.churchId,
         shiftId: input.shiftId,
         participationId: shift.participationId,
+        sectorId: input.sectorId,
         roleId: input.roleId,
-        teamId: input.teamId,
         peopleNeeded: input.peopleNeeded,
         notes: input.notes,
         tx,
@@ -714,6 +768,15 @@ export class DbParticipationManager implements IParticipationManager {
         },
       });
     }
+    await this.assertMinistryHeadcounts({
+      churchId: input.churchId,
+      ministryId: input.ministryId,
+      headcounts: input.entries.flatMap((entry) =>
+        entry.headcounts.flatMap(({ sectorId, roleId }) =>
+          sectorId ? [{ sectorId, roleId }] : [],
+        ),
+      ),
+    });
 
     return this.usualSetupRepository.replaceForMinistry(input);
   }

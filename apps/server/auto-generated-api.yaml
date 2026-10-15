@@ -1482,9 +1482,9 @@ paths:
                           items:
                             type: object
                             properties:
-                              roleId:
+                              sectorId:
                                 type: string
-                              teamId:
+                              roleId:
                                 type: string
                               peopleNeeded:
                                 type: integer
@@ -1573,15 +1573,16 @@ paths:
                         items:
                           type: object
                           properties:
-                            roleId:
+                            sectorId:
                               type: string
-                            teamId:
+                            roleId:
                               type: string
                             peopleNeeded:
                               type: integer
                               minimum: 1
                               maximum: 9007199254740991
                           required:
+                            - sectorId
                             - roleId
                             - peopleNeeded
                     required:
@@ -1666,9 +1667,9 @@ paths:
                           items:
                             type: object
                             properties:
-                              roleId:
+                              sectorId:
                                 type: string
-                              teamId:
+                              roleId:
                                 type: string
                               peopleNeeded:
                                 type: integer
@@ -2022,6 +2023,19 @@ paths:
                         - id
                         - name
                       additionalProperties: false
+                  sectors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
                   callerTeamIds:
                     nullable: true
                     type: array
@@ -2033,6 +2047,7 @@ paths:
                   - unavailableShifts
                   - volunteers
                   - roles
+                  - sectors
                   - callerTeamIds
                 additionalProperties: false
         "401":
@@ -2588,6 +2603,10 @@ paths:
                                       type: string
                                     teamId:
                                       type: string
+                                    sectorId:
+                                      type: string
+                                    sectorName:
+                                      type: string
                                     peopleNeeded:
                                       type: number
                                     notes:
@@ -2935,8 +2954,7 @@ paths:
       summary: Set a Shift staffing requirement
       tags:
         - prepare
-      description: Set the ShiftRequirement headcount for a Role (and optional Team)
-        within a Shift.
+      description: Set the ShiftRequirement headcount for a Sector and Role within a Shift.
       requestBody:
         required: true
         content:
@@ -2944,9 +2962,9 @@ paths:
             schema:
               type: object
               properties:
-                roleId:
+                sectorId:
                   type: string
-                teamId:
+                roleId:
                   type: string
                 peopleNeeded:
                   type: integer
@@ -2955,6 +2973,7 @@ paths:
                 notes:
                   type: string
               required:
+                - sectorId
                 - roleId
                 - peopleNeeded
       parameters:
@@ -2980,6 +2999,10 @@ paths:
                   roleId:
                     type: string
                   teamId:
+                    type: string
+                  sectorId:
+                    type: string
+                  sectorName:
                     type: string
                   peopleNeeded:
                     type: number
@@ -3436,6 +3459,10 @@ paths:
                                           roleId:
                                             type: string
                                           teamId:
+                                            type: string
+                                          sectorId:
+                                            type: string
+                                          sectorName:
                                             type: string
                                           peopleNeeded:
                                             type: number

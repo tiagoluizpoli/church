@@ -3,6 +3,7 @@ import type {
   EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
   TeamId,
 } from '../../branded-ids';
@@ -63,6 +64,8 @@ export interface UpsertShiftRequirementInput {
   participationId: MinistryParticipationId;
   roleId: RoleId;
   teamId?: TeamId;
+  /** Matched with the Shift and Role; optional only during the Sector expand step (#494). */
+  sectorId?: SectorId;
   peopleNeeded: number;
   notes?: string;
   tx?: TransactionContext;

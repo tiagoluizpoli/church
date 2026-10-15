@@ -50,6 +50,8 @@ export const shiftRequirementResponseSchema = z.object({
   participationId: z.string(),
   roleId: z.string(),
   teamId: z.string().optional(),
+  sectorId: z.string().optional(),
+  sectorName: z.string().optional(),
   peopleNeeded: z.number(),
   notes: z.string().optional(),
 });
@@ -109,8 +111,8 @@ export const updateShiftBodySchema = z.object({
 export type UpdateShiftBody = z.infer<typeof updateShiftBodySchema>;
 
 export const shiftRequirementBodySchema = z.object({
+  sectorId: z.string(),
   roleId: z.string(),
-  teamId: z.string().optional(),
   peopleNeeded: z.number().int().min(1),
   notes: z.string().optional(),
 });
@@ -191,6 +193,8 @@ function toShiftRequirementResponse(
     participationId: (requirement.participationId ?? '') as string,
     roleId: requirement.roleId as string,
     teamId: requirement.teamId as string | undefined,
+    sectorId: requirement.sectorId as string | undefined,
+    sectorName: requirement.sectorName,
     peopleNeeded: requirement.peopleNeeded,
     notes: requirement.notes,
   };

@@ -20,6 +20,7 @@ export * from './redemption.repository';
 export * from './redemption-identity-gateway';
 export * from './role.repository';
 export * from './scheduling-scope.repository';
+export * from './sector.repository';
 export * from './security-log.repository';
 export * from './shift.repository';
 export * from './team.repository';

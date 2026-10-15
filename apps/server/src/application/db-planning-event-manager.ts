@@ -420,6 +420,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               churchId,
               shiftId: shiftEntity.id,
               participationId: participation.id,
+              sectorId: headcount.sectorId,
               roleId: headcount.roleId,
               teamId: headcount.teamId,
               peopleNeeded: headcount.peopleNeeded,

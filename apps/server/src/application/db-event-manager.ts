@@ -8,6 +8,7 @@ import type { AssignmentRepository } from '../domain/contracts/infrastructure/as
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
+import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Event } from '../domain/entities/event';
@@ -20,6 +21,7 @@ interface DbEventManagerDependencies {
   unavailableShiftRepo: UnavailableShiftRepository;
   volunteerRepo: VolunteerRepository;
   roleRepo: RoleRepository;
+  sectorRepo: SectorRepository;
 }
 
 export class DbEventManager implements IEventManager {
@@ -29,6 +31,7 @@ export class DbEventManager implements IEventManager {
   private readonly unavailableShiftRepo: UnavailableShiftRepository;
   private readonly volunteerRepo: VolunteerRepository;
   private readonly roleRepo: RoleRepository;
+  private readonly sectorRepo: SectorRepository;
 
   constructor({
     eventRepo,
@@ -37,6 +40,7 @@ export class DbEventManager implements IEventManager {
     unavailableShiftRepo,
     volunteerRepo,
     roleRepo,
+    sectorRepo,
   }: DbEventManagerDependencies) {
     this.eventRepo = eventRepo;
     this.eventTimeBlockRepo = eventTimeBlockRepo;
@@ -44,6 +48,7 @@ export class DbEventManager implements IEventManager {
     this.unavailableShiftRepo = unavailableShiftRepo;
     this.volunteerRepo = volunteerRepo;
     this.roleRepo = roleRepo;
+    this.sectorRepo = sectorRepo;
   }
 
   async getScheduleBuilderData(
@@ -124,6 +129,10 @@ export class DbEventManager implements IEventManager {
             allVolunteerIds,
           )
         : [];
+    const sectors = await this.sectorRepo.listByMinistry({
+      churchId,
+      ministryId,
+    });
 
     return {
       events: [{ event, eventTimeBlocks }],
@@ -152,6 +161,7 @@ export class DbEventManager implements IEventManager {
         };
       }),
       roles: roles.map((role) => ({ id: role.id, name: role.name })),
+      sectors: sectors.map((sector) => ({ id: sector.id, name: sector.name })),
       callerTeamIds: callerTeamIds == null ? null : [...callerTeamIds],
     };
   }

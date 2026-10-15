@@ -3,6 +3,7 @@ import type {
   EventId,
   MinistryId,
   RoleId,
+  SectorId,
   VolunteerId,
 } from '../../branded-ids';
 import type { Assignment } from '../../entities/assignment';
@@ -40,12 +41,19 @@ export interface ScheduleBuilderRoleOption {
   name: string;
 }
 
+export interface ScheduleBuilderSectorOption {
+  id: SectorId;
+  name: string;
+}
+
 export interface ScheduleBuilderData {
   events: ScheduleBuilderEventGroup[];
   assignments: Assignment[];
   unavailableShifts: UnavailableShift[];
   volunteers: ScheduleBuilderVolunteerOption[];
   roles: ScheduleBuilderRoleOption[];
+  /** The Ministry's Sectors, ordered by name. */
+  sectors: ScheduleBuilderSectorOption[];
   /**
    * Teams the calling TeamLeader may schedule for, or `null` when the caller
    * is a ministry leader and therefore unrestricted. A TeamLeader can lead

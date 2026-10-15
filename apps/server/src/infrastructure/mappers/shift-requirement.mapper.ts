@@ -5,6 +5,7 @@ import type {
   EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
 } from '../../domain/branded-ids';
 import type {
@@ -15,10 +16,18 @@ import { ShiftRequirement } from '../../domain/entities/shift-requirement';
 
 type ShiftRequirementRow = InferSelectModel<typeof shiftRequirement>;
 
-export function mapShiftRequirement(
-  row: ShiftRequirementRow,
-  eventTimeBlockId?: string,
-): ShiftRequirement {
+export interface MapShiftRequirementInput {
+  row: ShiftRequirementRow;
+  eventTimeBlockId?: string;
+  /** The joined Sector's name, when the read joins it. */
+  sectorName?: string;
+}
+
+export function mapShiftRequirement({
+  row,
+  eventTimeBlockId,
+  sectorName,
+}: MapShiftRequirementInput): ShiftRequirement {
   const props: ShiftRequirementProps = {
     churchId: row.churchId as ChurchId,
     participationId: row.participationId as MinistryParticipationId,
@@ -28,6 +37,8 @@ export function mapShiftRequirement(
     teamId: row.teamId
       ? (row.teamId as ShiftRequirementProps['teamId'])
       : undefined,
+    sectorId: row.sectorId ? (row.sectorId as SectorId) : undefined,
+    sectorName,
     peopleNeeded: row.peopleNeeded,
     notes: row.notes ?? undefined,
   };

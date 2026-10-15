@@ -5,6 +5,7 @@ import type {
   ChurchId,
   MinistryId,
   RoleId,
+  SectorId,
   TeamId,
   TemplateTimeBlockId,
   UsualSetupId,
@@ -58,6 +59,7 @@ function mapHeadcount(
   stored: UsualSetupRow['headcounts'][number],
 ): UsualSetupHeadcount {
   return {
+    sectorId: stored.sectorId ? (stored.sectorId as SectorId) : undefined,
     roleId: stored.roleId as RoleId,
     teamId: stored.teamId ? (stored.teamId as TeamId) : undefined,
     peopleNeeded: stored.peopleNeeded,

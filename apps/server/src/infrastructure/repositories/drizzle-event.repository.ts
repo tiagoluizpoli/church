@@ -100,7 +100,10 @@ export class DrizzleEventRepository implements EventRepository {
           .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
           .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
         const requirements = reqRows.map(({ requirement }) =>
-          mapShiftRequirement(requirement, eventTimeBlockRow.id),
+          mapShiftRequirement({
+            row: requirement,
+            eventTimeBlockId: eventTimeBlockRow.id,
+          }),
         );
         return mapEventTimeBlock(eventTimeBlockRow, requirements);
       }),

@@ -12,6 +12,7 @@ import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTeamRepository } from '@/infrastructure/repositories/drizzle-team.repository';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
@@ -107,6 +108,7 @@ export function createSchedulingManagers({
         db: schedulingTestDb,
       }),
       roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
+      sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
       notificationService: notificationSpy,
       unitOfWork,
     }),
@@ -205,6 +207,7 @@ export interface SeedRequirementInput {
   roleId: string;
   peopleNeeded: number;
   teamId?: string;
+  sectorId?: string;
 }
 
 export async function seedRequirement(input: SeedRequirementInput) {

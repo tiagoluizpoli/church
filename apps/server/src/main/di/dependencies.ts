@@ -43,6 +43,7 @@ import type {
   RedemptionRepository,
   RoleRepository,
   SchedulingScopeRepository,
+  SectorRepository,
   SecurityLogRepository,
   ShiftRepository,
   TeamRepository,
@@ -80,6 +81,7 @@ export interface CompositionRootDependencies {
   usualSetupRepository: UsualSetupRepository;
   shiftRepository: ShiftRepository;
   roleRepository: RoleRepository;
+  sectorRepository: SectorRepository;
   teamRepository: TeamRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   volunteerNotificationRepository: VolunteerNotificationRepository;

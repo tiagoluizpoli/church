@@ -59,6 +59,7 @@ function createManager() {
       ministryRepository: ministryRepository as never,
       usualSetupRepository: usualSetupRepository as never,
       roleRepository: roleRepository as never,
+      sectorRepository: {} as never,
       notificationService: notificationService as never,
       unitOfWork: unitOfWork as never,
     }),

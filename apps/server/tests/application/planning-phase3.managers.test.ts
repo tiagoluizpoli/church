@@ -42,7 +42,11 @@ import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/dr
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
-import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
+import {
+  buildMinistry,
+  buildRole,
+  buildSector,
+} from '@/seeds/builders/ministry';
 import { buildEventTimeBlock } from '@/seeds/builders/scheduling';
 import {
   createSchedulingPhase3Cycle,
@@ -831,6 +835,18 @@ describe('Phase 3 planning managers', () => {
       ministryId: profiledMinistry.id,
       name: 'Profiled role',
     });
+    const babiesRoom = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: profiledMinistry.id,
+      name: 'Babies Room',
+    });
+    const kidsRoom = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: profiledMinistry.id,
+      name: 'Kids Room',
+    });
 
     await schedulingTestDb.insert(usualSetup).values([
       {
@@ -839,7 +855,10 @@ describe('Phase 3 planning managers', () => {
         sourceTemplateTimeBlockId: block.id,
         serves: true,
         shiftSplit: { kind: 'equal', count: 2 },
-        headcounts: [{ roleId: roleRow.id, peopleNeeded: 2 }],
+        headcounts: [
+          { sectorId: babiesRoom.id, roleId: roleRow.id, peopleNeeded: 2 },
+          { sectorId: kidsRoom.id, roleId: roleRow.id, peopleNeeded: 1 },
+        ],
       },
       {
         churchId: seed.churchAId,
@@ -908,7 +927,7 @@ describe('Phase 3 planning managers', () => {
       .where(eq(shiftTable.participationId, allInParticipationId));
     expect(allInShifts).toHaveLength(1);
 
-    // profiled ministry (all_out direction, but explicit serves:true equal-2 profile) -> 2 shifts + requirements of 2 each.
+    // profiled ministry (all_out direction, but explicit serves:true equal-2 profile) -> 2 shifts, each with the profile's Sector headcounts.
     const profiledParticipationId = await participationIdFor(
       profiledMinistry.id,
     );
@@ -921,12 +940,38 @@ describe('Phase 3 planning managers', () => {
       .select()
       .from(shiftRequirement)
       .where(eq(shiftRequirement.participationId, profiledParticipationId));
-    expect(profiledRequirements).toHaveLength(2);
     expect(
-      profiledRequirements.every(
-        (requirement) => requirement.peopleNeeded === 2,
-      ),
-    ).toBe(true);
+      profiledRequirements
+        .map(({ shiftId, sectorId, roleId, peopleNeeded }) => ({
+          shiftId,
+          sectorId,
+          roleId,
+          peopleNeeded,
+        }))
+        .sort((a, b) =>
+          `${a.shiftId}${a.peopleNeeded}`.localeCompare(
+            `${b.shiftId}${b.peopleNeeded}`,
+          ),
+        ),
+    ).toEqual(
+      profiledShifts
+        .map((shift) => shift.id)
+        .sort()
+        .flatMap((shiftId) => [
+          {
+            shiftId,
+            sectorId: kidsRoom.id,
+            roleId: roleRow.id,
+            peopleNeeded: 1,
+          },
+          {
+            shiftId,
+            sectorId: babiesRoom.id,
+            roleId: roleRow.id,
+            peopleNeeded: 2,
+          },
+        ]),
+    );
 
     // ministry with default all_in, but explicit serves:false profile entry -> still excluded (profile wins over direction).
     const excludedParticipationId = await participationIdFor(

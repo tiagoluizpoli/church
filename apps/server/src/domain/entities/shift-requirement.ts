@@ -5,6 +5,7 @@ import type {
   EventTimeBlockId,
   MinistryParticipationId,
   RoleId,
+  SectorId,
   ShiftId,
   TeamId,
 } from '../branded-ids';
@@ -19,6 +20,10 @@ export interface ShiftRequirementProps {
   shiftId?: ShiftId;
   roleId: RoleId;
   teamId?: TeamId;
+  /** Optional only during the Sector expand step (#494); #498 requires it. */
+  sectorId?: SectorId;
+  /** Read-side label of `sectorId`, filled when the read joins the Sector. */
+  sectorName?: string;
   peopleNeeded: number;
   notes?: string;
 }
@@ -66,6 +71,14 @@ export class ShiftRequirement extends Entity<
 
   get teamId(): TeamId | undefined {
     return this._props.teamId;
+  }
+
+  get sectorId(): SectorId | undefined {
+    return this._props.sectorId;
+  }
+
+  get sectorName(): string | undefined {
+    return this._props.sectorName;
   }
 
   get peopleNeeded(): number {

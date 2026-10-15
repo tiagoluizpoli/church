@@ -27,6 +27,7 @@ import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleTransactionContext } from '@/infrastructure/repositories/drizzle-transaction-context';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
@@ -82,6 +83,7 @@ function createParticipationManager(): DbParticipationManager {
       db: schedulingTestDb,
     }),
     roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
+    sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
     notificationService: createNotificationServiceSpy(),
     unitOfWork,
   });

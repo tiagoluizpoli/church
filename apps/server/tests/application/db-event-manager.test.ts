@@ -7,12 +7,14 @@ import type {
   EventTimeBlockId,
   MinistryId,
   RoleId,
+  SectorId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
 import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
 import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 import type {
   MinistryMembership,
@@ -23,6 +25,7 @@ import { Assignment } from '@/domain/entities/assignment';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { Role } from '@/domain/entities/role';
+import { Sector } from '@/domain/entities/sector';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
@@ -82,6 +85,7 @@ interface Repos {
   unavailableShiftRepo: UnavailableShiftRepository;
   volunteerRepo: VolunteerRepository;
   roleRepo: RoleRepository;
+  sectorRepo: SectorRepository;
 }
 
 function createRepos(): Repos {
@@ -173,6 +177,11 @@ function createRepos(): Repos {
     listByMinistry: vi.fn(async () => []),
   };
 
+  const sectorRepo: SectorRepository = {
+    getById: vi.fn(),
+    listByMinistry: vi.fn(async () => []),
+  };
+
   return {
     eventRepo,
     eventTimeBlockRepo,
@@ -180,6 +189,7 @@ function createRepos(): Repos {
     unavailableShiftRepo,
     volunteerRepo,
     roleRepo,
+    sectorRepo,
   };
 }
 
@@ -191,11 +201,41 @@ function createManager(repos: Repos): DbEventManager {
     unavailableShiftRepo: repos.unavailableShiftRepo,
     volunteerRepo: repos.volunteerRepo,
     roleRepo: repos.roleRepo,
+    sectorRepo: repos.sectorRepo,
   });
 }
 
 describe('DbEventManager', () => {
   describe('getScheduleBuilderData', () => {
+    it("returns the event Ministry's Sectors in repository order", async () => {
+      const repos = createRepos();
+      vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([
+        buildMembership({}),
+      ]);
+      const kidsId = '66666666-6666-4666-8666-666666666661' as SectorId;
+      const maternalId = '66666666-6666-4666-8666-666666666662' as SectorId;
+      vi.mocked(repos.sectorRepo.listByMinistry).mockResolvedValue([
+        new Sector({ churchId, ministryId, name: 'Kids' }, kidsId),
+        new Sector({ churchId, ministryId, name: 'Maternal' }, maternalId),
+      ]);
+
+      const result = await createManager(repos).getScheduleBuilderData({
+        churchId,
+        eventId,
+        ministryId,
+        volunteerId: leaderId,
+      });
+
+      expect(result.sectors).toEqual([
+        { id: kidsId, name: 'Kids' },
+        { id: maternalId, name: 'Maternal' },
+      ]);
+      expect(repos.sectorRepo.listByMinistry).toHaveBeenCalledWith({
+        churchId,
+        ministryId,
+      });
+    });
+
     it('throws IsolationBreachError when the caller is not a ministry member', async () => {
       const repos = createRepos();
       vi.mocked(repos.volunteerRepo.listMinistryMemberships).mockResolvedValue([

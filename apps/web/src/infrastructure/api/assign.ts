@@ -15,8 +15,8 @@ import type {
   GetCycleBuilderDataParams,
   GetParticipationCompletion200,
   ListEligibleVolunteers200,
-  ListTeamRosterCycles200,
-  ListTeamRosterCyclesParams,
+  ListTeamScheduleCycles200,
+  ListTeamScheduleCyclesParams,
   PublishCycle200,
   PublishCycleBody,
   PublishCycleParams,
@@ -29,23 +29,23 @@ import { apiClient } from '../../utils/api-client';
 
 
 
-  export const getRostering = () => {
+  export const getAssign = () => {
 /**
- * List the locked PlanningCycles in a Ministry that a TeamLeader may open as a read-only roster.
- * @summary List a Team's readable roster cycles
+ * List the sent Cycles in a Ministry that a TeamLeader may open as a read-only schedule.
+ * @summary List a Team's readable schedule cycles
  */
-const listTeamRosterCycles = (
+const listTeamScheduleCycles = (
     teamId: string,
-    params: ListTeamRosterCyclesParams,
+    params: ListTeamScheduleCyclesParams,
  ) => {
-      return apiClient<ListTeamRosterCycles200>(
-      {url: `/api/v1/rostering/teams/${teamId}/cycles-summary`, method: 'GET',
+      return apiClient<ListTeamScheduleCycles200>(
+      {url: `/api/v1/assign/teams/${teamId}/cycles-summary`, method: 'GET',
         params
     },
       );
     }
   /**
- * Get a Ministry's roster-building view of a PlanningCycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.
+ * Get a Ministry's schedule-building view of a Cycle: its MinistryParticipations, Shifts, SlotRequirements, and Assignments.
  * @summary Get cycle builder data for a Ministry
  */
 const getCycleBuilderData = (
@@ -53,13 +53,13 @@ const getCycleBuilderData = (
     params: GetCycleBuilderDataParams,
  ) => {
       return apiClient<GetCycleBuilderData200>(
-      {url: `/api/v1/rostering/cycles/${cycleId}/builder`, method: 'GET',
+      {url: `/api/v1/assign/cycles/${cycleId}/builder`, method: 'GET',
         params
     },
       );
     }
   /**
- * List a Ministry's Assignment audit entries across an entire PlanningCycle.
+ * List a Ministry's Assignment audit entries across an entire Cycle.
  * @summary Get a Ministry's Assignment audit log for a cycle
  */
 const getCycleAuditLog = (
@@ -67,14 +67,14 @@ const getCycleAuditLog = (
     params: GetCycleAuditLogParams,
  ) => {
       return apiClient<GetCycleAuditLog200>(
-      {url: `/api/v1/rostering/cycles/${cycleId}/audit`, method: 'GET',
+      {url: `/api/v1/assign/cycles/${cycleId}/audit`, method: 'GET',
         params
     },
       );
     }
   /**
- * Publish every eligible MinistryParticipation in a PlanningCycle for a Ministry in one batch, making its rosters visible to Volunteers.
- * @summary Publish a Ministry's roster for a cycle
+ * Publish every eligible MinistryParticipation in a Cycle for a Ministry in one batch, making its schedules visible to Volunteers.
+ * @summary Publish a Ministry's schedule for a cycle
  */
 const publishCycle = (
     cycleId: string,
@@ -82,7 +82,7 @@ const publishCycle = (
     params: PublishCycleParams,
  ) => {
       return apiClient<PublishCycle200>(
-      {url: `/api/v1/rostering/cycles/${cycleId}/publish`, method: 'POST',
+      {url: `/api/v1/assign/cycles/${cycleId}/publish`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: publishCycleBody,
         params
@@ -90,14 +90,14 @@ const publishCycle = (
       );
     }
   /**
- * List the Volunteers eligible to be assigned to a Shift, for the roster builder.
+ * List the Volunteers eligible to be assigned to a Shift, for the schedule builder.
  * @summary List eligible Volunteers for a Shift
  */
 const listEligibleVolunteers = (
     shiftId: string,
  ) => {
       return apiClient<ListEligibleVolunteers200>(
-      {url: `/api/v1/rostering/shifts/${shiftId}/eligible-volunteers`, method: 'GET'
+      {url: `/api/v1/assign/shifts/${shiftId}/eligible-volunteers`, method: 'GET'
     },
       );
     }
@@ -110,7 +110,7 @@ const createParticipationAssignment = (
     createParticipationAssignmentBody: CreateParticipationAssignmentBody,
  ) => {
       return apiClient<CreateParticipationAssignment201>(
-      {url: `/api/v1/rostering/shifts/${shiftId}/assignments`, method: 'POST',
+      {url: `/api/v1/assign/shifts/${shiftId}/assignments`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createParticipationAssignmentBody
     },
@@ -125,7 +125,7 @@ const deleteParticipationAssignment = (
     params?: DeleteParticipationAssignmentParams,
  ) => {
       return apiClient<DeleteParticipationAssignment204>(
-      {url: `/api/v1/rostering/assignments/${assignmentId}`, method: 'DELETE',
+      {url: `/api/v1/assign/assignments/${assignmentId}`, method: 'DELETE',
         params
     },
       );
@@ -139,7 +139,7 @@ const reassignParticipationAssignment = (
     reassignParticipationAssignmentBody: ReassignParticipationAssignmentBody,
  ) => {
       return apiClient<ReassignParticipationAssignment200>(
-      {url: `/api/v1/rostering/assignments/${assignmentId}/reassign`, method: 'PATCH',
+      {url: `/api/v1/assign/assignments/${assignmentId}/reassign`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
       data: reassignParticipationAssignmentBody
     },
@@ -153,17 +153,17 @@ const getParticipationCompletion = (
     participationId: string,
  ) => {
       return apiClient<GetParticipationCompletion200>(
-      {url: `/api/v1/rostering/participations/${participationId}/completion`, method: 'GET'
+      {url: `/api/v1/assign/participations/${participationId}/completion`, method: 'GET'
     },
       );
     }
-  return {listTeamRosterCycles,getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
-export type ListTeamRosterCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['listTeamRosterCycles']>>>
-export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getCycleBuilderData']>>>
-export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getCycleAuditLog']>>>
-export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['publishCycle']>>>
-export type ListEligibleVolunteersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['listEligibleVolunteers']>>>
-export type CreateParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['createParticipationAssignment']>>>
-export type DeleteParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['deleteParticipationAssignment']>>>
-export type ReassignParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['reassignParticipationAssignment']>>>
-export type GetParticipationCompletionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRostering>['getParticipationCompletion']>>>
+  return {listTeamScheduleCycles,getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
+export type ListTeamScheduleCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['listTeamScheduleCycles']>>>
+export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleBuilderData']>>>
+export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleAuditLog']>>>
+export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['publishCycle']>>>
+export type ListEligibleVolunteersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['listEligibleVolunteers']>>>
+export type CreateParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['createParticipationAssignment']>>>
+export type DeleteParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['deleteParticipationAssignment']>>>
+export type ReassignParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['reassignParticipationAssignment']>>>
+export type GetParticipationCompletionResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getParticipationCompletion']>>>

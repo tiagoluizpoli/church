@@ -364,7 +364,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'askAvailability',
-          summary: 'Fire availability for a MinistryParticipation',
+          summary: 'Ask availability for a MinistryParticipation',
           description:
             "Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.",
           response: { 202: askAvailabilityResponseSchema },

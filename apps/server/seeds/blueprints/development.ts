@@ -47,7 +47,7 @@ export interface DevelopmentBlueprint {
   keyPersonas: readonly KeyPersona[];
   /** The primary Church's gatherings; the second Church plans nothing. */
   gatherings: GatheringsBlueprint;
-  /** The trail its locked historical Cycle carries. */
+  /** The trail its sent historical Cycle carries. */
   history: HistoryBlueprint;
 }
 

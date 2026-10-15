@@ -20,7 +20,7 @@ const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.planningAdmin;
 
 /**
  * The Church whose ChurchAdmin plans (#329: cycle administration, the
- * create-event form, template library, cycle lock edge cases): a Worship
+ * create-event form, template library, cycle send edge cases): a Worship
  * Ministry the admin leads, and a plain Volunteer persona for the denial
  * checks. It holds no Cycle: the journey creates the cycles it
  * mutates, in a window of its own Church, so no other journey can overlap

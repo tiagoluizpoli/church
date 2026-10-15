@@ -63,7 +63,7 @@ export function createCycleAccessRecipe({
     return {
       anchor,
       ...graph,
-      cycleWindow,
+      cycleWindow: window,
       cycle: { id: cycle.id, name: cycle.name },
     };
   }

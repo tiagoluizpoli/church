@@ -38,7 +38,7 @@ export interface DevelopmentRecipeResult {
   church: SeededChurchSummary;
   secondChurch: SeededChurchSummary;
   keyPersonas: readonly KeyPersona[];
-  /** The previous complete month before the anchor's, locked and published. */
+  /** The previous complete month before the anchor's, sent and published. */
   historicalCycle: SeededHistoricalCycle;
 }
 

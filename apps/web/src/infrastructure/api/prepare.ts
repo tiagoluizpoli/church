@@ -5,7 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  FireAvailability202,
+  AskAvailability202,
   GetAvailabilityStatus200,
   GetCycleAvailabilityStatus200,
   GetCycleAvailabilityStatusParams,
@@ -26,30 +26,30 @@ import { apiClient } from '../../utils/api-client';
 
 
 
-  export const getTailoring = () => {
+  export const getPrepare = () => {
 /**
- * Get a Ministry's MinistryParticipation tailoring state across every Event in a PlanningCycle.
- * @summary Get a Ministry's tailoring view of a cycle
+ * Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle.
+ * @summary Get a Ministry's prepare view of a cycle
  */
 const getCycleParticipation = (
     cycleId: string,
     params: GetCycleParticipationParams,
  ) => {
       return apiClient<GetCycleParticipation200>(
-      {url: `/api/v1/tailoring/cycles/${cycleId}/participation`, method: 'GET',
+      {url: `/api/v1/prepare/cycles/${cycleId}/participation`, method: 'GET',
         params
     },
       );
     }
   /**
- * List summaries of a Ministry's MinistryParticipation tailoring progress across its PlanningCycles.
- * @summary List a Ministry's cycle tailoring summaries
+ * List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.
+ * @summary List a Ministry's cycle prepare summaries
  */
 const listMinistryCycleSummaries = (
     ministryId: string,
  ) => {
       return apiClient<ListMinistryCycleSummaries200>(
-      {url: `/api/v1/tailoring/ministries/${ministryId}/cycles-summary`, method: 'GET'
+      {url: `/api/v1/prepare/ministries/${ministryId}/cycles-summary`, method: 'GET'
     },
       );
     }
@@ -62,7 +62,7 @@ const setParticipationInclusions = (
     setParticipationInclusionsBody: SetParticipationInclusionsBody,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/tailoring/participations/${participationId}/inclusions`, method: 'PUT',
+      {url: `/api/v1/prepare/participations/${participationId}/inclusions`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: setParticipationInclusionsBody
     },
@@ -78,7 +78,7 @@ const splitParticipationShifts = (
     splitParticipationShiftsBody: SplitParticipationShiftsBody,
  ) => {
       return apiClient<SplitParticipationShifts201>(
-      {url: `/api/v1/tailoring/participations/${participationId}/slots/${timeSlotId}/shifts`, method: 'POST',
+      {url: `/api/v1/prepare/participations/${participationId}/slots/${timeSlotId}/shifts`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: splitParticipationShiftsBody
     },
@@ -93,7 +93,7 @@ const updateShift = (
     updateShiftBody: UpdateShiftBody,
  ) => {
       return apiClient<UpdateShift200>(
-      {url: `/api/v1/tailoring/shifts/${shiftId}`, method: 'PATCH',
+      {url: `/api/v1/prepare/shifts/${shiftId}`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
       data: updateShiftBody
     },
@@ -107,7 +107,7 @@ const deleteShift = (
     shiftId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/tailoring/shifts/${shiftId}`, method: 'DELETE'
+      {url: `/api/v1/prepare/shifts/${shiftId}`, method: 'DELETE'
     },
       );
     }
@@ -120,26 +120,26 @@ const upsertShiftRequirement = (
     upsertShiftRequirementBody: UpsertShiftRequirementBody,
  ) => {
       return apiClient<UpsertShiftRequirement200>(
-      {url: `/api/v1/tailoring/shifts/${shiftId}/requirements`, method: 'PUT',
+      {url: `/api/v1/prepare/shifts/${shiftId}/requirements`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: upsertShiftRequirementBody
     },
       );
     }
   /**
- * Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_fired.
- * @summary Fire availability for a MinistryParticipation
+ * Spawn AvailabilityChecks for a MinistryParticipation's Volunteers and move it into availability_requested.
+ * @summary Ask availability for a MinistryParticipation
  */
-const fireAvailability = (
+const askAvailability = (
     participationId: string,
  ) => {
-      return apiClient<FireAvailability202>(
-      {url: `/api/v1/tailoring/participations/${participationId}/fire-availability`, method: 'POST'
+      return apiClient<AskAvailability202>(
+      {url: `/api/v1/prepare/participations/${participationId}/ask-availability`, method: 'POST'
     },
       );
     }
   /**
- * List a Ministry's Volunteers' AvailabilityCheck states across a PlanningCycle.
+ * List a Ministry's Volunteers' AvailabilityCheck states across a Cycle.
  * @summary Get a Ministry's AvailabilityCheck status for a cycle
  */
 const getCycleAvailabilityStatus = (
@@ -147,7 +147,7 @@ const getCycleAvailabilityStatus = (
     params: GetCycleAvailabilityStatusParams,
  ) => {
       return apiClient<GetCycleAvailabilityStatus200>(
-      {url: `/api/v1/tailoring/cycles/${cycleId}/availability-status`, method: 'GET',
+      {url: `/api/v1/prepare/cycles/${cycleId}/availability-status`, method: 'GET',
         params
     },
       );
@@ -160,7 +160,7 @@ const getAvailabilityStatus = (
     participationId: string,
  ) => {
       return apiClient<GetAvailabilityStatus200>(
-      {url: `/api/v1/tailoring/participations/${participationId}/availability-status`, method: 'GET'
+      {url: `/api/v1/prepare/participations/${participationId}/availability-status`, method: 'GET'
     },
       );
     }
@@ -172,19 +172,19 @@ const resendAvailabilityReminder = (
     participationId: string,
  ) => {
       return apiClient<void>(
-      {url: `/api/v1/tailoring/participations/${participationId}/resend-availability`, method: 'POST'
+      {url: `/api/v1/prepare/participations/${participationId}/resend-availability`, method: 'POST'
     },
       );
     }
-  return {getCycleParticipation,listMinistryCycleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,fireAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
-export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['getCycleParticipation']>>>
-export type ListMinistryCycleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['listMinistryCycleSummaries']>>>
-export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['setParticipationInclusions']>>>
-export type SplitParticipationShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['splitParticipationShifts']>>>
-export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['updateShift']>>>
-export type DeleteShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['deleteShift']>>>
-export type UpsertShiftRequirementResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['upsertShiftRequirement']>>>
-export type FireAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['fireAvailability']>>>
-export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['getCycleAvailabilityStatus']>>>
-export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['getAvailabilityStatus']>>>
-export type ResendAvailabilityReminderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getTailoring>['resendAvailabilityReminder']>>>
+  return {getCycleParticipation,listMinistryCycleSummaries,setParticipationInclusions,splitParticipationShifts,updateShift,deleteShift,upsertShiftRequirement,askAvailability,getCycleAvailabilityStatus,getAvailabilityStatus,resendAvailabilityReminder}};
+export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
+export type ListMinistryCycleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listMinistryCycleSummaries']>>>
+export type SetParticipationInclusionsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['setParticipationInclusions']>>>
+export type SplitParticipationShiftsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['splitParticipationShifts']>>>
+export type UpdateShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['updateShift']>>>
+export type DeleteShiftResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['deleteShift']>>>
+export type UpsertShiftRequirementResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['upsertShiftRequirement']>>>
+export type AskAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['askAvailability']>>>
+export type GetCycleAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleAvailabilityStatus']>>>
+export type GetAvailabilityStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAvailabilityStatus']>>>
+export type ResendAvailabilityReminderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['resendAvailabilityReminder']>>>

@@ -29,7 +29,7 @@ describe('Cycle', () => {
     const cycle = new Cycle({
       props: {
         churchId: '11111111-1111-1111-1111-111111111111',
-        name: 'Pre-locked',
+        name: 'Pre-sent',
         startDate: parseCalendarDay({ value: '2026-07-01' }),
         endDate: parseCalendarDay({ value: '2026-08-01' }),
         state: 'sent',
@@ -53,7 +53,7 @@ describe('Cycle', () => {
     ).toThrow(InvalidDateRangeError);
   });
 
-  it('locks from draft to locked', () => {
+  it('sends from draft to sent', () => {
     const cycle = createCycle();
 
     cycle.send();
@@ -61,56 +61,56 @@ describe('Cycle', () => {
     expect(cycle.state).toBe('sent');
   });
 
-  it('rejects locking once no longer draft', () => {
-    const locked = createCycle();
-    locked.send();
+  it('rejects sending once no longer draft', () => {
+    const sent = createCycle();
+    sent.send();
 
-    expect(() => locked.send()).toThrow(IllegalStateTransitionError);
+    expect(() => sent.send()).toThrow(IllegalStateTransitionError);
 
-    const archived = createCycle();
-    archived.markPast();
+    const past = createCycle();
+    past.markPast();
 
-    expect(() => archived.send()).toThrow(IllegalStateTransitionError);
+    expect(() => past.send()).toThrow(IllegalStateTransitionError);
   });
 
-  it('archives draft and sent cycles', () => {
+  it('marks draft and sent cycles past', () => {
     const draft = createCycle();
     draft.markPast();
     expect(draft.state).toBe('past');
 
-    const locked = createCycle();
-    locked.send();
-    locked.markPast();
-    expect(locked.state).toBe('past');
+    const sent = createCycle();
+    sent.send();
+    sent.markPast();
+    expect(sent.state).toBe('past');
   });
 
-  it('rejects archiving an already archived cycle', () => {
-    const archived = createCycle();
-    archived.markPast();
+  it('rejects marking an already past cycle past', () => {
+    const past = createCycle();
+    past.markPast();
 
-    expect(() => archived.markPast()).toThrow(IllegalStateTransitionError);
+    expect(() => past.markPast()).toThrow(IllegalStateTransitionError);
   });
 
-  it('only allows reopening events while the cycle is locked', () => {
+  it('only allows reopening events while the cycle is sent', () => {
     const draft = createCycle();
     expect(() =>
       draft.assertCanReopenEvent({ eventState: 'scheduled' }),
     ).toThrow(IllegalStateTransitionError);
 
-    const archived = createCycle();
-    archived.markPast();
+    const past = createCycle();
+    past.markPast();
     expect(() =>
-      archived.assertCanReopenEvent({ eventState: 'scheduled' }),
+      past.assertCanReopenEvent({ eventState: 'scheduled' }),
     ).toThrow(IllegalStateTransitionError);
 
-    const locked = createCycle();
-    locked.send();
+    const sent = createCycle();
+    sent.send();
     expect(() =>
-      locked.assertCanReopenEvent({ eventState: 'scheduled' }),
+      sent.assertCanReopenEvent({ eventState: 'scheduled' }),
     ).not.toThrow();
   });
 
-  it('rejects reopening events that are cancelled or past even while locked', () => {
+  it('rejects reopening events that are cancelled or past even while sent', () => {
     const lockedForCancelled = createCycle();
     lockedForCancelled.send();
     expect(() =>

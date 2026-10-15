@@ -255,13 +255,13 @@ async function cycleProblems({
   const timeZone = blueprint.primary.church.timezone;
   const problems = difference({
     label:
-      'Cycles (only the previous complete month, locked; none from the anchor month on)',
+      'Cycles (only the previous complete month, sent; none from the anchor month on)',
     actual: await keysOf({
       db,
       query: sql`select church_id || '|' || start_date || '|' || end_date || '|' || state as key
         from ${cycle}`,
     }),
-    expected: [`${churchId}|${window.startDate}|${window.endDate}|locked`],
+    expected: [`${churchId}|${window.startDate}|${window.endDate}|sent`],
   });
 
   const gatherings = expectedGatherings({ blueprint, ...window });
@@ -709,7 +709,7 @@ async function notificationProblems({
 }
 
 /**
- * The gatherings and locked historical cycle against the blueprint and the
+ * The gatherings and sent historical cycle against the blueprint and the
  * anchor: standing rules, the one sent cycle and nothing from the anchor's
  * month on, published participation staffing, no unresolved overlap, and
  * the history trail.

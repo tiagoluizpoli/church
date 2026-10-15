@@ -119,7 +119,7 @@ export function createCycleTenantsRecipe({
     });
     return {
       anchor,
-      cycleWindow,
+      cycleWindow: window,
       churchA: { ...churchA, cycle: { id: cycleA.id, name: cycleA.name } },
       churchB: { ...churchB, cycle: { id: cycleB.id, name: cycleB.name } },
     };

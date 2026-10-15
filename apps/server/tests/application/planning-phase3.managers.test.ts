@@ -211,7 +211,7 @@ describe('Phase 3 planning managers', () => {
     ).toHaveLength(1);
   });
 
-  it('locks cycle events, lazily archives expired cycles, and blocks writes after archive', async () => {
+  it('sends cycle events, lazily marks expired cycles past, and blocks writes once past', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { cycleManager, eventManager } = createManagers();
     const churchAId = ChurchId.from(seed.churchAId);
@@ -1079,10 +1079,10 @@ describe('Phase 3 planning managers', () => {
       }),
     ).rejects.toThrow('TimeSlot not found');
 
-    // Reject on archived cycle.
+    // Reject on past cycle.
     const pastCycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
-      name: 'Archived slot cycle',
+      name: 'Past slot cycle',
       startDate: new Date('2000-01-01T00:00:00.000Z'),
       endDate: new Date('2000-02-01T00:00:00.000Z'),
     });

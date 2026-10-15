@@ -1139,7 +1139,7 @@ function staffByRotation({
 }
 
 /**
- * The previous complete calendar month as a locked historical Cycle:
+ * The previous complete calendar month as a sent historical Cycle:
  * every gathering materialized, every Ministry's slice published, mostly
  * fully staffed by rotation, plus the blueprint's trail of unavailability,
  * declines, replacements and cross-Ministry service. Nothing reaches the

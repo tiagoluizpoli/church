@@ -26,7 +26,7 @@ import {
 import type { AssignCycleSummary } from './assign-event';
 
 /**
- * The starting graph of the schedule-and-publish journey (#329): a locked
+ * The starting graph of the schedule-and-publish journey (#329): a sent
  * Cycle with one event both Ministries take part in, each at
  * `availability_requested`. Publishing is cycle-wide, so the cycle (and both
  * Participations) belong to this journey alone. The worship Ministry needs

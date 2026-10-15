@@ -70,7 +70,7 @@ export interface Shortfall {
 }
 
 /**
- * The trail the locked historical Cycle carries on top of its
+ * The trail the sent historical Cycle carries on top of its
  * otherwise fully staffed, published schedule. Every other Assignment is filled
  * by rotation through each post's qualified Volunteers.
  */
